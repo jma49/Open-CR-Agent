@@ -1,0 +1,22 @@
+{
+  "name": "@open-cr-agent/cli",
+  "version": "0.0.0",
+  "description": "The ocra command line interface",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "ocra": "./dist/main.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@open-cr-agent/core": "0.0.0"
+  }
+}
