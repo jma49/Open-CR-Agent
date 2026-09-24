@@ -68,7 +68,7 @@ describe("startPlugins", () => {
     expect(
       (registry.createVcs("fake-vcs", { x: 1 }) as unknown as { options: unknown }).options,
     ).toEqual({ x: 1 });
-    expect(registry.createRuntime("fake-rt", { models: { standard: "m" }, env: {} }).name).toBe(
+    expect(registry.createRuntime("fake-rt", { models: { standard: ["m"] }, env: {} }).name).toBe(
       "models:m",
     );
 

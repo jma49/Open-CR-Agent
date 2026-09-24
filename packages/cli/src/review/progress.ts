@@ -54,6 +54,8 @@ function describe(event: ReviewEvent): string | undefined {
       return [`${event.bundles} review task(s) (${event.strategy})`, ...event.warnings].join(
         "\n[ocra] ",
       );
+    case "task_progress":
+      return `${event.taskId} ${event.message}`;
     case "task_started":
       return `${event.taskId} started: ${event.bundle} (${event.files.length} file(s))`;
     case "task_finished": {

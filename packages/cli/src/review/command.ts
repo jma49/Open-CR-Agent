@@ -72,6 +72,7 @@ export async function reviewCommand(
     });
   } finally {
     progress.stop();
+    await runtime.dispose?.();
   }
 
   const sessionDir = relative(deps.cwd, join(session.dir, session.id)) || ".";

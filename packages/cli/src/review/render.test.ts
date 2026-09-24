@@ -46,7 +46,13 @@ const base: ReviewReport = {
     },
   ],
   findings: [],
-  usage: { inputTokens: 1200, outputTokens: 80, cachedTokens: 900 },
+  usage: {
+    inputTokens: 1200,
+    outputTokens: 80,
+    reasoningTokens: 40,
+    cachedTokens: 900,
+    costUsd: 0.0031,
+  },
   warnings: [],
 };
 
@@ -80,7 +86,7 @@ describe("renderText", () => {
         "    Body line 1",
         "    Body line 2",
         "",
-        "3 finding(s) (1 critical, 2 warning, 0 suggestion) · tokens: 1200 in (900 cached), 80 out",
+        "3 finding(s) (1 critical, 2 warning, 0 suggestion) · tokens: 1200 in (900 cached), 80 out, 40 reasoning · $0.0031",
         "Warning: grouping failed",
         "Session: .ocra/sessions/s1",
         "",

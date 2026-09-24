@@ -33,11 +33,22 @@ describe("loadConfig", () => {
 
   it("reads the config file and lets environment variables override models", async () => {
     const dir = root(
-      JSON.stringify({ models: { top: "a/top", standard: "a/std" }, concurrency: 2 }),
+      JSON.stringify({
+        models: { top: "a/top", standard: ["a/std", "a/std-old"] },
+        concurrency: 2,
+      }),
     );
-    const config = await loadConfig(dir, { OCRA_MODEL_STANDARD: " b/std ", OCRA_MODEL_LIGHT: "" });
-    expect(config).toMatchObject({ models: { top: "a/top", standard: "b/std" }, concurrency: 2 });
-    expect(config.models.light).toBeUndefined();
+    const config = await loadConfig(dir, {});
+    expect(config).toMatchObject({
+      models: { top: ["a/top"], standard: ["a/std", "a/std-old"] },
+      concurrency: 2,
+    });
+
+    const overridden = await loadConfig(dir, {
+      OCRA_MODEL_STANDARD: " b/std , b/old ",
+      OCRA_MODEL_LIGHT: "",
+    });
+    expect(overridden.models).toEqual({ top: ["a/top"], standard: ["b/std", "b/old"] });
   });
 
   it("rejects invalid JSON, unknown keys and bad values", async () => {

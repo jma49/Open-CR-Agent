@@ -4,6 +4,6 @@ import { OpenCodeRuntime } from "./runtime.js";
 export const opencodeRuntimePlugin: OcraPlugin = {
   name: "runtime-opencode",
   configure(ctx) {
-    ctx.registerRuntime("opencode", (options) => new OpenCodeRuntime({ models: options.models }));
+    ctx.registerRuntime("opencode", (options) => new OpenCodeRuntime(options));
   },
 };

@@ -1,14 +1,18 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { ModelTier } from "@open-cr-agent/core";
+import type { ModelChains, ModelTier } from "@open-cr-agent/core";
 import { z } from "zod";
 
 export const CONFIG_PATH = ".ocra/config.json";
 
+const modelChain = z
+  .union([z.string().min(1), z.array(z.string().min(1)).min(1)])
+  .transform((value) => (typeof value === "string" ? [value] : value));
+
 const configSchema = z
   .object({
     models: z
-      .object({ top: z.string().min(1), standard: z.string().min(1), light: z.string().min(1) })
+      .object({ top: modelChain, standard: modelChain, light: modelChain })
       .partial()
       .strict()
       .default({}),
@@ -23,7 +27,7 @@ const configSchema = z
   })
   .strict();
 
-export type CliConfig = z.infer<typeof configSchema>;
+export type CliConfig = Omit<z.infer<typeof configSchema>, "models"> & { models: ModelChains };
 
 const MODEL_ENV: Record<ModelTier, string> = {
   top: "OCRA_MODEL_TOP",
@@ -37,15 +41,25 @@ export async function loadConfig(
   root: string,
   env: Readonly<Record<string, string | undefined>>,
 ): Promise<CliConfig> {
-  const config = await readConfigFile(root);
-  for (const [tier, name] of Object.entries(MODEL_ENV) as [ModelTier, string][]) {
-    const value = env[name]?.trim();
-    if (value) config.models[tier] = value;
+  const parsed = await readConfigFile(root);
+  const models: { -readonly [Tier in ModelTier]?: readonly string[] } = {};
+  for (const [tier, chain] of Object.entries(parsed.models) as [
+    ModelTier,
+    string[] | undefined,
+  ][]) {
+    if (chain) models[tier] = chain;
   }
-  return config;
+  for (const [tier, name] of Object.entries(MODEL_ENV) as [ModelTier, string][]) {
+    const chain = (env[name] ?? "")
+      .split(",")
+      .map((m) => m.trim())
+      .filter((m) => m !== "");
+    if (chain.length > 0) models[tier] = chain;
+  }
+  return { ...parsed, models };
 }
 
-async function readConfigFile(root: string): Promise<CliConfig> {
+async function readConfigFile(root: string): Promise<z.infer<typeof configSchema>> {
   let text: string;
   try {
     text = await readFile(join(root, CONFIG_PATH), "utf8");
