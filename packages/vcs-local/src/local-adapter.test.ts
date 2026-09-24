@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -77,6 +77,8 @@ describe("LocalGitAdapter workspace mode", () => {
     expect(await changes(join(r.dir, "pkg"), { mode: "workspace" })).toEqual([
       ["pkg/a.ts", "modified"],
     ]);
+    const adapter = new LocalGitAdapter({ cwd: join(r.dir, "pkg"), target: { mode: "workspace" } });
+    expect(await adapter.repositoryRoot()).toBe(realpathSync(r.dir));
   });
 
   it("ignores user diff configuration that changes the output format", async () => {
