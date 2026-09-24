@@ -1,0 +1,60 @@
+---
+title: CLI 参考
+description: 命令、参数、输出与退出码。
+---
+
+## ocra review
+
+审查当前 Git 仓库里的代码改动。
+
+```bash
+ocra review [options]
+```
+
+| 参数 | 含义 |
+|---|---|
+| *（不带参数）* | 审查未提交的改动：已暂存、未暂存和未跟踪的文件 |
+| `--from <ref>` | 审查 `--to` 从 `<ref>` 分叉以来的改动（基于 merge base） |
+| `--to <ref>` | 区间终点，默认 `HEAD`，必须配合 `--from` 使用 |
+| `--commit <sha>` | 审查单个 commit 相对其父 commit 的改动 |
+| `--format text\|json` | 输出格式，默认 `text` |
+| `--output <file>` | 把结果写入文件，而不是输出到 stdout |
+| `-h, --help` | 显示帮助 |
+
+`--commit` 不能和 `--from`、`--to` 同时使用。
+
+### 进度
+
+进度输出到 stderr，所以用 `--format json` 时 stdout 上的内容仍然可以直接给程序解析：
+
+```text
+[ocra] Reviewing: Working tree changes
+[ocra] 4 file(s) selected, 1 excluded · risk tier: lite
+[ocra] 2 review task(s) (grouped)
+[ocra] correctness-1 started: auth session handling (2 file(s))
+[ocra] correctness-1 reviewing with google/gemini-3.5-flash
+[ocra] correctness-1 google/gemini-3.5-flash: 3 tool call(s), 19558 in / 118 out / 0 reasoning tokens, $0.0062
+[ocra] correctness-1 completed in 5.9s · 0 finding(s)
+```
+
+模型超过 30 秒没有新输出时，ocra 会打印 `Model is thinking...`，让长时间的审查不会看起来像卡住了。
+
+### 退出码
+
+| 退出码 | 含义 |
+|---|---|
+| `0` | 审查完成，没有 critical 级别的问题 |
+| `1` | 至少有一个 critical 级别的问题 |
+| `2` | 参数、Git 或配置错误，或者没有任何审查任务完成 |
+
+### JSON 输出
+
+`--format json` 会输出完整报告：变更信息、风险档位、每个改动文件的覆盖情况（已审查、失败，或被排除及原因）、分组、各任务结果、带行号的问题、token 用量与花费，以及警告信息。
+
+### 会话记录
+
+每次运行都会写入 `.ocra/sessions/<id>/events.jsonl`（运行过程中逐行追加事件）和 `report.json`。建议把 `.ocra/sessions/` 加进 `.gitignore`。
+
+## ocra --version
+
+打印版本号。

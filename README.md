@@ -4,7 +4,7 @@ An open-source multi-agent code review system. Deterministic engineering handles
 
 Inspired by [Cloudflare's AI code review](https://blog.cloudflare.com/ai-code-review/) and [Alibaba OpenCodeReview](https://github.com/alibaba/open-code-review).
 
-> Status: early development. See the [architecture](docs/architecture.md) and [decision records](docs/adr/).
+> Status: early development. User manual: [English](docs/manual/en/index.mdx) · [中文](docs/manual/zh/index.mdx). Contributors: [architecture](docs/architecture.md) and [decision records](docs/adr/).
 
 ## Usage
 
@@ -59,7 +59,7 @@ A list is a failback chain: when a model is overloaded, out of quota or rejects 
 
 ## Evaluation
 
-`ocra-eval` replays the AACR-Bench benchmark and reports precision, recall, F1, cost and latency. See [docs/evaluation.md](docs/evaluation.md).
+`ocra-eval` replays the AACR-Bench benchmark and reports precision, recall, F1, cost and latency. See the [evaluation guide](docs/manual/en/evaluation.mdx).
 
 ## Development
 

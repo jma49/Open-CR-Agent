@@ -1,0 +1,46 @@
+---
+title: Installation
+description: Requirements and installing ocra from source.
+---
+
+## Requirements
+
+- **Node.js 22** or newer
+- **Git**
+- An API key for at least one model provider
+
+The OpenCode agent runtime is installed automatically as a dependency; no separate install is needed.
+
+## From source
+
+```bash
+git clone https://github.com/jma49/Open-CR-Agent.git
+cd Open-CR-Agent
+npm install
+npm run build
+npm link --workspace @open-cr-agent/cli
+```
+
+`npm link` makes the `ocra` command available globally. To update, pull and rebuild:
+
+```bash
+git pull && npm install && npm run build
+```
+
+To remove it: `npm unlink --global @open-cr-agent/cli`.
+
+## Without linking
+
+Run the built CLI directly:
+
+```bash
+node /path/to/Open-CR-Agent/packages/cli/dist/main.js review
+```
+
+## OpenCode binary
+
+ocra locates the OpenCode binary for your platform inside its dependencies. If your platform package is missing, point ocra at an OpenCode binary:
+
+```bash
+export OCRA_OPENCODE_BIN=/path/to/opencode
+```

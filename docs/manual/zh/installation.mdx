@@ -1,0 +1,46 @@
+---
+title: 安装
+description: 环境要求与从源码安装 ocra。
+---
+
+## 环境要求
+
+- **Node.js 22** 或更高版本
+- **Git**
+- 至少一个模型供应商的 API key
+
+OpenCode agent 运行时会作为依赖自动安装，不需要单独安装。
+
+## 从源码安装
+
+```bash
+git clone https://github.com/jma49/Open-CR-Agent.git
+cd Open-CR-Agent
+npm install
+npm run build
+npm link --workspace @open-cr-agent/cli
+```
+
+`npm link` 会把 `ocra` 命令装到全局。更新时拉取代码并重新构建：
+
+```bash
+git pull && npm install && npm run build
+```
+
+卸载：`npm unlink --global @open-cr-agent/cli`。
+
+## 不用 link 直接运行
+
+直接执行构建好的 CLI：
+
+```bash
+node /path/to/Open-CR-Agent/packages/cli/dist/main.js review
+```
+
+## OpenCode 二进制文件
+
+ocra 会从依赖中找到对应平台的 OpenCode 二进制文件。如果你的平台对应的包缺失，可以手动指定：
+
+```bash
+export OCRA_OPENCODE_BIN=/path/to/opencode
+```

@@ -1,0 +1,70 @@
+---
+title: 快速上手
+description: 五分钟完成第一次审查。
+---
+
+## 1. 安装
+
+ocra 还没有发布到 npm，需要从源码安装（要求 Node.js 22+ 和 Git）：
+
+```bash
+git clone https://github.com/jma49/Open-CR-Agent.git
+cd Open-CR-Agent
+npm install
+npm run build
+npm link --workspace @open-cr-agent/cli
+ocra --version
+```
+
+详见[安装](./installation)。
+
+## 2. 配置模型的 API key
+
+ocra 通过 [OpenCode](https://opencode.ai) 运行审查，OpenCode 支持的模型供应商都可以用。以 Google Gemini 为例：
+
+```bash
+export GEMINI_API_KEY="你的 key"
+```
+
+key 请放在 shell 配置文件或密钥管理工具里，不要放进任何仓库。
+
+## 3. 选择模型
+
+在要审查的仓库里创建 `.ocra/config.json`：
+
+```json
+{
+  "models": {
+    "standard": ["google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
+    "light": "google/gemini-flash-lite-latest"
+  }
+}
+```
+
+`standard` 层级的模型负责审查代码，`light` 层级负责分组文件这类便宜的辅助工作。写成列表就是降级链。
+
+## 4. 开始审查
+
+```bash
+cd your-repository
+ocra review                  # 未提交的改动，包括未跟踪的文件
+ocra review --from main      # 当前分支从 main 分叉以来的改动
+ocra review --commit HEAD    # 单个 commit
+```
+
+运行过程中 ocra 会打印进度，最后按文件输出报告，例如：
+
+```text
+Review: Working tree changes
+Risk tier: lite · 2 reviewed · 0 failed · 0 excluded
+
+src/list.ts
+  warning    L4        lastItems returns n + 1 items
+    slice(list.length - n - 1) starts one element too early.
+    Suggestion: return list.slice(-n);
+
+1 finding(s) (0 critical, 1 warning, 0 suggestion) · tokens: 8023 in (0 cached), 285 out, 0 reasoning · $0.0031
+Session: .ocra/sessions/20260924T225539Z-aa9790
+```
+
+存在 critical 级别的问题时退出码为 `1`，因此 ocra 可以用来拦截流水线。详见 [CLI 参考](./cli)。

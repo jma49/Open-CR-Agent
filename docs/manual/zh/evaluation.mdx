@@ -1,0 +1,38 @@
+---
+title: 评测
+description: 用 ocra-eval 在 AACR-Bench 上衡量审查质量。
+---
+
+`ocra-eval` 会回放 [AACR-Bench](https://github.com/alibaba/aacr-bench)：来自 50 个开源项目、覆盖 10 种语言的 200 个真实 PR，以 1,505 条经专家核实的审查意见作为标准答案。
+
+## 运行
+
+```bash
+export GEMINI_API_KEY=...
+export OCRA_MODEL_STANDARD=google/gemini-flash-lite-latest
+
+node packages/eval/dist/main.js list --limit 20 --max-change-lines 300          # 免费预览
+node packages/eval/dist/main.js run  --limit 20 --max-change-lines 300 --label baseline --max-cost-usd 5
+node packages/eval/dist/main.js score .ocra/eval/baseline                        # 只重新评分
+```
+
+| 参数 | 含义 |
+|---|---|
+| `--limit`、`--seed`、`--languages`、`--max-change-lines`、`--ids` | 用固定随机种子抽样，可复现 |
+| `--label` | 运行名称；用同一个名称再次运行会接着上次继续 |
+| `--max-cost-usd` | 审查花费达到上限后，不再开始新的 PR |
+| `--mock-judge` | 离线的词重叠判定，只用来检查流程是否跑通（结果不可比） |
+
+仓库以 blobless clone 的方式缓存在 `~/.cache/ocra/aacr-bench/repos`。commit 已经拉取不到的 PR 会被标记为不可用，不计入评分。
+
+## 评分方式
+
+移植自该基准的官方匹配规则：文件相同、diff 的同一侧、行号范围相距不超过一行，最后由 LLM 判定两条意见是否指向同一个问题。每条生成的意见只计一次。
+
+| 指标 | 定义 |
+|---|---|
+| 精确率 | 命中的问题数 / 生成的问题数 |
+| 召回率 | 命中的问题数 / 标注的意见数 |
+| F1 | 两者的调和平均 |
+
+判定模型使用 `JUDGE_BASE_URL`、`JUDGE_API_KEY` 和 `JUDGE_MODEL`，没有设置时使用 Gemini key。判定结果按运行缓存，重新评分不花钱。报告会按语言、问题类别和上下文层级拆分，并附上 token、花费和耗时。

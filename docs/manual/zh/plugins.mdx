@@ -1,0 +1,63 @@
+---
+title: 插件
+description: 用插件为 ocra 扩展代码托管平台、运行时、审查员、规则、工具和事件监听。
+---
+
+ocra 里的一切都是插件：本地 Git 适配器、OpenCode 运行时、correctness 审查员和会话记录都是内置插件。你写的插件使用的是同一套接口。
+
+## 编写插件
+
+插件是一个模块，以 `default`（或 `plugin`）导出一个对象：
+
+```js
+// tools/ocra-team-rules.mjs
+export default {
+  name: "team-rules",
+  configure(ctx) {
+    ctx.registerRules([
+      {
+        path: "services/**",
+        rule: `Owned by ${ctx.settings.team}: check idempotency keys on every write.`,
+      },
+    ]);
+  },
+};
+```
+
+在 `.ocra/config.json` 里注册：
+
+```json
+{
+  "plugins": ["./tools/ocra-team-rules.mjs"],
+  "pluginSettings": { "team-rules": { "team": "payments" } }
+}
+```
+
+插件只会从仓库自己的依赖（按包名）或仓库内的路径加载。
+
+## 生命周期
+
+| 阶段 | 执行方式 | 失败时 |
+|---|---|---|
+| `bootstrap(ctx)` | 所有插件并发执行 | 只打印警告，审查继续 |
+| `configure(ctx)` | 按加载顺序执行 | 审查停止，并指出是哪个插件 |
+| `postConfigure(ctx)` | 所有注册完成后并发执行 | 审查停止 |
+
+`bootstrap` 适合做失败了也无妨的事，比如拉取远程设置。
+
+## 插件可以注册什么
+
+| 方法 | 提供的能力 |
+|---|---|
+| `registerVcs(name, factory)` | 代码托管平台适配器 |
+| `registerRuntime(name, factory)` | agent 运行时 |
+| `registerReviewer(definition)` | 有自己提示词和模型层级的审查员 |
+| `registerRules(rules)` | 按路径生效的审查规则 |
+| `registerTool(tool)` | 审查员可以调用的工具，输入用 Zod schema 定义 |
+| `onEvent(listener)` | 审查过程中每个事件的监听器（遥测、通知） |
+
+每个插件只能拿到自己的设置（`ctx.settings`），并由可选的 `settingsSchema` 校验。同一个名字重复注册、使用保留的工具名，或在 `configure` 阶段之后再注册，都会报错并指出是哪个插件。
+
+## 安全
+
+插件会执行代码，只从你信任的仓库加载插件。在 CI 中，配置应当从受保护的 base 分支读取，绝不能从被审查的 PR 里读取。

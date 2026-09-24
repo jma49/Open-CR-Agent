@@ -1,0 +1,69 @@
+---
+title: Configuration
+description: The .ocra/config.json file and environment variables.
+---
+
+ocra reads `.ocra/config.json` from the root of the repository being reviewed. Every key is optional; unknown keys are rejected so typos fail loudly.
+
+```json
+{
+  "models": {
+    "top": "google/gemini-3.1-pro-preview",
+    "standard": ["google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
+    "light": "google/gemini-flash-lite-latest"
+  },
+  "concurrency": 4,
+  "taskTimeoutMinutes": 10,
+  "runTimeoutMinutes": 25,
+  "include": [],
+  "exclude": ["legacy/**"],
+  "runtime": "opencode",
+  "plugins": [],
+  "pluginSettings": {}
+}
+```
+
+## Models
+
+Models are written as `provider/model`, using OpenCode's provider IDs (for example `google`, `anthropic`, `openai`). Each tier takes one model or a failback chain:
+
+| Tier | Used for |
+|---|---|
+| `standard` | Reviewer agents |
+| `light` | Helper calls such as grouping changed files |
+| `top` | Reserved for the judge (M2) |
+
+When a model is overloaded, out of quota or rejects a request, the task retries on the next model in the chain. A model that fails twice in a run is skipped for the rest of that run. Credential errors stop immediately, because another model of the same provider would fail too.
+
+Environment variables override the file, comma-separated for chains:
+
+```bash
+export OCRA_MODEL_STANDARD="google/gemini-3.5-flash,google/gemini-flash-lite-latest"
+export OCRA_MODEL_LIGHT="google/gemini-flash-lite-latest"
+export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
+```
+
+## Provider keys
+
+Keys are read from the environment only. Use the variable your provider expects in OpenCode, for example `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`. For Google, `GEMINI_API_KEY`, `GOOGLE_API_KEY` and `GOOGLE_GENERATIVE_AI_API_KEY` all work.
+
+## Execution
+
+| Key | Default | Meaning |
+|---|---|---|
+| `concurrency` | `4` | Review tasks running at once (1–32) |
+| `taskTimeoutMinutes` | `10` | Limit for one review task |
+| `runTimeoutMinutes` | `25` | Limit for the whole run |
+
+A task that fails or times out never fails the run; its files are reported as `failed`.
+
+## File selection
+
+ocra skips binary files, likely secrets (`.env`, keys, certificates), deleted files, media and archives, lock files, vendored and generated code, and very large diffs. Database migrations are always reviewed.
+
+- `exclude`: globs to skip in addition.
+- `include`: globs to review even if they would be skipped as generated or by extension. Secrets can never be included.
+
+## Plugins
+
+`runtime` names the registered runtime to use. `plugins` lists extra plugins by package name or path, and `pluginSettings.<plugin-name>` holds each plugin's settings. See [Plugins](./plugins).

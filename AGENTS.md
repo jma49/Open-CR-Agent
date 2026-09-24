@@ -43,6 +43,13 @@ Open-CR-Agent is an open-source multi-agent code review system. Deterministic en
 - Prefer pure functions for deterministic stages; keep I/O at the edges.
 - Validate every LLM output against a Zod schema before it crosses a stage boundary.
 
+## User manual
+
+- The user manual lives in `docs/manual/en/` and `docs/manual/zh/` (MDX, one file per page, navigation in `meta.json`). The project site renders it.
+- **Any change to user-facing behavior updates the manual in the same PR, in both languages**: CLI commands, flags, output or exit codes, configuration keys, environment variables, rules, plugin APIs, security properties.
+- The manual describes what exists today. Planned features are marked as planned; never document behavior that is not implemented.
+- `docs/architecture.md` and `docs/adr/` are for contributors; the manual is for users.
+
 ## Git workflow
 
 - `main` is always releasable. Never commit to it directly.

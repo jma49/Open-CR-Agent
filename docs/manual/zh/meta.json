@@ -1,0 +1,20 @@
+{
+  "title": "文档",
+  "pages": [
+    "---快速开始---",
+    "index",
+    "quickstart",
+    "installation",
+    "---使用 ocra---",
+    "configuration",
+    "cli",
+    "rules",
+    "plugins",
+    "---核心概念---",
+    "how-it-works",
+    "security",
+    "evaluation",
+    "---帮助---",
+    "faq"
+  ]
+}
