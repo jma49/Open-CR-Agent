@@ -6,11 +6,18 @@ import type {
   ReviewResult,
 } from "./domain.js";
 
+export interface CodeMatch {
+  path: string;
+  line: number;
+  text: string;
+}
+
 export interface VcsAdapter {
   readonly name: string;
   getChangeRequest(): Promise<ChangeRequest>;
   getDiff(): Promise<FileDiff[]>;
   readFile(path: string): Promise<string | undefined>;
+  searchCode(literal: string): Promise<CodeMatch[]>;
   getPriorReview(): Promise<PriorReview | undefined>;
   publish(result: ReviewResult): Promise<void>;
 }
@@ -23,8 +30,14 @@ export interface AgentTaskSpec {
   modelTier: ModelTier;
   systemPrompt: string;
   userPrompt: string;
-  workingDirectory: string;
+  context: ReviewContext;
   timeoutMs: number;
+}
+
+export interface ReviewContext {
+  readFile(path: string): Promise<string | undefined>;
+  readDiff(path: string): string | undefined;
+  searchCode(literal: string): Promise<CodeMatch[]>;
 }
 
 export type AgentEvent =

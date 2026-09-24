@@ -188,3 +188,39 @@ describe("LocalGitAdapter.readFile", () => {
     expect(await adapter.readFile("..notes.md")).toBe("ok\n");
   });
 });
+
+describe("LocalGitAdapter.searchCode", () => {
+  it("searches the working tree, including untracked files, as literal text", async () => {
+    const r = repo();
+    r.write("a.ts", "call(x);\nother();\n");
+    commitAll(r, "init");
+    r.write("dir/b.ts", "// call(x);\n");
+    const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
+    expect(await adapter.searchCode("call(x)")).toEqual([
+      { path: "a.ts", line: 1, text: "call(x);" },
+      { path: "dir/b.ts", line: 1, text: "// call(x);" },
+    ]);
+    expect(await adapter.searchCode("missing")).toEqual([]);
+  });
+
+  it("searches the reviewed commit rather than the working tree", async () => {
+    const r = repo();
+    r.write("a.ts", "committed();\n");
+    const sha = commitAll(r, "init");
+    r.write("a.ts", "edited();\n");
+    const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "commit", commit: sha } });
+    expect(await adapter.searchCode("committed")).toEqual([
+      { path: "a.ts", line: 1, text: "committed();" },
+    ]);
+    expect(await adapter.searchCode("edited")).toEqual([]);
+  });
+
+  it("treats option-like input as a search literal", async () => {
+    const r = repo();
+    r.write("a.ts", "--output=x\n");
+    const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
+    expect(await adapter.searchCode("--output=x")).toEqual([
+      { path: "a.ts", line: 1, text: "--output=x" },
+    ]);
+  });
+});
