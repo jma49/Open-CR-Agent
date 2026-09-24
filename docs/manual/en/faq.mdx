@@ -1,0 +1,28 @@
+---
+title: FAQ
+description: Common questions.
+---
+
+## Why does ocra report so few findings?
+
+By design. ocra favors precision: reviewers are told what not to flag, findings are validated, and findings outside a task's own files are dropped to avoid duplicates. An empty report on a correct change is a good outcome.
+
+## How much does a review cost?
+
+It depends on the model and the size of the change. Every run prints tokens and cost per attempt and in total. As a reference, a two-file, 32-line commit cost $0.006 on `gemini-flash-lite-latest`. Grouping related files and the 20-step cap per agent keep costs bounded.
+
+## Which models can I use?
+
+Any model OpenCode supports, written as `provider/model`. Configure a failback chain per tier so an overloaded model does not fail your review.
+
+## Does it work with GitHub pull requests?
+
+Not yet. ocra reviews local changes today; GitHub integration with inline comments is planned for M3.
+
+## Why doesn't the model give line numbers?
+
+Models often get line numbers wrong. They quote the code instead, and ocra resolves the quote to lines. See [How it works](./how-it-works#anchoring).
+
+## Where are results stored?
+
+Each run writes `.ocra/sessions/<id>/events.jsonl` and `report.json` in the reviewed repository.

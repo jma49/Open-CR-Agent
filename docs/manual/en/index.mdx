@@ -1,0 +1,32 @@
+---
+title: Introduction
+description: Open-CR-Agent (ocra) is an open-source, multi-agent code review system that favors precision over noise.
+---
+
+**Open-CR-Agent** (`ocra`) reviews code changes with a pipeline of deterministic stages around a small number of LLM agents. Code handles what must not go wrong (which files to review, how to group them, where a comment lands); models handle judgment.
+
+## Why ocra
+
+- **Precision first.** Every reviewer states what it must *not* flag, and findings that fail validation never reach you. A quiet review you trust beats a noisy one you skim.
+- **Comments land on the right line.** Models quote the code they mean; ocra resolves the quote to exact lines itself. Models never make up line numbers.
+- **Plugins all the way down.** VCS platforms, agent runtimes, reviewers, rule packs, tools and listeners are all plugins.
+- **Any model, with failback.** Configure a chain of models per tier; overloads and quota errors move to the next model automatically.
+- **Transparent cost.** Every run reports input, output, reasoning and cached tokens and the cost of each attempt.
+- **Measured, not guessed.** Changes are evaluated on the [AACR-Bench](./evaluation) benchmark.
+
+## Status
+
+ocra is in early development.
+
+| Milestone | Scope | Status |
+|---|---|---|
+| M1 | Local CLI, selection, bundling, anchoring, correctness reviewer, OpenCode runtime, plugins, evaluation | Done |
+| M2 | Specialized reviewers, review matrix, verification and judging, risk tiers | Next |
+| M3 | GitHub App / Action with inline comments and incremental re-review | Planned |
+| M4 | Circuit breakers, remote configuration, long-term review memory, `--ultra` mode | Planned |
+
+## Where to next
+
+- [Quickstart](./quickstart): your first review in five minutes.
+- [How it works](./how-it-works): the review pipeline.
+- [Plugins](./plugins): extend ocra.

@@ -1,0 +1,51 @@
+---
+title: Review rules
+description: Teach reviewers your project's conventions with AGENTS.md and path-scoped rules.
+---
+
+Reviewers combine three layers of guidance.
+
+## Built-in rules
+
+Every review includes general correctness rules (logic errors, broken contracts, hidden failures, resource and concurrency bugs, data integrity, security defects visible in the change). Language rules are added for the files in a bundle:
+
+| Language | Extensions |
+|---|---|
+| TypeScript / JavaScript | `.ts` `.tsx` `.mts` `.cts` `.js` `.jsx` `.mjs` `.cjs` |
+| Python | `.py` `.pyi` |
+| Go | `.go` |
+| Java | `.java` |
+
+Each reviewer prompt also lists what it must **not** flag: style, formatting, speculation without a reachable input, missing tests or docs, refactoring ideas, and issues in code the change does not touch.
+
+## AGENTS.md
+
+If the repository has an `AGENTS.md` at its root, ocra passes it to reviewers as repository guidelines. It is read at the revision under review and truncated at 20,000 characters. Use it for conventions a reviewer should enforce: architecture boundaries, error-handling policy, forbidden APIs.
+
+## .ocra/rules.json
+
+Path-scoped rules apply only when a bundle contains a matching file:
+
+```json
+{
+  "rules": [
+    {
+      "path": "services/billing/**",
+      "rule": "Every write must carry an idempotency key. Flag handlers that retry without one."
+    },
+    {
+      "path": ["**/*.sql", "db/migrations/**"],
+      "rule": "Migrations must be backward compatible with the previous release."
+    }
+  ]
+}
+```
+
+- `path`: one glob or a list of globs.
+- `rule`: free text given to the reviewer.
+
+An invalid `rules.json` stops the run with a clear error rather than being ignored.
+
+## Rules from plugins
+
+Plugins can contribute rules too, for example a shared company rule pack. See [Plugins](./plugins).

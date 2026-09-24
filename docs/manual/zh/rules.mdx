@@ -1,0 +1,51 @@
+---
+title: 审查规则
+description: 用 AGENTS.md 和按路径生效的规则，把项目约定教给审查员。
+---
+
+审查员会结合三层指引。
+
+## 内置规则
+
+每次审查都包含通用正确性规则：逻辑错误、调用双方不一致的契约、被掩盖的失败、资源与并发问题、数据完整性，以及改动中可见的安全缺陷。此外，会根据分组里的文件加入对应的语言规则：
+
+| 语言 | 扩展名 |
+|---|---|
+| TypeScript / JavaScript | `.ts` `.tsx` `.mts` `.cts` `.js` `.jsx` `.mjs` `.cjs` |
+| Python | `.py` `.pyi` |
+| Go | `.go` |
+| Java | `.java` |
+
+每个审查员的提示词里还列出了**不该报**的内容：代码风格和格式、拿不出可触发输入的推测、缺少测试或文档、重构建议，以及本次改动没有涉及的代码里的问题。
+
+## AGENTS.md
+
+如果仓库根目录有 `AGENTS.md`，ocra 会把它作为仓库规范交给审查员。它读取的是被审查的那个版本，超过 20,000 个字符的部分会被截断。适合写审查员应当执行的约定，例如架构边界、错误处理规范、禁用的 API。
+
+## .ocra/rules.json
+
+按路径生效的规则，只有分组里包含匹配的文件时才会生效：
+
+```json
+{
+  "rules": [
+    {
+      "path": "services/billing/**",
+      "rule": "Every write must carry an idempotency key. Flag handlers that retry without one."
+    },
+    {
+      "path": ["**/*.sql", "db/migrations/**"],
+      "rule": "Migrations must be backward compatible with the previous release."
+    }
+  ]
+}
+```
+
+- `path`：一个 glob，或一组 glob。
+- `rule`：交给审查员的规则文本。
+
+`rules.json` 格式不合法时，审查会停止并给出明确的错误，而不是悄悄忽略。
+
+## 来自插件的规则
+
+插件也可以提供规则，比如公司统一的规则包。详见[插件](./plugins)。

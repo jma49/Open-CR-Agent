@@ -1,0 +1,63 @@
+---
+title: Plugins
+description: Extend ocra with VCS adapters, runtimes, reviewers, rules, tools and listeners.
+---
+
+Everything in ocra is a plugin: the local Git adapter, the OpenCode runtime, the correctness reviewer and the session log ship as built-in plugins. Your plugins use the same contract.
+
+## Writing a plugin
+
+A plugin is a module that exports an object as `default` (or `plugin`):
+
+```js
+// tools/ocra-team-rules.mjs
+export default {
+  name: "team-rules",
+  configure(ctx) {
+    ctx.registerRules([
+      {
+        path: "services/**",
+        rule: `Owned by ${ctx.settings.team}: check idempotency keys on every write.`,
+      },
+    ]);
+  },
+};
+```
+
+Register it in `.ocra/config.json`:
+
+```json
+{
+  "plugins": ["./tools/ocra-team-rules.mjs"],
+  "pluginSettings": { "team-rules": { "team": "payments" } }
+}
+```
+
+Plugins are resolved from the repository's own dependencies (package names) or from paths inside the repository.
+
+## Lifecycle
+
+| Hook | Runs | On failure |
+|---|---|---|
+| `bootstrap(ctx)` | All plugins concurrently | Warning; the review continues |
+| `configure(ctx)` | In load order | The review stops, naming the plugin |
+| `postConfigure(ctx)` | Concurrently, after all registrations | The review stops |
+
+Use `bootstrap` for work that may fail harmlessly, such as fetching remote settings.
+
+## What a plugin can register
+
+| Method | Contributes |
+|---|---|
+| `registerVcs(name, factory)` | A code host adapter |
+| `registerRuntime(name, factory)` | An agent runtime |
+| `registerReviewer(definition)` | A reviewer with its own prompt and model tier |
+| `registerRules(rules)` | Path-scoped review rules |
+| `registerTool(tool)` | A tool reviewers can call, with a Zod input schema |
+| `onEvent(listener)` | A listener for every review event (telemetry, notifications) |
+
+Plugins receive only their own settings (`ctx.settings`), validated by an optional `settingsSchema`. Registering a name twice, using a reserved tool name, or registering after `configure` fails with an error naming the plugin.
+
+## Security
+
+A plugin runs code. Load plugins only from repositories you trust. In CI, read configuration from the protected base branch, never from the pull request under review.

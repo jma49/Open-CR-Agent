@@ -1,0 +1,33 @@
+---
+title: Security and privacy
+description: What leaves your machine, and how ocra is isolated.
+---
+
+## What is sent to the model provider
+
+- The reviewer's instructions, the change request title and description, and the diff of the files under review.
+- `AGENTS.md` and matching `.ocra/rules.json` rules.
+- File content and search results that reviewers request through their tools.
+
+Nothing else is added: ocra starts its agent runtime with your global OpenCode configuration, installed skills and project instruction files **disabled**, so details of your machine do not end up in prompts.
+
+## Isolation
+
+- The OpenCode runtime runs on `127.0.0.1` with a random port and a random password per run, and keeps its state in a temporary directory that is removed afterwards.
+- Review tools are served from ocra's own process on `127.0.0.1`, protected by a random bearer token.
+- All built-in agent tools (shell, file editing, web access) are disabled; reviewers can only read the revision under review.
+- Paths requested by a model are confined to the repository, including through symlinks.
+
+## Untrusted input
+
+Pull request text, diffs and repository files are treated as data. Instructions inside them are never followed, and text that imitates ocra's prompt structure is neutralized before it reaches a model.
+
+## Keys
+
+Provider keys are read from environment variables only and never written to configuration, logs or session files.
+
+## CI
+
+- Store keys as CI secrets.
+- Do not run ocra with secrets on untrusted code via `pull_request_target`.
+- Read `.ocra/config.json`, rules and plugins from the protected base branch, not from the pull request.

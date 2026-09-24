@@ -1,0 +1,60 @@
+---
+title: CLI reference
+description: Commands, options, output and exit codes.
+---
+
+## ocra review
+
+Reviews code changes in the current Git repository.
+
+```bash
+ocra review [options]
+```
+
+| Option | Meaning |
+|---|---|
+| *(none)* | Review uncommitted changes: staged, unstaged and untracked files |
+| `--from <ref>` | Review `--to` since it diverged from `<ref>` (merge base) |
+| `--to <ref>` | End of the range; defaults to `HEAD`; requires `--from` |
+| `--commit <sha>` | Review a single commit against its parent |
+| `--format text\|json` | Output format; default `text` |
+| `--output <file>` | Write the result to a file instead of stdout |
+| `-h, --help` | Show help |
+
+`--commit` cannot be combined with `--from` or `--to`.
+
+### Progress
+
+Progress goes to stderr, so `--format json` output on stdout stays machine-readable:
+
+```text
+[ocra] Reviewing: Working tree changes
+[ocra] 4 file(s) selected, 1 excluded · risk tier: lite
+[ocra] 2 review task(s) (grouped)
+[ocra] correctness-1 started: auth session handling (2 file(s))
+[ocra] correctness-1 reviewing with google/gemini-3.5-flash
+[ocra] correctness-1 google/gemini-3.5-flash: 3 tool call(s), 19558 in / 118 out / 0 reasoning tokens, $0.0062
+[ocra] correctness-1 completed in 5.9s · 0 finding(s)
+```
+
+When a model is quiet for 30 seconds, ocra prints `Model is thinking...` so a long review never looks stuck.
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Review finished without critical findings |
+| `1` | At least one critical finding |
+| `2` | Usage, Git or configuration error, or no review task completed |
+
+### JSON output
+
+`--format json` prints the full report: the change request, risk tier, coverage for every changed file (reviewed, failed, or excluded with a reason), bundles, task outcomes, findings with their resolved line ranges, token usage and cost, and warnings.
+
+### Sessions
+
+Every run writes `.ocra/sessions/<id>/events.jsonl` (one event per line, appended as the run progresses) and `report.json`. Add `.ocra/sessions/` to your `.gitignore`.
+
+## ocra --version
+
+Prints the version.

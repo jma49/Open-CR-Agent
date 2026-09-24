@@ -1,0 +1,20 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "---Getting started---",
+    "index",
+    "quickstart",
+    "installation",
+    "---Using ocra---",
+    "configuration",
+    "cli",
+    "rules",
+    "plugins",
+    "---Concepts---",
+    "how-it-works",
+    "security",
+    "evaluation",
+    "---Help---",
+    "faq"
+  ]
+}

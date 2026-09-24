@@ -1,0 +1,38 @@
+---
+title: Evaluation
+description: Measure review quality on AACR-Bench with ocra-eval.
+---
+
+`ocra-eval` replays [AACR-Bench](https://github.com/alibaba/aacr-bench): 200 real pull requests from 50 open-source projects in 10 languages, with 1,505 expert-verified review comments as ground truth.
+
+## Running
+
+```bash
+export GEMINI_API_KEY=...
+export OCRA_MODEL_STANDARD=google/gemini-flash-lite-latest
+
+node packages/eval/dist/main.js list --limit 20 --max-change-lines 300          # free preview
+node packages/eval/dist/main.js run  --limit 20 --max-change-lines 300 --label baseline --max-cost-usd 5
+node packages/eval/dist/main.js score .ocra/eval/baseline                        # re-score only
+```
+
+| Option | Meaning |
+|---|---|
+| `--limit`, `--seed`, `--languages`, `--max-change-lines`, `--ids` | Seeded, reproducible selection |
+| `--label` | Run name; rerunning the same label resumes |
+| `--max-cost-usd` | Stop starting new PRs once review spend reaches the cap |
+| `--mock-judge` | Offline word-overlap judge for pipeline checks (not comparable) |
+
+Repositories are cached as blobless clones under `~/.cache/ocra/aacr-bench/repos`. PRs whose commits can no longer be fetched are reported as unavailable and excluded from scoring.
+
+## Scoring
+
+A port of the benchmark's official matching: same file, same diff side, line ranges at most one line apart, then an LLM judge decides whether two comments express the same concern. Each generated comment counts once.
+
+| Metric | Definition |
+|---|---|
+| Precision | matched findings / generated findings |
+| Recall | matched findings / annotated comments |
+| F1 | harmonic mean of the two |
+
+The judge uses `JUDGE_BASE_URL`, `JUDGE_API_KEY` and `JUDGE_MODEL`, or a Gemini key. Answers are cached per run, so re-scoring is free. Reports break results down by language, issue category and context level, with tokens, cost and latency.

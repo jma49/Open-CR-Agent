@@ -1,0 +1,70 @@
+---
+title: Quickstart
+description: Run your first review in five minutes.
+---
+
+## 1. Install
+
+ocra is not published to npm yet. Install it from source (requires Node.js 22+ and Git):
+
+```bash
+git clone https://github.com/jma49/Open-CR-Agent.git
+cd Open-CR-Agent
+npm install
+npm run build
+npm link --workspace @open-cr-agent/cli
+ocra --version
+```
+
+See [Installation](./installation) for details.
+
+## 2. Add a model key
+
+ocra runs reviews through [OpenCode](https://opencode.ai), so any provider OpenCode supports works. For Google Gemini:
+
+```bash
+export GEMINI_API_KEY="your-key"
+```
+
+Keep keys in your shell profile or a secret store, never in a repository.
+
+## 3. Choose models
+
+Create `.ocra/config.json` in the repository you want to review:
+
+```json
+{
+  "models": {
+    "standard": ["google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
+    "light": "google/gemini-flash-lite-latest"
+  }
+}
+```
+
+`standard` models review code; `light` models do cheap helper work such as grouping files. A list is a failback chain.
+
+## 4. Review
+
+```bash
+cd your-repository
+ocra review                  # uncommitted changes, including untracked files
+ocra review --from main      # this branch since it diverged from main
+ocra review --commit HEAD    # a single commit
+```
+
+ocra prints progress while it works, then a report grouped by file, for example:
+
+```text
+Review: Working tree changes
+Risk tier: lite · 2 reviewed · 0 failed · 0 excluded
+
+src/list.ts
+  warning    L4        lastItems returns n + 1 items
+    slice(list.length - n - 1) starts one element too early.
+    Suggestion: return list.slice(-n);
+
+1 finding(s) (0 critical, 1 warning, 0 suggestion) · tokens: 8023 in (0 cached), 285 out, 0 reasoning · $0.0031
+Session: .ocra/sessions/20260924T225539Z-aa9790
+```
+
+The exit code is `1` when a critical finding exists, so ocra can gate a pipeline. See the [CLI reference](./cli).

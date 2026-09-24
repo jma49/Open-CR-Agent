@@ -1,0 +1,41 @@
+---
+title: How it works
+description: The review pipeline, from diff to anchored findings.
+---
+
+ocra combines two proven designs: domain-specialized reviewers with a coordinating judge, and deterministic engineering for every step that must not fail.
+
+```text
+Ingest → Select → Triage → Bundle → Execute → Anchor → (Verify → Judge) → Report
+```
+
+| Stage | What happens |
+|---|---|
+| **Ingest** | Read the change set and repository guidelines through a VCS adapter. |
+| **Select** | Decide per file: review it, or exclude it with a reason (binary, secret, generated, too large…). |
+| **Triage** | Assign a risk tier (trivial, lite, full) from size and sensitive paths such as `auth/`. |
+| **Bundle** | Group related files. Small change sets form one bundle; larger ones are grouped by a light model that answers with file indices. |
+| **Execute** | Run each reviewer on each bundle as an isolated agent task with read-only tools. |
+| **Anchor** | Resolve every finding's quoted code to exact lines. |
+| **Verify, Judge** | *Planned for M2:* fact-check each finding and deduplicate across reviewers. |
+
+## Reviewers and tools
+
+A reviewer is an agent with a focused prompt. It can only read: `read_file`, `read_diff` and `code_search` answer from the revision under review (a commit in range or commit mode, not your working tree), and findings are submitted through `report_finding`. It cannot edit files, run commands or browse the web.
+
+## Anchoring
+
+Models are unreliable with line numbers, so they quote code instead. ocra resolves the quote:
+
+1. normalized match in the file's changed hunks;
+2. match in the whole file;
+3. match in another changed file (the model named the wrong file);
+4. *(planned)* a relocation request to a light model;
+5. otherwise the finding stays attached to the file, never dropped.
+
+## Robustness
+
+- A per-task and a whole-run timeout, enforced even if a model stops responding.
+- A failed task never fails the run; its files are reported as `failed`.
+- Model failback chains per tier, skipping models that keep failing.
+- Every agent is capped at 20 steps, because each step resends the conversation.
