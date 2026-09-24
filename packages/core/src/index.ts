@@ -1,3 +1,4 @@
+export * from "./anchor/index.js";
 export * from "./contracts.js";
 export * from "./diff/index.js";
 export * from "./domain.js";
