@@ -2,6 +2,7 @@ import { readFile, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import {
   type ChangeRequest,
+  type CodeMatch,
   type FileDiff,
   type PriorReview,
   parseUnifiedDiff,
@@ -27,6 +28,7 @@ interface ResolvedTarget {
 }
 
 const WORKING_TREE = "working-tree";
+const SEARCH_RESULT_LIMIT = 100;
 
 // Explicit prefixes and flags keep the output parseable whatever the user's
 // diff configuration (noprefix, mnemonicPrefix, external drivers, relative).
@@ -78,6 +80,24 @@ export class LocalGitAdapter implements VcsAdapter {
       if (error instanceof GitError && error.exitCode === 128) return undefined;
       throw error;
     }
+  }
+
+  async searchCode(literal: string): Promise<CodeMatch[]> {
+    const { root, head } = await this.target();
+    const args = ["grep", "-n", "-z", "-I", "--no-color", "--full-name", "-F", "-m", "20"];
+    if (head === undefined) args.push("--untracked");
+    args.push("-e", literal);
+    if (head !== undefined) args.push(head);
+    const out = await git([...args, "--"], { cwd: root, okExitCodes: [0, 1] });
+    const prefix = head === undefined ? "" : `${head}:`;
+    return out
+      .split("\n")
+      .filter((line) => line !== "")
+      .slice(0, SEARCH_RESULT_LIMIT)
+      .map((line) => {
+        const [path = "", lineNumber = "0", ...text] = line.split("\0");
+        return { path: path.slice(prefix.length), line: Number(lineNumber), text: text.join("\0") };
+      });
   }
 
   async getPriorReview(): Promise<PriorReview | undefined> {

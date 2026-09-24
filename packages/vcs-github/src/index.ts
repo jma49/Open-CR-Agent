@@ -1,5 +1,6 @@
 import type {
   ChangeRequest,
+  CodeMatch,
   FileDiff,
   PriorReview,
   ReviewResult,
@@ -27,6 +28,10 @@ export class GitHubAdapter implements VcsAdapter {
 
   readFile(_path: string): Promise<string | undefined> {
     return notImplemented("readFile");
+  }
+
+  searchCode(_literal: string): Promise<CodeMatch[]> {
+    return notImplemented("searchCode");
   }
 
   getPriorReview(): Promise<PriorReview | undefined> {
