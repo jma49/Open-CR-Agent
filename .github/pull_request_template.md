@@ -4,7 +4,5 @@
 
 ## How verified
 
-- [ ] `npm run check`
-- [ ] `npm run typecheck`
-- [ ] `npm test`
+- [ ] `npm run verify`
 - [ ] Eval run (for prompt, rule or stage changes)
