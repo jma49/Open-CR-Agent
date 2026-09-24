@@ -13,3 +13,4 @@ build/
 *.tsbuildinfo
 coverage/
 .ocra/sessions/
+.ocra/eval/

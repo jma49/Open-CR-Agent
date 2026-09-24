@@ -57,6 +57,10 @@ A list is a failback chain: when a model is overloaded, out of quota or rejects 
 { "rules": [{ "path": "api/**", "rule": "Handlers must check tenant ownership." }] }
 ```
 
+## Evaluation
+
+`ocra-eval` replays the AACR-Bench benchmark and reports precision, recall, F1, cost and latency. See [docs/evaluation.md](docs/evaluation.md).
+
 ## Development
 
 Requires Node.js 22 or newer.
