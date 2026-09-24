@@ -1,0 +1,40 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildReviewPrompt > renders the full prompt 1`] = `
+"<change_request>
+<title>Tune constants</title>
+<description>
+Adjust b.
+</description>
+</change_request>
+
+<changed_files>
+modified src/a.ts (+1 -1)
+renamed old.py -> new.py (+1 -1)
+</changed_files>
+
+<repository_guidelines>
+Use npm run verify.
+</repository_guidelines>
+
+<review_rules>
+### Rules
+- rule
+</review_rules>
+
+<review_files>
+<file path="src/a.ts" change="modified">
+@@ -1,2 +1,2 @@
+ const a = 1;
+-const b = 2;
++const b = 3;
+</file>
+<file path="new.py" change="renamed" from="old.py">
+@@ -1 +1 @@
+-x = 1
++x = 2
+</file>
+</review_files>
+
+Review every file in <review_files>. Report each confirmed issue with report_finding, then call task_done."
+`;
