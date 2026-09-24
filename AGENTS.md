@@ -47,6 +47,8 @@ Open-CR-Agent is an open-source multi-agent code review system. Deterministic en
 - `main` is always releasable. Never commit to it directly.
 - Every feature or significant iteration gets its own branch, named `<type>/<short-kebab-description>` (for example `feat/select-stage`, `fix/anchor-crlf`).
 - Open a pull request to merge into `main`. Delete the branch once the PR is merged (the repository deletes merged branches automatically).
+- The author may merge their own PR once CI is green and they have self-reviewed the full diff; the maintainer spot-checks merged PRs afterwards. Link the issue with `Closes #N` so it closes on merge.
+- Merge with rebase so each Conventional Commit lands on `main` unchanged.
 - Keep PRs small and focused on one increment; split work that grows beyond a reviewable size.
 
 ## Commit messages
