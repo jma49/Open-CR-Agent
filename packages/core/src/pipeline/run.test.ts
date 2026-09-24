@@ -77,7 +77,9 @@ describe("runReview", () => {
         taskId: spec.taskId,
         inputTokens: 100,
         outputTokens: 10,
+        reasoningTokens: 5,
         cachedTokens: 80,
+        costUsd: 0.002,
       };
       yield { type: "done", taskId: spec.taskId };
     });
@@ -101,7 +103,13 @@ describe("runReview", () => {
       status: "new",
     });
     expect(report.coverage.map((c) => c.status)).toEqual(["reviewed", "reviewed"]);
-    expect(report.usage).toEqual({ inputTokens: 100, outputTokens: 10, cachedTokens: 80 });
+    expect(report.usage).toEqual({
+      inputTokens: 100,
+      outputTokens: 10,
+      reasoningTokens: 5,
+      cachedTokens: 80,
+      costUsd: 0.002,
+    });
     expect(events.map((e) => e.type)).toEqual([
       "run_started",
       "files_selected",

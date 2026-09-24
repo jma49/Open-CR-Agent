@@ -1,3 +1,4 @@
+import type { Usage } from "../contracts.js";
 import type { ChangeRequest, Finding, RiskTier } from "../domain.js";
 import type { ExclusionReason } from "../select/select.js";
 
@@ -16,12 +17,6 @@ export interface TaskOutcome {
   error?: string;
   findings: number;
   durationMs: number;
-}
-
-export interface Usage {
-  inputTokens: number;
-  outputTokens: number;
-  cachedTokens: number;
 }
 
 export interface ReviewReport {

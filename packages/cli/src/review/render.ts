@@ -73,6 +73,6 @@ function summaryLine(report: ReviewReport): string {
   const counts = SEVERITIES.map(
     (s) => `${report.findings.filter((f) => f.severity === s).length} ${s}`,
   );
-  const { inputTokens, cachedTokens, outputTokens } = report.usage;
-  return `${report.findings.length} finding(s) (${counts.join(", ")}) · tokens: ${inputTokens} in (${cachedTokens} cached), ${outputTokens} out`;
+  const { inputTokens, cachedTokens, outputTokens, reasoningTokens, costUsd } = report.usage;
+  return `${report.findings.length} finding(s) (${counts.join(", ")}) · tokens: ${inputTokens} in (${cachedTokens} cached), ${outputTokens} out, ${reasoningTokens} reasoning · $${costUsd.toFixed(4)}`;
 }

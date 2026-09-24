@@ -1,10 +1,4 @@
-import type {
-  ChangeRequest,
-  FileDiff,
-  PriorReview,
-  ReportedFinding,
-  ReviewResult,
-} from "./domain.js";
+import type { ChangeRequest, FileDiff, PriorReview, ReviewResult } from "./domain.js";
 
 export interface CodeMatch {
   path: string;
@@ -42,18 +36,21 @@ export interface ReviewContext {
 
 export type AgentEvent =
   | { type: "progress"; taskId: string; message: string }
-  | { type: "finding"; taskId: string; finding: ReportedFinding }
-  | {
-      type: "usage";
-      taskId: string;
-      inputTokens: number;
-      outputTokens: number;
-      cachedTokens: number;
-    }
+  | { type: "finding"; taskId: string; finding: unknown }
+  | ({ type: "usage"; taskId: string } & Usage)
   | { type: "done"; taskId: string }
   | { type: "error"; taskId: string; error: string; retryable: boolean };
+
+export interface Usage {
+  inputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+  cachedTokens: number;
+  costUsd: number;
+}
 
 export interface AgentRuntime {
   readonly name: string;
   runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent>;
+  dispose?(): Promise<void>;
 }

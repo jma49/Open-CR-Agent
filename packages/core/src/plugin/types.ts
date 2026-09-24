@@ -6,8 +6,10 @@ import type { RepoRule } from "../rules/repo-rules.js";
 
 export type Env = Readonly<Record<string, string | undefined>>;
 
+export type ModelChains = { [Tier in ModelTier]?: readonly string[] };
+
 export interface RuntimeOptions {
-  models: { [Tier in ModelTier]?: string | undefined };
+  models: ModelChains;
   tools: readonly ToolDefinition[];
   env: Env;
 }
@@ -15,11 +17,11 @@ export interface RuntimeOptions {
 export type VcsFactory = (options: unknown) => VcsAdapter;
 export type RuntimeFactory = (options: RuntimeOptions) => AgentRuntime;
 
-export interface ToolDefinition<Args = unknown> {
+export interface ToolDefinition<Shape extends z.ZodRawShape = z.ZodRawShape> {
   name: string;
   description: string;
-  inputSchema: z.ZodType<Args>;
-  execute(args: Args, context: ReviewContext): Promise<string>;
+  inputSchema: z.ZodObject<Shape>;
+  execute(args: z.infer<z.ZodObject<Shape>>, context: ReviewContext): Promise<string>;
 }
 
 export interface BootstrapContext<Settings = unknown> {

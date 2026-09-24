@@ -6,7 +6,7 @@ import {
   defaultBundlePolicy,
 } from "../bundle/bundle.js";
 import type { FileGrouper } from "../bundle/grouping.js";
-import type { AgentRuntime, ReviewContext, VcsAdapter } from "../contracts.js";
+import type { AgentRuntime, ReviewContext, Usage, VcsAdapter } from "../contracts.js";
 import type { ChangeRequest, FileDiff, Finding, Severity } from "../domain.js";
 import { buildReviewPrompt } from "../review/prompt.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
@@ -22,8 +22,9 @@ import {
 import { triage } from "../triage.js";
 import { dedupeFindings, toFinding } from "./findings.js";
 import { mapWithConcurrency } from "./pool.js";
-import type { CoverageEntry, ReviewEvent, ReviewReport, TaskOutcome, Usage } from "./report.js";
+import type { CoverageEntry, ReviewEvent, ReviewReport, TaskOutcome } from "./report.js";
 import { executeTask } from "./task.js";
+import { addUsage, emptyUsage } from "./usage.js";
 
 export interface ReviewOptions {
   vcs: VcsAdapter;
@@ -179,7 +180,10 @@ async function runJob(job: Job, state: RunState): Promise<JobResult> {
       timeoutMs: options.taskTimeoutMs ?? DEFAULTS.taskTimeoutMs,
     },
     state.signal,
-    { onProgress: (message) => emit({ type: "task_progress", taskId: job.taskId, message }) },
+    {
+      onProgress: (message) => emit({ type: "task_progress", taskId: job.taskId, message }),
+      defaultCategory: job.reviewer.category,
+    },
   );
 
   const warnings = [...result.warnings];
@@ -242,12 +246,5 @@ function sortFindings(findings: Finding[]): Finding[] {
 }
 
 function sumUsage(usages: readonly Usage[]): Usage {
-  return usages.reduce(
-    (total, u) => ({
-      inputTokens: total.inputTokens + u.inputTokens,
-      outputTokens: total.outputTokens + u.outputTokens,
-      cachedTokens: total.cachedTokens + u.cachedTokens,
-    }),
-    { inputTokens: 0, outputTokens: 0, cachedTokens: 0 },
-  );
+  return usages.reduce(addUsage, emptyUsage());
 }

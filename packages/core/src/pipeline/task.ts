@@ -1,7 +1,8 @@
-import type { AgentEvent, AgentRuntime, AgentTaskSpec } from "../contracts.js";
+import type { AgentEvent, AgentRuntime, AgentTaskSpec, Usage } from "../contracts.js";
 import { type ReportedFinding, reportedFindingSchema } from "../domain.js";
 import { errorMessage } from "../errors.js";
-import type { TaskStatus, Usage } from "./report.js";
+import type { TaskStatus } from "./report.js";
+import { addUsage, emptyUsage } from "./usage.js";
 
 export interface TaskResult {
   status: TaskStatus;
@@ -13,6 +14,7 @@ export interface TaskResult {
 
 export interface TaskCallbacks {
   onProgress(message: string): void;
+  defaultCategory: string;
 }
 
 export async function executeTask(
@@ -26,7 +28,7 @@ export async function executeTask(
   const result: TaskResult = {
     status: "completed",
     findings: [],
-    usage: { inputTokens: 0, outputTokens: 0, cachedTokens: 0 },
+    usage: emptyUsage(),
     warnings: [],
   };
 
@@ -61,15 +63,15 @@ function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks)
       callbacks.onProgress(event.message);
       return false;
     case "finding": {
-      const parsed = reportedFindingSchema.safeParse(event.finding);
+      const parsed = reportedFindingSchema.safeParse(
+        withDefaultCategory(event.finding, callbacks.defaultCategory),
+      );
       if (parsed.success) result.findings.push(parsed.data);
       else result.warnings.push("runtime reported a finding that failed validation");
       return false;
     }
     case "usage":
-      result.usage.inputTokens += event.inputTokens;
-      result.usage.outputTokens += event.outputTokens;
-      result.usage.cachedTokens += event.cachedTokens;
+      result.usage = addUsage(result.usage, event);
       return false;
     case "done":
       return true;
@@ -78,6 +80,11 @@ function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks)
       result.error = event.error;
       return true;
   }
+}
+
+function withDefaultCategory(finding: unknown, category: string): unknown {
+  if (typeof finding !== "object" || finding === null) return finding;
+  return { category, ...finding };
 }
 
 // Runtimes may ignore the abort signal, so waiting for their next event is

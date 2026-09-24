@@ -21,6 +21,7 @@ function capture() {
 }
 
 const dirs: string[] = [];
+const disposed = { count: 0 };
 afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
@@ -45,7 +46,13 @@ function deps(cwd: string, script: Script, extra: Partial<ReviewDeps> = {}): Rev
   const fakeRuntime: OcraPlugin = {
     name: "runtime-opencode",
     configure(ctx) {
-      ctx.registerRuntime("opencode", () => ({ name: "fake", runTask: (spec) => script(spec) }));
+      ctx.registerRuntime("opencode", () => ({
+        name: "fake",
+        runTask: (spec) => script(spec),
+        dispose: async () => {
+          disposed.count += 1;
+        },
+      }));
     },
   };
   return {
@@ -107,6 +114,7 @@ describe("ocra review", () => {
     expect(err.text()).toContain("[ocra] Reviewing: Working tree changes");
     expect(err.text()).toContain("[ocra] correctness-1 completed in");
 
+    expect(disposed.count).toBeGreaterThan(0);
     const sessions = readdirSync(join(cwd, ".ocra", "sessions"));
     expect(sessions).toHaveLength(1);
     const sessionDir = join(cwd, ".ocra", "sessions", sessions[0] as string);
