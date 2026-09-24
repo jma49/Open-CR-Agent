@@ -2,10 +2,10 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Finding, TaskOutcome, Usage } from "@open-cr-agent/core";
 import type { Instance } from "./dataset.js";
-import { prepareRepository } from "./repos.js";
+import { prepareRepository, UnavailableCommitError } from "./repos.js";
 import { reviewInstance } from "./reviewer.js";
 
-export type InstanceStatus = "reviewed" | "failed" | "skipped_budget";
+export type InstanceStatus = "reviewed" | "failed" | "unavailable" | "skipped_budget";
 
 export interface InstanceResult {
   id: string;
@@ -87,7 +87,8 @@ async function reviewOne(
   try {
     repoDir = await (options.prepare ?? prepareRepository)(options.reposDir, instance);
   } catch (error) {
-    return { ...base, status: "failed", durationMs: 0, error: (error as Error).message };
+    const status = error instanceof UnavailableCommitError ? "unavailable" : "failed";
+    return { ...base, status, durationMs: 0, error: (error as Error).message };
   }
   await mkdir(join(options.runDir, "reports"), { recursive: true });
   const outcome = await reviewInstance(repoDir, instance, reportPath, {
