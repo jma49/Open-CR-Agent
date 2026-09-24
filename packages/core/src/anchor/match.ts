@@ -75,7 +75,7 @@ function preferAdded(matches: Match[]): LineRange | undefined {
   return (matches.find((m) => m.touchesAdded) ?? matches[0])?.range;
 }
 
-function normalizeSnippet(code: string): string[] {
+export function normalizeSnippet(code: string): string[] {
   return code
     .split("\n")
     .map(normalizeLine)

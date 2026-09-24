@@ -24,11 +24,14 @@ export const reportedFindingSchema = z.object({
 });
 export type ReportedFinding = z.infer<typeof reportedFindingSchema>;
 
+export type AnchorMethod = "hunk" | "file" | "cross_file" | "relocated" | "file_level";
+
 export interface Finding extends ReportedFinding {
   id: string;
   fingerprint: string;
   reviewer: string;
   lineRange?: LineRange;
+  anchor: { method: AnchorMethod; inDiff: boolean };
   status: FindingStatus;
 }
 
