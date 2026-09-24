@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { AgentEvent, AgentRuntime, AgentTaskSpec, VcsAdapter } from "../contracts.js";
+import type {
+  AgentEvent,
+  AgentRuntime,
+  AgentTaskSpec,
+  CompletionRequest,
+  VcsAdapter,
+} from "../contracts.js";
 import { parseUnifiedDiff } from "../diff/parse.js";
 import type { ReportedFinding } from "../domain.js";
 import type { ReviewEvent } from "./report.js";
@@ -251,6 +257,75 @@ describe("runReview", () => {
     expect(report.warnings).toEqual(["runtime reported a finding that failed validation"]);
     expect(report.findings).toHaveLength(1);
     expect(report.findings[0]?.severity).toBe("critical");
+  });
+
+  it("groups files with the runtime's light tier and counts that usage", async () => {
+    const diff = ["a", "b", "c", "d"]
+      .map((n) => patch(`src/${n}.ts`, `const ${n} = 1;`))
+      .join("\n");
+    const rt = runtime(async function* (spec) {
+      yield { type: "done", taskId: spec.taskId };
+    });
+    const requests: CompletionRequest[] = [];
+    rt.complete = async (request) => {
+      requests.push(request);
+      return {
+        text: '```json\n[{"label":"ab","files":[0,1]},{"label":"cd","files":[2,3]}]\n```',
+        usage: {
+          inputTokens: 50,
+          outputTokens: 5,
+          reasoningTokens: 0,
+          cachedTokens: 0,
+          costUsd: 0.0001,
+        },
+      };
+    };
+    const report = await runReview({ vcs: vcs({}, diff), runtime: rt });
+    expect(requests[0]?.tier).toBe("light");
+    expect(report.bundles.map((b) => b.label)).toEqual(["ab", "cd"]);
+    expect(rt.specs).toHaveLength(2);
+    expect(report.usage.inputTokens).toBe(50);
+  });
+
+  it("reviews per file when the grouping call fails", async () => {
+    const diff = ["a", "b", "c", "d"]
+      .map((n) => patch(`src/${n}.ts`, `const ${n} = 1;`))
+      .join("\n");
+    const rt = runtime(async function* (spec) {
+      yield { type: "done", taskId: spec.taskId };
+    });
+    rt.complete = async () => {
+      throw new Error("quota exceeded");
+    };
+    const report = await runReview({ vcs: vcs({}, diff), runtime: rt });
+    expect(rt.specs).toHaveLength(4);
+    expect(report.warnings).toContain("grouping failed: quota exceeded; reviewing per file");
+  });
+
+  it("drops findings on files outside the task's bundle", async () => {
+    const diff = ["a", "b", "c", "d"]
+      .map((n) => patch(`src/${n}.ts`, `const ${n} = 1;`))
+      .join("\n");
+    const rt = runtime(async function* (spec) {
+      if (spec.taskId === "correctness-1") {
+        yield {
+          type: "finding",
+          taskId: spec.taskId,
+          finding: finding("src/b.ts", "const b = 1;"),
+        };
+        yield {
+          type: "finding",
+          taskId: spec.taskId,
+          finding: finding("src/a.ts", "const a = 1;"),
+        };
+      }
+      yield { type: "done", taskId: spec.taskId };
+    });
+    const report = await runReview({ vcs: vcs({}, diff), runtime: rt });
+    expect(report.findings.map((f) => f.file)).toEqual(["src/a.ts"]);
+    expect(report.warnings).toContain(
+      "correctness-1: dropped 1 finding(s) on files outside its bundle",
+    );
   });
 
   it("reads the reviewed revision through the task context", async () => {

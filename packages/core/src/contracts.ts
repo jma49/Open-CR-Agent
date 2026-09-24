@@ -49,8 +49,21 @@ export interface Usage {
   costUsd: number;
 }
 
+export interface CompletionRequest {
+  tier: ModelTier;
+  system: string;
+  user: string;
+  timeoutMs: number;
+}
+
+export interface CompletionResult {
+  text: string;
+  usage: Usage;
+}
+
 export interface AgentRuntime {
   readonly name: string;
   runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent>;
+  complete?(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult>;
   dispose?(): Promise<void>;
 }

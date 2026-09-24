@@ -45,6 +45,20 @@ describe("summarizeSession", () => {
     expect(outcome.error).toBeUndefined();
   });
 
+  it("joins the assistant's text answers", () => {
+    const outcome = summarizeSession(
+      [
+        assistant({}, [
+          { type: "reasoning", text: "thinking" },
+          { type: "text", text: "first" },
+        ]),
+        assistant({}, [{ type: "text", text: "second" }]),
+      ],
+      REPORT,
+    );
+    expect(outcome.text).toBe("first\nsecond");
+  });
+
   it("treats an overload followed by a secondary failure as retryable", () => {
     const outcome = summarizeSession(
       [
