@@ -36,6 +36,12 @@ export function git(args: readonly string[], options: GitOptions): Promise<strin
         else reject(new GitError(args, exitCode, stderr || String(error?.message ?? "")));
       },
     );
-    child.stdin?.end(options.input ?? "");
+    // git may exit before reading stdin; its exit code already reports the
+    // outcome, so a broken pipe on our side carries no information.
+    child.stdin?.on("error", (error: NodeJS.ErrnoException) => {
+      if (error.code !== "EPIPE") reject(error);
+    });
+    if (options.input === undefined) child.stdin?.end();
+    else child.stdin?.end(options.input);
   });
 }
