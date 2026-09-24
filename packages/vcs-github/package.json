@@ -1,0 +1,19 @@
+{
+  "name": "@open-cr-agent/vcs-github",
+  "version": "0.0.0",
+  "description": "GitHub pull request adapter for Open-CR-Agent",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@open-cr-agent/core": "0.0.0"
+  }
+}
