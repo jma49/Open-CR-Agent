@@ -29,6 +29,7 @@ export interface ReviewOptions {
   vcs: VcsAdapter;
   runtime: AgentRuntime;
   reviewers?: readonly ReviewerDefinition[];
+  rules?: readonly RepoRule[];
   selection?: SelectionPolicy;
   bundling?: BundlePolicy;
   grouper?: FileGrouper;
@@ -73,6 +74,8 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   const timeout = AbortSignal.timeout(options.runTimeoutMs ?? DEFAULTS.runTimeoutMs);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
   const { vcs } = options;
+  const reviewers = options.reviewers ?? [correctnessReviewer];
+  if (reviewers.length === 0) throw new Error("No reviewer is registered");
 
   const changeRequest = await vcs.getChangeRequest();
   emit({ type: "run_started", changeRequest });
@@ -88,10 +91,11 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     tier,
   });
 
-  const [guidelines, repoRules] = await Promise.all([
+  const [guidelines, fileRules] = await Promise.all([
     vcs.readFile(GUIDELINES_PATH),
     loadRepoRules(vcs),
   ]);
+  const repoRules = [...(options.rules ?? []), ...fileRules];
   const bundled = await bundleFiles(
     selected,
     options.bundling ?? defaultBundlePolicy,
@@ -120,7 +124,6 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     repoRules,
   };
 
-  const reviewers = options.reviewers ?? [correctnessReviewer];
   const jobs = bundled.bundles.flatMap((bundle, i) =>
     reviewers.map((reviewer) => ({ taskId: `${reviewer.id}-${i + 1}`, reviewer, bundle })),
   );

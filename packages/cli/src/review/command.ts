@@ -1,16 +1,20 @@
 import { join, relative, resolve } from "node:path";
 import {
-  type AgentRuntime,
+  correctnessReviewerPlugin,
   defaultSelectionPolicy,
-  JsonlSessionWriter,
+  newSessionId,
+  type OcraPlugin,
   type ReviewOptions,
   type ReviewReport,
   runReview,
-  type VcsAdapter,
+  sessionJsonlPlugin,
+  startPlugins,
 } from "@open-cr-agent/core";
-import type { LocalGitOptions } from "@open-cr-agent/vcs-local";
+import { opencodeRuntimePlugin } from "@open-cr-agent/runtime-opencode";
+import { findRepositoryRoot, localGitPlugin } from "@open-cr-agent/vcs-local";
 import type { ReviewArgs } from "./args.js";
 import { type CliConfig, loadConfig } from "./config.js";
+import { loadExternalPlugins } from "./plugins.js";
 import { type Output, ProgressPrinter } from "./progress.js";
 import { renderJson, renderText } from "./render.js";
 
@@ -18,15 +22,17 @@ export const SESSIONS_DIR = ".ocra/sessions";
 
 export const EXIT = { ok: 0, blocking: 1, error: 2 } as const;
 
-export interface ReviewVcs extends VcsAdapter {
-  repositoryRoot(): Promise<string>;
-}
+export const BUILTIN_PLUGINS: readonly OcraPlugin[] = [
+  localGitPlugin,
+  opencodeRuntimePlugin,
+  correctnessReviewerPlugin,
+  sessionJsonlPlugin,
+];
 
 export interface ReviewDeps {
   cwd: string;
   env: Readonly<Record<string, string | undefined>>;
-  createVcs(options: LocalGitOptions): ReviewVcs;
-  createRuntime(config: CliConfig): AgentRuntime;
+  builtinPlugins: readonly OcraPlugin[];
   writeFile(path: string, content: string): Promise<void>;
   now(): number;
   heartbeatMs: number;
@@ -37,20 +43,30 @@ export async function reviewCommand(
   io: { out: Output; err: Output },
   deps: ReviewDeps,
 ): Promise<number> {
-  const vcs = deps.createVcs({ cwd: deps.cwd, target: args.target });
-  const root = await vcs.repositoryRoot();
+  const root = await findRepositoryRoot(deps.cwd);
   const config = await loadConfig(root, deps.env);
-  const session = new JsonlSessionWriter(join(root, SESSIONS_DIR));
-  const progress = new ProgressPrinter(io.err, { heartbeatMs: deps.heartbeatMs, now: deps.now });
+  const external = await loadExternalPlugins(config.plugins, root);
+  const session = { dir: join(root, SESSIONS_DIR), id: newSessionId() };
 
+  const registry = await startPlugins([...deps.builtinPlugins, ...external], {
+    settings: { ...config.pluginSettings, [sessionJsonlPlugin.name]: session },
+    env: deps.env,
+    warn: (message) => io.err.write(`[ocra] Warning: ${message}\n`),
+  });
+  const vcs = registry.createVcs("local", { cwd: deps.cwd, target: args.target });
+  const runtime = registry.createRuntime(config.runtime, { models: config.models, env: deps.env });
+
+  const progress = new ProgressPrinter(io.err, { heartbeatMs: deps.heartbeatMs, now: deps.now });
   let report: ReviewReport;
   try {
     report = await runReview({
       ...runOptions(config),
       vcs,
-      runtime: deps.createRuntime(config),
+      runtime,
+      reviewers: registry.reviewers,
+      rules: registry.rules,
       onEvent: (event) => {
-        session.write(event);
+        registry.emit(event);
         progress.onEvent(event);
       },
     });
@@ -58,7 +74,7 @@ export async function reviewCommand(
     progress.stop();
   }
 
-  const sessionDir = relative(deps.cwd, session.dir) || ".";
+  const sessionDir = relative(deps.cwd, join(session.dir, session.id)) || ".";
   const rendered = args.format === "json" ? renderJson(report) : renderText(report, sessionDir);
   if (args.output === undefined) {
     io.out.write(rendered);

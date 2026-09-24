@@ -21,7 +21,14 @@ function root(config?: string): string {
 
 describe("loadConfig", () => {
   it("returns defaults without a config file", async () => {
-    expect(await loadConfig(root(), {})).toEqual({ models: {}, include: [], exclude: [] });
+    expect(await loadConfig(root(), {})).toEqual({
+      models: {},
+      include: [],
+      exclude: [],
+      runtime: "opencode",
+      plugins: [],
+      pluginSettings: {},
+    });
   });
 
   it("reads the config file and lets environment variables override models", async () => {

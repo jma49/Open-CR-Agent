@@ -109,6 +109,19 @@ interface AgentRuntime {
 }
 ```
 
+Both are contributed by plugins (ADR-0006):
+
+```ts
+interface OcraPlugin {
+  name: string
+  settingsSchema?: ZodType                       // validates pluginSettings.<name>
+  bootstrap?(ctx): Promise<void>                 // concurrent, failures warn
+  configure?(ctx: ConfigureContext): void        // ordered, failures abort
+  postConfigure?(ctx): void                      // sees the frozen registry
+}
+// ConfigureContext: registerVcs, registerRuntime, registerReviewer, registerRules, registerTool, onEvent
+```
+
 The pipeline owns orchestration. `AgentRuntime` only executes one isolated agent task, so the runtime can be swapped (OpenCode today, see ADR-0003).
 
 ## Resilience

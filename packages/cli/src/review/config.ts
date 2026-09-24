@@ -17,6 +17,9 @@ const configSchema = z
     runTimeoutMinutes: z.number().positive().optional(),
     include: z.array(z.string().min(1)).default([]),
     exclude: z.array(z.string().min(1)).default([]),
+    runtime: z.string().min(1).default("opencode"),
+    plugins: z.array(z.string().min(1)).default([]),
+    pluginSettings: z.record(z.string(), z.unknown()).default({}),
   })
   .strict();
 
