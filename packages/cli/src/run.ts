@@ -1,10 +1,8 @@
 import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { errorMessage } from "@open-cr-agent/core";
-import { OpenCodeRuntime } from "@open-cr-agent/runtime-opencode";
-import { LocalGitAdapter } from "@open-cr-agent/vcs-local";
 import { parseReviewArgs, REVIEW_USAGE, UsageError } from "./review/args.js";
-import { EXIT, type ReviewDeps, reviewCommand } from "./review/command.js";
+import { BUILTIN_PLUGINS, EXIT, type ReviewDeps, reviewCommand } from "./review/command.js";
 import type { Output } from "./review/progress.js";
 
 export const VERSION = "0.0.0";
@@ -23,8 +21,7 @@ export function defaultDeps(): ReviewDeps {
   return {
     cwd: process.cwd(),
     env: process.env,
-    createVcs: (options) => new LocalGitAdapter(options),
-    createRuntime: (config) => new OpenCodeRuntime({ models: config.models }),
+    builtinPlugins: BUILTIN_PLUGINS,
     writeFile: (path, content) => writeFile(path, content, "utf8"),
     now: Date.now,
     heartbeatMs: 30_000,

@@ -1,11 +1,18 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentEvent, AgentRuntime, AgentTaskSpec } from "@open-cr-agent/core";
-import { LocalGitAdapter } from "@open-cr-agent/vcs-local";
+import type { AgentEvent, AgentTaskSpec, OcraPlugin } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
-import type { ReviewDeps } from "./review/command.js";
+import { BUILTIN_PLUGINS, type ReviewDeps } from "./review/command.js";
 import { run } from "./run.js";
 
 function capture() {
@@ -35,12 +42,16 @@ function repoWithChange(): string {
 type Script = (spec: AgentTaskSpec) => AsyncIterable<AgentEvent>;
 
 function deps(cwd: string, script: Script, extra: Partial<ReviewDeps> = {}): ReviewDeps {
-  const runtime: AgentRuntime = { name: "fake", runTask: (spec) => script(spec) };
+  const fakeRuntime: OcraPlugin = {
+    name: "runtime-opencode",
+    configure(ctx) {
+      ctx.registerRuntime("opencode", () => ({ name: "fake", runTask: (spec) => script(spec) }));
+    },
+  };
   return {
     cwd,
     env: {},
-    createVcs: (options) => new LocalGitAdapter(options),
-    createRuntime: () => runtime,
+    builtinPlugins: BUILTIN_PLUGINS.map((p) => (p.name === fakeRuntime.name ? fakeRuntime : p)),
     writeFile: async (path, content) => writeFileSync(path, content),
     now: Date.now,
     heartbeatMs: 60_000,
@@ -148,11 +159,55 @@ describe("ocra review", () => {
     expect(await run(["review", "--commit", "nope"], capture(), git, deps(cwd, critical))).toBe(2);
     expect(git.text()).toBe("ocra: Unknown commit: nope\n");
 
-    execFileSync("mkdir", ["-p", join(cwd, ".ocra")]);
+    mkdirSync(join(cwd, ".ocra"), { recursive: true });
     writeFileSync(join(cwd, ".ocra", "config.json"), '{"concurrency": "high"}');
     const config = capture();
     expect(await run(["review"], capture(), config, deps(cwd, critical))).toBe(2);
     expect(config.text()).toContain("ocra: .ocra/config.json is invalid");
+  });
+
+  it("loads external plugins from the repository config", async () => {
+    const cwd = repoWithChange();
+    mkdirSync(join(cwd, ".ocra"), { recursive: true });
+    writeFileSync(
+      join(cwd, ".ocra", "team-rules.mjs"),
+      'export default { name: "team-rules", configure(ctx) { ctx.registerRules([{ path: "**/*.ts", rule: "Retries must be positive (" + ctx.settings.owner + ")." }]); } };\n',
+    );
+    writeFileSync(
+      join(cwd, ".ocra", "config.json"),
+      JSON.stringify({
+        plugins: ["./.ocra/team-rules.mjs"],
+        pluginSettings: { "team-rules": { owner: "platform" } },
+      }),
+    );
+    const prompts: string[] = [];
+    const recordPrompts: Script = async function* (spec) {
+      prompts.push(spec.userPrompt);
+      yield { type: "done", taskId: spec.taskId };
+    };
+    expect(await run(["review"], capture(), capture(), deps(cwd, recordPrompts))).toBe(0);
+    expect(prompts[0]).toContain("Retries must be positive (platform).");
+  });
+
+  it("reports missing or invalid external plugins", async () => {
+    const cwd = repoWithChange();
+    mkdirSync(join(cwd, ".ocra"), { recursive: true });
+    writeFileSync(
+      join(cwd, ".ocra", "config.json"),
+      JSON.stringify({ plugins: ["ocra-plugin-missing"] }),
+    );
+    const missing = capture();
+    expect(await run(["review"], capture(), missing, deps(cwd, critical))).toBe(2);
+    expect(missing.text()).toContain('Cannot find plugin "ocra-plugin-missing"');
+
+    writeFileSync(join(cwd, ".ocra", "bad.mjs"), "export const nothing = 1;\n");
+    writeFileSync(
+      join(cwd, ".ocra", "config.json"),
+      JSON.stringify({ plugins: ["./.ocra/bad.mjs"] }),
+    );
+    const invalid = capture();
+    expect(await run(["review"], capture(), invalid, deps(cwd, critical))).toBe(2);
+    expect(invalid.text()).toContain('Plugin "./.ocra/bad.mjs" must export an ocra plugin');
   });
 
   it("prints review help", async () => {

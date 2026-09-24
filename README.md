@@ -29,8 +29,22 @@ Optional `.ocra/config.json`:
   "taskTimeoutMinutes": 10,
   "runTimeoutMinutes": 25,
   "include": [],
-  "exclude": ["legacy/**"]
+  "exclude": ["legacy/**"],
+  "runtime": "opencode",
+  "plugins": ["@acme/ocra-plugin-rules", "./tools/ocra-plugin.mjs"],
+  "pluginSettings": { "acme-rules": { "team": "payments" } }
 }
+```
+
+Everything in ocra is a plugin: VCS adapters, agent runtimes, reviewers, rule packs, tools and event listeners. A plugin is a module exporting:
+
+```js
+export default {
+  name: "acme-rules",
+  configure(ctx) {
+    ctx.registerRules([{ path: "services/**", rule: `Owned by ${ctx.settings.team}: check idempotency keys.` }]);
+  },
+};
 ```
 
 `OCRA_MODEL_TOP`, `OCRA_MODEL_STANDARD` and `OCRA_MODEL_LIGHT` override the models. Repository guidelines come from `AGENTS.md`, and path-scoped review rules from `.ocra/rules.json`:

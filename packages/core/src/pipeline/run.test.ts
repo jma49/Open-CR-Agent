@@ -143,6 +143,25 @@ describe("runReview", () => {
     expect(rt.specs[0]?.modelTier).toBe("standard");
   });
 
+  it("combines plugin rules with repository rules", async () => {
+    const rt = runtime(async function* (spec) {
+      yield { type: "done", taskId: spec.taskId };
+    });
+    await runReview({
+      vcs: vcs({}, twoFiles),
+      runtime: rt,
+      rules: [{ path: "src/**", rule: "Plugin rule." }],
+    });
+    expect(rt.specs[0]?.userPrompt).toContain("Plugin rule.");
+  });
+
+  it("refuses to run without reviewers", async () => {
+    const rt = runtime(async function* () {});
+    await expect(runReview({ vcs: vcs({}, twoFiles), runtime: rt, reviewers: [] })).rejects.toThrow(
+      "No reviewer is registered",
+    );
+  });
+
   it("fails loudly on an invalid rules file", async () => {
     const rt = runtime(async function* () {});
     await expect(
