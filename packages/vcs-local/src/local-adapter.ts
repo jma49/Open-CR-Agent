@@ -51,6 +51,10 @@ export class LocalGitAdapter implements VcsAdapter {
 
   constructor(private readonly options: LocalGitOptions) {}
 
+  async repositoryRoot(): Promise<string> {
+    return (await this.target()).root;
+  }
+
   async getChangeRequest(): Promise<ChangeRequest> {
     return (await this.target()).request;
   }

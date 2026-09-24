@@ -17,6 +17,9 @@
     "dist"
   ],
   "dependencies": {
-    "@open-cr-agent/core": "0.0.0"
+    "@open-cr-agent/core": "0.0.0",
+    "@open-cr-agent/runtime-opencode": "0.0.0",
+    "@open-cr-agent/vcs-local": "0.0.0",
+    "zod": "^4.6.5"
   }
 }
