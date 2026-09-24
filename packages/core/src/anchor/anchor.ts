@@ -1,8 +1,6 @@
-import type { FileDiff, LineRange, ReportedFinding } from "../domain.js";
+import type { AnchorMethod, FileDiff, LineRange, ReportedFinding } from "../domain.js";
 import { errorMessage } from "../errors.js";
 import { isWithinHunks, matchInContent, matchInHunks } from "./match.js";
-
-export type AnchorMethod = "hunk" | "file" | "cross_file" | "relocated" | "file_level";
 
 export interface Anchor {
   file: string;
