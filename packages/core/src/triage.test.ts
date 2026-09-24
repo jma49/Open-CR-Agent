@@ -10,6 +10,7 @@ function diff(path: string, additions: number, deletions = 0): FileDiff {
     isBinary: false,
     additions,
     deletions,
+    hunks: [],
     patch: "",
   };
 }

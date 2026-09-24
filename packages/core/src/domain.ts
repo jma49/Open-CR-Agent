@@ -34,6 +34,20 @@ export interface Finding extends ReportedFinding {
 
 export type FileChangeKind = "added" | "modified" | "deleted" | "renamed";
 
+export type DiffLine =
+  | { kind: "context"; content: string; oldLine: number; newLine: number }
+  | { kind: "add"; content: string; newLine: number }
+  | { kind: "delete"; content: string; oldLine: number };
+
+export interface Hunk {
+  header: string;
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+  lines: DiffLine[];
+}
+
 export interface FileDiff {
   oldPath: string;
   newPath: string;
@@ -41,6 +55,7 @@ export interface FileDiff {
   isBinary: boolean;
   additions: number;
   deletions: number;
+  hunks: Hunk[];
   patch: string;
 }
 
