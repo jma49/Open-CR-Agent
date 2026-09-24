@@ -1,6 +1,6 @@
 # ADR-0003: OpenCode as agent runtime behind an AgentRuntime contract
 
-- Status: accepted
+- Status: accepted; tool delivery refined by [ADR-0005](0005-review-tools-over-mcp.md)
 - Date: 2026-09-24
 
 ## Context
