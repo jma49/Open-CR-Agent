@@ -11,7 +11,12 @@ const usage = {
   cachedTokens: 0,
   costUsd: 0.001,
 };
-const ok = (findings: unknown[] = []): SessionOutcome => ({ findings, toolCalls: [], usage });
+const ok = (findings: unknown[] = []): SessionOutcome => ({
+  findings,
+  toolCalls: [],
+  text: "",
+  usage,
+});
 const fail = (message: string, retryable: boolean): SessionOutcome => ({
   ...ok(),
   error: { message, retryable },

@@ -10,12 +10,18 @@ export interface SessionMessage {
       data?: { message?: string; statusCode?: number; isRetryable?: boolean };
     };
   };
-  parts: { type: string; tool?: string; state?: { status?: string; input?: unknown } }[];
+  parts: {
+    type: string;
+    text?: string;
+    tool?: string;
+    state?: { status?: string; input?: unknown };
+  }[];
 }
 
 export interface SessionOutcome {
   findings: unknown[];
   toolCalls: string[];
+  text: string;
   usage: Usage;
   error?: { message: string; retryable: boolean };
 }
@@ -34,6 +40,10 @@ export function summarizeSession(
       .filter((p) => p.tool === reportTool && p.state?.status === "completed")
       .map((p) => p.state?.input),
     toolCalls: tools.map((p) => p.tool ?? "unknown"),
+    text: assistant
+      .flatMap((m) => m.parts.filter((p) => p.type === "text").map((p) => p.text ?? ""))
+      .join("\n")
+      .trim(),
     usage: {
       inputTokens: sum(assistant, (m) => m.info.tokens?.input),
       outputTokens: sum(assistant, (m) => m.info.tokens?.output),

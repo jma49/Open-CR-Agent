@@ -21,6 +21,7 @@ import {
 } from "../select/select.js";
 import { triage } from "../triage.js";
 import { dedupeFindings, toFinding } from "./findings.js";
+import { runtimeGrouper } from "./helpers.js";
 import { mapWithConcurrency } from "./pool.js";
 import type { CoverageEntry, ReviewEvent, ReviewReport, TaskOutcome } from "./report.js";
 import { executeTask } from "./task.js";
@@ -97,11 +98,10 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     loadRepoRules(vcs),
   ]);
   const repoRules = [...(options.rules ?? []), ...fileRules];
-  const bundled = await bundleFiles(
-    selected,
-    options.bundling ?? defaultBundlePolicy,
-    options.grouper,
-  );
+  const helperUsage: Usage[] = [];
+  const grouper =
+    options.grouper ?? runtimeGrouper(options.runtime, signal, (u) => helperUsage.push(u));
+  const bundled = await bundleFiles(selected, options.bundling ?? defaultBundlePolicy, grouper);
   emit({
     type: "files_bundled",
     strategy: bundled.strategy,
@@ -141,7 +141,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     bundles: bundled.bundles.map((b) => ({ label: b.label, files: b.files.map((f) => f.newPath) })),
     tasks: results.map((r) => r.outcome),
     findings: sortFindings(dedupeFindings(results.flatMap((r) => r.findings))),
-    usage: sumUsage(results.map((r) => r.usage)),
+    usage: sumUsage([...helperUsage, ...results.map((r) => r.usage)]),
     warnings: [...bundled.warnings, ...results.flatMap((r) => r.warnings)],
   };
   emit({ type: "run_finished", report });
@@ -193,12 +193,24 @@ async function runJob(job: Job, state: RunState): Promise<JobResult> {
     readNewFile: state.context.readFile,
   };
   if (options.relocate) anchorContext.relocate = options.relocate;
+  // A finding on a file outside the bundle belongs to the task that reviews
+  // that file; keeping it would report the same issue once per bundle that
+  // happened to read the file.
+  const bundleFiles = new Set(files);
+  let outside = 0;
   for (const reported of result.findings) {
     const anchor = await anchorFinding(reported, anchorContext);
     if (anchor.warning) warnings.push(`${job.taskId}: ${anchor.warning}`);
+    if (!bundleFiles.has(anchor.file)) {
+      outside += 1;
+      continue;
+    }
     const finding = toFinding(reported, job.reviewer.id, anchor);
     findings.push(finding);
     emit({ type: "finding", taskId: job.taskId, finding });
+  }
+  if (outside > 0) {
+    warnings.push(`${job.taskId}: dropped ${outside} finding(s) on files outside its bundle`);
   }
 
   const outcome: TaskOutcome = {
