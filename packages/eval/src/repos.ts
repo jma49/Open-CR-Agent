@@ -47,6 +47,10 @@ export async function prepareRepository(reposDir: string, instance: Instance): P
   return dir;
 }
 
+// Some PR commits in the dataset were force-pushed away and are no longer
+// fetchable; those PRs are a dataset problem, not a review failure.
+export class UnavailableCommitError extends Error {}
+
 async function ensureCommit(dir: string, commit: string, prUrl: string): Promise<void> {
   if (await hasCommit(dir, commit)) return;
   await exec("git", ["fetch", "--quiet", "origin", commit], { cwd: dir, timeoutMs: HOUR });
@@ -58,7 +62,7 @@ async function ensureCommit(dir: string, commit: string, prUrl: string): Promise
       timeoutMs: HOUR,
     });
   if (!(await hasCommit(dir, commit)))
-    throw new Error(`commit ${commit} is not available from ${prUrl}`);
+    throw new UnavailableCommitError(`commit ${commit} is not available from ${prUrl}`);
 }
 
 async function hasCommit(dir: string, commit: string): Promise<boolean> {

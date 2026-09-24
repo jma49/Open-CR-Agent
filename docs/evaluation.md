@@ -17,7 +17,7 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 - **Selection** is seeded (`--seed`, default 1), so a subset can be rerun on exactly the same PRs. Filters: `--limit`, `--languages`, `--max-change-lines`, `--ids`.
 - **Runs resume.** Each PR's result is saved under `<run>/instances/`; rerunning the same `--label` skips finished PRs.
 - **Spend cap.** `--max-cost-usd` stops starting new PRs once review spend reaches the cap; skipped PRs are reported, never scored.
-- **Repositories** are cached as blobless clones under `~/.cache/ocra/aacr-bench/repos`.
+- **Repositories** are cached as blobless clones under `~/.cache/ocra/aacr-bench/repos`. PRs whose commits were force-pushed away and can no longer be fetched are marked `unavailable` and excluded from scoring, separately from review failures.
 - Each PR is reviewed by running the real `ocra review --from <base> --to <head> --format json`, as the official adapters do for other reviewers.
 
 ## Matching and metrics

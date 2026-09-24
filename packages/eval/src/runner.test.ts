@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Instance } from "./dataset.js";
 import { renderMarkdown } from "./report.js";
+import { UnavailableCommitError } from "./repos.js";
 import { runInstances } from "./runner.js";
 import { score } from "./score.js";
 
@@ -106,7 +107,13 @@ describe("runInstances", () => {
     ]);
 
     const summary = await score(instances, second, { sameIssue: async (a, b) => b.startsWith(a) });
-    expect(summary.instances).toEqual({ selected: 4, reviewed: 3, failed: 1, skippedBudget: 0 });
+    expect(summary.instances).toEqual({
+      selected: 4,
+      reviewed: 3,
+      failed: 1,
+      unavailable: 0,
+      skippedBudget: 0,
+    });
     expect(summary.overall.counts).toEqual({
       expected: 6,
       generated: 3,
@@ -131,6 +138,29 @@ describe("runInstances", () => {
       summary,
     );
     expect(markdown).toContain("| 100.0% | 50.0% | 66.7% |");
-    expect(markdown).toContain("3 reviewed, 1 failed, 0 skipped for budget (of 4)");
+    expect(markdown).toContain(
+      "3 reviewed, 1 failed, 0 unavailable in the dataset, 0 skipped for budget (of 4)",
+    );
+  });
+
+  it("marks PRs whose commits can no longer be fetched as unavailable, not failed", async () => {
+    const dir = temp();
+    const results = await runInstances([instance("gone")], {
+      runDir: join(dir, "run"),
+      reposDir: join(dir, "repos"),
+      command: [process.execPath, fakeOcra(dir)],
+      timeoutMs: 30_000,
+      prepare: async () => {
+        throw new UnavailableCommitError("commit abc is not available");
+      },
+      log: () => {},
+    });
+    expect(results[0]).toMatchObject({
+      status: "unavailable",
+      error: "commit abc is not available",
+    });
+    const summary = await score([instance("gone")], results, { sameIssue: async () => true });
+    expect(summary.instances).toMatchObject({ reviewed: 0, failed: 0, unavailable: 1 });
+    expect(summary.overall.counts.expected).toBe(0);
   });
 });

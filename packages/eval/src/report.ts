@@ -19,7 +19,7 @@ export function renderMarkdown(info: RunInfo, summary: Summary): string {
     `- Selection: ${JSON.stringify(info.selection)}`,
     `- Models: ${JSON.stringify(info.models)}`,
     `- Judge: ${info.judge}`,
-    `- Instances: ${summary.instances.reviewed} reviewed, ${summary.instances.failed} failed, ${summary.instances.skippedBudget} skipped for budget (of ${summary.instances.selected})`,
+    `- Instances: ${summary.instances.reviewed} reviewed, ${summary.instances.failed} failed, ${summary.instances.unavailable} unavailable in the dataset, ${summary.instances.skippedBudget} skipped for budget (of ${summary.instances.selected})`,
     "",
     "## Quality",
     "",

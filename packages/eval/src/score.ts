@@ -22,7 +22,13 @@ export interface Scored {
 }
 
 export interface Summary {
-  instances: { selected: number; reviewed: number; failed: number; skippedBudget: number };
+  instances: {
+    selected: number;
+    reviewed: number;
+    failed: number;
+    unavailable: number;
+    skippedBudget: number;
+  };
   overall: Scored;
   byLanguage: Record<string, Scored>;
   recallByCategory: Record<string, { expected: number; matched: number; recall: number }>;
@@ -89,6 +95,7 @@ export async function score(
       selected: instances.length,
       reviewed: reviewed.length,
       failed: results.filter((r) => r.status === "failed").length,
+      unavailable: results.filter((r) => r.status === "unavailable").length,
       skippedBudget: results.filter((r) => r.status === "skipped_budget").length,
     },
     overall: { counts: overall, metrics: qualityMetrics(overall) },
