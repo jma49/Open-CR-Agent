@@ -4,6 +4,7 @@
     { "path": "packages/core" },
     { "path": "packages/runtime-opencode" },
     { "path": "packages/vcs-github" },
+    { "path": "packages/vcs-local" },
     { "path": "packages/cli" },
     { "path": "packages/eval" }
   ]
