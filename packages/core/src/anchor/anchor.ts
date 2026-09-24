@@ -1,4 +1,5 @@
 import type { FileDiff, LineRange, ReportedFinding } from "../domain.js";
+import { errorMessage } from "../errors.js";
 import { isWithinHunks, matchInContent, matchInHunks } from "./match.js";
 
 export type AnchorMethod = "hunk" | "file" | "cross_file" | "relocated" | "file_level";
@@ -84,8 +85,4 @@ function fileLevel(file: string, warning?: string): Anchor {
   return warning === undefined
     ? { file, method: "file_level", inDiff: false }
     : { file, method: "file_level", inDiff: false, warning };
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
