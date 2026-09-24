@@ -1,0 +1,59 @@
+diff --git a/bin.dat b/bin.dat
+index bdc955b..8835708 100644
+Binary files a/bin.dat and b/bin.dat differ
+diff --git a/crlf.txt b/crlf.txt
+index 0aa0f34..a092d71 100644
+--- a/crlf.txt
++++ b/crlf.txt
+@@ -1,2 +1,2 @@
+ x
+-y
++Y
+diff --git a/del.txt b/del.txt
+deleted file mode 100644
+index 286c5f5..0000000
+--- a/del.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-gone
+diff --git a/keep.txt b/keep.txt
+index de98044..25188f8 100644
+--- a/keep.txt
++++ b/keep.txt
+@@ -1,3 +1,4 @@
+ a
+-b
++B
+ c
++-- sql comment
+diff --git a/mode.sh b/mode.sh
+old mode 100644
+new mode 100755
+diff --git a/nonl.txt b/nonl.txt
+index 489ce0f..3e5126c 100644
+--- a/nonl.txt
++++ b/nonl.txt
+@@ -1 +1 @@
+-old
+\ No newline at end of file
++new
+\ No newline at end of file
+diff --git a/from.txt b/to dir.txt
+similarity index 50%
+rename from from.txt
+rename to to dir.txt
+index b1d56c0..0ade7f8 100644
+--- a/from.txt
++++ b/to dir.txt	
+@@ -1,3 +1,3 @@
+ move me
+ line2
+-line3
++line3 changed
+diff --git "a/\346\226\207\344\273\266 \345\220\215.txt" "b/\346\226\207\344\273\266 \345\220\215.txt"
+new file mode 100644
+index 0000000..45b983b
+--- /dev/null
++++ "b/\346\226\207\344\273\266 \345\220\215.txt"	
+@@ -0,0 +1 @@
++hi
