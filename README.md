@@ -8,7 +8,7 @@ Inspired by [Cloudflare's AI code review](https://blog.cloudflare.com/ai-code-re
 
 ## Usage
 
-> The agent runtime is not wired up yet (#8), so reviews currently report every task as failed.
+Reviews run on [OpenCode](https://opencode.ai) with models you configure. Provider keys come from the environment; for Google set `GEMINI_API_KEY` (or `GOOGLE_GENERATIVE_AI_API_KEY`).
 
 ```bash
 ocra review                           # uncommitted changes, including untracked files
@@ -24,7 +24,11 @@ Optional `.ocra/config.json`:
 
 ```json
 {
-  "models": { "top": "provider/model", "standard": "provider/model", "light": "provider/model" },
+  "models": {
+    "top": "google/gemini-3.1-pro-preview",
+    "standard": ["google/gemini-3.8-flash", "google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
+    "light": "google/gemini-flash-lite-latest"
+  },
   "concurrency": 4,
   "taskTimeoutMinutes": 10,
   "runTimeoutMinutes": 25,
@@ -47,7 +51,7 @@ export default {
 };
 ```
 
-`OCRA_MODEL_TOP`, `OCRA_MODEL_STANDARD` and `OCRA_MODEL_LIGHT` override the models. Repository guidelines come from `AGENTS.md`, and path-scoped review rules from `.ocra/rules.json`:
+A list is a failback chain: when a model is overloaded, out of quota or rejects a request, the task retries on the next one, and a model that keeps failing is skipped for the rest of the run. `OCRA_MODEL_TOP`, `OCRA_MODEL_STANDARD` and `OCRA_MODEL_LIGHT` override the models (comma-separated for a chain). The summary line reports tokens, reasoning tokens and cost. Repository guidelines come from `AGENTS.md`, and path-scoped review rules from `.ocra/rules.json`:
 
 ```json
 { "rules": [{ "path": "api/**", "rule": "Handlers must check tenant ownership." }] }
