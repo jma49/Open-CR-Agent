@@ -1,0 +1,19 @@
+{
+  "name": "@open-cr-agent/vcs-local",
+  "version": "0.0.0",
+  "description": "Local git repository adapter for Open-CR-Agent",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@open-cr-agent/core": "0.0.0"
+  }
+}

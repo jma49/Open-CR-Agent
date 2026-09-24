@@ -124,6 +124,7 @@ packages/
   core/              domain types, stages, contracts
   runtime-opencode/  AgentRuntime on @opencode-ai/sdk
   vcs-github/        VcsAdapter for GitHub
+  vcs-local/         VcsAdapter for the local git repository
   cli/               `ocra` command
   eval/              AACR-Bench replay, precision / recall / F1 / cost
 ```

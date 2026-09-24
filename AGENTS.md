@@ -15,6 +15,7 @@ Open-CR-Agent is an open-source multi-agent code review system. Deterministic en
 | `@open-cr-agent/core` | Domain types, pipeline stages, `VcsAdapter` / `AgentRuntime` / plugin contracts |
 | `@open-cr-agent/runtime-opencode` | `AgentRuntime` backed by the OpenCode SDK |
 | `@open-cr-agent/vcs-github` | `VcsAdapter` for GitHub pull requests |
+| `@open-cr-agent/vcs-local` | `VcsAdapter` for the local git repository (workspace, range, commit) |
 | `@open-cr-agent/cli` | The `ocra` command |
 | `@open-cr-agent/eval` | Benchmark replay (AACR-Bench) and quality metrics |
 
