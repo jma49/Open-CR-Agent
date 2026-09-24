@@ -1,5 +1,4 @@
 import type {
-  ChangeRef,
   ChangeRequest,
   FileDiff,
   PriorReview,
@@ -7,22 +6,34 @@ import type {
   VcsAdapter,
 } from "@open-cr-agent/core";
 
+export interface GitHubPullRequest {
+  owner: string;
+  repo: string;
+  number: number;
+}
+
 export class GitHubAdapter implements VcsAdapter {
   readonly name = "github";
 
-  getChangeRequest(_ref: ChangeRef): Promise<ChangeRequest> {
+  constructor(readonly pullRequest: GitHubPullRequest) {}
+
+  getChangeRequest(): Promise<ChangeRequest> {
     return notImplemented("getChangeRequest");
   }
 
-  getDiff(_ref: ChangeRef): Promise<FileDiff[]> {
+  getDiff(): Promise<FileDiff[]> {
     return notImplemented("getDiff");
   }
 
-  getPriorReview(_ref: ChangeRef): Promise<PriorReview | undefined> {
+  readFile(_path: string): Promise<string | undefined> {
+    return notImplemented("readFile");
+  }
+
+  getPriorReview(): Promise<PriorReview | undefined> {
     return notImplemented("getPriorReview");
   }
 
-  publish(_ref: ChangeRef, _result: ReviewResult): Promise<void> {
+  publish(_result: ReviewResult): Promise<void> {
     return notImplemented("publish");
   }
 }

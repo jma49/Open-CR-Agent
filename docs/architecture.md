@@ -96,11 +96,12 @@ Findings carry fingerprints, so a re-review can compare against the previous run
 ## Contracts
 
 ```ts
-interface VcsAdapter {
-  getChangeRequest(ref): Promise<ChangeRequest>
-  getDiff(ref): Promise<FileDiff[]>
-  getPriorReview(ref): Promise<PriorReview | undefined>
-  publish(ref, result: ReviewResult): Promise<void>
+interface VcsAdapter {            // one instance per change request
+  getChangeRequest(): Promise<ChangeRequest>
+  getDiff(): Promise<FileDiff[]>
+  readFile(path): Promise<string | undefined>   // file content at head
+  getPriorReview(): Promise<PriorReview | undefined>
+  publish(result: ReviewResult): Promise<void>
 }
 
 interface AgentRuntime {
