@@ -6,17 +6,13 @@ import type {
   ReviewResult,
 } from "./domain.js";
 
-export interface ChangeRef {
-  repository: string;
-  id: string;
-}
-
 export interface VcsAdapter {
   readonly name: string;
-  getChangeRequest(ref: ChangeRef): Promise<ChangeRequest>;
-  getDiff(ref: ChangeRef): Promise<FileDiff[]>;
-  getPriorReview(ref: ChangeRef): Promise<PriorReview | undefined>;
-  publish(ref: ChangeRef, result: ReviewResult): Promise<void>;
+  getChangeRequest(): Promise<ChangeRequest>;
+  getDiff(): Promise<FileDiff[]>;
+  readFile(path: string): Promise<string | undefined>;
+  getPriorReview(): Promise<PriorReview | undefined>;
+  publish(result: ReviewResult): Promise<void>;
 }
 
 export type ModelTier = "top" | "standard" | "light";
