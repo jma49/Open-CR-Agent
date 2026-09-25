@@ -1,0 +1,30 @@
+name: Redeploy site
+
+# The project site renders docs/manual at build time, so manual changes on
+# main trigger a site rebuild through a Vercel deploy hook.
+on:
+  push:
+    branches: [main]
+    paths: ["docs/manual/**"]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: site-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel deploy hook
+        env:
+          HOOK: ${{ secrets.SITE_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::SITE_DEPLOY_HOOK secret is not set"
+            exit 1
+          fi
+          curl --fail --silent --show-error --output /dev/null -X POST "$HOOK"
+          echo "Site redeploy requested"
