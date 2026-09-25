@@ -49,6 +49,7 @@ Open-CR-Agent is an open-source multi-agent code review system. Deterministic en
 - **Any change to user-facing behavior updates the manual in the same PR, in both languages**: CLI commands, flags, output or exit codes, configuration keys, environment variables, rules, plugin APIs, security properties.
 - The manual describes what exists today. Planned features are marked as planned; never document behavior that is not implemented.
 - `docs/architecture.md` and `docs/adr/` are for contributors; the manual is for users.
+- Merging a manual change to `main` redeploys the site automatically (`.github/workflows/site-deploy.yml`, Vercel deploy hook in the `SITE_DEPLOY_HOOK` secret).
 
 ## Git workflow
 
