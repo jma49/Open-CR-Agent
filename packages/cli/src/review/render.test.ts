@@ -109,6 +109,15 @@ describe("renderText", () => {
     expect(renderText(base)).toContain("No issues found.\n");
   });
 
+  it("cannot be steered into terminal escape sequences by finding text", () => {
+    const report: ReviewReport = {
+      ...base,
+      findings: [finding({ title: "ok\u001b[2K\u001b]52;c;eA==\u0007", body: "b\rhidden" })],
+    };
+    const text = renderText(report);
+    for (const unsafe of ["\u001b", "\u0007", "\r"]) expect(text).not.toContain(unsafe);
+  });
+
   it("never claims a clean result when nothing was reviewed", () => {
     const report: ReviewReport = {
       ...base,

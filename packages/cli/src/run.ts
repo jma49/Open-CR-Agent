@@ -4,6 +4,7 @@ import { errorMessage } from "@open-cr-agent/core";
 import { parseReviewArgs, REVIEW_USAGE, UsageError } from "./review/args.js";
 import { BUILTIN_PLUGINS, EXIT, type ReviewDeps, reviewCommand } from "./review/command.js";
 import type { Output } from "./review/progress.js";
+import { forTerminal } from "./review/terminal.js";
 
 export const VERSION = "0.0.0";
 
@@ -72,7 +73,7 @@ async function review(argv: string[], out: Output, err: Output, deps: ReviewDeps
     if (error instanceof UsageError) {
       err.write(`${error.message}\n\n${REVIEW_USAGE}`);
     } else {
-      err.write(`ocra: ${errorMessage(error)}\n`);
+      err.write(`ocra: ${forTerminal(errorMessage(error))}\n`);
     }
     return EXIT.error;
   }

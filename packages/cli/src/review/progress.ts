@@ -1,4 +1,5 @@
 import type { ReviewEvent } from "@open-cr-agent/core";
+import { forTerminal } from "./terminal.js";
 
 export interface Output {
   write(chunk: string): unknown;
@@ -40,7 +41,7 @@ export class ProgressPrinter {
 
   private print(line: string): void {
     this.lastOutput = this.options.now();
-    this.err.write(`[ocra] ${line}\n`);
+    this.err.write(`[ocra] ${forTerminal(line)}\n`);
   }
 }
 

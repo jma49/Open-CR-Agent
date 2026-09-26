@@ -17,6 +17,7 @@ import { type CliConfig, loadConfig } from "./config.js";
 import { loadExternalPlugins } from "./plugins.js";
 import { type Output, ProgressPrinter } from "./progress.js";
 import { renderJson, renderText } from "./render.js";
+import { forTerminal } from "./terminal.js";
 
 export const SESSIONS_DIR = ".ocra/sessions";
 
@@ -51,7 +52,7 @@ export async function reviewCommand(
   const registry = await startPlugins([...deps.builtinPlugins, ...external], {
     settings: { ...config.pluginSettings, [sessionJsonlPlugin.name]: session },
     env: deps.env,
-    warn: (message) => io.err.write(`[ocra] Warning: ${message}\n`),
+    warn: (message) => io.err.write(`[ocra] Warning: ${forTerminal(message)}\n`),
   });
   const vcs = registry.createVcs("local", { cwd: deps.cwd, target: args.target });
   const runtime = registry.createRuntime(config.runtime, { models: config.models, env: deps.env });
