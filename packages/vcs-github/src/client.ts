@@ -52,6 +52,50 @@ export interface GitHubApiOptions {
 }
 
 const MAX_COMMENT_PAGES = 30;
+const MAX_THREAD_PAGES = 10;
+
+export interface ReviewThread {
+  id: string;
+  isResolved: boolean;
+  // The thread's first comment, which carries ocra's finding marker.
+  body: string;
+  author: string;
+}
+
+const REVIEW_THREADS_QUERY = `query($owner: String!, $repo: String!, $number: Int!, $after: String) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 100, after: $after) {
+        pageInfo { hasNextPage endCursor }
+        nodes { id isResolved comments(first: 1) { nodes { body author { login } } } }
+      }
+    }
+  }
+}`;
+
+const reviewThreadsSchema = z.object({
+  repository: z.object({
+    pullRequest: z.object({
+      reviewThreads: z.object({
+        pageInfo: z.object({ hasNextPage: z.boolean(), endCursor: z.string().nullable() }),
+        nodes: z.array(
+          z.object({
+            id: z.string(),
+            isResolved: z.boolean(),
+            comments: z.object({
+              nodes: z.array(
+                z.object({
+                  body: z.string(),
+                  author: z.object({ login: z.string() }).nullable(),
+                }),
+              ),
+            }),
+          }),
+        ),
+      }),
+    }),
+  }),
+});
 
 // A thin REST client: every response is validated before it reaches the
 // adapter, and errors never echo the token.
@@ -65,6 +109,41 @@ export class GitHubApi {
   ) {
     this.baseUrl = (options.baseUrl ?? "https://api.github.com").replace(/\/$/, "");
     this.fetchImpl = options.fetch ?? fetch;
+  }
+
+  async listReviewThreads(number: number): Promise<ReviewThread[]> {
+    const threads: ReviewThread[] = [];
+    let after: string | null = null;
+    for (let page = 0; page < MAX_THREAD_PAGES; page += 1) {
+      const data = reviewThreadsSchema.parse(
+        await this.graphql(REVIEW_THREADS_QUERY, {
+          owner: this.repository.owner,
+          repo: this.repository.repo,
+          number,
+          after,
+        }),
+      );
+      const connection = data.repository.pullRequest.reviewThreads;
+      for (const node of connection.nodes) {
+        const first = node.comments.nodes[0];
+        threads.push({
+          id: node.id,
+          isResolved: node.isResolved,
+          body: first?.body ?? "",
+          author: first?.author?.login ?? "",
+        });
+      }
+      if (!connection.pageInfo.hasNextPage) break;
+      after = connection.pageInfo.endCursor;
+    }
+    return threads;
+  }
+
+  async resolveReviewThread(threadId: string): Promise<void> {
+    await this.graphql(
+      "mutation($id: ID!) { resolveReviewThread(input: { threadId: $id }) { thread { id } } }",
+      { id: threadId },
+    );
   }
 
   async getPullRequest(number: number): Promise<PullRequest> {
@@ -95,9 +174,37 @@ export class GitHubApi {
     await this.request("POST", `/pulls/${number}/reviews`, review);
   }
 
-  private async request(method: string, path: string, body?: unknown): Promise<unknown> {
+  private async graphql(query: string, variables: Record<string, unknown>): Promise<unknown> {
+    const result = z
+      .object({
+        data: z.unknown().optional(),
+        errors: z.array(z.object({ message: z.string() })).optional(),
+      })
+      .parse(await this.send("POST", this.graphqlUrl(), "/graphql", { query, variables }));
+    if (result.errors?.length) {
+      throw new GitHubApiError(
+        200,
+        `GitHub GraphQL failed: ${result.errors.map((e) => e.message).join("; ")}`,
+      );
+    }
+    return result.data;
+  }
+
+  // github.com serves GraphQL at /graphql; GitHub Enterprise at /api/graphql
+  // next to /api/v3.
+  private graphqlUrl(): string {
+    return this.baseUrl.endsWith("/api/v3")
+      ? `${this.baseUrl.slice(0, -"/v3".length)}/graphql`
+      : `${this.baseUrl}/graphql`;
+  }
+
+  private request(method: string, path: string, body?: unknown): Promise<unknown> {
     const { owner, repo } = this.repository;
     const url = `${this.baseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}${path}`;
+    return this.send(method, url, path, body);
+  }
+
+  private async send(method: string, url: string, path: string, body?: unknown): Promise<unknown> {
     const init: RequestInit = {
       method,
       headers: {

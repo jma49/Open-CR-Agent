@@ -116,7 +116,9 @@ export class LocalGitAdapter implements VcsAdapter {
     return undefined;
   }
 
-  async publish(): Promise<void> {}
+  async publish(): Promise<{ warnings: string[] }> {
+    return { warnings: [] };
+  }
 
   private target(): Promise<ResolvedTarget> {
     this.resolved ??= this.resolveTarget();

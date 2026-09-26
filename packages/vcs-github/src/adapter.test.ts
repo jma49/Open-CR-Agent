@@ -10,7 +10,12 @@ interface Call {
   body?: unknown;
 }
 
-function fakeGitHub(comments: unknown[] = [], reviewStatus = 200) {
+function fakeGitHub(
+  comments: unknown[] = [],
+  reviewStatus = 200,
+  threads: unknown[] = [],
+  graphqlFails = false,
+) {
   const calls: Call[] = [];
   const fetchImpl = (async (url: string, init?: RequestInit) => {
     const path = url.replace("https://api.github.com/repos/o/r", "");
@@ -23,6 +28,21 @@ function fakeGitHub(comments: unknown[] = [], reviewStatus = 200) {
         status,
         headers: { "Content-Type": "application/json" },
       });
+    if (url.endsWith("/graphql")) {
+      if (graphqlFails) return json(502, { message: "Bad gateway" });
+      const query = (call.body as { query: string }).query;
+      if (query.startsWith("mutation"))
+        return json(200, { data: { resolveReviewThread: { thread: {} } } });
+      return json(200, {
+        data: {
+          repository: {
+            pullRequest: {
+              reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: threads },
+            },
+          },
+        },
+      });
+    }
     if (path === "/pulls/7") {
       return json(200, {
         number: 7,
@@ -184,6 +204,50 @@ describe("GitHubAdapter", () => {
     expect(reviews[0]?.body).toMatchObject({ event: "REQUEST_CHANGES" });
     const body = postedSummary(calls);
     expect(readState(body)?.[0]?.commented).toBe(false);
+  });
+
+  it("resolves the threads of fixed findings it commented on, and only those", async () => {
+    const thread = (id: string, fingerprint: string, login: string, isResolved = false) => ({
+      id,
+      isResolved,
+      comments: {
+        nodes: [{ body: `<!-- ocra:finding ${fingerprint} -->\nold`, author: { login } }],
+      },
+    });
+    const { calls, fetchImpl } = fakeGitHub([], 200, [
+      thread("T1", A, "github-actions"),
+      thread("T2", A, "mallory"),
+      thread("T3", B, "github-actions"),
+    ]);
+    const fixed = {
+      fingerprint: A,
+      title: "t",
+      file: "src/login.ts",
+      severity: "warning" as const,
+      commented: true,
+    };
+    const result = await adapter(fetchImpl).publish({
+      ...report([]),
+      rereview: { fixed: [fixed], notRechecked: [] },
+    });
+
+    const mutations = calls.filter((c) =>
+      (c.body as { query?: string } | undefined)?.query?.startsWith("mutation"),
+    );
+    expect(mutations.map((c) => (c.body as { variables: { id: string } }).variables.id)).toEqual([
+      "T1",
+    ]);
+    expect(result.warnings).toEqual([]);
+
+    const broken = fakeGitHub([], 200, [], true);
+    const failed = await adapter(broken.fetchImpl).publish({
+      ...report([]),
+      rereview: { fixed: [fixed], notRechecked: [] },
+    });
+    expect(failed.warnings[0]).toContain("could not resolve the threads of fixed findings");
+    expect(broken.calls.some((c) => c.path === "/issues/7/comments" && c.method === "POST")).toBe(
+      true,
+    );
   });
 
   it("ignores state it cannot trust", () => {

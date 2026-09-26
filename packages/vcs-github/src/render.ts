@@ -27,8 +27,11 @@ function location(f: Finding): string {
   return `\`${f.file}:${start === end ? start : `${start}-${end}`}\``;
 }
 
+export const FINDING_MARKER = /<!-- ocra:finding ([0-9a-f]{16}) -->/;
+
 export function inlineBody(f: Finding): string {
   const parts = [
+    `<!-- ocra:finding ${f.fingerprint} -->`,
     `${ICON[f.severity]} **${safeMarkdown(f.title)}** · ${f.severity} · ${f.reviewer}`,
     "",
     safeMarkdown(f.body),

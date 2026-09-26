@@ -14,7 +14,8 @@ export interface VcsAdapter {
   readFile(path: string): Promise<string | undefined>;
   searchCode(literal: string): Promise<CodeMatch[]>;
   getPriorReview(): Promise<PriorReview | undefined>;
-  publish(report: ReviewReport): Promise<void>;
+  // Warnings describe parts that could not be published; the rest was.
+  publish(report: ReviewReport): Promise<{ warnings: string[] }>;
 }
 
 export type ModelTier = "top" | "standard" | "light";

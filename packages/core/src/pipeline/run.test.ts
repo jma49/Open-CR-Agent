@@ -36,7 +36,7 @@ function vcs(files: Record<string, string>, diffText: string): VcsAdapter {
     readFile: async (path) => files[path],
     searchCode: async () => [],
     getPriorReview: async () => undefined,
-    publish: async () => {},
+    publish: async () => ({ warnings: [] }),
   };
 }
 

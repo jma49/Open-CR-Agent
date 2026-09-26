@@ -42,7 +42,7 @@ Pull requests from forks do not receive repository secrets on `pull_request`, so
 - **Inline comments** for findings anchored inside the diff, in one review with the `COMMENT` event. ocra never approves. Set `github.requestChanges` to request changes when the verdict is `significant_concerns`.
 - **One summary comment**, updated in place on every push: verdict, summary, findings outside the diff, what was fixed since the last review, and coverage and cost.
 
-On the next push ocra compares findings with the previous review: a finding it already commented on is not commented again, findings that disappeared are listed as fixed, and findings in files that could not be re-checked are listed as such instead of being called fixed.
+On the next push ocra compares findings with the previous review: a finding it already commented on is not commented again, findings that disappeared are listed as fixed and their inline threads resolved, and findings in files that could not be re-checked are listed as such instead of being called fixed.
 
 ## What the pull request can and cannot change
 

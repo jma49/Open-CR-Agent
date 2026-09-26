@@ -1,14 +1,15 @@
-import type {
-  ChangeRequest,
-  CodeMatch,
-  FileDiff,
-  PriorFinding,
-  PriorReview,
-  ReviewReport,
-  VcsAdapter,
+import {
+  type ChangeRequest,
+  type CodeMatch,
+  errorMessage,
+  type FileDiff,
+  type PriorFinding,
+  type PriorReview,
+  type ReviewReport,
+  type VcsAdapter,
 } from "@open-cr-agent/core";
 import { type GitHubApi, GitHubApiError, type IssueComment, type PullRequest } from "./client.js";
-import { inlineComment, renderSummary } from "./render.js";
+import { FINDING_MARKER, inlineComment, renderSummary } from "./render.js";
 import { readState, SUMMARY_MARKER } from "./state.js";
 
 export interface GitHubPullRequest {
@@ -69,7 +70,7 @@ export class GitHubAdapter implements VcsAdapter {
     return findings ? { findings } : undefined;
   }
 
-  async publish(report: ReviewReport): Promise<void> {
+  async publish(report: ReviewReport): Promise<{ warnings: string[] }> {
     const { number } = this.options.pullRequest;
     const pr = await this.pr();
     const previous = await this.summaryComment();
@@ -98,6 +99,33 @@ export class GitHubAdapter implements VcsAdapter {
     const body = renderSummary({ report, commented, state });
     if (previous) await this.options.api.updateIssueComment(previous.id, body);
     else await this.options.api.createIssueComment(number, body);
+    return { warnings: await this.resolveFixedThreads(number, report) };
+  }
+
+  // Resolving threads is a courtesy: the summary already lists what was
+  // fixed, so a failure here is a warning, not a failed publish.
+  private async resolveFixedThreads(number: number, report: ReviewReport): Promise<string[]> {
+    const fixed = new Set(
+      (report.rereview?.fixed ?? []).filter((f) => f.commented).map((f) => f.fingerprint),
+    );
+    if (fixed.size === 0) return [];
+    try {
+      const threads = await this.options.api.listReviewThreads(number);
+      for (const thread of threads) {
+        const fingerprint = FINDING_MARKER.exec(thread.body)?.[1];
+        if (thread.isResolved || !fingerprint || !fixed.has(fingerprint)) continue;
+        if (!this.isBot(thread.author)) continue;
+        await this.options.api.resolveReviewThread(thread.id);
+      }
+      return [];
+    } catch (error) {
+      return [`could not resolve the threads of fixed findings: ${errorMessage(error)}`];
+    }
+  }
+
+  // REST names the Actions bot "github-actions[bot]", GraphQL "github-actions".
+  private isBot(login: string): boolean {
+    return login === this.options.botLogin || `${login}[bot]` === this.options.botLogin;
   }
 
   // Returns the fingerprints that now have inline comments. GitHub rejects
