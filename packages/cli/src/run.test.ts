@@ -235,6 +235,53 @@ describe("ocra review", () => {
     expect(err.text()).toContain("Unknown reviewer(s): nope");
   });
 
+  it("exits 3 when some review tasks did not finish", async () => {
+    const cwd = repoWithChange();
+    writeFileSync(join(cwd, "other.ts"), "export const other = 1;\n");
+    writeFileSync(join(cwd, "third.ts"), "export const third = 1;\n");
+    writeFileSync(join(cwd, "fourth.ts"), "export const fourth = 1;\n");
+    const halfFails: Script = async function* (spec) {
+      if (spec.taskId.endsWith("-1"))
+        yield { type: "error", taskId: spec.taskId, error: "overloaded", retryable: true };
+      else yield { type: "done", taskId: spec.taskId };
+    };
+    const err = capture();
+    expect(await run(["review"], capture(), err, deps(cwd, halfFails))).toBe(3);
+  });
+
+  it("stops on Ctrl-C with a partial report, cleans up and exits 130", async () => {
+    const cwd = repoWithChange();
+    let interrupt = () => {};
+    let listening = false;
+    const waitsForCtrlC: Script = async function* (spec) {
+      interrupt();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      yield { type: "done", taskId: spec.taskId };
+    };
+    const before = disposed.count;
+    const out = capture();
+    const err = capture();
+    const code = await run(
+      ["review"],
+      out,
+      err,
+      deps(cwd, waitsForCtrlC, {
+        onInterrupt(handler) {
+          interrupt = handler;
+          listening = true;
+          return () => {
+            listening = false;
+          };
+        },
+      }),
+    );
+    expect(code).toBe(130);
+    expect(err.text()).toContain("Interrupted: stopping and writing a partial report");
+    expect(out.text()).toContain("Review: Working tree changes");
+    expect(disposed.count).toBeGreaterThan(before);
+    expect(listening).toBe(false);
+  });
+
   it("reports missing or invalid external plugins", async () => {
     const cwd = repoWithChange();
     mkdirSync(join(cwd, ".ocra"), { recursive: true });

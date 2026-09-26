@@ -33,7 +33,7 @@ jobs:
 |---|---|---|
 | `github-token` | `${{ github.token }}` | 用来读取 PR 和发布评审的 token |
 | `args` | | 额外的 `ocra review` 参数，例如 `--reviewers correctness,security` |
-| `fail-on-concerns` | `true` | 结论为 `significant_concerns` 时让 job 失败 |
+| `fail-on-concerns` | `true` | 结论为 `significant_concerns` 时让 job 失败。审查不完整（退出码 `3`）时 job 总会失败 |
 
 来自 fork 的 PR 在 `pull_request` 事件下拿不到仓库 secret，审查会失败，并提示缺少哪个 key。不要为此改用 `pull_request_target`：那样会带着 secret 运行 fork 控制的代码。
 

@@ -22,6 +22,7 @@ ocra review [options]
 | `--pr <number>` | Review a GitHub pull request; see [GitHub pull requests](./github) |
 | `--repo <owner/name>` | Repository of `--pr` (default: `GITHUB_REPOSITORY` or `origin`) |
 | `--publish` | With `--pr`: post the review to the pull request |
+| `--max-cost-usd <n>` | Stop starting review tasks once the run has spent this much (tasks already running finish) |
 | `--reviewers <ids>` | Run only these reviewers, comma-separated (for example `security`) |
 | `--no-repo-config` | Ignore `.ocra/config.json` and the plugins it lists; models come from `OCRA_MODEL_*`. Use it on code you do not trust |
 | `-h, --help` | Show help |
@@ -52,6 +53,8 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...` so a lo
 | `0` | Review finished; verdict `approved`, `approved_with_comments` or `minor_issues` |
 | `1` | Verdict `significant_concerns` (at least one critical finding) |
 | `2` | Usage, Git or configuration error, or no review task completed |
+| `3` | Review incomplete: some tasks failed, timed out or hit the spend limit (and the verdict is not blocking) |
+| `130` | Interrupted with Ctrl-C or SIGTERM; the partial report is still printed and nothing is published |
 
 ### JSON output
 

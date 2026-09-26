@@ -22,6 +22,7 @@ ocra review [options]
 | `--pr <number>` | 审查一个 GitHub PR，见 [GitHub Pull Request](./github) |
 | `--repo <owner/name>` | `--pr` 所在的仓库（默认取 `GITHUB_REPOSITORY` 或 `origin`） |
 | `--publish` | 配合 `--pr`：把评审发布到 PR |
+| `--max-cost-usd <n>` | 本次运行花费达到该值后不再启动新的审查任务（正在运行的任务会跑完） |
 | `--reviewers <ids>` | 只运行这些审查员，用逗号分隔（例如 `security`） |
 | `--no-repo-config` | 忽略 `.ocra/config.json` 及其中列出的插件，模型改从 `OCRA_MODEL_*` 读取。审查不信任的代码时使用 |
 | `-h, --help` | 显示帮助 |
@@ -52,6 +53,8 @@ ocra review [options]
 | `0` | 审查完成，结论为 `approved`、`approved_with_comments` 或 `minor_issues` |
 | `1` | 结论为 `significant_concerns`（至少有一个 critical 问题） |
 | `2` | 参数、Git 或配置错误，或者没有任何审查任务完成 |
+| `3` | 审查不完整：部分任务失败、超时或触及花费上限（且结论不是阻塞级） |
+| `130` | 被 Ctrl-C 或 SIGTERM 中断；仍会打印部分报告，不会发布任何内容 |
 
 ### JSON 输出
 

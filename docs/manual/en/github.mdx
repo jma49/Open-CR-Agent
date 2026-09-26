@@ -33,7 +33,7 @@ Store your model key as a repository secret. Models come from the base branch's 
 |---|---|---|
 | `github-token` | `${{ github.token }}` | Token for reading the pull request and posting the review |
 | `args` | | Extra `ocra review` options, such as `--reviewers correctness,security` |
-| `fail-on-concerns` | `true` | Fail the job when the verdict is `significant_concerns` |
+| `fail-on-concerns` | `true` | Fail the job when the verdict is `significant_concerns`. An incomplete review (exit code `3`) always fails the job |
 
 Pull requests from forks do not receive repository secrets on `pull_request`, so the review fails with a message naming the missing key. Do not switch to `pull_request_target` to work around it: that runs with secrets on code the fork controls.
 

@@ -13,10 +13,10 @@ import type { FileDecision, SelectionPolicy } from "../select/select.js";
 import { verifyFindings } from "../verify/verify.js";
 import { type JobResult, runJob } from "./execute.js";
 import { dedupeFindings } from "./findings.js";
-import { planMatrix, type ReviewerOverrides } from "./matrix.js";
+import { type MatrixCell, planMatrix, type ReviewerOverrides } from "./matrix.js";
 import { planReview } from "./plan.js";
 import { mapWithConcurrency } from "./pool.js";
-import type { CoverageEntry, ReviewEvent, ReviewReport } from "./report.js";
+import type { CoverageEntry, ReviewEvent, ReviewReport, TaskOutcome } from "./report.js";
 import { addUsage, emptyUsage } from "./usage.js";
 
 export { GUIDELINES_PATH } from "./plan.js";
@@ -41,6 +41,9 @@ export interface ReviewOptions {
   verify?: boolean;
   // Merge, filter and recalibrate findings across reviewers on the top tier (default true).
   judge?: boolean;
+  // Stop starting review tasks once reported spend reaches this; tasks
+  // already running finish, so a run can end slightly above it.
+  maxCostUsd?: number;
   signal?: AbortSignal;
   onEvent?: (event: ReviewEvent) => void;
 }
@@ -67,16 +70,22 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     emit,
     signal,
   };
+  const budget = spendTracker(options.maxCostUsd, plan.usage);
   const results = await mapWithConcurrency(
     matrix.cells,
     options.concurrency ?? DEFAULTS.concurrency,
-    (job) => runJob(job, plan, execute),
+    async (cell) => {
+      if (budget.exhausted()) return budget.skip(cell, emit);
+      const result = await runJob(cell, plan, execute);
+      budget.add(result.usage);
+      return result;
+    },
   );
 
   const concurrency = options.concurrency ?? DEFAULTS.concurrency;
   const found = dedupeFindings(results.flatMap((r) => r.findings));
   const verification =
-    options.verify === false
+    options.verify === false || budget.exhausted()
       ? { checked: 0, kept: found, refuted: [], usage: [], warnings: [] }
       : await verifyFindings(found, {
           runtime: options.runtime,
@@ -98,7 +107,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     changeRequest: plan.changeRequest,
     tier: plan.tier,
     signal,
-    enabled: options.judge !== false,
+    enabled: options.judge !== false && !budget.exhausted(),
   });
   emit(
     judged.decisions
@@ -143,6 +152,31 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   if (prior.warning) report.warnings.push(prior.warning);
   emit({ type: "run_finished", report });
   return report;
+}
+
+function spendTracker(maxCostUsd: number | undefined, initial: readonly Usage[]) {
+  let spent = initial.reduce((sum, u) => sum + u.costUsd, 0);
+  const exhausted = () => maxCostUsd !== undefined && spent >= maxCostUsd;
+  return {
+    exhausted,
+    add(usage: Usage) {
+      spent += usage.costUsd;
+    },
+    skip(cell: MatrixCell, emit: (event: ReviewEvent) => void): JobResult {
+      const outcome: TaskOutcome = {
+        taskId: cell.taskId,
+        reviewer: cell.reviewer.id,
+        bundle: cell.bundle.label,
+        files: cell.bundle.files.map((f) => f.newPath),
+        status: "cancelled",
+        error: `spend limit of $${maxCostUsd} reached`,
+        findings: 0,
+        durationMs: 0,
+      };
+      emit({ type: "task_finished", outcome });
+      return { outcome, findings: [], usage: emptyUsage(), warnings: [] };
+    },
+  };
 }
 
 // A missing earlier review only costs the comparison, never the review.

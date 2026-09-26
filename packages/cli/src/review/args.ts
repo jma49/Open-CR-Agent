@@ -16,6 +16,7 @@ export interface ReviewArgs {
   output?: string;
   ignoreRepoConfig?: true;
   reviewers?: string[];
+  maxCostUsd?: number;
 }
 
 export class UsageError extends Error {}
@@ -34,6 +35,7 @@ Options:
   --format <format>  text (default) or json
   --output <file>    Write the result to a file instead of stdout
   --reviewers <ids>  Run only these reviewers (comma-separated)
+  --max-cost-usd <n> Stop starting review tasks once spend reaches this
   --no-repo-config   Ignore .ocra/config.json and its plugins (for untrusted
                      code); models come from OCRA_MODEL_* variables
   -h, --help         Show help
@@ -60,6 +62,14 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
   if (pullRequest) args.pullRequest = pullRequest;
   if (values.output !== undefined) args.output = values.output;
   if (values["no-repo-config"]) args.ignoreRepoConfig = true;
+  if (values["max-cost-usd"] !== undefined) {
+    const max = Number(values["max-cost-usd"]);
+    if (!(max > 0))
+      throw new UsageError(
+        `--max-cost-usd must be a positive number, got ${values["max-cost-usd"]}`,
+      );
+    args.maxCostUsd = max;
+  }
   if (values.reviewers !== undefined) {
     const ids = values.reviewers
       .split(",")
@@ -84,6 +94,7 @@ function parse(argv: string[]) {
       output: { type: "string" },
       "no-repo-config": { type: "boolean" },
       reviewers: { type: "string" },
+      "max-cost-usd": { type: "string" },
       pr: { type: "string" },
       repo: { type: "string" },
       publish: { type: "boolean" },

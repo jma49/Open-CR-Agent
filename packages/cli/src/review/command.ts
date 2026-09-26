@@ -26,7 +26,7 @@ import { forTerminal } from "./terminal.js";
 
 export const SESSIONS_DIR = ".ocra/sessions";
 
-export const EXIT = { ok: 0, blocking: 1, error: 2 } as const;
+export const EXIT = { ok: 0, blocking: 1, error: 2, incomplete: 3, interrupted: 130 } as const;
 
 export const BUILTIN_PLUGINS: readonly OcraPlugin[] = [
   localGitPlugin,
@@ -47,6 +47,8 @@ export interface ReviewDeps {
   heartbeatMs: number;
   // Only tests replace it, to fake the GitHub API.
   fetch?: typeof fetch;
+  // Calls the handler on Ctrl-C or SIGTERM; returns a function that stops listening.
+  onInterrupt?(handler: () => void): () => void;
 }
 
 export async function reviewCommand(
@@ -76,11 +78,20 @@ export async function reviewCommand(
   );
 
   const progress = new ProgressPrinter(io.err, { heartbeatMs: deps.heartbeatMs, now: deps.now });
+  const interrupt = new AbortController();
+  const stopListening = deps.onInterrupt?.(() => {
+    io.err.write(
+      "[ocra] Interrupted: stopping and writing a partial report (Ctrl-C again quits now)\n",
+    );
+    interrupt.abort();
+  });
   let report: ReviewReport;
   try {
     report = await runReview({
+      signal: interrupt.signal,
       ...runOptions(config),
       reviewerOverrides: overrides,
+      ...(args.maxCostUsd !== undefined ? { maxCostUsd: args.maxCostUsd } : {}),
       ...(target.readTrusted ? { readTrusted: target.readTrusted } : {}),
       vcs,
       runtime,
@@ -92,6 +103,7 @@ export async function reviewCommand(
       },
     });
   } finally {
+    stopListening?.();
     progress.stop();
     await runtime.dispose?.();
   }
@@ -104,6 +116,7 @@ export async function reviewCommand(
     await deps.writeFile(resolve(deps.cwd, args.output), rendered);
     io.err.write(`[ocra] Wrote ${args.output}\n`);
   }
+  if (interrupt.signal.aborted) return EXIT.interrupted;
   if (target.publish) {
     await vcs.publish(report);
     io.err.write("[ocra] Published the review to the pull request\n");
@@ -120,6 +133,7 @@ function runOptions(config: CliConfig): Omit<ReviewOptions, "vcs" | "runtime"> {
     options.taskTimeoutMs = config.taskTimeoutMinutes * 60_000;
   if (config.verify !== undefined) options.verify = config.verify;
   if (config.judge !== undefined) options.judge = config.judge;
+  if (config.maxCostUsd !== undefined) options.maxCostUsd = config.maxCostUsd;
   if (config.runTimeoutMinutes !== undefined)
     options.runTimeoutMs = config.runTimeoutMinutes * 60_000;
   return options;
@@ -150,5 +164,6 @@ function exitCode(report: ReviewReport, err: Output): number {
     err.write("[ocra] No review task completed; see the errors above.\n");
     return EXIT.error;
   }
-  return report.verdict === "significant_concerns" ? EXIT.blocking : EXIT.ok;
+  if (report.verdict === "significant_concerns") return EXIT.blocking;
+  return report.tasks.some((t) => t.status !== "completed") ? EXIT.incomplete : EXIT.ok;
 }

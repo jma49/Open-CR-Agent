@@ -21,6 +21,7 @@ const configSchema = z
     runTimeoutMinutes: z.number().positive().optional(),
     verify: z.boolean().optional(),
     judge: z.boolean().optional(),
+    maxCostUsd: z.number().positive().optional(),
     github: z
       .object({ requestChanges: z.boolean(), botLogin: z.string().min(1) })
       .partial()

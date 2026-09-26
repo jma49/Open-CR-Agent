@@ -26,6 +26,20 @@ export function defaultDeps(): ReviewDeps {
     writeFile: (path, content) => writeFile(path, content, "utf8"),
     now: Date.now,
     heartbeatMs: 30_000,
+    onInterrupt(handler) {
+      let signals = 0;
+      const listener = () => {
+        signals += 1;
+        if (signals > 1) process.exit(EXIT.interrupted);
+        handler();
+      };
+      process.on("SIGINT", listener);
+      process.on("SIGTERM", listener);
+      return () => {
+        process.off("SIGINT", listener);
+        process.off("SIGTERM", listener);
+      };
+    },
   };
 }
 
