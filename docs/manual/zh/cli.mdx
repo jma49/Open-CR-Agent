@@ -55,7 +55,7 @@ ocra review [options]
 
 ### 会话记录
 
-每次运行都会写入 `.ocra/sessions/<id>/events.jsonl`（运行过程中逐行追加事件）和 `report.json`。建议把 `.ocra/sessions/` 加进 `.gitignore`。
+每次运行都会写入 `.ocra/sessions/<id>/events.jsonl`（运行过程中逐行追加事件）和 `report.json`。这个目录自带 `.gitignore`，日志既不会被提交，也不会在下一次审查时被当成改动。
 
 ## ocra --version
 

@@ -15,6 +15,8 @@ Traps we have already fallen into, across this repository and the site. Each ent
 
 ## Models and providers
 
+- **A missing provider key looks like a missing model.** Without its key OpenCode does not load the provider and answers `ProviderModelNotFoundError: Model not found: google/…` (surfaced to us as `UnknownError`). Check the key first; OpenCode's own log (`--print-logs`) shows the real error.
+
 - **`gemini-3.8-flash` fails inside OpenCode's step loop** with 400 "Requests ending with a model turn are not supported", even without overload. Treat every model error except credential errors as retryable on the next model.
 - **Provider overload (503) is the normal case, not an edge case.** OpenCode retries ~4 times internally and then fails the turn; a failback chain is required.
 - **Unbounded agent loops are the biggest cost risk.** Each step resends the whole conversation; one run spent 127k input tokens over 271 s. Agent steps are capped at 20; keep a cap on anything that loops over a model.
@@ -22,6 +24,8 @@ Traps we have already fallen into, across this repository and the site. Each ent
 - **Reasoning tokens can exceed output tokens.** Always report them separately, and budget for them.
 
 ## Git and diffs
+
+- **ocra's own output is an untracked change.** The session log was created before the diff was read, so workspace reviews reviewed `.ocra/sessions/**/events.jsonl`. The sessions directory now carries a `.gitignore` with `*`; anything else ocra writes into a repository needs the same.
 
 - **git may close stdin before we finish writing.** Writing input to a git process that already exited raises `EPIPE`; ignore `EPIPE` and trust the exit code (`vcs-local/src/git.ts`).
 - **User git configuration changes diff output.** `diff.noprefix`, `diff.mnemonicPrefix`, `diff.relative`, external diff drivers and textconv all break parsing. Always pass the explicit flags in `DIFF_ARGS` (`--src-prefix=a/ --dst-prefix=b/ --no-ext-diff --no-textconv --no-relative -c core.quotepath=true`).

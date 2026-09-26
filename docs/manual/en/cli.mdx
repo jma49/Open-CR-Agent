@@ -55,7 +55,7 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...` so a lo
 
 ### Sessions
 
-Every run writes `.ocra/sessions/<id>/events.jsonl` (one event per line, appended as the run progresses) and `report.json`. Add `.ocra/sessions/` to your `.gitignore`.
+Every run writes `.ocra/sessions/<id>/events.jsonl` (one event per line, appended as the run progresses) and `report.json`. The directory carries its own `.gitignore`, so logs are never committed and never show up as changes in the next review.
 
 ## ocra --version
 
