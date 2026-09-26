@@ -1,6 +1,7 @@
 import type { Usage } from "../contracts.js";
 import type { ChangeRequest, Finding, PriorFinding, RiskTier, Verdict } from "../domain.js";
 import type { JudgeDecisions } from "../judge/judge.js";
+import type { MemoryEntry } from "../memory/memory.js";
 import type { ExclusionReason } from "../select/select.js";
 import type { RefutedFinding } from "../verify/verify.js";
 import type { SkippedCell } from "./matrix.js";
@@ -33,6 +34,8 @@ export interface ReviewReport {
   skipped: SkippedCell[];
   findings: Finding[];
   refuted: RefutedFinding[];
+  // Findings the repository's memory marks as accepted.
+  remembered: MemoryEntry[];
   // What the judge merged, dropped or recalibrated; absent when it did not run.
   judgement?: JudgeDecisions;
   // Compared with the previous review of the same change, when there was one.

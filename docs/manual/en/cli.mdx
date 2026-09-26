@@ -68,3 +68,15 @@ Every run writes `.ocra/sessions/<id>/events.jsonl` (one event per line, appende
 ## ocra --version
 
 Prints the version.
+
+## ocra memory
+
+Some findings are correct but accepted: the risk is handled elsewhere, or the team decided to live with it. Remember them so ocra stops reporting them:
+
+```bash
+ocra review                                  # every finding shows an id, such as #1a2b3c4d
+ocra memory add 1a2b3c4d --reason "Retries are capped by the gateway."
+ocra memory list
+```
+
+Entries go to `.ocra/memory.json`; commit the file to share them. A remembered finding (same category, file and quoted code) is left out of the report and counted instead, and reviewers see the accepted findings for the files they review so they do not raise them again. For pull requests the file is read from the base commit, so a pull request cannot silence its own findings.

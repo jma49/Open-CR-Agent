@@ -84,6 +84,12 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
       );
     }
   }
+  if (report.remembered.length > 0) {
+    lines.push(
+      "",
+      `${report.remembered.length} finding(s) matched \`.ocra/memory.json\` and are not repeated.`,
+    );
+  }
   const rereview = report.rereview;
   if (rereview && rereview.fixed.length > 0) {
     lines.push("", "### Fixed since the last review");

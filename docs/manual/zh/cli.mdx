@@ -68,3 +68,15 @@ ocra review [options]
 ## ocra --version
 
 打印版本号。
+
+## ocra memory
+
+有些问题本身没错，但已被接受：风险在别处处理了，或者团队决定接受它。把它们记下来，ocra 就不会再报告：
+
+```bash
+ocra review                                  # 每条问题都会显示一个 id，例如 #1a2b3c4d
+ocra memory add 1a2b3c4d --reason "重试次数由网关限制。"
+ocra memory list
+```
+
+条目写入 `.ocra/memory.json`，提交这个文件即可与团队共享。被记住的问题（类别、文件和引用的代码都相同）不会出现在报告里，只会计数；审查员也会看到自己所审文件里已被接受的问题，不会再提。审查 PR 时，这个文件从 base 提交读取，因此 PR 无法借此压掉针对自己的问题。

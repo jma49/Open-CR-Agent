@@ -36,6 +36,11 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
       `Verification dropped ${refuted.length} finding(s) the code disproves (see the JSON report).`,
     );
   }
+  if (report.remembered.length > 0) {
+    lines.push(
+      `${report.remembered.length} finding(s) matched the repository's memory and were not reported.`,
+    );
+  }
   const rereview = report.rereview;
   if (rereview) {
     lines.push(
@@ -85,7 +90,7 @@ function renderFinding(finding: Finding): string[] {
   const indent = " ".repeat(4);
   const confidence = finding.lowConfidence ? " (low confidence)" : "";
   const lines = [
-    `  ${finding.severity.padEnd(10)} ${location.padEnd(9)} ${finding.title}${confidence}`,
+    `  ${finding.severity.padEnd(10)} ${location.padEnd(9)} ${finding.title}${confidence} #${finding.fingerprint.slice(0, 8)}`,
   ];
   lines.push(...indented(finding.body, indent));
   if (finding.suggestion) lines.push(...indented(`Suggestion: ${finding.suggestion}`, indent));

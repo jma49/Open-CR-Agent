@@ -1,6 +1,7 @@
 import { type Bundle, bundleFiles, defaultBundlePolicy } from "../bundle/bundle.js";
 import type { ReviewContext, Usage } from "../contracts.js";
 import type { ChangeRequest, FileDiff, RiskTier } from "../domain.js";
+import { MEMORY_PATH, type MemoryEntry, parseMemory } from "../memory/memory.js";
 import { parseRepoRules, REPO_RULES_PATH, type RepoRule } from "../rules/repo-rules.js";
 import { defaultSelectionPolicy, type FileDecision, selectFiles } from "../select/select.js";
 import { triage } from "../triage.js";
@@ -21,6 +22,7 @@ export interface ReviewPlan {
   context: ReviewContext;
   guidelines: string | undefined;
   repoRules: RepoRule[];
+  memory: MemoryEntry[];
   usage: Usage[];
   warnings: string[];
 }
@@ -46,9 +48,10 @@ export async function planReview(
     tier,
   });
 
-  const [guidelines, fileRules] = await Promise.all([
+  const [guidelines, fileRules, memoryText] = await Promise.all([
     readTrusted(GUIDELINES_PATH),
     loadRepoRules(readTrusted),
+    readTrusted(MEMORY_PATH),
   ]);
   const usage: Usage[] = [];
   const grouper = options.grouper ?? runtimeGrouper(options.runtime, signal, (u) => usage.push(u));
@@ -69,6 +72,7 @@ export async function planReview(
     context: reviewContext(vcs, diffs),
     guidelines,
     repoRules: [...(options.rules ?? []), ...fileRules],
+    memory: memoryText === undefined ? [] : parseMemory(memoryText),
     usage,
     warnings: bundled.warnings,
   };

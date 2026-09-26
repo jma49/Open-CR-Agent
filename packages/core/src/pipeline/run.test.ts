@@ -225,6 +225,36 @@ describe("runReview", () => {
     expect(report.findings).toHaveLength(1);
   });
 
+  it("stays quiet about findings in the repository's memory and tells reviewers", async () => {
+    const rt = runtime(async function* (spec) {
+      yield { type: "finding", taskId: spec.taskId, finding: finding("src/a.ts", "const a = 1;") };
+      yield { type: "done", taskId: spec.taskId };
+    });
+    const first = await runReview({
+      vcs: vcs({}, twoFiles),
+      runtime: rt,
+      verify: false,
+      judge: false,
+    });
+    const entry = {
+      fingerprint: first.findings[0]?.fingerprint ?? "",
+      file: "src/a.ts",
+      title: "t",
+      reason: "known and accepted",
+    };
+    const memory = JSON.stringify({ accepted: [entry] });
+    const second = await runReview({
+      vcs: vcs({}, twoFiles),
+      runtime: rt,
+      verify: false,
+      judge: false,
+      readTrusted: async (p) => (p === ".ocra/memory.json" ? memory : undefined),
+    });
+    expect(second.findings).toEqual([]);
+    expect(second.remembered).toEqual([entry]);
+    expect(rt.specs.at(-1)?.userPrompt).toContain("- src/a.ts: t (accepted: known and accepted)");
+  });
+
   it("stops starting tasks once the spend limit is reached", async () => {
     const diff = ["a", "b", "c"].map((n) => patch(`src/${n}.ts`, `const ${n} = 1;`)).join("\n");
     const rt = runtime(async function* (spec) {

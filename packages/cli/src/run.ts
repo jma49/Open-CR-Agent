@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { errorMessage } from "@open-cr-agent/core";
+import { memoryCommand } from "./memory.js";
 import { parseReviewArgs, REVIEW_USAGE, UsageError } from "./review/args.js";
 import { BUILTIN_PLUGINS, EXIT, type ReviewDeps, reviewCommand } from "./review/command.js";
 import type { Output } from "./review/progress.js";
@@ -12,6 +13,7 @@ const USAGE = `Usage: ocra <command> [options]
 
 Commands:
   review      Review code changes (run "ocra review --help" for options)
+  memory      Remember findings the team accepts (run "ocra memory --help")
 
 Options:
   -h, --help     Show help
@@ -51,6 +53,14 @@ export async function run(
 ): Promise<number> {
   const [command, ...rest] = argv;
   if (command === "review") return review(rest, out, err, deps);
+  if (command === "memory") {
+    try {
+      return await memoryCommand(rest, out, deps.cwd);
+    } catch (error) {
+      err.write(`ocra: ${forTerminal(errorMessage(error))}\n`);
+      return EXIT.error;
+    }
+  }
   if (command !== undefined && !command.startsWith("-")) {
     err.write(`Unknown command: ${command}\n\n${USAGE}`);
     return EXIT.error;

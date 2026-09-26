@@ -117,6 +117,7 @@ function report(
     skipped: [],
     findings,
     refuted: [],
+    remembered: [],
     usage: { inputTokens: 1, outputTokens: 1, reasoningTokens: 0, cachedTokens: 0, costUsd: 0.01 },
     warnings: [],
   };

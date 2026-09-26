@@ -1,6 +1,7 @@
 import { type AnchorContext, anchorFinding } from "../anchor/anchor.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
 import type { Finding } from "../domain.js";
+import { memoryFor } from "../memory/memory.js";
 import { buildReviewPrompt } from "../review/prompt.js";
 import { resolveRules } from "../rules/resolve.js";
 import { toFinding } from "./findings.js";
@@ -39,6 +40,7 @@ export async function runJob(
     bundle: job.bundle.files,
     rules: resolveRules(files, plan.repoRules, job.reviewer.rules),
     guidelines: plan.guidelines,
+    accepted: memoryFor(files, plan.memory),
   });
 
   emit({

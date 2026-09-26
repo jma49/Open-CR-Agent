@@ -5,6 +5,7 @@ import type { AgentRuntime, Usage, VcsAdapter } from "../contracts.js";
 import type { Finding, PriorReview, Severity } from "../domain.js";
 import { errorMessage } from "../errors.js";
 import { judgeFindings } from "../judge/judge.js";
+import { applyMemory } from "../memory/memory.js";
 import { reconcile } from "../rereview/reconcile.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
@@ -116,7 +117,8 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   // Compared with the previous review before judging, so findings a person
   // dismissed neither reach the judge nor count towards the verdict.
   const fileCoverage = coverage(plan.decisions, results);
-  const reconciled = reconcile(verification.kept, prior.review, fileCoverage);
+  const remembered = applyMemory(verification.kept, plan.memory);
+  const reconciled = reconcile(remembered.kept, prior.review, fileCoverage);
 
   const judged = await judgeFindings(reconciled.findings, {
     runtime: options.runtime,
@@ -146,6 +148,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     skipped: matrix.skipped,
     findings: sortFindings(judged.findings),
     refuted: verification.refuted,
+    remembered: remembered.remembered,
     usage: sumUsage([
       ...plan.usage,
       ...results.map((r) => r.usage),

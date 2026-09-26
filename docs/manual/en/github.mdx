@@ -48,7 +48,7 @@ People stay in charge of their pull request. If someone resolves one of ocra's t
 
 ## What the pull request can and cannot change
 
-The pull request is untrusted input. ocra reads `.ocra/config.json`, `.ocra/rules.json` and `AGENTS.md` from the **base** commit, never from the pull request, and never loads repository plugins in this mode. The diff, title and description still reach the reviewers as data, with the protections described in [Security](./security).
+The pull request is untrusted input. ocra reads `.ocra/config.json`, `.ocra/rules.json`, `.ocra/memory.json` and `AGENTS.md` from the **base** commit, never from the pull request, and never loads repository plugins in this mode. The diff, title and description still reach the reviewers as data, with the protections described in [Security](./security).
 
 ## Configuration
 

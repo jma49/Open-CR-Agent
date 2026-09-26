@@ -1,4 +1,5 @@
 import type { ChangeRequest, FileDiff, Hunk } from "../domain.js";
+import type { MemoryEntry } from "../memory/memory.js";
 import type { ReviewerDefinition } from "./reviewer.js";
 import { escapeAttribute, neutralizeTags } from "./sanitize.js";
 import { REVIEW_TOOLS } from "./tools.js";
@@ -12,6 +13,7 @@ export interface ReviewPromptInput {
   bundle: readonly FileDiff[];
   rules: string;
   guidelines?: string | undefined;
+  accepted?: readonly MemoryEntry[];
 }
 
 export interface ReviewPrompt {
@@ -30,6 +32,7 @@ export function buildReviewPrompt(input: ReviewPromptInput): ReviewPrompt {
   if (input.rules.trim()) {
     sections.push(`<review_rules>\n${neutralizeTags(input.rules)}\n</review_rules>`);
   }
+  if (input.accepted && input.accepted.length > 0) sections.push(renderAccepted(input.accepted));
   sections.push(
     `<review_files>\n${input.bundle.map(renderFile).join("\n")}\n</review_files>`,
     `Review every file in <review_files>. Report each confirmed issue with ${REVIEW_TOOLS.reportFinding}, then call ${REVIEW_TOOLS.taskDone}.`,
@@ -52,6 +55,11 @@ function renderChangedFiles(files: readonly FileDiff[]): string {
     return `${f.kind} ${neutralizeTags(path)} (+${f.additions} -${f.deletions})`;
   });
   return `<changed_files>\n${lines.join("\n")}\n</changed_files>`;
+}
+
+function renderAccepted(entries: readonly MemoryEntry[]): string {
+  const lines = entries.map((e) => `- ${e.file}: ${e.title} (accepted: ${e.reason})`);
+  return `<accepted_findings>\nThe team has accepted these; do not report them again.\n${neutralizeTags(lines.join("\n"))}\n</accepted_findings>`;
 }
 
 function renderGuidelines(guidelines: string): string {

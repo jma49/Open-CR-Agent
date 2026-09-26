@@ -48,7 +48,7 @@ PR 仍由人来做主。如果有人 resolve 了 ocra 的评论串，或者明�
 
 ## PR 能改变什么、不能改变什么
 
-PR 是不可信的输入。ocra 从 **base** 提交读取 `.ocra/config.json`、`.ocra/rules.json` 和 `AGENTS.md`，绝不从 PR 里读取，并且在这个模式下从不加载仓库插件。diff、标题和描述仍然会作为数据交给审查员，防护措施见[安全](./security)。
+PR 是不可信的输入。ocra 从 **base** 提交读取 `.ocra/config.json`、`.ocra/rules.json`、`.ocra/memory.json` 和 `AGENTS.md`，绝不从 PR 里读取，并且在这个模式下从不加载仓库插件。diff、标题和描述仍然会作为数据交给审查员，防护措施见[安全](./security)。
 
 ## 配置
 

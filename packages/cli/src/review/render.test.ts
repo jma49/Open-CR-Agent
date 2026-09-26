@@ -5,7 +5,7 @@ import { renderJson, renderText } from "./render.js";
 function finding(overrides: Partial<Finding>): Finding {
   return {
     id: "id",
-    fingerprint: "fp",
+    fingerprint: "0123456789abcdef",
     reviewer: "correctness",
     category: "correctness",
     severity: "warning",
@@ -38,6 +38,7 @@ const base: ReviewReport = {
   bundles: [],
   skipped: [],
   refuted: [],
+  remembered: [],
   tasks: [
     {
       taskId: "correctness-1",
@@ -81,16 +82,16 @@ describe("renderText", () => {
         "  Fix the guard first.",
         "",
         "src/a.ts",
-        "  critical   L3-5      Title",
+        "  critical   L3-5      Title #01234567",
         "    Body line 1",
         "    Body line 2",
         "    Suggestion: Guard it.",
         "",
         "src/b.ts",
-        "  warning    L7        Title",
+        "  warning    L7        Title #01234567",
         "    Body line 1",
         "    Body line 2",
-        "  warning    file      File-level",
+        "  warning    file      File-level #01234567",
         "    Body line 1",
         "    Body line 2",
         "",
