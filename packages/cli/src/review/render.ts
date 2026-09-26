@@ -1,4 +1,5 @@
 import type { Finding, ReviewReport, Severity } from "@open-cr-agent/core";
+import { forTerminal } from "./terminal.js";
 
 const SEVERITIES: Severity[] = ["critical", "warning", "suggestion"];
 
@@ -28,7 +29,7 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
   }
   for (const warning of report.warnings) lines.push(`Warning: ${warning}`);
   if (sessionDir) lines.push(`Session: ${sessionDir}`);
-  return `${lines.join("\n")}\n`;
+  return forTerminal(`${lines.join("\n")}\n`);
 }
 
 function emptyMessage(tasks: number, incomplete: number): string {
