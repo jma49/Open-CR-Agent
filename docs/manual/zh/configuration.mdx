@@ -16,6 +16,7 @@ ocra 从被审查仓库根目录的 `.ocra/config.json` 读取配置。所有字
   "taskTimeoutMinutes": 10,
   "runTimeoutMinutes": 25,
   "verify": true,
+  "judge": true,
   "include": [],
   "exclude": ["legacy/**"],
   "runtime": "opencode",
@@ -33,7 +34,7 @@ ocra 从被审查仓库根目录的 `.ocra/config.json` 读取配置。所有字
 |---|---|
 | `standard` | 审查员 agent |
 | `light` | 辅助调用，比如给改动文件分组 |
-| `top` | 预留给最终裁决（M2） |
+| `top` | Judge（最终裁决） |
 
 模型过载、额度用完或拒绝请求时，任务会换到链上的下一个模型重试。同一次运行里失败两次的模型，之后会被直接跳过。凭证错误会立即停止，因为同一供应商的其他模型也会失败。
 
@@ -60,6 +61,7 @@ agent 运行时只会从你的环境里拿到它需要的东西：`PATH`、`HOME
 | `concurrency` | `4` | 同时运行的审查任务数（1–32） |
 | `taskTimeoutMinutes` | `10` | 单个审查任务的时间上限 |
 | `runTimeoutMinutes` | `25` | 整次运行的时间上限 |
+| `judge` | `true` | 跨审查员合并、过滤并校准问题（每次有问题的运行调用一次 top 档位模型） |
 | `verify` | `true` | 报告前逐条核查问题（每个有问题的文件调用一次 standard 档位模型） |
 
 某个任务失败或超时不会导致整次运行失败，它负责的文件会被标记为 `failed`。

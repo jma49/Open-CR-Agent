@@ -46,13 +46,13 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...` so a lo
 
 | Code | Meaning |
 |---|---|
-| `0` | Review finished without critical findings |
-| `1` | At least one critical finding |
+| `0` | Review finished; verdict `approved`, `approved_with_comments` or `minor_issues` |
+| `1` | Verdict `significant_concerns` (at least one critical finding) |
 | `2` | Usage, Git or configuration error, or no review task completed |
 
 ### JSON output
 
-`--format json` prints the full report: the change request, risk tier, coverage for every changed file (reviewed, failed, unreviewed, or excluded with a reason), bundles, task outcomes, reviewer/bundle pairs the matrix skipped, findings verification dropped (`refuted`, with the reason), findings with their resolved line ranges, token usage and cost, and warnings.
+`--format json` prints the full report: the change request, risk tier, verdict and summary, coverage for every changed file (reviewed, failed, unreviewed, or excluded with a reason), bundles, task outcomes, reviewer/bundle pairs the matrix skipped, findings verification dropped (`refuted`, with the reason), what the judge merged, dropped or recalibrated (`judgement`), findings with their resolved line ranges, token usage and cost, and warnings.
 
 ### Sessions
 

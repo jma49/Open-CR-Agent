@@ -29,6 +29,8 @@ const base: ReviewReport = {
     headSha: "h",
   },
   tier: "lite",
+  verdict: "approved",
+  summary: "No issues found.",
   coverage: [
     { path: "src/a.ts", status: "reviewed" },
     { path: "yarn.lock", status: "excluded", reason: "generated" },
@@ -68,11 +70,15 @@ describe("renderText", () => {
         finding({ file: "src/b.ts", title: "File-level" }),
       ],
       warnings: ["grouping failed"],
+      verdict: "significant_concerns" as const,
+      summary: "Fix the guard first.",
     };
     expect(renderText(report, ".ocra/sessions/s1")).toBe(
       [
         "Review: Working tree changes",
         "Risk tier: lite · 1 reviewed · 0 failed · 1 excluded",
+        "Verdict: significant concerns",
+        "  Fix the guard first.",
         "",
         "src/a.ts",
         "  critical   L3-5      Title",

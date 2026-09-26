@@ -125,6 +125,7 @@ describe("runReview", () => {
       "task_progress",
       "finding",
       "task_finished",
+      "judge_finished",
       "run_finished",
     ]);
   });
@@ -357,6 +358,7 @@ describe("runReview", () => {
       vcs: vcs({}, twoFiles),
       runtime: rt,
       onEvent: (e) => events.push(e),
+      judge: false,
     });
     expect(report.findings.map((f) => f.title)).toEqual(["real"]);
     expect(report.refuted).toMatchObject([

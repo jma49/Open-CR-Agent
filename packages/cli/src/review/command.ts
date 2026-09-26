@@ -107,6 +107,7 @@ function runOptions(config: CliConfig): Omit<ReviewOptions, "vcs" | "runtime"> {
   if (config.taskTimeoutMinutes !== undefined)
     options.taskTimeoutMs = config.taskTimeoutMinutes * 60_000;
   if (config.verify !== undefined) options.verify = config.verify;
+  if (config.judge !== undefined) options.judge = config.judge;
   if (config.runTimeoutMinutes !== undefined)
     options.runTimeoutMs = config.runTimeoutMinutes * 60_000;
   return options;
@@ -137,5 +138,5 @@ function exitCode(report: ReviewReport, err: Output): number {
     err.write("[ocra] No review task completed; see the errors above.\n");
     return EXIT.error;
   }
-  return report.findings.some((f) => f.severity === "critical") ? EXIT.blocking : EXIT.ok;
+  return report.verdict === "significant_concerns" ? EXIT.blocking : EXIT.ok;
 }

@@ -6,7 +6,7 @@ description: 从 diff 到带行号的审查结果，整条审查流水线。
 ocra 结合了两种经过验证的设计：按领域分工的专项审查员加一个负责协调的裁决者，以及把所有不能出错的步骤交给确定性的工程代码。
 
 ```text
-Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Verify → (Judge) → Report
+Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Verify → Judge → Report
 ```
 
 | 阶段 | 做什么 |
@@ -19,7 +19,20 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Ve
 | **Execute** | 每个计划好的（分组，审查员）组合作为一个隔离的 agent 任务运行，只有只读工具。 |
 | **Anchor** | 把每条问题引用的代码解析成准确的行号。 |
 | **Verify** | 由 standard 档位的模型，对照每个文件的 diff 和问题附近的代码逐条核查。只有当代码能证明某条问题是错的，它才会被丢弃；拿不准的保留，核查失败也保留。被丢弃的问题和原因会写进报告。 |
-| **Judge** | *M2 规划中：* 跨审查员去重并校准严重程度。 |
+| **Judge** | 一次 top 档位的调用看到所有问题：合并不同审查员对同一根因的报告，丢弃臆测和吹毛求疵，校准严重程度，并写一段简短总结。每一项调整都会在报告里附上原因。 |
+
+## 结论（verdict）
+
+结论由一套固定规则根据最终的问题列表决定，而不是由模型决定，因此相同的问题总会得到相同的结论：
+
+| 问题 | 结论 |
+|---|---|
+| 没有问题 | `approved` |
+| 只有 suggestion，或少于三个 warning | `approved_with_comments` |
+| 三个及以上 warning | `minor_issues` |
+| 任何 critical | `significant_concerns` |
+
+如果 Judge 被关闭、没有配置 `top` 模型或调用失败，问题会不经裁决直接报告，结论规则照样适用。
 
 ## 审查员与工具
 

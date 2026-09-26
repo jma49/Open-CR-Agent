@@ -8,9 +8,17 @@ export function renderJson(report: ReviewReport): string {
 }
 
 export function renderText(report: ReviewReport, sessionDir?: string): string {
-  const lines: string[] = [`Review: ${report.changeRequest.title}`, coverageLine(report), ""];
-
   const incomplete = report.tasks.filter((t) => t.status !== "completed");
+  const nothingReviewed = report.tasks.length > 0 && incomplete.length === report.tasks.length;
+  const lines: string[] = [
+    `Review: ${report.changeRequest.title}`,
+    coverageLine(report),
+    ...(nothingReviewed
+      ? ["Verdict: not reached (no review task completed)"]
+      : [`Verdict: ${report.verdict.replaceAll("_", " ")}`, ...indented(report.summary, "  ")]),
+    "",
+  ];
+
   if (report.findings.length === 0) {
     lines.push(emptyMessage(report.tasks.length, incomplete.length), "");
   } else {
@@ -26,6 +34,12 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
   if (refuted.length > 0) {
     lines.push(
       `Verification dropped ${refuted.length} finding(s) the code disproves (see the JSON report).`,
+    );
+  }
+  const judged = report.judgement;
+  if (judged && judged.merged.length + judged.dropped.length > 0) {
+    lines.push(
+      `Judge merged ${judged.merged.length} duplicate group(s) and dropped ${judged.dropped.length} finding(s) (see the JSON report).`,
     );
   }
   if (incomplete.length > 0) {

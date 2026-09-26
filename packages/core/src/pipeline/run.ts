@@ -3,6 +3,7 @@ import type { BundlePolicy } from "../bundle/bundle.js";
 import type { FileGrouper } from "../bundle/grouping.js";
 import type { AgentRuntime, Usage, VcsAdapter } from "../contracts.js";
 import type { Finding, Severity } from "../domain.js";
+import { judgeFindings } from "../judge/judge.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import type { RepoRule } from "../rules/repo-rules.js";
@@ -33,6 +34,8 @@ export interface ReviewOptions {
   runTimeoutMs?: number;
   // Fact-check findings before reporting them (default true).
   verify?: boolean;
+  // Merge, filter and recalibrate findings across reviewers on the top tier (default true).
+  judge?: boolean;
   signal?: AbortSignal;
   onEvent?: (event: ReviewEvent) => void;
 }
@@ -84,18 +87,47 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     });
   }
 
+  const judged = await judgeFindings(verification.kept, {
+    runtime: options.runtime,
+    changeRequest: plan.changeRequest,
+    tier: plan.tier,
+    signal,
+    enabled: options.judge !== false,
+  });
+  emit(
+    judged.decisions
+      ? { type: "judge_finished", verdict: judged.verdict, judgement: judged.decisions }
+      : { type: "judge_finished", verdict: judged.verdict },
+  );
+
   const report: ReviewReport = {
     changeRequest: plan.changeRequest,
     tier: plan.tier,
+    verdict: judged.verdict,
+    summary:
+      results.length > 0 && results.every((r) => r.outcome.status !== "completed")
+        ? "Nothing was reviewed: no review task completed."
+        : judged.summary,
     coverage: coverage(plan.decisions, results),
     bundles: plan.bundles.map((b) => ({ label: b.label, files: b.files.map((f) => f.newPath) })),
     tasks: results.map((r) => r.outcome),
     skipped: matrix.skipped,
-    findings: sortFindings(verification.kept),
+    findings: sortFindings(judged.findings),
     refuted: verification.refuted,
-    usage: sumUsage([...plan.usage, ...results.map((r) => r.usage), ...verification.usage]),
-    warnings: [...plan.warnings, ...results.flatMap((r) => r.warnings), ...verification.warnings],
+    usage: sumUsage([
+      ...plan.usage,
+      ...results.map((r) => r.usage),
+      ...verification.usage,
+      ...judged.usage,
+    ]),
+    warnings: [
+      ...plan.warnings,
+      ...results.flatMap((r) => r.warnings),
+      ...verification.warnings,
+      ...judged.warnings,
+    ],
   };
+  if (judged.decisions) report.judgement = judged.decisions;
   emit({ type: "run_finished", report });
   return report;
 }

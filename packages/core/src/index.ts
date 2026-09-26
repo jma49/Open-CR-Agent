@@ -4,6 +4,7 @@ export * from "./contracts.js";
 export * from "./diff/index.js";
 export * from "./domain.js";
 export * from "./errors.js";
+export * from "./judge/index.js";
 export * from "./pipeline/index.js";
 export * from "./plugin/index.js";
 export * from "./review/index.js";

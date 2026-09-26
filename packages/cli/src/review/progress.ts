@@ -61,6 +61,13 @@ function describe(event: ReviewEvent): string | undefined {
     }
     case "verification_finished":
       return `Verified ${event.checked} finding(s)${event.refuted.length > 0 ? `, dropped ${event.refuted.length} that the code disproves` : ""}`;
+    case "judge_finished": {
+      const j = event.judgement;
+      const changes = j
+        ? ` (merged ${j.merged.length}, dropped ${j.dropped.length}, recalibrated ${j.recalibrated.length})`
+        : "";
+      return `Verdict: ${event.verdict.replaceAll("_", " ")}${changes}`;
+    }
     case "task_progress":
       return `${event.taskId} ${event.message}`;
     case "task_started":
