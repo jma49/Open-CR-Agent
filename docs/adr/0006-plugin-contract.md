@@ -19,7 +19,7 @@ An `OcraPlugin` has a `name`, an optional Zod `settingsSchema`, and three option
 
 Plugins contribute only through `ConfigureContext`: `registerVcs`, `registerRuntime`, `registerReviewer`, `registerRules`, `registerTool`, `onEvent`. Each receives only its own validated settings section. The registry rejects duplicate plugin names, duplicate registrations (naming both owners), reserved tool names (`read_file`, `report_finding`, …) and any registration after the configure phase.
 
-Built-in plugins: `vcs-local`, `vcs-github`, `runtime-opencode`, `reviewer-correctness`, `session-jsonl`. The CLI is a host: it finds the repository root, loads `.ocra/config.json`, loads extra plugins listed in `plugins`, starts the lifecycle, then creates the VCS and runtime by name and runs the pipeline with the registered reviewers, rules and event listeners.
+Built-in plugins: `vcs-local`, `vcs-github`, `runtime-opencode`, `reviewer-correctness`, `reviewer-security`, `reviewer-performance`, `session-jsonl` (the reviewers and `vcs-github` were added with M2 and M3). The CLI is a host: it finds the repository root, loads `.ocra/config.json`, loads extra plugins listed in `plugins`, starts the lifecycle, then creates the VCS and runtime by name and runs the pipeline with the registered reviewers, rules and event listeners.
 
 External plugins are npm packages resolved from the repository's own dependencies, or paths inside the repository, exporting an `OcraPlugin` as `default` or `plugin`. Their settings come from `pluginSettings.<name>`.
 

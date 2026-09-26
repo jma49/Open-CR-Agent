@@ -27,7 +27,9 @@ export function buildReviewPrompt(input: ReviewPromptInput): ReviewPrompt {
     renderChangedFiles(input.changedFiles),
   ];
   if (input.guidelines?.trim()) sections.push(renderGuidelines(input.guidelines));
-  if (input.rules.trim()) sections.push(`<review_rules>\n${input.rules}\n</review_rules>`);
+  if (input.rules.trim()) {
+    sections.push(`<review_rules>\n${neutralizeTags(input.rules)}\n</review_rules>`);
+  }
   sections.push(
     `<review_files>\n${input.bundle.map(renderFile).join("\n")}\n</review_files>`,
     `Review every file in <review_files>. Report each confirmed issue with ${REVIEW_TOOLS.reportFinding}, then call ${REVIEW_TOOLS.taskDone}.`,
