@@ -1,5 +1,6 @@
-import { readFile, realpath } from "node:fs/promises";
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { copyFile, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
   type ChangeRequest,
   type CodeMatch,
@@ -32,9 +33,13 @@ const SEARCH_RESULT_LIMIT = 100;
 
 // Explicit prefixes and flags keep the output parseable whatever the user's
 // diff configuration (noprefix, mnemonicPrefix, external drivers, relative).
+// Files over the threshold diff as binary, so one generated or vendored
+// monster cannot fill memory before selection excludes it.
 const DIFF_ARGS = [
   "-c",
   "core.quotepath=true",
+  "-c",
+  "core.bigFileThreshold=1m",
   "diff",
   "--no-color",
   "--no-ext-diff",
@@ -64,9 +69,7 @@ export class LocalGitAdapter implements VcsAdapter {
     if (head !== undefined) {
       return parseUnifiedDiff(await git([...DIFF_ARGS, base, head, "--"], { cwd: root }));
     }
-    const tracked = await git([...DIFF_ARGS, base, "--"], { cwd: root });
-    const untracked = await this.untrackedDiffs(root);
-    return parseUnifiedDiff(tracked + untracked);
+    return parseUnifiedDiff(await workspaceDiff(root, base));
   }
 
   async readFile(path: string): Promise<string | undefined> {
@@ -154,18 +157,32 @@ export class LocalGitAdapter implements VcsAdapter {
       request: request(head, title, body.join("\n").trim(), base, head),
     };
   }
+}
 
-  private async untrackedDiffs(root: string): Promise<string> {
-    const listing = await git(["ls-files", "--others", "--exclude-standard", "-z"], { cwd: root });
-    const paths = listing.split("\0").filter((p) => p !== "");
-    let text = "";
-    for (const path of paths) {
-      text += await git([...DIFF_ARGS, "--no-index", "--", "/dev/null", path], {
-        cwd: root,
-        okExitCodes: [0, 1],
-      });
-    }
-    return text;
+// Untracked files join the diff through intent-to-add entries in a throwaway
+// copy of the index: one git process for any number of files, and the
+// user's real index is never touched.
+async function workspaceDiff(root: string, base: string): Promise<string> {
+  const listing = await git(["ls-files", "--others", "--exclude-standard", "-z"], { cwd: root });
+  const untracked = listing.split("\0").filter((p) => p !== "");
+  if (untracked.length === 0) return git([...DIFF_ARGS, base, "--"], { cwd: root });
+
+  const dir = await mkdtemp(join(tmpdir(), "ocra-index-"));
+  try {
+    const index = join(dir, "index");
+    const realIndex = (await git(["rev-parse", "--git-path", "index"], { cwd: root })).trim();
+    await copyFile(resolve(root, realIndex), index).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== "ENOENT") throw error;
+    });
+    const env = { GIT_INDEX_FILE: index, GIT_LITERAL_PATHSPECS: "1" };
+    await git(["add", "--intent-to-add", "--pathspec-from-file=-", "--pathspec-file-nul"], {
+      cwd: root,
+      env,
+      input: untracked.join("\0"),
+    });
+    return await git([...DIFF_ARGS, base, "--"], { cwd: root, env });
+  } finally {
+    await rm(dir, { recursive: true, force: true });
   }
 }
 

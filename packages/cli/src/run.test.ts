@@ -194,7 +194,7 @@ describe("ocra review", () => {
       yield { type: "done", taskId: spec.taskId };
     };
     expect(await run(["review"], capture(), capture(), deps(cwd, recordPrompts))).toBe(0);
-    expect(prompts[0]).toContain("Retries must be positive (platform).");
+    expect(prompts.some((p) => p.includes("Retries must be positive (platform)."))).toBe(true);
   });
 
   it("never imports repository plugins with --no-repo-config", async () => {

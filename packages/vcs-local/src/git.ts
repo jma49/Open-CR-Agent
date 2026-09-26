@@ -4,6 +4,7 @@ export interface GitOptions {
   cwd: string;
   input?: string;
   okExitCodes?: readonly number[];
+  env?: Readonly<Record<string, string>>;
 }
 
 export class GitError extends Error {
@@ -28,7 +29,7 @@ export function git(args: readonly string[], options: GitOptions): Promise<strin
         cwd: options.cwd,
         encoding: "utf8",
         maxBuffer: MAX_OUTPUT_BYTES,
-        env: { ...process.env, LC_ALL: "C", GIT_OPTIONAL_LOCKS: "0" },
+        env: { ...process.env, LC_ALL: "C", GIT_OPTIONAL_LOCKS: "0", ...options.env },
       },
       (error, stdout, stderr) => {
         const exitCode = error ? (typeof error.code === "number" ? error.code : undefined) : 0;
