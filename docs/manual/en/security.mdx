@@ -17,6 +17,7 @@ Nothing else is added: ocra starts its agent runtime with your global OpenCode c
 - Review tools are served from ocra's own process on `127.0.0.1`, protected by a random bearer token.
 - All built-in agent tools (shell, file editing, web access) are disabled; reviewers can only read the revision under review.
 - Paths requested by a model are confined to the repository, including through symlinks.
+- Reviewers cannot read, diff or search likely secret files (`.env`, keys, certificates, cloud and registry credentials, `*.tfvars`) or anything under `.git/`, even when the file exists on disk or a prompt asks for it. The same patterns keep those files out of review.
 
 ## Untrusted input
 
@@ -24,7 +25,7 @@ Pull request text, diffs and repository files are treated as data. Instructions 
 
 ## Keys
 
-Provider keys are read from environment variables only and never written to configuration, logs or session files.
+Provider keys are read from environment variables only and never written to configuration, logs or session files. Secret files in the repository are unreadable to reviewers (see Isolation), so their contents cannot end up in prompts, reports or session files either.
 
 ## CI
 

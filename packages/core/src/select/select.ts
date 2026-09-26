@@ -39,6 +39,10 @@ const isGenerated = picomatch(GENERATED_PATTERNS, globOptions);
 const isMigration = picomatch(MIGRATION_PATTERNS, globOptions);
 const nonReviewableExtensions = new Set(NON_REVIEWABLE_EXTENSIONS);
 
+export function isSecretPath(path: string): boolean {
+  return isSecret(path);
+}
+
 export function selectFiles(
   diffs: readonly FileDiff[],
   policy: SelectionPolicy = defaultSelectionPolicy,

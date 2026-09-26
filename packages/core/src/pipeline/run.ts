@@ -20,6 +20,7 @@ import {
   selectFiles,
 } from "../select/select.js";
 import { triage } from "../triage.js";
+import { reviewContext } from "./context.js";
 import { dedupeFindings, toFinding } from "./findings.js";
 import { runtimeGrouper } from "./helpers.js";
 import { mapWithConcurrency } from "./pool.js";
@@ -109,11 +110,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     warnings: bundled.warnings,
   });
 
-  const context: ReviewContext = {
-    readFile: (path) => vcs.readFile(path),
-    readDiff: (path) => diffs.find((d) => d.newPath === path || d.oldPath === path)?.patch,
-    searchCode: (literal) => vcs.searchCode(literal),
-  };
+  const context = reviewContext(vcs, diffs);
   const state: RunState = {
     options,
     emit,

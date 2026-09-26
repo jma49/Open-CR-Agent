@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { reviewContext } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { LocalGitAdapter, type LocalTarget } from "./local-adapter.js";
 
@@ -224,5 +225,22 @@ describe("LocalGitAdapter.searchCode", () => {
     expect(await adapter.searchCode("--output=x")).toEqual([
       { path: "a.ts", line: 1, text: "--output=x" },
     ]);
+  });
+});
+
+describe("LocalGitAdapter behind the review context", () => {
+  it("does not let agents read an ignored .env or .git/config", async () => {
+    const r = repo();
+    r.write(".gitignore", ".env\n");
+    r.write(".env", "API_KEY=supersecret\n");
+    r.write("a.ts", "a\n");
+    commitAll(r, "init");
+    r.write("a.ts", "b\n");
+    const vcs = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
+    const context = reviewContext(vcs, await vcs.getDiff());
+
+    await expect(context.readFile(".env")).rejects.toThrow("not allowed");
+    await expect(context.readFile(".git/config")).rejects.toThrow("not allowed");
+    await expect(context.readFile("a.ts")).resolves.toBe("b\n");
   });
 });
