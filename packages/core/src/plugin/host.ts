@@ -19,7 +19,7 @@ export async function startPlugins(
   assertUniqueNames(plugins);
   const env = options.env ?? {};
   const warn = options.warn ?? (() => {});
-  const registry = new PluginRegistry(new Set(Object.values(REVIEW_TOOLS)));
+  const registry = new PluginRegistry(new Set(Object.values(REVIEW_TOOLS)), warn);
   const settings = new Map(
     plugins.map((p) => [p.name, parseSettings(p, options.settings?.[p.name])]),
   );

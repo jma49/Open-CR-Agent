@@ -1,4 +1,5 @@
 import type { AgentRuntime, VcsAdapter } from "../contracts.js";
+import { errorMessage } from "../errors.js";
 import type { ReviewEvent } from "../pipeline/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { RepoRule } from "../rules/repo-rules.js";
@@ -23,10 +24,13 @@ export class PluginRegistry {
   private readonly reviewerMap = new Map<string, Owned<ReviewerDefinition>>();
   private readonly toolMap = new Map<string, Owned<ToolDefinition>>();
   private readonly ruleList: RepoRule[] = [];
-  private readonly listeners: ((event: ReviewEvent) => void)[] = [];
+  private readonly listeners: Owned<(event: ReviewEvent) => void>[] = [];
   private frozen = false;
 
-  constructor(private readonly reservedToolNames: ReadonlySet<string>) {}
+  constructor(
+    private readonly reservedToolNames: ReadonlySet<string>,
+    private readonly warn: (message: string) => void = () => {},
+  ) {}
 
   registerVcs(owner: string, name: string, factory: VcsFactory): void {
     this.add(this.vcs, "VCS adapter", owner, name, factory);
@@ -56,7 +60,7 @@ export class PluginRegistry {
 
   onEvent(owner: string, listener: (event: ReviewEvent) => void): void {
     this.assertOpen(owner);
-    this.listeners.push(listener);
+    this.listeners.push({ owner, value: listener });
   }
 
   freeze(): void {
@@ -83,8 +87,20 @@ export class PluginRegistry {
     return [...this.ruleList];
   }
 
+  // A listener observes the run; its failure (a full disk, a bug in a plugin)
+  // must not discard a review already paid for, so it is reported once and
+  // the listener is dropped.
   emit(event: ReviewEvent): void {
-    for (const listener of this.listeners) listener(event);
+    for (const listener of [...this.listeners]) {
+      try {
+        listener.value(event);
+      } catch (error) {
+        this.listeners.splice(this.listeners.indexOf(listener), 1);
+        this.warn(
+          `Plugin "${listener.owner}" event listener failed and was disabled: ${errorMessage(error)}`,
+        );
+      }
+    }
   }
 
   summary(plugins: readonly string[]): PluginSummary {

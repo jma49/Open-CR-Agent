@@ -54,7 +54,7 @@ export default {
 | `registerReviewer(definition)` | 有自己提示词和模型层级的审查员 |
 | `registerRules(rules)` | 按路径生效的审查规则 |
 | `registerTool(tool)` | 审查员可以调用的工具，输入用 Zod schema 定义 |
-| `onEvent(listener)` | 审查过程中每个事件的监听器（遥测、通知） |
+| `onEvent(listener)` | 审查过程中每个事件的监听器（遥测、通知）。监听器抛出异常时会被停用，并给出一次警告，审查继续进行 |
 
 每个插件只能拿到自己的设置（`ctx.settings`），并由可选的 `settingsSchema` 校验。同一个名字重复注册、使用保留的工具名，或在 `configure` 阶段之后再注册，都会报错并指出是哪个插件。
 
