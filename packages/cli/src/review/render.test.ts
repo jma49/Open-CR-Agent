@@ -125,6 +125,23 @@ describe("renderText", () => {
     for (const unsafe of ["\u001b", "\u0007", "\r"]) expect(text).not.toContain(unsafe);
   });
 
+  it("summarizes the comparison with the previous review", () => {
+    const old = {
+      fingerprint: "f",
+      title: "t",
+      file: "a.ts",
+      severity: "warning" as const,
+      commented: true,
+    };
+    const report: ReviewReport = {
+      ...base,
+      rereview: { fixed: [old], dismissed: [old, old], notRechecked: [] },
+    };
+    expect(renderText(report)).toContain(
+      "Since the last review: 1 fixed, 2 dismissed by reviewers, 0 not re-checked.",
+    );
+  });
+
   it("mentions findings that verification dropped", () => {
     const report: ReviewReport = {
       ...base,

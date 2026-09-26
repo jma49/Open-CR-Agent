@@ -102,7 +102,12 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     });
   }
 
-  const judged = await judgeFindings(verification.kept, {
+  // Compared with the previous review before judging, so findings a person
+  // dismissed neither reach the judge nor count towards the verdict.
+  const fileCoverage = coverage(plan.decisions, results);
+  const reconciled = reconcile(verification.kept, prior.review, fileCoverage);
+
+  const judged = await judgeFindings(reconciled.findings, {
     runtime: options.runtime,
     changeRequest: plan.changeRequest,
     tier: plan.tier,
@@ -114,9 +119,6 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
       ? { type: "judge_finished", verdict: judged.verdict, judgement: judged.decisions }
       : { type: "judge_finished", verdict: judged.verdict },
   );
-
-  const fileCoverage = coverage(plan.decisions, results);
-  const reconciled = reconcile(judged.findings, prior.review, fileCoverage);
 
   const report: ReviewReport = {
     changeRequest: plan.changeRequest,
@@ -130,7 +132,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     bundles: plan.bundles.map((b) => ({ label: b.label, files: b.files.map((f) => f.newPath) })),
     tasks: results.map((r) => r.outcome),
     skipped: matrix.skipped,
-    findings: sortFindings(reconciled.findings),
+    findings: sortFindings(judged.findings),
     refuted: verification.refuted,
     usage: sumUsage([
       ...plan.usage,
@@ -147,7 +149,11 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   };
   if (judged.decisions) report.judgement = judged.decisions;
   if (prior.review) {
-    report.rereview = { fixed: reconciled.fixed, notRechecked: reconciled.notRechecked };
+    report.rereview = {
+      fixed: reconciled.fixed,
+      notRechecked: reconciled.notRechecked,
+      dismissed: reconciled.dismissed,
+    };
   }
   if (prior.warning) report.warnings.push(prior.warning);
   emit({ type: "run_finished", report });

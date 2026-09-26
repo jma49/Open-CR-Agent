@@ -8,7 +8,13 @@ import {
   type ReviewReport,
   type VcsAdapter,
 } from "@open-cr-agent/core";
-import { type GitHubApi, GitHubApiError, type IssueComment, type PullRequest } from "./client.js";
+import {
+  type GitHubApi,
+  GitHubApiError,
+  type IssueComment,
+  type PullRequest,
+  type ReviewThread,
+} from "./client.js";
 import { FINDING_MARKER, inlineComment, renderSummary } from "./render.js";
 import { readState, SUMMARY_MARKER } from "./state.js";
 
@@ -33,10 +39,16 @@ export interface GitHubAdapterOptions {
 
 export const DEFAULT_BOT_LOGIN = "github-actions[bot]";
 
+// Replies that decline a finding. Disagreement ("I disagree") is not a
+// dismissal: the finding keeps being reported.
+const DISMISSAL =
+  /\b(won'?t fix|wontfix|not a bug|by design|acknowledged|intended|intentional|false positive)\b/i;
+
 export class GitHubAdapter implements VcsAdapter {
   readonly name = "github";
   private pullRequest: Promise<PullRequest> | undefined;
   private previous: Promise<IssueComment | undefined> | undefined;
+  private reviewThreads: Promise<ReviewThread[]> | undefined;
 
   constructor(private readonly options: GitHubAdapterOptions) {}
 
@@ -67,7 +79,32 @@ export class GitHubAdapter implements VcsAdapter {
   async getPriorReview(): Promise<PriorReview | undefined> {
     const comment = await this.summaryComment();
     const findings = comment ? readState(comment.body) : undefined;
-    return findings ? { findings } : undefined;
+    if (!findings) return undefined;
+    const dismissed = await this.dismissedByPeople(findings);
+    return {
+      findings: findings.map((f) => (dismissed.has(f.fingerprint) ? { ...f, dismissed: true } : f)),
+    };
+  }
+
+  // A thread of ocra's that a person resolved, or answered with a clear
+  // "won't fix", dismisses its finding. Thread data is best effort: without
+  // it, findings are simply not dismissed.
+  private async dismissedByPeople(findings: readonly PriorFinding[]): Promise<Set<string>> {
+    const commented = new Set(findings.filter((f) => f.commented).map((f) => f.fingerprint));
+    if (commented.size === 0) return new Set();
+    const threads = await this.threads().catch(() => []);
+    const dismissed = new Set<string>();
+    for (const thread of threads) {
+      const [first, ...replies] = thread.comments;
+      const fingerprint = first && FINDING_MARKER.exec(first.body)?.[1];
+      if (!first || !fingerprint || !commented.has(fingerprint) || !this.isBot(first.author))
+        continue;
+      const resolvedByPerson =
+        thread.isResolved && thread.resolvedBy !== undefined && !this.isBot(thread.resolvedBy);
+      const declined = replies.some((r) => !this.isBot(r.author) && DISMISSAL.test(r.body));
+      if (resolvedByPerson || declined) dismissed.add(fingerprint);
+    }
+    return dismissed;
   }
 
   async publish(report: ReviewReport): Promise<{ warnings: string[] }> {
@@ -86,6 +123,7 @@ export class GitHubAdapter implements VcsAdapter {
 
     const commented = new Set([...alreadyCommented, ...posted]);
     const current = new Set(report.findings.map((f) => f.fingerprint));
+    const quiet = [...(report.rereview?.notRechecked ?? []), ...(report.rereview?.dismissed ?? [])];
     const state: PriorFinding[] = [
       ...report.findings.map((f) => ({
         fingerprint: f.fingerprint,
@@ -94,7 +132,7 @@ export class GitHubAdapter implements VcsAdapter {
         severity: f.severity,
         commented: commented.has(f.fingerprint),
       })),
-      ...(report.rereview?.notRechecked ?? []).filter((f) => !current.has(f.fingerprint)),
+      ...quiet.filter((f) => !current.has(f.fingerprint)),
     ];
     const body = renderSummary({ report, commented, state });
     if (previous) await this.options.api.updateIssueComment(previous.id, body);
@@ -110,11 +148,11 @@ export class GitHubAdapter implements VcsAdapter {
     );
     if (fixed.size === 0) return [];
     try {
-      const threads = await this.options.api.listReviewThreads(number);
-      for (const thread of threads) {
-        const fingerprint = FINDING_MARKER.exec(thread.body)?.[1];
+      for (const thread of await this.threads()) {
+        const first = thread.comments[0];
+        const fingerprint = first && FINDING_MARKER.exec(first.body)?.[1];
         if (thread.isResolved || !fingerprint || !fixed.has(fingerprint)) continue;
-        if (!this.isBot(thread.author)) continue;
+        if (!this.isBot(first.author)) continue;
         await this.options.api.resolveReviewThread(thread.id);
       }
       return [];
@@ -156,6 +194,11 @@ export class GitHubAdapter implements VcsAdapter {
       if (requestChanges) await this.options.api.createReview(number, { ...review, comments: [] });
       return [];
     }
+  }
+
+  private threads(): Promise<ReviewThread[]> {
+    this.reviewThreads ??= this.options.api.listReviewThreads(this.options.pullRequest.number);
+    return this.reviewThreads;
   }
 
   private pr(): Promise<PullRequest> {

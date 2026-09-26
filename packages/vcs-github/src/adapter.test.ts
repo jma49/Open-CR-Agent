@@ -228,7 +228,7 @@ describe("GitHubAdapter", () => {
     };
     const result = await adapter(fetchImpl).publish({
       ...report([]),
-      rereview: { fixed: [fixed], notRechecked: [] },
+      rereview: { fixed: [fixed], notRechecked: [], dismissed: [] },
     });
 
     const mutations = calls.filter((c) =>
@@ -242,12 +242,56 @@ describe("GitHubAdapter", () => {
     const broken = fakeGitHub([], 200, [], true);
     const failed = await adapter(broken.fetchImpl).publish({
       ...report([]),
-      rereview: { fixed: [fixed], notRechecked: [] },
+      rereview: { fixed: [fixed], notRechecked: [], dismissed: [] },
     });
     expect(failed.warnings[0]).toContain("could not resolve the threads of fixed findings");
     expect(broken.calls.some((c) => c.path === "/issues/7/comments" && c.method === "POST")).toBe(
       true,
     );
+  });
+
+  it("treats findings people resolved or declined as dismissed", async () => {
+    const C = "cccccccccccccccc";
+    const D = "dddddddddddddddd";
+    const state = [A, B, C, D].map((fingerprint) => ({
+      fingerprint,
+      title: "t",
+      file: "src/login.ts",
+      severity: "warning" as const,
+      commented: true,
+    }));
+    const previous = {
+      id: 99,
+      user: { login: "github-actions[bot]", type: "Bot" },
+      body: `${SUMMARY_MARKER}\n${writeState(state)}`,
+    };
+    const thread = (
+      fingerprint: string,
+      starter: string,
+      replies: { author: string; body: string }[],
+      resolvedBy?: string,
+    ) => ({
+      id: `T-${fingerprint}`,
+      isResolved: resolvedBy !== undefined,
+      resolvedBy: resolvedBy ? { login: resolvedBy } : null,
+      comments: {
+        nodes: [
+          { body: `<!-- ocra:finding ${fingerprint} -->\nold`, author: { login: starter } },
+          ...replies.map((r) => ({ body: r.body, author: { login: r.author } })),
+        ],
+      },
+    });
+    const { fetchImpl } = fakeGitHub([previous], 200, [
+      thread(A, "github-actions", [
+        { author: "dev", body: "Won't fix: the limit is enforced upstream." },
+      ]),
+      thread(B, "github-actions", [], "dev"),
+      thread(C, "github-actions", [{ author: "dev", body: "I disagree, this can happen." }]),
+      thread(D, "mallory", [{ author: "mallory", body: "won't fix" }]),
+    ]);
+
+    const prior = await adapter(fetchImpl).getPriorReview();
+    expect(prior?.findings.filter((f) => f.dismissed).map((f) => f.fingerprint)).toEqual([A, B]);
   });
 
   it("ignores state it cannot trust", () => {

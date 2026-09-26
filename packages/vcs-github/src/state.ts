@@ -16,6 +16,7 @@ const stateSchema = z.object({
         file: z.string().max(1_000),
         severity: severitySchema,
         commented: z.boolean(),
+        dismissed: z.boolean().optional(),
       }),
     )
     .max(MAX_STATE_FINDINGS),
@@ -30,7 +31,10 @@ export function readState(body: string): PriorFinding[] | undefined {
     const parsed = stateSchema.safeParse(
       JSON.parse(Buffer.from(encoded, "base64").toString("utf8")),
     );
-    return parsed.success ? parsed.data.findings : undefined;
+    if (!parsed.success) return undefined;
+    return parsed.data.findings.map(({ dismissed, ...finding }) =>
+      dismissed ? { ...finding, dismissed } : finding,
+    );
   } catch {
     return undefined;
   }
@@ -43,6 +47,7 @@ export function writeState(findings: readonly PriorFinding[]): string {
     file: f.file.slice(0, 1_000),
     severity: f.severity,
     commented: f.commented,
+    ...(f.dismissed ? { dismissed: true } : {}),
   }));
   const encoded = Buffer.from(JSON.stringify({ findings: kept }), "utf8").toString("base64");
   return `<!-- ocra:state v1 ${encoded} -->`;

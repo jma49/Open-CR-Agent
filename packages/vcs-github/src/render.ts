@@ -89,6 +89,10 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
     lines.push("", "### Fixed since the last review");
     for (const f of rereview.fixed) lines.push(`- ~~${safeMarkdown(f.title)}~~ \`${f.file}\``);
   }
+  if (rereview && rereview.dismissed.length > 0) {
+    lines.push("", "### Dismissed by reviewers");
+    for (const f of rereview.dismissed) lines.push(`- ${safeMarkdown(f.title)} \`${f.file}\``);
+  }
   if (rereview && rereview.notRechecked.length > 0) {
     lines.push("", "### Not re-checked this time");
     for (const f of rereview.notRechecked) lines.push(`- ${safeMarkdown(f.title)} \`${f.file}\``);

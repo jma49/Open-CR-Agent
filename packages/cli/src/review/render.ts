@@ -36,6 +36,12 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
       `Verification dropped ${refuted.length} finding(s) the code disproves (see the JSON report).`,
     );
   }
+  const rereview = report.rereview;
+  if (rereview) {
+    lines.push(
+      `Since the last review: ${rereview.fixed.length} fixed, ${rereview.dismissed.length} dismissed by reviewers, ${rereview.notRechecked.length} not re-checked.`,
+    );
+  }
   const judged = report.judgement;
   if (judged && judged.merged.length + judged.dropped.length > 0) {
     lines.push(

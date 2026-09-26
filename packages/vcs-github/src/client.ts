@@ -57,9 +57,9 @@ const MAX_THREAD_PAGES = 10;
 export interface ReviewThread {
   id: string;
   isResolved: boolean;
-  // The thread's first comment, which carries ocra's finding marker.
-  body: string;
-  author: string;
+  resolvedBy: string | undefined;
+  // In order; the first carries ocra's finding marker.
+  comments: { author: string; body: string }[];
 }
 
 const REVIEW_THREADS_QUERY = `query($owner: String!, $repo: String!, $number: Int!, $after: String) {
@@ -67,7 +67,7 @@ const REVIEW_THREADS_QUERY = `query($owner: String!, $repo: String!, $number: In
     pullRequest(number: $number) {
       reviewThreads(first: 100, after: $after) {
         pageInfo { hasNextPage endCursor }
-        nodes { id isResolved comments(first: 1) { nodes { body author { login } } } }
+        nodes { id isResolved resolvedBy { login } comments(first: 30) { nodes { body author { login } } } }
       }
     }
   }
@@ -82,6 +82,7 @@ const reviewThreadsSchema = z.object({
           z.object({
             id: z.string(),
             isResolved: z.boolean(),
+            resolvedBy: z.object({ login: z.string() }).nullable().optional(),
             comments: z.object({
               nodes: z.array(
                 z.object({
@@ -125,12 +126,14 @@ export class GitHubApi {
       );
       const connection = data.repository.pullRequest.reviewThreads;
       for (const node of connection.nodes) {
-        const first = node.comments.nodes[0];
         threads.push({
           id: node.id,
           isResolved: node.isResolved,
-          body: first?.body ?? "",
-          author: first?.author?.login ?? "",
+          resolvedBy: node.resolvedBy?.login,
+          comments: node.comments.nodes.map((c) => ({
+            author: c.author?.login ?? "",
+            body: c.body,
+          })),
         });
       }
       if (!connection.pageInfo.hasNextPage) break;

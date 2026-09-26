@@ -86,6 +86,8 @@ export interface PriorFinding {
   severity: Severity;
   // Whether the platform already shows it as an inline comment.
   commented: boolean;
+  // A person resolved or declined it ("won't fix"); it stays quiet unless it gets worse.
+  dismissed?: boolean;
 }
 
 export interface PriorReview {
