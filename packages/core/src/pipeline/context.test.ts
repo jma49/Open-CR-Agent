@@ -32,6 +32,14 @@ describe("reviewContext", () => {
     expect(context.readDiff("src/a.ts")).toBe("a-patch");
   });
 
+  it("reads each file from the adapter once per run", async () => {
+    const vcs = fakeVcs();
+    const context = reviewContext(vcs, diffs);
+    await Promise.all([context.readFile("src/a.ts"), context.readFile("./src/a.ts")]);
+    await context.readFile("src/a.ts");
+    expect(vcs.readFile).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     ".env",
     "config/.env.production",

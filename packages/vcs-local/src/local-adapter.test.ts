@@ -57,11 +57,24 @@ describe("LocalGitAdapter workspace mode", () => {
     r.write(".gitignore", "*.log\n");
 
     expect(await changes(r.dir, { mode: "workspace" })).toEqual([
-      ["staged.ts", "modified"],
-      ["unstaged.ts", "modified"],
       [".gitignore", "added"],
       ["new dir/untracked.ts", "added"],
+      ["staged.ts", "modified"],
+      ["unstaged.ts", "modified"],
     ]);
+    expect(r.run("status", "--porcelain")).toContain(`?? "new dir/"`);
+  });
+
+  it("diffs untracked files over 1 MB as binary", async () => {
+    const r = repo();
+    r.write("a.ts", "a\n");
+    commitAll(r, "init");
+    r.write("dump.sql", "insert into t values (1);\n".repeat(50_000));
+    const [dump] = await new LocalGitAdapter({
+      cwd: r.dir,
+      target: { mode: "workspace" },
+    }).getDiff();
+    expect(dump).toMatchObject({ newPath: "dump.sql", kind: "added", isBinary: true });
   });
 
   it("works in a repository without commits", async () => {

@@ -8,10 +8,20 @@ export class AccessDeniedError extends Error {}
 // Agents read the repository through this context only, so the policy lives
 // here once instead of in every VCS adapter: no secrets, no git internals,
 // nothing outside the repository, whatever a prompt injection asks for.
+// Reads are memoized: the revision under review does not change during a run,
+// and anchoring and every agent re-read the same files.
 export function reviewContext(vcs: VcsAdapter, diffs: readonly FileDiff[]): ReviewContext {
+  const reads = new Map<string, Promise<string | undefined>>();
   return {
     async readFile(path) {
-      return vcs.readFile(allowedPath(path));
+      const allowed = allowedPath(path);
+      let read = reads.get(allowed);
+      if (!read) {
+        read = vcs.readFile(allowed);
+        reads.set(allowed, read);
+        read.catch(() => reads.delete(allowed));
+      }
+      return read;
     },
     readDiff(path) {
       const allowed = allowedPath(path);
