@@ -33,6 +33,8 @@ export interface Finding extends ReportedFinding {
   lineRange?: LineRange;
   anchor: { method: AnchorMethod; inDiff: boolean };
   status: FindingStatus;
+  // --ultra keeps findings the judge would drop and marks them instead.
+  lowConfidence?: boolean;
 }
 
 export type FileChangeKind = "added" | "modified" | "deleted" | "renamed";

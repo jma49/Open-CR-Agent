@@ -23,6 +23,7 @@ ocra review [options]
 | `--repo <owner/name>` | Repository of `--pr` (default: `GITHUB_REPOSITORY` or `origin`) |
 | `--publish` | With `--pr`: post the review to the pull request |
 | `--max-cost-usd <n>` | Stop starting review tasks once the run has spent this much (tasks already running finish) |
+| `--ultra` | Favor recall over cost; see [Modes](./how-it-works#modes) |
 | `--reviewers <ids>` | Run only these reviewers, comma-separated (for example `security`) |
 | `--no-repo-config` | Ignore `.ocra/config.json` and the plugins it lists; models come from `OCRA_MODEL_*`. Use it on code you do not trust |
 | `-h, --help` | Show help |

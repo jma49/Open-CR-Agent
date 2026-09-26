@@ -44,6 +44,9 @@ export interface ReviewOptions {
   // Stop starting review tasks once reported spend reaches this; tasks
   // already running finish, so a run can end slightly above it.
   maxCostUsd?: number;
+  // Recall over cost: every reviewer at every tier, two samples per cell, and
+  // findings the judge would drop kept as low confidence.
+  ultra?: boolean;
   signal?: AbortSignal;
   onEvent?: (event: ReviewEvent) => void;
 }
@@ -61,7 +64,15 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   const plan = await planReview(options, emit, signal);
   const prior = await loadPriorReview(options.vcs);
 
-  const matrix = planMatrix(plan.bundles, reviewers, plan.tier, options.reviewerOverrides);
+  const planned = planMatrix(plan.bundles, reviewers, plan.tier, options.reviewerOverrides, {
+    allTiers: options.ultra === true,
+  });
+  const matrix = options.ultra
+    ? {
+        ...planned,
+        cells: planned.cells.flatMap((cell) => [cell, { ...cell, taskId: `${cell.taskId}b` }]),
+      }
+    : planned;
   emit({ type: "matrix_planned", tasks: matrix.cells.length, skipped: matrix.skipped });
   const execute = {
     runtime: options.runtime,
@@ -113,6 +124,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     tier: plan.tier,
     signal,
     enabled: options.judge !== false && !budget.exhausted(),
+    keepDropped: options.ultra === true,
   });
   emit(
     judged.decisions

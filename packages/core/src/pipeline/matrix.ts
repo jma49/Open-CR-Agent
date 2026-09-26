@@ -39,6 +39,7 @@ export function planMatrix(
   reviewers: readonly ReviewerDefinition[],
   tier: RiskTier,
   overrides: ReviewerOverrides = {},
+  options: { allTiers?: boolean } = {},
 ): ReviewMatrix {
   const cells: MatrixCell[] = [];
   const skipped: SkippedCell[] = [];
@@ -54,7 +55,9 @@ export function planMatrix(
         skip("disabled");
         continue;
       }
-      const minTier = override.minTier ?? reviewer.scope?.minTier ?? "trivial";
+      const minTier = options.allTiers
+        ? "trivial"
+        : (override.minTier ?? reviewer.scope?.minTier ?? "trivial");
       if (rank(tier) < rank(minTier)) {
         skip("below_tier");
         continue;

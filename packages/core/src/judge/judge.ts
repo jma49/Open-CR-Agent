@@ -29,6 +29,8 @@ export interface JudgeOptions {
   tier: RiskTier;
   signal: AbortSignal;
   enabled: boolean;
+  // --ultra: keep what the judge would drop, marked low confidence.
+  keepDropped?: boolean;
 }
 
 export async function judgeFindings(
@@ -62,9 +64,18 @@ export async function judgeFindings(
   }
 
   const judged = applyDecisions(findings, response);
+  if (options.keepDropped) {
+    const dropped = new Set(judged.decisions.dropped.map((d) => d.fingerprint));
+    judged.findings.push(
+      ...findings
+        .filter((f) => dropped.has(f.fingerprint))
+        .map((f) => ({ ...f, lowConfidence: true })),
+    );
+  }
   return {
     findings: judged.findings,
-    verdict: decideVerdict(judged.findings),
+    // Low-confidence extras are shown, not counted: the verdict stays precise.
+    verdict: decideVerdict(judged.findings.filter((f) => !f.lowConfidence)),
     summary: response.summary.trim() || defaultSummary(judged.findings),
     decisions: judged.decisions,
     usage,

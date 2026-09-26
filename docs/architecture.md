@@ -93,6 +93,8 @@ Findings carry fingerprints, so a re-review can compare against the previous run
 | Impact analysis | Off | Callers of changed symbols searched |
 | Judge threshold | Strict | Relaxed; extra findings marked low confidence |
 
+Implemented today: reviewers, sampling and judge threshold. Plan phase and impact analysis are not.
+
 ## Contracts
 
 ```ts

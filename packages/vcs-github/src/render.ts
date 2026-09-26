@@ -32,7 +32,7 @@ export const FINDING_MARKER = /<!-- ocra:finding ([0-9a-f]{16}) -->/;
 export function inlineBody(f: Finding): string {
   const parts = [
     `<!-- ocra:finding ${f.fingerprint} -->`,
-    `${ICON[f.severity]} **${safeMarkdown(f.title)}** · ${f.severity} · ${f.reviewer}`,
+    `${ICON[f.severity]} **${safeMarkdown(f.title)}** · ${f.severity} · ${f.reviewer}${f.lowConfidence ? " · low confidence" : ""}`,
     "",
     safeMarkdown(f.body),
   ];
@@ -80,7 +80,7 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
     lines.push("", "### Findings outside the diff");
     for (const f of inSummary) {
       lines.push(
-        `- ${ICON[f.severity]} ${location(f)} **${safeMarkdown(f.title)}**: ${safeMarkdown(f.body).replaceAll("\n", " ")}`,
+        `- ${ICON[f.severity]} ${location(f)} **${safeMarkdown(f.title)}**${f.lowConfidence ? " _(low confidence)_" : ""}: ${safeMarkdown(f.body).replaceAll("\n", " ")}`,
       );
     }
   }

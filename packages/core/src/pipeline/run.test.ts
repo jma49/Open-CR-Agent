@@ -202,6 +202,29 @@ describe("runReview", () => {
     expect(third.warnings).toContain("could not load the previous review: HTTP 502");
   });
 
+  it("samples every cell twice and ignores tiers in ultra mode", async () => {
+    const rt = runtime(async function* (spec) {
+      yield { type: "finding", taskId: spec.taskId, finding: finding("src/a.ts", "const a = 1;") };
+      yield { type: "done", taskId: spec.taskId };
+    });
+    const report = await runReview({
+      vcs: vcs({}, twoFiles),
+      runtime: rt,
+      reviewers: [
+        {
+          id: "risky",
+          category: "r",
+          modelTier: "standard",
+          systemPrompt: "",
+          scope: { minTier: "full" },
+        },
+      ],
+      ultra: true,
+    });
+    expect(rt.specs.map((s) => s.taskId)).toEqual(["risky-1", "risky-1b"]);
+    expect(report.findings).toHaveLength(1);
+  });
+
   it("stops starting tasks once the spend limit is reached", async () => {
     const diff = ["a", "b", "c"].map((n) => patch(`src/${n}.ts`, `const ${n} = 1;`)).join("\n");
     const rt = runtime(async function* (spec) {

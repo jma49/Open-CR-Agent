@@ -54,6 +54,17 @@ describe("planMatrix", () => {
     ]);
   });
 
+  it("runs every reviewer at every tier when asked, still respecting ignores and switches", () => {
+    const matrix = planMatrix(
+      bundles,
+      [correctness, security],
+      "trivial",
+      { correctness: { enabled: false } },
+      { allTiers: true },
+    );
+    expect(cells(matrix)).toEqual([["security-1", ["src/api.ts"]]]);
+  });
+
   it("applies configuration overrides before the reviewer's own scope", () => {
     const matrix = planMatrix(bundles, [correctness, security], "lite", {
       correctness: { enabled: false },

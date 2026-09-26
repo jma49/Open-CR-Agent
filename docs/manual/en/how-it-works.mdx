@@ -34,6 +34,19 @@ The verdict is decided by a fixed rubric over the final findings, not by a model
 
 If the judge is disabled, has no `top` model or fails, findings are reported unjudged and the rubric still applies.
 
+## Modes
+
+The default mode favors precision. `--ultra` trades cost for recall:
+
+| | Default | `--ultra` |
+|---|---|---|
+| Reviewers | By risk tier and scope | Every reviewer at every tier (files outside a reviewer's scope are still skipped) |
+| Samples | One run per reviewer and bundle | Two runs, merged by fingerprint |
+| Judge | Drops speculation and nitpicks | Keeps them, marked *low confidence*; they do not count towards the verdict |
+| Cost | Baseline | About twice or more |
+
+Verification works the same in both modes. A planning phase and impact analysis of callers are not implemented.
+
 ## Reviewers and tools
 
 A reviewer is an agent with a focused prompt, its own rules, and a scope that tells the matrix where it is worth running:

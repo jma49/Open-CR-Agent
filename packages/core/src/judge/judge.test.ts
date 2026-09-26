@@ -115,6 +115,22 @@ describe("judgeFindings", () => {
     expect(result.usage).toEqual([usage]);
   });
 
+  it("keeps what it would drop as low confidence in ultra mode, outside the verdict", async () => {
+    const rt = runtime('{"drop":[{"index":0,"reason":"speculative"}]}');
+    const result = await judgeFindings(
+      [finding("maybe", "critical"), finding("sure", "suggestion")],
+      {
+        ...options(rt),
+        keepDropped: true,
+      },
+    );
+    expect(result.findings.map((f) => [f.title, f.lowConfidence ?? false])).toEqual([
+      ["sure", false],
+      ["maybe", true],
+    ]);
+    expect(result.verdict).toBe("approved_with_comments");
+  });
+
   it("falls back to the rubric when the judge fails, is disabled or has nothing to judge", async () => {
     const failed = await judgeFindings([finding("a", "critical")], options(runtime("not json")));
     expect(failed.verdict).toBe("significant_concerns");

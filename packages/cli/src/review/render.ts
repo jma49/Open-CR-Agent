@@ -83,7 +83,10 @@ function renderFinding(finding: Finding): string[] {
       : `L${finding.lineRange.start}-${finding.lineRange.end}`
     : "file";
   const indent = " ".repeat(4);
-  const lines = [`  ${finding.severity.padEnd(10)} ${location.padEnd(9)} ${finding.title}`];
+  const confidence = finding.lowConfidence ? " (low confidence)" : "";
+  const lines = [
+    `  ${finding.severity.padEnd(10)} ${location.padEnd(9)} ${finding.title}${confidence}`,
+  ];
   lines.push(...indented(finding.body, indent));
   if (finding.suggestion) lines.push(...indented(`Suggestion: ${finding.suggestion}`, indent));
   return lines;
