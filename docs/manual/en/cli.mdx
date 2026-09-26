@@ -19,6 +19,9 @@ ocra review [options]
 | `--commit <sha>` | Review a single commit against its parent |
 | `--format text\|json` | Output format; default `text` |
 | `--output <file>` | Write the result to a file instead of stdout |
+| `--pr <number>` | Review a GitHub pull request; see [GitHub pull requests](./github) |
+| `--repo <owner/name>` | Repository of `--pr` (default: `GITHUB_REPOSITORY` or `origin`) |
+| `--publish` | With `--pr`: post the review to the pull request |
 | `--reviewers <ids>` | Run only these reviewers, comma-separated (for example `security`) |
 | `--no-repo-config` | Ignore `.ocra/config.json` and the plugins it lists; models come from `OCRA_MODEL_*`. Use it on code you do not trust |
 | `-h, --help` | Show help |

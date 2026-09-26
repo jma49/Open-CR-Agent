@@ -1,0 +1,49 @@
+name: ocra review
+description: Multi-agent code review for pull requests with Open-CR-Agent (ocra).
+author: jma49
+branding:
+  icon: search
+  color: blue
+
+inputs:
+  github-token:
+    description: Token used to read the pull request and post the review.
+    default: ${{ github.token }}
+  args:
+    description: Extra arguments for ocra review, such as --reviewers correctness,security.
+    default: ""
+  fail-on-concerns:
+    description: Fail the job when the verdict is significant_concerns.
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 22
+
+    - name: Build ocra
+      shell: bash
+      run: |
+        npm ci --prefix "$GITHUB_ACTION_PATH" --no-audit --no-fund --loglevel=error
+        npm run build --prefix "$GITHUB_ACTION_PATH"
+
+    # Inputs reach the script only through environment variables, never
+    # interpolated into it, so pull request text cannot inject shell code.
+    - name: Review
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        OCRA_PR: ${{ github.event.pull_request.number }}
+        OCRA_ARGS: ${{ inputs.args }}
+        OCRA_FAIL_ON_CONCERNS: ${{ inputs.fail-on-concerns }}
+      run: |
+        if [ -z "$OCRA_PR" ]; then
+          echo "::error::ocra review runs on pull_request events"
+          exit 2
+        fi
+        # shellcheck disable=SC2086
+        node "$GITHUB_ACTION_PATH/packages/cli/dist/main.js" review --pr "$OCRA_PR" --publish $OCRA_ARGS && code=0 || code=$?
+        if [ "$code" -eq 1 ] && [ "$OCRA_FAIL_ON_CONCERNS" != "true" ]; then code=0; fi
+        exit "$code"

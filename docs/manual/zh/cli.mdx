@@ -19,6 +19,9 @@ ocra review [options]
 | `--commit <sha>` | 审查单个 commit 相对其父 commit 的改动 |
 | `--format text\|json` | 输出格式，默认 `text` |
 | `--output <file>` | 把结果写入文件，而不是输出到 stdout |
+| `--pr <number>` | 审查一个 GitHub PR，见 [GitHub Pull Request](./github) |
+| `--repo <owner/name>` | `--pr` 所在的仓库（默认取 `GITHUB_REPOSITORY` 或 `origin`） |
+| `--publish` | 配合 `--pr`：把评审发布到 PR |
 | `--reviewers <ids>` | 只运行这些审查员，用逗号分隔（例如 `security`） |
 | `--no-repo-config` | 忽略 `.ocra/config.json` 及其中列出的插件，模型改从 `OCRA_MODEL_*` 读取。审查不信任的代码时使用 |
 | `-h, --help` | 显示帮助 |

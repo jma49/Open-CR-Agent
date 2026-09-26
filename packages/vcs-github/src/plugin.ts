@@ -11,6 +11,7 @@ const optionsSchema = z.object({
   apiUrl: z.string().url().optional(),
   botLogin: z.string().min(1).default(DEFAULT_BOT_LOGIN),
   requestChanges: z.boolean().default(false),
+  fetch: z.custom<typeof fetch>((value) => typeof value === "function").optional(),
   code: z.custom<CodeSource>(
     (value) =>
       typeof value === "object" &&
@@ -29,9 +30,11 @@ export const githubPlugin: OcraPlugin = {
       const options = optionsSchema.parse(raw);
       const api = new GitHubApi(
         { owner: options.owner, repo: options.repo },
-        options.apiUrl
-          ? { token: options.token, baseUrl: options.apiUrl }
-          : { token: options.token },
+        {
+          token: options.token,
+          ...(options.apiUrl ? { baseUrl: options.apiUrl } : {}),
+          ...(options.fetch ? { fetch: options.fetch } : {}),
+        },
       );
       return new GitHubAdapter({
         pullRequest: { owner: options.owner, repo: options.repo, number: options.number },

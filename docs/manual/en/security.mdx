@@ -32,7 +32,7 @@ Provider keys are read from environment variables only and never written to conf
 
 - Store keys as CI secrets.
 - Do not run ocra with secrets on untrusted code via `pull_request_target`.
-- Read `.ocra/config.json`, rules and plugins from the protected base branch, not from the pull request.
+- `ocra review --pr` and the GitHub Action read `.ocra/config.json`, `.ocra/rules.json` and `AGENTS.md` from the pull request's base commit and never load repository plugins. See [GitHub pull requests](./github).
 
 ## Reviewing code you do not trust
 

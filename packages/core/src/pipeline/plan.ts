@@ -1,5 +1,5 @@
 import { type Bundle, bundleFiles, defaultBundlePolicy } from "../bundle/bundle.js";
-import type { ReviewContext, Usage, VcsAdapter } from "../contracts.js";
+import type { ReviewContext, Usage } from "../contracts.js";
 import type { ChangeRequest, FileDiff, RiskTier } from "../domain.js";
 import { parseRepoRules, REPO_RULES_PATH, type RepoRule } from "../rules/repo-rules.js";
 import { defaultSelectionPolicy, type FileDecision, selectFiles } from "../select/select.js";
@@ -31,6 +31,7 @@ export async function planReview(
   signal: AbortSignal,
 ): Promise<ReviewPlan> {
   const { vcs } = options;
+  const readTrusted = options.readTrusted ?? ((path: string) => vcs.readFile(path));
   const changeRequest = await vcs.getChangeRequest();
   emit({ type: "run_started", changeRequest });
 
@@ -46,8 +47,8 @@ export async function planReview(
   });
 
   const [guidelines, fileRules] = await Promise.all([
-    vcs.readFile(GUIDELINES_PATH),
-    loadRepoRules(vcs),
+    readTrusted(GUIDELINES_PATH),
+    loadRepoRules(readTrusted),
   ]);
   const usage: Usage[] = [];
   const grouper = options.grouper ?? runtimeGrouper(options.runtime, signal, (u) => usage.push(u));
@@ -73,7 +74,9 @@ export async function planReview(
   };
 }
 
-async function loadRepoRules(vcs: VcsAdapter): Promise<RepoRule[]> {
-  const text = await vcs.readFile(REPO_RULES_PATH);
+async function loadRepoRules(
+  read: (path: string) => Promise<string | undefined>,
+): Promise<RepoRule[]> {
+  const text = await read(REPO_RULES_PATH);
   return text === undefined ? [] : parseRepoRules(text);
 }

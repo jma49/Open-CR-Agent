@@ -3,8 +3,15 @@ import type { LocalTarget } from "@open-cr-agent/vcs-local";
 
 export type OutputFormat = "text" | "json";
 
+export interface PullRequestTarget {
+  number: number;
+  repo?: string;
+  publish: boolean;
+}
+
 export interface ReviewArgs {
   target: LocalTarget;
+  pullRequest?: PullRequestTarget;
   format: OutputFormat;
   output?: string;
   ignoreRepoConfig?: true;
@@ -21,6 +28,9 @@ Options:
   --from <ref>       Review changes on --to since it diverged from <ref>
   --to <ref>         End of the range (default: HEAD)
   --commit <sha>     Review a single commit
+  --pr <number>      Review a GitHub pull request (needs GITHUB_TOKEN)
+  --repo <owner/name>  Repository of --pr (default: GITHUB_REPOSITORY or origin)
+  --publish          With --pr: post the review to the pull request
   --format <format>  text (default) or json
   --output <file>    Write the result to a file instead of stdout
   --reviewers <ids>  Run only these reviewers (comma-separated)
@@ -46,6 +56,8 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
   }
 
   const args: ReviewArgs = { target: target(values), format };
+  const pullRequest = pullRequestTarget(values);
+  if (pullRequest) args.pullRequest = pullRequest;
   if (values.output !== undefined) args.output = values.output;
   if (values["no-repo-config"]) args.ignoreRepoConfig = true;
   if (values.reviewers !== undefined) {
@@ -72,9 +84,40 @@ function parse(argv: string[]) {
       output: { type: "string" },
       "no-repo-config": { type: "boolean" },
       reviewers: { type: "string" },
+      pr: { type: "string" },
+      repo: { type: "string" },
+      publish: { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
   });
+}
+
+function pullRequestTarget(values: {
+  pr?: string;
+  repo?: string;
+  publish?: boolean;
+  from?: string;
+  to?: string;
+  commit?: string;
+}): PullRequestTarget | undefined {
+  if (values.pr === undefined) {
+    if (values.publish) throw new UsageError("--publish requires --pr");
+    if (values.repo !== undefined) throw new UsageError("--repo requires --pr");
+    return undefined;
+  }
+  if (values.from !== undefined || values.to !== undefined || values.commit !== undefined) {
+    throw new UsageError("--pr cannot be combined with --from, --to or --commit");
+  }
+  const number = Number(values.pr);
+  if (!Number.isInteger(number) || number <= 0) {
+    throw new UsageError(`--pr must be a pull request number, got ${values.pr}`);
+  }
+  if (values.repo !== undefined && !/^[\w.-]+\/[\w.-]+$/.test(values.repo)) {
+    throw new UsageError(`--repo must be owner/name, got ${values.repo}`);
+  }
+  const target: PullRequestTarget = { number, publish: values.publish === true };
+  if (values.repo !== undefined) target.repo = values.repo;
+  return target;
 }
 
 function target(values: { from?: string; to?: string; commit?: string }): LocalTarget {

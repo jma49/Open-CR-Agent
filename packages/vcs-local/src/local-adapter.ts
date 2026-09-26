@@ -107,6 +107,11 @@ export class LocalGitAdapter implements VcsAdapter {
       });
   }
 
+  async remoteUrl(remote: string): Promise<string> {
+    const { root } = await this.target();
+    return (await git(["remote", "get-url", "--end-of-options", remote], { cwd: root })).trim();
+  }
+
   async getPriorReview(): Promise<PriorReview | undefined> {
     return undefined;
   }

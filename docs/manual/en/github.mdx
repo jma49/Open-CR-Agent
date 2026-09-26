@@ -1,0 +1,67 @@
+---
+title: GitHub pull requests
+description: Review pull requests with the GitHub Action or ocra review --pr.
+---
+
+## GitHub Action
+
+Add a workflow to the repository you want reviewed:
+
+```yaml
+name: ocra
+on: pull_request
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: jma49/Open-CR-Agent@main
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+```
+
+Store your model key as a repository secret. Models come from the base branch's `.ocra/config.json`, or from `OCRA_MODEL_*` variables in `env`.
+
+| Input | Default | Meaning |
+|---|---|---|
+| `github-token` | `${{ github.token }}` | Token for reading the pull request and posting the review |
+| `args` | | Extra `ocra review` options, such as `--reviewers correctness,security` |
+| `fail-on-concerns` | `true` | Fail the job when the verdict is `significant_concerns` |
+
+Pull requests from forks do not receive repository secrets on `pull_request`, so the review fails with a message naming the missing key. Do not switch to `pull_request_target` to work around it: that runs with secrets on code the fork controls.
+
+## What gets posted
+
+- **Inline comments** for findings anchored inside the diff, in one review with the `COMMENT` event. ocra never approves. Set `github.requestChanges` to request changes when the verdict is `significant_concerns`.
+- **One summary comment**, updated in place on every push: verdict, summary, findings outside the diff, what was fixed since the last review, and coverage and cost.
+
+On the next push ocra compares findings with the previous review: a finding it already commented on is not commented again, findings that disappeared are listed as fixed, and findings in files that could not be re-checked are listed as such instead of being called fixed.
+
+## What the pull request can and cannot change
+
+The pull request is untrusted input. ocra reads `.ocra/config.json`, `.ocra/rules.json` and `AGENTS.md` from the **base** commit, never from the pull request, and never loads repository plugins in this mode. The diff, title and description still reach the reviewers as data, with the protections described in [Security](./security).
+
+## Configuration
+
+```json
+{ "github": { "requestChanges": false, "botLogin": "github-actions[bot]" } }
+```
+
+`botLogin` is the account whose summary comment counts as ocra's earlier review; change it if you post with another token.
+
+## From the command line
+
+```bash
+export GITHUB_TOKEN=...           # a token that can read the repository
+ocra review --pr 42               # review and print, like a local review
+ocra review --pr 42 --publish     # also post the review
+```
+
+The repository comes from `--repo owner/name`, `GITHUB_REPOSITORY`, or the `origin` remote. ocra fetches the pull request's commits if they are missing locally.

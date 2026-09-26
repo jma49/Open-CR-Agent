@@ -32,7 +32,7 @@ PR 的文字、diff 和仓库文件一律当作数据处理，其中的指令永
 
 - 把 key 存为 CI 的 secret。
 - 不要用 `pull_request_target` 带着 secret 在不可信的代码上运行 ocra。
-- `.ocra/config.json`、规则和插件都应当从受保护的 base 分支读取，而不是从 PR 里读取。
+- `ocra review --pr` 和 GitHub Action 会从 PR 的 base 提交读取 `.ocra/config.json`、`.ocra/rules.json` 和 `AGENTS.md`，并且从不加载仓库插件。见 [GitHub Pull Request](./github)。
 
 ## 审查不信任的代码
 

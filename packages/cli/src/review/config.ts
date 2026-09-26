@@ -21,6 +21,11 @@ const configSchema = z
     runTimeoutMinutes: z.number().positive().optional(),
     verify: z.boolean().optional(),
     judge: z.boolean().optional(),
+    github: z
+      .object({ requestChanges: z.boolean(), botLogin: z.string().min(1) })
+      .partial()
+      .strict()
+      .default({}),
     include: z.array(z.string().min(1)).default([]),
     exclude: z.array(z.string().min(1)).default([]),
     runtime: z.string().min(1).default("opencode"),
@@ -56,9 +61,12 @@ export class ConfigError extends Error {}
 export async function loadConfig(
   root: string,
   env: Readonly<Record<string, string | undefined>>,
-  options: { repository: boolean } = { repository: true },
+  options: { repository: boolean; read?: (path: string) => Promise<string | undefined> } = {
+    repository: true,
+  },
 ): Promise<CliConfig> {
-  const parsed = options.repository ? await readConfigFile(root) : configSchema.parse({});
+  const read = options.read ?? ((path: string) => readWorkingTreeFile(root, path));
+  const parsed = options.repository ? await readConfigFile(read) : configSchema.parse({});
   const models: { -readonly [Tier in ModelTier]?: readonly string[] } = {};
   for (const [tier, chain] of Object.entries(parsed.models) as [
     ModelTier,
@@ -76,14 +84,20 @@ export async function loadConfig(
   return { ...parsed, models };
 }
 
-async function readConfigFile(root: string): Promise<z.infer<typeof configSchema>> {
-  let text: string;
+async function readWorkingTreeFile(root: string, path: string): Promise<string | undefined> {
   try {
-    text = await readFile(join(root, CONFIG_PATH), "utf8");
+    return await readFile(join(root, path), "utf8");
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return configSchema.parse({});
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
     throw error;
   }
+}
+
+async function readConfigFile(
+  read: (path: string) => Promise<string | undefined>,
+): Promise<z.infer<typeof configSchema>> {
+  const text = await read(CONFIG_PATH);
+  if (text === undefined) return configSchema.parse({});
   let data: unknown;
   try {
     data = JSON.parse(text);

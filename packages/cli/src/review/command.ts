@@ -15,12 +15,13 @@ import {
   startPlugins,
 } from "@open-cr-agent/core";
 import { opencodeRuntimePlugin } from "@open-cr-agent/runtime-opencode";
+import { githubPlugin } from "@open-cr-agent/vcs-github";
 import { findRepositoryRoot, localGitPlugin } from "@open-cr-agent/vcs-local";
 import type { ReviewArgs } from "./args.js";
-import { type CliConfig, ConfigError, loadConfig } from "./config.js";
-import { loadExternalPlugins } from "./plugins.js";
+import { type CliConfig, ConfigError } from "./config.js";
 import { type Output, ProgressPrinter } from "./progress.js";
 import { renderJson, renderText } from "./render.js";
+import { localTarget, pullRequestTarget } from "./target.js";
 import { forTerminal } from "./terminal.js";
 
 export const SESSIONS_DIR = ".ocra/sessions";
@@ -29,6 +30,7 @@ export const EXIT = { ok: 0, blocking: 1, error: 2 } as const;
 
 export const BUILTIN_PLUGINS: readonly OcraPlugin[] = [
   localGitPlugin,
+  githubPlugin,
   opencodeRuntimePlugin,
   correctnessReviewerPlugin,
   securityReviewerPlugin,
@@ -43,6 +45,8 @@ export interface ReviewDeps {
   writeFile(path: string, content: string): Promise<void>;
   now(): number;
   heartbeatMs: number;
+  // Only tests replace it, to fake the GitHub API.
+  fetch?: typeof fetch;
 }
 
 export async function reviewCommand(
@@ -51,16 +55,19 @@ export async function reviewCommand(
   deps: ReviewDeps,
 ): Promise<number> {
   const root = await findRepositoryRoot(deps.cwd);
-  const config = await loadConfig(root, deps.env, { repository: !args.ignoreRepoConfig });
-  const external = await loadExternalPlugins(config.plugins, root);
+  const warn = (message: string) => io.err.write(`[ocra] Warning: ${forTerminal(message)}\n`);
+  const target = args.pullRequest
+    ? await pullRequestTarget(args.pullRequest, deps.cwd, root, deps.env, warn, deps.fetch)
+    : await localTarget(args, deps.cwd, root, deps.env);
+  const { config } = target;
   const session = { dir: join(root, SESSIONS_DIR), id: newSessionId() };
 
-  const registry = await startPlugins([...deps.builtinPlugins, ...external], {
+  const registry = await startPlugins([...deps.builtinPlugins, ...target.plugins], {
     settings: { ...config.pluginSettings, [sessionJsonlPlugin.name]: session },
     env: deps.env,
-    warn: (message) => io.err.write(`[ocra] Warning: ${forTerminal(message)}\n`),
+    warn,
   });
-  const vcs = registry.createVcs("local", { cwd: deps.cwd, target: args.target });
+  const vcs = target.createVcs(registry);
   const runtime = registry.createRuntime(config.runtime, { models: config.models, env: deps.env });
   const overrides = reviewerOverrides(
     config,
@@ -74,6 +81,7 @@ export async function reviewCommand(
     report = await runReview({
       ...runOptions(config),
       reviewerOverrides: overrides,
+      ...(target.readTrusted ? { readTrusted: target.readTrusted } : {}),
       vcs,
       runtime,
       reviewers: registry.reviewers,
@@ -95,6 +103,10 @@ export async function reviewCommand(
   } else {
     await deps.writeFile(resolve(deps.cwd, args.output), rendered);
     io.err.write(`[ocra] Wrote ${args.output}\n`);
+  }
+  if (target.publish) {
+    await vcs.publish(report);
+    io.err.write("[ocra] Published the review to the pull request\n");
   }
   return exitCode(report, io.err);
 }

@@ -28,6 +28,7 @@ describe("loadConfig", () => {
       runtime: "opencode",
       plugins: [],
       reviewers: {},
+      github: {},
       pluginSettings: {},
     });
   });

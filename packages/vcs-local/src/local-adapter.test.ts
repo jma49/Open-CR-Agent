@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { reviewContext } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
+import { ensureCommits } from "./commits.js";
 import { LocalGitAdapter, type LocalTarget } from "./local-adapter.js";
 
 const repos: string[] = [];
@@ -255,5 +256,25 @@ describe("LocalGitAdapter behind the review context", () => {
     await expect(context.readFile(".env")).rejects.toThrow("not allowed");
     await expect(context.readFile(".git/config")).rejects.toThrow("not allowed");
     await expect(context.readFile("a.ts")).resolves.toBe("b\n");
+  });
+});
+
+describe("ensureCommits", () => {
+  it("fetches missing commits from the remote and names those it cannot find", async () => {
+    const upstream = repo();
+    upstream.write("a.ts", "a\n");
+    const first = commitAll(upstream, "init");
+    upstream.write("a.ts", "b\n");
+    const second = commitAll(upstream, "second");
+
+    const clone = repo();
+    clone.run("remote", "add", "origin", upstream.dir);
+    clone.run("fetch", "-q", "origin", first);
+    await ensureCommits(clone.dir, [first, second]);
+    expect(clone.run("cat-file", "-t", second)).toBe("commit");
+
+    await expect(ensureCommits(clone.dir, ["0".repeat(40)])).rejects.toThrow(
+      `Commits ${"0".repeat(40)} are not in this repository`,
+    );
   });
 });

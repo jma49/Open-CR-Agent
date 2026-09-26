@@ -27,6 +27,9 @@ export interface ReviewOptions {
   reviewers?: readonly ReviewerDefinition[];
   reviewerOverrides?: ReviewerOverrides;
   rules?: readonly RepoRule[];
+  // Where AGENTS.md and .ocra/rules.json are read from. Defaults to the
+  // revision under review; pull request reviews pass the trusted base.
+  readTrusted?: (path: string) => Promise<string | undefined>;
   selection?: SelectionPolicy;
   bundling?: BundlePolicy;
   grouper?: FileGrouper;
