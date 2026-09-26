@@ -42,6 +42,9 @@ export async function reviewInstance(
       "json",
       "--output",
       outputPath,
+      // Benchmark repositories are third-party code: their config must not
+      // load plugins on the maintainer's machine.
+      "--no-repo-config",
     ],
     { cwd: repoDir, timeoutMs: options.timeoutMs },
   );

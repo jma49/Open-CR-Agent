@@ -32,3 +32,7 @@ PR 的文字、diff 和仓库文件一律当作数据处理，其中的指令永
 - 把 key 存为 CI 的 secret。
 - 不要用 `pull_request_target` 带着 secret 在不可信的代码上运行 ocra。
 - `.ocra/config.json`、规则和插件都应当从受保护的 base 分支读取，而不是从 PR 里读取。
+
+## 审查不信任的代码
+
+`.ocra/config.json` 可以列出插件，而插件会执行代码。`ocra review --no-repo-config` 会完全忽略这个文件，模型改从 `OCRA_MODEL_*` 读取。`ocra-eval` 总是带上这个开关，因为基准测试里的仓库都是第三方代码。
