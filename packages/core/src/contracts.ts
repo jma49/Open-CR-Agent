@@ -1,4 +1,5 @@
-import type { ChangeRequest, FileDiff, PriorReview, ReviewResult } from "./domain.js";
+import type { ChangeRequest, FileDiff, PriorReview } from "./domain.js";
+import type { ReviewReport } from "./pipeline/report.js";
 
 export interface CodeMatch {
   path: string;
@@ -13,7 +14,7 @@ export interface VcsAdapter {
   readFile(path: string): Promise<string | undefined>;
   searchCode(literal: string): Promise<CodeMatch[]>;
   getPriorReview(): Promise<PriorReview | undefined>;
-  publish(result: ReviewResult): Promise<void>;
+  publish(report: ReviewReport): Promise<void>;
 }
 
 export type ModelTier = "top" | "standard" | "light";

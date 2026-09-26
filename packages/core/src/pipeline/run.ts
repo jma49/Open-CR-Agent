@@ -2,8 +2,10 @@ import type { AnchorContext } from "../anchor/anchor.js";
 import type { BundlePolicy } from "../bundle/bundle.js";
 import type { FileGrouper } from "../bundle/grouping.js";
 import type { AgentRuntime, Usage, VcsAdapter } from "../contracts.js";
-import type { Finding, Severity } from "../domain.js";
+import type { Finding, PriorReview, Severity } from "../domain.js";
+import { errorMessage } from "../errors.js";
 import { judgeFindings } from "../judge/judge.js";
+import { reconcile } from "../rereview/reconcile.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import type { RepoRule } from "../rules/repo-rules.js";
@@ -51,6 +53,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   if (reviewers.length === 0) throw new Error("No reviewer is registered");
 
   const plan = await planReview(options, emit, signal);
+  const prior = await loadPriorReview(options.vcs);
 
   const matrix = planMatrix(plan.bundles, reviewers, plan.tier, options.reviewerOverrides);
   emit({ type: "matrix_planned", tasks: matrix.cells.length, skipped: matrix.skipped });
@@ -100,6 +103,9 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
       : { type: "judge_finished", verdict: judged.verdict },
   );
 
+  const fileCoverage = coverage(plan.decisions, results);
+  const reconciled = reconcile(judged.findings, prior.review, fileCoverage);
+
   const report: ReviewReport = {
     changeRequest: plan.changeRequest,
     tier: plan.tier,
@@ -108,11 +114,11 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
       results.length > 0 && results.every((r) => r.outcome.status !== "completed")
         ? "Nothing was reviewed: no review task completed."
         : judged.summary,
-    coverage: coverage(plan.decisions, results),
+    coverage: fileCoverage,
     bundles: plan.bundles.map((b) => ({ label: b.label, files: b.files.map((f) => f.newPath) })),
     tasks: results.map((r) => r.outcome),
     skipped: matrix.skipped,
-    findings: sortFindings(judged.findings),
+    findings: sortFindings(reconciled.findings),
     refuted: verification.refuted,
     usage: sumUsage([
       ...plan.usage,
@@ -128,8 +134,24 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     ],
   };
   if (judged.decisions) report.judgement = judged.decisions;
+  if (prior.review) {
+    report.rereview = { fixed: reconciled.fixed, notRechecked: reconciled.notRechecked };
+  }
+  if (prior.warning) report.warnings.push(prior.warning);
   emit({ type: "run_finished", report });
   return report;
+}
+
+// A missing earlier review only costs the comparison, never the review.
+async function loadPriorReview(
+  vcs: VcsAdapter,
+): Promise<{ review?: PriorReview; warning?: string }> {
+  try {
+    const review = await vcs.getPriorReview();
+    return review ? { review } : {};
+  } catch (error) {
+    return { warning: `could not load the previous review: ${errorMessage(error)}` };
+  }
 }
 
 function coverage(

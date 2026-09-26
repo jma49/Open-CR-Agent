@@ -7,6 +7,7 @@ export * from "./errors.js";
 export * from "./judge/index.js";
 export * from "./pipeline/index.js";
 export * from "./plugin/index.js";
+export * from "./rereview/index.js";
 export * from "./review/index.js";
 export * from "./rules/index.js";
 export * from "./select/index.js";

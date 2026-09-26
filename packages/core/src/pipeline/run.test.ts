@@ -167,6 +167,41 @@ describe("runReview", () => {
     ]);
   });
 
+  it("compares with the previous review and survives failing to load it", async () => {
+    const rt = runtime(async function* (spec) {
+      yield { type: "finding", taskId: spec.taskId, finding: finding("src/a.ts", "const a = 1;") };
+      yield { type: "done", taskId: spec.taskId };
+    });
+    const first = await runReview({
+      vcs: vcs({}, twoFiles),
+      runtime: rt,
+      verify: false,
+      judge: false,
+    });
+    const fingerprint = first.findings[0]?.fingerprint ?? "";
+    const old = { title: "t", severity: "warning" as const, commented: true };
+
+    const withPrior = vcs({}, twoFiles);
+    withPrior.getPriorReview = async () => ({
+      findings: [
+        { ...old, fingerprint, file: "src/a.ts" },
+        { ...old, fingerprint: "gone", file: "src/b.ts" },
+      ],
+    });
+    const second = await runReview({ vcs: withPrior, runtime: rt, verify: false, judge: false });
+    expect(second.findings[0]?.status).toBe("unfixed");
+    expect(second.rereview?.fixed.map((f) => f.fingerprint)).toEqual(["gone"]);
+
+    const broken = vcs({}, twoFiles);
+    broken.getPriorReview = async () => {
+      throw new Error("HTTP 502");
+    };
+    const third = await runReview({ vcs: broken, runtime: rt, verify: false, judge: false });
+    expect(third.findings).toHaveLength(1);
+    expect(third.rereview).toBeUndefined();
+    expect(third.warnings).toContain("could not load the previous review: HTTP 502");
+  });
+
   it("records excluded files in coverage with their reason", async () => {
     const diff = [twoFiles, patch("package-lock.json", "{}")].join("\n");
     const rt = runtime(async function* (spec) {

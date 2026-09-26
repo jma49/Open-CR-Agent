@@ -1,5 +1,5 @@
 import type { Usage } from "../contracts.js";
-import type { ChangeRequest, Finding, RiskTier, Verdict } from "../domain.js";
+import type { ChangeRequest, Finding, PriorFinding, RiskTier, Verdict } from "../domain.js";
 import type { JudgeDecisions } from "../judge/judge.js";
 import type { ExclusionReason } from "../select/select.js";
 import type { RefutedFinding } from "../verify/verify.js";
@@ -35,6 +35,8 @@ export interface ReviewReport {
   refuted: RefutedFinding[];
   // What the judge merged, dropped or recalibrated; absent when it did not run.
   judgement?: JudgeDecisions;
+  // Compared with the previous review of the same change, when there was one.
+  rereview?: { fixed: PriorFinding[]; notRechecked: PriorFinding[] };
   usage: Usage;
   warnings: string[];
 }

@@ -100,8 +100,9 @@ interface VcsAdapter {            // one instance per change request
   getChangeRequest(): Promise<ChangeRequest>
   getDiff(): Promise<FileDiff[]>
   readFile(path): Promise<string | undefined>   // file content at head
-  getPriorReview(): Promise<PriorReview | undefined>
-  publish(result: ReviewResult): Promise<void>
+  searchCode(literal): Promise<CodeMatch[]>
+  getPriorReview(): Promise<PriorReview | undefined>  // fingerprints the platform remembers
+  publish(report: ReviewReport): Promise<void>
 }
 
 interface AgentRuntime {

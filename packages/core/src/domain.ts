@@ -78,12 +78,16 @@ export type Verdict =
   | "minor_issues"
   | "significant_concerns";
 
-export interface ReviewResult {
-  verdict: Verdict;
-  summary: string;
-  findings: Finding[];
+// What a platform remembers of an earlier review of the same change.
+export interface PriorFinding {
+  fingerprint: string;
+  title: string;
+  file: string;
+  severity: Severity;
+  // Whether the platform already shows it as an inline comment.
+  commented: boolean;
 }
 
 export interface PriorReview {
-  findings: Finding[];
+  findings: PriorFinding[];
 }
