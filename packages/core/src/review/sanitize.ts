@@ -7,6 +7,10 @@ export const PROMPT_TAGS = [
   "review_rules",
   "review_files",
   "file",
+  "finding",
+  "findings",
+  "diff",
+  "file_excerpt",
 ] as const;
 
 const TAG_PATTERN = new RegExp(`<(/?)(${PROMPT_TAGS.join("|")})(?=[\\s>/])`, "gi");

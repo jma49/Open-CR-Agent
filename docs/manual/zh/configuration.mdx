@@ -15,6 +15,7 @@ ocra 从被审查仓库根目录的 `.ocra/config.json` 读取配置。所有字
   "concurrency": 4,
   "taskTimeoutMinutes": 10,
   "runTimeoutMinutes": 25,
+  "verify": true,
   "include": [],
   "exclude": ["legacy/**"],
   "runtime": "opencode",
@@ -59,6 +60,7 @@ agent 运行时只会从你的环境里拿到它需要的东西：`PATH`、`HOME
 | `concurrency` | `4` | 同时运行的审查任务数（1–32） |
 | `taskTimeoutMinutes` | `10` | 单个审查任务的时间上限 |
 | `runTimeoutMinutes` | `25` | 整次运行的时间上限 |
+| `verify` | `true` | 报告前逐条核查问题（每个有问题的文件调用一次 standard 档位模型） |
 
 某个任务失败或超时不会导致整次运行失败，它负责的文件会被标记为 `failed`。
 

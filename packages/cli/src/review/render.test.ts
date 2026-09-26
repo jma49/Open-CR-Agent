@@ -35,6 +35,7 @@ const base: ReviewReport = {
   ],
   bundles: [],
   skipped: [],
+  refuted: [],
   tasks: [
     {
       taskId: "correctness-1",
@@ -116,6 +117,16 @@ describe("renderText", () => {
     };
     const text = renderText(report);
     for (const unsafe of ["\u001b", "\u0007", "\r"]) expect(text).not.toContain(unsafe);
+  });
+
+  it("mentions findings that verification dropped", () => {
+    const report: ReviewReport = {
+      ...base,
+      refuted: [{ fingerprint: "f", file: "a.ts", title: "t", reason: "r" }],
+    };
+    expect(renderText(report)).toContain(
+      "Verification dropped 1 finding(s) the code disproves (see the JSON report).",
+    );
   });
 
   it("never claims a clean result when nothing was reviewed", () => {

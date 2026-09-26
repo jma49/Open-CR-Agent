@@ -19,6 +19,7 @@ const configSchema = z
     concurrency: z.number().int().min(1).max(32).optional(),
     taskTimeoutMinutes: z.number().positive().optional(),
     runTimeoutMinutes: z.number().positive().optional(),
+    verify: z.boolean().optional(),
     include: z.array(z.string().min(1)).default([]),
     exclude: z.array(z.string().min(1)).default([]),
     runtime: z.string().min(1).default("opencode"),

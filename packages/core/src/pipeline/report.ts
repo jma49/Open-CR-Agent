@@ -1,6 +1,7 @@
 import type { Usage } from "../contracts.js";
 import type { ChangeRequest, Finding, RiskTier } from "../domain.js";
 import type { ExclusionReason } from "../select/select.js";
+import type { RefutedFinding } from "../verify/verify.js";
 import type { SkippedCell } from "./matrix.js";
 
 export type CoverageEntry =
@@ -28,6 +29,7 @@ export interface ReviewReport {
   tasks: TaskOutcome[];
   skipped: SkippedCell[];
   findings: Finding[];
+  refuted: RefutedFinding[];
   usage: Usage;
   warnings: string[];
 }
@@ -41,4 +43,5 @@ export type ReviewEvent =
   | { type: "task_progress"; taskId: string; message: string }
   | { type: "finding"; taskId: string; finding: Finding }
   | { type: "task_finished"; outcome: TaskOutcome }
+  | { type: "verification_finished"; checked: number; refuted: RefutedFinding[] }
   | { type: "run_finished"; report: ReviewReport };

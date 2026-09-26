@@ -106,6 +106,7 @@ function runOptions(config: CliConfig): Omit<ReviewOptions, "vcs" | "runtime"> {
   if (config.concurrency !== undefined) options.concurrency = config.concurrency;
   if (config.taskTimeoutMinutes !== undefined)
     options.taskTimeoutMs = config.taskTimeoutMinutes * 60_000;
+  if (config.verify !== undefined) options.verify = config.verify;
   if (config.runTimeoutMinutes !== undefined)
     options.runTimeoutMs = config.runTimeoutMinutes * 60_000;
   return options;

@@ -22,6 +22,12 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
   }
 
   lines.push(summaryLine(report));
+  const { refuted } = report;
+  if (refuted.length > 0) {
+    lines.push(
+      `Verification dropped ${refuted.length} finding(s) the code disproves (see the JSON report).`,
+    );
+  }
   if (incomplete.length > 0) {
     lines.push(
       `Incomplete: ${incomplete.length} of ${report.tasks.length} review task(s) did not finish.`,

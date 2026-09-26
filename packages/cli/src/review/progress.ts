@@ -59,6 +59,8 @@ function describe(event: ReviewEvent): string | undefined {
       const skipped = event.skipped.length;
       return `${event.tasks} review task(s)${skipped > 0 ? `, ${skipped} reviewer/bundle pair(s) skipped by scope` : ""}`;
     }
+    case "verification_finished":
+      return `Verified ${event.checked} finding(s)${event.refuted.length > 0 ? `, dropped ${event.refuted.length} that the code disproves` : ""}`;
     case "task_progress":
       return `${event.taskId} ${event.message}`;
     case "task_started":

@@ -7,6 +7,7 @@ import type { ReviewerDefinition } from "../review/reviewer.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import type { RepoRule } from "../rules/repo-rules.js";
 import type { FileDecision, SelectionPolicy } from "../select/select.js";
+import { verifyFindings } from "../verify/verify.js";
 import { type JobResult, runJob } from "./execute.js";
 import { dedupeFindings } from "./findings.js";
 import { planMatrix, type ReviewerOverrides } from "./matrix.js";
@@ -30,6 +31,8 @@ export interface ReviewOptions {
   concurrency?: number;
   taskTimeoutMs?: number;
   runTimeoutMs?: number;
+  // Fact-check findings before reporting them (default true).
+  verify?: boolean;
   signal?: AbortSignal;
   onEvent?: (event: ReviewEvent) => void;
 }
@@ -61,6 +64,26 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     (job) => runJob(job, plan, execute),
   );
 
+  const concurrency = options.concurrency ?? DEFAULTS.concurrency;
+  const found = dedupeFindings(results.flatMap((r) => r.findings));
+  const verification =
+    options.verify === false
+      ? { checked: 0, kept: found, refuted: [], usage: [], warnings: [] }
+      : await verifyFindings(found, {
+          runtime: options.runtime,
+          diffs: plan.selected,
+          context: plan.context,
+          signal,
+          concurrency,
+        });
+  if (verification.checked > 0) {
+    emit({
+      type: "verification_finished",
+      checked: verification.checked,
+      refuted: verification.refuted,
+    });
+  }
+
   const report: ReviewReport = {
     changeRequest: plan.changeRequest,
     tier: plan.tier,
@@ -68,9 +91,10 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     bundles: plan.bundles.map((b) => ({ label: b.label, files: b.files.map((f) => f.newPath) })),
     tasks: results.map((r) => r.outcome),
     skipped: matrix.skipped,
-    findings: sortFindings(dedupeFindings(results.flatMap((r) => r.findings))),
-    usage: sumUsage([...plan.usage, ...results.map((r) => r.usage)]),
-    warnings: [...plan.warnings, ...results.flatMap((r) => r.warnings)],
+    findings: sortFindings(verification.kept),
+    refuted: verification.refuted,
+    usage: sumUsage([...plan.usage, ...results.map((r) => r.usage), ...verification.usage]),
+    warnings: [...plan.warnings, ...results.flatMap((r) => r.warnings), ...verification.warnings],
   };
   emit({ type: "run_finished", report });
   return report;

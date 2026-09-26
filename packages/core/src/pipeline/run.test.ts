@@ -325,6 +325,51 @@ describe("runReview", () => {
     expect(report.usage.inputTokens).toBe(50);
   });
 
+  it("drops findings the verifier refutes and reports them", async () => {
+    const rt = runtime(async function* (spec) {
+      yield {
+        type: "finding",
+        taskId: spec.taskId,
+        finding: finding("src/a.ts", "const a = 1;", { title: "bogus" }),
+      };
+      yield {
+        type: "finding",
+        taskId: spec.taskId,
+        finding: finding("src/b.ts", "const b = 2;", { title: "real" }),
+      };
+      yield { type: "done", taskId: spec.taskId };
+    });
+    const zero = {
+      inputTokens: 1,
+      outputTokens: 0,
+      reasoningTokens: 0,
+      cachedTokens: 0,
+      costUsd: 0,
+    };
+    rt.complete = async (request) => ({
+      text: request.user.includes("File: src/a.ts")
+        ? '[{"index":0,"verdict":"refuted","reason":"a is a constant"}]'
+        : '[{"index":0,"verdict":"confirmed","reason":"ok"}]',
+      usage: zero,
+    });
+    const events: ReviewEvent[] = [];
+    const report = await runReview({
+      vcs: vcs({}, twoFiles),
+      runtime: rt,
+      onEvent: (e) => events.push(e),
+    });
+    expect(report.findings.map((f) => f.title)).toEqual(["real"]);
+    expect(report.refuted).toMatchObject([
+      { file: "src/a.ts", title: "bogus", reason: "a is a constant" },
+    ]);
+    expect(report.usage.inputTokens).toBe(2);
+    expect(events.find((e) => e.type === "verification_finished")).toMatchObject({ checked: 2 });
+
+    const unverified = await runReview({ vcs: vcs({}, twoFiles), runtime: rt, verify: false });
+    expect(unverified.findings).toHaveLength(2);
+    expect(unverified.refuted).toEqual([]);
+  });
+
   it("reviews per file when the grouping call fails", async () => {
     const diff = ["a", "b", "c", "d"]
       .map((n) => patch(`src/${n}.ts`, `const ${n} = 1;`))

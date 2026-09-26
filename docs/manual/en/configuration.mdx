@@ -15,6 +15,7 @@ ocra reads `.ocra/config.json` from the root of the repository being reviewed. E
   "concurrency": 4,
   "taskTimeoutMinutes": 10,
   "runTimeoutMinutes": 25,
+  "verify": true,
   "include": [],
   "exclude": ["legacy/**"],
   "runtime": "opencode",
@@ -59,6 +60,7 @@ For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Gro
 | `concurrency` | `4` | Review tasks running at once (1–32) |
 | `taskTimeoutMinutes` | `10` | Limit for one review task |
 | `runTimeoutMinutes` | `25` | Limit for the whole run |
+| `verify` | `true` | Fact-check findings before reporting them (one standard-tier call per file with findings) |
 
 A task that fails or times out never fails the run; its files are reported as `failed`.
 
