@@ -15,6 +15,7 @@ Nothing else is added: ocra starts its agent runtime with your global OpenCode c
 
 - The OpenCode runtime runs on `127.0.0.1` with a random port and a random password per run, and keeps its state in a temporary directory that is removed afterwards.
 - Review tools are served from ocra's own process on `127.0.0.1`, protected by a random bearer token.
+- The runtime receives only system basics and the credentials of the providers in your model chains, not your whole environment.
 - All built-in agent tools (shell, file editing, web access) are disabled; reviewers can only read the revision under review.
 - Paths requested by a model are confined to the repository, including through symlinks.
 - Reviewers cannot read, diff or search likely secret files (`.env`, keys, certificates, cloud and registry credentials, `*.tfvars`) or anything under `.git/`, even when the file exists on disk or a prompt asks for it. The same patterns keep those files out of review.

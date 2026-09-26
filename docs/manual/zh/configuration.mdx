@@ -48,6 +48,8 @@ export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
 
 key 只从环境变量读取，变量名用 OpenCode 里各供应商对应的名字，例如 `ANTHROPIC_API_KEY`、`OPENAI_API_KEY`。Google 支持 `GEMINI_API_KEY`、`GOOGLE_API_KEY` 和 `GOOGLE_GENERATIVE_AI_API_KEY`。
 
+agent 运行时只会从你的环境里拿到它需要的东西：`PATH`、`HOME`、语言区域、代理和 CA 设置，以及模型链里用到的供应商的凭据（ocra 不认识的供应商，会拿到所有以其大写 id 开头的变量，例如 `groq` 对应 `GROQ_`）。其余的，比如云服务凭据或 `GITHUB_TOKEN`，都不会传过去。如果某个供应商还需要别的变量，把变量名写进 `OCRA_RUNTIME_ENV`，用逗号分隔。
+
 ## 执行参数
 
 | 字段 | 默认值 | 含义 |

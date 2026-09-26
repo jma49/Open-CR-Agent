@@ -48,6 +48,8 @@ export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
 
 Keys are read from the environment only. Use the variable your provider expects in OpenCode, for example `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`. For Google, `GEMINI_API_KEY`, `GOOGLE_API_KEY` and `GOOGLE_GENERATIVE_AI_API_KEY` all work.
 
+The agent runtime receives only what it needs from your environment: `PATH`, `HOME`, locale, proxy and CA settings, and the credentials of the providers named in your model chains (for a provider ocra does not know, every variable starting with its uppercased id, such as `GROQ_` for `groq`). Anything else, like cloud credentials or `GITHUB_TOKEN`, stays out. If a provider needs another variable, list its name in `OCRA_RUNTIME_ENV`, comma-separated.
+
 ## Execution
 
 | Key | Default | Meaning |
