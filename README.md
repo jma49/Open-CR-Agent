@@ -4,7 +4,7 @@ An open-source multi-agent code review system. Deterministic engineering handles
 
 Inspired by [Cloudflare's AI code review](https://blog.cloudflare.com/ai-code-review/) and [Alibaba OpenCodeReview](https://github.com/alibaba/open-code-review).
 
-> Status: early development. User manual: [English](docs/manual/en/index.mdx) · [中文](docs/manual/zh/index.mdx). Contributors: [architecture](docs/architecture.md) and [decision records](docs/adr/).
+> Status: early development. User manual: [English](docs/manual/en/index.mdx) · [中文](docs/manual/zh/index.mdx). Contributors: [architecture](docs/architecture.md), [decision records](docs/adr/) and the [handoff notes](docs/handoff.md).
 
 ## Usage
 

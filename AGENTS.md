@@ -76,3 +76,4 @@ Open-CR-Agent is an open-source multi-agent code review system. Deterministic en
 - Every PR keeps `npm run verify` green; CI enforces it.
 - New behavior ships with tests. Review-quality changes (prompts, rules, stages) must be measured with the eval package before merge.
 - Record significant technical decisions as a new ADR in `docs/adr/` instead of rewriting old ones. Record spike results in `docs/spikes/`.
+- Before ending a working session, update `docs/handoff.md`: current state, environment notes, open questions and next steps.
