@@ -9,6 +9,7 @@ import type { RepoRule } from "../rules/repo-rules.js";
 import type { FileDecision, SelectionPolicy } from "../select/select.js";
 import { type JobResult, runJob } from "./execute.js";
 import { dedupeFindings } from "./findings.js";
+import { planMatrix, type ReviewerOverrides } from "./matrix.js";
 import { planReview } from "./plan.js";
 import { mapWithConcurrency } from "./pool.js";
 import type { CoverageEntry, ReviewEvent, ReviewReport } from "./report.js";
@@ -20,6 +21,7 @@ export interface ReviewOptions {
   vcs: VcsAdapter;
   runtime: AgentRuntime;
   reviewers?: readonly ReviewerDefinition[];
+  reviewerOverrides?: ReviewerOverrides;
   rules?: readonly RepoRule[];
   selection?: SelectionPolicy;
   bundling?: BundlePolicy;
@@ -44,9 +46,8 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
 
   const plan = await planReview(options, emit, signal);
 
-  const jobs = plan.bundles.flatMap((bundle, i) =>
-    reviewers.map((reviewer) => ({ taskId: `${reviewer.id}-${i + 1}`, reviewer, bundle })),
-  );
+  const matrix = planMatrix(plan.bundles, reviewers, plan.tier, options.reviewerOverrides);
+  emit({ type: "matrix_planned", tasks: matrix.cells.length, skipped: matrix.skipped });
   const execute = {
     runtime: options.runtime,
     taskTimeoutMs: options.taskTimeoutMs ?? DEFAULTS.taskTimeoutMs,
@@ -55,7 +56,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     signal,
   };
   const results = await mapWithConcurrency(
-    jobs,
+    matrix.cells,
     options.concurrency ?? DEFAULTS.concurrency,
     (job) => runJob(job, plan, execute),
   );
@@ -66,6 +67,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     coverage: coverage(plan.decisions, results),
     bundles: plan.bundles.map((b) => ({ label: b.label, files: b.files.map((f) => f.newPath) })),
     tasks: results.map((r) => r.outcome),
+    skipped: matrix.skipped,
     findings: sortFindings(dedupeFindings(results.flatMap((r) => r.findings))),
     usage: sumUsage([...plan.usage, ...results.map((r) => r.usage)]),
     warnings: [...plan.warnings, ...results.flatMap((r) => r.warnings)],
@@ -81,9 +83,11 @@ function coverage(
   const failed = new Set(
     results.filter((r) => r.outcome.status !== "completed").flatMap((r) => r.outcome.files),
   );
+  const assigned = new Set(results.flatMap((r) => r.outcome.files));
   return decisions.map((d): CoverageEntry => {
     const path = d.diff.newPath;
     if (!d.selected) return { path, status: "excluded", reason: d.reason };
+    if (!assigned.has(path)) return { path, status: "unreviewed" };
     return { path, status: failed.has(path) ? "failed" : "reviewed" };
   });
 }

@@ -27,6 +27,7 @@ describe("loadConfig", () => {
       exclude: [],
       runtime: "opencode",
       plugins: [],
+      reviewers: {},
       pluginSettings: {},
     });
   });

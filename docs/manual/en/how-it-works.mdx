@@ -15,7 +15,8 @@ Ingest → Select → Triage → Bundle → Execute → Anchor → (Verify → J
 | **Select** | Decide per file: review it, or exclude it with a reason (binary, secret, generated, too large…). |
 | **Triage** | Assign a risk tier (trivial, lite, full) from size and sensitive paths such as `auth/`. |
 | **Bundle** | Group related files. Small change sets form one bundle; larger ones are grouped by a light model that answers with file indices. |
-| **Execute** | Run each reviewer on each bundle as an isolated agent task with read-only tools. |
+| **Matrix** | Decide which reviewer runs on which bundle from the risk tier and each reviewer's scope (for example, no documentation for a code-only reviewer). Skipped pairs are listed in the report. |
+| **Execute** | Run each planned (bundle, reviewer) pair as an isolated agent task with read-only tools. |
 | **Anchor** | Resolve every finding's quoted code to exact lines. |
 | **Verify, Judge** | *Planned for M2:* fact-check each finding and deduplicate across reviewers. |
 

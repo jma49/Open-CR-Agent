@@ -120,11 +120,49 @@ describe("runReview", () => {
       "run_started",
       "files_selected",
       "files_bundled",
+      "matrix_planned",
       "task_started",
       "task_progress",
       "finding",
       "task_finished",
       "run_finished",
+    ]);
+  });
+
+  it("runs only the cells the review matrix plans and reports the rest", async () => {
+    const diff = [patch("src/a.ts", "const a = 1;"), patch("README.md", "more")].join("\n");
+    const rt = runtime(async function* (spec) {
+      yield { type: "done", taskId: spec.taskId };
+    });
+    const report = await runReview({
+      vcs: vcs({}, diff),
+      runtime: rt,
+      reviewers: [
+        {
+          id: "code-only",
+          category: "c",
+          modelTier: "standard",
+          systemPrompt: "",
+          scope: { ignore: ["**/*.md"] },
+        },
+        {
+          id: "risky-only",
+          category: "r",
+          modelTier: "standard",
+          systemPrompt: "",
+          scope: { minTier: "full" },
+        },
+      ],
+    });
+
+    expect(rt.specs.map((s) => s.taskId)).toEqual(["code-only-1"]);
+    expect(rt.specs[0]?.userPrompt).not.toContain('README.md" change');
+    expect(report.skipped).toEqual([
+      { reviewer: "risky-only", bundle: "small change set", reason: "below_tier" },
+    ]);
+    expect(report.coverage).toEqual([
+      { path: "src/a.ts", status: "reviewed" },
+      { path: "README.md", status: "unreviewed" },
     ]);
   });
 

@@ -8,5 +8,6 @@
 | [0004](0004-precision-first.md) | Precision by default, recall via `--ultra` |
 | [0005](0005-review-tools-over-mcp.md) | Review tools delivered to the runtime over in-process MCP |
 | [0006](0006-plugin-contract.md) | ocra plugin contract: bootstrap / configure / postConfigure |
+| [0007](0007-review-matrix.md) | Review matrix: reviewer scopes, risk tiers and overrides decide the cells |
 
 Copy [0000-template.md](0000-template.md) to add a new record.

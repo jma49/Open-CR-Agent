@@ -31,7 +31,8 @@ Progress goes to stderr, so `--format json` output on stdout stays machine-reada
 ```text
 [ocra] Reviewing: Working tree changes
 [ocra] 4 file(s) selected, 1 excluded · risk tier: lite
-[ocra] 2 review task(s) (grouped)
+[ocra] 2 bundle(s) (grouped)
+[ocra] 2 review task(s)
 [ocra] correctness-1 started: auth session handling (2 file(s))
 [ocra] correctness-1 reviewing with google/gemini-3.5-flash
 [ocra] correctness-1 google/gemini-3.5-flash: 3 tool call(s), 19558 in / 118 out / 0 reasoning tokens, $0.0062
@@ -50,7 +51,7 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...` so a lo
 
 ### JSON output
 
-`--format json` prints the full report: the change request, risk tier, coverage for every changed file (reviewed, failed, or excluded with a reason), bundles, task outcomes, findings with their resolved line ranges, token usage and cost, and warnings.
+`--format json` prints the full report: the change request, risk tier, coverage for every changed file (reviewed, failed, unreviewed, or excluded with a reason), bundles, task outcomes, reviewer/bundle pairs the matrix skipped, findings with their resolved line ranges, token usage and cost, and warnings.
 
 ### Sessions
 

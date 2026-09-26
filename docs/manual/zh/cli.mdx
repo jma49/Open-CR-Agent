@@ -31,7 +31,8 @@ ocra review [options]
 ```text
 [ocra] Reviewing: Working tree changes
 [ocra] 4 file(s) selected, 1 excluded · risk tier: lite
-[ocra] 2 review task(s) (grouped)
+[ocra] 2 bundle(s) (grouped)
+[ocra] 2 review task(s)
 [ocra] correctness-1 started: auth session handling (2 file(s))
 [ocra] correctness-1 reviewing with google/gemini-3.5-flash
 [ocra] correctness-1 google/gemini-3.5-flash: 3 tool call(s), 19558 in / 118 out / 0 reasoning tokens, $0.0062
@@ -50,7 +51,7 @@ ocra review [options]
 
 ### JSON 输出
 
-`--format json` 会输出完整报告：变更信息、风险档位、每个改动文件的覆盖情况（已审查、失败，或被排除及原因）、分组、各任务结果、带行号的问题、token 用量与花费，以及警告信息。
+`--format json` 会输出完整报告：变更信息、风险档位、每个改动文件的覆盖情况（已审查、失败、未被覆盖，或被排除及原因）、分组、各任务结果、被 Matrix 跳过的（审查员，分组）组合、带行号的问题、token 用量与花费，以及警告信息。
 
 ### 会话记录
 

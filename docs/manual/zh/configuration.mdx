@@ -19,6 +19,7 @@ ocra 从被审查仓库根目录的 `.ocra/config.json` 读取配置。所有字
   "exclude": ["legacy/**"],
   "runtime": "opencode",
   "plugins": [],
+  "reviewers": {},
   "pluginSettings": {}
 }
 ```
@@ -63,6 +64,16 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 
 - `exclude`：额外要跳过的 glob。
 - `include`：即使会被当作生成代码或按扩展名跳过，也要审查的 glob。密钥文件永远无法被 include。
+
+## 审查员
+
+`reviewers.<id>` 可以关闭某个审查员，或提高它开始运行的风险档位。风险档位从低到高：`trivial`（改动 ≤10 行）、`lite`（≤100 行）、`full`（更大的改动、超过 20 个文件，或涉及 `auth/`、CI workflow 等敏感路径）。
+
+```json
+{ "reviewers": { "correctness": { "minTier": "lite" }, "security": { "enabled": false } } }
+```
+
+被 Matrix 跳过的组合会列在 JSON 报告的 `skipped` 里；没有任何审查员覆盖的文件在覆盖情况里显示为 `unreviewed`。
 
 ## 插件
 
