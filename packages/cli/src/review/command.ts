@@ -60,7 +60,7 @@ export async function reviewCommand(
   const warn = (message: string) => io.err.write(`[ocra] Warning: ${forTerminal(message)}\n`);
   const target = args.pullRequest
     ? await pullRequestTarget(args.pullRequest, deps.cwd, root, deps.env, warn, deps.fetch)
-    : await localTarget(args, deps.cwd, root, deps.env);
+    : await localTarget(args, deps.cwd, root, deps.env, warn, deps.fetch);
   const { config } = target;
   const session = { dir: join(root, SESSIONS_DIR), id: newSessionId() };
 
@@ -97,7 +97,7 @@ export async function reviewCommand(
       vcs,
       runtime,
       reviewers: registry.reviewers,
-      rules: registry.rules,
+      rules: [...registry.rules, ...config.rules],
       onEvent: (event) => {
         registry.emit(event);
         progress.onEvent(event);

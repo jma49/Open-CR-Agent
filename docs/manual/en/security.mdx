@@ -24,6 +24,10 @@ Nothing else is added: ocra starts its agent runtime with your global OpenCode c
 
 Pull request text, diffs and repository files are treated as data. Instructions inside them are never followed, and text that imitates ocra's prompt structure is neutralized before it reaches a model. Text ocra prints to your terminal (findings, commit messages, errors) has control characters, escape sequences and bidirectional overrides replaced, so a change cannot rewrite your screen, hide a finding or write to your clipboard.
 
+## Shared configuration
+
+`extends` fetches settings and rules over `https` only, never plugins, and can be pinned with `#sha256=`. For pull requests it is read from the base commit like the rest of the configuration.
+
 ## Keys
 
 Provider keys are read from environment variables only and never written to configuration, logs or session files. Secret files in the repository are unreadable to reviewers (see Isolation), so their contents cannot end up in prompts, reports or session files either.

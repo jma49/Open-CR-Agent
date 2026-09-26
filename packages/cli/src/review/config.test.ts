@@ -29,6 +29,7 @@ describe("loadConfig", () => {
       plugins: [],
       reviewers: {},
       github: {},
+      rules: [],
       pluginSettings: {},
     });
   });

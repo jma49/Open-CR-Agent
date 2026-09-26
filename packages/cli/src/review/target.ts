@@ -20,8 +20,14 @@ export async function localTarget(
   cwd: string,
   root: string,
   env: Env,
+  warn: (message: string) => void,
+  fetchImpl?: typeof fetch,
 ): Promise<ReviewTarget> {
-  const config = await loadConfig(root, env, { repository: !args.ignoreRepoConfig });
+  const config = await loadConfig(root, env, {
+    repository: !args.ignoreRepoConfig,
+    warn,
+    ...(fetchImpl ? { fetch: fetchImpl } : {}),
+  });
   return {
     config,
     plugins: await loadExternalPlugins(config.plugins, root),
@@ -53,7 +59,12 @@ export async function pullRequestTarget(
 
   const base = new LocalGitAdapter({ cwd, target: { mode: "commit", commit: pull.base.sha } });
   const readTrusted = (path: string) => base.readFile(path);
-  const config = await loadConfig(root, env, { repository: true, read: readTrusted });
+  const config = await loadConfig(root, env, {
+    repository: true,
+    read: readTrusted,
+    warn,
+    ...(fetchImpl ? { fetch: fetchImpl } : {}),
+  });
   if (config.plugins.length > 0) {
     warn("plugins in .ocra/config.json are not loaded for pull requests");
   }
