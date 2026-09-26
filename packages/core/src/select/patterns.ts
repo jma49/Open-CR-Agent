@@ -16,6 +16,14 @@ export const SECRET_PATTERNS = [
   "**/credentials.json",
   "**/service-account*.json",
   "**/secrets.{yml,yaml,json}",
+  "**/.git-credentials",
+  "**/.aws/credentials",
+  "**/.kube/config",
+  "**/kubeconfig",
+  "**/.docker/config.json",
+  "**/.dockercfg",
+  "**/*.tfvars",
+  "**/*.ovpn",
 ];
 
 export const ENV_TEMPLATE_PATTERNS = ["**/.env.example", "**/.env.sample", "**/.env.template"];

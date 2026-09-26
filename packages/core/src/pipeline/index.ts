@@ -1,3 +1,4 @@
+export * from "./context.js";
 export * from "./findings.js";
 export * from "./report.js";
 export * from "./run.js";

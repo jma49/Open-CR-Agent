@@ -59,7 +59,7 @@ A task that fails or times out never fails the run; its files are reported as `f
 
 ## File selection
 
-ocra skips binary files, likely secrets (`.env`, keys, certificates), deleted files, media and archives, lock files, vendored and generated code, and very large diffs. Database migrations are always reviewed.
+ocra skips binary files, likely secrets (`.env`, keys, certificates, cloud and registry credentials, `*.tfvars`), deleted files, media and archives, lock files, vendored and generated code, and very large diffs. Database migrations are always reviewed.
 
 - `exclude`: globs to skip in addition.
 - `include`: globs to review even if they would be skipped as generated or by extension. Secrets can never be included.
