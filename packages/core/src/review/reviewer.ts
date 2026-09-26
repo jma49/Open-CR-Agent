@@ -1,5 +1,6 @@
 import type { ModelTier } from "../contracts.js";
 import type { RiskTier } from "../domain.js";
+import type { RuleSet } from "../rules/rule-set.js";
 
 // Where a reviewer is worth its cost; the review matrix applies it per bundle.
 export interface ReviewerScope {
@@ -15,4 +16,5 @@ export interface ReviewerDefinition {
   modelTier: ModelTier;
   systemPrompt: string;
   scope?: ReviewerScope;
+  rules?: RuleSet;
 }

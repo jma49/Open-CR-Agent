@@ -37,7 +37,7 @@ export async function runJob(
     changeRequest: plan.changeRequest,
     changedFiles: plan.selected,
     bundle: job.bundle.files,
-    rules: resolveRules(files, plan.repoRules),
+    rules: resolveRules(files, plan.repoRules, job.reviewer.rules),
     guidelines: plan.guidelines,
   });
 

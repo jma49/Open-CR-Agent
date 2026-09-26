@@ -26,6 +26,10 @@ describe("parseReviewArgs", () => {
   it("returns help", () => {
     expect(parseReviewArgs(["-h"])).toBe("help");
     expect(parseReviewArgs(["--no-repo-config"])).toMatchObject({ ignoreRepoConfig: true });
+    expect(parseReviewArgs(["--reviewers", "security, correctness"])).toMatchObject({
+      reviewers: ["security", "correctness"],
+    });
+    expect(() => parseReviewArgs(["--reviewers", " , "])).toThrow(UsageError);
   });
 
   it.each([

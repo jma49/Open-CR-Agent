@@ -23,7 +23,7 @@ export async function reviewInstance(
   repoDir: string,
   instance: Instance,
   outputPath: string,
-  options: { command: readonly string[]; timeoutMs: number },
+  options: { command: readonly string[]; timeoutMs: number; reviewArgs?: readonly string[] },
 ): Promise<ReviewOutcome> {
   const [bin, ...prefix] = options.command;
   if (!bin) throw new Error("ocra command is empty");
@@ -45,6 +45,7 @@ export async function reviewInstance(
       // Benchmark repositories are third-party code: their config must not
       // load plugins on the maintainer's machine.
       "--no-repo-config",
+      ...(options.reviewArgs ?? []),
     ],
     { cwd: repoDir, timeoutMs: options.timeoutMs },
   );

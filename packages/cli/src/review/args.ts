@@ -8,6 +8,7 @@ export interface ReviewArgs {
   format: OutputFormat;
   output?: string;
   ignoreRepoConfig?: true;
+  reviewers?: string[];
 }
 
 export class UsageError extends Error {}
@@ -22,6 +23,7 @@ Options:
   --commit <sha>     Review a single commit
   --format <format>  text (default) or json
   --output <file>    Write the result to a file instead of stdout
+  --reviewers <ids>  Run only these reviewers (comma-separated)
   --no-repo-config   Ignore .ocra/config.json and its plugins (for untrusted
                      code); models come from OCRA_MODEL_* variables
   -h, --help         Show help
@@ -46,6 +48,14 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
   const args: ReviewArgs = { target: target(values), format };
   if (values.output !== undefined) args.output = values.output;
   if (values["no-repo-config"]) args.ignoreRepoConfig = true;
+  if (values.reviewers !== undefined) {
+    const ids = values.reviewers
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => id !== "");
+    if (ids.length === 0) throw new UsageError("--reviewers needs at least one reviewer id");
+    args.reviewers = ids;
+  }
   return args;
 }
 
@@ -61,6 +71,7 @@ function parse(argv: string[]) {
       format: { type: "string" },
       output: { type: "string" },
       "no-repo-config": { type: "boolean" },
+      reviewers: { type: "string" },
       help: { type: "boolean", short: "h" },
     },
   });

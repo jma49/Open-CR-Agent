@@ -218,6 +218,23 @@ describe("ocra review", () => {
     expect(existsSync(marker)).toBe(false);
   });
 
+  it("runs only the reviewers named with --reviewers", async () => {
+    const cwd = repoWithChange();
+    const reviewers: string[] = [];
+    const record: Script = async function* (spec) {
+      reviewers.push(spec.reviewer);
+      yield { type: "done", taskId: spec.taskId };
+    };
+    expect(
+      await run(["review", "--reviewers", "correctness"], capture(), capture(), deps(cwd, record)),
+    ).toBe(0);
+    expect(reviewers).toEqual(["correctness"]);
+
+    const err = capture();
+    expect(await run(["review", "--reviewers", "nope"], capture(), err, deps(cwd, record))).toBe(2);
+    expect(err.text()).toContain("Unknown reviewer(s): nope");
+  });
+
   it("reports missing or invalid external plugins", async () => {
     const cwd = repoWithChange();
     mkdirSync(join(cwd, ".ocra"), { recursive: true });

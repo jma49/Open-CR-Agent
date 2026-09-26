@@ -21,6 +21,7 @@ export interface RunOptions {
   runDir: string;
   reposDir: string;
   command: readonly string[];
+  reviewArgs?: readonly string[];
   timeoutMs: number;
   maxCostUsd?: number;
   // Run PRs again whose previous attempt failed instead of reusing the failure.
@@ -99,6 +100,7 @@ async function reviewOne(
   const outcome = await reviewInstance(repoDir, instance, reportPath, {
     command: options.command,
     timeoutMs: options.timeoutMs,
+    reviewArgs: options.reviewArgs ?? [],
   });
   const report = outcome.report;
   const completed = report?.tasks.some((t) => t.status === "completed") ?? false;

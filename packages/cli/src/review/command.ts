@@ -4,16 +4,20 @@ import {
   defaultSelectionPolicy,
   newSessionId,
   type OcraPlugin,
+  performanceReviewerPlugin,
+  type ReviewerOverride,
+  type ReviewerOverrides,
   type ReviewOptions,
   type ReviewReport,
   runReview,
+  securityReviewerPlugin,
   sessionJsonlPlugin,
   startPlugins,
 } from "@open-cr-agent/core";
 import { opencodeRuntimePlugin } from "@open-cr-agent/runtime-opencode";
 import { findRepositoryRoot, localGitPlugin } from "@open-cr-agent/vcs-local";
 import type { ReviewArgs } from "./args.js";
-import { type CliConfig, loadConfig } from "./config.js";
+import { type CliConfig, ConfigError, loadConfig } from "./config.js";
 import { loadExternalPlugins } from "./plugins.js";
 import { type Output, ProgressPrinter } from "./progress.js";
 import { renderJson, renderText } from "./render.js";
@@ -27,6 +31,8 @@ export const BUILTIN_PLUGINS: readonly OcraPlugin[] = [
   localGitPlugin,
   opencodeRuntimePlugin,
   correctnessReviewerPlugin,
+  securityReviewerPlugin,
+  performanceReviewerPlugin,
   sessionJsonlPlugin,
 ];
 
@@ -56,12 +62,18 @@ export async function reviewCommand(
   });
   const vcs = registry.createVcs("local", { cwd: deps.cwd, target: args.target });
   const runtime = registry.createRuntime(config.runtime, { models: config.models, env: deps.env });
+  const overrides = reviewerOverrides(
+    config,
+    args,
+    registry.reviewers.map((r) => r.id),
+  );
 
   const progress = new ProgressPrinter(io.err, { heartbeatMs: deps.heartbeatMs, now: deps.now });
   let report: ReviewReport;
   try {
     report = await runReview({
       ...runOptions(config),
+      reviewerOverrides: overrides,
       vcs,
       runtime,
       reviewers: registry.reviewers,
@@ -90,7 +102,6 @@ export async function reviewCommand(
 function runOptions(config: CliConfig): Omit<ReviewOptions, "vcs" | "runtime"> {
   const options: Omit<ReviewOptions, "vcs" | "runtime"> = {
     selection: { ...defaultSelectionPolicy, include: config.include, exclude: config.exclude },
-    reviewerOverrides: config.reviewers,
   };
   if (config.concurrency !== undefined) options.concurrency = config.concurrency;
   if (config.taskTimeoutMinutes !== undefined)
@@ -98,6 +109,26 @@ function runOptions(config: CliConfig): Omit<ReviewOptions, "vcs" | "runtime"> {
   if (config.runTimeoutMinutes !== undefined)
     options.runTimeoutMs = config.runTimeoutMinutes * 60_000;
   return options;
+}
+
+// --reviewers narrows the run to the named reviewers on top of the config.
+function reviewerOverrides(
+  config: CliConfig,
+  args: ReviewArgs,
+  registered: readonly string[],
+): ReviewerOverrides {
+  if (args.reviewers === undefined) return config.reviewers;
+  const unknown = args.reviewers.filter((id) => !registered.includes(id));
+  if (unknown.length > 0) {
+    throw new ConfigError(
+      `Unknown reviewer(s): ${unknown.join(", ")} (available: ${registered.join(", ")})`,
+    );
+  }
+  const overrides: Record<string, ReviewerOverride> = { ...config.reviewers };
+  for (const id of registered) {
+    if (!args.reviewers.includes(id)) overrides[id] = { ...overrides[id], enabled: false };
+  }
+  return overrides;
 }
 
 function exitCode(report: ReviewReport, err: Output): number {

@@ -39,6 +39,7 @@ Run:
   --max-cost-usd <n>       Stop starting new PRs once review spend reaches this
   --timeout-minutes <n>    Per-PR timeout (default 30)
   --retry-failed           Review again PRs that failed in an earlier attempt
+  --reviewers <ids>        Passed to ocra review --reviewers
   --mock-judge             Offline approximate judge (numbers not comparable)
 
 Models come from OCRA_MODEL_TOP / OCRA_MODEL_STANDARD / OCRA_MODEL_LIGHT.
@@ -77,6 +78,7 @@ const OPTIONS = {
   "timeout-minutes": { type: "string" },
   "mock-judge": { type: "boolean" },
   "retry-failed": { type: "boolean" },
+  reviewers: { type: "string" },
 } as const;
 
 function parse(argv: string[]) {
@@ -141,6 +143,7 @@ async function run(
   const maxCost = number(values["max-cost-usd"], "--max-cost-usd");
   if (maxCost !== undefined) runOptions.maxCostUsd = maxCost;
   if (values["retry-failed"]) runOptions.retryFailed = true;
+  if (values.reviewers) runOptions.reviewArgs = ["--reviewers", values.reviewers];
 
   const results = await runInstances(instances, runOptions);
   const info: RunInfo = {

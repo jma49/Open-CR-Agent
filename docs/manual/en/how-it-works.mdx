@@ -22,7 +22,15 @@ Ingest → Select → Triage → Bundle → Execute → Anchor → (Verify → J
 
 ## Reviewers and tools
 
-A reviewer is an agent with a focused prompt. It can only read: `read_file`, `read_diff` and `code_search` answer from the revision under review (a commit in range or commit mode, not your working tree), and findings are submitted through `report_finding`. It cannot edit files, run commands or browse the web.
+A reviewer is an agent with a focused prompt, its own rules, and a scope that tells the matrix where it is worth running:
+
+| Reviewer | Looks for | Runs at | Skips |
+|---|---|---|---|
+| `correctness` | Logic errors, broken contracts, error handling | every tier | nothing |
+| `security` | Exploitable issues reachable from untrusted input: injection, authorization, secrets, crypto, unsafe parsing, CI | `lite` and `full` | documentation, tests |
+| `performance` | Measurable regressions on paths that matter: complexity, N+1, blocking work, memory | `lite` and `full` | documentation, tests, config data, CI workflows |
+
+Each one reviews only its own domain and states what not to flag. Every reviewer can only read: `read_file`, `read_diff` and `code_search` answer from the revision under review (a commit in range or commit mode, not your working tree), and findings are submitted through `report_finding`. It cannot edit files, run commands or browse the web.
 
 ## Anchoring
 

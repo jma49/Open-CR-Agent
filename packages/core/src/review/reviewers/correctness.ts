@@ -1,3 +1,4 @@
+import { CORRECTNESS_RULES } from "../../rules/builtin/index.js";
 import type { ReviewerDefinition } from "../reviewer.js";
 import { REVIEW_TOOLS as T } from "../tools.js";
 
@@ -45,4 +46,5 @@ export const correctnessReviewer: ReviewerDefinition = {
   category: "correctness",
   modelTier: "standard",
   systemPrompt: SYSTEM_PROMPT,
+  rules: CORRECTNESS_RULES,
 };

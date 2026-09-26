@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CORRECTNESS_RULES } from "./builtin/index.js";
 import { detectLanguage } from "./languages.js";
 import { parseRepoRules } from "./repo-rules.js";
 import { resolveRules } from "./resolve.js";
@@ -38,7 +39,7 @@ describe("parseRepoRules", () => {
 
 describe("resolveRules", () => {
   it("always includes general rules and adds each detected language once, sorted", () => {
-    const rules = resolveRules(["b.py", "a.ts", "c.ts", "notes.md"], []);
+    const rules = resolveRules(["b.py", "a.ts", "c.ts", "notes.md"], [], CORRECTNESS_RULES);
     expect(rules).toContain("### General correctness");
     expect(rules.indexOf("### Python")).toBeGreaterThan(-1);
     expect(rules.indexOf("### Python")).toBeLessThan(rules.indexOf("### TypeScript"));
@@ -54,5 +55,14 @@ describe("resolveRules", () => {
     const rules = resolveRules(["api/users.ts"], repoRules);
     expect(rules).toContain("### Repository rules\nAPI handlers must check tenant ownership.");
     expect(rules).not.toContain("Web rule.");
+  });
+
+  it("uses only the reviewer's own built-in rules", () => {
+    expect(resolveRules(["a.ts"], [])).toBe("");
+    const rules = resolveRules(["a.ts", "b.go"], [], {
+      general: "### Security\n- x",
+      languages: { go: "### Go security\n- y" },
+    });
+    expect(rules).toBe("### Security\n- x\n\n### Go security\n- y");
   });
 });

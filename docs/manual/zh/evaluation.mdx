@@ -22,9 +22,10 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--label` | 运行名称；用同一个名称再次运行会接着上次继续 |
 | `--max-cost-usd` | 审查花费达到上限后，不再开始新的 PR |
 | `--retry-failed` | 重新审查同一次运行里之前失败的 PR |
+| `--reviewers` | 透传给 `ocra review --reviewers`，用来比较不同的审查员组合 |
 | `--mock-judge` | 离线的词重叠判定，只用来检查流程是否跑通（结果不可比） |
 
-仓库以 blobless clone 的方式缓存在 `~/.cache/ocra/aacr-bench/repos`。commit 已经拉取不到的 PR 会被标记为不可用，不计入评分。
+评测总是带着 `--no-repo-config` 运行，基准仓库无法加载插件；模型从 `OCRA_MODEL_*` 读取。仓库以 blobless clone 的方式缓存在 `~/.cache/ocra/aacr-bench/repos`。commit 已经拉取不到的 PR 会被标记为不可用，不计入评分。
 
 ## 评分方式
 
