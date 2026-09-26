@@ -29,6 +29,7 @@ Traps we have already fallen into, across this repository and the site. Each ent
 
 - **git may close stdin before we finish writing.** Writing input to a git process that already exited raises `EPIPE`; ignore `EPIPE` and trust the exit code (`vcs-local/src/git.ts`).
 - **User git configuration changes diff output.** `diff.noprefix`, `diff.mnemonicPrefix`, `diff.relative`, external diff drivers and textconv all break parsing. Always pass the explicit flags in `DIFF_ARGS` (`--src-prefix=a/ --dst-prefix=b/ --no-ext-diff --no-textconv --no-relative -c core.quotepath=true`).
+- **A copied index must keep its timestamp.** Git catches same-second, same-size edits by comparing entry timestamps with the index file's own ("racy git"). Copying the index to a temporary file gave it a fresh timestamp, so git trusted stale stat data and a real edit was missing from the review. Copy with `preserveTimestamps`; the regression test pins mtimes and disables `core.trustctime` to reproduce it deterministically.
 - **User-supplied refs can be options.** A ref such as `--output=x` is parsed as a flag; pass `--end-of-options` before any user ref.
 - **The repository root is not the working directory.** Paths from git are root-relative; resolve against `git rev-parse --show-toplevel`.
 - **"Inside the repository" is not "safe to read".** Path containment (including symlinks) does not stop an agent from reading `.env` or `.git/config`; see the 2026-09-26 audit, finding S1.

@@ -1,5 +1,13 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { reviewContext } from "@open-cr-agent/core";
@@ -64,6 +72,25 @@ describe("LocalGitAdapter workspace mode", () => {
       ["unstaged.ts", "modified"],
     ]);
     expect(r.run("status", "--porcelain")).toContain(`?? "new dir/"`);
+  });
+
+  it("sees a same-size edit made in the same second as the index (racy git)", async () => {
+    const r = repo();
+    r.run("config", "core.trustctime", "false");
+    const moment = new Date("2020-01-01T00:00:00Z");
+    r.write("same.ts", "a\n");
+    utimesSync(join(r.dir, "same.ts"), moment, moment);
+    r.write("new.ts", "n\n");
+    commitAll(r, "init");
+    rmSync(join(r.dir, "new.ts"));
+    r.write("new.ts", "n\n");
+    r.run("add", "new.ts");
+    r.write("same.ts", "b\n");
+    utimesSync(join(r.dir, "same.ts"), moment, moment);
+    utimesSync(join(r.dir, ".git", "index"), moment, moment);
+    r.write("untracked.ts", "u\n");
+
+    expect(await changes(r.dir, { mode: "workspace" })).toContainEqual(["same.ts", "modified"]);
   });
 
   it("diffs untracked files over 1 MB as binary", async () => {

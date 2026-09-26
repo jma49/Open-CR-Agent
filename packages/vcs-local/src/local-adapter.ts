@@ -1,4 +1,4 @@
-import { copyFile, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
+import { cp, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
@@ -178,9 +178,14 @@ async function workspaceDiff(root: string, base: string): Promise<string> {
   try {
     const index = join(dir, "index");
     const realIndex = (await git(["rev-parse", "--git-path", "index"], { cwd: root })).trim();
-    await copyFile(resolve(root, realIndex), index).catch((error: NodeJS.ErrnoException) => {
-      if (error.code !== "ENOENT") throw error;
-    });
+    // The copy keeps the index's timestamp: git compares it with entry
+    // timestamps to catch same-second, same-size edits ("racy git"), and a
+    // fresh timestamp would make it trust stale stat data and miss them.
+    await cp(resolve(root, realIndex), index, { preserveTimestamps: true }).catch(
+      (error: NodeJS.ErrnoException) => {
+        if (error.code !== "ENOENT") throw error;
+      },
+    );
     const env = { GIT_INDEX_FILE: index, GIT_LITERAL_PATHSPECS: "1" };
     await git(["add", "--intent-to-add", "--pathspec-from-file=-", "--pathspec-file-nul"], {
       cwd: root,
