@@ -106,6 +106,10 @@ describe("runInstances", () => {
       "base",
     ]);
 
+    const retried = await runInstances(instances, { ...options, maxCostUsd: 5, retryFailed: true });
+    expect(retried.map((r) => r.status)).toEqual(["reviewed", "failed", "reviewed", "reviewed"]);
+    expect(readFileSync(join(dir, "calls.log"), "utf8").trim().split("\n")).toHaveLength(5);
+
     const summary = await score(instances, second, { sameIssue: async (a, b) => b.startsWith(a) });
     expect(summary.instances).toEqual({
       selected: 4,

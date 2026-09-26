@@ -23,6 +23,8 @@ export interface RunOptions {
   command: readonly string[];
   timeoutMs: number;
   maxCostUsd?: number;
+  // Run PRs again whose previous attempt failed instead of reusing the failure.
+  retryFailed?: boolean;
   prepare?: (reposDir: string, instance: Instance) => Promise<string>;
   log(message: string): void;
 }
@@ -49,7 +51,10 @@ export async function runInstances(
   for (const [n, instance] of instances.entries()) {
     const path = join(dir, `${instance.id}.json`);
     const previous = await readResult(path);
-    if (previous && previous.status !== "skipped_budget") {
+    const retry =
+      previous?.status === "skipped_budget" ||
+      (options.retryFailed === true && previous?.status === "failed");
+    if (previous && !retry) {
       results.push(previous);
       spent += previous.usage.costUsd;
       continue;

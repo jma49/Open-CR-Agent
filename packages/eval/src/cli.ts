@@ -38,6 +38,7 @@ Run:
   --repos-dir <dir>        Clone cache (default ~/.cache/ocra/aacr-bench/repos)
   --max-cost-usd <n>       Stop starting new PRs once review spend reaches this
   --timeout-minutes <n>    Per-PR timeout (default 30)
+  --retry-failed           Review again PRs that failed in an earlier attempt
   --mock-judge             Offline approximate judge (numbers not comparable)
 
 Models come from OCRA_MODEL_TOP / OCRA_MODEL_STANDARD / OCRA_MODEL_LIGHT.
@@ -75,6 +76,7 @@ const OPTIONS = {
   "max-cost-usd": { type: "string" },
   "timeout-minutes": { type: "string" },
   "mock-judge": { type: "boolean" },
+  "retry-failed": { type: "boolean" },
 } as const;
 
 function parse(argv: string[]) {
@@ -138,6 +140,7 @@ async function run(
   };
   const maxCost = number(values["max-cost-usd"], "--max-cost-usd");
   if (maxCost !== undefined) runOptions.maxCostUsd = maxCost;
+  if (values["retry-failed"]) runOptions.retryFailed = true;
 
   const results = await runInstances(instances, runOptions);
   const info: RunInfo = {

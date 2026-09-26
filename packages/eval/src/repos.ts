@@ -6,6 +6,10 @@ import { exec } from "./exec.js";
 
 const HOUR = 60 * 60_000;
 
+// Reviews read source, not LFS media; smudging needs the LFS client and often
+// fails on quota, so checkouts keep the pointer files.
+const GIT_ENV = { ...process.env, GIT_LFS_SKIP_SMUDGE: "1" };
+
 // Blobless clones keep the full commit graph (needed for merge-base) without
 // every historical file version; checking out the head commit then fetches its
 // snapshot in one batch, so code search at that commit does not download blobs
@@ -24,9 +28,7 @@ export async function prepareRepository(reposDir: string, instance: Instance): P
         `https://github.com/${instance.repo}.git`,
         dir,
       ],
-      {
-        timeoutMs: HOUR,
-      },
+      { timeoutMs: HOUR, env: GIT_ENV },
     );
     if (clone.exitCode !== 0)
       throw new Error(`git clone ${instance.repo} failed: ${clone.stderr.trim()}`);
@@ -37,10 +39,7 @@ export async function prepareRepository(reposDir: string, instance: Instance): P
   const checkout = await exec(
     "git",
     ["checkout", "--quiet", "--force", "--detach", instance.headCommit],
-    {
-      cwd: dir,
-      timeoutMs: HOUR,
-    },
+    { cwd: dir, timeoutMs: HOUR, env: GIT_ENV },
   );
   if (checkout.exitCode !== 0)
     throw new Error(`git checkout ${instance.headCommit} failed: ${checkout.stderr.trim()}`);
