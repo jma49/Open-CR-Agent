@@ -50,6 +50,8 @@ Keys are read from the environment only. Use the variable your provider expects 
 
 The agent runtime receives only what it needs from your environment: `PATH`, `HOME`, locale, proxy and CA settings, and the credentials of the providers named in your model chains (for a provider ocra does not know, every variable starting with its uppercased id, such as `GROQ_` for `groq`). Anything else, like cloud credentials or `GITHUB_TOKEN`, stays out. If a provider needs another variable, list its name in `OCRA_RUNTIME_ENV`, comma-separated.
 
+For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Groq, Mistral, DeepSeek, xAI, Azure), ocra checks before starting that one is set and names the variable if it is missing.
+
 ## Execution
 
 | Key | Default | Meaning |

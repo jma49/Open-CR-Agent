@@ -91,3 +91,18 @@ describe("OpenCodeRuntime.complete", () => {
     );
   });
 });
+
+describe("OpenCodeRuntime credentials", () => {
+  it("fails fast with the variable to set when a provider has no key", async () => {
+    const runtime = new OpenCodeRuntime({
+      models: { light: ["google/gemini-flash-lite-latest"] },
+      tools: [],
+      env: {},
+      binary: "/nonexistent/opencode",
+    });
+    await expect(runtime.complete(request, new AbortController().signal)).rejects.toThrow(
+      'No API key for provider "google": set GEMINI_API_KEY',
+    );
+    await runtime.dispose();
+  });
+});

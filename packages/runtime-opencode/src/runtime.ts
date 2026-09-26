@@ -20,7 +20,7 @@ import { withFailback } from "./failback.js";
 import { ModelHealth, parseModel } from "./models.js";
 import { type OpencodeServer, startOpencodeServer } from "./opencode-server.js";
 import { reviewTools } from "./review-tools.js";
-import { serverEnv } from "./server-env.js";
+import { missingCredentials, serverEnv } from "./server-env.js";
 import { type SessionMessage, type SessionOutcome, summarizeSession } from "./session-outcome.js";
 import { startToolServer, type ToolServer } from "./tool-server.js";
 
@@ -218,6 +218,8 @@ export class OpenCodeRuntime implements AgentRuntime {
   }
 
   private async launch(): Promise<Infra> {
+    const missing = missingCredentials(this.options.env, providersOf(this.options.models));
+    if (missing.length > 0) throw new Error(missing.join("; "));
     const root = await mkdtemp(join(tmpdir(), "ocra-opencode-"));
     const dirs = {
       config: join(root, "config"),

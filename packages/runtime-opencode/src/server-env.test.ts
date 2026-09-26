@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { serverEnv } from "./server-env.js";
+import { missingCredentials, serverEnv } from "./server-env.js";
 
 const dirs = { config: "/t/config", data: "/t/data", state: "/t/state" };
+
+describe("missingCredentials", () => {
+  it("names the variables to set for providers without a key", () => {
+    expect(missingCredentials({ OPENAI_API_KEY: "o" }, ["google", "openai", "ollama"])).toEqual([
+      'No API key for provider "google": set GEMINI_API_KEY or GOOGLE_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY',
+    ]);
+    expect(missingCredentials({ GEMINI_API_KEY: "g" }, ["google", "google"])).toEqual([]);
+  });
+});
 
 describe("serverEnv", () => {
   it("maps Gemini keys to the variable OpenCode reads", () => {

@@ -71,6 +71,28 @@ const PROVIDER_VARIABLES: Record<string, readonly string[]> = {
   azure: ["AZURE_API_KEY", "AZURE_RESOURCE_NAME"],
 };
 
+// Providers that cannot work without one of these variables. Without it
+// OpenCode silently skips the provider and later reports "model not found".
+const REQUIRED_KEYS: Record<string, readonly string[]> = {
+  google: ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"],
+  anthropic: ["ANTHROPIC_API_KEY"],
+  openai: ["OPENAI_API_KEY"],
+  openrouter: ["OPENROUTER_API_KEY"],
+  groq: ["GROQ_API_KEY"],
+  mistral: ["MISTRAL_API_KEY"],
+  deepseek: ["DEEPSEEK_API_KEY"],
+  xai: ["XAI_API_KEY"],
+  azure: ["AZURE_API_KEY"],
+};
+
+export function missingCredentials(base: Env, providers: readonly string[]): string[] {
+  return [...new Set(providers)].flatMap((provider) => {
+    const names = REQUIRED_KEYS[provider];
+    if (!names || names.some((name) => base[name])) return [];
+    return [`No API key for provider "${provider}": set ${names.join(" or ")}`];
+  });
+}
+
 const GOOGLE_KEY = "GOOGLE_GENERATIVE_AI_API_KEY";
 const GOOGLE_KEY_ALIASES = ["GEMINI_API_KEY", "GOOGLE_API_KEY"];
 export const EXTRA_ENV_VARIABLE = "OCRA_RUNTIME_ENV";
