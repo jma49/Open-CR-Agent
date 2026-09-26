@@ -34,6 +34,8 @@ Traps we have already fallen into, across this repository and the site. Each ent
 - **Some dataset commits no longer exist** (force-pushed away). Try `git fetch origin <sha>`, then `pull/<n>/head`, then mark the PR unavailable instead of failed.
 - **The official judge parser counts "No, they are not the same" as a match** because it contains "same". Our parser treats an answer that opens with "no" as no; keep that difference documented when comparing numbers.
 - **Blobless clones fetch blobs one at a time on demand.** Check out the head commit once so code search at that commit does not trigger thousands of fetches.
+- **Some benchmark repositories use Git LFS.** Checkout ran the LFS smudge filter and failed (`smudge filter lfs failed`), so the PR counted as a review failure. Checkouts set `GIT_LFS_SKIP_SMUDGE=1`; reviews only need the pointer files.
+- **A resumed run reuses failures.** Use `--retry-failed` after fixing the cause, or the old failure stays in the numbers.
 - **Benchmark repositories are untrusted code.** `ocra-eval` runs the CLI inside them; anything the CLI loads from the reviewed repository (plugins, config) runs with your keys.
 
 ## Tooling and workflow
