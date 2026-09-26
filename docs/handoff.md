@@ -12,6 +12,8 @@ State of the project as of 2026-09-26, for whoever picks it up next (human or ag
 | Vercel project | `ocra` in team `jonsons-projects`; deploys the site repo's `main` on push |
 | Contributor rules | `AGENTS.md` in each repository (`CLAUDE.md` imports it) |
 | Architecture | `docs/architecture.md`, decisions in `docs/adr/0001`–`0006`, spike report `docs/spikes/0001-opencode-runtime.md` |
+| Audits | `docs/audits/` (latest: `2026-09-26-self-audit.md`) |
+| Pitfalls | `docs/pitfalls.md` |
 | User manual | `docs/manual/{en,zh}` (rendered by the site; manual changes on `main` redeploy it) |
 
 ## Status
@@ -21,6 +23,8 @@ State of the project as of 2026-09-26, for whoever picks it up next (human or ag
 Working end to end: `ocra review` on the working tree, a range (`--from/--to`) or a commit, through select → triage → bundle (light-model grouping) → review (OpenCode runtime, read-only MCP tools, 20-step cap, model failback) → anchor → report (text/JSON, JSONL session log, exit codes). Everything is wired through the plugin host (ADR-0006). `ocra-eval` replays AACR-Bench with the official matching rules.
 
 Open work:
+
+- **Audit follow-ups (do these first).** The 2026-09-26 self-audit found that agents can read secret files such as `.env` (#32, P0) and that repository plugins execute during `ocra-eval` runs on third-party clones (#33, P0). Then #34–#39. Ranked list in `docs/audits/2026-09-26-self-audit.md`, section 4.
 
 - **#12 baseline.** Harness is merged; the 20-PR baseline (`ocra-eval run --limit 20 --max-change-lines 300 --label baseline --max-cost-usd 5`) is blocked on API quota. A 3-PR smoke run (before grouping and off-bundle filtering existed) gave precision 25%, recall 6.7%, $0.17; compare against it.
 - **M2 (next):** security and performance reviewers, review matrix (which reviewers per bundle, by tier and paths), Verify, Judge (cross-bundle semantic dedup, verdict), risk-tier routing. Orchestration can be built and tested with fake runtimes.
@@ -37,14 +41,9 @@ Open work:
 - **Vercel connector:** the claude.ai Vercel connector's authorization is broken ("User not found", sees no projects). Use the Vercel dashboard or `npx vercel login` + CLI instead.
 - **Browser automation:** the Chrome extension has no permission to screenshot `ocra-nine.vercel.app`; verify visuals on a local `next start`.
 
-## Working conventions that bit us
+## Traps and rules
 
-- Commits: Conventional Commits, **no `Co-authored-by` or other co-author trailers**; PRs: **no AI attribution footers**. Branch per feature, rebase-merge, self-merge after green CI and a full self-review.
-- User-facing changes update `docs/manual/en` **and** `docs/manual/zh` in the same PR; the manual documents only what exists.
-- Scripted multi-file edits must assert that each target string exists: Biome reformatting made silent no-op replacements twice. Prefer exact edits.
-- Judge lint by exit code (`npm run lint; echo $?`), not by the last line of output.
-- Inline SVGs on the site must not use `id` references (the layout renders the logo twice).
-- OpenCode is pinned to 1.18.32; a test fails if an upgrade adds a built-in tool, so a write-capable tool cannot slip in. OpenCode must run with the isolation flags in `packages/runtime-opencode/src/server-env.ts`, or it injects the user's skills and the repo's `AGENTS.md` into prompts.
+Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) is in [docs/pitfalls.md](pitfalls.md); the rules that follow from them are in `AGENTS.md` under "Engineering best practices". Read both before touching the runtime, git or eval code.
 
 ## Known gaps and trade-offs
 
@@ -55,6 +54,6 @@ Open work:
 
 ## Open questions for the maintainer
 
-1. Reorder the `standard` model chain so a working model comes first?
+1. Reorder the `standard` model chain so a working model comes first? (The audit recommends yes, finding P5.)
 2. "ORCA" was mentioned during the site redesign; the name was kept as `ocra`. Confirm whether a rename was intended.
-3. Next milestone: M2 or M3 first?
+3. Next milestone: M2 or M3 first? The audit recommends baseline → Verify → a minimal GitHub Action → rest of M2 (section 3).
