@@ -13,7 +13,7 @@ describe("OpenCode binary", () => {
     const dirs = { config: join(root, "c"), data: join(root, "d"), state: join(root, "s") };
     const server = await startOpencodeServer({
       binary: resolveOpencodeBinary(process.env),
-      env: serverEnv(process.env, dirs, {}),
+      env: serverEnv(process.env, dirs, []),
       config: { share: "disabled", autoupdate: false },
     });
     try {

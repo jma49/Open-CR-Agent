@@ -236,7 +236,7 @@ export class OpenCodeRuntime implements AgentRuntime {
     try {
       const server = await startOpencodeServer({
         binary: this.options.binary ?? resolveOpencodeBinary(this.options.env),
-        env: serverEnv(this.options.env, dirs, {}),
+        env: serverEnv(this.options.env, dirs, providersOf(this.options.models)),
         config: openCodeConfig(tools, this.helperTools),
       });
       const client = createOpencodeClient({
@@ -284,6 +284,12 @@ function openCodeConfig(tools: ToolServer, helperTools: Record<string, boolean>)
       },
     },
   };
+}
+
+function providersOf(models: RuntimeOptions["models"]): string[] {
+  return Object.values(models).flatMap((chain) =>
+    (chain ?? []).map((m) => parseModel(m).providerID),
+  );
 }
 
 function noModel(tier: ModelTier): string {
