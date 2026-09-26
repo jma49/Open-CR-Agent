@@ -77,6 +77,32 @@ describe("startPlugins", () => {
     expect(listener).toHaveBeenCalledWith(event);
   });
 
+  it("disables a failing event listener with one warning and keeps the others", async () => {
+    const warnings: string[] = [];
+    const healthy = vi.fn();
+    const registry = await startPlugins(
+      [
+        {
+          name: "flaky-log",
+          configure(ctx) {
+            ctx.onEvent(() => {
+              throw new Error("ENOSPC: no space left on device");
+            });
+            ctx.onEvent(healthy);
+          },
+        },
+      ],
+      { warn: (m) => warnings.push(m) },
+    );
+    const event: ReviewEvent = { type: "task_progress", taskId: "t", message: "m" };
+    expect(() => registry.emit(event)).not.toThrow();
+    registry.emit(event);
+    expect(healthy).toHaveBeenCalledTimes(2);
+    expect(warnings).toEqual([
+      'Plugin "flaky-log" event listener failed and was disabled: ENOSPC: no space left on device',
+    ]);
+  });
+
   it("passes each plugin only its own validated settings", async () => {
     const seen: unknown[] = [];
     const typed: OcraPlugin<{ level: number }> = {
