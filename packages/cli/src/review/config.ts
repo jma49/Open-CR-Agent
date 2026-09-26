@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { ModelChains, ModelTier } from "@open-cr-agent/core";
+import { type ModelChains, type ModelTier, RISK_TIERS, type RiskTier } from "@open-cr-agent/core";
 import { z } from "zod";
 
 export const CONFIG_PATH = ".ocra/config.json";
@@ -23,6 +23,18 @@ const configSchema = z
     exclude: z.array(z.string().min(1)).default([]),
     runtime: z.string().min(1).default("opencode"),
     plugins: z.array(z.string().min(1)).default([]),
+    reviewers: z
+      .record(
+        z.string(),
+        z
+          .object({
+            enabled: z.boolean(),
+            minTier: z.enum(RISK_TIERS as [RiskTier, ...RiskTier[]]),
+          })
+          .partial()
+          .strict(),
+      )
+      .default({}),
     pluginSettings: z.record(z.string(), z.unknown()).default({}),
   })
   .strict();

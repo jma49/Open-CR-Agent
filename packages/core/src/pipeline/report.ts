@@ -1,9 +1,10 @@
 import type { Usage } from "../contracts.js";
 import type { ChangeRequest, Finding, RiskTier } from "../domain.js";
 import type { ExclusionReason } from "../select/select.js";
+import type { SkippedCell } from "./matrix.js";
 
 export type CoverageEntry =
-  | { path: string; status: "reviewed" | "failed" }
+  | { path: string; status: "reviewed" | "failed" | "unreviewed" }
   | { path: string; status: "excluded"; reason: ExclusionReason };
 
 export type TaskStatus = "completed" | "failed" | "timed_out" | "cancelled";
@@ -25,6 +26,7 @@ export interface ReviewReport {
   coverage: CoverageEntry[];
   bundles: { label: string; files: string[] }[];
   tasks: TaskOutcome[];
+  skipped: SkippedCell[];
   findings: Finding[];
   usage: Usage;
   warnings: string[];
@@ -34,6 +36,7 @@ export type ReviewEvent =
   | { type: "run_started"; changeRequest: ChangeRequest }
   | { type: "files_selected"; selected: number; excluded: number; tier: RiskTier }
   | { type: "files_bundled"; strategy: string; bundles: number; warnings: string[] }
+  | { type: "matrix_planned"; tasks: number; skipped: SkippedCell[] }
   | { type: "task_started"; taskId: string; reviewer: string; bundle: string; files: string[] }
   | { type: "task_progress"; taskId: string; message: string }
   | { type: "finding"; taskId: string; finding: Finding }

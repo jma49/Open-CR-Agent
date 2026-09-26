@@ -1,20 +1,13 @@
 import { type AnchorContext, anchorFinding } from "../anchor/anchor.js";
-import type { Bundle } from "../bundle/bundle.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
 import type { Finding } from "../domain.js";
 import { buildReviewPrompt } from "../review/prompt.js";
-import type { ReviewerDefinition } from "../review/reviewer.js";
 import { resolveRules } from "../rules/resolve.js";
 import { toFinding } from "./findings.js";
+import type { MatrixCell } from "./matrix.js";
 import type { ReviewPlan } from "./plan.js";
 import type { ReviewEvent, TaskOutcome } from "./report.js";
 import { executeTask } from "./task.js";
-
-export interface Job {
-  taskId: string;
-  reviewer: ReviewerDefinition;
-  bundle: Bundle;
-}
 
 export interface JobResult {
   outcome: TaskOutcome;
@@ -33,7 +26,7 @@ export interface ExecuteOptions {
 
 // Runs one (bundle, reviewer) cell and anchors what it reports.
 export async function runJob(
-  job: Job,
+  job: MatrixCell,
   plan: ReviewPlan,
   options: ExecuteOptions,
 ): Promise<JobResult> {

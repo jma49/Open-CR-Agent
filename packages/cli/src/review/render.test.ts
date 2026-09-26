@@ -34,6 +34,7 @@ const base: ReviewReport = {
     { path: "yarn.lock", status: "excluded", reason: "generated" },
   ],
   bundles: [],
+  skipped: [],
   tasks: [
     {
       taskId: "correctness-1",

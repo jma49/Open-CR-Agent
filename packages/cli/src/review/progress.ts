@@ -51,9 +51,13 @@ function describe(event: ReviewEvent): string | undefined {
     case "files_selected":
       return `${event.selected} file(s) selected, ${event.excluded} excluded · risk tier: ${event.tier}`;
     case "files_bundled":
-      return [`${event.bundles} review task(s) (${event.strategy})`, ...event.warnings].join(
+      return [`${event.bundles} bundle(s) (${event.strategy})`, ...event.warnings].join(
         "\n[ocra] ",
       );
+    case "matrix_planned": {
+      const skipped = event.skipped.length;
+      return `${event.tasks} review task(s)${skipped > 0 ? `, ${skipped} reviewer/bundle pair(s) skipped by scope` : ""}`;
+    }
     case "task_progress":
       return `${event.taskId} ${event.message}`;
     case "task_started":

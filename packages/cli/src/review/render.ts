@@ -39,7 +39,14 @@ function emptyMessage(tasks: number, incomplete: number): string {
 
 function coverageLine(report: ReviewReport): string {
   const count = (status: string) => report.coverage.filter((c) => c.status === status).length;
-  return `Risk tier: ${report.tier} · ${count("reviewed")} reviewed · ${count("failed")} failed · ${count("excluded")} excluded`;
+  const unreviewed = count("unreviewed");
+  return [
+    `Risk tier: ${report.tier}`,
+    `${count("reviewed")} reviewed`,
+    `${count("failed")} failed`,
+    ...(unreviewed > 0 ? [`${unreviewed} not covered by any reviewer`] : []),
+    `${count("excluded")} excluded`,
+  ].join(" · ");
 }
 
 function renderFinding(finding: Finding): string[] {

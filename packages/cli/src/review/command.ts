@@ -89,6 +89,7 @@ export async function reviewCommand(
 function runOptions(config: CliConfig): Omit<ReviewOptions, "vcs" | "runtime"> {
   const options: Omit<ReviewOptions, "vcs" | "runtime"> = {
     selection: { ...defaultSelectionPolicy, include: config.include, exclude: config.exclude },
+    reviewerOverrides: config.reviewers,
   };
   if (config.concurrency !== undefined) options.concurrency = config.concurrency;
   if (config.taskTimeoutMinutes !== undefined)
