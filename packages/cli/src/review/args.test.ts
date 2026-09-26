@@ -25,6 +25,7 @@ describe("parseReviewArgs", () => {
 
   it("returns help", () => {
     expect(parseReviewArgs(["-h"])).toBe("help");
+    expect(parseReviewArgs(["--no-repo-config"])).toMatchObject({ ignoreRepoConfig: true });
   });
 
   it.each([

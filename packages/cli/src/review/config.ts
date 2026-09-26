@@ -37,11 +37,14 @@ const MODEL_ENV: Record<ModelTier, string> = {
 
 export class ConfigError extends Error {}
 
+// Without the repository's file, only defaults and environment variables
+// apply: that file can name plugins, and plugins run code.
 export async function loadConfig(
   root: string,
   env: Readonly<Record<string, string | undefined>>,
+  options: { repository: boolean } = { repository: true },
 ): Promise<CliConfig> {
-  const parsed = await readConfigFile(root);
+  const parsed = options.repository ? await readConfigFile(root) : configSchema.parse({});
   const models: { -readonly [Tier in ModelTier]?: readonly string[] } = {};
   for (const [tier, chain] of Object.entries(parsed.models) as [
     ModelTier,

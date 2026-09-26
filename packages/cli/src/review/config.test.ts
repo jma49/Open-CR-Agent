@@ -51,6 +51,14 @@ describe("loadConfig", () => {
     expect(overridden.models).toEqual({ top: ["a/top"], standard: ["b/std", "b/old"] });
   });
 
+  it("ignores the repository's file, and its plugins, when asked to", async () => {
+    const dir = root(JSON.stringify({ plugins: ["./evil.mjs"], concurrency: 2 }));
+    const config = await loadConfig(dir, { OCRA_MODEL_STANDARD: "a/std" }, { repository: false });
+    expect(config.plugins).toEqual([]);
+    expect(config.concurrency).toBeUndefined();
+    expect(config.models).toEqual({ standard: ["a/std"] });
+  });
+
   it("rejects invalid JSON, unknown keys and bad values", async () => {
     await expect(loadConfig(root("{"), {})).rejects.toThrow(ConfigError);
     await expect(loadConfig(root('{"modles":{}}'), {})).rejects.toThrow(

@@ -44,7 +44,7 @@ export async function reviewCommand(
   deps: ReviewDeps,
 ): Promise<number> {
   const root = await findRepositoryRoot(deps.cwd);
-  const config = await loadConfig(root, deps.env);
+  const config = await loadConfig(root, deps.env, { repository: !args.ignoreRepoConfig });
   const external = await loadExternalPlugins(config.plugins, root);
   const session = { dir: join(root, SESSIONS_DIR), id: newSessionId() };
 

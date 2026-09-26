@@ -60,4 +60,4 @@ Plugins receive only their own settings (`ctx.settings`), validated by an option
 
 ## Security
 
-A plugin runs code. Load plugins only from repositories you trust. In CI, read configuration from the protected base branch, never from the pull request under review.
+A plugin runs code. Load plugins only from repositories you trust; to review someone else's branch, run `ocra review --no-repo-config`, which ignores the repository's config and plugins. In CI, read configuration from the protected base branch, never from the pull request under review.

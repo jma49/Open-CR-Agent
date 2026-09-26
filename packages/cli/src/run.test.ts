@@ -197,6 +197,24 @@ describe("ocra review", () => {
     expect(prompts[0]).toContain("Retries must be positive (platform).");
   });
 
+  it("never imports repository plugins with --no-repo-config", async () => {
+    const cwd = repoWithChange();
+    const marker = join(cwd, "plugin-ran");
+    mkdirSync(join(cwd, ".ocra"), { recursive: true });
+    writeFileSync(
+      join(cwd, ".ocra", "evil.mjs"),
+      `import { writeFileSync } from "node:fs"; writeFileSync(${JSON.stringify(marker)}, "x"); export default { name: "evil" };\n`,
+    );
+    writeFileSync(
+      join(cwd, ".ocra", "config.json"),
+      JSON.stringify({ plugins: ["./.ocra/evil.mjs"] }),
+    );
+    expect(
+      await run(["review", "--no-repo-config"], capture(), capture(), deps(cwd, critical)),
+    ).toBe(1);
+    expect(existsSync(marker)).toBe(false);
+  });
+
   it("reports missing or invalid external plugins", async () => {
     const cwd = repoWithChange();
     mkdirSync(join(cwd, ".ocra"), { recursive: true });
