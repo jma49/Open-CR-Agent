@@ -13,24 +13,70 @@ export function parseModel(model: string): ModelRef {
   return { providerID: model.slice(0, slash), modelID: model.slice(slash + 1) };
 }
 
-// A model that keeps failing with retryable errors is skipped for the rest of
-// the run, so later tasks go straight to its fallback instead of waiting
-// through the provider's retries again.
+export interface CircuitOptions {
+  // Consecutive retryable failures that open the circuit.
+  threshold?: number;
+  cooldownMs?: number;
+  maxCooldownMs?: number;
+  now?: () => number;
+}
+
+interface Circuit {
+  failures: number;
+  openUntil?: number;
+  cooldownMs: number;
+}
+
+// A circuit breaker per model: after `threshold` consecutive failures the
+// model is skipped (open) for a cooldown, then one attempt is let through
+// (half-open). Success closes the circuit; failure reopens it for twice as
+// long, up to a limit. Tasks go straight to the fallback instead of paying
+// for a model that is down.
 export class ModelHealth {
-  private readonly failures = new Map<string, number>();
+  private readonly circuits = new Map<string, Circuit>();
+  private readonly threshold: number;
+  private readonly cooldownMs: number;
+  private readonly maxCooldownMs: number;
+  private readonly now: () => number;
 
-  constructor(private readonly threshold = 2) {}
+  constructor(options: CircuitOptions = {}) {
+    this.threshold = options.threshold ?? 2;
+    this.cooldownMs = options.cooldownMs ?? 60_000;
+    this.maxCooldownMs = options.maxCooldownMs ?? 10 * 60_000;
+    this.now = options.now ?? Date.now;
+  }
 
+  // Models whose circuit is closed or half-open, in chain order. When every
+  // circuit is open, all models in the order they reopen: a review should
+  // still try rather than fail without a request.
   order(chain: readonly string[]): string[] {
-    const healthy = chain.filter((m) => (this.failures.get(m) ?? 0) < this.threshold);
-    return healthy.length > 0 ? healthy : [...chain];
+    const now = this.now();
+    const available = chain.filter((m) => (this.circuits.get(m)?.openUntil ?? 0) <= now);
+    if (available.length > 0) return available;
+    return [...chain].sort(
+      (a, b) => (this.circuits.get(a)?.openUntil ?? 0) - (this.circuits.get(b)?.openUntil ?? 0),
+    );
+  }
+
+  state(model: string): "closed" | "open" | "half-open" {
+    const circuit = this.circuits.get(model);
+    if (circuit?.openUntil === undefined) return "closed";
+    return circuit.openUntil > this.now() ? "open" : "half-open";
   }
 
   recordFailure(model: string): void {
-    this.failures.set(model, (this.failures.get(model) ?? 0) + 1);
+    const circuit = this.circuits.get(model) ?? { failures: 0, cooldownMs: this.cooldownMs };
+    const probing = this.state(model) === "half-open";
+    circuit.failures += 1;
+    if (probing || circuit.failures >= this.threshold) {
+      circuit.openUntil = this.now() + circuit.cooldownMs;
+      circuit.cooldownMs = Math.min(circuit.cooldownMs * 2, this.maxCooldownMs);
+      circuit.failures = 0;
+    }
+    this.circuits.set(model, circuit);
   }
 
   recordSuccess(model: string): void {
-    this.failures.delete(model);
+    this.circuits.delete(model);
   }
 }

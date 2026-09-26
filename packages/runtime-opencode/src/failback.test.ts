@@ -95,7 +95,7 @@ describe("withFailback", () => {
   });
 
   it("skips a model that failed repeatedly earlier in the run", async () => {
-    const health = new ModelHealth(2);
+    const health = new ModelHealth({ threshold: 2 });
     await collect({ a: fail("busy", true), b: ok() }, ["a", "b"], health);
     await collect({ a: fail("busy", true), b: ok() }, ["a", "b"], health);
     const third = await collect({ a: ok(), b: ok() }, ["a", "b"], health);
@@ -111,13 +111,55 @@ describe("withFailback", () => {
 });
 
 describe("ModelHealth", () => {
-  it("tries every model again once all of them are marked unhealthy", () => {
-    const health = new ModelHealth(1);
+  function clock() {
+    let time = 0;
+    return { now: () => time, advance: (ms: number) => (time += ms) };
+  }
+
+  it("opens after repeated failures, probes after the cooldown and closes on success", () => {
+    const t = clock();
+    const health = new ModelHealth({ threshold: 2, cooldownMs: 1_000, now: t.now });
     health.recordFailure("a");
-    health.recordFailure("b");
+    expect(health.state("a")).toBe("closed");
+    health.recordFailure("a");
+    expect(health.state("a")).toBe("open");
+    expect(health.order(["a", "b"])).toEqual(["b"]);
+
+    t.advance(1_000);
+    expect(health.state("a")).toBe("half-open");
     expect(health.order(["a", "b"])).toEqual(["a", "b"]);
     health.recordSuccess("a");
-    expect(health.order(["a", "b"])).toEqual(["a"]);
+    expect(health.state("a")).toBe("closed");
+  });
+
+  it("reopens a failed probe for twice as long, up to the limit", () => {
+    const t = clock();
+    const health = new ModelHealth({
+      threshold: 1,
+      cooldownMs: 1_000,
+      maxCooldownMs: 3_000,
+      now: t.now,
+    });
+    health.recordFailure("a");
+    t.advance(1_000);
+    health.recordFailure("a");
+    t.advance(1_999);
+    expect(health.state("a")).toBe("open");
+    t.advance(1);
+    health.recordFailure("a");
+    t.advance(2_999);
+    expect(health.state("a")).toBe("open");
+    t.advance(1);
+    expect(health.state("a")).toBe("half-open");
+  });
+
+  it("still tries every model, soonest to reopen first, when all are open", () => {
+    const t = clock();
+    const health = new ModelHealth({ threshold: 1, cooldownMs: 1_000, now: t.now });
+    health.recordFailure("b");
+    t.advance(10);
+    health.recordFailure("a");
+    expect(health.order(["a", "b"])).toEqual(["b", "a"]);
   });
 });
 

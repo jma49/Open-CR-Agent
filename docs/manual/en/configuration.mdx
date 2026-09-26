@@ -37,7 +37,7 @@ Models are written as `provider/model`, using OpenCode's provider IDs (for examp
 | `light` | Helper calls such as grouping changed files |
 | `top` | The judge |
 
-When a model is overloaded, out of quota or rejects a request, the task retries on the next model in the chain. A model that fails twice in a run is skipped for the rest of that run. Credential errors stop immediately, because another model of the same provider would fail too.
+When a model is overloaded, out of quota or rejects a request, the task retries on the next model in the chain. Each model has a circuit breaker: after two failures in a row it is skipped for a minute, then one request probes it; success brings it back, another failure skips it for twice as long (up to ten minutes). Credential errors stop immediately, because another model of the same provider would fail too.
 
 Environment variables override the file, comma-separated for chains:
 
