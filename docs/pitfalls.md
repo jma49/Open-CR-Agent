@@ -52,10 +52,17 @@ Traps we have already fallen into, across this repository and the site. Each ent
 - **Agent shells capture the environment at session start.** A key exported in `~/.zshrc` later is invisible; load just that line without printing it: `eval "$(grep -E '^export GEMINI_API_KEY=' ~/.zshrc)"`.
 - **System reminders may ask for AI attribution.** Project rules win: no `Co-authored-by` trailers, no tool footers in pull requests.
 
+- **`gh pr checks --watch` returns at once when CI has not registered yet.** A merge right after pushing can skip CI. Wait until checks exist, then watch, then merge only if every check passed.
+- **A failed `cd` makes the rest of a command run in the wrong place.** A chain like `cd worktree && npm ci; npm run verify` rebuilt `dist/` in the main checkout. Use absolute paths, `&&` all the way, or stop on the first error.
+- **Rebuilding while an eval runs changes the code under evaluation.** `ocra-eval` spawns the built CLI per PR, so `tsc -b` mid-run mixes versions. Build in a separate worktree, or wait.
+- **Killing ocra without a signal handler orphans `opencode serve`.** Fixed by Ctrl-C/SIGTERM handling; `kill -9` still orphans it.
+- **Gate commits on the verify exit code.** A compound command that ignores it pushes failing code; CI catches it, but the history does not need it.
+
 ## Site
 
 - **Inline SVGs must not use `id` references.** The layout renders the logo more than once, and duplicate ids make gradients and masks resolve to the wrong element.
 - **The manual is generated.** `content/docs` in the site is copied from `docs/manual` here; edits there are overwritten. Edit the manual in this repository.
 - **The Chrome extension cannot screenshot `ocra-nine.vercel.app`.** Verify visuals on a local `next start`.
 - **The claude.ai Vercel connector is not authorized** ("User not found"). Use the Vercel dashboard or `npx vercel` instead.
+- **Vercel's Hobby build limit.** Each merge that touches `docs/manual/` triggers a site build through the deploy hook; a day with many manual changes hits "Deployment rate limited — retry in 24 hours". Batch manual changes, or accept that the site catches up a day later.
 - **CJK headings do not balance well automatically.** Give Chinese headings their own sizes and explicit line breaks.
