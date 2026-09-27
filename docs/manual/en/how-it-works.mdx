@@ -79,5 +79,5 @@ Models are unreliable with line numbers, so they quote code instead. ocra resolv
 - A per-task and a whole-run timeout, enforced even if a model stops responding.
 - A failed task never fails the run; its files are reported as `failed`.
 - Model failback chains per tier, with a circuit breaker per model (open after repeated failures, half-open probe after a cooldown).
-- Rate limits are waited out: when a provider says to retry after a short wait (up to 90 seconds), every task pauses that model and retries it. A daily limit, a longer or missing wait, or a third limit in a row takes the model out of the chain for the rest of the run, so ocra stops sending requests that would be refused.
+- Rate limits are waited out: when a provider says to retry after a short wait (up to 90 seconds), every task pauses that model and retries it. A limit marked as daily, a longer or missing wait, or a fourth limit in a row takes the model out of the chain for the rest of the run, so ocra stops sending requests that would be refused.
 - Every agent is capped at 20 steps, because each step resends the conversation.

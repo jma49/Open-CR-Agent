@@ -8,6 +8,8 @@ description: What leaves your machine, and how ocra is isolated.
 - The reviewer's instructions, the change request title and description, and the diff of the files under review.
 - `AGENTS.md` and matching `.ocra/rules.json` rules.
 - File content and search results that reviewers request through their tools.
+- Accepted findings from `.ocra/memory.json` for the files under review.
+- For verification, each file's findings with its diff and the lines around them; for judging, the findings with the change request's title and description.
 
 Nothing else is added: ocra starts its agent runtime with your global OpenCode configuration, installed skills and project instruction files **disabled**, so details of your machine do not end up in prompts.
 

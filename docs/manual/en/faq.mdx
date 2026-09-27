@@ -5,7 +5,7 @@ description: Common questions.
 
 ## Why does ocra report so few findings?
 
-By design. ocra favors precision: reviewers are told what not to flag, findings are validated, and findings outside a task's own files are dropped to avoid duplicates. An empty report on a correct change is a good outcome.
+By design. ocra favors precision: reviewers are told what not to flag, findings are validated and fact-checked against the code, and findings outside a task's own files are dropped to avoid duplicates. An empty report on a correct change is a good outcome.
 
 ## How much does a review cost?
 
@@ -17,7 +17,7 @@ Any model OpenCode supports, written as `provider/model`. Configure a failback c
 
 ## Does it work with GitHub pull requests?
 
-Not yet. ocra reviews local changes today; GitHub integration with inline comments is planned for M3.
+Yes. `ocra review --pr <number>` reviews a pull request, and the GitHub Action posts inline comments and one summary comment, re-reviewing only what changed on later pushes. See [GitHub pull requests](./github).
 
 ## Why doesn't the model give line numbers?
 

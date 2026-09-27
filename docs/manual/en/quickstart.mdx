@@ -52,14 +52,16 @@ ocra review --from main      # this branch since it diverged from main
 ocra review --commit HEAD    # a single commit
 ```
 
-ocra prints progress while it works, then a report grouped by file, for example:
+ocra prints progress while it works, then the verdict and a report grouped by file. Each finding says whether verification confirmed it and carries an id for `ocra memory`:
 
 ```text
 Review: Working tree changes
 Risk tier: lite · 2 reviewed · 0 failed · 0 excluded
+Verdict: approved with comments
+  1 finding(s): 0 critical, 1 warning, 0 suggestion.
 
 src/list.ts
-  warning    L4        lastItems returns n + 1 items
+  warning    L4        lastItems returns n + 1 items [verified] #3f9a1c2e
     slice(list.length - n - 1) starts one element too early.
     Suggestion: return list.slice(-n);
 

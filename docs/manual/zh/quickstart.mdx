@@ -52,14 +52,16 @@ ocra review --from main      # 当前分支从 main 分叉以来的改动
 ocra review --commit HEAD    # 单个 commit
 ```
 
-运行过程中 ocra 会打印进度，最后按文件输出报告，例如：
+运行过程中 ocra 会打印进度，最后输出结论和按文件分组的报告。每条问题都标明是否经过核查确认，并带一个可用于 `ocra memory` 的编号：
 
 ```text
 Review: Working tree changes
 Risk tier: lite · 2 reviewed · 0 failed · 0 excluded
+Verdict: approved with comments
+  1 finding(s): 0 critical, 1 warning, 0 suggestion.
 
 src/list.ts
-  warning    L4        lastItems returns n + 1 items
+  warning    L4        lastItems returns n + 1 items [verified] #3f9a1c2e
     slice(list.length - n - 1) starts one element too early.
     Suggestion: return list.slice(-n);
 
