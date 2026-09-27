@@ -1,3 +1,5 @@
+import { MAX_QUOTA_WAIT_MS, QUOTA_RETRIES, type QuotaError } from "./quota.js";
+
 export interface ModelRef {
   providerID: string;
   modelID: string;
@@ -27,6 +29,11 @@ interface Circuit {
   cooldownMs: number;
 }
 
+interface Quota {
+  waits: number;
+  pausedUntil: number;
+}
+
 // A circuit breaker per model: after `threshold` consecutive failures the
 // model is skipped (open) for a cooldown, then one attempt is let through
 // (half-open). Success closes the circuit; failure reopens it for twice as
@@ -34,6 +41,8 @@ interface Circuit {
 // for a model that is down.
 export class ModelHealth {
   private readonly circuits = new Map<string, Circuit>();
+  private readonly quotas = new Map<string, Quota>();
+  private readonly outOfQuota = new Set<string>();
   private readonly threshold: number;
   private readonly cooldownMs: number;
   private readonly maxCooldownMs: number;
@@ -49,11 +58,14 @@ export class ModelHealth {
   // Models whose circuit is closed or half-open, in chain order. When every
   // circuit is open, all models in the order they reopen: a review should
   // still try rather than fail without a request.
+  // Models out of quota are left out entirely: another request would only be
+  // refused again.
   order(chain: readonly string[]): string[] {
     const now = this.now();
-    const available = chain.filter((m) => (this.circuits.get(m)?.openUntil ?? 0) <= now);
+    const usable = chain.filter((m) => !this.outOfQuota.has(m));
+    const available = usable.filter((m) => (this.circuits.get(m)?.openUntil ?? 0) <= now);
     if (available.length > 0) return available;
-    return [...chain].sort(
+    return [...usable].sort(
       (a, b) => (this.circuits.get(a)?.openUntil ?? 0) - (this.circuits.get(b)?.openUntil ?? 0),
     );
   }
@@ -78,5 +90,36 @@ export class ModelHealth {
 
   recordSuccess(model: string): void {
     this.circuits.delete(model);
+    this.quotas.delete(model);
+  }
+
+  // How long every task should hold off this model (a shared rate-limit pause).
+  pausedFor(model: string): number {
+    return Math.max(0, (this.quotas.get(model)?.pausedUntil ?? 0) - this.now());
+  }
+
+  isOutOfQuota(model: string): boolean {
+    return this.outOfQuota.has(model);
+  }
+
+  // A rate limit with a short, stated wait pauses the model for every task;
+  // a daily limit, no stated wait, a long one, or too many waits in a row
+  // mean the model is out of quota for the rest of the run.
+  recordQuota(model: string, quota: QuotaError): "wait" | "out_of_quota" {
+    const state = this.quotas.get(model) ?? { waits: 0, pausedUntil: 0 };
+    const wait = quota.retryAfterMs;
+    if (
+      quota.daily ||
+      wait === undefined ||
+      wait > MAX_QUOTA_WAIT_MS ||
+      state.waits >= QUOTA_RETRIES
+    ) {
+      this.outOfQuota.add(model);
+      return "out_of_quota";
+    }
+    state.waits += 1;
+    state.pausedUntil = Math.max(state.pausedUntil, this.now() + wait);
+    this.quotas.set(model, state);
+    return "wait";
   }
 }

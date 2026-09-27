@@ -19,6 +19,7 @@ import { resolveOpencodeBinary } from "./binary.js";
 import { withFailback } from "./failback.js";
 import { ModelHealth, parseModel } from "./models.js";
 import { type OpencodeServer, startOpencodeServer } from "./opencode-server.js";
+import { sleep } from "./quota.js";
 import { reviewTools } from "./review-tools.js";
 import { missingCredentials, serverEnv } from "./server-env.js";
 import { type SessionMessage, type SessionOutcome, summarizeSession } from "./session-outcome.js";
@@ -142,27 +143,36 @@ export class OpenCodeRuntime implements AgentRuntime {
     let usage = emptyUsage();
     let lastError = "";
     for (const model of this.health.order(chain)) {
-      const outcome = await this.prompt(
-        infra,
-        {
-          title: "ocra helper",
-          agent: HELPER_AGENT,
-          model,
-          system: request.system,
-          user: request.user,
-          tools: this.helperTools,
-        },
-        signal,
-      );
-      usage = addUsage(usage, outcome.usage);
-      if (!outcome.error) {
-        this.health.recordSuccess(model);
-        return { text: outcome.text, usage };
+      for (;;) {
+        await sleep(this.health.pausedFor(model), signal);
+        if (signal.aborted) throw new Error("cancelled");
+        const outcome = await this.prompt(
+          infra,
+          {
+            title: "ocra helper",
+            agent: HELPER_AGENT,
+            model,
+            system: request.system,
+            user: request.user,
+            tools: this.helperTools,
+          },
+          signal,
+        );
+        usage = addUsage(usage, outcome.usage);
+        if (!outcome.error) {
+          this.health.recordSuccess(model);
+          return { text: outcome.text, usage };
+        }
+        if (!outcome.error.retryable) throw new Error(`${model}: ${outcome.error.message}`);
+        if (outcome.error.quota && this.health.recordQuota(model, outcome.error.quota) === "wait") {
+          continue;
+        }
+        if (!outcome.error.quota) this.health.recordFailure(model);
+        lastError = `${model}: ${outcome.error.message}`;
+        break;
       }
-      if (!outcome.error.retryable) throw new Error(`${model}: ${outcome.error.message}`);
-      this.health.recordFailure(model);
-      lastError = `${model}: ${outcome.error.message}`;
     }
+    if (!lastError) throw new Error(`every ${request.tier} model is out of quota for this run`);
     throw new Error(`every ${request.tier} model failed (${lastError})`);
   }
 

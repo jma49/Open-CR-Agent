@@ -1,4 +1,5 @@
 import type { Usage } from "@open-cr-agent/core";
+import { parseQuotaError, type QuotaError } from "./quota.js";
 
 export interface SessionMessage {
   info: {
@@ -23,7 +24,7 @@ export interface SessionOutcome {
   toolCalls: string[];
   text: string;
   usage: Usage;
-  error?: { message: string; retryable: boolean };
+  error?: { message: string; retryable: boolean; quota?: QuotaError };
 }
 
 const AUTH_STATUS = new Set([401, 403]);
@@ -59,10 +60,10 @@ export function summarizeSession(
     // Overloads and model-specific request rejections (for example Gemini 3.8
     // refusing a request that ends with a model turn) are fixed by another
     // model; only credential problems would fail on every model.
-    outcome.error = {
-      message: last.data?.message ?? last.name ?? "unknown model error",
-      retryable: !errors.some(isAuthError),
-    };
+    const message = last.data?.message ?? last.name ?? "unknown model error";
+    outcome.error = { message, retryable: !errors.some(isAuthError) };
+    const quota = parseQuotaError(message, last.data?.statusCode);
+    if (quota) outcome.error.quota = quota;
   }
   return outcome;
 }

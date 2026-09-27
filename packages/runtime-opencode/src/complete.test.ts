@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parseQuotaError } from "./quota.js";
 import { HELPER_AGENT_STEPS, OpenCodeRuntime, openCodeConfig } from "./runtime.js";
 import type { SessionOutcome } from "./session-outcome.js";
 
@@ -104,6 +105,35 @@ describe("OpenCodeRuntime credentials", () => {
       'No API key for provider "google": set GEMINI_API_KEY',
     );
     await runtime.dispose();
+  });
+});
+
+describe("OpenCodeRuntime.complete on rate limits", () => {
+  it("waits and retries, then gives up on a model out of quota", async () => {
+    const limited = (message: string): SessionOutcome => ({
+      findings: [],
+      toolCalls: [],
+      text: "",
+      usage,
+      error: { message, retryable: true, quota: parseQuotaError(message) as never },
+    });
+    const queue = [limited("quota exceeded, retry in 0.01s"), limited("Quota exceeded: per day")];
+    const runtime = new OpenCodeRuntime({ models: { light: ["a"] }, tools: [], env: {} });
+    const calls: string[] = [];
+    const internals = runtime as unknown as Record<string, unknown>;
+    internals.start = async () => ({});
+    internals.prompt = async (_infra: unknown, input: { model: string }) => {
+      calls.push(input.model);
+      return queue.shift();
+    };
+    await expect(runtime.complete(request, new AbortController().signal)).rejects.toThrow(
+      "every light model failed",
+    );
+    expect(calls).toEqual(["a", "a"]);
+    await expect(runtime.complete(request, new AbortController().signal)).rejects.toThrow(
+      "every light model is out of quota for this run",
+    );
+    expect(calls).toEqual(["a", "a"]);
   });
 });
 
