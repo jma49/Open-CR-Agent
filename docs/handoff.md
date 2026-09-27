@@ -16,7 +16,7 @@ State of the project as of 2026-09-26, for whoever picks it up next (human or ag
 | Pitfalls | `docs/pitfalls.md` |
 | Pending verification | `docs/pending-verification.md` (what still needs a deploy or a model key to check) |
 | Releasing | `docs/releasing.md` (npm: what is ready, decisions, steps) |
-| User manual | `docs/manual/{en,zh}` (rendered by the site; manual changes on `main` redeploy it) |
+| User manual | `docs/manual/{en,zh}` (rendered by the site; redeploy by hand with `gh workflow run site-deploy.yml`) |
 
 ## Status
 
@@ -69,12 +69,10 @@ Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) i
 
 ## Open questions for the maintainer
 
-1. Provide a model key with quota (and say whether a stronger standard model, e.g. a Flash or Pro model, may be used for evaluation).
-2. May a model key be added as a repository secret to dogfood the GitHub Action on this repository (#67)?
+1. ~~Provide a model key~~ A free-tier Gemini key is available; billing will not be enabled, so quality evaluation waits for a paid key or another provider.
+2. ~~Key as a repository secret for #67?~~ Not for now (local use only).
 3. "ORCA" was mentioned during the site redesign; the name was kept as `ocra`. Confirm whether a rename was intended.
 4. ~~Reorder the dogfood `.ocra/config.json` chain (audit P5)?~~ Decided: `gemini-3.8-flash` is removed from the chain and the README example.
-5. Decisions taken in the fix round that deserve a look (details in each PR):
-   - A2 (#79): findings whose file was not reviewed this time now count in the verdict; legacy state without a code hash is never auto-resolved; editing exactly the anchored lines counts as a fix.
-   - A3 (#80): an unverified critical finding maps to `minor_issues` even with fewer than three warnings.
-   - A4 (#81): the 80% review share is reasoned, not measured.
-   - A6 (#83): a summary edited by anyone but ocra forces a full review; base-branch config or rule changes do not re-review unchanged files.
+5. ~~Decisions taken in the fix round~~ Confirmed by the maintainer (2026-09-26) as implemented in #79–#83: unrechecked findings count in the verdict, an edit of the anchored lines counts as a fix, unverified criticals give `minor_issues`, the 80% review share stays until it can be measured, an edited summary forces a full review, base-branch config changes do not re-review unchanged files. Also: tests count toward the 500-line rule (now in AGENTS.md); the `.local/` move (#82) is fine; #67 is not run for now (it would need the key as a repository secret, and the free tier cannot run it).
+6. npm scope: **`@open-cr-agent`** (decided). Still open: when, and token vs trusted publishing (`docs/releasing.md`).
+7. Site deploys: **manual only** (decided); `site-deploy.yml` runs on `workflow_dispatch`.

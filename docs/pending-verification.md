@@ -6,7 +6,7 @@ Work that is merged and tested locally but still needs a check that could not be
 
 Everything the site shows is verified on a local production build (2026-09-26): `npm run build && npx next start` in the site repository renders the manual from `../Open-CR-Agent/docs/manual`, so it shows exactly what a deploy would. Checked: every landing and manual page in both languages returns 200 and contains the new content, the Aqua gel icon and Apple touch icon, light and dark themes, and no horizontal overflow at 390 px. Repeat that check after site or manual changes instead of deploying.
 
-The only thing a local build cannot show is the live site itself: https://ocra-nine.vercel.app shows the version from before the Vercel build limit was hit until the next deploy. Deploying is optional; when wanted, run `gh workflow run site-deploy.yml` here or deploy from the Vercel dashboard. The Vercel-side settings are already confirmed: site PR #7 created no preview build (only `main` deploys), and pushes to `main` that touch the manual cancel each other while waiting (debounce), so a burst costs one build.
+The only thing a local build cannot show is the live site itself: https://ocra-nine.vercel.app shows the version from before the Vercel build limit was hit until the next deploy. Deploying is optional and manual: run `gh workflow run site-deploy.yml` here or deploy from the Vercel dashboard. Merges here no longer trigger a build. On the Vercel side, site PR #7 confirmed that only the site repository's `main` deploys.
 
 ## After a model key is available
 

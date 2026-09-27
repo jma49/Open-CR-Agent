@@ -67,5 +67,5 @@ Traps we have already fallen into, across this repository and the site. Each ent
 - **Inline SVGs must not use `id` references.** The layout renders the logo more than once, and duplicate ids make gradients and masks resolve to the wrong element.
 - **The manual is generated.** `content/docs` in the site is copied from `docs/manual` here; edits there are overwritten. Edit the manual in this repository.
 - **Check the site on a local production build** (`npm run build && npx next start`) rather than deploying to look at it; see `docs/pending-verification.md`.
-- **Vercel's Hobby build limit.** Each merge that touches `docs/manual/` triggers a site build through the deploy hook; a day with many manual changes hits "Deployment rate limited — retry in 24 hours". The deploy hook workflow now waits 30 minutes and lets a newer push cancel the wait, and the site builds only `main`.
+- **Vercel's Hobby build limit.** Each merge that touches `docs/manual/` triggers a site build through the deploy hook; a day with many manual changes hits "Deployment rate limited — retry in 24 hours". The deploy hook workflow now runs only by hand (`gh workflow run site-deploy.yml`), and the site builds only `main`.
 - **CJK headings do not balance well automatically.** Give Chinese headings their own sizes and explicit line breaks.

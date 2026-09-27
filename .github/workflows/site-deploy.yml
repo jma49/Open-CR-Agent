@@ -1,14 +1,11 @@
 name: Redeploy site
 
-# The project site renders docs/manual at build time, so manual changes on
-# main trigger a site rebuild through a Vercel deploy hook. Vercel's Hobby
-# plan rate-limits builds, so pushes are debounced: each run waits, and a
-# newer push cancels the waiting run, so a burst of merges costs one build.
-# workflow_dispatch deploys at once.
+# The project site renders docs/manual at build time, so a manual change
+# reaches the live site only after a rebuild through a Vercel deploy hook.
+# Vercel's Hobby plan rate-limits builds, so the maintainer triggers it by
+# hand (gh workflow run site-deploy.yml) after checking the manual on a local
+# build, instead of on every merge.
 on:
-  push:
-    branches: [main]
-    paths: ["docs/manual/**"]
   workflow_dispatch:
 
 permissions: {}
@@ -22,10 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Wait for further manual changes
-        if: github.event_name == 'push'
-        run: sleep 1800
-
       - name: Trigger Vercel deploy hook
         env:
           HOOK: ${{ secrets.SITE_DEPLOY_HOOK }}

@@ -24,7 +24,7 @@ Open-CR-Agent is an open-source multi-agent code review system. Deterministic en
 ## Core engineering principles
 
 1. **Architecture and domain first.** Plan toward the ideal architecture: make business goals, domain boundaries, module responsibilities, dependency direction and data flow explicit, and reach a design that fits the domain, is maintainable and can evolve before writing code. Never sacrifice the overall design for short-term convenience. The design must be complete; the implementation must be restrained: no speculative abstractions, introduce an abstraction only when the second real use case appears, implement a single scenario directly.
-2. **Elegant modules.** Modules have high cohesion and low coupling and hide internal complexity behind small, stable interfaces, so responsibilities, names, dependencies and extension points read naturally. Split code by single responsibility. **No source file may exceed 500 lines**; refactor module boundaries before a file approaches the limit.
+2. **Elegant modules.** Modules have high cohesion and low coupling and hide internal complexity behind small, stable interfaces, so responsibilities, names, dependencies and extension points read naturally. Split code by single responsibility. **No source file may exceed 500 lines**, tests included; refactor module boundaries before a file approaches the limit. Shared test fakes go in a `*.fakes.ts` file next to the tests (excluded from the build by the package's `tsconfig.json`).
 3. **Clear boundaries and data flow.** Protocol models (VCS APIs, LLM I/O), domain models, persistence models and presentation models (CLI output, PR comments) must not leak into each other. Validate and convert data independently at every boundary. Never share mutable state across layers.
 4. **Security and isolation by default.** Design every feature for multi-repository, multi-user operation with explicit authentication, authorization and data-isolation boundaries. Apply least privilege (tokens, agent tool permissions). Treat all external input as untrusted, including diffs, PR titles and bodies, repository files and LLM output, and defend against prompt injection. Secrets never appear in code, logs, prompts or responses.
 5. **Design for concurrency and failure.** Consider idempotency, race conditions, transaction boundaries, timeouts, cancellation, retries, backpressure and resource cleanup up front. Never mask problems with unbounded retries, swallowed errors or implicitly shared state.
@@ -86,7 +86,7 @@ Concrete rules behind the principles above, from the [2026-09-26 self-audit](doc
 - **Any change to user-facing behavior updates the manual in the same PR, in both languages**: CLI commands, flags, output or exit codes, configuration keys, environment variables, rules, plugin APIs, security properties.
 - The manual describes what exists today. Planned features are marked as planned; never document behavior that is not implemented.
 - `docs/architecture.md` and `docs/adr/` are for contributors; the manual is for users.
-- Merging a manual change to `main` redeploys the site automatically (`.github/workflows/site-deploy.yml`, Vercel deploy hook in the `SITE_DEPLOY_HOOK` secret).
+- Merging a manual change to `main` does not redeploy the site: check it on a local build of the site repository, and redeploy by hand when wanted (`gh workflow run site-deploy.yml`, which calls the Vercel deploy hook in the `SITE_DEPLOY_HOOK` secret).
 
 ## Git workflow
 
