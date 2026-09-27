@@ -98,12 +98,12 @@ Findings carry fingerprints, so a re-review can compare against the previous run
 | | Default (precision) | `--ultra` (recall) |
 |---|---|---|
 | Reviewers | By tier and matrix | All, every bundle |
-| Plan phase | Off (planned for large bundles) | Always: one short call per task, its checklist added to the prompt |
+| Plan phase | Large bundles only (≥5 files or ≥40,000 diff characters) | Always: one short call per task, its checklist added to the prompt |
 | Sampling | One run per cell | Two runs per cell, merged |
 | Impact analysis | Off | Callers of changed symbols searched (definition patterns, `code_search`, outside the bundle) |
 | Judge threshold | Strict | Relaxed; extra findings marked low confidence |
 
-Implemented today: all of it for `--ultra`; a plan phase for large bundles in default mode is planned.
+All of it is implemented.
 
 ## Contracts
 

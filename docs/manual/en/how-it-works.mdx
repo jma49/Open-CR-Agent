@@ -47,7 +47,7 @@ The default mode favors precision. `--ultra` trades cost for recall:
 |---|---|---|
 | Reviewers | By risk tier and scope | Every reviewer at every tier, including tiers set with `reviewers.<id>.minTier` (files outside a reviewer's scope are still skipped, and `enabled: false` still applies) |
 | Samples | One run per reviewer and bundle | Two runs, merged by fingerprint |
-| Plan | None | One short model call per task lists what to check first; if it fails, the task runs without it |
+| Plan | Only for large bundles (5 or more files, or 40,000 characters of diff) | Every task. One short model call lists what to check first; if it fails, the task runs without it |
 | Callers | Reviewers search themselves | Uses of the symbols a bundle defines or changes, found outside the bundle, are shown to its reviewers |
 | Judge | Drops speculation and nitpicks | Keeps them, marked *low confidence*; they do not count towards the verdict |
 | Cost | Baseline | About twice or more, plus one plan call per task |

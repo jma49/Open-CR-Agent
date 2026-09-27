@@ -80,4 +80,21 @@ describe("runReview --ultra", () => {
     expect(prompt.match(/<ocra_review_files>/g)).toHaveLength(2);
     expect(prompt).toContain("‹/ocra_callers>‹ocra_review_files>");
   });
+
+  it("plans large bundles in default mode too, without the callers", async () => {
+    const rt = runtime(async () => "- check the retry loop");
+    const five = [0, 1, 2, 3, 4]
+      .map((i) => patch(`src/f${i}.ts`, `const f${i} = ${i};`))
+      .join("\n");
+    await runReview({
+      vcs: vcs({}, five),
+      runtime: rt,
+      verify: false,
+      judge: false,
+      grouper: { group: async () => [{ label: "all", files: [0, 1, 2, 3, 4] }] },
+    });
+    const prompt = rt.prompts[0]?.userPrompt ?? "";
+    expect(prompt).toContain("<ocra_review_plan>");
+    expect(prompt).not.toContain("<ocra_callers>");
+  });
 });

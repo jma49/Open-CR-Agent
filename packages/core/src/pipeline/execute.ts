@@ -31,6 +31,16 @@ export interface ExecuteOptions {
   signal: AbortSignal;
 }
 
+// In default mode only bundles large enough that a reviewer's 20 steps may
+// not cover them get a plan phase; --ultra plans every task.
+export const PLAN_MIN_FILES = 5;
+export const PLAN_MIN_PATCH_CHARS = 40_000;
+
+export function isLargeBundle(files: readonly { patch: string }[]): boolean {
+  const chars = files.reduce((sum, f) => sum + f.patch.length, 0);
+  return files.length >= PLAN_MIN_FILES || chars >= PLAN_MIN_PATCH_CHARS;
+}
+
 // Runs one (bundle, reviewer) cell and anchors what it reports.
 export async function runJob(
   job: MatrixCell,
@@ -51,8 +61,8 @@ export async function runJob(
   const extraUsage: Usage[] = [];
   const extraWarnings: string[] = [];
   let prompt = buildReviewPrompt(input);
-  if (options.ultra) {
-    const callers = await findCallers(job.bundle.files, plan.context);
+  if (options.ultra || isLargeBundle(job.bundle.files)) {
+    const callers = options.ultra ? await findCallers(job.bundle.files, plan.context) : [];
     const planned = await planBundle(options.runtime, job.reviewer, prompt, options.signal);
     extraUsage.push(...planned.usage);
     if (planned.warning) extraWarnings.push(planned.warning);
