@@ -79,6 +79,31 @@ describe("JsonlSessionWriter", () => {
     expect(readFileSync(join(other, ".gitignore"), "utf8")).toBe("*\n");
   });
 
+  it("escapes control and bidirectional characters in the files it writes", () => {
+    const root = mkdtempSync(join(tmpdir(), "ocra-session-"));
+    dirs.push(root);
+    const writer = new JsonlSessionWriter(root, "s1");
+    const changeRequest = {
+      id: "1",
+      title: "a\u009b2J\u202eb",
+      description: "",
+      baseSha: "b",
+      headSha: "h",
+    };
+    writer.write({ type: "run_started", changeRequest });
+    writer.write({
+      type: "run_finished",
+      report: { changeRequest, findings: [] } as unknown as ReviewReport,
+    });
+    for (const file of [EVENTS_FILE, REPORT_FILE]) {
+      const text = readFileSync(join(root, "s1", file), "utf8");
+      expect(text).not.toMatch(/[\u009b\u202e]/);
+      expect(text).toContain("\\u009b");
+    }
+    const [line] = readFileSync(join(root, "s1", EVENTS_FILE), "utf8").split("\n");
+    expect(JSON.parse(line as string).changeRequest.title).toBe("a\u009b2J\u202eb");
+  });
+
   it("creates sortable, unique session ids", () => {
     const id = newSessionId(new Date("2026-09-24T21:40:55.123Z"));
     expect(id).toMatch(/^20260924T214055Z-[0-9a-f]{6}$/);

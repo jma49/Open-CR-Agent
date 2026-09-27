@@ -25,7 +25,7 @@ Nothing else is added: ocra starts its agent runtime with your global OpenCode c
 
 ## Untrusted input
 
-Pull request text, diffs and repository files are treated as data. Instructions inside them are never followed, and text that imitates ocra's prompt structure is neutralized before it reaches a model. Text ocra prints to your terminal (findings, commit messages, errors) has control characters, escape sequences and bidirectional overrides replaced, so a change cannot rewrite your screen, hide a finding or write to your clipboard.
+Pull request text, diffs and repository files are treated as data. Instructions inside them are never followed, and text that imitates ocra's prompt structure is neutralized before it reaches a model. Text ocra prints to your terminal (findings, commit messages, errors) has control characters, escape sequences and bidirectional overrides replaced, so a change cannot rewrite your screen, hide a finding or write to your clipboard; the JSON ocra writes (`--format json`, session reports and logs) escapes the same characters. A reviewer reports at most 50 findings per task, with bounded text, so a steered model cannot flood a pull request.
 
 ## The verdict is not a security gate
 

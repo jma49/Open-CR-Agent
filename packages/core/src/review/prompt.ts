@@ -1,7 +1,7 @@
 import type { ChangeRequest, FileDiff, Hunk } from "../domain.js";
 import type { MemoryEntry } from "../memory/memory.js";
 import type { ReviewerDefinition } from "./reviewer.js";
-import { escapeAttribute, neutralizeTags } from "./sanitize.js";
+import { escapeAttribute, neutralizeTags, oneLine } from "./sanitize.js";
 import { REVIEW_TOOLS } from "./tools.js";
 
 export const MAX_GUIDELINES_CHARS = 20_000;
@@ -52,7 +52,7 @@ function renderChangeRequest(cr: ChangeRequest): string {
 function renderChangedFiles(files: readonly FileDiff[]): string {
   const lines = files.map((f) => {
     const path = f.kind === "renamed" ? `${f.oldPath} -> ${f.newPath}` : f.newPath;
-    return `${f.kind} ${neutralizeTags(path)} (+${f.additions} -${f.deletions})`;
+    return `${f.kind} ${neutralizeTags(oneLine(path))} (+${f.additions} -${f.deletions})`;
   });
   return `<changed_files>\n${lines.join("\n")}\n</changed_files>`;
 }

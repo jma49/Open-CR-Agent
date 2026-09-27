@@ -86,4 +86,29 @@ describe("executeTask", () => {
     expect(result.status).toBe("timed_out");
     expect(Date.now() - started).toBeLessThan(1_000);
   });
+
+  it("keeps at most 50 findings per task and bounds their text", async () => {
+    const flooding: AgentRuntime = {
+      name: "fake",
+      async *runTask(task): AsyncIterable<AgentEvent> {
+        for (let i = 0; i < 60; i += 1) {
+          yield {
+            type: "finding",
+            taskId: task.taskId,
+            finding: { ...reported, title: "x".repeat(1_000) },
+          };
+        }
+        yield { type: "done", taskId: task.taskId };
+      },
+    };
+    const result = await executeTask(
+      flooding,
+      spec(60_000),
+      new AbortController().signal,
+      callbacks,
+    );
+    expect(result.findings).toHaveLength(50);
+    expect(result.findings[0]?.title.length).toBe(301);
+    expect(result.warnings).toEqual(["more than 50 findings in one task; the rest were dropped"]);
+  });
 });

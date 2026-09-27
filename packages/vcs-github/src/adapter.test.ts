@@ -330,9 +330,19 @@ describe("GitHubAdapter", () => {
 
   it("keeps reference-style links in model text from resolving", () => {
     const text = safeMarkdown(
-      "See [the guide][1], [the fix][] or [docs].\n\n[1]: https://evil.example/a\n   [the fix]: https://evil.example/b\n[docs]: <https://evil.example/c>",
+      [
+        "See [the guide][1], [the fix][] or [docs].",
+        "",
+        "[1]: https://evil.example/a",
+        "   [the fix]: https://evil.example/b",
+        "> [docs]: https://evil.example/c",
+        "- [g]: https://evil.example/d",
+        "1. [h]: <https://evil.example/e>",
+      ].join("\n"),
     );
-    for (const line of text.split("\n").slice(2)) expect(line).toMatch(/^\s*\\\[/);
+    // A definition needs "]:" right after its label, wherever the line
+    // starts (top level, blockquote, list item); none survives.
+    expect(text).not.toContain("]:");
     expect(text).toContain("See [the guide][1], [the fix][] or [docs].");
   });
 

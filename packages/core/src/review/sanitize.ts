@@ -23,5 +23,11 @@ export function neutralizeTags(text: string): string {
 }
 
 export function escapeAttribute(value: string): string {
-  return neutralizeTags(value).replaceAll('"', "&quot;");
+  return neutralizeTags(oneLine(value)).replaceAll('"', "&quot;");
+}
+
+// File names may contain newlines (git quotes and decodes them), which in a
+// one-line field would start a line of their own in the prompt.
+export function oneLine(text: string): string {
+  return text.replace(/[\r\n\u2028\u2029]+/g, " ");
 }

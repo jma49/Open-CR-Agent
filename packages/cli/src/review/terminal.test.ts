@@ -17,4 +17,8 @@ describe("forTerminal", () => {
     }
     expect(out).toContain("]52;c;ZXZpbA==");
   });
+
+  it("replaces bidirectional marks too, as JSON output escapes them", () => {
+    expect(forTerminal("a\u200eb\u200fc\u061cd")).toBe("a�b�c�d");
+  });
 });

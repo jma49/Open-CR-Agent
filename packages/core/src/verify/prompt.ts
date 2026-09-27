@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Finding } from "../domain.js";
-import { neutralizeTags } from "../review/sanitize.js";
+import { neutralizeTags, oneLine } from "../review/sanitize.js";
 
 export const verificationVerdictSchema = z.enum(["confirmed", "refuted", "uncertain"]);
 export type VerificationVerdict = z.infer<typeof verificationVerdictSchema>;
@@ -53,7 +53,7 @@ export function buildVerificationPrompt(
       .join("\n"),
   );
   const sections = [
-    `File: ${file}`,
+    `File: ${neutralizeTags(oneLine(file))}`,
     `<findings>\n${neutralizeTags(items.join("\n"))}\n</findings>`,
     `<diff>\n${neutralizeTags(patch)}\n</diff>`,
   ];

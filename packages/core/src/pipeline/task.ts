@@ -100,8 +100,14 @@ function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks)
       const parsed = reportedFindingSchema.safeParse(
         withReviewerCategory(event.finding, callbacks.category),
       );
-      if (parsed.success) result.findings.push(parsed.data);
-      else result.warnings.push("runtime reported a finding that failed validation");
+      if (!parsed.success) {
+        result.warnings.push("runtime reported a finding that failed validation");
+      } else if (result.findings.length >= MAX_FINDINGS_PER_TASK) {
+        const warning = `more than ${MAX_FINDINGS_PER_TASK} findings in one task; the rest were dropped`;
+        if (!result.warnings.includes(warning)) result.warnings.push(warning);
+      } else {
+        result.findings.push(bounded(parsed.data));
+      }
       return false;
     }
     case "usage":
@@ -114,6 +120,24 @@ function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks)
       result.error = event.error;
       return true;
   }
+}
+
+// A reviewer steered by the change could flood the pull request with
+// comments or pad them without end; both are bounded.
+export const MAX_FINDINGS_PER_TASK = 50;
+const MAX_TITLE = 300;
+const MAX_TEXT = 4_000;
+const MAX_EVIDENCE = 10;
+
+function bounded(f: ReportedFinding): ReportedFinding {
+  const cut = (text: string, max: number) => (text.length > max ? `${text.slice(0, max)}…` : text);
+  return {
+    ...f,
+    title: cut(f.title, MAX_TITLE),
+    body: cut(f.body, MAX_TEXT),
+    ...(f.suggestion !== undefined ? { suggestion: cut(f.suggestion, MAX_TEXT) } : {}),
+    evidence: f.evidence.slice(0, MAX_EVIDENCE).map((e) => cut(e, 500)),
+  };
 }
 
 // The category is part of the fingerprint, so it comes from the reviewer and

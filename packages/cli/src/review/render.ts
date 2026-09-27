@@ -3,6 +3,7 @@ import {
   type Finding,
   type ReviewReport,
   type Severity,
+  serializeOutput,
   toReportOutput,
   type Verification,
 } from "@open-cr-agent/core";
@@ -21,12 +22,7 @@ export function renderJson(report: ReviewReport): string {
   return `${safeJson(toReportOutput(report))}\n`;
 }
 
-export function safeJson(value: unknown): string {
-  return JSON.stringify(value, null, 2).replace(
-    /[\u0080-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g,
-    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
-  );
-}
+export const safeJson = serializeOutput;
 
 export function renderText(report: ReviewReport, sessionDir?: string): string {
   const incomplete = report.tasks.filter((t) => t.status !== "completed");
