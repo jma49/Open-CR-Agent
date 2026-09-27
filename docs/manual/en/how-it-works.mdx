@@ -63,6 +63,7 @@ A reviewer is an agent with a focused prompt, its own rules, and a scope that te
 | `correctness` | Logic errors, broken contracts, error handling | every tier | nothing |
 | `security` | Exploitable issues reachable from untrusted input: injection, authorization, secrets, crypto, unsafe parsing, CI | `lite` and `full` | documentation, tests |
 | `performance` | Measurable regressions on paths that matter: complexity, N+1, blocking work, memory | `lite` and `full` | documentation, tests, config data, CI workflows |
+| `docs` | Documentation the change makes wrong: a removed or renamed flag, key, endpoint or default that the README, docs or help text still describe (light model) | `lite` and `full` | tests |
 
 Each one reviews only its own domain and states what not to flag. Every reviewer can only read: `read_file`, `read_diff` and `code_search` answer from the revision under review (a commit in range or commit mode, not your working tree), and findings are submitted through `report_finding`. Their answers are capped (2,000 characters per line, 50,000 per answer, 2 MB per file read), so a minified bundle cannot flood a model's context. It cannot edit files, run commands or browse the web.
 

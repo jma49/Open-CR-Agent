@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
+import { docsReviewer } from "../review/reviewers/docs.js";
 import { performanceReviewer } from "../review/reviewers/performance.js";
 import { securityReviewer } from "../review/reviewers/security.js";
 import { JsonlSessionWriter } from "../session/jsonl.js";
@@ -23,6 +24,13 @@ export const performanceReviewerPlugin: OcraPlugin = {
   name: "reviewer-performance",
   configure(ctx) {
     ctx.registerReviewer(performanceReviewer);
+  },
+};
+
+export const docsReviewerPlugin: OcraPlugin = {
+  name: "reviewer-docs",
+  configure(ctx) {
+    ctx.registerReviewer(docsReviewer);
   },
 };
 

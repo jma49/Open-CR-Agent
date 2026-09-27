@@ -63,6 +63,7 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Fi
 | `correctness` | 逻辑错误、契约被破坏、错误处理 | 所有档位 | 无 |
 | `security` | 能被不可信输入触达、可被利用的问题：注入、授权、密钥、加密、不安全的解析、CI | `lite` 和 `full` | 文档、测试 |
 | `performance` | 重要路径上可度量的性能退化：复杂度、N+1、阻塞操作、内存 | `lite` 和 `full` | 文档、测试、配置数据、CI workflow |
+| `docs` | 被这次改动弄错的文档：被删除或改名的参数、配置项、接口或默认值，而 README、文档或帮助文字还在描述旧的（用 light 模型） | `lite` 和 `full` | 测试 |
 
 每个审查员只看自己的领域，并且明确知道哪些不该报。所有审查员都只能读：`read_file`、`read_diff` 和 `code_search` 返回的都是被审查的那个版本（在区间或单个 commit 模式下是对应的 commit，而不是你的工作区），问题通过 `report_finding` 提交。这些工具的返回有上限（每行 2,000 字符、每次 50,000 字符、每个文件最多读 2 MB），压缩过的打包文件不会塞满模型的上下文。它不能修改文件、执行命令或访问网络。
 

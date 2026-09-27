@@ -3,6 +3,7 @@ import {
   correctnessReviewerPlugin,
   coverageGaps,
   defaultSelectionPolicy,
+  docsReviewerPlugin,
   newSessionId,
   type OcraPlugin,
   performanceReviewerPlugin,
@@ -39,6 +40,7 @@ export const BUILTIN_PLUGINS: readonly OcraPlugin[] = [
   correctnessReviewerPlugin,
   securityReviewerPlugin,
   performanceReviewerPlugin,
+  docsReviewerPlugin,
   sessionJsonlPlugin,
 ];
 

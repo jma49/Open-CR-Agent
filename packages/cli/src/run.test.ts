@@ -114,6 +114,7 @@ describe("BUILTIN_PLUGINS", () => {
       "reviewer-correctness",
       "reviewer-security",
       "reviewer-performance",
+      "reviewer-docs",
       "session-jsonl",
     ]);
   });

@@ -47,7 +47,7 @@ The two split work along different axes: Cloudflare by **review domain**, OCR by
 | `correctness` | Logic errors, broken contracts, error handling | standard |
 | `security` | Exploitable or concretely dangerous issues only | standard |
 | `performance` | Measurable regressions on hot paths | standard |
-| `docs` **(planned)** | Public API and user-facing documentation drift | light |
+| `docs` | Public API and user-facing documentation drift | light |
 | `agents-md` **(planned)** | Material changes that should update `AGENTS.md` | light |
 
 Reviewers are plugins; teams can add their own (for example, compliance with internal standards).

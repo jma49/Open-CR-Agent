@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Bundle } from "../bundle/bundle.js";
 import type { FileDiff } from "../domain.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
+import { docsReviewer } from "../review/reviewers/docs.js";
 import { planMatrix, planTasks } from "./matrix.js";
 
 function bundle(label: string, ...paths: string[]): Bundle {
@@ -113,5 +114,18 @@ describe("planTasks", () => {
 
   it("changes nothing under the limit", () => {
     expect(planTasks(many, [correctness], "full").cells).toHaveLength(4);
+  });
+});
+
+describe("the docs reviewer", () => {
+  it("starts at the lite tier and never reviews tests", () => {
+    const b = [bundle("cli", "src/args.ts", "README.md", "src/args.test.ts")];
+    expect(planMatrix(b, [docsReviewer], "trivial").skipped).toEqual([
+      { reviewer: "docs", bundle: "cli", reason: "below_tier" },
+    ]);
+    expect(cells(planMatrix(b, [docsReviewer], "lite"))).toEqual([
+      ["docs-1", ["src/args.ts", "README.md"]],
+    ]);
+    expect(docsReviewer.modelTier).toBe("light");
   });
 });
