@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { FileDiff } from "../domain.js";
-import { neutralizeTags, oneLine } from "../review/sanitize.js";
+import { data, oneLine } from "../review/prompt-text.js";
 
 export interface GroupingPrompt {
   system: string;
@@ -36,8 +36,7 @@ export function buildGroupingPrompt(
   maxFilesPerGroup: number,
 ): GroupingPrompt {
   const list = files.map(
-    (f, i) =>
-      `[${i}] ${f.kind} ${neutralizeTags(oneLine(f.newPath))} (+${f.additions} -${f.deletions})`,
+    (f, i) => `[${i}] ${f.kind} ${data(oneLine(f.newPath))} (+${f.additions} -${f.deletions})`,
   );
   return {
     system: SYSTEM_PROMPT.replace("{{max}}", String(maxFilesPerGroup)),

@@ -331,7 +331,7 @@ describe("runReview", () => {
       costUsd: 0,
     };
     rt.complete = async (request) => ({
-      text: request.user.includes("File: src/a.ts")
+      text: request.user.includes(`file="src/a.ts"`)
         ? '[{"index":0,"verdict":"refuted","reason":"a is a constant"}]'
         : '[{"index":0,"verdict":"confirmed","reason":"ok"}]',
       usage: zero,

@@ -107,7 +107,9 @@ function fixture() {
 function reviewer(options: { fail?: boolean } = {}) {
   const reviewed: string[][] = [];
   const script = async function* (spec: AgentTaskSpec): AsyncIterable<AgentEvent> {
-    const files = ["a.ts", "b.ts"].filter((f) => spec.userPrompt.includes(`<file path="${f}"`));
+    const files = ["a.ts", "b.ts"].filter((f) =>
+      spec.userPrompt.includes(`<ocra_file path="${f}"`),
+    );
     reviewed.push(files);
     if (options.fail) {
       yield { type: "error", taskId: spec.taskId, error: "model unavailable", retryable: false };

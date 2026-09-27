@@ -1,4 +1,4 @@
-import { REVIEW_TOOLS, severitySchema, type ToolDefinition } from "@open-cr-agent/core";
+import { promptData, REVIEW_TOOLS, severitySchema, type ToolDefinition } from "@open-cr-agent/core";
 import { z } from "zod";
 
 export const MAX_READ_LINES = 400;
@@ -25,7 +25,7 @@ function fitting(lines: readonly string[]): string[] {
 }
 
 export const reportFindingInput = z.object({
-  file: z.string().min(1).describe("Path of a file in <review_files>"),
+  file: z.string().min(1).describe("Path of a file in <ocra_review_files>"),
   existingCode: z
     .string()
     .min(1)
@@ -37,6 +37,8 @@ export const reportFindingInput = z.object({
   evidence: z.array(z.string()).optional(),
 });
 
+// Tool results carry repository text back to the model, so they are data
+// like every prompt section: they cannot form one of ocra's tags.
 const readFile: ToolDefinition = {
   name: REVIEW_TOOLS.readFile,
   description: `Read a file at the revision under review, with line numbers. Returns at most ${MAX_READ_LINES} lines; use startLine to page.`,
@@ -47,7 +49,7 @@ const readFile: ToolDefinition = {
   async execute(args, context) {
     const { path, startLine = 1 } = args as { path: string; startLine?: number };
     const content = await context.readFile(path);
-    if (content === undefined) return `File not found: ${path}`;
+    if (content === undefined) return promptData(`File not found: ${path}`);
     const lines = content.split("\n");
     const end = Math.min(lines.length, startLine + MAX_READ_LINES - 1);
     const body = fitting(
@@ -59,7 +61,7 @@ const readFile: ToolDefinition = {
         `[truncated: ${lines.length - next + 1} more lines; call again with startLine=${next}]`,
       );
     }
-    return body.join("\n");
+    return promptData(body.join("\n"));
   },
 };
 
@@ -71,11 +73,11 @@ const readDiff: ToolDefinition = {
   async execute(args, context) {
     const { path } = args as { path: string };
     const diff = context.readDiff(path);
-    if (diff === undefined) return `No changes to ${path} in this change.`;
+    if (diff === undefined) return promptData(`No changes to ${path} in this change.`);
     const lines = diff.split("\n").map((line) => clip(line));
     const kept = fitting(lines);
     if (kept.length < lines.length) kept.push(`[diff truncated after ${kept.length} lines]`);
-    return kept.join("\n");
+    return promptData(kept.join("\n"));
   },
 };
 
@@ -93,7 +95,7 @@ const codeSearch: ToolDefinition = {
     if (shown.length < matches.length) {
       shown.push(`[${matches.length - shown.length} more matches omitted]`);
     }
-    return shown.join("\n");
+    return promptData(shown.join("\n"));
   },
 };
 
@@ -106,7 +108,7 @@ const reportFinding: ToolDefinition = {
 
 const taskDone: ToolDefinition = {
   name: REVIEW_TOOLS.taskDone,
-  description: "Call once every file in <review_files> has been reviewed.",
+  description: "Call once every file in <ocra_review_files> has been reviewed.",
   inputSchema: z.object({}),
   execute: async () => "Done.",
 };

@@ -15,6 +15,8 @@ Traps we have already fallen into, across this repository and the site. Each ent
 
 - **Node's fetch ends a request after 300 s without data, and the OpenCode SDK's `timeout = false` does not stop it.** That setting only works on Bun. OpenCode answers a prompt only when the agent is done, so a long review failed with `UND_ERR_BODY_TIMEOUT`, which is not an abort: the session kept running and spending, the task got no failover, and its cost was lost. The runtime now passes the SDK a fetch built on undici's own `fetch` and an `Agent` with both timeouts off (#109). Use undici's `fetch` with undici's `Agent`: mixing its `Agent` with Node's bundled fetch breaks across versions.
 
+- **A denylist of section names also rewrote the code under review.** `neutralizeTags` rewrote `<title`, `<file`, `<diff` and the other section names anywhere in data, so HTML and XML reached models as `‹title>` and their quotes no longer matched the file. It also neutralized Verify's and Judge's own `<finding>` wrappers, so one finding's text could reproduce a boundary exactly. Sections are now `<ocra_…>`, only that prefix is neutralized (with look-alikes), each field is neutralized on its own, and the `PromptText` type keeps raw strings out of sections (#106).
+
 ## Models and providers
 
 - **A missing provider key looks like a missing model.** Without its key OpenCode does not load the provider and answers `ProviderModelNotFoundError: Model not found: google/…` (surfaced to us as `UnknownError`). Check the key first; OpenCode's own log (`--print-logs`) shows the real error.

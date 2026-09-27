@@ -1,7 +1,15 @@
 import type { ChangeRequest, FileDiff, Hunk } from "../domain.js";
 import type { MemoryEntry } from "../memory/memory.js";
+import {
+  data,
+  join,
+  ocraText,
+  oneLine,
+  type PromptText,
+  section,
+  truncated,
+} from "./prompt-text.js";
 import type { ReviewerDefinition } from "./reviewer.js";
-import { escapeAttribute, neutralizeTags, oneLine } from "./sanitize.js";
 import { REVIEW_TOOLS } from "./tools.js";
 
 export const MAX_GUIDELINES_CHARS = 20_000;
@@ -10,7 +18,7 @@ export const MAX_GUIDELINES_CHARS = 20_000;
 // a reviewer that kept its findings for the end lost them. A quarter of the
 // review tasks on Vertex ended at the cap (2026-09-28).
 export const TURN_BUDGET = `## Turn budget
-Your turns are limited, and the last one allows no tool calls, so a finding you have not reported by then is lost. Report each issue with ${REVIEW_TOOLS.reportFinding} as soon as you have confirmed it, before you investigate the next one; never keep findings for the end. Spread your turns over every file in <review_files>.`;
+Your turns are limited, and the last one allows no tool calls, so a finding you have not reported by then is lost. Report each issue with ${REVIEW_TOOLS.reportFinding} as soon as you have confirmed it, before you investigate the next one; never keep findings for the end. Spread your turns over every file in <ocra_review_files>.`;
 
 export interface ReviewPromptInput {
   reviewer: ReviewerDefinition;
@@ -34,54 +42,59 @@ export function buildReviewPrompt(input: ReviewPromptInput): ReviewPrompt {
     renderChangeRequest(input.changeRequest),
     renderChangedFiles(input.changedFiles),
   ];
-  if (input.guidelines?.trim()) sections.push(renderGuidelines(input.guidelines));
-  if (input.rules.trim()) {
-    sections.push(`<review_rules>\n${neutralizeTags(input.rules)}\n</review_rules>`);
+  if (input.guidelines?.trim()) {
+    sections.push(
+      section("repository_guidelines", truncated(input.guidelines, MAX_GUIDELINES_CHARS)),
+    );
   }
+  if (input.rules.trim()) sections.push(section("review_rules", data(input.rules)));
   if (input.accepted && input.accepted.length > 0) sections.push(renderAccepted(input.accepted));
   sections.push(
-    `<review_files>\n${input.bundle.map(renderFile).join("\n")}\n</review_files>`,
-    `Review every file in <review_files>. Report each issue with ${REVIEW_TOOLS.reportFinding} as soon as you confirm it, then call ${REVIEW_TOOLS.taskDone}.`,
+    section("review_files", input.bundle.map(renderFile)),
+    ocraText(
+      `Review every file in <ocra_review_files>. Report each issue with ${REVIEW_TOOLS.reportFinding} as soon as you confirm it, then call ${REVIEW_TOOLS.taskDone}. Where a file shows "‹ocra_", the file itself has "<ocra_"; quote it that way.`,
+    ),
   );
   return {
     system: `${input.reviewer.systemPrompt}\n\n${TURN_BUDGET}`,
-    user: sections.join("\n\n"),
+    user: join(sections, "\n\n"),
   };
 }
 
-function renderChangeRequest(cr: ChangeRequest): string {
-  return [
-    "<change_request>",
-    `<title>${neutralizeTags(cr.title)}</title>`,
-    `<description>\n${neutralizeTags(cr.description)}\n</description>`,
-    "</change_request>",
-  ].join("\n");
+export const MAX_TITLE_CHARS = 300;
+export const MAX_DESCRIPTION_CHARS = 8_000;
+
+// Also used by the judge, which sees the same change request.
+export function renderChangeRequest(cr: ChangeRequest, maxDescription = MAX_DESCRIPTION_CHARS) {
+  return section("change_request", [
+    section("title", truncated(cr.title, MAX_TITLE_CHARS)),
+    section("description", truncated(cr.description, maxDescription)),
+  ]);
 }
 
-function renderChangedFiles(files: readonly FileDiff[]): string {
+function renderChangedFiles(files: readonly FileDiff[]): PromptText {
   const lines = files.map((f) => {
     const path = f.kind === "renamed" ? `${f.oldPath} -> ${f.newPath}` : f.newPath;
-    return `${f.kind} ${neutralizeTags(oneLine(path))} (+${f.additions} -${f.deletions})`;
+    return join(
+      [ocraText(`${f.kind} `), data(oneLine(path)), ocraText(` (+${f.additions} -${f.deletions})`)],
+      "",
+    );
   });
-  return `<changed_files>\n${lines.join("\n")}\n</changed_files>`;
+  return section("changed_files", lines);
 }
 
-function renderAccepted(entries: readonly MemoryEntry[]): string {
-  const lines = entries.map((e) => `- ${e.file}: ${e.title} (accepted: ${e.reason})`);
-  return `<accepted_findings>\nThe team has accepted these; do not report them again.\n${neutralizeTags(lines.join("\n"))}\n</accepted_findings>`;
+function renderAccepted(entries: readonly MemoryEntry[]): PromptText {
+  const lines = entries.map((e) => data(`- ${e.file}: ${e.title} (accepted: ${e.reason})`));
+  return section("accepted_findings", [
+    ocraText("The team has accepted these; do not report them again."),
+    ...lines,
+  ]);
 }
 
-function renderGuidelines(guidelines: string): string {
-  const truncated = guidelines.length > MAX_GUIDELINES_CHARS;
-  const body = neutralizeTags(guidelines.slice(0, MAX_GUIDELINES_CHARS));
-  return `<repository_guidelines>\n${body}${truncated ? "\n[truncated]" : ""}\n</repository_guidelines>`;
-}
-
-function renderFile(diff: FileDiff): string {
-  const attributes = [`path="${escapeAttribute(diff.newPath)}"`, `change="${diff.kind}"`];
-  if (diff.kind === "renamed") attributes.push(`from="${escapeAttribute(diff.oldPath)}"`);
-  const body = diff.hunks.map(renderHunk).join("\n");
-  return `<file ${attributes.join(" ")}>\n${neutralizeTags(body)}\n</file>`;
+function renderFile(diff: FileDiff): PromptText {
+  const attributes: Record<string, string> = { path: diff.newPath, change: diff.kind };
+  if (diff.kind === "renamed") attributes.from = diff.oldPath;
+  return section("file", data(diff.hunks.map(renderHunk).join("\n")), attributes);
 }
 
 function renderHunk(hunk: Hunk): string {

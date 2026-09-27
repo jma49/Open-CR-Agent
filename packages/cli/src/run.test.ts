@@ -300,7 +300,8 @@ describe("ocra review", () => {
     // only its use as the review's guidelines goes away.
     const guidelines = () =>
       prompts.map(
-        (p) => /<repository_guidelines>([\s\S]*?)<\/repository_guidelines>/.exec(p)?.[1] ?? "",
+        (p) =>
+          /<ocra_repository_guidelines>([\s\S]*?)<\/ocra_repository_guidelines>/.exec(p)?.[1] ?? "",
       );
     await run(["review"], capture(), capture(), deps(cwd, record));
     expect(guidelines().join("")).toContain("Head guidelines");
