@@ -1,6 +1,8 @@
 import type { PriorFinding } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
-import { A, adapter, fakeGitHub, finding, postedSummary, report } from "./adapter.fakes.js";
+import { A, adapter, code, fakeGitHub, finding, postedSummary, report } from "./adapter.fakes.js";
+import { GitHubAdapter } from "./adapter.js";
+import { GitHubApi } from "./client.js";
 import { renderSummary } from "./render.js";
 import { MAX_WRITTEN_STATE_CHARS, readState, SUMMARY_MARKER, writeState } from "./state.js";
 
@@ -286,5 +288,38 @@ describe("dismissals from replies", () => {
     expect(await dismissed({ body: "won't fix", author: { login: "member-without-access" } })).toBe(
       false,
     );
+  });
+});
+
+describe("publishing the reviewed commit", () => {
+  it("uses the pull request the diff was built from, even if the head moved since", async () => {
+    // The fake answers /pulls/7 with head ccc…; the review was of eee….
+    const { calls, fetchImpl } = fakeGitHub();
+    const reviewed = "e".repeat(40);
+    const github = new GitHubAdapter({
+      pullRequest: { owner: "o", repo: "r", number: 7 },
+      api: new GitHubApi(
+        { owner: "o", repo: "r" },
+        { token: "t", fetch: fetchImpl, sleep: async () => {} },
+      ),
+      code,
+      botLogin: "github-actions[bot]",
+      snapshot: {
+        number: 7,
+        title: "t",
+        body: null,
+        html_url: "u",
+        user: { login: "author" },
+        base: { sha: "b".repeat(40), ref: "main" },
+        head: { sha: reviewed, ref: "feat" },
+      },
+    });
+    expect((await github.getChangeRequest()).headSha).toBe(reviewed);
+    const r = report([finding(A, true)]);
+    r.changeRequest = { ...r.changeRequest, headSha: reviewed };
+    await github.publish(r);
+    expect(calls.some((c) => c.path === "/pulls/7")).toBe(false);
+    const review = calls.find((c) => c.path === "/pulls/7/reviews" && c.method === "POST");
+    expect((review?.body as { commit_id?: string } | undefined)?.commit_id).toBe(reviewed);
   });
 });

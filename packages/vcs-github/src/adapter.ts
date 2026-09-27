@@ -42,6 +42,10 @@ export interface GitHubAdapterOptions {
   botLogin: string;
   requestChanges?: boolean;
   history?: History;
+  // The pull request as the diff under review was built from it. Without it
+  // the adapter fetches the pull request itself, and a push in between would
+  // publish the new head for the old diff.
+  snapshot?: PullRequest;
 }
 
 export const DEFAULT_BOT_LOGIN = "github-actions[bot]";
@@ -440,7 +444,11 @@ export class GitHubAdapter implements VcsAdapter {
       return fresh.map((f) => f.fingerprint);
     } catch (error) {
       if (!(error instanceof GitHubApiError) || error.status !== 422) throw error;
-      if (requestChanges) await this.options.api.createReview(number, { ...review, comments: [] });
+      // The request for changes still matters; if GitHub refuses it too (for
+      // example on the token owner's own pull request), the summary remains.
+      if (requestChanges) {
+        await this.options.api.createReview(number, { ...review, comments: [] }).catch(() => {});
+      }
       return [];
     }
   }
@@ -451,7 +459,9 @@ export class GitHubAdapter implements VcsAdapter {
   }
 
   private pr(): Promise<PullRequest> {
-    this.pullRequest ??= this.options.api.getPullRequest(this.options.pullRequest.number);
+    this.pullRequest ??= this.options.snapshot
+      ? Promise.resolve(this.options.snapshot)
+      : this.options.api.getPullRequest(this.options.pullRequest.number);
     return this.pullRequest;
   }
 

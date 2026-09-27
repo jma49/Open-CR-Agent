@@ -50,8 +50,18 @@ runs:
           echo "::error::ocra review runs on pull_request events"
           exit 2
         fi
-        # Split on whitespace without glob expansion against the checkout.
-        read -r -a extra <<< "$OCRA_ARGS"
-        node "$GITHUB_ACTION_PATH/packages/cli/dist/main.js" review --pr "$OCRA_PR" --publish "${extra[@]}" && code=0 || code=$?
+        # Split on whitespace, across lines, without glob expansion against
+        # the checkout.
+        read -r -d '' -a extra <<< "$OCRA_ARGS" || true
+        # Bash does not pass a cancellation's SIGINT/SIGTERM on to a child it
+        # waits for, so ocra runs in the background and gets them forwarded:
+        # it then stops, writes its partial report and publishes nothing.
+        node "$GITHUB_ACTION_PATH/packages/cli/dist/main.js" review --pr "$OCRA_PR" --publish "${extra[@]}" &
+        pid=$!
+        trap 'kill -INT "$pid" 2>/dev/null' INT TERM
+        code=0
+        while kill -0 "$pid" 2>/dev/null; do
+          wait "$pid" && code=0 || code=$?
+        done
         if [ "$code" -eq 1 ] && [ "$OCRA_FAIL_ON_CONCERNS" != "true" ]; then code=0; fi
         exit "$code"

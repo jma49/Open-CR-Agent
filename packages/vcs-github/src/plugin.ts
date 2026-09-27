@@ -1,7 +1,7 @@
 import type { OcraPlugin } from "@open-cr-agent/core";
 import { z } from "zod";
 import { type CodeSource, DEFAULT_BOT_LOGIN, GitHubAdapter, type History } from "./adapter.js";
-import { GitHubApi } from "./client.js";
+import { GitHubApi, type PullRequest } from "./client.js";
 
 const optionsSchema = z.object({
   owner: z.string().min(1),
@@ -21,6 +21,9 @@ const optionsSchema = z.object({
       ),
     "code must provide getDiff, readFile and searchCode",
   ),
+  snapshot: z
+    .custom<PullRequest>((value) => typeof value === "object" && value !== null && "head" in value)
+    .optional(),
   history: z
     .custom<History>(
       (value) =>
@@ -52,6 +55,7 @@ export const githubPlugin: OcraPlugin = {
         botLogin: options.botLogin,
         requestChanges: options.requestChanges,
         ...(options.history ? { history: options.history } : {}),
+        ...(options.snapshot ? { snapshot: options.snapshot } : {}),
       });
     });
   },

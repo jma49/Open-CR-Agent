@@ -100,6 +100,7 @@ export async function pullRequestTarget(
         botLogin: config.github.botLogin ?? DEFAULT_BOT_LOGIN,
         requestChanges: config.github.requestChanges ?? false,
         code,
+        snapshot: pull,
         history: {
           filesChangedSince: (from: string, to: string) => filesChangedSince(root, from, to),
         },

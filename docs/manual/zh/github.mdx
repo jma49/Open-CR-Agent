@@ -32,14 +32,14 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-保留 `fetch-depth: 0`：ocra 需要 base 与 head 之间的历史，浅克隆会直接停下并给出提示。`concurrency` 分组也很重要：没有它，连续两次 push 会同时跑两次审查，重复发同样的行内评论，较慢的那次还可能用更旧的 head 覆盖摘要。被取消的运行不会发布任何内容。遇到 GitHub 限流或短暂故障，ocra 会有限次地重试；可能已经发出评论的请求绝不会重复。
+保留 `fetch-depth: 0`：ocra 需要 base 与 head 之间的历史，浅克隆会直接停下并给出提示。`concurrency` 分组也很重要：没有它，连续两次 push 会同时跑两次审查，重复发同样的行内评论，较慢的那次还可能用更旧的 head 覆盖摘要。被取消的运行会停下，把部分报告留在 job 日志里，不发布任何内容（Action 会把取消信号转给 ocra；如果信号到达时 ocra 已在发布，发布会完成）。遇到 GitHub 限流或短暂故障，ocra 会有限次地重试；可能已经发出评论的请求绝不会重复。
 
 把模型 key 存为仓库 secret。模型配置来自 base 分支的 `.ocra/config.json`，或者 `env` 里的 `OCRA_MODEL_*` 变量。
 
 | 输入 | 默认值 | 含义 |
 |---|---|---|
 | `github-token` | `${{ github.token }}` | 用来读取 PR 和发布评审的 token |
-| `args` | | 额外的 `ocra review` 参数，例如 `--reviewers correctness,security` |
+| `args` | | 额外的 `ocra review` 参数，例如 `--reviewers correctness,security`；按空格和换行拆分（不支持引号） |
 | `fail-on-concerns` | `false` | 结论为 `significant_concerns`（存在经核查确认的 critical 问题）时让 job 失败。审查不完整（退出码 `3`）时 job 总会失败 |
 
 结论只是参考意见。模型会读到 PR 的内容，PR 作者可以在其中埋入文字，诱导审查员漏报问题，或说服 Judge 丢掉问题；未经核查的模型判断也可能是错的。不要用这项检查代替人工审查、把它设为必需的状态检查；如果打开 `fail-on-concerns`，通过只代表“没有被确认的问题”，不代表“安全”。

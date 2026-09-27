@@ -97,3 +97,57 @@ describe("GitHubApi responses", () => {
     });
   });
 });
+
+describe("GitHubApi GraphQL", () => {
+  const threads = (nodes: unknown[]) =>
+    new Response(
+      JSON.stringify({
+        data: {
+          repository: {
+            pullRequest: {
+              reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes },
+            },
+          },
+        },
+      }),
+      { status: 200 },
+    );
+
+  it("retries a rate limit GraphQL reports in a 200 response", async () => {
+    const limited = new Response(
+      JSON.stringify({ errors: [{ type: "RATE_LIMITED", message: "API rate limit exceeded" }] }),
+      { status: 200 },
+    );
+    const { client, calls } = api([limited, threads([])]);
+    expect(await client.listReviewThreads(7)).toEqual([]);
+    expect(calls).toHaveLength(2);
+  });
+
+  it("reads a long thread's latest replies too, without repeating the overlap", async () => {
+    const c = (id: string, body: string) => ({
+      id,
+      body,
+      authorAssociation: "MEMBER",
+      author: { login: "m" },
+    });
+    const first = [
+      c("1", "marker"),
+      ...Array.from({ length: 29 }, (_, i) => c(`${i + 2}`, "chat")),
+    ];
+    const latest = [c("30", "chat"), c("45", "won't fix")];
+    const { client } = api([
+      threads([
+        {
+          id: "T",
+          isResolved: false,
+          resolvedBy: null,
+          comments: { nodes: first },
+          latest: { nodes: latest },
+        },
+      ]),
+    ]);
+    const [thread] = await client.listReviewThreads(7);
+    expect(thread?.comments).toHaveLength(31);
+    expect(thread?.comments.at(-1)?.body).toBe("won't fix");
+  });
+});

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { retryDecision } from "./retry.js";
+import { MAX_ATTEMPTS, retryDecision } from "./retry.js";
 
 // Commit ids reach git as arguments; anything else is refused at the boundary.
 const sha = z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/, "not a commit id");
@@ -87,11 +87,37 @@ const REVIEW_THREADS_QUERY = `query($owner: String!, $repo: String!, $number: In
     pullRequest(number: $number) {
       reviewThreads(first: 100, after: $after) {
         pageInfo { hasNextPage endCursor }
-        nodes { id isResolved resolvedBy { login } comments(first: 30) { nodes { body authorAssociation author { login } editor { login } } } }
+        nodes { id isResolved resolvedBy { login } comments(first: 30) { nodes { id body authorAssociation author { login } editor { login } } } latest: comments(last: 30) { nodes { id body authorAssociation author { login } editor { login } } } }
       }
     }
   }
 }`;
+
+const graphqlResultSchema = z.object({
+  data: z.unknown().optional(),
+  errors: z.array(z.object({ message: z.string(), type: z.string().optional() })).optional(),
+});
+type GraphqlResult = z.infer<typeof graphqlResultSchema>;
+
+const threadCommentsSchema = z.object({
+  nodes: z.array(
+    z.object({
+      id: z.string().optional(),
+      body: z.string(),
+      authorAssociation: z.string().default("NONE"),
+      author: z.object({ login: z.string() }).nullable(),
+      editor: z.object({ login: z.string() }).nullable().optional(),
+    }),
+  ),
+});
+type ThreadComment = z.infer<typeof threadCommentsSchema>["nodes"][number];
+
+// The first page (with ocra's marker comment) followed by the latest replies
+// it did not include; the two overlap in threads of up to 60 comments.
+function mergeComments(first: ThreadComment[], latest: ThreadComment[]): ThreadComment[] {
+  const seen = new Set(first.map((c) => c.id).filter((id) => id !== undefined));
+  return [...first, ...latest.filter((c) => c.id !== undefined && !seen.has(c.id))];
+}
 
 const reviewThreadsSchema = z.object({
   repository: z.object({
@@ -103,16 +129,9 @@ const reviewThreadsSchema = z.object({
             id: z.string(),
             isResolved: z.boolean(),
             resolvedBy: z.object({ login: z.string() }).nullable().optional(),
-            comments: z.object({
-              nodes: z.array(
-                z.object({
-                  body: z.string(),
-                  authorAssociation: z.string().default("NONE"),
-                  author: z.object({ login: z.string() }).nullable(),
-                  editor: z.object({ login: z.string() }).nullable().optional(),
-                }),
-              ),
-            }),
+            comments: threadCommentsSchema,
+            // A long thread's latest replies, which the first page misses.
+            latest: threadCommentsSchema.optional(),
           }),
         ),
       }),
@@ -152,7 +171,7 @@ export class GitHubApi {
           id: node.id,
           isResolved: node.isResolved,
           resolvedBy: node.resolvedBy?.login,
-          comments: node.comments.nodes.map((c) => ({
+          comments: mergeComments(node.comments.nodes, node.latest?.nodes ?? []).map((c) => ({
             author: c.author?.login ?? "",
             association: c.authorAssociation,
             body: c.body,
@@ -260,13 +279,19 @@ export class GitHubApi {
     });
   }
 
+  // GraphQL reports its rate limit as an error in a 200 response, which the
+  // HTTP retry does not see; it is retried here the same bounded way.
   private async graphql(query: string, variables: Record<string, unknown>): Promise<unknown> {
-    const result = z
-      .object({
-        data: z.unknown().optional(),
-        errors: z.array(z.object({ message: z.string() })).optional(),
-      })
-      .parse(await this.send("POST", this.graphqlUrl(), "/graphql", { query, variables }, true));
+    const sleep = this.options.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+    let result: GraphqlResult;
+    for (let attempt = 1; ; attempt += 1) {
+      result = graphqlResultSchema.parse(
+        await this.send("POST", this.graphqlUrl(), "/graphql", { query, variables }, true),
+      );
+      const limited = result.errors?.some((e) => e.type === "RATE_LIMITED");
+      if (!limited || attempt >= MAX_ATTEMPTS) break;
+      await sleep(1_000 * 2 ** attempt);
+    }
     if (result.errors?.length) {
       throw new GitHubApiError(
         200,
@@ -310,7 +335,11 @@ export class GitHubApi {
           "User-Agent": "open-cr-agent",
           ...(body === undefined ? {} : { "Content-Type": "application/json" }),
         },
-        signal: AbortSignal.timeout(30_000),
+        // Creating a review with many inline comments can take GitHub a while,
+        // and a POST that timed out after GitHub acted cannot be repeated.
+        signal: AbortSignal.timeout(
+          method === "POST" && path.endsWith("/reviews") ? 120_000 : 30_000,
+        ),
       };
       if (body !== undefined) init.body = JSON.stringify(body);
       let response: Response;
