@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { errorMessage } from "@open-cr-agent/core";
+import { measureCeiling } from "./ceiling-run.js";
 import { type Instance, loadDataset } from "./dataset.js";
 import { CachedJudge, judgeConfigFromEnv, MockJudge, OpenAICompatibleJudge } from "./judges.js";
 import type { SemanticJudge } from "./match.js";
@@ -22,6 +23,7 @@ export const USAGE = `Usage: ocra-eval <command> [options]
 
 Commands:
   list                 Show the PRs a selection would review (free)
+  ceiling              Recall ceiling of the deterministic stages (free, no model)
   run                  Review the selected PRs with ocra, then score them
   score <run-dir>      Re-score an existing run
 
@@ -55,6 +57,7 @@ export async function main(
   const [command, ...rest] = argv;
   try {
     if (command === "list") return await list(rest, out);
+    if (command === "ceiling") return await ceiling(rest, out, err);
     if (command === "run") return await run(rest, out, err, env);
     if (command === "score") return await rescore(rest, out, err, env);
     out.write(USAGE);
@@ -111,6 +114,23 @@ async function list(argv: string[], out: Output): Promise<number> {
   out.write(
     `${instances.length} PR(s), ${lines} changed lines, ${instances.reduce((s, i) => s + i.references.length, 0)} annotated issues\n`,
   );
+  return 0;
+}
+
+async function ceiling(argv: string[], out: Output, err: Output): Promise<number> {
+  const { values } = parse(argv);
+  const instances = selectInstances(
+    await loadDataset(join(CACHE_DIR, "dataset.json")),
+    selection(values),
+  );
+  const outDir = resolve(values.out ?? ".ocra/eval", values.label ?? "ceiling");
+  const markdown = await measureCeiling(instances, {
+    outDir,
+    reposDir: values["repos-dir"] ?? join(CACHE_DIR, "repos"),
+    command: defaultOcraCommand(),
+    log: (message) => err.write(`[ocra-eval] ${message}\n`),
+  });
+  out.write(`${markdown}\nWritten to ${outDir}\n`);
   return 0;
 }
 

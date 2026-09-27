@@ -27,6 +27,14 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 
 评测总是带着 `--no-repo-config` 运行，基准仓库无法加载插件；模型从 `OCRA_MODEL_*` 读取。仓库以 blobless clone 的方式缓存在 `~/.cache/ocra/aacr-bench/repos`。commit 已经拉取不到的 PR 会被标记为不可用，不计入评分。
 
+## 召回率上限（免费）
+
+```bash
+node packages/eval/dist/main.js ceiling --limit 20 --max-change-lines 300
+```
+
+不调用任何模型，按 ocra 各确定性阶段的决定给每条标注问题归类：文件被选择阶段排除、文件不在改动里、没有审查员覆盖该文件、问题按设计不在范围内（可维护性和可读性）、安全或性能问题但没有对应审查员、问题在改动行之外，或者可达。可达比例就是召回率的上限；这个数字低，说明换更强的模型也无济于事，只能调整文件选择、审查矩阵或审查范围。
+
 ## 评分方式
 
 移植自该基准的官方匹配规则：文件相同、diff 的同一侧、行号范围相距不超过一行，最后由 LLM 判定两条意见是否指向同一个问题。每条生成的意见只计一次。

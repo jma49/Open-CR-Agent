@@ -27,6 +27,14 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 
 Reviews always run with `--no-repo-config`, so benchmark repositories cannot load plugins; models come from `OCRA_MODEL_*`. Repositories are cached as blobless clones under `~/.cache/ocra/aacr-bench/repos`. PRs whose commits can no longer be fetched are reported as unavailable and excluded from scoring.
 
+## Recall ceiling (free)
+
+```bash
+node packages/eval/dist/main.js ceiling --limit 20 --max-change-lines 300
+```
+
+Classifies every annotated issue by what ocra's deterministic stages decide, with no model call: the file was excluded by selection, is not in the change, no reviewer covers it, the issue is out of scope by design (maintainability and readability), it is a security or performance issue without that reviewer, it lies outside the changed lines, or it is reachable. The reachable share is an upper bound on recall; a lower number means a model cannot fix it, only selection, the matrix or the scope can.
+
 ## Scoring
 
 A port of the benchmark's official matching: same file, same diff side, line ranges at most one line apart, then an LLM judge decides whether two comments express the same concern. Each generated comment counts once.
