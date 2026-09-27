@@ -47,6 +47,8 @@ export interface GitHubAdapterOptions {
 export const DEFAULT_BOT_LOGIN = "github-actions[bot]";
 
 const WRITE_ACCESS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+const OVERRIDE = /^\/ocra override ([0-9a-fA-F]{7,40})\s+(\S.*)$/m;
+const MAX_OVERRIDE_REASON = 300;
 
 const DECLINE =
   /^(won['’]?t fix|wontfix|will not fix|by design|false positive|not a bug|working as intended|intended behaviou?r)(?=$|[\s.,;:!—–-])/i;
@@ -72,6 +74,7 @@ export class GitHubAdapter implements VcsAdapter {
   private pullRequest: Promise<PullRequest> | undefined;
   private previous: Promise<IssueComment | undefined> | undefined;
   private reviewThreads: Promise<ReviewThread[]> | undefined;
+  private issueComments: Promise<IssueComment[]> | undefined;
   private prior: Promise<{ state?: ReviewState } | { untrusted: string }> | undefined;
 
   constructor(private readonly options: GitHubAdapterOptions) {}
@@ -79,13 +82,36 @@ export class GitHubAdapter implements VcsAdapter {
   async getChangeRequest(): Promise<ChangeRequest> {
     const pr = await this.pr();
     const { owner, repo } = this.options.pullRequest;
+    const override = await this.override(pr);
     return {
       id: `${owner}/${repo}#${pr.number}`,
       title: pr.title,
       description: pr.body ?? "",
       baseSha: pr.base.sha,
       headSha: pr.head.sha,
+      ...(override ? { override } : {}),
     };
+  }
+
+  // "Break glass": `/ocra override <commit> <reason>` from someone with
+  // write access other than the author lets a blocking verdict pass for that
+  // commit only, so a later push with new problems needs a new decision. The
+  // author can never overrule the review of their own change. Comments are
+  // best effort: without them there is simply no override.
+  private async override(pr: PullRequest): Promise<ChangeRequest["override"]> {
+    const comments = await this.comments().catch(() => []);
+    const author = pr.user?.login;
+    let found: ChangeRequest["override"];
+    for (const c of comments) {
+      const login = c.user?.login;
+      const match = OVERRIDE.exec(c.body);
+      if (!match || !login || login === author || this.isBot(login)) continue;
+      if (!WRITE_ACCESS.has(c.author_association ?? "")) continue;
+      const [, commit = "", reason = ""] = match;
+      if (!pr.head.sha.startsWith(commit.toLowerCase())) continue;
+      found = { by: login, reason: reason.trim().slice(0, MAX_OVERRIDE_REASON) };
+    }
+    return found;
   }
 
   getDiff(): Promise<FileDiff[]> {
@@ -390,14 +416,17 @@ export class GitHubAdapter implements VcsAdapter {
     return this.pullRequest;
   }
 
+  private comments(): Promise<IssueComment[]> {
+    this.issueComments ??= this.options.api.listIssueComments(this.options.pullRequest.number);
+    return this.issueComments;
+  }
+
   private summaryComment(): Promise<IssueComment | undefined> {
-    this.previous ??= this.options.api
-      .listIssueComments(this.options.pullRequest.number)
-      .then((comments) =>
-        comments.findLast(
-          (c) => c.user?.login === this.options.botLogin && c.body.includes(SUMMARY_MARKER),
-        ),
-      );
+    this.previous ??= this.comments().then((comments) =>
+      comments.findLast(
+        (c) => c.user?.login === this.options.botLogin && c.body.includes(SUMMARY_MARKER),
+      ),
+    );
     return this.previous;
   }
 }

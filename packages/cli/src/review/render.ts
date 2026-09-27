@@ -51,6 +51,10 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
   }
 
   lines.push(summaryLine(report));
+  const override = report.changeRequest.override;
+  if (override && report.verdict === "significant_concerns") {
+    lines.push(`Overridden by ${override.by}: ${override.reason}`);
+  }
   const unverified = report.findings.filter(
     (f) => f.severity === "critical" && f.verification !== "confirmed",
   ).length;

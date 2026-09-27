@@ -23,6 +23,7 @@ const commentSchema = z.object({
     .transform((b) => b ?? ""),
   user: z.object({ login: z.string(), type: z.string() }).nullable(),
   node_id: z.string().optional(),
+  author_association: z.string().optional(),
 });
 export type IssueComment = z.infer<typeof commentSchema>;
 

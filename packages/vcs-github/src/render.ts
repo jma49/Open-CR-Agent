@@ -24,7 +24,27 @@ function headline(report: ReviewReport): string {
   const { notReviewed, nothingReviewed } = coverageGaps(report.coverage);
   if (nothingReviewed) return "⏸️ Not reviewed";
   const incomplete = notReviewed > 0 || report.unverifiedCriticals > 0;
-  return `${VERDICT[report.verdict]}${incomplete ? " · incomplete" : ""}`;
+  const overridden =
+    report.verdict === "significant_concerns" && report.changeRequest.override
+      ? " · overridden"
+      : "";
+  return `${VERDICT[report.verdict]}${overridden}${incomplete ? " · incomplete" : ""}`;
+}
+
+// Who overrode a blocking verdict, or how someone entitled to can.
+function overrideNote(report: ReviewReport): string[] {
+  if (report.verdict !== "significant_concerns") return [];
+  const override = report.changeRequest.override;
+  if (override) {
+    return [
+      "",
+      `**Overridden** by @\u200b${safeMarkdown(override.by)} for ${codeSpan(report.changeRequest.headSha.slice(0, 7))}: ${safeMarkdown(override.reason)}`,
+    ];
+  }
+  return [
+    "",
+    `Someone with write access other than the author can let this commit pass by commenting \`/ocra override ${report.changeRequest.headSha.slice(0, 7)} <reason>\`.`,
+  ];
 }
 
 function verification(f: { verification?: Verification }): string {
@@ -116,6 +136,7 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
     `## ocra review · ${headline(report)}`,
     "",
     safeMarkdown(report.summary),
+    ...overrideNote(report),
     "",
     `**${report.findings.length} finding(s)** (${counts}) · risk tier \`${report.tier}\``,
   ];

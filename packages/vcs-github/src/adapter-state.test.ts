@@ -171,3 +171,46 @@ describe("summary state", () => {
     expect(next?.tier).toBe("lite");
   });
 });
+
+describe("verdict override", () => {
+  const head = "cccccccccccccccccccccccccccccccccccccccc";
+  const comment = (login: string, association: string, body: string) => ({
+    id: 1,
+    user: { login, type: "User" },
+    author_association: association,
+    body,
+  });
+
+  it("takes /ocra override for the head commit from a maintainer other than the author", async () => {
+    const cases: [unknown[], unknown][] = [
+      [
+        [comment("maintainer", "MEMBER", "/ocra override ccccccc accepted risk, see #12")],
+        { by: "maintainer", reason: "accepted risk, see #12" },
+      ],
+      [[comment("author", "OWNER", "/ocra override ccccccc mine")], undefined],
+      [[comment("passerby", "NONE", "/ocra override ccccccc lgtm")], undefined],
+      [[comment("maintainer", "OWNER", "/ocra override ddddddd older commit")], undefined],
+      [[comment("github-actions[bot]", "NONE", "/ocra override ccccccc bot")], undefined],
+      [[comment("maintainer", "OWNER", "please /ocra override ccccccc later")], undefined],
+    ];
+    for (const [comments, expected] of cases) {
+      const { fetchImpl } = fakeGitHub(comments);
+      expect((await adapter(fetchImpl).getChangeRequest()).override).toEqual(expected);
+    }
+  });
+
+  it("shows the override in the summary, or how to give one", () => {
+    const blocking = report([finding(A, false, "critical")], "significant_concerns");
+    const how = renderSummary({ report: blocking, commented: new Set(), state: { findings: [] } });
+    expect(how).toContain("`/ocra override ccccccc <reason>`");
+    blocking.changeRequest = {
+      ...blocking.changeRequest,
+      headSha: head,
+      override: { by: "maintainer", reason: "risk accepted [x](https://evil.example)" },
+    };
+    const done = renderSummary({ report: blocking, commented: new Set(), state: { findings: [] } });
+    expect(done).toContain("## ocra review · 🛑 Significant concerns · overridden");
+    expect(done).toContain("**Overridden** by @\u200bmaintainer for `ccccccc`");
+    expect(done).toContain("risk accepted [x]\\(https://evil.example)");
+  });
+});

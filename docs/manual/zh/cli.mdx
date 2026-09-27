@@ -54,7 +54,7 @@ ocra review [options]
 | 退出码 | 含义 |
 |---|---|
 | `0` | 审查完成，结论为 `approved`、`approved_with_comments` 或 `minor_issues` |
-| `1` | 结论为 `significant_concerns`：至少有一个经核查确认的 critical 问题。未经确认的 critical 只会得到 `minor_issues`，退出码为 `0`。结论只是参考意见，可能受被审查改动的影响，见[工作原理](./how-it-works#结论verdict) |
+| `1` | 结论为 `significant_concerns`：至少有一个经核查确认的 critical 问题。未经确认的 critical 只会得到 `minor_issues`，退出码为 `0`。结论只是参考意见，可能受被审查改动的影响，见[工作原理](./how-it-works#结论verdict)。配合 `--pr` 时，维护者针对 head commit 的 `/ocra override` 会把它变成 `0`（见 [GitHub](./github)） |
 | `2` | 参数、Git 或配置错误，或者没有任何审查任务完成 |
 | `3` | 审查不完整：有选中的文件没有被审查（任务失败、超时、触及花费上限，或者没有审查员覆盖它），或者有 critical 因核查失败、预算不足而没能核查（且结论不是阻塞级） |
 | `130` | 被 Ctrl-C 或 SIGTERM 中断；仍会打印部分报告，不会发布任何内容 |

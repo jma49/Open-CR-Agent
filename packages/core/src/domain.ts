@@ -86,6 +86,9 @@ export interface ChangeRequest {
   description: string;
   baseSha: string;
   headSha: string;
+  // Someone entitled to overrule the verdict did so for this head commit:
+  // a blocking verdict then no longer fails the run. The verdict is kept.
+  override?: { by: string; reason: string };
 }
 
 export type RiskTier = "trivial" | "lite" | "full";

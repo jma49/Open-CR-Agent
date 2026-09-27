@@ -214,7 +214,13 @@ function exitCode(report: ReviewReport, err: Output): number {
     err.write("[ocra] No review task completed; see the errors above.\n");
     return EXIT.error;
   }
-  if (report.verdict === "significant_concerns") return EXIT.blocking;
+  const override = report.changeRequest.override;
+  if (report.verdict === "significant_concerns") {
+    if (!override) return EXIT.blocking;
+    err.write(
+      `[ocra] The blocking verdict was overridden by ${forTerminal(override.by)}: ${forTerminal(override.reason)}\n`,
+    );
+  }
   const { notReviewed } = coverageGaps(report.coverage);
   if (notReviewed > 0) {
     err.write(

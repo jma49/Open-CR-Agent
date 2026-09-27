@@ -66,6 +66,16 @@ ocra then compares findings with the previous review:
 
 Reviewers stay in charge. If someone other than the pull request's author resolves one of ocra's threads, or a repository owner, member or collaborator (not the author) replies `/ocra dismiss`, or replies with a message that opens with a clear decline ("won't fix", "will not fix", "by design", "false positive", "not a bug", "working as intended", "intended behavior") and is not a question, the finding counts as dismissed: it is no longer reported and no longer affects the verdict, unless a later run finds it with a higher severity. The same words elsewhere in a reply ("this is not intended, good catch", "is this by design?") do not count, and neither does "I disagree". The author cannot dismiss findings on their own pull request, so the check cannot be resolved away.
 
+## Overriding a blocking verdict
+
+When ocra blocks a change you have decided to merge anyway, someone with write access other than the pull request's author can comment:
+
+```
+/ocra override <first 7 characters of the head commit> <reason>
+```
+
+For that commit the run exits `0` instead of `1`, so `fail-on-concerns` passes; the verdict itself stays `significant_concerns`, and the summary shows who overrode it and why. A new push needs a new override. The author cannot override their own pull request, and an incomplete review (exit `3`) is not overridden.
+
 ## What the pull request can and cannot change
 
 The pull request is untrusted input. ocra reads `.ocra/config.json`, `.ocra/rules.json`, `.ocra/memory.json` and `AGENTS.md` from the **base** commit, never from the pull request, and never loads repository plugins in this mode. The diff, title and description still reach the reviewers as data, with the protections described in [Security](./security).

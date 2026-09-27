@@ -73,7 +73,7 @@ function pullRequestFixture(baseConfig?: object) {
   return { clone: clone.dir, base, head, marker };
 }
 
-function fakeGitHub(base: string, head: string) {
+function fakeGitHub(base: string, head: string, comments: unknown[] = []) {
   const calls: { method: string; path: string; body?: unknown }[] = [];
   const fetchImpl = (async (url: string, init?: RequestInit) => {
     const path = url.replace("https://api.github.com/repos/o/r", "");
@@ -95,7 +95,7 @@ function fakeGitHub(base: string, head: string) {
         head: { sha: head, ref: "feature" },
       });
     }
-    if (path.startsWith("/issues/7/comments") && method === "GET") return json([]);
+    if (path.startsWith("/issues/7/comments") && method === "GET") return json(comments);
     return json({});
   }) as typeof fetch;
   return { calls, fetchImpl };
@@ -196,6 +196,69 @@ describe("ocra review --pr", () => {
     };
     expect(await plan()).toBe(0);
     expect(await plan("--no-repo-config")).toBeGreaterThan(0);
+  });
+
+  it("lets a maintainer's override pass a blocking verdict for the head commit", async () => {
+    const { clone, base, head } = pullRequestFixture();
+    const critical: OcraPlugin = {
+      name: "runtime-opencode",
+      configure(ctx) {
+        ctx.registerRuntime("opencode", () => ({
+          name: "fake",
+          async *runTask(spec: AgentTaskSpec): AsyncIterable<AgentEvent> {
+            yield {
+              type: "finding",
+              taskId: spec.taskId,
+              finding: {
+                category: "correctness",
+                severity: "critical",
+                file: "app.ts",
+                existingCode: "export const retries = -1;",
+                title: "Negative retries",
+                body: "Never retries.",
+                evidence: [],
+              },
+            };
+            yield { type: "done", taskId: spec.taskId };
+          },
+          complete: async (request: { tier: string }) => ({
+            text: request.tier === "top" ? "{}" : '[{"index":0,"verdict":"confirmed"}]',
+            usage: {
+              inputTokens: 0,
+              outputTokens: 0,
+              reasoningTokens: 0,
+              cachedTokens: 0,
+              costUsd: 0,
+            },
+          }),
+        }));
+      },
+    };
+    const review = async (comments: unknown[]) => {
+      const err = capture();
+      const code = await run(["review", "--pr", "7", "--repo", "o/r"], capture(), err, {
+        cwd: clone,
+        env: { GITHUB_TOKEN: "t" },
+        builtinPlugins: BUILTIN_PLUGINS.map((p) => (p.name === critical.name ? critical : p)),
+        writeFile: async () => {},
+        now: Date.now,
+        heartbeatMs: 60_000,
+        fetch: fakeGitHub(base, head, comments).fetchImpl,
+      });
+      return { code, err: err.text() };
+    };
+    const override = (sha: string) => ({
+      id: 3,
+      user: { login: "maintainer", type: "User" },
+      author_association: "MEMBER",
+      body: `/ocra override ${sha.slice(0, 7)} known issue, fixed in #9`,
+    });
+    expect((await review([])).code).toBe(1);
+    const passed = await review([override(head)]);
+    expect(passed.code).toBe(0);
+    expect(passed.err).toContain("overridden by maintainer: known issue, fixed in #9");
+    // An override for another commit does not carry over.
+    expect((await review([override(base)])).code).toBe(1);
   });
 
   it("explains what is missing", async () => {
