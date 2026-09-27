@@ -39,7 +39,7 @@ Open work, in order:
 
 - **Model key: missing.** `GEMINI_API_KEY` was removed from `~/.zshrc` during the 2026-09-26 session and is in no other shell profile; nothing that calls a model can run until the maintainer provides a key. When it is back: agent shells capture the environment at session start, so load just that line without printing it: `eval "$(grep -E '^export GEMINI_API_KEY=' ~/.zshrc)"`. The runtime now names a missing key instead of failing with "model not found".
 - **Quota:** with the old key, only `gemini-flash-lite-latest` answered; the Flash models returned empty responses. flash-lite is too weak to evaluate prompts (see #12).
-- **Model chain:** `.ocra/config.json` lists `gemini-3.8-flash` first, but 3.8-flash fails inside OpenCode's step loop (400 "Requests ending with a model turn") and costs ~$0.02 and ~20 s before failing over. Undecided whether to reorder; the maintainer was asked.
+- **Model chain:** `gemini-3.8-flash` was removed from the dogfood `.ocra/config.json` and the README example: it fails inside OpenCode's step loop (400 "Requests ending with a model turn") and cost ~$0.02 and ~20 s per run before failing over.
 - **Secrets:** `SITE_DEPLOY_HOOK` (main repo, Vercel deploy hook for the site). No other secrets are configured. Never print or commit secret values.
 - **Git identity:** commits as `jincheng_m <majincheng990128@gmail.com>`.
 - **Vercel connector:** the claude.ai Vercel connector's authorization is broken ("User not found", sees no projects). Use the Vercel dashboard or `npx vercel login` + CLI instead.
@@ -62,4 +62,4 @@ Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) i
 1. Provide a model key with quota (and say whether a stronger standard model, e.g. a Flash or Pro model, may be used for evaluation).
 2. May a model key be added as a repository secret to dogfood the GitHub Action on this repository (#67)?
 3. "ORCA" was mentioned during the site redesign; the name was kept as `ocra`. Confirm whether a rename was intended.
-4. Reorder the dogfood `.ocra/config.json` chain so a working model comes first (audit P5)? It still lists `gemini-3.8-flash` first.
+4. ~~Reorder the dogfood `.ocra/config.json` chain (audit P5)?~~ Decided: `gemini-3.8-flash` is removed from the chain and the README example.

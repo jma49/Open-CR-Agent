@@ -11,12 +11,19 @@ const HOUR = 60 * 60_000;
 // declares the LFS filter but git-lfs is not installed: the filter process
 // then fails to start. Marking the filter optional lets git fall back to the
 // raw content for every call (config passed through the environment).
+// Older git (2.43, Ubuntu 24.04) still dies when the declared process filter
+// cannot start, so the process filter is also blanked and the smudge filter
+// replaced with a pass-through.
 export const GIT_ENV: NodeJS.ProcessEnv = {
   ...process.env,
   GIT_LFS_SKIP_SMUDGE: "1",
-  GIT_CONFIG_COUNT: "1",
+  GIT_CONFIG_COUNT: "3",
   GIT_CONFIG_KEY_0: "filter.lfs.required",
   GIT_CONFIG_VALUE_0: "false",
+  GIT_CONFIG_KEY_1: "filter.lfs.process",
+  GIT_CONFIG_VALUE_1: "",
+  GIT_CONFIG_KEY_2: "filter.lfs.smudge",
+  GIT_CONFIG_VALUE_2: "cat",
 };
 
 // Blobless clones keep the full commit graph (needed for merge-base) without

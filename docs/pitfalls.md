@@ -17,7 +17,7 @@ Traps we have already fallen into, across this repository and the site. Each ent
 
 - **A missing provider key looks like a missing model.** Without its key OpenCode does not load the provider and answers `ProviderModelNotFoundError: Model not found: google/…` (surfaced to us as `UnknownError`). Check the key first; OpenCode's own log (`--print-logs`) shows the real error.
 
-- **`gemini-3.8-flash` fails inside OpenCode's step loop** with 400 "Requests ending with a model turn are not supported", even without overload. Treat every model error except credential errors as retryable on the next model.
+- **`gemini-3.8-flash` fails inside OpenCode's step loop** with 400 "Requests ending with a model turn are not supported", even without overload, so it is not in any example or dogfood chain. Treat every model error except credential errors as retryable on the next model.
 - **Provider overload (503) is the normal case, not an edge case.** OpenCode retries ~4 times internally and then fails the turn; a failback chain is required.
 - **Unbounded agent loops are the biggest cost risk.** Each step resends the whole conversation; one run spent 127k input tokens over 271 s. Agent steps are capped at 20; keep a cap on anything that loops over a model.
 - **Quota exhaustion looks like overload.** Check the error body before assuming a 503 is transient; the maintainer's key has hit quota on the Flash models.
@@ -39,7 +39,7 @@ Traps we have already fallen into, across this repository and the site. Each ent
 - **Some dataset commits no longer exist** (force-pushed away). Try `git fetch origin <sha>`, then `pull/<n>/head`, then mark the PR unavailable instead of failed.
 - **The official judge parser counts "No, they are not the same" as a match** because it contains "same". Our parser treats an answer that opens with "no" as no; keep that difference documented when comparing numbers.
 - **Blobless clones fetch blobs one at a time on demand.** Check out the head commit once so code search at that commit does not trigger thousands of fetches.
-- **Some benchmark repositories use Git LFS.** Checkout ran the LFS smudge filter and failed (`smudge filter lfs failed`), so the PR counted as a review failure. Checkouts set `GIT_LFS_SKIP_SMUDGE=1`; reviews only need the pointer files.
+- **Some benchmark repositories use Git LFS.** Checkout ran the LFS smudge filter and failed (`smudge filter lfs failed`), so the PR counted as a review failure. Reviews only need the pointer files. `GIT_LFS_SKIP_SMUDGE=1` is not enough when a config declares the filter but git-lfs is not installed, and `filter.lfs.required=false` alone is not enough on git 2.43 (Ubuntu 24.04), where a process filter that cannot start is still fatal; newer git passes, so CI stayed green. `GIT_ENV` in `packages/eval/src/repos.ts` also blanks `filter.lfs.process` and sets `filter.lfs.smudge` to `cat`, all through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_n` so no config file is touched.
 - **A resumed run reuses failures.** Use `--retry-failed` after fixing the cause, or the old failure stays in the numbers.
 - **Benchmark repositories are untrusted code.** `ocra-eval` runs the CLI inside them; anything the CLI loads from the reviewed repository (plugins, config) runs with your keys.
 

@@ -26,7 +26,7 @@ Optional `.ocra/config.json`:
 {
   "models": {
     "top": "google/gemini-3.1-pro-preview",
-    "standard": ["google/gemini-3.8-flash", "google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
+    "standard": ["google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
     "light": "google/gemini-flash-lite-latest"
   },
   "concurrency": 4,
