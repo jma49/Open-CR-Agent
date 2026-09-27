@@ -40,14 +40,18 @@ const VERDICT: Record<ReviewReport["verdict"], string> = {
 
 // Model text is untrusted: it may not close our markup, mention people,
 // pull in images, or render as a link that says one thing and goes elsewhere
-// (a bot comment lends it credibility). Bare URLs still show as text.
+// (a bot comment lends it credibility). Inline links lose their `](`, and
+// reference definitions (`[1]: https://…`) their line-start form, which is
+// what every reference-style link (`[x][1]`, `[x][]`, `[1]`) needs. Bare URLs
+// still show as text.
 export function safeMarkdown(text: string): string {
   return text
     .replaceAll("<!--", "&lt;!--")
     .replace(/<\/?[a-zA-Z][^>]*>/g, (tag) => tag.replaceAll("<", "&lt;"))
     .replace(/@(?=[A-Za-z0-9-])/g, "@\u200b")
     .replace(/!\[/g, "!\u200b[")
-    .replaceAll("](", "]\\(");
+    .replaceAll("](", "]\\(")
+    .replace(/^([ \t]{0,3})\[([^\]\n]*)\]:/gm, "$1\\[$2]:");
 }
 
 // File paths come from the diff, so the author controls them: a backtick or

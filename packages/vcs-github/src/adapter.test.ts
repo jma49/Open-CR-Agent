@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { A, adapter, B, fakeGitHub, finding, postedSummary, report } from "./adapter.fakes.js";
-import { renderSummary } from "./render.js";
+import { renderSummary, safeMarkdown } from "./render.js";
 import { readState, SUMMARY_MARKER, writeState } from "./state.js";
 
 describe("GitHubAdapter", () => {
@@ -280,6 +280,14 @@ describe("GitHubAdapter", () => {
     // Model text cannot form a link or an image.
     expect(body).toContain("See [the fix]\\(https://evil.example/login)");
     expect(body).toContain("!\u200b[]\\(https://evil.example/t.png)");
+  });
+
+  it("keeps reference-style links in model text from resolving", () => {
+    const text = safeMarkdown(
+      "See [the guide][1], [the fix][] or [docs].\n\n[1]: https://evil.example/a\n   [the fix]: https://evil.example/b\n[docs]: <https://evil.example/c>",
+    );
+    for (const line of text.split("\n").slice(2)) expect(line).toMatch(/^\s*\\\[/);
+    expect(text).toContain("See [the guide][1], [the fix][] or [docs].");
   });
 
   it("ignores state it cannot trust", () => {
