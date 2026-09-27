@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { agentsMdReviewer } from "../review/reviewers/agents-md.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import { docsReviewer } from "../review/reviewers/docs.js";
 import { performanceReviewer } from "../review/reviewers/performance.js";
@@ -31,6 +32,13 @@ export const docsReviewerPlugin: OcraPlugin = {
   name: "reviewer-docs",
   configure(ctx) {
     ctx.registerReviewer(docsReviewer);
+  },
+};
+
+export const agentsMdReviewerPlugin: OcraPlugin = {
+  name: "reviewer-agents-md",
+  configure(ctx) {
+    ctx.registerReviewer(agentsMdReviewer);
   },
 };
 

@@ -19,7 +19,12 @@ export interface MatrixCell {
   bundle: Bundle;
 }
 
-export type SkipReason = "disabled" | "below_tier" | "no_matching_files" | "task_limit";
+export type SkipReason =
+  | "disabled"
+  | "below_tier"
+  | "no_matching_files"
+  | "no_guidelines"
+  | "task_limit";
 
 export interface SkippedCell {
   reviewer: string;
@@ -41,7 +46,7 @@ export function planMatrix(
   reviewers: readonly ReviewerDefinition[],
   tier: RiskTier,
   overrides: ReviewerOverrides = {},
-  options: { allTiers?: boolean } = {},
+  options: { allTiers?: boolean; hasGuidelines?: boolean } = {},
 ): ReviewMatrix {
   const cells: MatrixCell[] = [];
   const skipped: SkippedCell[] = [];
@@ -62,6 +67,10 @@ export function planMatrix(
         : (override.minTier ?? reviewer.scope?.minTier ?? "trivial");
       if (rank(tier) < rank(minTier)) {
         skip("below_tier");
+        continue;
+      }
+      if (reviewer.scope?.requiresGuidelines && options.hasGuidelines !== true) {
+        skip("no_guidelines");
         continue;
       }
       const ignored = ignores.get(reviewer.id) ?? (() => false);
@@ -87,6 +96,7 @@ export const DEFAULT_MAX_TASKS = 60;
 export interface TaskOptions {
   ultra?: boolean;
   maxTasks?: number;
+  hasGuidelines?: boolean;
 }
 
 // The matrix as it runs: --ultra reviews every cell twice, and past
@@ -102,6 +112,7 @@ export function planTasks(
 ): ReviewMatrix {
   const planned = planMatrix(bundles, reviewers, tier, overrides, {
     allTiers: options.ultra === true,
+    hasGuidelines: options.hasGuidelines === true,
   });
   const cells = options.ultra
     ? planned.cells.flatMap((cell) => [cell, { ...cell, taskId: `${cell.taskId}b` }])

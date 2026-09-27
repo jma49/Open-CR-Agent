@@ -47,6 +47,7 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
   const planned = planTasks(plan.bundles, reviewers, plan.tier, options.reviewerOverrides, {
     ultra: options.ultra === true,
     ...(options.maxTasks !== undefined ? { maxTasks: options.maxTasks } : {}),
+    hasGuidelines: Boolean(plan.guidelines?.trim()),
   });
   const { cells } = planned;
 

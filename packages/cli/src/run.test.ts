@@ -115,6 +115,7 @@ describe("BUILTIN_PLUGINS", () => {
       "reviewer-security",
       "reviewer-performance",
       "reviewer-docs",
+      "reviewer-agents-md",
       "session-jsonl",
     ]);
   });

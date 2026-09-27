@@ -96,6 +96,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   const matrix = planTasks(plan.bundles, reviewers, plan.tier, options.reviewerOverrides, {
     ultra: options.ultra === true,
     ...(options.maxTasks !== undefined ? { maxTasks: options.maxTasks } : {}),
+    hasGuidelines: Boolean(plan.guidelines?.trim()),
   });
   const limited = matrix.skipped.filter((s) => s.reason === "task_limit").length;
   if (limited > 0) {

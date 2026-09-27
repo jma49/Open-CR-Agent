@@ -8,6 +8,8 @@ export interface ReviewerScope {
   minTier?: RiskTier;
   // Globs of files the reviewer never sees, such as documentation.
   ignore?: readonly string[];
+  // Runs only when the repository has guidelines (AGENTS.md) to check against.
+  requiresGuidelines?: boolean;
 }
 
 export interface ReviewerDefinition {

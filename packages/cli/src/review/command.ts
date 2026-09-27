@@ -1,5 +1,6 @@
 import { join, relative, resolve } from "node:path";
 import {
+  agentsMdReviewerPlugin,
   correctnessReviewerPlugin,
   coverageGaps,
   defaultSelectionPolicy,
@@ -41,6 +42,7 @@ export const BUILTIN_PLUGINS: readonly OcraPlugin[] = [
   securityReviewerPlugin,
   performanceReviewerPlugin,
   docsReviewerPlugin,
+  agentsMdReviewerPlugin,
   sessionJsonlPlugin,
 ];
 

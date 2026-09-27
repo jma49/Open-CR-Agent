@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Bundle } from "../bundle/bundle.js";
 import type { FileDiff } from "../domain.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
+import { agentsMdReviewer } from "../review/reviewers/agents-md.js";
 import { docsReviewer } from "../review/reviewers/docs.js";
 import { planMatrix, planTasks } from "./matrix.js";
 
@@ -127,5 +128,20 @@ describe("the docs reviewer", () => {
       ["docs-1", ["src/args.ts", "README.md"]],
     ]);
     expect(docsReviewer.modelTier).toBe("light");
+  });
+});
+
+describe("the agents-md reviewer", () => {
+  it("runs only when the repository has guidelines, from the lite tier", () => {
+    const b = [bundle("build", "package.json", "src/cli.ts")];
+    expect(planMatrix(b, [agentsMdReviewer], "lite").skipped).toEqual([
+      { reviewer: "agents-md", bundle: "build", reason: "no_guidelines" },
+    ]);
+    expect(cells(planMatrix(b, [agentsMdReviewer], "lite", {}, { hasGuidelines: true }))).toEqual([
+      ["agents-md-1", ["package.json", "src/cli.ts"]],
+    ]);
+    expect(
+      planMatrix(b, [agentsMdReviewer], "trivial", {}, { hasGuidelines: true }).skipped,
+    ).toEqual([{ reviewer: "agents-md", bundle: "build", reason: "below_tier" }]);
   });
 });
