@@ -13,7 +13,7 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Fi
 |---|---|
 | **Ingest** | Read the change set and repository guidelines through a VCS adapter. |
 | **Select** | Decide per file: review it, or exclude it with a reason (binary, secret, generated, too large…). |
-| **Triage** | Assign a risk tier (trivial, lite, full) from size and sensitive paths such as `auth/`. |
+| **Triage** | Assign a risk tier (trivial, lite, full) from size and sensitive paths such as `auth/`, `PasswordHasher.cs` or CI workflows. |
 | **Bundle** | Group related files. Small change sets form one bundle; larger ones are grouped by a light model that answers with file indices. Without that grouping, up to 20 files are reviewed one per task and more by directory. |
 | **Matrix** | Decide which reviewer runs on which bundle from the risk tier and each reviewer's scope (for example, no documentation for a code-only reviewer). Skipped pairs are listed in the report. |
 | **Execute** | Run each planned (bundle, reviewer) pair as an isolated agent task with read-only tools. |

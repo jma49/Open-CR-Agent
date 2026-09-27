@@ -33,6 +33,37 @@ describe("triage", () => {
     expect(triage([diff(".github/workflows/ci.yml", 1)])).toBe("full");
   });
 
+  it("forces full review when a file name or directory names a security concern", () => {
+    for (const path of [
+      "src/Identity/Extensions.Core/src/PasswordHasher.cs",
+      "lib/OAuth2Client.java",
+      "pkg/jwt_verify.go",
+      "app/models/user_session.rb",
+      "server/ACLService.ts",
+      "config/secrets.yml",
+      "src/security.rs",
+    ]) {
+      expect(triage([diff(path, 1)]), path).toBe("full");
+    }
+  });
+
+  it("matches whole words only", () => {
+    for (const path of [
+      "src/author.ts",
+      "db/oracle.sql",
+      "src/lexer/tokenizer.ts",
+      "src/cryptic.ts",
+    ]) {
+      expect(triage([diff(path, 1)]), path).toBe("trivial");
+    }
+  });
+
+  it("forces full review when a renamed file came from a sensitive path", () => {
+    expect(triage([{ ...diff("src/users.ts", 1), oldPath: "src/auth.ts", kind: "renamed" }])).toBe(
+      "full",
+    );
+  });
+
   it("forces full review when too many files change", () => {
     const many = Array.from({ length: 21 }, (_, i) => diff(`src/f${i}.ts`, 0, 0));
     expect(triage(many)).toBe("full");
