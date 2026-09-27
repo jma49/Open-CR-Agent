@@ -187,8 +187,12 @@ export class GitHubAdapter implements VcsAdapter {
     const pr = await this.pr();
     const previous = await this.summaryComment();
     const prior = await this.priorState();
-    const before = ("state" in prior ? prior.state?.findings : undefined) ?? [];
-    const alreadyCommented = new Set(before.filter((f) => f.commented).map((f) => f.fingerprint));
+    const trusted = "state" in prior ? prior.state : undefined;
+    const before = trusted?.findings ?? [];
+    const alreadyCommented = new Set([
+      ...before.filter((f) => f.commented).map((f) => f.fingerprint),
+      ...(trusted?.posted ?? []),
+    ]);
 
     const fresh = report.findings.flatMap((f) => {
       if (alreadyCommented.has(f.fingerprint)) return [];
@@ -213,25 +217,36 @@ export class GitHubAdapter implements VcsAdapter {
       ...(rereview?.unchanged ?? []),
       ...(rereview?.dismissed ?? []),
     ];
+    // Low-confidence findings (--ultra) are shown, not counted; stored as
+    // ordinary findings they would count on the next push.
     const state: PriorFinding[] = [
-      ...report.findings.map((f) => ({
-        fingerprint: f.fingerprint,
-        title: f.title,
-        file: f.file,
-        severity: f.severity,
-        commented: commented.has(f.fingerprint),
-        ...(f.quote ? { quote: f.quote } : {}),
-        ...(f.verification ? { verification: f.verification } : {}),
-      })),
+      ...report.findings
+        .filter((f) => !f.lowConfidence)
+        .map((f) => ({
+          fingerprint: f.fingerprint,
+          title: f.title,
+          file: f.file,
+          severity: f.severity,
+          commented: commented.has(f.fingerprint),
+          ...(f.quote ? { quote: f.quote } : {}),
+          ...(f.verification ? { verification: f.verification } : {}),
+        })),
       ...quiet.filter((f) => !current.has(f.fingerprint)),
     ];
     const pending = report.coverage
       .filter((c) => c.status === "failed" || c.status === "unreviewed")
       .map((c) => c.path);
+    const tracked = new Set(state.map((f) => f.fingerprint));
+    const untracked = [...commented].filter((fp) => !tracked.has(fp));
     const body = renderSummary({
       report,
       commented,
-      state: { findings: state, head: report.changeRequest.headSha, pending },
+      state: {
+        findings: state,
+        head: report.changeRequest.headSha,
+        pending,
+        ...(untracked.length > 0 ? { posted: untracked } : {}),
+      },
     });
     if (previous) await this.options.api.updateIssueComment(previous.id, body);
     else await this.options.api.createIssueComment(number, body);
@@ -338,6 +353,12 @@ export class GitHubAdapter implements VcsAdapter {
     fresh: { fingerprint: string; comment: NonNullable<ReturnType<typeof inlineComment>> }[],
     requestChanges: boolean,
   ): Promise<string[]> {
+    // GitHub rejects the whole review when one comment sits on a file it
+    // shows no diff for (too large, too many files); those go to the summary.
+    if (fresh.length > 0) {
+      const shown = await this.options.api.filesWithDiff(number).catch(() => undefined);
+      if (shown) fresh = fresh.filter((f) => shown.has(f.comment.path));
+    }
     if (fresh.length === 0 && !requestChanges) return [];
     const review = {
       commit_id: commitId,

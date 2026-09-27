@@ -18,6 +18,7 @@ export function fakeGitHub(
   graphqlFails = false,
   editor: { login: string } | null = null,
   reviews: unknown[] = [],
+  files?: unknown[],
 ) {
   const calls: Call[] = [];
   const fetchImpl = (async (url: string, init?: RequestInit) => {
@@ -60,6 +61,7 @@ export function fakeGitHub(
     }
     if (path.startsWith("/issues/7/comments") && method === "GET") return json(200, comments);
     if (path.startsWith("/pulls/7/reviews?") && method === "GET") return json(200, reviews);
+    if (path.startsWith("/pulls/7/files?") && files) return json(200, files);
     if (path === "/pulls/7/reviews") {
       const rejected =
         reviewStatus !== 200 && (call.body as { comments: unknown[] }).comments.length > 0;

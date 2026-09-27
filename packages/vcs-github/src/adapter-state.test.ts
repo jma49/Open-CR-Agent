@@ -114,4 +114,49 @@ describe("summary state", () => {
     expect(body.length).toBeLessThanOrEqual(65_000);
     expect(readState(body)).toBeDefined();
   });
+
+  it("keeps low-confidence findings out and remembers comments on untracked findings", async () => {
+    const low = { ...finding(A, true), lowConfidence: true };
+    const { calls, fetchImpl } = fakeGitHub(
+      [],
+      200,
+      [],
+      false,
+      null,
+      [],
+      [{ filename: "src/login.ts", patch: "@@" }],
+    );
+    await adapter(fetchImpl).publish(report([low]));
+    const state = readState(postedSummary(calls));
+    expect(state?.findings).toEqual([]);
+    // Its inline comment was posted, so it is remembered as posted.
+    expect(state?.posted).toEqual([A]);
+
+    const later = fakeGitHub(
+      [summaryComment(postedSummary(calls))],
+      200,
+      [],
+      false,
+      null,
+      [],
+      [{ filename: "src/login.ts", patch: "@@" }],
+    );
+    await adapter(later.fetchImpl).publish(report([finding(A, true)]));
+    expect(later.calls.some((c) => c.path === "/pulls/7/reviews")).toBe(false);
+  });
+
+  it("moves comments on files GitHub shows no diff for to the summary", async () => {
+    const { calls, fetchImpl } = fakeGitHub(
+      [],
+      200,
+      [],
+      false,
+      null,
+      [],
+      [{ filename: "src/login.ts" }],
+    );
+    await adapter(fetchImpl).publish(report([finding(A, true)]));
+    expect(calls.some((c) => c.path === "/pulls/7/reviews")).toBe(false);
+    expect(postedSummary(calls)).toContain("### Findings outside the diff");
+  });
 });

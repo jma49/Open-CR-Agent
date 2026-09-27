@@ -12,6 +12,7 @@ const MAX_STATE_CHARS = 60_000;
 // in GitHub's 65,536-character comment limit.
 export const MAX_WRITTEN_STATE_CHARS = 30_000;
 const MAX_PENDING_FILES = 1_000;
+const MAX_POSTED = 1_000;
 const SHA = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
 
 // What a summary comment remembers of the review that wrote it. `head` is the
@@ -21,6 +22,10 @@ export interface ReviewState {
   findings: PriorFinding[];
   head?: string;
   pending?: string[];
+  // Inline comments ocra posted for findings that are no longer tracked
+  // (refuted, dropped by the judge, low confidence), so a finding that comes
+  // back later is not commented twice.
+  posted?: string[];
 }
 
 const stateSchema = z.object({
@@ -44,6 +49,10 @@ const stateSchema = z.object({
     .max(MAX_STATE_FINDINGS),
   head: z.string().regex(SHA).optional(),
   pending: z.array(z.string().max(1_000)).max(MAX_PENDING_FILES).optional(),
+  posted: z
+    .array(z.string().regex(/^[0-9a-f]{16}$/))
+    .max(MAX_POSTED)
+    .optional(),
 });
 
 // The state lives in a comment anyone with write access can edit, so it is
@@ -58,7 +67,7 @@ export function readState(body: string): ReviewState | undefined {
       JSON.parse(Buffer.from(encoded, "base64").toString("utf8")),
     );
     if (!parsed.success) return undefined;
-    const { head, pending } = parsed.data;
+    const { head, pending, posted } = parsed.data;
     return {
       findings: parsed.data.findings.map(({ quote, verification, ...finding }) => ({
         ...finding,
@@ -67,6 +76,7 @@ export function readState(body: string): ReviewState | undefined {
       })),
       ...(head ? { head } : {}),
       ...(pending ? { pending } : {}),
+      ...(posted?.length ? { posted } : {}),
     };
   } catch {
     return undefined;
@@ -96,7 +106,9 @@ export function writeState(state: ReviewState): string {
   // Too large a state first loses its scope (a full review next time), then
   // findings from the end of the list (this run's come first, most severe
   // first); a dropped finding's inline comment may be posted again.
-  let encoded = encode(kept, scope);
+  const posted = state.posted?.length ? { posted: state.posted.slice(-MAX_POSTED) } : {};
+  let encoded = encode(kept, { ...scope, ...posted });
+  if (encoded.length > MAX_WRITTEN_STATE_CHARS) encoded = encode(kept, posted);
   if (encoded.length > MAX_WRITTEN_STATE_CHARS) encoded = encode(kept, {});
   let count = kept.length;
   while (encoded.length > MAX_WRITTEN_STATE_CHARS && count > 0) {

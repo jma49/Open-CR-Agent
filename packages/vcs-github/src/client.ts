@@ -65,6 +65,9 @@ const reviewSchema = z.object({
 });
 export type PullRequestReview = z.infer<typeof reviewSchema>;
 const MAX_REVIEW_PAGES = 10;
+// GitHub lists at most 3,000 files of a pull request.
+const MAX_FILE_PAGES = 30;
+const pullRequestFileSchema = z.object({ filename: z.string(), patch: z.string().optional() });
 
 const MAX_COMMENT_PAGES = 30;
 const MAX_THREAD_PAGES = 10;
@@ -209,6 +212,19 @@ export class GitHubApi {
 
   async createReview(number: number, review: CreateReview): Promise<void> {
     await this.request("POST", `/pulls/${number}/reviews`, review);
+  }
+
+  // Files GitHub shows a diff for; only their lines take inline comments.
+  async filesWithDiff(number: number): Promise<Set<string>> {
+    const files = new Set<string>();
+    for (let page = 1; page <= MAX_FILE_PAGES; page += 1) {
+      const batch = z
+        .array(pullRequestFileSchema)
+        .parse(await this.request("GET", `/pulls/${number}/files?per_page=100&page=${page}`));
+      for (const f of batch) if (f.patch !== undefined) files.add(f.filename);
+      if (batch.length < 100) break;
+    }
+    return files;
   }
 
   async listReviews(number: number): Promise<PullRequestReview[]> {
