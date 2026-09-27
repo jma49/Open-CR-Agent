@@ -8,7 +8,8 @@ import type {
 import type { ReviewComment } from "./client.js";
 import { type ReviewState, SUMMARY_MARKER, writeState } from "./state.js";
 
-const MAX_SUMMARY_CHARS = 60_000;
+// GitHub rejects comments over 65,536 characters.
+const MAX_SUMMARY_CHARS = 65_000;
 const ICON: Record<Severity, string> = { critical: "🔴", warning: "🟠", suggestion: "🔵" };
 const VERIFICATION: Record<Verification, string> = {
   confirmed: "verified",
@@ -40,9 +41,15 @@ export function safeMarkdown(text: string): string {
 }
 
 // File paths come from the diff, so the author controls them: a backtick or
-// newline must not end the code span and let markup through.
+// newline must not end the code span and let markup through, and angle
+// brackets must not form ocra's HTML-comment markers in the raw body.
 export function codeSpan(text: string): string {
-  return `\`${text.replaceAll("`", "\u02cb").replace(/[\r\n]+/g, " ")}\``;
+  const safe = text
+    .replaceAll("`", "\u02cb")
+    .replace(/[\r\n]+/g, " ")
+    .replaceAll("<", "\u2039")
+    .replaceAll(">", "\u203a");
+  return `\`${safe}\``;
 }
 
 function location(f: Finding): string {

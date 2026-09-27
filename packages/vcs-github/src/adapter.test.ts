@@ -51,6 +51,7 @@ describe("GitHubAdapter", () => {
   it("updates its own summary and does not repeat inline comments", async () => {
     const previous = {
       id: 99,
+      node_id: "IC_99",
       user: { login: "github-actions[bot]", type: "Bot" },
       body: `${SUMMARY_MARKER}\n${writeState({ findings: [{ fingerprint: A, title: "t", file: "src/login.ts", severity: "warning", commented: true }] })}`,
     };
@@ -209,6 +210,7 @@ describe("GitHubAdapter", () => {
     }));
     const previous = {
       id: 99,
+      node_id: "IC_99",
       user: { login: "github-actions[bot]", type: "Bot" },
       body: `${SUMMARY_MARKER}\n${writeState({ findings: state })}`,
     };

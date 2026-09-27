@@ -58,6 +58,7 @@ export class GitHubAdapter implements VcsAdapter {
   private pullRequest: Promise<PullRequest> | undefined;
   private previous: Promise<IssueComment | undefined> | undefined;
   private reviewThreads: Promise<ReviewThread[]> | undefined;
+  private prior: Promise<{ state?: ReviewState } | { untrusted: string }> | undefined;
 
   constructor(private readonly options: GitHubAdapterOptions) {}
 
@@ -86,35 +87,47 @@ export class GitHubAdapter implements VcsAdapter {
   }
 
   async getPriorReview(): Promise<PriorReview | undefined> {
-    const comment = await this.summaryComment();
-    const state = comment ? readState(comment.body) : undefined;
-    if (!comment || !state) return undefined;
+    const prior = await this.priorState();
+    if ("untrusted" in prior) return { findings: [], fullReviewReason: prior.untrusted };
+    const { state } = prior;
+    if (!state) return undefined;
     const dismissed = await this.dismissedByPeople(state.findings);
     return {
       findings: state.findings.map((f) =>
         dismissed.has(f.fingerprint) ? { ...f, dismissed: true } : f,
       ),
-      ...(await this.changesSince(state, comment)),
+      ...(await this.changesSince(state)),
     };
   }
 
   // Anyone with write access can edit the summary comment, including a pull
-  // request's author; a head they wrote could skip their next changes, so the
-  // state counts only when ocra was the last to edit it.
+  // request's author. Every part of the state is then suspect: a head skips
+  // their next changes, a `commented` flag hides a finding from both the
+  // inline comments and the summary. So the state counts only when ocra was
+  // the last to edit the comment; otherwise the run starts over.
+  private priorState(): Promise<{ state?: ReviewState } | { untrusted: string }> {
+    this.prior ??= (async () => {
+      const comment = await this.summaryComment();
+      const state = comment ? readState(comment.body) : undefined;
+      if (!comment || !state) return {};
+      const editor = await this.lastEditor(comment);
+      if (editor === undefined) {
+        return { untrusted: "could not check who last edited the previous review's summary" };
+      }
+      if (!this.isBot(editor)) {
+        return { untrusted: "the previous review's summary was edited by someone else" };
+      }
+      return { state };
+    })();
+    return this.prior;
+  }
+
   private async changesSince(
     state: ReviewState,
-    comment: IssueComment,
   ): Promise<Pick<PriorReview, "changedSince" | "fullReviewReason">> {
     const { history } = this.options;
     if (!state.head) return { fullReviewReason: "the previous review did not record its commit" };
     if (!history) return { fullReviewReason: "no repository history to compare with" };
-    const editor = await this.lastEditor(comment);
-    if (editor === undefined) {
-      return { fullReviewReason: "could not check who last edited the previous review's summary" };
-    }
-    if (!this.isBot(editor)) {
-      return { fullReviewReason: "the previous review's summary was edited by someone else" };
-    }
     const head = (await this.pr()).head.sha;
     const changed = await history.filesChangedSince(state.head, head);
     if ("reason" in changed) return { fullReviewReason: changed.reason };
@@ -159,7 +172,8 @@ export class GitHubAdapter implements VcsAdapter {
     const { number } = this.options.pullRequest;
     const pr = await this.pr();
     const previous = await this.summaryComment();
-    const before = (previous ? readState(previous.body)?.findings : undefined) ?? [];
+    const prior = await this.priorState();
+    const before = ("state" in prior ? prior.state?.findings : undefined) ?? [];
     const alreadyCommented = new Set(before.filter((f) => f.commented).map((f) => f.fingerprint));
 
     const fresh = report.findings.flatMap((f) => {

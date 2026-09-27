@@ -3,9 +3,14 @@ import { severitySchema, verificationSchema } from "@open-cr-agent/core";
 import { z } from "zod";
 
 export const SUMMARY_MARKER = "<!-- ocra:review -->";
-const STATE_PATTERN = /<!-- ocra:state v1 ([A-Za-z0-9+/=]+) -->/;
+// Only a state block that ends the comment counts: author-controlled text
+// (file paths, titles) is printed above it and must not be able to plant one.
+const STATE_PATTERN = /<!-- ocra:state v1 ([A-Za-z0-9+/=]+) -->\s*$/;
 const MAX_STATE_FINDINGS = 500;
 const MAX_STATE_CHARS = 60_000;
+// Written states stay well under what is read, so the summary text keeps room
+// in GitHub's 65,536-character comment limit.
+export const MAX_WRITTEN_STATE_CHARS = 30_000;
 const MAX_PENDING_FILES = 1_000;
 const SHA = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
 
@@ -27,7 +32,6 @@ const stateSchema = z.object({
         file: z.string().max(1_000),
         severity: severitySchema,
         commented: z.boolean(),
-        dismissed: z.boolean().optional(),
         quote: z
           .object({
             lines: z.number().int().positive().max(1_000),
@@ -43,8 +47,9 @@ const stateSchema = z.object({
 });
 
 // The state lives in a comment anyone with write access can edit, so it is
-// validated and bounded. An edit can suppress a repeated comment; the adapter
-// does not trust `head` from a comment someone else edited.
+// validated and bounded, and the adapter ignores it when someone other than
+// ocra edited the comment. Dismissals are never stored: they are recomputed
+// from review threads on every run.
 export function readState(body: string): ReviewState | undefined {
   const encoded = STATE_PATTERN.exec(body)?.[1];
   if (!encoded || encoded.length > MAX_STATE_CHARS) return undefined;
@@ -55,9 +60,8 @@ export function readState(body: string): ReviewState | undefined {
     if (!parsed.success) return undefined;
     const { head, pending } = parsed.data;
     return {
-      findings: parsed.data.findings.map(({ dismissed, quote, verification, ...finding }) => ({
+      findings: parsed.data.findings.map(({ quote, verification, ...finding }) => ({
         ...finding,
-        ...(dismissed ? { dismissed } : {}),
         ...(quote ? { quote } : {}),
         ...(verification ? { verification } : {}),
       })),
@@ -76,7 +80,6 @@ export function writeState(state: ReviewState): string {
     file: f.file.slice(0, 1_000),
     severity: f.severity,
     commented: f.commented,
-    ...(f.dismissed ? { dismissed: true } : {}),
     ...(f.quote ? { quote: f.quote } : {}),
     ...(f.verification ? { verification: f.verification } : {}),
   }));
@@ -90,8 +93,19 @@ export function writeState(state: ReviewState): string {
           ...(pending.length > 0 ? { pending: pending.map((p) => p.slice(0, 1_000)) } : {}),
         }
       : {};
-  const encoded = Buffer.from(JSON.stringify({ findings: kept, ...scope }), "utf8").toString(
-    "base64",
-  );
+  // Too large a state first loses its scope (a full review next time), then
+  // findings from the end of the list (this run's come first, most severe
+  // first); a dropped finding's inline comment may be posted again.
+  let encoded = encode(kept, scope);
+  if (encoded.length > MAX_WRITTEN_STATE_CHARS) encoded = encode(kept, {});
+  let count = kept.length;
+  while (encoded.length > MAX_WRITTEN_STATE_CHARS && count > 0) {
+    count = Math.floor(count * 0.8);
+    encoded = encode(kept.slice(0, count), {});
+  }
   return `<!-- ocra:state v1 ${encoded} -->`;
+}
+
+function encode(findings: unknown[], scope: object): string {
+  return Buffer.from(JSON.stringify({ findings, ...scope }), "utf8").toString("base64");
 }
