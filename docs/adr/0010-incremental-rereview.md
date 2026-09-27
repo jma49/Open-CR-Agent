@@ -27,3 +27,8 @@ Every push to a pull request reviewed the whole pull request again and reconcile
 - Configuration, rules or memory changes on the base branch do not trigger a re-review of unchanged files; `--full` does.
 - One extra GraphQL call per run (the comment's editor). When it fails the run is simply full.
 - `report.json` coverage has a new status value, `unchanged`, and a new optional `scope` field.
+
+## Implementation notes (2026-09-27)
+
+- Known gap: the risk tier is recomputed for the whole change, but only changed files are reviewed. When a push raises the tier (for example from `trivial` to `full`), reviewers that start at the higher tier review only the changed files; unchanged files keep the reviewers of the earlier tier. `--full` reviews them again. Recording the tier in the state and forcing a full review when it rises would close this; not done yet.
+- The state is trusted only when ocra last edited the summary, for all of its fields, not only `head`; dismissals are recomputed from threads and never stored (#105). A `posted` field remembers inline comments on findings that are no longer tracked (#114).

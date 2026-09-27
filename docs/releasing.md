@@ -9,6 +9,10 @@ Nothing has been published yet. This is what is ready, what is missing, and the 
 - `npm run check:packages` packs every package, installs the tarballs into an empty project the way a user would, and checks that the installed `ocra` reports the right version, that `ocra review --plan` works, and that the runtime finds the OpenCode binary. CI runs it on every pull request (job `packages`).
 - `ocra --version` reads the CLI's `package.json`.
 
+## Before the first release
+
+- **A versioned output format.** `--format json` and `report.json` serialize the internal `ReviewReport` as is, so internal fields (per-run finding ids, anchors, statuses that are never set) would become a published contract. Add a presentation type with a `version` field before publishing (2026-09-27 audit, #114).
+
 ## Decisions for the maintainer
 
 1. **Scope: decided, `@open-cr-agent`** (2026-09-26). Publishing needs an npm organization named `open-cr-agent`, created by the maintainer before the first release.
