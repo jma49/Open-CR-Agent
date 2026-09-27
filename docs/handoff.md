@@ -41,6 +41,8 @@ Pipeline today: ingest → select → triage → bundle → **matrix** (reviewer
 
 **Open, not merged, waiting for an eval (`[needs-eval]`):** #84 (B1, `ocra_` prompt tags), #85 (B2, security reviewer at every tier; free ceiling: security reachable 13 → 16 of 18), #86 (B3, strict anchoring). Each changes what models see or which findings are reported; `docs/pending-verification.md` says what to measure. They touch some of the same test files; rebase each on `main` before merging.
 
+**Site (2026-09-26/27):** redesigned (monochrome, Aquamarine brand, a 3D voxel frog mascot in three.js) and refreshed section by section (animated pipeline walk-through, pull request thread with its states, illustrated decisions, CLI/Action tabs, section rhythm, roadmap timeline); the manual uses Steps, Cards and Callouts. **Nothing deploys automatically any more** (site `vercel.json`: `git.deploymentEnabled: false`); the live site is still the first redesign commit until the maintainer runs `gh workflow run site-deploy.yml` here (the first run also confirms the deploy hook still works with Git deployments off).
+
 Open work, in order:
 
 1. Free: #76 (wider sensitive-path triage, measured with `ocra-eval ceiling`).
