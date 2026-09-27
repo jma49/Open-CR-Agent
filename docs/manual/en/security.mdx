@@ -28,7 +28,11 @@ Pull request text, diffs and repository files are treated as data. Instructions 
 
 ## The verdict is not a security gate
 
+<Callout type="warn">
+
 Every model in the pipeline, the reviewers, the verifier and the judge, reads the change under review, so the change can try to steer them: hide an issue from a reviewer, or argue a finding away in front of the judge. Code limits the damage: only a critical finding the verifier confirmed can make the verdict `significant_concerns`, and the judge cannot drop such a finding. But a clean verdict never proves a change is safe. Keep human review and dedicated security tooling for anything that must not slip through.
+
+</Callout>
 
 ## Shared configuration
 

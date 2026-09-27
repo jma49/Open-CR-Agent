@@ -37,7 +37,11 @@ Store your model key as a repository secret. Models come from the base branch's 
 
 The verdict is advice. The models read the pull request, so its author can plant text that steers a reviewer away from an issue or talks the judge out of one, and an unverified model claim can be wrong. Do not make the check a required status in place of human review; if you turn on `fail-on-concerns`, treat a pass as "nothing confirmed", not "safe".
 
+<Callout type="warn">
+
 Pull requests from forks do not receive repository secrets on `pull_request`, so the review fails with a message naming the missing key. Do not switch to `pull_request_target` to work around it: that runs with secrets on code the fork controls.
+
+</Callout>
 
 ## What gets posted
 

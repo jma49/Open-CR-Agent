@@ -3,7 +3,11 @@ title: Quickstart
 description: Run your first review in five minutes.
 ---
 
-## 1. Install
+<Steps>
+
+<Step>
+
+## Install
 
 ocra is not published to npm yet. Install it from source (requires Node.js 22+ and Git):
 
@@ -18,7 +22,11 @@ ocra --version
 
 See [Installation](./installation) for details.
 
-## 2. Add a model key
+</Step>
+
+<Step>
+
+## Add a model key
 
 ocra runs reviews through [OpenCode](https://opencode.ai), so any provider OpenCode supports works. For Google Gemini:
 
@@ -28,7 +36,11 @@ export GEMINI_API_KEY="your-key"
 
 Keep keys in your shell profile or a secret store, never in a repository.
 
-## 3. Choose models
+</Step>
+
+<Step>
+
+## Choose models
 
 Create `.ocra/config.json` in the repository you want to review:
 
@@ -43,7 +55,11 @@ Create `.ocra/config.json` in the repository you want to review:
 
 `standard` models review code; `light` models do cheap helper work such as grouping files. A list is a failback chain.
 
-## 4. Review
+</Step>
+
+<Step>
+
+## Review
 
 ```bash
 cd your-repository
@@ -70,3 +86,7 @@ Session: .ocra/sessions/20260924T225539Z-aa9790
 ```
 
 The exit code is `1` when a critical finding was confirmed by verification. Treat it as advice for reviewers rather than a security gate: the models read the change and can be misled by it. See the [CLI reference](./cli).
+
+</Step>
+
+</Steps>
