@@ -71,6 +71,7 @@ Concrete rules behind the principles above, from the [2026-09-26 self-audit](doc
 
 - New behavior ships with a test at the lowest layer that can express it; pure stages are tested without I/O, adapters against a real temporary git repository.
 - Security properties get explicit negative tests (secret path refused, injected tag neutralized, control characters stripped).
+- **A fix is not done until its test fails without it.** Run the new test against the old code once; assertions of absence (`not.toContain`, "file does not exist") pass vacuously when the fixture never produces the thing. A fix commit changes code, not only docs and tests.
 - Tests use fake runtimes; nothing in `npm test` calls a model or the network.
 
 ## Code style
