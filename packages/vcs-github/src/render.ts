@@ -145,9 +145,14 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
   } else if (report.scope) {
     lines.push("", `Reviewed every file again: ${safeMarkdown(report.scope.reason)}.`);
   }
-  const unverified = report.findings.filter(
-    (f) => f.severity === "critical" && f.verification !== "confirmed",
-  ).length;
+  // Only true while no confirmed critical blocks, and low-confidence
+  // findings do not count at all.
+  const unverified =
+    report.verdict === "significant_concerns"
+      ? 0
+      : report.findings.filter(
+          (f) => f.severity === "critical" && f.verification !== "confirmed" && !f.lowConfidence,
+        ).length;
   if (unverified > 0) {
     lines.push(
       "",

@@ -191,6 +191,26 @@ describe("renderText", () => {
   });
 });
 
+describe("renderText verdict notes", () => {
+  it("never claims unverified criticals cap a verdict that is already blocking", () => {
+    const report: ReviewReport = {
+      ...base,
+      verdict: "significant_concerns",
+      findings: [
+        finding({ severity: "critical", verification: "confirmed" }),
+        finding({ severity: "critical", verification: "uncertain" }),
+      ],
+    };
+    expect(renderText(report)).not.toContain("at most minor issues");
+    const low: ReviewReport = {
+      ...base,
+      verdict: "approved",
+      findings: [finding({ severity: "critical", verification: "uncertain", lowConfidence: true })],
+    };
+    expect(renderText(low)).not.toContain("not verified, so");
+  });
+});
+
 describe("renderJson", () => {
   it("renders the full report", () => {
     expect(JSON.parse(renderJson(base))).toEqual(JSON.parse(JSON.stringify(toReportOutput(base))));

@@ -20,8 +20,12 @@ export function decideVerdict(findings: readonly VerdictInput[]): Verdict {
   return findings.length > 0 ? "approved_with_comments" : "approved";
 }
 
-export function defaultSummary(findings: readonly Finding[]): string {
-  if (findings.length === 0) return "No issues found.";
+export function defaultSummary(findings: readonly Finding[], stillOpen = 0): string {
+  if (findings.length === 0) {
+    return stillOpen > 0
+      ? `No new issues; ${stillOpen} earlier finding(s) are still open.`
+      : "No issues found.";
+  }
   const count = (severity: Finding["severity"]) =>
     findings.filter((f) => f.severity === severity).length;
   return `${findings.length} finding(s): ${count("critical")} critical, ${count("warning")} warning, ${count("suggestion")} suggestion.`;

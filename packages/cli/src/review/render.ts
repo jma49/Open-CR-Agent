@@ -55,9 +55,14 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
   if (override && report.verdict === "significant_concerns") {
     lines.push(`Overridden by ${override.by}: ${override.reason}`);
   }
-  const unverified = report.findings.filter(
-    (f) => f.severity === "critical" && f.verification !== "confirmed",
-  ).length;
+  // Only true while no confirmed critical blocks, and low-confidence
+  // findings do not count at all.
+  const unverified =
+    report.verdict === "significant_concerns"
+      ? 0
+      : report.findings.filter(
+          (f) => f.severity === "critical" && f.verification !== "confirmed" && !f.lowConfidence,
+        ).length;
   if (unverified > 0) {
     lines.push(
       `${unverified} critical finding(s) are not verified, so the verdict is at most minor issues.`,
@@ -112,6 +117,12 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
 function emptyMessage(report: ReviewReport, nothingReviewed: boolean, notReviewed: number): string {
   if (nothingReviewed) return "Nothing was reviewed.";
   if (notReviewed > 0) return "No issues found in the files that were reviewed.";
+  const open = report.rereview
+    ? report.rereview.notReproduced.length +
+      report.rereview.notRechecked.length +
+      report.rereview.unchanged.length
+    : 0;
+  if (open > 0) return `No new issues; ${open} earlier finding(s) are still open.`;
   if (!report.coverage.some((c) => c.status !== "excluded")) {
     return "Nothing to review: no changed file was selected.";
   }

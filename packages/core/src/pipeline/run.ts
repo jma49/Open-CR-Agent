@@ -117,7 +117,11 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     matrix.cells,
     options.concurrency ?? DEFAULTS.concurrency,
     async (cell) => {
-      if (budget.reviewExhausted()) return skipForBudget(cell, options.maxCostUsd, emit);
+      // Once the run is cancelled or timed out, remaining cells are not started.
+      if (signal.aborted) return skipCell(cell, "run cancelled before this task started", emit);
+      if (budget.reviewExhausted()) {
+        return skipCell(cell, `spend limit of $${options.maxCostUsd} reached`, emit);
+      }
       const result = await runJob(cell, plan, execute);
       budget.add(result.usage);
       return result;
@@ -129,7 +133,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   // keeps a finding out of the verdict whatever the models say.
   const concurrency = options.concurrency ?? DEFAULTS.concurrency;
   const found = dedupeFindings(results.flatMap((r) => r.findings));
-  const fileCoverage = coverage(plan.decisions, results, plan.unchanged);
+  const fileCoverage = coverage(plan.decisions, results, plan.unchanged, matrix.limited ?? []);
   const remembered = applyMemory(found, plan.memory);
   const reported = new Set(found.map((f) => f.fingerprint));
   const priorReview = withoutRemembered(prior.review, plan.memory);
@@ -202,7 +206,9 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     tasks: results.map((r) => r.outcome),
     skipped: matrix.skipped,
     findings: sortFindings(judged.findings),
-    unverifiedCriticals: countMissedCriticals(judged.findings, verification.missed),
+    // Counted before the judge: dropping or downgrading a critical nobody
+    // could check must not turn an incomplete run into a clean one.
+    unverifiedCriticals: countMissedCriticals(verification.kept, verification.missed),
     refuted: verification.refuted,
     remembered: remembered.remembered,
     usage: sumUsage([
@@ -239,18 +245,14 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   return report;
 }
 
-function skipForBudget(
-  cell: MatrixCell,
-  maxCostUsd: number | undefined,
-  emit: (event: ReviewEvent) => void,
-): JobResult {
+function skipCell(cell: MatrixCell, reason: string, emit: (event: ReviewEvent) => void): JobResult {
   const outcome: TaskOutcome = {
     taskId: cell.taskId,
     reviewer: cell.reviewer.id,
     bundle: cell.bundle.label,
     files: cell.bundle.files.map((f) => f.newPath),
     status: "cancelled",
-    error: `spend limit of $${maxCostUsd} reached`,
+    error: reason,
     findings: 0,
     durationMs: 0,
   };
@@ -302,26 +304,43 @@ function coverage(
   decisions: readonly FileDecision[],
   results: readonly JobResult[],
   unchanged: ReadonlySet<string>,
+  limited: readonly MatrixCell[],
 ): CoverageEntry[] {
   // A file is reviewed when every reviewer assigned to it finished at least
-  // one of its tasks: under --ultra one completed sample is enough.
+  // one of its tasks: under --ultra one completed sample is enough. A
+  // reviewer whose task failed makes the file "failed"; one the task limit
+  // never started makes it "unreviewed".
   const done = new Map<string, boolean>();
+  const ran = new Set<string>();
+  const key = (reviewer: string, file: string) => `${reviewer}\0${file}`;
   for (const { outcome } of results) {
     for (const file of outcome.files) {
-      const key = `${outcome.reviewer}\0${file}`;
-      done.set(key, done.get(key) === true || outcome.status === "completed");
+      const k = key(outcome.reviewer, file);
+      ran.add(k);
+      done.set(k, done.get(k) === true || outcome.status === "completed");
     }
   }
-  const failed = new Set(
-    [...done].filter(([, completed]) => !completed).map(([key]) => key.split("\0")[1] as string),
-  );
-  const assigned = new Set(results.flatMap((r) => r.outcome.files));
+  for (const cell of limited) {
+    for (const f of cell.bundle.files) {
+      const k = key(cell.reviewer.id, f.newPath);
+      if (!done.has(k)) done.set(k, false);
+    }
+  }
+  const status = new Map<string, "reviewed" | "failed" | "unreviewed">();
+  for (const [k, completed] of done) {
+    const file = k.split("\0")[1] as string;
+    const now = completed ? "reviewed" : ran.has(k) ? "failed" : "unreviewed";
+    const before = status.get(file);
+    // failed outranks unreviewed, which outranks reviewed.
+    if (!before || now === "failed" || (now === "unreviewed" && before === "reviewed")) {
+      status.set(file, now);
+    }
+  }
   return decisions.map((d): CoverageEntry => {
     const path = d.diff.newPath;
     if (!d.selected) return { path, status: "excluded", reason: d.reason };
     if (unchanged.has(path)) return { path, status: "unchanged" };
-    if (!assigned.has(path)) return { path, status: "unreviewed" };
-    return { path, status: failed.has(path) ? "failed" : "reviewed" };
+    return { path, status: status.get(path) ?? "unreviewed" };
   });
 }
 

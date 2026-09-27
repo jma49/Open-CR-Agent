@@ -30,6 +30,8 @@ export interface SkippedCell {
 export interface ReviewMatrix {
   cells: MatrixCell[];
   skipped: SkippedCell[];
+  // Cells the task limit cut, so coverage can report their files.
+  limited?: MatrixCell[];
 }
 
 // Deterministic: which reviewer runs on which bundle, so cost grows with the
@@ -119,6 +121,7 @@ export function planTasks(
   const kept = new Set(ranked.slice(0, max).map((r) => r.cell));
   return {
     cells: cells.filter((cell) => kept.has(cell)),
+    limited: cells.filter((cell) => !kept.has(cell)),
     skipped: [
       ...planned.skipped,
       ...cells

@@ -51,7 +51,7 @@ export async function judgeFindings(
   const fallback = (warnings: string[] = [], usage: Usage[] = []): JudgeResult => ({
     findings: [...findings],
     verdict: decideVerdict([...findings, ...carried]),
-    summary: defaultSummary(findings),
+    summary: defaultSummary(findings, carried.length),
     usage,
     warnings,
   });

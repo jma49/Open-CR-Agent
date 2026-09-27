@@ -56,7 +56,7 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...` so a lo
 | `0` | Review finished; verdict `approved`, `approved_with_comments` or `minor_issues` |
 | `1` | Verdict `significant_concerns`: at least one critical finding the verifier confirmed. Unconfirmed critical findings give `minor_issues` and exit `0`. The verdict is advice and can be influenced by the change under review; see [How it works](./how-it-works#verdict). With `--pr`, a maintainer's `/ocra override` for the head commit turns this into `0` ([GitHub](./github#overriding-a-blocking-verdict)) |
 | `2` | Usage, Git or configuration error, or no review task completed |
-| `3` | Review incomplete: a selected file was not reviewed (its task failed, timed out or hit the spend limit, or no reviewer covers it), or a critical finding could not be verified because verification failed or ran out of budget (and the verdict is not blocking) |
+| `3` | Review incomplete: a selected file was not reviewed (its task failed, timed out, hit the spend limit or the task limit, or no reviewer covers it), or a critical finding could not be verified because verification failed or ran out of budget. This wins over `1`: an incomplete review never reports as merely blocking, so CI cannot let it pass |
 | `130` | Interrupted with Ctrl-C or SIGTERM; the partial report is still printed and nothing is published |
 
 ### JSON output

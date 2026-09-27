@@ -216,13 +216,9 @@ function exitCode(report: ReviewReport, err: Output): number {
     err.write("[ocra] No review task completed; see the errors above.\n");
     return EXIT.error;
   }
-  const override = report.changeRequest.override;
-  if (report.verdict === "significant_concerns") {
-    if (!override) return EXIT.blocking;
-    err.write(
-      `[ocra] The blocking verdict was overridden by ${forTerminal(override.by)}: ${forTerminal(override.reason)}\n`,
-    );
-  }
+  // Incomplete comes first, even over a blocking verdict: the action lets
+  // exit 1 pass unless fail-on-concerns is set, and a review that missed
+  // files or could not check a critical finding must never pass.
   const { notReviewed } = coverageGaps(report.coverage);
   if (notReviewed > 0) {
     err.write(
@@ -236,5 +232,11 @@ function exitCode(report: ReviewReport, err: Output): number {
     );
     return EXIT.incomplete;
   }
-  return report.tasks.some((t) => t.status !== "completed") ? EXIT.incomplete : EXIT.ok;
+  if (report.verdict !== "significant_concerns") return EXIT.ok;
+  const override = report.changeRequest.override;
+  if (!override) return EXIT.blocking;
+  err.write(
+    `[ocra] The blocking verdict was overridden by ${forTerminal(override.by)}: ${forTerminal(override.reason)}\n`,
+  );
+  return EXIT.ok;
 }

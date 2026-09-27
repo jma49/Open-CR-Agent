@@ -332,6 +332,41 @@ describe("ocra review", () => {
     expect(await run(["review"], capture(), err, deps(cwd, halfFails))).toBe(3);
   });
 
+  it("exits 3, not 1, when a blocking review is also incomplete", async () => {
+    const cwd = repoWithChange();
+    writeFileSync(join(cwd, "other.ts"), "export const other = 1;\n");
+    writeFileSync(join(cwd, "third.ts"), "export const third = 1;\n");
+    writeFileSync(join(cwd, "fourth.ts"), "export const fourth = 1;\n");
+    // The task with app.ts finds a confirmed critical; another task fails.
+    const blockingAndIncomplete: Script = async function* (spec) {
+      if (spec.userPrompt.includes("retries = -1")) {
+        yield* critical(spec);
+        return;
+      }
+      if (spec.taskId.endsWith("-2")) {
+        yield { type: "error", taskId: spec.taskId, error: "overloaded", retryable: true };
+        return;
+      }
+      yield { type: "done", taskId: spec.taskId };
+    };
+    const out = capture();
+    const code = await run(["review"], out, capture(), deps(cwd, blockingAndIncomplete, {}, true));
+    expect(out.text()).toContain("Verdict: significant concerns");
+    expect(code).toBe(3);
+  });
+
+  it("exits 0 under --ultra when one of a file's two samples failed", async () => {
+    const cwd = repoWithChange();
+    const secondFails: Script = async function* (spec) {
+      if (spec.taskId.endsWith("b")) {
+        yield { type: "error", taskId: spec.taskId, error: "overloaded", retryable: true };
+        return;
+      }
+      yield { type: "done", taskId: spec.taskId };
+    };
+    expect(await run(["review", "--ultra"], capture(), capture(), deps(cwd, secondFails))).toBe(0);
+  });
+
   it("stops on Ctrl-C with a partial report, cleans up and exits 130", async () => {
     const cwd = repoWithChange();
     let interrupt = () => {};
