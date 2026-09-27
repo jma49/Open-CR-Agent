@@ -27,7 +27,7 @@ ocra review [options]
 | `--plan` | Show selected and excluded files, bundles, review tasks and the size of each first prompt, without calling a model (free). Grouping by the light model is skipped, so a change set large enough to be grouped is shown one file per bundle (by directory past 20 files). With `--pr` it plans a full review, not only what changed since the last one, and it writes no session log |
 | `--ultra` | Favor recall over cost; see [Modes](./how-it-works#modes) |
 | `--reviewers <ids>` | Run only these reviewers, comma-separated (for example `security`) |
-| `--no-repo-config` | Ignore `.ocra/config.json` and the plugins it lists (with `--pr`, also the base branch's); models come from `OCRA_MODEL_*`. Use it on code you do not trust |
+| `--no-repo-config` | Ignore `.ocra/config.json` and the plugins it lists (with `--pr`, also the base branch's); models come from `OCRA_MODEL_*`; memory, rules and `AGENTS.md` come from the `--from` commit or are not used. Use it on code you do not trust |
 | `-h, --help` | Show help |
 
 `--commit` cannot be combined with `--from` or `--to`.

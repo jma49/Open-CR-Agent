@@ -5,6 +5,8 @@ import { isSecretPath } from "../select/select.js";
 
 export class AccessDeniedError extends Error {}
 
+const WINDOWS = process.platform === "win32";
+
 // Agents read the repository through this context only, so the policy lives
 // here once instead of in every VCS adapter: no secrets, no git internals,
 // nothing outside the repository, whatever a prompt injection asks for.
@@ -67,5 +69,8 @@ function isAllowed(normalized: string): boolean {
 function normalize(path: string): string | undefined {
   const unified = posix.normalize(path.replaceAll("\\", "/"));
   if (unified.startsWith("/") || unified === ".." || unified.startsWith("../")) return undefined;
+  // On Windows ".env::$DATA", ".env " and 8.3 names such as ENV~1 open the
+  // same file as ".env" but match no secret pattern: refuse those forms.
+  if (WINDOWS && unified.split("/").some((s) => /[:]|[. ]$|~\d/.test(s))) return undefined;
   return unified.replace(/^\.\//, "");
 }

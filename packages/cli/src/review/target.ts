@@ -32,8 +32,22 @@ export async function localTarget(
     config,
     plugins: await loadExternalPlugins(config.plugins, root),
     createVcs: (registry) => registry.createVcs("local", { cwd, target: args.target }),
+    ...(args.ignoreRepoConfig ? { readTrusted: untrustedTreeReader(args, cwd) } : {}),
     publish: false,
   };
+}
+
+// --no-repo-config is for code you do not trust, so the files that steer a
+// review (.ocra/memory.json can silence findings, rules and AGENTS.md shape
+// the prompts) are not taken from it either: from the base of a range, which
+// you chose, and otherwise not at all.
+function untrustedTreeReader(
+  args: ReviewArgs,
+  cwd: string,
+): (path: string) => Promise<string | undefined> {
+  if (args.target.mode !== "range") return async () => undefined;
+  const base = new LocalGitAdapter({ cwd, target: { mode: "commit", commit: args.target.from } });
+  return (path) => base.readFile(path);
 }
 
 // The pull request's own files are untrusted: configuration, guidelines and

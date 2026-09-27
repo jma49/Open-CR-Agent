@@ -1,7 +1,15 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { memoryCommand } from "./memory.js";
 
@@ -69,6 +77,17 @@ describe("ocra memory", () => {
     const list = capture();
     await memoryCommand(["list"], list, dir);
     expect(list.text()).toContain("abcdef01  src/a.ts  Unbounded retry");
+  });
+
+  it("never writes memory.json through a planted symbolic link", async () => {
+    const dir = repoWithSession();
+    const outside = join(mkdtempSync(join(tmpdir(), "ocra-outside-")), "target.json");
+    dirs.push(dirname(outside));
+    symlinkSync(outside, join(dir, ".ocra", "memory.json"));
+    await expect(
+      memoryCommand(["add", "abcdef", "--reason", "r"], capture(), dir, new Date()),
+    ).rejects.toThrow("symbolic link");
+    expect(existsSync(outside)).toBe(false);
   });
 
   it("skips newer sessions that have no report", async () => {

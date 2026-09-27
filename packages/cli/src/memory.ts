@@ -1,6 +1,6 @@
-import { existsSync } from "node:fs";
-import { readdir, readFile, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { constants, existsSync } from "node:fs";
+import { lstat, mkdir, open, readdir, readFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import {
   MEMORY_PATH,
@@ -77,13 +77,34 @@ export async function memoryCommand(
     reason: values.reason.trim(),
     added: now.toISOString().slice(0, 10),
   };
-  await writeFile(join(root, MEMORY_PATH), serializeMemory([...memory, entry]));
+  await writeRepositoryFile(root, MEMORY_PATH, serializeMemory([...memory, entry]));
   out.write(
     forTerminal(
       `Remembered ${finding.fingerprint.slice(0, 8)}: ${finding.title}\nCommit ${MEMORY_PATH} to share it.\n`,
     ),
   );
   return 0;
+}
+
+// The repository may be someone else's clone: a planted symlink at
+// .ocra/memory.json, or at .ocra, must not make ocra write elsewhere.
+async function writeRepositoryFile(root: string, path: string, content: string): Promise<void> {
+  const target = join(root, path);
+  for (const p of [dirname(target), target]) {
+    const stat = await lstat(p).catch(() => undefined);
+    if (stat?.isSymbolicLink())
+      throw new UsageError(`Refusing to write through the symbolic link ${p}`);
+  }
+  await mkdir(dirname(target), { recursive: true });
+  const handle = await open(
+    target,
+    constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW,
+  );
+  try {
+    await handle.writeFile(content);
+  } finally {
+    await handle.close();
+  }
 }
 
 async function readMemory(root: string): Promise<MemoryEntry[]> {

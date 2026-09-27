@@ -51,4 +51,4 @@ PR 的文字、diff 和仓库文件一律当作数据处理，其中的指令永
 
 ## 审查不信任的代码
 
-`.ocra/config.json` 可以列出插件，而插件会执行代码。`ocra review --no-repo-config` 会完全忽略这个文件，模型改从 `OCRA_MODEL_*` 读取。`ocra-eval` 总是带上这个开关，因为基准测试里的仓库都是第三方代码。
+`.ocra/config.json` 可以列出插件，而插件会执行代码。`ocra review --no-repo-config` 会完全忽略这个文件，模型改从 `OCRA_MODEL_*` 读取。它也不再从被审查的代码里读取 `.ocra/memory.json`（它可以压掉问题）、`.ocra/rules.json` 和 `AGENTS.md`：使用 `--from`/`--to` 时从 `--from` 所在的提交读取，其他情况下不使用。`ocra-eval` 总是带上这个开关，因为基准测试里的仓库都是第三方代码。
