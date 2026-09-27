@@ -2,17 +2,11 @@
 
 Work that is merged and tested locally but still needs a check that could not be done yet. Each item says what unblocks it, what to check, and how. Delete an item once it is verified (and note the result in the PR or issue it belongs to).
 
-## After the next site deploy
+## Site
 
-The Vercel Hobby build limit was exhausted on 2026-09-26 ("retry in 24 hours"). Deploy with the site's Vercel dashboard, or `gh workflow run site-deploy.yml` in this repository, once it has reset.
+Everything the site shows is verified on a local production build (2026-09-26): `npm run build && npx next start` in the site repository renders the manual from `../Open-CR-Agent/docs/manual`, so it shows exactly what a deploy would. Checked: every landing and manual page in both languages returns 200 and contains the new content, the Aqua gel icon and Apple touch icon, light and dark themes, and no horizontal overflow at 390 px. Repeat that check after site or manual changes instead of deploying.
 
-| Item | Check | How |
-|---|---|---|
-| Aqua redesign and icon (site PRs #3, #4) | Landing page in light and dark, English and Chinese, at 390 px; favicon and Apple touch icon | Open https://ocra-nine.vercel.app and `/zh`; `/icon.svg`, `/apple-icon` |
-| M2–M4 copy (site PRs #5, #6) | Matrix stage, Verify/Judge as shipped stages, roadmap M1–M4 shipped, terminal sample | Landing page, both languages |
-| Manual pages added since the last successful deploy | New GitHub page, modes, memory, shared configuration, exit codes 3 and 130, security sections | `/docs/github`, `/docs/how-it-works#modes`, `/docs/cli`, `/docs/configuration`, `/docs/security`, and `/zh/docs/...` |
-| Preview deployments off (site `vercel.json`) | `main` still deploys | Site PR #7 (branch `ci/main-only-deployments`) already created no Vercel check, so branches with `/` are skipped; confirm the next push to `main` builds |
-| Debounced deploy hook (`site-deploy.yml`) | Two manual changes merged within 30 minutes cause one site build | Actions tab: the first run is cancelled, the second deploys |
+The only thing a local build cannot show is the live site itself: https://ocra-nine.vercel.app shows the version from before the Vercel build limit was hit until the next deploy. Deploying is optional; when wanted, run `gh workflow run site-deploy.yml` here or deploy from the Vercel dashboard. The Vercel-side settings are already confirmed: site PR #7 created no preview build (only `main` deploys), and pushes to `main` that touch the manual cancel each other while waiting (debounce), so a burst costs one build.
 
 ## After a model key is available
 
