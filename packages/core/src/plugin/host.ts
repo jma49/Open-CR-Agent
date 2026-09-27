@@ -16,6 +16,15 @@ export async function startPlugins(
   plugins: readonly OcraPlugin[],
   options: PluginHostOptions = {},
 ): Promise<PluginRegistry> {
+  // A plugin is an object; a stray function (it has a `name` too) would pass
+  // the structural type and register nothing.
+  for (const plugin of plugins) {
+    if (typeof plugin !== "object" || plugin === null) {
+      throw new PluginError(
+        `Not a plugin: ${String((plugin as { name?: unknown })?.name ?? plugin)}`,
+      );
+    }
+  }
   assertUniqueNames(plugins);
   const env = options.env ?? {};
   const warn = options.warn ?? (() => {});

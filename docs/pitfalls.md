@@ -65,6 +65,8 @@ Traps we have already fallen into, across this repository and the site. Each ent
 - **Workspace packages resolve to `dist/`.** CLI tests import `@open-cr-agent/core` through its build output, so after changing core they see the old code until `tsc -b` runs (`npm run verify` does); a failing CLI test right after a core edit may just be stale output.
 - **Gate commits on the verify exit code.** A compound command that ignores it pushes failing code; CI catches it, but the history does not need it.
 
+- **A line-based `sed` edit hits every matching line.** Adding an import with `sed 's/^  correctnessReviewerPlugin,$/…/'` also inserted the function `coverageGaps` into `BUILTIN_PLUGINS`, which type-checked (a function has a `name`) and did nothing (#123). Edit by exact multi-line match, and pin lists like `BUILTIN_PLUGINS` in a test.
+
 ## Site
 
 - **Inline SVGs must not use `id` references.** The layout renders the logo more than once, and duplicate ids make gradients and masks resolve to the wrong element.

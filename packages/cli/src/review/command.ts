@@ -36,7 +36,6 @@ export const BUILTIN_PLUGINS: readonly OcraPlugin[] = [
   githubPlugin,
   opencodeRuntimePlugin,
   correctnessReviewerPlugin,
-  coverageGaps,
   securityReviewerPlugin,
   performanceReviewerPlugin,
   sessionJsonlPlugin,

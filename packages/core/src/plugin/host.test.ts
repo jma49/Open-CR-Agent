@@ -18,6 +18,11 @@ const tool = (name: string): ToolDefinition => ({
 });
 
 describe("startPlugins", () => {
+  it("refuses something that is not a plugin object", async () => {
+    const stray = (() => {}) as unknown as OcraPlugin;
+    await expect(startPlugins([stray])).rejects.toThrow("Not a plugin");
+  });
+
   it("runs bootstrap, configure and postConfigure in lifecycle order", async () => {
     const calls: string[] = [];
     const plugin = (name: string): OcraPlugin => ({

@@ -105,6 +105,20 @@ const critical: Script = async function* (spec) {
   yield { type: "done", taskId: spec.taskId };
 };
 
+describe("BUILTIN_PLUGINS", () => {
+  it("lists exactly the built-in plugins", () => {
+    expect(BUILTIN_PLUGINS.map((p) => p.name)).toEqual([
+      "vcs-local",
+      "vcs-github",
+      "runtime-opencode",
+      "reviewer-correctness",
+      "reviewer-security",
+      "reviewer-performance",
+      "session-jsonl",
+    ]);
+  });
+});
+
 describe("ocra", () => {
   it("prints the version and usage", async () => {
     const out = capture();
