@@ -20,19 +20,32 @@ State of the project as of 2026-09-26, for whoever picks it up next (human or ag
 
 ## Status
 
-**M1–M4 are implemented; none of the model-dependent quality is measured yet.** ~300 tests pass (`npm run verify`).
+**M1–M4 are implemented; none of the model-dependent quality is measured yet.** ~350 tests pass (`npm run verify`).
 
-Pipeline today: ingest → select → triage → bundle → **matrix** (reviewer scopes, risk tiers, overrides; ADR-0007) → review (correctness, security, performance; OpenCode runtime, read-only MCP tools, 20-step cap, per-model circuit breaker) → anchor → memory (`.ocra/memory.json`) and re-review reconciliation → **verify** (drops only findings the code disproves, marks the rest confirmed/uncertain/unchecked) → **judge** (merge, drop, recalibrate on the top tier) → verdict by a fixed rubric → report. Pull requests: `ocra review --pr [--publish]` and `action.yml` (ADR-0008) with inline comments, one summary comment, thread resolution, and respect for human dismissals; trusted inputs come from the base commit. Also: `--ultra`, `--reviewers`, `--max-cost-usd`, `--no-repo-config`, `extends` (shared config over https), Ctrl-C handling, exit codes 0/1/2/3/130. The 2026-09-26 audit's P0/P1 findings (#32–#39) are fixed.
+Pipeline today: ingest → select → triage → bundle → **matrix** (reviewer scopes, risk tiers, overrides; ADR-0007) → review (correctness, security, performance; OpenCode runtime, read-only MCP tools, 20-step cap, per-model circuit breaker) → anchor → memory (`.ocra/memory.json`) and re-review reconciliation → **verify** (drops only findings the code disproves, marks the rest confirmed/uncertain/unchecked) → **judge** (merge, drop, recalibrate on the top tier) → verdict by a fixed rubric (only verified critical findings block) → report. Pull requests: `ocra review --pr [--publish]` and `action.yml` (ADR-0008) with inline comments, one summary comment, thread resolution only when the anchored code is gone (ADR-0009), incremental re-review of what changed since the last reviewed head (ADR-0010, `--full` to override), and respect for human dismissals; trusted inputs come from the base commit. `fail-on-concerns` defaults to off: the verdict is advice, not a security gate. Also: `--ultra`, `--reviewers`, `--max-cost-usd`, `--no-repo-config`, `extends` (shared config over https), Ctrl-C handling, exit codes 0/1/2/3/130. The 2026-09-26 audit's P0/P1 findings (#32–#39) are fixed.
 
 **No model API for now.** As of 2026-09-26 the maintainer has no budget for a model API. Everything that calls a model (evaluation, tuning, #66, #12, #67) is parked until a key is provided; `docs/pending-verification.md` lists that work in order. Until then, work only on what is free: deterministic stages, `ocra review --plan`, `ocra-eval ceiling`, tests, docs, and the site checked on a local production build (Vercel deploys are optional).
 
 **What we know without a model:** `ocra-eval ceiling --limit 100 --max-change-lines 300` (94 PRs, 530 annotated issues) puts the recall ceiling of ocra's deterministic stages at **57.7%**. 40.0% of the benchmark's issues are maintainability and readability, which ocra does not report by design; selection and the review matrix lose 6 issues (1.1%), and #76 addresses the security ones. So on AACR-Bench, recall above ~58% is impossible whatever the model, and precision is where ocra should be judged.
 
+**2026-09-26 fix round** (from an external review of `3b04126`), merged:
+
+| Task | PR | What |
+|---|---|---|
+| A1 | #78 | `gemini-3.8-flash` out of the chains; LFS checkout on git 2.43 |
+| A2 | #79 | Fixed only when the anchored code is gone; category from the reviewer; unreproduced findings stay open (ADR-0009) |
+| A3 | #80 | Only verified critical findings block; judge cannot drop them; `fail-on-concerns` off by default |
+| A4 | #81 | Memory and dismissals before Verify; 20% of `--max-cost-usd` reserved for Verify and Judge |
+| A5 | #82 | Architecture marks planned parts; machine-local notes moved to git-ignored `.local/` |
+| A6 | #83 | Incremental re-review (ADR-0010) |
+
+**Open, not merged, waiting for an eval (`[needs-eval]`):** #84 (B1, `ocra_` prompt tags), #85 (B2, security reviewer at every tier; free ceiling: security reachable 13 → 16 of 18), #86 (B3, strict anchoring). Each changes what models see or which findings are reported; `docs/pending-verification.md` says what to measure. They touch some of the same test files; rebase each on `main` before merging.
+
 Open work, in order:
 
 1. Free: #76 (wider sensitive-path triage, measured with `ocra-eval ceiling`).
-2. When a key is available: #66 (`complete()` on Gemini), then the #12 baseline with a model stronger than flash-lite, then measuring the new reviewers, Verify, Judge and `--ultra`, then #67 (the Action on a live pull request).
-3. Not implemented from the architecture: `--ultra`'s plan phase and caller impact analysis; the judge reassessing findings a reviewer disagrees with; LLM relocation in anchoring (exists in core, not wired).
+2. When a key is available: #66 (`complete()` on Gemini), then the #12 baseline with a model stronger than flash-lite, then the `[needs-eval]` PRs #84–#86, then measuring the new reviewers, Verify, Judge, the budget reserve and `--ultra`, then #67 (the Action on a live pull request).
+3. Not implemented from the architecture (marked planned there): the `docs` and `agents-md` reviewers; `--ultra`'s plan phase and caller impact analysis; the judge reassessing findings a reviewer disagrees with; LLM relocation in anchoring (exists in core, not wired); inactivity detection.
 4. Publishing to npm: ready and checked in CI; the maintainer decides scope and timing (`docs/releasing.md`).
 
 ## Environment notes
@@ -60,3 +73,8 @@ Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) i
 2. May a model key be added as a repository secret to dogfood the GitHub Action on this repository (#67)?
 3. "ORCA" was mentioned during the site redesign; the name was kept as `ocra`. Confirm whether a rename was intended.
 4. ~~Reorder the dogfood `.ocra/config.json` chain (audit P5)?~~ Decided: `gemini-3.8-flash` is removed from the chain and the README example.
+5. Decisions taken in the fix round that deserve a look (details in each PR):
+   - A2 (#79): findings whose file was not reviewed this time now count in the verdict; legacy state without a code hash is never auto-resolved; editing exactly the anchored lines counts as a fix.
+   - A3 (#80): an unverified critical finding maps to `minor_issues` even with fewer than three warnings.
+   - A4 (#81): the 80% review share is reasoned, not measured.
+   - A6 (#83): a summary edited by anyone but ocra forces a full review; base-branch config or rule changes do not re-review unchanged files.

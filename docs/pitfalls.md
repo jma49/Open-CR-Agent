@@ -55,6 +55,9 @@ Traps we have already fallen into, across this repository and the site. Each ent
 - **A failed `cd` makes the rest of a command run in the wrong place.** A chain like `cd worktree && npm ci; npm run verify` rebuilt `dist/` in the main checkout. Use absolute paths, `&&` all the way, or stop on the first error.
 - **Rebuilding while an eval runs changes the code under evaluation.** `ocra-eval` spawns the built CLI per PR, so `tsc -b` mid-run mixes versions. Build in a separate worktree, or wait.
 - **Killing ocra without a signal handler orphans `opencode serve`.** Fixed by Ctrl-C/SIGTERM handling; `kill -9` still orphans it.
+- **Test fakes that report findings for every task break when a reviewer's tier changes.** Several CLI tests assumed only `correctness` ran on their small fixtures; letting `security` run at every tier (#85) doubled their findings. Fakes report from the reviewer the test is about (`spec.reviewer`).
+- **Source files include tests for the 500-line rule.** Split test files before they grow past it: shared fakes go in a `*.fakes.ts` file next to them, which each package's `tsconfig.json` excludes from the build and `tsconfig.test.json` includes.
+- **Workspace packages resolve to `dist/`.** CLI tests import `@open-cr-agent/core` through its build output, so after changing core they see the old code until `tsc -b` runs (`npm run verify` does); a failing CLI test right after a core edit may just be stale output.
 - **Gate commits on the verify exit code.** A compound command that ignores it pushes failing code; CI catches it, but the history does not need it.
 
 ## Site
