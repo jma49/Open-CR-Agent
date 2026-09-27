@@ -39,6 +39,7 @@ Run:
   --out <dir>              Runs directory (default .ocra/eval)
   --repos-dir <dir>        Clone cache (default ~/.cache/ocra/aacr-bench/repos)
   --max-cost-usd <n>       Stop starting new PRs once review spend reaches this
+  --pr-max-cost-usd <n>    Spend limit per PR, passed to ocra review --max-cost-usd
   --timeout-minutes <n>    Per-PR timeout (default 30)
   --retry-failed           Review again PRs that failed in an earlier attempt
   --reviewers <ids>        Passed to ocra review --reviewers
@@ -78,6 +79,7 @@ const OPTIONS = {
   out: { type: "string" },
   "repos-dir": { type: "string" },
   "max-cost-usd": { type: "string" },
+  "pr-max-cost-usd": { type: "string" },
   "timeout-minutes": { type: "string" },
   "mock-judge": { type: "boolean" },
   "retry-failed": { type: "boolean" },
@@ -163,7 +165,13 @@ async function run(
   const maxCost = number(values["max-cost-usd"], "--max-cost-usd");
   if (maxCost !== undefined) runOptions.maxCostUsd = maxCost;
   if (values["retry-failed"]) runOptions.retryFailed = true;
-  if (values.reviewers) runOptions.reviewArgs = ["--reviewers", values.reviewers];
+  // The run limit only stops the next PR; this caps each PR's own review.
+  const prMaxCost = number(values["pr-max-cost-usd"], "--pr-max-cost-usd");
+  const reviewArgs = [
+    ...(values.reviewers ? ["--reviewers", values.reviewers] : []),
+    ...(prMaxCost !== undefined ? ["--max-cost-usd", String(prMaxCost)] : []),
+  ];
+  if (reviewArgs.length > 0) runOptions.reviewArgs = reviewArgs;
 
   const results = await runInstances(instances, runOptions);
   const info: RunInfo = {

@@ -23,6 +23,7 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--max-cost-usd` | Stop starting new PRs once review spend reaches the cap |
 | `--retry-failed` | Review PRs again that failed in an earlier attempt of the same run |
 | `--reviewers` | Passed to `ocra review --reviewers`, for comparing reviewer sets |
+| `--pr-max-cost-usd` | Spend limit per PR, passed to `ocra review --max-cost-usd`; `--max-cost-usd` only stops starting new PRs, so use both to bound a run |
 | `--mock-judge` | Offline word-overlap judge for pipeline checks (not comparable) |
 
 Reviews always run with `--no-repo-config`, so benchmark repositories cannot load plugins; models come from `OCRA_MODEL_*`. Repositories are cached as blobless clones under `~/.cache/ocra/aacr-bench/repos`. PRs whose commits can no longer be fetched are reported as unavailable and excluded from scoring.
