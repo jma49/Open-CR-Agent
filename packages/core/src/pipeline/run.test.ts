@@ -121,6 +121,18 @@ describe("runReview", () => {
     expect(report.findings).toHaveLength(1);
   });
 
+  it("counts a file reviewed in ultra mode when one of its two samples finished", async () => {
+    const rt = runtime(async function* (spec) {
+      if (spec.taskId.endsWith("b")) {
+        yield { type: "error", taskId: spec.taskId, error: "quota", retryable: true };
+        return;
+      }
+      yield { type: "done", taskId: spec.taskId };
+    });
+    const report = await runReview({ vcs: vcs({}, twoFiles), runtime: rt, ultra: true });
+    expect(report.coverage.map((c) => c.status)).toEqual(["reviewed", "reviewed"]);
+  });
+
   it("records excluded files in coverage with their reason", async () => {
     const diff = [twoFiles, patch("package-lock.json", "{}")].join("\n");
     const rt = runtime(async function* (spec) {

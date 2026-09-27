@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fingerprint } from "./findings.js";
+import type { Finding } from "../domain.js";
+import { dedupeFindings, fingerprint } from "./findings.js";
 import { mapWithConcurrency } from "./pool.js";
 
 describe("fingerprint", () => {
@@ -30,5 +31,25 @@ describe("mapWithConcurrency", () => {
     });
     expect(peak).toBe(2);
     expect(results).toEqual([60, 20, 40, 10, 2]);
+  });
+});
+
+describe("dedupeFindings", () => {
+  it("keeps the most severe copy whole, so its text matches its severity", () => {
+    const base = { fingerprint: "f", file: "a.ts" } as Finding;
+    const warning = { ...base, id: "1", severity: "warning", title: "Slow loop" } as Finding;
+    const critical = {
+      ...base,
+      id: "2",
+      severity: "critical",
+      title: "Crash on empty input",
+    } as Finding;
+    const other = { ...base, fingerprint: "g", id: "3", severity: "suggestion" } as Finding;
+    expect(
+      dedupeFindings([warning, critical, other]).map((f) => [f.id, f.severity, f.title]),
+    ).toEqual([
+      ["2", "critical", "Crash on empty input"],
+      ["3", "suggestion", undefined],
+    ]);
   });
 });

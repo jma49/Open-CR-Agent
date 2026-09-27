@@ -292,8 +292,17 @@ function coverage(
   results: readonly JobResult[],
   unchanged: ReadonlySet<string>,
 ): CoverageEntry[] {
+  // A file is reviewed when every reviewer assigned to it finished at least
+  // one of its tasks: under --ultra one completed sample is enough.
+  const done = new Map<string, boolean>();
+  for (const { outcome } of results) {
+    for (const file of outcome.files) {
+      const key = `${outcome.reviewer}\0${file}`;
+      done.set(key, done.get(key) === true || outcome.status === "completed");
+    }
+  }
   const failed = new Set(
-    results.filter((r) => r.outcome.status !== "completed").flatMap((r) => r.outcome.files),
+    [...done].filter(([, completed]) => !completed).map(([key]) => key.split("\0")[1] as string),
   );
   const assigned = new Set(results.flatMap((r) => r.outcome.files));
   return decisions.map((d): CoverageEntry => {

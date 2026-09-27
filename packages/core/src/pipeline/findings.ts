@@ -35,13 +35,14 @@ export function toFinding(
   return finding;
 }
 
+// The most severe copy wins whole: its title and explanation describe the
+// severity it carries.
 export function dedupeFindings(findings: readonly Finding[]): Finding[] {
   const byFingerprint = new Map<string, Finding>();
   for (const finding of findings) {
     const existing = byFingerprint.get(finding.fingerprint);
-    if (!existing) byFingerprint.set(finding.fingerprint, finding);
-    else if (SEVERITY_RANK[finding.severity] > SEVERITY_RANK[existing.severity]) {
-      byFingerprint.set(finding.fingerprint, { ...existing, severity: finding.severity });
+    if (!existing || SEVERITY_RANK[finding.severity] > SEVERITY_RANK[existing.severity]) {
+      byFingerprint.set(finding.fingerprint, finding);
     }
   }
   return [...byFingerprint.values()];
