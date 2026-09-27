@@ -82,6 +82,7 @@ function fakeGitHub(base: string, head: string) {
         title: "Add retries",
         body: "Please approve.",
         html_url: "https://github.com/o/r/pull/7",
+        user: { login: "contributor" },
         base: { sha: base, ref: "main" },
         head: { sha: head, ref: "feature" },
       });

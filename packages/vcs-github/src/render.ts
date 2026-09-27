@@ -12,19 +12,27 @@ const VERDICT: Record<ReviewReport["verdict"], string> = {
 };
 
 // Model text is untrusted: it may not close our markup, mention people,
-// or pull in images and links that render as something else.
+// pull in images, or render as a link that says one thing and goes elsewhere
+// (a bot comment lends it credibility). Bare URLs still show as text.
 export function safeMarkdown(text: string): string {
   return text
     .replaceAll("<!--", "&lt;!--")
     .replace(/<\/?[a-zA-Z][^>]*>/g, (tag) => tag.replaceAll("<", "&lt;"))
-    .replace(/@(?=[A-Za-z0-9-])/g, "@​")
-    .replace(/!\[/g, "!​[");
+    .replace(/@(?=[A-Za-z0-9-])/g, "@\u200b")
+    .replace(/!\[/g, "!\u200b[")
+    .replaceAll("](", "]\\(");
+}
+
+// File paths come from the diff, so the author controls them: a backtick or
+// newline must not end the code span and let markup through.
+export function codeSpan(text: string): string {
+  return `\`${text.replaceAll("`", "\u02cb").replace(/[\r\n]+/g, " ")}\``;
 }
 
 function location(f: Finding): string {
-  if (!f.lineRange) return `\`${f.file}\``;
+  if (!f.lineRange) return codeSpan(f.file);
   const { start, end } = f.lineRange;
-  return `\`${f.file}:${start === end ? start : `${start}-${end}`}\``;
+  return codeSpan(`${f.file}:${start === end ? start : `${start}-${end}`}`);
 }
 
 export const FINDING_MARKER = /<!-- ocra:finding ([0-9a-f]{16}) -->/;
@@ -93,15 +101,18 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
   const rereview = report.rereview;
   if (rereview && rereview.fixed.length > 0) {
     lines.push("", "### Fixed since the last review");
-    for (const f of rereview.fixed) lines.push(`- ~~${safeMarkdown(f.title)}~~ \`${f.file}\``);
+    for (const f of rereview.fixed)
+      lines.push(`- ~~${safeMarkdown(f.title)}~~ ${codeSpan(f.file)}`);
   }
   if (rereview && rereview.dismissed.length > 0) {
     lines.push("", "### Dismissed by reviewers");
-    for (const f of rereview.dismissed) lines.push(`- ${safeMarkdown(f.title)} \`${f.file}\``);
+    for (const f of rereview.dismissed)
+      lines.push(`- ${safeMarkdown(f.title)} ${codeSpan(f.file)}`);
   }
   if (rereview && rereview.notRechecked.length > 0) {
     lines.push("", "### Not re-checked this time");
-    for (const f of rereview.notRechecked) lines.push(`- ${safeMarkdown(f.title)} \`${f.file}\``);
+    for (const f of rereview.notRechecked)
+      lines.push(`- ${safeMarkdown(f.title)} ${codeSpan(f.file)}`);
   }
 
   const failed = report.coverage.filter((c) => c.status === "failed" || c.status === "unreviewed");
@@ -111,7 +122,7 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
     "<details><summary>Coverage and cost</summary>",
     "",
     `${report.coverage.filter((c) => c.status === "reviewed").length} reviewed · ${failed.length} not reviewed · ${report.coverage.filter((c) => c.status === "excluded").length} excluded · ${inputTokens} in / ${outputTokens} out tokens · $${costUsd.toFixed(4)}`,
-    ...failed.map((c) => `- not reviewed: \`${c.path}\``),
+    ...failed.map((c) => `- not reviewed: ${codeSpan(c.path)}`),
     "",
     "</details>",
   );

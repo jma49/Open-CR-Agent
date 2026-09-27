@@ -44,7 +44,7 @@ jobs:
 
 下一次 push 时，ocra 会和上一次评审对比：已经评论过的问题不会重复评论；消失的问题列为已修复，并自动关闭对应的行内评论串；所在文件这次没能重新检查的问题会单独列出，而不会被说成已修复。
 
-PR 仍由人来做主。如果有人 resolve 了 ocra 的评论串，或者明确回复拒绝，例如 "won't fix"、"by design"、"false positive"、"acknowledged"，这条问题就算被驳回：之后不再报告，也不再影响结论，除非后续运行发现它的严重程度升高。回复 "I disagree" 不算驳回。
+由审查者来做主。如果 PR 作者以外的人 resolve 了 ocra 的评论串，或者仓库的 owner、member 或 collaborator（不包括 PR 作者）明确回复拒绝，例如 "won't fix"、"by design"、"false positive"、"acknowledged"，这条问题就算被驳回：之后不再报告，也不再影响结论，除非后续运行发现它的严重程度升高。回复 "I disagree" 不算驳回；PR 作者也无法驳回自己 PR 上的问题，因此不能靠 resolve 评论串绕过检查。
 
 ## PR 能改变什么、不能改变什么
 

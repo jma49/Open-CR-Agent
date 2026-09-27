@@ -76,6 +76,11 @@ describe("extends", () => {
       ],
       ["http://c.example/o.json", body, "must be an https URL"],
       ["https://c.example/o.json", { plugins: ["./evil.mjs"] }, "is invalid"],
+      [
+        "https://c.example/o.json",
+        `{"include":["${"x".repeat(300 * 1024)}"]}`,
+        "larger than 256 KB",
+      ],
     ] as const) {
       const warnings: string[] = [];
       const config = await loadConfig(

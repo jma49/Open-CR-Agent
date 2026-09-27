@@ -11,7 +11,7 @@ The Vercel Hobby build limit was exhausted on 2026-09-26 ("retry in 24 hours"). 
 | Aqua redesign and icon (site PRs #3, #4) | Landing page in light and dark, English and Chinese, at 390 px; favicon and Apple touch icon | Open https://ocra-nine.vercel.app and `/zh`; `/icon.svg`, `/apple-icon` |
 | M2–M4 copy (site PRs #5, #6) | Matrix stage, Verify/Judge as shipped stages, roadmap M1–M4 shipped, terminal sample | Landing page, both languages |
 | Manual pages added since the last successful deploy | New GitHub page, modes, memory, shared configuration, exit codes 3 and 130, security sections | `/docs/github`, `/docs/how-it-works#modes`, `/docs/cli`, `/docs/configuration`, `/docs/security`, and `/zh/docs/...` |
-| Preview deployments off (site `vercel.json`) | A pull request on the site repository creates no Vercel deployment; `main` still deploys | Open a trivial PR and check its checks; confirm `**` matches branch names with `/` |
+| Preview deployments off (site `vercel.json`) | `main` still deploys | Site PR #7 (branch `ci/main-only-deployments`) already created no Vercel check, so branches with `/` are skipped; confirm the next push to `main` builds |
 | Debounced deploy hook (`site-deploy.yml`) | Two manual changes merged within 30 minutes cause one site build | Actions tab: the first run is cancelled, the second deploys |
 
 ## After a model key is available
@@ -25,4 +25,4 @@ The Gemini key was removed from the maintainer's shell on 2026-09-26; see `docs/
 | Security and performance reviewers (#52) | They add findings without dragging precision down | Same eval without `--reviewers`, compare with the baseline |
 | Verify (#53) and Judge (#54) | Refuted and dropped findings are wrong ones; verdicts look right | Same eval with `verify`/`judge` on and off (`.ocra/config.json` in a scratch repo, or add eval flags) |
 | `--ultra` (#62) | Recall rises, cost about doubles | Eval with `--ultra` passed through |
-| #67 GitHub Action on a live pull request | Inline positions (422 fallback), summary update in place, thread resolution permissions, dismissals, fork behaviour | Needs the key as a repository secret; ask the maintainer first |
+| #67 GitHub Action on a live pull request | Inline positions (422 fallback), summary update in place, thread resolution permissions, fork behaviour; dismissals: `authorAssociation` and `resolvedBy` as the GraphQL API really returns them, the author's own resolve not dismissing, an outsider's "won't fix" not dismissing | Needs the key as a repository secret; ask the maintainer first |

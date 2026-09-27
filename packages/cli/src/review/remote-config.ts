@@ -44,8 +44,7 @@ export async function fetchRemoteConfig(
     redirect: "error",
   });
   if (!response.ok) throw new Error(`${url.href} answered ${response.status}`);
-  const body = await response.text();
-  if (Buffer.byteLength(body) > MAX_BYTES) throw new Error(`${url.href} is larger than 256 KB`);
+  const body = await readLimited(response, MAX_BYTES, url.href);
   if (pinned !== undefined) {
     const actual = createHash("sha256").update(body).digest("hex");
     if (actual !== pinned) throw new Error(`${url.href} does not match its pinned sha256`);
@@ -53,6 +52,25 @@ export async function fetchRemoteConfig(
   const parsed = remoteConfigSchema.safeParse(JSON.parse(body));
   if (!parsed.success) throw new Error(`${url.href} is invalid: ${z.prettifyError(parsed.error)}`);
   return parsed.data;
+}
+
+// Stops reading at the limit instead of buffering whatever the server sends.
+async function readLimited(response: Response, limit: number, name: string): Promise<string> {
+  const reader = response.body?.getReader();
+  if (!reader) return "";
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel();
+      throw new Error(`${name} is larger than 256 KB`);
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
 }
 
 // The repository's own values win; lists and maps are combined.

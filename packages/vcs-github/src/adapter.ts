@@ -41,6 +41,8 @@ export const DEFAULT_BOT_LOGIN = "github-actions[bot]";
 
 // Replies that decline a finding. Disagreement ("I disagree") is not a
 // dismissal: the finding keeps being reported.
+const WRITE_ACCESS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+
 const DISMISSAL =
   /\b(won'?t fix|wontfix|not a bug|by design|acknowledged|intended|intentional|false positive)\b/i;
 
@@ -86,12 +88,18 @@ export class GitHubAdapter implements VcsAdapter {
     };
   }
 
-  // A thread of ocra's that a person resolved, or answered with a clear
-  // "won't fix", dismisses its finding. Thread data is best effort: without
-  // it, findings are simply not dismissed.
+  // A thread of ocra's that a reviewer resolved, or answered with a clear
+  // "won't fix", dismisses its finding. A reviewer is someone with write
+  // access other than the pull request's author: otherwise the author could
+  // resolve a critical finding away and pass the check, and on a public
+  // repository anyone could reply "won't fix". Thread data is best effort:
+  // without it, findings are simply not dismissed.
   private async dismissedByPeople(findings: readonly PriorFinding[]): Promise<Set<string>> {
     const commented = new Set(findings.filter((f) => f.commented).map((f) => f.fingerprint));
     if (commented.size === 0) return new Set();
+    const author = (await this.pr()).user?.login;
+    const reviewer = (login: string | undefined) =>
+      login !== undefined && login !== author && !this.isBot(login);
     const threads = await this.threads().catch(() => []);
     const dismissed = new Set<string>();
     for (const thread of threads) {
@@ -99,10 +107,12 @@ export class GitHubAdapter implements VcsAdapter {
       const fingerprint = first && FINDING_MARKER.exec(first.body)?.[1];
       if (!first || !fingerprint || !commented.has(fingerprint) || !this.isBot(first.author))
         continue;
-      const resolvedByPerson =
-        thread.isResolved && thread.resolvedBy !== undefined && !this.isBot(thread.resolvedBy);
-      const declined = replies.some((r) => !this.isBot(r.author) && DISMISSAL.test(r.body));
-      if (resolvedByPerson || declined) dismissed.add(fingerprint);
+      // Only people with write access (or the author) can resolve threads.
+      const resolvedByReviewer = thread.isResolved && reviewer(thread.resolvedBy);
+      const declined = replies.some(
+        (r) => reviewer(r.author) && WRITE_ACCESS.has(r.association) && DISMISSAL.test(r.body),
+      );
+      if (resolvedByReviewer || declined) dismissed.add(fingerprint);
     }
     return dismissed;
   }

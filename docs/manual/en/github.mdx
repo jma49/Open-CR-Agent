@@ -44,7 +44,7 @@ Pull requests from forks do not receive repository secrets on `pull_request`, so
 
 On the next push ocra compares findings with the previous review: a finding it already commented on is not commented again, findings that disappeared are listed as fixed and their inline threads resolved, and findings in files that could not be re-checked are listed as such instead of being called fixed.
 
-People stay in charge of their pull request. If someone resolves one of ocra's threads, or replies with a clear decline such as "won't fix", "by design", "false positive" or "acknowledged", the finding counts as dismissed: it is no longer reported and no longer affects the verdict, unless a later run finds it with a higher severity. Replying "I disagree" does not dismiss it.
+Reviewers stay in charge. If someone other than the pull request's author resolves one of ocra's threads, or a repository owner, member or collaborator (not the author) replies with a clear decline such as "won't fix", "by design", "false positive" or "acknowledged", the finding counts as dismissed: it is no longer reported and no longer affects the verdict, unless a later run finds it with a higher severity. Replying "I disagree" does not dismiss it, and the author cannot dismiss findings on their own pull request, so the check cannot be resolved away.
 
 ## What the pull request can and cannot change
 

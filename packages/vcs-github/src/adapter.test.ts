@@ -2,6 +2,7 @@ import type { Finding, ReviewReport } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import { type CodeSource, GitHubAdapter } from "./adapter.js";
 import { GitHubApi } from "./client.js";
+import { renderSummary } from "./render.js";
 import { readState, SUMMARY_MARKER, writeState } from "./state.js";
 
 interface Call {
@@ -49,8 +50,9 @@ function fakeGitHub(
         title: "Add login",
         body: null,
         html_url: "https://github.com/o/r/pull/7",
-        base: { sha: "base", ref: "main" },
-        head: { sha: "head", ref: "feat" },
+        user: { login: "author" },
+        base: { sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", ref: "main" },
+        head: { sha: "cccccccccccccccccccccccccccccccccccccccc", ref: "feat" },
       });
     }
     if (path.startsWith("/issues/7/comments") && method === "GET") return json(200, comments);
@@ -107,7 +109,13 @@ function report(
   verdict: ReviewReport["verdict"] = "approved_with_comments",
 ): ReviewReport {
   return {
-    changeRequest: { id: "o/r#7", title: "t", description: "", baseSha: "base", headSha: "head" },
+    changeRequest: {
+      id: "o/r#7",
+      title: "t",
+      description: "",
+      baseSha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      headSha: "cccccccccccccccccccccccccccccccccccccccc",
+    },
     tier: "lite",
     verdict,
     summary: "Summary.",
@@ -139,8 +147,8 @@ describe("GitHubAdapter", () => {
       id: "o/r#7",
       title: "Add login",
       description: "",
-      baseSha: "base",
-      headSha: "head",
+      baseSha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      headSha: "cccccccccccccccccccccccccccccccccccccccc",
     });
   });
 
@@ -150,7 +158,7 @@ describe("GitHubAdapter", () => {
 
     const review = calls.find((c) => c.path === "/pulls/7/reviews");
     expect(review?.body).toMatchObject({
-      commit_id: "head",
+      commit_id: "cccccccccccccccccccccccccccccccccccccccc",
       event: "COMMENT",
       comments: [{ path: "src/login.ts", start_line: 3, line: 4, side: "RIGHT" }],
     });
@@ -251,14 +259,13 @@ describe("GitHubAdapter", () => {
     );
   });
 
-  it("treats findings people resolved or declined as dismissed", async () => {
-    const C = "cccccccccccccccc";
-    const D = "dddddddddddddddd";
-    const state = [A, B, C, D].map((fingerprint) => ({
+  it("counts only reviewers' dismissals, never the author's or outsiders'", async () => {
+    const ids = "cdef0123".split("").map((c) => c.repeat(16));
+    const state = ids.map((fingerprint) => ({
       fingerprint,
       title: "t",
       file: "src/login.ts",
-      severity: "warning" as const,
+      severity: "critical" as const,
       commented: true,
     }));
     const previous = {
@@ -269,7 +276,7 @@ describe("GitHubAdapter", () => {
     const thread = (
       fingerprint: string,
       starter: string,
-      replies: { author: string; body: string }[],
+      replies: { author: string; association: string; body: string }[],
       resolvedBy?: string,
     ) => ({
       id: `T-${fingerprint}`,
@@ -277,22 +284,57 @@ describe("GitHubAdapter", () => {
       resolvedBy: resolvedBy ? { login: resolvedBy } : null,
       comments: {
         nodes: [
-          { body: `<!-- ocra:finding ${fingerprint} -->\nold`, author: { login: starter } },
-          ...replies.map((r) => ({ body: r.body, author: { login: r.author } })),
+          {
+            body: `<!-- ocra:finding ${fingerprint} -->\nold`,
+            authorAssociation: "NONE",
+            author: { login: starter },
+          },
+          ...replies.map((r) => ({
+            body: r.body,
+            authorAssociation: r.association,
+            author: { login: r.author },
+          })),
         ],
       },
     });
+    const bot = "github-actions";
+    const [declined, resolved, disagreed, forged, byAuthor, resolvedByAuthor, byOutsider, _] =
+      ids as [string, string, string, string, string, string, string, string];
     const { fetchImpl } = fakeGitHub([previous], 200, [
-      thread(A, "github-actions", [
-        { author: "dev", body: "Won't fix: the limit is enforced upstream." },
+      thread(declined, bot, [
+        { author: "maintainer", association: "MEMBER", body: "Won't fix: enforced upstream." },
       ]),
-      thread(B, "github-actions", [], "dev"),
-      thread(C, "github-actions", [{ author: "dev", body: "I disagree, this can happen." }]),
-      thread(D, "mallory", [{ author: "mallory", body: "won't fix" }]),
+      thread(resolved, bot, [], "maintainer"),
+      thread(disagreed, bot, [
+        { author: "maintainer", association: "OWNER", body: "I disagree, this can happen." },
+      ]),
+      thread(forged, "mallory", [
+        { author: "maintainer", association: "OWNER", body: "won't fix" },
+      ]),
+      thread(byAuthor, bot, [{ author: "author", association: "COLLABORATOR", body: "won't fix" }]),
+      thread(resolvedByAuthor, bot, [], "author"),
+      thread(byOutsider, bot, [{ author: "passerby", association: "NONE", body: "won't fix" }]),
     ]);
 
     const prior = await adapter(fetchImpl).getPriorReview();
-    expect(prior?.findings.filter((f) => f.dismissed).map((f) => f.fingerprint)).toEqual([A, B]);
+    expect(prior?.findings.filter((f) => f.dismissed).map((f) => f.fingerprint)).toEqual([
+      declined,
+      resolved,
+    ]);
+  });
+
+  it("keeps author-controlled paths and model links from becoming markup", () => {
+    const f = {
+      ...finding(A, false),
+      file: "src/`![x](https://evil.example/p.png)`.ts",
+      body: "See [the fix](https://evil.example/login) and ![](https://evil.example/t.png)",
+    };
+    const body = renderSummary({ report: report([f]), commented: new Set(), state: [] });
+    // The path stays one code span, where nothing renders.
+    expect(body).toContain("`src/ˋ![x](https://evil.example/p.png)ˋ.ts:3-4`");
+    // Model text cannot form a link or an image.
+    expect(body).toContain("See [the fix]\\(https://evil.example/login)");
+    expect(body).toContain("!\u200b[]\\(https://evil.example/t.png)");
   });
 
   it("ignores state it cannot trust", () => {

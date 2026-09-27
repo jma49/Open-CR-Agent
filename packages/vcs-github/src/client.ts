@@ -1,12 +1,16 @@
 import { z } from "zod";
 
+// Commit ids reach git as arguments; anything else is refused at the boundary.
+const sha = z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/, "not a commit id");
+
 const pullRequestSchema = z.object({
   number: z.number(),
   title: z.string(),
   body: z.string().nullable(),
   html_url: z.string(),
-  base: z.object({ sha: z.string(), ref: z.string() }),
-  head: z.object({ sha: z.string(), ref: z.string() }),
+  user: z.object({ login: z.string() }).nullable(),
+  base: z.object({ sha: sha, ref: z.string() }),
+  head: z.object({ sha: sha, ref: z.string() }),
 });
 export type PullRequest = z.infer<typeof pullRequestSchema>;
 
@@ -59,7 +63,7 @@ export interface ReviewThread {
   isResolved: boolean;
   resolvedBy: string | undefined;
   // In order; the first carries ocra's finding marker.
-  comments: { author: string; body: string }[];
+  comments: { author: string; association: string; body: string }[];
 }
 
 const REVIEW_THREADS_QUERY = `query($owner: String!, $repo: String!, $number: Int!, $after: String) {
@@ -67,7 +71,7 @@ const REVIEW_THREADS_QUERY = `query($owner: String!, $repo: String!, $number: In
     pullRequest(number: $number) {
       reviewThreads(first: 100, after: $after) {
         pageInfo { hasNextPage endCursor }
-        nodes { id isResolved resolvedBy { login } comments(first: 30) { nodes { body author { login } } } }
+        nodes { id isResolved resolvedBy { login } comments(first: 30) { nodes { body authorAssociation author { login } } } }
       }
     }
   }
@@ -87,6 +91,7 @@ const reviewThreadsSchema = z.object({
               nodes: z.array(
                 z.object({
                   body: z.string(),
+                  authorAssociation: z.string().default("NONE"),
                   author: z.object({ login: z.string() }).nullable(),
                 }),
               ),
@@ -132,6 +137,7 @@ export class GitHubApi {
           resolvedBy: node.resolvedBy?.login,
           comments: node.comments.nodes.map((c) => ({
             author: c.author?.login ?? "",
+            association: c.authorAssociation,
             body: c.body,
           })),
         });

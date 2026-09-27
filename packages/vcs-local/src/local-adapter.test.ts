@@ -300,6 +300,9 @@ describe("ensureCommits", () => {
     await ensureCommits(clone.dir, [first, second]);
     expect(clone.run("cat-file", "-t", second)).toBe("commit");
 
+    await expect(ensureCommits(clone.dir, ["--upload-pack=touch /tmp/x"])).rejects.toThrow(
+      "Not commit ids",
+    );
     await expect(ensureCommits(clone.dir, ["0".repeat(40)])).rejects.toThrow(
       `Commits ${"0".repeat(40)} are not in this repository`,
     );
