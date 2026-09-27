@@ -29,10 +29,14 @@ The verdict is decided by a fixed rubric over the final findings, not by a model
 |---|---|
 | none | `approved` |
 | suggestions, or fewer than three warnings | `approved_with_comments` |
-| three or more warnings | `minor_issues` |
-| any critical finding | `significant_concerns` |
+| three or more warnings, or critical findings the verifier did not confirm | `minor_issues` |
+| any critical finding the verifier confirmed | `significant_concerns` |
+
+Every finding shows whether Verify **confirmed** it, was **unsure**, or did **not check** it (verification skipped, failed, or out of budget). Unconfirmed critical findings are shown as critical, marked unverified, and cap the verdict at `minor_issues`, so a single model's unchecked claim cannot block a change. The judge can downgrade a confirmed critical finding with a reason but cannot drop it; an attempt is ignored and listed as a warning.
 
 If the judge is disabled, has no `top` model or fails, findings are reported unjudged and the rubric still applies.
+
+The verdict is **advice, not a security gate.** Every model in the pipeline reads the change, and text planted in it can steer a reviewer away from an issue or talk the judge out of one. Use ocra to help reviewers, not to replace required human review or security checks.
 
 ## Modes
 

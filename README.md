@@ -18,7 +18,7 @@ ocra review --commit abc123           # a single commit
 ocra review --format json --output review.json
 ```
 
-Exit codes: `0` no critical findings, `1` critical findings, `2` usage error or no review task completed. Each run records `events.jsonl` and `report.json` under `.ocra/sessions/`.
+Exit codes: `0` review finished, `1` a critical finding the verifier confirmed (verdict `significant_concerns`), `2` usage error or no review task completed, `3` review incomplete, `130` interrupted. The verdict is advice from models that read the change, which can be swayed by text in it; do not use it as a security gate. Each run records `events.jsonl` and `report.json` under `.ocra/sessions/`.
 
 Optional `.ocra/config.json`:
 

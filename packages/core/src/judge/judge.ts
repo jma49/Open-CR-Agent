@@ -90,8 +90,15 @@ export async function judgeFindings(
     summary: response.summary.trim() || defaultSummary(judged.findings),
     decisions: judged.decisions,
     usage,
-    warnings: [],
+    warnings: judged.warnings,
   };
+}
+
+// A critical finding the verifier confirmed can be downgraded with a reason
+// but never removed: the judge reads text the change's author controls, so
+// it must not be able to make a blocking finding disappear.
+function protectedFinding(f: Finding): boolean {
+  return f.severity === "critical" && f.verification === "confirmed";
 }
 
 // Indexes come from a model: out-of-range, repeated or conflicting ones are
@@ -99,13 +106,18 @@ export async function judgeFindings(
 export function applyDecisions(
   findings: readonly Finding[],
   response: JudgeResponse,
-): { findings: Finding[]; decisions: JudgeDecisions } {
+): { findings: Finding[]; decisions: JudgeDecisions; warnings: string[] } {
   const valid = (i: number) => Number.isInteger(i) && i >= 0 && i < findings.length;
   const decisions: JudgeDecisions = { merged: [], dropped: [], recalibrated: [] };
+  const warnings: string[] = [];
   const removed = new Set<number>();
+  const isProtected = (i: number) => protectedFinding(findings[i] as Finding);
 
   for (const group of response.duplicates) {
     const members = [...new Set(group.filter(valid))].filter((i) => !removed.has(i));
+    // Merging keeps one member; keep a protected one so it is not merged away.
+    const first = members.findIndex(isProtected);
+    if (first > 0) members.unshift(...members.splice(first, 1));
     const [keep, ...rest] = members;
     if (keep === undefined || rest.length === 0) continue;
     for (const i of rest) removed.add(i);
@@ -117,6 +129,12 @@ export function applyDecisions(
 
   for (const { index, reason } of response.drop) {
     if (!valid(index) || removed.has(index)) continue;
+    if (isProtected(index)) {
+      warnings.push(
+        `judge tried to drop the confirmed critical finding ${(findings[index] as Finding).fingerprint.slice(0, 8)}; kept it`,
+      );
+      continue;
+    }
     removed.add(index);
     const f = findings[index] as Finding;
     decisions.dropped.push({ fingerprint: f.fingerprint, file: f.file, title: f.title, reason });
@@ -143,5 +161,5 @@ export function applyDecisions(
     });
     kept.push({ ...finding, severity: change.severity });
   });
-  return { findings: kept, decisions };
+  return { findings: kept, decisions, warnings };
 }

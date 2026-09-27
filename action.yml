@@ -13,8 +13,11 @@ inputs:
     description: Extra arguments for ocra review, such as --reviewers correctness,security.
     default: ""
   fail-on-concerns:
-    description: Fail the job when the verdict is significant_concerns.
-    default: "true"
+    description: >-
+      Fail the job when the verdict is significant_concerns (a critical finding
+      the verifier confirmed). Off by default: the verdict comes from models
+      that read the change and is advice, not a security gate.
+    default: "false"
 
 runs:
   using: composite

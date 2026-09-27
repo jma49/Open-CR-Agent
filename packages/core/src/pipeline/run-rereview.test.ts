@@ -14,6 +14,7 @@ function asPrior(report: ReviewReport): PriorFinding[] {
     severity: f.severity,
     commented: true,
     ...(f.quote ? { quote: f.quote } : {}),
+    ...(f.verification ? { verification: f.verification } : {}),
   }));
 }
 
@@ -103,10 +104,15 @@ describe("runReview against the previous review", () => {
   it("keeps the verdict when a finding is not reported again but its code is unchanged", async () => {
     const critical = finding("src/a.ts", "const a = 1;", { severity: "critical" });
     const first = await review(head, reporting(critical));
-    expect(first.verdict).toBe("significant_concerns");
+    // Verification is off in these runs: the critical finding is unchecked.
+    expect(first.verdict).toBe("minor_issues");
     expect(first.findings[0]?.quote).toMatchObject({ lines: 1 });
+    const unchanged = await review(head, reporting(), asPrior(first));
+    expect(unchanged.verdict).toBe("minor_issues");
 
-    const second = await review(head, reporting(), asPrior(first));
+    // An earlier finding keeps the verification it had.
+    const verified = asPrior(first).map((f) => ({ ...f, verification: "confirmed" as const }));
+    const second = await review(head, reporting(), verified);
     expect(second.findings).toEqual([]);
     expect(second.rereview?.fixed).toEqual([]);
     expect(second.rereview?.notReproduced.map((f) => f.fingerprint)).toEqual([

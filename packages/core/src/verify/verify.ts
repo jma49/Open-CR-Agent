@@ -1,5 +1,5 @@
 import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
-import type { FileDiff, Finding } from "../domain.js";
+import type { FileDiff, Finding, Verification } from "../domain.js";
 import { errorMessage } from "../errors.js";
 import { parseJsonAnswer } from "../pipeline/helpers.js";
 import { mapWithConcurrency } from "../pipeline/pool.js";
@@ -46,7 +46,7 @@ export async function verifyFindings(
   };
   const complete = options.runtime.complete?.bind(options.runtime);
   if (!complete || findings.length === 0) {
-    result.kept = [...findings];
+    result.kept = markUnchecked(findings);
     return result;
   }
   result.checked = findings.length;
@@ -58,6 +58,7 @@ export async function verifyFindings(
 
   await mapWithConcurrency([...byFile], options.concurrency, async ([file, group]) => {
     const refutedIndexes = new Map<number, string>();
+    const outcomes = new Map<number, Verification>();
     try {
       const patch = options.diffs.find((d) => d.newPath === file)?.patch ?? "";
       const content = await options.context.readFile(file).catch(() => undefined);
@@ -80,9 +81,11 @@ export async function verifyFindings(
       const parsed = verificationResponseSchema.safeParse(parseJsonAnswer(answer.text));
       if (!parsed.success) throw new Error("the verifier returned an invalid response");
       for (const entry of parsed.data) {
-        if (entry.verdict === "refuted" && entry.index >= 0 && entry.index < group.length) {
-          refutedIndexes.set(entry.index, entry.reason);
-        }
+        const { index } = entry;
+        if (index < 0 || index >= group.length) continue;
+        if (outcomes.has(index) || refutedIndexes.has(index)) continue;
+        if (entry.verdict === "refuted") refutedIndexes.set(index, entry.reason);
+        else outcomes.set(index, entry.verdict);
       }
     } catch (error) {
       result.warnings.push(
@@ -92,7 +95,7 @@ export async function verifyFindings(
     group.forEach((finding, i) => {
       const reason = refutedIndexes.get(i);
       if (reason === undefined) {
-        result.kept.push(finding);
+        result.kept.push({ ...finding, verification: outcomes.get(i) ?? "unchecked" });
       } else {
         result.refuted.push({
           fingerprint: finding.fingerprint,
@@ -104,4 +107,8 @@ export async function verifyFindings(
     });
   });
   return result;
+}
+
+export function markUnchecked(findings: readonly Finding[]): Finding[] {
+  return findings.map((f) => ({ ...f, verification: "unchecked" }));
 }

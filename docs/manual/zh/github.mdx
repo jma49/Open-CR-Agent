@@ -33,13 +33,15 @@ jobs:
 |---|---|---|
 | `github-token` | `${{ github.token }}` | 用来读取 PR 和发布评审的 token |
 | `args` | | 额外的 `ocra review` 参数，例如 `--reviewers correctness,security` |
-| `fail-on-concerns` | `true` | 结论为 `significant_concerns` 时让 job 失败。审查不完整（退出码 `3`）时 job 总会失败 |
+| `fail-on-concerns` | `false` | 结论为 `significant_concerns`（存在经核查确认的 critical 问题）时让 job 失败。审查不完整（退出码 `3`）时 job 总会失败 |
+
+结论只是参考意见。模型会读到 PR 的内容，PR 作者可以在其中埋入文字，诱导审查员漏报问题，或说服 Judge 丢掉问题；未经核查的模型判断也可能是错的。不要用这项检查代替人工审查、把它设为必需的状态检查；如果打开 `fail-on-concerns`，通过只代表“没有被确认的问题”，不代表“安全”。
 
 来自 fork 的 PR 在 `pull_request` 事件下拿不到仓库 secret，审查会失败，并提示缺少哪个 key。不要为此改用 `pull_request_target`：那样会带着 secret 运行 fork 控制的代码。
 
 ## 会发布什么
 
-- **行内评论**：落在 diff 内的问题，放在同一个 `COMMENT` 事件的评审里。ocra 从不批准 PR。设置 `github.requestChanges` 后，结论为 `significant_concerns` 时会请求修改。
+- **行内评论**：落在 diff 内的问题（每条都标明已核实、未核实或未核查），放在同一个 `COMMENT` 事件的评审里。ocra 从不批准 PR。设置 `github.requestChanges` 后，结论为 `significant_concerns` 时会请求修改。
 - **一条摘要评论**：每次 push 都在原评论上更新，包括结论、总结、diff 之外的问题、上次评审后已修复的问题，以及覆盖范围和花费。
 
 下一次 push 时，ocra 会和上一次评审对比：

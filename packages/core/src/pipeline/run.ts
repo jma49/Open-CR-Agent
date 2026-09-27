@@ -12,7 +12,7 @@ import type { ReviewerDefinition } from "../review/reviewer.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import type { RepoRule } from "../rules/repo-rules.js";
 import type { FileDecision, SelectionPolicy } from "../select/select.js";
-import { verifyFindings } from "../verify/verify.js";
+import { markUnchecked, verifyFindings } from "../verify/verify.js";
 import { type JobResult, runJob } from "./execute.js";
 import { dedupeFindings } from "./findings.js";
 import { type MatrixCell, planMatrix, type ReviewerOverrides } from "./matrix.js";
@@ -99,7 +99,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   const found = dedupeFindings(results.flatMap((r) => r.findings));
   const verification =
     options.verify === false || budget.exhausted()
-      ? { checked: 0, kept: found, refuted: [], usage: [], warnings: [] }
+      ? { checked: 0, kept: markUnchecked(found), refuted: [], usage: [], warnings: [] }
       : await verifyFindings(found, {
           runtime: options.runtime,
           diffs: plan.selected,

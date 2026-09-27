@@ -259,6 +259,21 @@ describe("GitHubAdapter", () => {
     );
   });
 
+  it("shows and remembers whether each finding was verified", async () => {
+    const { calls, fetchImpl } = fakeGitHub();
+    await adapter(fetchImpl).publish(
+      report([{ ...finding(A, true, "critical"), verification: "uncertain" }], "minor_issues"),
+    );
+    const review = calls.find((c) => c.path === "/pulls/7/reviews")?.body as {
+      comments: { body: string }[];
+    };
+    expect(review.comments[0]?.body).toContain("· critical · unverified (verifier unsure) ·");
+    const body = postedSummary(calls);
+    expect(body).toContain("1 critical finding(s) are not verified");
+    expect(body).toContain("Do not use it as a security gate.");
+    expect(readState(body)?.[0]?.verification).toBe("uncertain");
+  });
+
   it("keeps findings that were not reproduced open: no resolve, no new comment", async () => {
     const quote = { lines: 2, hash: "0123456789abcdef" };
     const open = {

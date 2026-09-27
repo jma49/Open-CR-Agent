@@ -53,7 +53,7 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...` so a lo
 | Code | Meaning |
 |---|---|
 | `0` | Review finished; verdict `approved`, `approved_with_comments` or `minor_issues` |
-| `1` | Verdict `significant_concerns` (at least one critical finding) |
+| `1` | Verdict `significant_concerns`: at least one critical finding the verifier confirmed. Unconfirmed critical findings give `minor_issues` and exit `0`. The verdict is advice and can be influenced by the change under review; see [How it works](./how-it-works#verdict) |
 | `2` | Usage, Git or configuration error, or no review task completed |
 | `3` | Review incomplete: some tasks failed, timed out or hit the spend limit (and the verdict is not blocking) |
 | `130` | Interrupted with Ctrl-C or SIGTERM; the partial report is still printed and nothing is published |

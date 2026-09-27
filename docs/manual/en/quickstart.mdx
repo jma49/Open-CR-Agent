@@ -67,4 +67,4 @@ src/list.ts
 Session: .ocra/sessions/20260924T225539Z-aa9790
 ```
 
-The exit code is `1` when a critical finding exists, so ocra can gate a pipeline. See the [CLI reference](./cli).
+The exit code is `1` when a critical finding was confirmed by verification. Treat it as advice for reviewers rather than a security gate: the models read the change and can be misled by it. See the [CLI reference](./cli).

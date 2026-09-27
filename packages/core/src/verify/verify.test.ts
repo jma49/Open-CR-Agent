@@ -56,6 +56,38 @@ const diffs = [{ newPath: "a.ts", patch: "@@ -1 +1,2 @@\n+line 2" }] as FileDiff
 const base = { diffs, context, signal: new AbortController().signal, concurrency: 2 };
 
 describe("verifyFindings", () => {
+  it("records what the verifier concluded about each finding it kept", async () => {
+    const rt = runtime(() =>
+      JSON.stringify([
+        { index: 0, verdict: "confirmed" },
+        { index: 1, verdict: "uncertain" },
+        { index: 0, verdict: "refuted", reason: "second answers are ignored" },
+      ]),
+    );
+    const findings = ["sure", "maybe", "unanswered"].map((t) => finding("a.ts", t));
+    const result = await verifyFindings(findings, { ...base, runtime: rt });
+    expect(result.kept.map((f) => [f.title, f.verification])).toEqual([
+      ["sure", "confirmed"],
+      ["maybe", "uncertain"],
+      ["unanswered", "unchecked"],
+    ]);
+  });
+
+  it("marks findings unchecked when verification fails or cannot run", async () => {
+    const failing = runtime(() => "not json");
+    const failed = await verifyFindings([finding("a.ts", "x")], { ...base, runtime: failing });
+    expect(failed.kept.map((f) => f.verification)).toEqual(["unchecked"]);
+
+    const noComplete: AgentRuntime = {
+      name: "fake",
+      runTask: () => {
+        throw new Error("unused");
+      },
+    };
+    const skipped = await verifyFindings([finding("a.ts", "x")], { ...base, runtime: noComplete });
+    expect(skipped.kept.map((f) => f.verification)).toEqual(["unchecked"]);
+  });
+
   it("drops only refuted findings and records why", async () => {
     const rt = runtime(
       () =>

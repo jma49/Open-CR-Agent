@@ -147,6 +147,7 @@ export class GitHubAdapter implements VcsAdapter {
         severity: f.severity,
         commented: commented.has(f.fingerprint),
         ...(f.quote ? { quote: f.quote } : {}),
+        ...(f.verification ? { verification: f.verification } : {}),
       })),
       ...quiet.filter((f) => !current.has(f.fingerprint)),
     ];

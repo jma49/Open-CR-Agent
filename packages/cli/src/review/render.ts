@@ -1,7 +1,12 @@
-import type { Finding, ReviewReport, Severity } from "@open-cr-agent/core";
+import type { Finding, ReviewReport, Severity, Verification } from "@open-cr-agent/core";
 import { forTerminal } from "./terminal.js";
 
 const SEVERITIES: Severity[] = ["critical", "warning", "suggestion"];
+const VERIFICATION: Record<Verification, string> = {
+  confirmed: "verified",
+  uncertain: "unverified",
+  unchecked: "not verified",
+};
 
 export function renderJson(report: ReviewReport): string {
   return `${JSON.stringify(report, null, 2)}\n`;
@@ -30,6 +35,14 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
   }
 
   lines.push(summaryLine(report));
+  const unverified = report.findings.filter(
+    (f) => f.severity === "critical" && f.verification !== "confirmed",
+  ).length;
+  if (unverified > 0) {
+    lines.push(
+      `${unverified} critical finding(s) are not verified, so the verdict is at most minor issues.`,
+    );
+  }
   const { refuted } = report;
   if (refuted.length > 0) {
     lines.push(
@@ -88,7 +101,7 @@ function renderFinding(finding: Finding): string[] {
       : `L${finding.lineRange.start}-${finding.lineRange.end}`
     : "file";
   const indent = " ".repeat(4);
-  const confidence = finding.lowConfidence ? " (low confidence)" : "";
+  const confidence = `${finding.lowConfidence ? " (low confidence)" : ""} [${VERIFICATION[finding.verification ?? "unchecked"]}]`;
   const lines = [
     `  ${finding.severity.padEnd(10)} ${location.padEnd(9)} ${finding.title}${confidence} #${finding.fingerprint.slice(0, 8)}`,
   ];

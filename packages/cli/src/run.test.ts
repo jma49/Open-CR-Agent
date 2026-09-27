@@ -42,13 +42,35 @@ function repoWithChange(): string {
 
 type Script = (spec: AgentTaskSpec) => AsyncIterable<AgentEvent>;
 
-function deps(cwd: string, script: Script, extra: Partial<ReviewDeps> = {}): ReviewDeps {
+// With `verifier`, the fake runtime answers Verify by confirming every
+// finding and the judge with no changes.
+function deps(
+  cwd: string,
+  script: Script,
+  extra: Partial<ReviewDeps> = {},
+  verifier = false,
+): ReviewDeps {
+  const usage = {
+    inputTokens: 0,
+    outputTokens: 0,
+    reasoningTokens: 0,
+    cachedTokens: 0,
+    costUsd: 0,
+  };
   const fakeRuntime: OcraPlugin = {
     name: "runtime-opencode",
     configure(ctx) {
       ctx.registerRuntime("opencode", () => ({
         name: "fake",
         runTask: (spec) => script(spec),
+        ...(verifier
+          ? {
+              complete: async (request: { tier: string }) => ({
+                text: request.tier === "top" ? "{}" : '[{"index":0,"verdict":"confirmed"}]',
+                usage,
+              }),
+            }
+          : {}),
         dispose: async () => {
           disposed.count += 1;
         },
@@ -102,14 +124,14 @@ describe("ocra", () => {
 });
 
 describe("ocra review", () => {
-  it("reviews the working tree, prints findings and exits 1 on critical findings", async () => {
+  it("reviews the working tree, prints findings and exits 1 on verified critical findings", async () => {
     const cwd = repoWithChange();
     const out = capture();
     const err = capture();
-    expect(await run(["review"], out, err, deps(cwd, critical))).toBe(1);
+    expect(await run(["review"], out, err, deps(cwd, critical, {}, true))).toBe(1);
 
     expect(out.text()).toContain(
-      "app.ts\n  critical   L2        Negative retry count disables retries",
+      "app.ts\n  critical   L2        Negative retry count disables retries [verified]",
     );
     expect(err.text()).toContain("[ocra] Reviewing: Working tree changes");
     expect(err.text()).toContain("[ocra] correctness-1 completed in");
@@ -124,6 +146,17 @@ describe("ocra review", () => {
     expect(existsSync(join(sessionDir, "events.jsonl"))).toBe(true);
     expect(JSON.parse(readFileSync(join(sessionDir, "report.json"), "utf8")).findings).toHaveLength(
       1,
+    );
+  });
+
+  it("exits 0 when critical findings are not verified", async () => {
+    const cwd = repoWithChange();
+    const out = capture();
+    expect(await run(["review"], out, capture(), deps(cwd, critical))).toBe(0);
+    expect(out.text()).toContain("Verdict: minor issues");
+    expect(out.text()).toContain("[not verified]");
+    expect(out.text()).toContain(
+      "1 critical finding(s) are not verified, so the verdict is at most minor issues.",
     );
   });
 
@@ -214,7 +247,7 @@ describe("ocra review", () => {
     );
     expect(
       await run(["review", "--no-repo-config"], capture(), capture(), deps(cwd, critical)),
-    ).toBe(1);
+    ).toBe(0);
     expect(existsSync(marker)).toBe(false);
   });
 

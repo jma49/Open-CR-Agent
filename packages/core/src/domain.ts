@@ -33,6 +33,11 @@ export interface QuoteSignature {
   hash: string;
 }
 
+// What Verify concluded about a finding it kept. "unchecked" covers a skipped
+// or failed verification. Refuted findings are dropped, so have no value here.
+export const verificationSchema = z.enum(["confirmed", "uncertain", "unchecked"]);
+export type Verification = z.infer<typeof verificationSchema>;
+
 export interface Finding extends ReportedFinding {
   id: string;
   fingerprint: string;
@@ -44,6 +49,8 @@ export interface Finding extends ReportedFinding {
   lowConfidence?: boolean;
   // Absent when the finding is not anchored to lines.
   quote?: QuoteSignature;
+  // Set by Verify; absent before it runs, which counts as "unchecked".
+  verification?: Verification;
 }
 
 export type FileChangeKind = "added" | "modified" | "deleted" | "renamed";
@@ -102,6 +109,7 @@ export interface PriorFinding {
   // Absent for findings without anchored lines and in state written before
   // it existed; such findings are never judged fixed by their code alone.
   quote?: QuoteSignature;
+  verification?: Verification;
 }
 
 export interface PriorReview {

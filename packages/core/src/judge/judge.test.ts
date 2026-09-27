@@ -7,6 +7,7 @@ import { decideVerdict } from "./verdict.js";
 
 function finding(title: string, severity: Severity = "warning", reviewer = "correctness"): Finding {
   return {
+    verification: "confirmed",
     id: title,
     fingerprint: `fp-${title}`,
     reviewer,
@@ -63,6 +64,19 @@ describe("decideVerdict", () => {
     expect(decideVerdict([finding("a"), finding("b"), finding("c")])).toBe("minor_issues");
     expect(decideVerdict([finding("a", "critical")])).toBe("significant_concerns");
   });
+
+  it("blocks only on critical findings the verifier confirmed", () => {
+    const critical = (verification?: Finding["verification"]) => ({
+      severity: "critical" as const,
+      ...(verification ? { verification } : {}),
+    });
+    expect(decideVerdict([critical("uncertain")])).toBe("minor_issues");
+    expect(decideVerdict([critical("unchecked")])).toBe("minor_issues");
+    expect(decideVerdict([critical()])).toBe("minor_issues");
+    expect(decideVerdict([critical("unchecked"), critical("confirmed")])).toBe(
+      "significant_concerns",
+    );
+  });
 });
 
 describe("applyDecisions", () => {
@@ -102,6 +116,41 @@ describe("applyDecisions", () => {
   });
 });
 
+describe("applyDecisions on confirmed critical findings", () => {
+  const blocking = finding("blocking", "critical");
+  const unverified = { ...finding("unverified", "critical"), verification: "uncertain" as const };
+
+  it("refuses to drop them and says so, but drops unverified ones", () => {
+    const response = judgeResponseSchema.parse({
+      drop: [
+        { index: 0, reason: "the comment says it is fine" },
+        { index: 1, reason: "speculative" },
+      ],
+    });
+    const result = applyDecisions([blocking, unverified], response);
+    expect(result.findings.map((f) => f.title)).toEqual(["blocking"]);
+    expect(result.decisions.dropped.map((d) => d.title)).toEqual(["unverified"]);
+    expect(result.warnings).toEqual([
+      "judge tried to drop the confirmed critical finding fp-block; kept it",
+    ]);
+  });
+
+  it("lets them be downgraded with a reason", () => {
+    const response = judgeResponseSchema.parse({
+      severity: [{ index: 0, severity: "warning", reason: "needs admin access" }],
+    });
+    const result = applyDecisions([blocking], response);
+    expect(result.findings[0]?.severity).toBe("warning");
+    expect(result.decisions.recalibrated).toHaveLength(1);
+  });
+
+  it("keeps them when merging duplicates", () => {
+    const response = judgeResponseSchema.parse({ duplicates: [[0, 1]] });
+    const result = applyDecisions([finding("same issue"), blocking], response);
+    expect(result.findings.map((f) => f.title)).toEqual(["blocking"]);
+  });
+});
+
 describe("judgeFindings", () => {
   it("asks the top tier and derives the verdict from the judged findings", async () => {
     const rt = runtime(
@@ -118,7 +167,10 @@ describe("judgeFindings", () => {
   it("keeps what it would drop as low confidence in ultra mode, outside the verdict", async () => {
     const rt = runtime('{"drop":[{"index":0,"reason":"speculative"}]}');
     const result = await judgeFindings(
-      [finding("maybe", "critical"), finding("sure", "suggestion")],
+      [
+        { ...finding("maybe", "critical"), verification: "uncertain" },
+        finding("sure", "suggestion"),
+      ],
       {
         ...options(rt),
         keepDropped: true,
@@ -134,6 +186,9 @@ describe("judgeFindings", () => {
   it("falls back to the rubric when the judge fails, is disabled or has nothing to judge", async () => {
     const failed = await judgeFindings([finding("a", "critical")], options(runtime("not json")));
     expect(failed.verdict).toBe("significant_concerns");
+    const unchecked = { ...finding("a", "critical"), verification: "unchecked" as const };
+    const failedUnchecked = await judgeFindings([unchecked], options(runtime("not json")));
+    expect(failedUnchecked.verdict).toBe("minor_issues");
     expect(failed.decisions).toBeUndefined();
     expect(failed.warnings[0]).toContain("judge failed, reporting findings unjudged");
     expect(failed.findings).toHaveLength(1);

@@ -1,11 +1,20 @@
-import type { Finding, Severity, Verdict } from "../domain.js";
+import type { Finding, Severity, Verdict, Verification } from "../domain.js";
 
 export const PATTERN_WARNINGS = 3;
 
+export interface VerdictInput {
+  severity: Severity;
+  verification?: Verification;
+}
+
 // The rubric is code, so the same findings always give the same verdict and
-// a failed judge call cannot change it; it leans towards approval.
-export function decideVerdict(findings: readonly { severity: Severity }[]): Verdict {
-  if (findings.some((f) => f.severity === "critical")) return "significant_concerns";
+// a failed judge call cannot change it; it leans towards approval. Only a
+// critical finding the verifier confirmed blocks: one model's unchecked claim
+// (possibly planted by the change itself) should not fail a pull request.
+export function decideVerdict(findings: readonly VerdictInput[]): Verdict {
+  const critical = findings.filter((f) => f.severity === "critical");
+  if (critical.some((f) => f.verification === "confirmed")) return "significant_concerns";
+  if (critical.length > 0) return "minor_issues";
   const warnings = findings.filter((f) => f.severity === "warning").length;
   if (warnings >= PATTERN_WARNINGS) return "minor_issues";
   return findings.length > 0 ? "approved_with_comments" : "approved";

@@ -1,9 +1,25 @@
-import type { Finding, PriorFinding, ReviewReport, Severity } from "@open-cr-agent/core";
+import type {
+  Finding,
+  PriorFinding,
+  ReviewReport,
+  Severity,
+  Verification,
+} from "@open-cr-agent/core";
 import type { ReviewComment } from "./client.js";
 import { SUMMARY_MARKER, writeState } from "./state.js";
 
 const MAX_SUMMARY_CHARS = 60_000;
 const ICON: Record<Severity, string> = { critical: "🔴", warning: "🟠", suggestion: "🔵" };
+const VERIFICATION: Record<Verification, string> = {
+  confirmed: "verified",
+  uncertain: "unverified (verifier unsure)",
+  unchecked: "not verified",
+};
+
+function verification(f: { verification?: Verification }): string {
+  return VERIFICATION[f.verification ?? "unchecked"];
+}
+
 const VERDICT: Record<ReviewReport["verdict"], string> = {
   approved: "✅ Approved",
   approved_with_comments: "💬 Approved with comments",
@@ -40,7 +56,7 @@ export const FINDING_MARKER = /<!-- ocra:finding ([0-9a-f]{16}) -->/;
 export function inlineBody(f: Finding): string {
   const parts = [
     `<!-- ocra:finding ${f.fingerprint} -->`,
-    `${ICON[f.severity]} **${safeMarkdown(f.title)}** · ${f.severity} · ${f.reviewer}${f.lowConfidence ? " · low confidence" : ""}`,
+    `${ICON[f.severity]} **${safeMarkdown(f.title)}** · ${f.severity} · ${verification(f)} · ${f.reviewer}${f.lowConfidence ? " · low confidence" : ""}`,
     "",
     safeMarkdown(f.body),
   ];
@@ -82,13 +98,22 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
     "",
     `**${report.findings.length} finding(s)** (${counts}) · risk tier \`${report.tier}\``,
   ];
+  const unverified = report.findings.filter(
+    (f) => f.severity === "critical" && f.verification !== "confirmed",
+  ).length;
+  if (unverified > 0) {
+    lines.push(
+      "",
+      `${unverified} critical finding(s) are not verified, so they cap the verdict at minor issues.`,
+    );
+  }
 
   const inSummary = report.findings.filter((f) => !commented.has(f.fingerprint));
   if (inSummary.length > 0) {
     lines.push("", "### Findings outside the diff");
     for (const f of inSummary) {
       lines.push(
-        `- ${ICON[f.severity]} ${location(f)} **${safeMarkdown(f.title)}**${f.lowConfidence ? " _(low confidence)_" : ""}: ${safeMarkdown(f.body).replaceAll("\n", " ")}`,
+        `- ${ICON[f.severity]} ${location(f)} **${safeMarkdown(f.title)}** _(${verification(f)}${f.lowConfidence ? ", low confidence" : ""})_: ${safeMarkdown(f.body).replaceAll("\n", " ")}`,
       );
     }
   }
@@ -113,7 +138,9 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
       "",
     );
     for (const f of rereview.notReproduced)
-      lines.push(`- ${ICON[f.severity]} ${safeMarkdown(f.title)} ${codeSpan(f.file)}`);
+      lines.push(
+        `- ${ICON[f.severity]} ${safeMarkdown(f.title)} ${codeSpan(f.file)} _(${verification(f)})_`,
+      );
   }
   if (rereview && rereview.dismissed.length > 0) {
     lines.push("", "### Dismissed by reviewers");
@@ -129,12 +156,16 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
       "",
     );
     for (const f of rereview.notRechecked)
-      lines.push(`- ${ICON[f.severity]} ${safeMarkdown(f.title)} ${codeSpan(f.file)}`);
+      lines.push(
+        `- ${ICON[f.severity]} ${safeMarkdown(f.title)} ${codeSpan(f.file)} _(${verification(f)})_`,
+      );
   }
 
   const failed = report.coverage.filter((c) => c.status === "failed" || c.status === "unreviewed");
   const { costUsd, inputTokens, outputTokens } = report.usage;
   lines.push(
+    "",
+    "_The verdict is advice from language models that read the change itself, and can be swayed by text in it. Do not use it as a security gate._",
     "",
     "<details><summary>Coverage and cost</summary>",
     "",

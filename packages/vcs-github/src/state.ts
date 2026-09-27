@@ -1,5 +1,5 @@
 import type { PriorFinding } from "@open-cr-agent/core";
-import { severitySchema } from "@open-cr-agent/core";
+import { severitySchema, verificationSchema } from "@open-cr-agent/core";
 import { z } from "zod";
 
 export const SUMMARY_MARKER = "<!-- ocra:review -->";
@@ -23,6 +23,7 @@ const stateSchema = z.object({
             hash: z.string().regex(/^[0-9a-f]{16}$/),
           })
           .optional(),
+        verification: verificationSchema.optional(),
       }),
     )
     .max(MAX_STATE_FINDINGS),
@@ -38,10 +39,11 @@ export function readState(body: string): PriorFinding[] | undefined {
       JSON.parse(Buffer.from(encoded, "base64").toString("utf8")),
     );
     if (!parsed.success) return undefined;
-    return parsed.data.findings.map(({ dismissed, quote, ...finding }) => ({
+    return parsed.data.findings.map(({ dismissed, quote, verification, ...finding }) => ({
       ...finding,
       ...(dismissed ? { dismissed } : {}),
       ...(quote ? { quote } : {}),
+      ...(verification ? { verification } : {}),
     }));
   } catch {
     return undefined;
@@ -57,6 +59,7 @@ export function writeState(findings: readonly PriorFinding[]): string {
     commented: f.commented,
     ...(f.dismissed ? { dismissed: true } : {}),
     ...(f.quote ? { quote: f.quote } : {}),
+    ...(f.verification ? { verification: f.verification } : {}),
   }));
   const encoded = Buffer.from(JSON.stringify({ findings: kept }), "utf8").toString("base64");
   return `<!-- ocra:state v1 ${encoded} -->`;
