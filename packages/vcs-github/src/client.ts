@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { retryDecision } from "./retry.js";
 
 // Commit ids reach git as arguments; anything else is refused at the boundary.
 const sha = z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/, "not a commit id");
@@ -54,7 +55,16 @@ export interface GitHubApiOptions {
   token: string;
   baseUrl?: string;
   fetch?: typeof fetch;
+  sleep?: (ms: number) => Promise<void>;
 }
+
+const reviewSchema = z.object({
+  id: z.number(),
+  state: z.string(),
+  user: z.object({ login: z.string() }).nullable(),
+});
+export type PullRequestReview = z.infer<typeof reviewSchema>;
+const MAX_REVIEW_PAGES = 10;
 
 const MAX_COMMENT_PAGES = 30;
 const MAX_THREAD_PAGES = 10;
@@ -201,13 +211,32 @@ export class GitHubApi {
     await this.request("POST", `/pulls/${number}/reviews`, review);
   }
 
+  async listReviews(number: number): Promise<PullRequestReview[]> {
+    const reviews: PullRequestReview[] = [];
+    for (let page = 1; page <= MAX_REVIEW_PAGES; page += 1) {
+      const batch = z
+        .array(reviewSchema)
+        .parse(await this.request("GET", `/pulls/${number}/reviews?per_page=100&page=${page}`));
+      reviews.push(...batch);
+      if (batch.length < 100) break;
+    }
+    return reviews;
+  }
+
+  async dismissReview(number: number, reviewId: number, message: string): Promise<void> {
+    await this.request("PUT", `/pulls/${number}/reviews/${reviewId}/dismissals`, {
+      message,
+      event: "DISMISS",
+    });
+  }
+
   private async graphql(query: string, variables: Record<string, unknown>): Promise<unknown> {
     const result = z
       .object({
         data: z.unknown().optional(),
         errors: z.array(z.object({ message: z.string() })).optional(),
       })
-      .parse(await this.send("POST", this.graphqlUrl(), "/graphql", { query, variables }));
+      .parse(await this.send("POST", this.graphqlUrl(), "/graphql", { query, variables }, true));
     if (result.errors?.length) {
       throw new GitHubApiError(
         200,
@@ -231,27 +260,54 @@ export class GitHubApi {
     return this.send(method, url, path, body);
   }
 
-  private async send(method: string, url: string, path: string, body?: unknown): Promise<unknown> {
-    const init: RequestInit = {
-      method,
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${this.options.token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "open-cr-agent",
-        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
-      },
-      signal: AbortSignal.timeout(30_000),
-    };
-    if (body !== undefined) init.body = JSON.stringify(body);
-    const response = await this.fetchImpl(url, init);
-    if (!response.ok) {
+  // GraphQL queries and resolving a thread are safe to repeat, although they
+  // are POSTs; REST POSTs create comments and reviews, and are not.
+  private async send(
+    method: string,
+    url: string,
+    path: string,
+    body?: unknown,
+    idempotent = method !== "POST",
+  ): Promise<unknown> {
+    const sleep = this.options.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+    for (let attempt = 1; ; attempt += 1) {
+      const init: RequestInit = {
+        method,
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${this.options.token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "open-cr-agent",
+          ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+        },
+        signal: AbortSignal.timeout(30_000),
+      };
+      if (body !== undefined) init.body = JSON.stringify(body);
+      let response: Response;
+      try {
+        response = await this.fetchImpl(url, init);
+      } catch (error) {
+        const next = retryDecision(method, idempotent, "network_error", attempt);
+        if (!next.retry) throw error;
+        await sleep(next.waitMs);
+        continue;
+      }
+      if (response.ok) return response.status === 204 ? undefined : response.json();
       const detail = (await response.text().catch(() => "")).slice(0, 500);
+      const next = retryDecision(
+        method,
+        idempotent,
+        { status: response.status, headers: response.headers, body: detail },
+        attempt,
+      );
+      if (next.retry) {
+        await sleep(next.waitMs);
+        continue;
+      }
       throw new GitHubApiError(
         response.status,
         `GitHub ${method} ${path.split("?")[0]} failed with ${response.status}: ${detail}`,
       );
     }
-    return response.status === 204 ? undefined : response.json();
   }
 }

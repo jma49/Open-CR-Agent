@@ -195,7 +195,14 @@ export class GitHubAdapter implements VcsAdapter {
       const comment = inlineComment(f);
       return comment ? [{ fingerprint: f.fingerprint, comment }] : [];
     });
-    const posted = await this.postReview(number, pr.head.sha, report, fresh);
+    const changeRequests = await this.syncChangeRequest(number, report);
+    const posted = await this.postReview(
+      number,
+      pr.head.sha,
+      report,
+      fresh,
+      changeRequests.request,
+    );
 
     const commented = new Set([...alreadyCommented, ...posted]);
     const current = new Set(report.findings.map((f) => f.fingerprint));
@@ -228,7 +235,60 @@ export class GitHubAdapter implements VcsAdapter {
     });
     if (previous) await this.options.api.updateIssueComment(previous.id, body);
     else await this.options.api.createIssueComment(number, body);
-    return { warnings: await this.resolveFixedThreads(number, report) };
+    return {
+      warnings: [
+        ...changeRequests.warnings,
+        ...(await changeRequests.withdraw()),
+        ...(await this.resolveFixedThreads(number, report)),
+      ],
+    };
+  }
+
+  // With requestChanges on, ocra's "changes requested" follows the verdict:
+  // requested once while it blocks, withdrawn (dismissed) once it no longer
+  // does. GitHub keeps a reviewer's last blocking review until it is
+  // dismissed, so otherwise a fixed pull request stayed blocked.
+  private async syncChangeRequest(
+    number: number,
+    report: ReviewReport,
+  ): Promise<{ request: boolean; warnings: string[]; withdraw(): Promise<string[]> }> {
+    const none = { request: false, warnings: [], withdraw: async () => [] };
+    if (this.options.requestChanges !== true) return none;
+    const blocking = report.verdict === "significant_concerns";
+    let active: number[];
+    try {
+      active = (await this.options.api.listReviews(number))
+        .filter((r) => r.state === "CHANGES_REQUESTED" && r.user && this.isBot(r.user.login))
+        .map((r) => r.id);
+    } catch (error) {
+      return {
+        request: blocking,
+        warnings: [`could not list earlier reviews: ${errorMessage(error)}`],
+        withdraw: async () => [],
+      };
+    }
+    if (blocking) return { ...none, request: active.length === 0 };
+    return {
+      request: false,
+      warnings: [],
+      withdraw: async () => {
+        const warnings: string[] = [];
+        for (const id of active) {
+          await this.options.api
+            .dismissReview(
+              number,
+              id,
+              `ocra: no blocking findings remain (verdict: ${report.verdict.replaceAll("_", " ")}).`,
+            )
+            .catch((error) =>
+              warnings.push(
+                `could not withdraw ocra's request for changes: ${errorMessage(error)}`,
+              ),
+            );
+        }
+        return warnings;
+      },
+    };
   }
 
   // Resolving threads is a courtesy: the summary already lists what was
@@ -276,9 +336,8 @@ export class GitHubAdapter implements VcsAdapter {
     commitId: string,
     report: ReviewReport,
     fresh: { fingerprint: string; comment: NonNullable<ReturnType<typeof inlineComment>> }[],
+    requestChanges: boolean,
   ): Promise<string[]> {
-    const requestChanges =
-      this.options.requestChanges === true && report.verdict === "significant_concerns";
     if (fresh.length === 0 && !requestChanges) return [];
     const review = {
       commit_id: commitId,

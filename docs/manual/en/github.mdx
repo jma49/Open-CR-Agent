@@ -15,6 +15,11 @@ permissions:
   contents: read
   pull-requests: write
 
+# One review per pull request at a time: a new push cancels the older run.
+concurrency:
+  group: ocra-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   review:
     runs-on: ubuntu-latest
@@ -26,6 +31,8 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
+
+Keep `fetch-depth: 0`: ocra needs the history between the base and the head, and a shallow checkout stops with a message saying so. The `concurrency` group matters too: without it, two quick pushes run two reviews that post the same inline comments, and the slower one can overwrite the summary with an older head. A cancelled run publishes nothing. ocra retries GitHub's rate limits and short outages a few times; it never repeats a request that may have posted a comment already.
 
 Store your model key as a repository secret. Models come from the base branch's `.ocra/config.json`, or from `OCRA_MODEL_*` variables in `env`.
 

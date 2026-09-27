@@ -17,6 +17,7 @@ export function fakeGitHub(
   threads: unknown[] = [],
   graphqlFails = false,
   editor: { login: string } | null = null,
+  reviews: unknown[] = [],
 ) {
   const calls: Call[] = [];
   const fetchImpl = (async (url: string, init?: RequestInit) => {
@@ -58,6 +59,7 @@ export function fakeGitHub(
       });
     }
     if (path.startsWith("/issues/7/comments") && method === "GET") return json(200, comments);
+    if (path.startsWith("/pulls/7/reviews?") && method === "GET") return json(200, reviews);
     if (path === "/pulls/7/reviews") {
       const rejected =
         reviewStatus !== 200 && (call.body as { comments: unknown[] }).comments.length > 0;
@@ -77,7 +79,10 @@ export const code: CodeSource = {
 export function adapter(fetchImpl: typeof fetch, requestChanges = false) {
   return new GitHubAdapter({
     pullRequest: { owner: "o", repo: "r", number: 7 },
-    api: new GitHubApi({ owner: "o", repo: "r" }, { token: "t", fetch: fetchImpl }),
+    api: new GitHubApi(
+      { owner: "o", repo: "r" },
+      { token: "t", fetch: fetchImpl, sleep: async () => {} },
+    ),
     code,
     botLogin: "github-actions[bot]",
     requestChanges,

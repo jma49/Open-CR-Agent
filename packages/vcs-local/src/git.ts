@@ -49,3 +49,16 @@ export function git(args: readonly string[], options: GitOptions): Promise<strin
     else child.stdin?.end(options.input);
   });
 }
+
+// CI checkouts are shallow by default; commits beyond the cut-off look
+// unrelated to git, which surfaces as a failed merge-base.
+export async function isShallow(root: string): Promise<boolean> {
+  const out = await git(["rev-parse", "--is-shallow-repository"], {
+    cwd: root,
+    okExitCodes: [0, 128],
+  });
+  return out.trim() === "true";
+}
+
+export const SHALLOW_HINT =
+  "the clone is shallow; fetch the full history (for example actions/checkout with fetch-depth: 0)";

@@ -15,6 +15,11 @@ permissions:
   contents: read
   pull-requests: write
 
+# One review per pull request at a time: a new push cancels the older run.
+concurrency:
+  group: ocra-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   review:
     runs-on: ubuntu-latest
@@ -26,6 +31,8 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
+
+保留 `fetch-depth: 0`：ocra 需要 base 与 head 之间的历史，浅克隆会直接停下并给出提示。`concurrency` 分组也很重要：没有它，连续两次 push 会同时跑两次审查，重复发同样的行内评论，较慢的那次还可能用更旧的 head 覆盖摘要。被取消的运行不会发布任何内容。遇到 GitHub 限流或短暂故障，ocra 会有限次地重试；可能已经发出评论的请求绝不会重复。
 
 把模型 key 存为仓库 secret。模型配置来自 base 分支的 `.ocra/config.json`，或者 `env` 里的 `OCRA_MODEL_*` 变量。
 
@@ -45,7 +52,7 @@ jobs:
 
 ## 会发布什么
 
-- **行内评论**：落在 diff 内的问题（每条都标明已核实、未核实或未核查），放在同一个 `COMMENT` 事件的评审里。ocra 从不批准 PR。设置 `github.requestChanges` 后，结论为 `significant_concerns` 时会请求修改。
+- **行内评论**：落在 diff 内的问题（每条都标明已核实、未核实或未核查），放在同一个 `COMMENT` 事件的评审里。ocra 从不批准 PR。设置 `github.requestChanges` 后，结论为 `significant_concerns` 时会请求修改：只请求一次，之后某次运行的结论不再阻塞时，ocra 会撤回（dismiss）自己的修改请求。
 - **一条摘要评论**：每次 push 都在原评论上更新，包括结论、总结、diff 之外的问题、上次评审后已修复的问题，以及覆盖范围和花费。
 
 下一次 push 时，ocra **只审查有改动的部分**：自上次评审所在的提交以来改动过的文件，加上上次没有审完的文件（比如任务失败）。未改动文件里的问题原样沿用：保持打开，继续计入结论，不重复评论。以下情况会重新审查全部文件：上次的提交已不在分支上（force-push 或 rebase）、摘要评论最后一次是被 ocra 以外的人编辑的（这时 ocra 也会忽略这条评论记录的全部状态，之前的行内评论可能会再发一次），或者传了 `--full`（例如写在 Action 的 `args` 里）。摘要里会写明本次属于哪种情况以及原因。

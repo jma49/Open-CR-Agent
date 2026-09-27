@@ -1,4 +1,4 @@
-import { GitError, git } from "./git.js";
+import { GitError, git, isShallow, SHALLOW_HINT } from "./git.js";
 
 export type ChangedFiles = { files: string[] } | { reason: string };
 
@@ -23,6 +23,9 @@ export async function filesChangedSince(
     await git(["merge-base", "--is-ancestor", from, to], { cwd: root });
   } catch (error) {
     if (error instanceof GitError && error.exitCode === 1) {
+      if (await isShallow(root)) {
+        return { reason: `commit ${short} cannot be traced to the new head: ${SHALLOW_HINT}` };
+      }
       return {
         reason: `commit ${short} is not an ancestor of the new head (force-push or rebase)`,
       };

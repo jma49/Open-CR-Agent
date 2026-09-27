@@ -40,7 +40,10 @@ describe("GitHubAdapter", () => {
       );
       return new GitHubAdapter({
         pullRequest: { owner: "o", repo: "r", number: 7 },
-        api: new GitHubApi({ owner: "o", repo: "r" }, { token: "t", fetch: fetchImpl }),
+        api: new GitHubApi(
+          { owner: "o", repo: "r" },
+          { token: "t", fetch: fetchImpl, sleep: async () => {} },
+        ),
         code,
         botLogin: "github-actions[bot]",
         ...(h ? { history: h } : {}),

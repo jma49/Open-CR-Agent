@@ -9,7 +9,7 @@ import {
   parseUnifiedDiff,
   type VcsAdapter,
 } from "@open-cr-agent/core";
-import { GitError, git } from "./git.js";
+import { GitError, git, isShallow, SHALLOW_HINT } from "./git.js";
 
 export type LocalTarget =
   | { mode: "workspace" }
@@ -142,7 +142,7 @@ export class LocalGitAdapter implements VcsAdapter {
     if (target.mode === "range") {
       const from = await verifyCommit(root, target.from);
       const to = await verifyCommit(root, target.to);
-      const base = (await git(["merge-base", from, to], { cwd: root })).trim();
+      const base = await mergeBase(root, from, to);
       const subjects = await git(["log", "--format=- %s", `${base}..${to}`], { cwd: root });
       const title = `Changes from ${target.from} to ${target.to}`;
       return {
@@ -195,6 +195,19 @@ async function workspaceDiff(root: string, base: string): Promise<string> {
     return await git([...DIFF_ARGS, base, "--"], { cwd: root, env });
   } finally {
     await rm(dir, { recursive: true, force: true });
+  }
+}
+
+async function mergeBase(root: string, from: string, to: string): Promise<string> {
+  try {
+    return (await git(["merge-base", from, to], { cwd: root })).trim();
+  } catch (error) {
+    if (error instanceof GitError && (await isShallow(root))) {
+      throw new Error(
+        `Cannot find where ${from.slice(0, 7)} and ${to.slice(0, 7)} diverge: ${SHALLOW_HINT}`,
+      );
+    }
+    throw error;
   }
 }
 

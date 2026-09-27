@@ -80,6 +80,31 @@ describe("GitHubAdapter", () => {
     expect(readState(body)?.findings[0]?.commented).toBe(false);
   });
 
+  it("requests changes once while blocking and withdraws the request once it is not", async () => {
+    const bot = { login: "github-actions[bot]" };
+    const earlier = [
+      { id: 11, state: "CHANGES_REQUESTED", user: bot },
+      { id: 12, state: "CHANGES_REQUESTED", user: { login: "maintainer" } },
+      { id: 13, state: "COMMENTED", user: bot },
+    ];
+    const blocking = report([finding(A, true, "critical")], "significant_concerns");
+
+    const again = fakeGitHub([], 200, [], false, null, earlier);
+    await adapter(again.fetchImpl, true).publish(blocking);
+    const posted = again.calls.filter((c) => c.method === "POST" && c.path === "/pulls/7/reviews");
+    expect(posted.map((c) => (c.body as { event: string }).event)).toEqual(["COMMENT"]);
+
+    const fixed = fakeGitHub([], 200, [], false, null, earlier);
+    await adapter(fixed.fetchImpl, true).publish(report([], "approved"));
+    expect(fixed.calls.filter((c) => c.method === "PUT").map((c) => c.path)).toEqual([
+      "/pulls/7/reviews/11/dismissals",
+    ]);
+
+    const off = fakeGitHub([], 200, [], false, null, earlier);
+    await adapter(off.fetchImpl).publish(report([], "approved"));
+    expect(off.calls.some((c) => c.method === "PUT" || c.path.includes("/reviews?"))).toBe(false);
+  });
+
   it("resolves the threads of fixed findings it commented on, and only those", async () => {
     const thread = (id: string, fingerprint: string, login: string, isResolved = false) => ({
       id,
