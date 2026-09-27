@@ -25,6 +25,15 @@ const diffs = [
 ] as FileDiff[];
 
 describe("reviewContext", () => {
+  it("refuses a file renamed away from a secret name", async () => {
+    const renamed = [
+      { oldPath: ".env.production", newPath: "config/settings.txt", patch: "p" },
+    ] as FileDiff[];
+    const context = reviewContext(fakeVcs(), renamed);
+    await expect(context.readFile("config/settings.txt")).rejects.toThrow(AccessDeniedError);
+    expect(() => context.readDiff("./config/settings.txt")).toThrow(AccessDeniedError);
+  });
+
   it("reads ordinary files through the adapter with a normalized path", async () => {
     const vcs = fakeVcs();
     const context = reviewContext(vcs, diffs);

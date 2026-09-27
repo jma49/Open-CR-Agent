@@ -215,14 +215,39 @@ describe("LocalGitAdapter.readFile", () => {
     expect(await adapter.readFile("/etc/passwd")).toBeUndefined();
   });
 
-  it("refuses symlinks that point outside the repository", async () => {
+  it("reads a symlink as its target path, as git stores it, never the target's content", async () => {
     const r = repo();
     const outside = mkdtempSync(join(tmpdir(), "ocra-outside-"));
     repos.push(outside);
     writeFileSync(join(outside, "secret.txt"), "secret\n");
     symlinkSync(join(outside, "secret.txt"), join(r.dir, "link.txt"));
     const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
-    expect(await adapter.readFile("link.txt")).toBeUndefined();
+    expect(await adapter.readFile("link.txt")).toBe(join(outside, "secret.txt"));
+  });
+
+  it("does not let a link inside the repository reach secrets the context refuses", async () => {
+    const r = repo();
+    r.write(".gitignore", ".env\n");
+    r.write(".env", "API_KEY=hunter2\n");
+    symlinkSync(".env", join(r.dir, "notes.txt"));
+    symlinkSync(".git", join(r.dir, "cfg"));
+    mkdirSync(join(r.dir, "docs"));
+    symlinkSync("../.env", join(r.dir, "docs", "AGENTS.md"));
+    commitAll(r, "links");
+    const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
+    const context = reviewContext(adapter, []);
+    expect(await context.readFile("notes.txt")).toBe(".env");
+    expect(await context.readFile("docs/AGENTS.md")).toBe("../.env");
+    expect(await context.readFile("cfg/config")).toBeUndefined();
+    expect(await adapter.readFile("cfg/config")).toBeUndefined();
+    await expect(context.readFile(".env")).rejects.toThrow("not allowed");
+  });
+
+  it("returns nothing for a directory", async () => {
+    const r = repo();
+    r.write("src/a.ts", "a\n");
+    const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
+    expect(await adapter.readFile("src")).toBeUndefined();
   });
 
   it("reads files whose names start with two dots", async () => {

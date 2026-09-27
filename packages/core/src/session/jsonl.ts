@@ -1,6 +1,15 @@
 import { randomBytes } from "node:crypto";
-import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import {
+  appendFileSync,
+  closeSync,
+  constants,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  writeFileSync,
+  writeSync,
+} from "node:fs";
+import { dirname, join } from "node:path";
 import type { ReviewEvent } from "../pipeline/report.js";
 
 export const EVENTS_FILE = "events.jsonl";
@@ -23,12 +32,22 @@ export class JsonlSessionWriter {
     sessionsDir: string,
     readonly id: string = newSessionId(),
   ) {
+    // The sessions directory lives in the reviewed tree, which may carry
+    // links planted to send the logs, or the .gitignore write, elsewhere.
+    for (const dir of [dirname(sessionsDir), sessionsDir]) refuseSymlink(dir);
     this.dir = join(sessionsDir, id);
     mkdirSync(this.dir, { recursive: true });
     // The directory is created before a workspace review reads its diff, and
     // the logs hold code and findings: keep them out of git and out of reviews.
-    const ignore = join(sessionsDir, ".gitignore");
-    if (!existsSync(ignore)) writeFileSync(ignore, "*\n");
+    const fd = openSync(
+      join(sessionsDir, ".gitignore"),
+      constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW,
+    );
+    try {
+      writeSync(fd, "*\n");
+    } finally {
+      closeSync(fd);
+    }
   }
 
   write(event: ReviewEvent): void {
@@ -37,5 +56,15 @@ export class JsonlSessionWriter {
     if (event.type === "run_finished") {
       writeFileSync(join(this.dir, REPORT_FILE), `${JSON.stringify(event.report, null, 2)}\n`);
     }
+  }
+}
+
+function refuseSymlink(path: string): void {
+  try {
+    if (lstatSync(path).isSymbolicLink()) {
+      throw new Error(`Refusing to write the session log through the symbolic link ${path}`);
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
 }

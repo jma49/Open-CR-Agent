@@ -12,6 +12,22 @@ export class AccessDeniedError extends Error {}
 // and anchoring and every agent re-read the same files.
 export function reviewContext(vcs: VcsAdapter, diffs: readonly FileDiff[]): ReviewContext {
   const reads = new Map<string, Promise<string | undefined>>();
+  // A file renamed away from a secret name still holds the secret, and
+  // selection already excludes it from review for that reason.
+  const renamedSecrets = new Set(
+    diffs.filter((d) => d.newPath !== d.oldPath && isSecretPath(d.oldPath)).map((d) => d.newPath),
+  );
+  const isReadable = (path: string) => {
+    const normalized = normalize(path);
+    return normalized !== undefined && isAllowed(normalized) && !renamedSecrets.has(normalized);
+  };
+  const allowedPath = (path: string) => {
+    const normalized = normalize(path);
+    if (normalized === undefined || !isReadable(normalized)) {
+      throw new AccessDeniedError(`Access to ${path} is not allowed`);
+    }
+    return normalized;
+  };
   return {
     async readFile(path) {
       const allowed = allowedPath(path);
@@ -34,17 +50,7 @@ export function reviewContext(vcs: VcsAdapter, diffs: readonly FileDiff[]): Revi
   };
 }
 
-function allowedPath(path: string): string {
-  const normalized = normalize(path);
-  if (normalized === undefined || !isReadable(normalized)) {
-    throw new AccessDeniedError(`Access to ${path} is not allowed`);
-  }
-  return normalized;
-}
-
-function isReadable(path: string): boolean {
-  const normalized = normalize(path);
-  if (normalized === undefined) return false;
+function isAllowed(normalized: string): boolean {
   const segments = normalized.toLowerCase().split("/");
   return !segments.includes(".git") && !isSecretPath(normalized);
 }

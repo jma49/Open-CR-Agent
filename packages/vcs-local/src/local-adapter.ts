@@ -1,6 +1,6 @@
-import { cp, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
+import { cp, lstat, mkdtemp, readFile, readlink, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
   type ChangeRequest,
   type CodeMatch,
@@ -206,15 +206,22 @@ function relativeInside(root: string, absolute: string): string | undefined {
   return inside;
 }
 
-// Symlinks are resolved before the containment check so a link inside the
-// repository cannot expose files outside it.
+// Reads what git would store, as range and commit mode do: a symlink reads as
+// its target path and a path through a symlinked directory does not exist.
+// Following links would let a committed `notes.txt -> .env` read a file the
+// core access policy refuses by name.
 async function readWorkingTreeFile(root: string, inside: string): Promise<string | undefined> {
   try {
-    const real = await realpath(resolve(root, inside));
-    if (relativeInside(await realpath(root), real) === undefined) return undefined;
-    return await readFile(real, "utf8");
+    const parent = dirname(inside);
+    const realParent = await realpath(resolve(root, parent));
+    if (realParent !== resolve(await realpath(root), parent)) return undefined;
+    const path = join(realParent, basename(inside));
+    const stat = await lstat(path);
+    if (stat.isSymbolicLink()) return await readlink(path, "utf8");
+    return stat.isFile() ? await readFile(path, "utf8") : undefined;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return undefined;
     throw error;
   }
 }

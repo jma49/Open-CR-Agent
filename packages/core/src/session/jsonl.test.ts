@@ -1,4 +1,12 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -33,6 +41,38 @@ describe("JsonlSessionWriter", () => {
     dirs.push(root);
     new JsonlSessionWriter(root, "s1");
     expect(readFileSync(join(root, ".gitignore"), "utf8")).toBe("*\n");
+  });
+
+  it("refuses sessions directories reached through a symbolic link", () => {
+    const root = mkdtempSync(join(tmpdir(), "ocra-session-"));
+    const elsewhere = mkdtempSync(join(tmpdir(), "ocra-elsewhere-"));
+    dirs.push(root, elsewhere);
+    mkdirSync(join(root, ".ocra"));
+    symlinkSync(elsewhere, join(root, ".ocra", "sessions"));
+    expect(() => new JsonlSessionWriter(join(root, ".ocra", "sessions"), "s1")).toThrow(
+      "symbolic link",
+    );
+    symlinkSync(elsewhere, join(root, "linked-ocra"));
+    expect(() => new JsonlSessionWriter(join(root, "linked-ocra", "sessions"), "s1")).toThrow(
+      "symbolic link",
+    );
+    expect(existsSync(join(elsewhere, "s1"))).toBe(false);
+  });
+
+  it("never writes the .gitignore through a link and replaces other content", () => {
+    const root = mkdtempSync(join(tmpdir(), "ocra-session-"));
+    const elsewhere = mkdtempSync(join(tmpdir(), "ocra-elsewhere-"));
+    dirs.push(root, elsewhere);
+    mkdirSync(root, { recursive: true });
+    symlinkSync(join(elsewhere, "planted"), join(root, ".gitignore"));
+    expect(() => new JsonlSessionWriter(root, "s1")).toThrow();
+    expect(existsSync(join(elsewhere, "planted"))).toBe(false);
+
+    const other = mkdtempSync(join(tmpdir(), "ocra-session-"));
+    dirs.push(other);
+    writeFileSync(join(other, ".gitignore"), "!*\n");
+    new JsonlSessionWriter(other, "s1");
+    expect(readFileSync(join(other, ".gitignore"), "utf8")).toBe("*\n");
   });
 
   it("creates sortable, unique session ids", () => {
