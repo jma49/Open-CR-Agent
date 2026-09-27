@@ -64,5 +64,5 @@ Traps we have already fallen into, across this repository and the site. Each ent
 - **The manual is generated.** `content/docs` in the site is copied from `docs/manual` here; edits there are overwritten. Edit the manual in this repository.
 - **The Chrome extension cannot screenshot `ocra-nine.vercel.app`.** Verify visuals on a local `next start`.
 - **The claude.ai Vercel connector is not authorized** ("User not found"). Use the Vercel dashboard or `npx vercel` instead.
-- **Vercel's Hobby build limit.** Each merge that touches `docs/manual/` triggers a site build through the deploy hook; a day with many manual changes hits "Deployment rate limited — retry in 24 hours". Batch manual changes, or accept that the site catches up a day later.
+- **Vercel's Hobby build limit.** Each merge that touches `docs/manual/` triggers a site build through the deploy hook; a day with many manual changes hits "Deployment rate limited — retry in 24 hours". The deploy hook workflow now waits 30 minutes and lets a newer push cancel the wait, and the site builds only `main`.
 - **CJK headings do not balance well automatically.** Give Chinese headings their own sizes and explicit line breaks.

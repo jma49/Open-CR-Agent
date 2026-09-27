@@ -14,6 +14,7 @@ State of the project as of 2026-09-26, for whoever picks it up next (human or ag
 | Architecture | `docs/architecture.md`, decisions in `docs/adr/0001`–`0008`, spike report `docs/spikes/0001-opencode-runtime.md` |
 | Audits | `docs/audits/` (latest: `2026-09-26-self-audit.md`) |
 | Pitfalls | `docs/pitfalls.md` |
+| Pending verification | `docs/pending-verification.md` (what still needs a deploy or a model key to check) |
 | User manual | `docs/manual/{en,zh}` (rendered by the site; manual changes on `main` redeploy it) |
 
 ## Status
