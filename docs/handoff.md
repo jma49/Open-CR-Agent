@@ -9,14 +9,14 @@ State of the project as of 2026-09-26, for whoever picks it up next (human or ag
 | Main repository | https://github.com/jma49/Open-CR-Agent (public, Apache-2.0) |
 | Site repository | https://github.com/jma49/open-cr-agent-site (public) |
 | Live site | https://ocra-nine.vercel.app (English at `/`, Chinese at `/zh`) |
-| Vercel project | `ocra`; deploys the site repo's `main` through the deploy hook |
+| Vercel project | `ocra`; no automatic deploys, deploy by hand from the site repo (`npm run deploy`) |
 | Contributor rules | `AGENTS.md` in each repository (`CLAUDE.md` imports it) |
 | Architecture | `docs/architecture.md`, decisions in `docs/adr/0001`–`0008`, spike report `docs/spikes/0001-opencode-runtime.md` |
 | Audits | `docs/audits/` (latest: `2026-09-26-self-audit.md`) |
 | Pitfalls | `docs/pitfalls.md` |
 | Pending verification | `docs/pending-verification.md` (what still needs a deploy or a model key to check) |
 | Releasing | `docs/releasing.md` (npm: what is ready, decisions, steps) |
-| User manual | `docs/manual/{en,zh}` (rendered by the site; redeploy by hand with `gh workflow run site-deploy.yml`) |
+| User manual | `docs/manual/{en,zh}` (rendered by the site; changes reach the live site only when the site is deployed) |
 
 ## Status
 
@@ -41,7 +41,7 @@ Pipeline today: ingest → select → triage → bundle → **matrix** (reviewer
 
 **Open, not merged, waiting for an eval (`[needs-eval]`):** #84 (B1, `ocra_` prompt tags), #85 (B2, security reviewer at every tier; free ceiling: security reachable 13 → 16 of 18), #86 (B3, strict anchoring). Each changes what models see or which findings are reported; `docs/pending-verification.md` says what to measure. They touch some of the same test files; rebase each on `main` before merging.
 
-**Site (2026-09-26/27):** redesigned (monochrome, Aquamarine brand, a 3D voxel frog mascot in three.js) and refreshed section by section (animated pipeline walk-through, pull request thread with its states, illustrated decisions, CLI/Action tabs, section rhythm, roadmap timeline); the manual uses Steps, Cards and Callouts. **Nothing deploys automatically any more** (site `vercel.json`: `git.deploymentEnabled: false`); the live site is still the first redesign commit until the maintainer runs `gh workflow run site-deploy.yml` here (the first run also confirms the deploy hook still works with Git deployments off).
+**Site (2026-09-26/27):** redesigned (monochrome, Aquamarine brand, a 3D voxel frog mascot in three.js) and refreshed section by section (animated pipeline walk-through, pull request thread with its states, illustrated decisions, CLI/Action tabs, section rhythm, roadmap timeline); the manual uses Steps, Cards and Callouts. An exploratory QA pass (separate agent, all pages, 4 widths, both themes, reduced motion on/off) found 17 issues; all fixed and re-tested (site #20, main #98), including a hydration error on every English docs page and broken Edit-on-GitHub links. **Live since 2026-09-27** at https://ocra-nine.vercel.app (site `2693463` plus the deploy script). **Nothing deploys automatically** (site `vercel.json`: `git.deploymentEnabled: false`), and deploy hooks do not run while Git deployments are off (verified: a triggered hook created no deployment), so `site-deploy.yml` was removed. Deploy, only when the maintainer asks, with `VERCEL_SCOPE=<team> npm run deploy` in the site repository (deploys its committed HEAD through a logged-in Vercel CLI; one build per run).
 
 Open work, in order:
 
@@ -55,7 +55,7 @@ Open work, in order:
 - **Model key: none.** Nothing that calls a model can run until the maintainer provides a key. The runtime names a missing key instead of failing with "model not found".
 - **Models for evaluation:** `gemini-flash-lite-latest` is too weak to evaluate prompts (see #12); use a Flash or Pro class model.
 - **Model chain:** `gemini-3.8-flash` was removed from the dogfood `.ocra/config.json` and the README example: it fails inside OpenCode's step loop (400 "Requests ending with a model turn") and cost ~$0.02 and ~20 s per run before failing over.
-- **Secrets:** `SITE_DEPLOY_HOOK` (main repo, Vercel deploy hook for the site). No other secrets are configured. Never print or commit secret values.
+- **Secrets:** `SITE_DEPLOY_HOOK` (main repo) is no longer used since `site-deploy.yml` was removed; the maintainer may delete it. No other secrets are configured. Never print or commit secret values.
 - **Vercel build limit:** the Hobby plan rate-limits builds. Every manual change on `main` triggers a site build, and on 2026-09-26 ~15 such merges exhausted it ("retry in 24 hours"); the site's latest copy deploys on the next build.
 
 ## Traps and rules
@@ -77,4 +77,4 @@ Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) i
 4. ~~Reorder the dogfood `.ocra/config.json` chain (audit P5)?~~ Decided: `gemini-3.8-flash` is removed from the chain and the README example.
 5. ~~Decisions taken in the fix round~~ Confirmed by the maintainer (2026-09-26) as implemented in #79–#83: unrechecked findings count in the verdict, an edit of the anchored lines counts as a fix, unverified criticals give `minor_issues`, the 80% review share stays until it can be measured, an edited summary forces a full review, base-branch config changes do not re-review unchanged files. Also: tests count toward the 500-line rule (now in AGENTS.md); the `.local/` move (#82) is fine; #67 is not run for now (it would need the key as a repository secret, and the free tier cannot run it).
 6. npm scope: **`@open-cr-agent`** (decided). Still open: when, and token vs trusted publishing (`docs/releasing.md`).
-7. Site deploys: **manual only** (decided); `site-deploy.yml` runs on `workflow_dispatch`.
+7. Site deploys: **manual only** (decided), with `npm run deploy` in the site repository; the unused `SITE_DEPLOY_HOOK` secret can be deleted.

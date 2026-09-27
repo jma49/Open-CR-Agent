@@ -86,7 +86,7 @@ Concrete rules behind the principles above, from the [2026-09-26 self-audit](doc
 - **Any change to user-facing behavior updates the manual in the same PR, in both languages**: CLI commands, flags, output or exit codes, configuration keys, environment variables, rules, plugin APIs, security properties.
 - The manual describes what exists today. Planned features are marked as planned; never document behavior that is not implemented.
 - `docs/architecture.md` and `docs/adr/` are for contributors; the manual is for users.
-- Merging a manual change to `main` does not redeploy the site: check it on a local build of the site repository, and redeploy by hand when wanted (`gh workflow run site-deploy.yml`, which calls the Vercel deploy hook in the `SITE_DEPLOY_HOOK` secret).
+- Merging a manual change to `main` does not redeploy the site: check it on a local build of the site repository, and deploy only when the maintainer asks, with `VERCEL_SCOPE=<team> npm run deploy` in the site repository (deploys its committed HEAD through a logged-in Vercel CLI; one build per run). Vercel's Git deployments and deploy hooks are both off.
 
 ## Git workflow
 
@@ -114,5 +114,5 @@ Concrete rules behind the principles above, from the [2026-09-26 self-audit](doc
 - New behavior ships with tests. Review-quality changes (prompts, rules, stages) must be measured with the eval package before merge.
 - Record significant technical decisions as a new ADR in `docs/adr/` instead of rewriting old ones. Record spike results in `docs/spikes/`.
 - At the start of a session, read `docs/handoff.md`, and `.local/` if it exists: it is git-ignored and holds notes about the maintainer's machine and agent tooling (shell, keys, connectors) that do not belong in public docs. Put such notes there, not in `docs/`.
-- Before ending a working session, update `docs/handoff.md`: current state, environment notes, open questions and next steps. Add anything that cost real time to understand to `docs/pitfalls.md`.
+- **Update `docs/handoff.md` at the end of every task or batch of work, before reporting it done, without being asked** (current state, environment notes, open questions, next steps; the site's state included). The maintainer should never have to remind you. Add anything that cost real time to understand to `docs/pitfalls.md`.
 - Periodic self-audits (architecture, engineering including security and performance, product) go in `docs/audits/<date>-<topic>.md`; their actionable findings become issues.
