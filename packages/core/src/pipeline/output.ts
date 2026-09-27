@@ -12,6 +12,7 @@ import type { JudgeDecisions } from "../judge/judge.js";
 import type { MemoryEntry } from "../memory/memory.js";
 import type { RefutedFinding } from "../verify/verify.js";
 import type { SkippedCell } from "./matrix.js";
+import type { ReviewPreview } from "./preview.js";
 import type { CoverageEntry, ReviewReport, TaskOutcome } from "./report.js";
 
 // The published shape of a review: `--format json` and a session's
@@ -138,5 +139,28 @@ function outputPrior(f: PriorFinding): OutputPriorFinding {
     file: f.file,
     severity: f.severity,
     verification: f.verification ?? "unchecked",
+  };
+}
+
+// The published shape of `ocra review --plan --format json`, versioned like
+// the report. The preview is already free of internal fields; the version
+// makes the contract explicit.
+export const PLAN_VERSION = 1;
+
+export type PlanOutput = { version: typeof PLAN_VERSION } & ReviewPreview;
+
+export function toPlanOutput(preview: ReviewPreview): PlanOutput {
+  return {
+    version: PLAN_VERSION,
+    changeRequest: preview.changeRequest,
+    tier: preview.tier,
+    selected: preview.selected,
+    excluded: preview.excluded,
+    bundles: preview.bundles,
+    groupingSkipped: preview.groupingSkipped,
+    tasks: preview.tasks,
+    skipped: preview.skipped,
+    promptTokens: preview.promptTokens,
+    warnings: preview.warnings,
   };
 }

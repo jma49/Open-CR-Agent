@@ -11,7 +11,7 @@ Nothing has been published yet. This is what is ready, what is missing, and the 
 
 ## Before the first release
 
-- The versioned output format (`version: 1`, `packages/core/src/pipeline/output.ts`) is in place; it becomes a published contract with the first release. The `--plan` JSON is not versioned yet.
+- The versioned output format (`version: 1`, `packages/core/src/pipeline/output.ts`) is in place; it becomes a published contract with the first release. The `--plan` JSON is versioned too (`toPlanOutput`).
 
 ## Decisions for the maintainer
 

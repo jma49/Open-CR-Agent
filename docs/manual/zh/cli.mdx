@@ -63,7 +63,7 @@ ocra review [options]
 
 `--format json` 会输出完整报告：变更信息、风险档位、结论和总结、每个改动文件的覆盖情况（已审查、失败、未被覆盖、自上次评审后未改动，或被排除及原因）、审查 PR 时本次是增量还是全量审查及原因（`scope`）、分组、各任务结果、被 Matrix 跳过的（审查员，分组）组合、被核查丢弃的问题（`refuted`，附原因）、核查没能检查的 critical 数量（`unverifiedCriticals`）、Judge 合并、丢弃或重新定级的记录（`judgement`）、问题列表、token 用量与花费，以及警告信息。会话里的 `report.json` 格式相同。
 
-这个格式带版本号（`"version": 1`），是一份约定：后续版本只会新增可选字段，否则就会改版本号。每条问题包含 `fingerprint`（多次运行间保持稳定；`ocra memory add` 接受它的前缀）、`reviewer`、`category`、`severity`、`verification`（`confirmed`、`uncertain` 或 `unchecked`）、`file`、`lines`（`{ start, end }`，问题没能对应到具体行时不存在）、`inDiff`、`status`（`new`，或者之前的审查也报过时为 `unfixed`）、`title`、`body`、可选的 `suggestion`、`evidence`、`code`（引用的代码），以及 `--ultra` 下的 `lowConfidence`。`--plan` 输出的 JSON 暂时还不是稳定约定。
+这个格式带版本号（`"version": 1`），是一份约定：后续版本只会新增可选字段，否则就会改版本号。每条问题包含 `fingerprint`（多次运行间保持稳定；`ocra memory add` 接受它的前缀）、`reviewer`、`category`、`severity`、`verification`（`confirmed`、`uncertain` 或 `unchecked`）、`file`、`lines`（`{ start, end }`，问题没能对应到具体行时不存在）、`inDiff`、`status`（`new`，或者之前的审查也报过时为 `unfixed`）、`title`、`body`、可选的 `suggestion`、`evidence`、`code`（引用的代码），以及 `--ultra` 下的 `lowConfidence`。`--plan` 输出的 JSON 同样带版本号（`"version": 1`）：变更信息、风险档位、选中和排除的文件、分组、各任务及其估算的提示词大小、被跳过的（审查员，分组）组合，以及警告信息。
 
 ### 会话记录
 

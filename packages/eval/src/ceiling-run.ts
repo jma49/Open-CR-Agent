@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { parseUnifiedDiff, type ReviewPreview, type RiskTier } from "@open-cr-agent/core";
+import { type PlanOutput, parseUnifiedDiff, type RiskTier } from "@open-cr-agent/core";
 import {
   classifyReferences,
   type ReferenceReach,
@@ -75,7 +75,7 @@ async function plan(
   dir: string,
   instance: Instance,
   command: readonly string[],
-): Promise<ReviewPreview> {
+): Promise<PlanOutput> {
   const [bin, ...prefix] = command;
   if (!bin) throw new Error("ocra command is empty");
   const result = await exec(
@@ -95,5 +95,5 @@ async function plan(
     { cwd: dir, timeoutMs: 5 * 60_000 },
   );
   if (result.exitCode !== 0) throw new Error(result.stderr.trim() || `exit ${result.exitCode}`);
-  return JSON.parse(result.stdout) as ReviewPreview;
+  return JSON.parse(result.stdout) as PlanOutput;
 }

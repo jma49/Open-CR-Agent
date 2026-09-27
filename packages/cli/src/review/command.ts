@@ -15,6 +15,7 @@ import {
   securityReviewerPlugin,
   sessionJsonlPlugin,
   startPlugins,
+  toPlanOutput,
 } from "@open-cr-agent/core";
 import { opencodeRuntimePlugin } from "@open-cr-agent/runtime-opencode";
 import { githubPlugin } from "@open-cr-agent/vcs-github";
@@ -104,7 +105,8 @@ export async function reviewCommand(
       ...(args.ultra ? { ultra: true } : {}),
       ...(config.maxTasks !== undefined ? { maxTasks: config.maxTasks } : {}),
     });
-    const rendered = args.format === "json" ? `${safeJson(preview)}\n` : renderPlan(preview);
+    const rendered =
+      args.format === "json" ? `${safeJson(toPlanOutput(preview))}\n` : renderPlan(preview);
     if (args.output === undefined) io.out.write(rendered);
     else await deps.writeFile(resolve(deps.cwd, args.output), rendered);
     return EXIT.ok;
