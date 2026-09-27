@@ -117,6 +117,10 @@ describe("ocra review --pr", () => {
     const prompts: string[] = [];
     const script = async function* (spec: AgentTaskSpec): AsyncIterable<AgentEvent> {
       prompts.push(spec.userPrompt);
+      if (spec.reviewer !== "correctness") {
+        yield { type: "done", taskId: spec.taskId };
+        return;
+      }
       yield {
         type: "finding",
         taskId: spec.taskId,
@@ -186,7 +190,7 @@ describe("ocra review --pr", () => {
 
   it("ignores even the base branch's config with --no-repo-config", async () => {
     const { clone, base, head } = pullRequestFixture({
-      reviewers: { correctness: { enabled: false } },
+      reviewers: { correctness: { enabled: false }, security: { enabled: false } },
     });
     const plan = async (...extra: string[]) => {
       const out = capture();
@@ -221,6 +225,10 @@ describe("ocra review --pr", () => {
           async *runTask(spec: AgentTaskSpec): AsyncIterable<AgentEvent> {
             if (failOthers && !spec.userPrompt.includes("retries = -1")) {
               yield { type: "error", taskId: spec.taskId, error: "overloaded", retryable: true };
+              return;
+            }
+            if (!spec.taskId.startsWith("correctness")) {
+              yield { type: "done", taskId: spec.taskId };
               return;
             }
             yield {

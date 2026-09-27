@@ -107,6 +107,10 @@ function fixture() {
 function reviewer(options: { fail?: boolean } = {}) {
   const reviewed: string[][] = [];
   const script = async function* (spec: AgentTaskSpec): AsyncIterable<AgentEvent> {
+    if (spec.reviewer !== "correctness") {
+      yield { type: "done", taskId: spec.taskId };
+      return;
+    }
     const files = ["a.ts", "b.ts"].filter((f) => spec.userPrompt.includes(`<file path="${f}"`));
     reviewed.push(files);
     if (options.fail) {

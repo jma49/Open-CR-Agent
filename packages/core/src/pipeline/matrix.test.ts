@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { Bundle } from "../bundle/bundle.js";
 import type { FileDiff } from "../domain.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
+import { performanceReviewer } from "../review/reviewers/performance.js";
+import { securityReviewer } from "../review/reviewers/security.js";
 import { planMatrix, planTasks } from "./matrix.js";
 
 function bundle(label: string, ...paths: string[]): Bundle {
@@ -28,6 +30,18 @@ function cells(matrix: ReturnType<typeof planMatrix>) {
 }
 
 describe("planMatrix", () => {
+  it("runs the built-in security reviewer on trivial changes, but not performance", () => {
+    const matrix = planMatrix(
+      [bundle("small", "src/auth-check.ts")],
+      [securityReviewer, performanceReviewer],
+      "trivial",
+    );
+    expect(matrix.cells.map((c) => c.reviewer.id)).toEqual(["security"]);
+    expect(matrix.skipped).toEqual([
+      { reviewer: "performance", bundle: "small", reason: "below_tier" },
+    ]);
+  });
+
   it("runs every reviewer on every bundle when scopes allow it", () => {
     const matrix = planMatrix(bundles, [correctness], "trivial");
     expect(cells(matrix)).toEqual([

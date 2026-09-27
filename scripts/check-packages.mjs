@@ -102,7 +102,7 @@ try {
   );
   writeFileSync(join(repo, "app.ts"), "export const retries = -1;\n");
   const plan = run(ocra, ["review", "--plan"], repo);
-  if (!plan.includes("Review tasks: 1")) throw new Error(`unexpected --plan output:\n${plan}`);
+  if (!plan.includes("Review tasks: 2")) throw new Error(`unexpected --plan output:\n${plan}`);
   console.log(`installed ocra ${version} runs: --version and review --plan`);
 } finally {
   rmSync(work, { recursive: true, force: true });

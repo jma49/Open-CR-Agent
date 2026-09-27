@@ -88,7 +88,13 @@ function deps(
   };
 }
 
+// Only the correctness reviewer reports; others (security runs at every
+// tier) find nothing.
 const critical: Script = async function* (spec) {
+  if (spec.reviewer !== "correctness") {
+    yield { type: "done", taskId: spec.taskId };
+    return;
+  }
   yield {
     type: "finding",
     taskId: spec.taskId,

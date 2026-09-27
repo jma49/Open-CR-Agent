@@ -49,6 +49,8 @@ export const securityReviewer: ReviewerDefinition = {
   category: "security",
   modelTier: "standard",
   systemPrompt: SYSTEM_PROMPT,
-  scope: { minTier: "lite", ignore: [...DOCUMENTATION_FILES, ...TEST_FILES] },
+  // Every tier: a small diff costs few tokens, and removing one authorization
+  // check is exactly a small diff.
+  scope: { minTier: "trivial", ignore: [...DOCUMENTATION_FILES, ...TEST_FILES] },
   rules: { general: SECURITY_RULES },
 };
