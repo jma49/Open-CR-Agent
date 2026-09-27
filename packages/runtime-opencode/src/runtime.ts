@@ -1,3 +1,4 @@
+import { rmSync } from "node:fs";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -68,6 +69,7 @@ export interface OpenCodeRuntimeOptions extends RuntimeOptions {
 }
 
 interface Infra {
+  onExit: () => void;
   root: string;
   tools: ToolServer;
   server: OpencodeServer;
@@ -179,6 +181,7 @@ export class OpenCodeRuntime implements AgentRuntime {
     const infra = await this.infra?.catch(() => undefined);
     this.infra = undefined;
     if (!infra) return;
+    process.off("exit", infra.onExit);
     await Promise.allSettled([infra.server.close(), infra.tools.close(), infra.dispatcher.close()]);
     await rm(infra.root, { recursive: true, force: true });
   }
@@ -228,7 +231,14 @@ export class OpenCodeRuntime implements AgentRuntime {
         headers: { Authorization: server.authorization },
         fetch: untimedFetch(dispatcher),
       });
-      return { root, tools, server, client, dispatcher };
+      // A second Ctrl-C exits at once, before dispose() can run: stop
+      // OpenCode and remove its directory synchronously on the way out.
+      const onExit = () => {
+        server.killNow();
+        rmSync(root, { recursive: true, force: true });
+      };
+      process.on("exit", onExit);
+      return { root, tools, server, client, dispatcher, onExit };
     } catch (error) {
       await tools.close();
       await rm(root, { recursive: true, force: true });

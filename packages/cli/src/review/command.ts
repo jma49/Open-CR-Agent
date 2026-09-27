@@ -156,8 +156,19 @@ export async function reviewCommand(
   }
   if (interrupt.signal.aborted) return EXIT.interrupted;
   if (target.publish) {
-    const published = await vcs.publish(report);
-    for (const warning of published.warnings) warn(warning);
+    // Stopping halfway could post the inline comments without the summary
+    // that remembers them; a first Ctrl-C only warns.
+    const stopHolding = deps.onInterrupt?.(() => {
+      io.err.write(
+        "[ocra] Publishing; Ctrl-C again quits now and may leave the pull request half updated\n",
+      );
+    });
+    try {
+      const published = await vcs.publish(report);
+      for (const warning of published.warnings) warn(warning);
+    } finally {
+      stopHolding?.();
+    }
     io.err.write("[ocra] Published the review to the pull request\n");
   }
   return exitCode(report, io.err);

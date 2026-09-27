@@ -137,7 +137,14 @@ async function readConfigFile(
   try {
     remote = await fetchRemoteConfig(local.data.extends, options.fetch);
   } catch (error) {
-    options.warn?.(`could not load extends ${local.data.extends}: ${(error as Error).message}`);
+    // Its limits are lost with it; say so rather than run silently unbounded.
+    const limits =
+      local.data.maxCostUsd === undefined
+        ? "; none of its settings apply, including any spend or task limit"
+        : "; none of its settings apply";
+    options.warn?.(
+      `could not load extends ${local.data.extends}: ${(error as Error).message}${limits}`,
+    );
     return { config: local.data, rules: [] };
   }
   const merged = configSchema.safeParse(mergeConfig(remote, data as Record<string, unknown>));

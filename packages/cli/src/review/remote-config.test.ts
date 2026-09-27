@@ -76,6 +76,8 @@ describe("extends", () => {
       ],
       ["http://c.example/o.json", body, "must be an https URL"],
       ["https://c.example/o.json", { plugins: ["./evil.mjs"] }, "is invalid"],
+      // A known key with a wrong value: ignored with a warning, not fatal.
+      ["https://c.example/o.json", { verify: "yes" }, "its settings are invalid"],
       [
         "https://c.example/o.json",
         `{"include":["${"x".repeat(300 * 1024)}"]}`,
@@ -93,6 +95,9 @@ describe("extends", () => {
         },
       );
       expect(warnings[0]).toContain(message);
+      if (!message.startsWith("its settings")) {
+        expect(warnings[0]).toContain("including any spend or task limit");
+      }
       expect(config.concurrency).toBe(3);
       expect(config.rules).toEqual([]);
     }

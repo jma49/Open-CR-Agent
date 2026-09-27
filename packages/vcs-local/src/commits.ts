@@ -1,5 +1,7 @@
 import { git } from "./git.js";
 
+const FETCH_TIMEOUT_MS = 5 * 60_000;
+
 // Pull request commits are often missing from a local clone (shallow CI
 // checkouts, fork heads). Fetch them by SHA first, then through the extra
 // refspecs (for example pull/<n>/head), and name what is still missing.
@@ -28,9 +30,12 @@ export async function ensureCommits(
   for (const attempt of [absent, refspecs]) {
     if (absent.length === 0) return;
     if (attempt.length === 0) continue;
+    // No credential prompt can block a non-interactive run.
     await git(["fetch", "--quiet", "--no-tags", remote, ...attempt], {
       cwd: root,
       okExitCodes: [0, 1, 128],
+      timeoutMs: FETCH_TIMEOUT_MS,
+      env: { GIT_TERMINAL_PROMPT: "0" },
     });
     absent = await missing();
   }

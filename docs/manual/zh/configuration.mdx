@@ -96,7 +96,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 
 共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`reviewers`、`github` 和 `rules`（格式与 `.ocra/rules.json` 的条目相同）。它不能列出插件，也不能选择运行时：它来自仓库之外，不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 会合并，`models`、`reviewers` 和 `github` 按键合并。
 
-只接受 `https` 地址，不跟随重定向，最大 256 KB。可选的 `#sha256=` 片段会固定文件内容。文件无法加载或内容无效时，ocra 会给出警告，然后继续使用仓库自己的设置。
+只接受 `https` 地址，不跟随重定向，最大 256 KB。可选的 `#sha256=` 片段会固定文件内容。文件无法加载或内容无效时，ocra 会给出警告，然后继续使用仓库自己的设置；只写在共享文件里的限制（例如 `maxCostUsd`）这时就不生效，必须始终生效的限制请在仓库里也写一份。
 
 ## 插件
 

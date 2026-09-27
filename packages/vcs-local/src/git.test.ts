@@ -22,4 +22,12 @@ describe("git", () => {
     });
     await expect(out).resolves.toBe("");
   });
+
+  it("ends a command that does not finish in time", async () => {
+    const started = Date.now();
+    await expect(
+      git(["-c", "alias.nap=!sleep 5", "nap"], { cwd: process.cwd(), timeoutMs: 200 }),
+    ).rejects.toThrow("timed out after 0s");
+    expect(Date.now() - started).toBeLessThan(3_000);
+  });
 });

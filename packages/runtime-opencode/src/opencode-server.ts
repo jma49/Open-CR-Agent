@@ -6,6 +6,8 @@ export interface OpencodeServer {
   url: string;
   authorization: string;
   close(): Promise<void>;
+  // For a process that is exiting now and cannot wait for close().
+  killNow(): void;
 }
 
 export interface StartOptions {
@@ -34,6 +36,9 @@ export async function startOpencodeServer(options: StartOptions): Promise<Openco
     url,
     authorization: `Basic ${Buffer.from(`opencode:${password}`).toString("base64")}`,
     close: () => stop(child),
+    killNow: () => {
+      if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+    },
   };
 }
 

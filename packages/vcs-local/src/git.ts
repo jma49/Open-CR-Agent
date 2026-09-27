@@ -8,7 +8,12 @@ export interface GitOptions {
   // Keep at most this much output and treat a longer one as complete, for
   // commands whose output is only sampled (search results).
   truncateAt?: number;
+  timeoutMs?: number;
 }
+
+// Every git call ends: a fetch can wait on the network forever, and a diff
+// of a huge repository should fail rather than hang the review.
+export const GIT_TIMEOUT_MS = 10 * 60_000;
 
 export class GitError extends Error {
   constructor(
@@ -33,6 +38,8 @@ export function git(args: readonly string[], options: GitOptions): Promise<strin
         cwd: options.cwd,
         encoding: "utf8",
         maxBuffer: options.truncateAt ?? MAX_OUTPUT_BYTES,
+        timeout: options.timeoutMs ?? GIT_TIMEOUT_MS,
+        killSignal: "SIGKILL",
         env: { ...process.env, LC_ALL: "C", GIT_OPTIONAL_LOCKS: "0", ...options.env },
       },
       (error, stdout, stderr) => {
@@ -41,6 +48,11 @@ export function git(args: readonly string[], options: GitOptions): Promise<strin
           (error as { code?: unknown } | null)?.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
         ) {
           resolve(stdout);
+          return;
+        }
+        if (error?.killed && error.signal === "SIGKILL") {
+          const seconds = Math.round((options.timeoutMs ?? GIT_TIMEOUT_MS) / 1000);
+          reject(new GitError(args, undefined, `timed out after ${seconds}s`));
           return;
         }
         const exitCode = error ? (typeof error.code === "number" ? error.code : undefined) : 0;

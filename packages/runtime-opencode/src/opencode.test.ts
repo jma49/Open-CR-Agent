@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -35,6 +35,20 @@ describe("OpenCode binary", () => {
 });
 
 describe("OpenCodeRuntime", () => {
+  it("stops OpenCode and removes its directory even when the process exits before dispose", async () => {
+    const runtime = new OpenCodeRuntime({ models: {}, tools: [], env: process.env });
+    const before = process.listenerCount("exit");
+    const infra = await (
+      runtime as unknown as { start(): Promise<{ root: string; onExit(): void }> }
+    ).start();
+    expect(process.listenerCount("exit")).toBe(before + 1);
+    // What a second Ctrl-C (process.exit) runs.
+    infra.onExit();
+    expect(existsSync(infra.root)).toBe(false);
+    await runtime.dispose();
+    expect(process.listenerCount("exit")).toBe(before);
+  }, 60_000);
+
   it("fails a task with a clear message when its tier has no model, without starting OpenCode", async () => {
     const runtime = new OpenCodeRuntime({
       models: {},
