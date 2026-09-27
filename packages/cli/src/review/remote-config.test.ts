@@ -28,8 +28,10 @@ const shared = {
 
 function serve(body: unknown, seen: string[] = []): typeof fetch {
   const text = typeof body === "string" ? body : JSON.stringify(body);
-  return (async (url: URL | string) => {
+  return (async (url: URL | string, init?: RequestInit) => {
     seen.push(String(url));
+    // The shared file is fetched without following redirects.
+    if (init?.redirect !== "error") throw new Error("extends must not follow redirects");
     return new Response(text, { status: 200 });
   }) as typeof fetch;
 }

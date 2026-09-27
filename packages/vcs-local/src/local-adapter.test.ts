@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { reviewContext } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { ensureCommits } from "./commits.js";
@@ -210,8 +210,12 @@ describe("LocalGitAdapter.readFile", () => {
 
   it("refuses paths outside the repository", async () => {
     const r = repo();
+    // A real file next to the repository, so the refusal is what keeps it out.
+    const outside = join(r.dir, "..", `${basename(r.dir)}-outside.txt`);
+    writeFileSync(outside, "outside\n");
+    repos.push(outside);
     const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
-    expect(await adapter.readFile("../outside.txt")).toBeUndefined();
+    expect(await adapter.readFile(`../${basename(outside)}`)).toBeUndefined();
     expect(await adapter.readFile("/etc/passwd")).toBeUndefined();
   });
 

@@ -97,6 +97,21 @@ const GOOGLE_KEY = "GOOGLE_GENERATIVE_AI_API_KEY";
 const GOOGLE_KEY_ALIASES = ["GEMINI_API_KEY", "GOOGLE_API_KEY"];
 export const EXTRA_ENV_VARIABLE = "OCRA_RUNTIME_ENV";
 
+// A model chain naming a provider such as "github" or "aws" must not carry
+// the CI's or the cloud's credentials across by prefix; name them in
+// OCRA_RUNTIME_ENV when they are really meant for a provider.
+const NEVER_BY_PREFIX = [
+  "GITHUB_",
+  "GH_",
+  "ACTIONS_",
+  "RUNNER_",
+  "AWS_",
+  "AZURE_",
+  "NPM_",
+  "SSH_",
+  "OCRA_",
+];
+
 // The child sees only what it needs: system basics, the credentials of the
 // providers in the configured model chains, and names listed in
 // OCRA_RUNTIME_ENV. Other secrets in the user's shell never reach it.
@@ -119,7 +134,11 @@ export function serverEnv(
       for (const name of known) copy(name);
     } else {
       const prefix = `${provider.toUpperCase().replaceAll("-", "_")}_`;
-      for (const name of Object.keys(base)) if (name.startsWith(prefix)) copy(name);
+      for (const name of Object.keys(base)) {
+        if (name.startsWith(prefix) && !NEVER_BY_PREFIX.some((p) => name.startsWith(p))) {
+          copy(name);
+        }
+      }
     }
   }
   for (const name of (base[EXTRA_ENV_VARIABLE] ?? "").split(",")) {

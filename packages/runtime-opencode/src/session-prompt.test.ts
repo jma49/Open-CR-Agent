@@ -93,21 +93,33 @@ describe("promptSession", () => {
 
   it("lets a session that keeps writing run past the inactivity window", async () => {
     let text = "";
+    const aborted: string[] = [];
     const api = {
       create: async () => ({ data: { id: "s1" } }),
-      prompt: () => new Promise((resolve) => setTimeout(() => resolve({ data: {} }), 200)),
+      // Resolves after the window, unless something aborts it first.
+      prompt: (_: unknown, options: { signal: AbortSignal }) =>
+        new Promise((resolve, reject) => {
+          setTimeout(() => resolve({ data: {} }), 200);
+          options.signal.addEventListener("abort", () => reject(new Error("aborted")), {
+            once: true,
+          });
+        }),
       messages: async () => {
         text += "more ";
         return {
           data: [{ info: { role: "assistant" }, parts: [{ type: "text", text }] }],
         };
       },
-      abort: async () => ({ data: true }),
+      abort: async ({ sessionID }: { sessionID: string }) => {
+        aborted.push(sessionID);
+        return { data: true };
+      },
     } as never;
     const outcome = await promptSession(api, input, REPORT_TOOL, new AbortController().signal, {
       inactivityMs: 60,
       pollMs: 20,
     });
     expect(outcome.error).toBeUndefined();
+    expect(aborted).toEqual([]);
   });
 });

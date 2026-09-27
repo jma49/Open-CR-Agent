@@ -59,6 +59,22 @@ describe("serverEnv", () => {
     }
   });
 
+  it("passes an unknown provider's variables by prefix, but never CI or cloud credentials", () => {
+    const env = serverEnv(
+      { GROQ_API_KEY: "g", GITHUB_TOKEN: "t", GITHUB_API_KEY: "x", AWS_SECRET_ACCESS_KEY: "s" },
+      dirs,
+      ["groq", "github", "aws"],
+    );
+    expect(env.GROQ_API_KEY).toBe("g");
+    for (const name of ["GITHUB_TOKEN", "GITHUB_API_KEY", "AWS_SECRET_ACCESS_KEY"]) {
+      expect(name in env).toBe(false);
+    }
+    // Named explicitly, a variable still passes.
+    expect(
+      serverEnv({ GITHUB_API_KEY: "x", OCRA_RUNTIME_ENV: "GITHUB_API_KEY" }, dirs, ["github"]),
+    ).toMatchObject({ GITHUB_API_KEY: "x" });
+  });
+
   it("passes names listed in OCRA_RUNTIME_ENV", () => {
     const env = serverEnv(
       { OCRA_RUNTIME_ENV: "CUSTOM_BASE_URL, OTHER", CUSTOM_BASE_URL: "u" },

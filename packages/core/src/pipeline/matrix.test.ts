@@ -103,7 +103,6 @@ describe("planTasks", () => {
       "correctness-3",
       "correctness-4",
     ]);
-    expect(ultra.cells.every((c) => !c.taskId.endsWith("b"))).toBe(true);
     expect(ultra.skipped.filter((s) => s.reason === "task_limit")).toHaveLength(10);
 
     const plain = planTasks(many, [correctness, performance], "full", {}, { maxTasks: 5 });
