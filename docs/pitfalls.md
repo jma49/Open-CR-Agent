@@ -27,7 +27,7 @@ Traps we have already fallen into, across this repository and the site. Each ent
 
 ## Git and diffs
 
-- **ocra's own output is an untracked change.** The session log was created before the diff was read, so workspace reviews reviewed `.ocra/sessions/**/events.jsonl`. The sessions directory now carries a `.gitignore` with `*`; anything else ocra writes into a repository needs the same.
+- **ocra's own output is an untracked change.** The session log was created before the diff was read, so workspace reviews reviewed `.ocra/sessions/**/events.jsonl`. The sessions directory now carries a `.gitignore` with `*`; anything else ocra writes into a repository needs the same. The first fix (`07052b6`) changed the docs and the test but not the code, and the test still passed: `git status --porcelain` collapses a new untracked directory to `.ocra/`, so asserting it does not contain `.ocra/sessions` proves nothing. Use `--untracked-files=all` when a test asserts a file is ignored.
 
 - **git may close stdin before we finish writing.** Writing input to a git process that already exited raises `EPIPE`; ignore `EPIPE` and trust the exit code (`vcs-local/src/git.ts`).
 - **User git configuration changes diff output.** `diff.noprefix`, `diff.mnemonicPrefix`, `diff.relative`, external diff drivers and textconv all break parsing. Always pass the explicit flags in `DIFF_ARGS` (`--src-prefix=a/ --dst-prefix=b/ --no-ext-diff --no-textconv --no-relative -c core.quotepath=true`).

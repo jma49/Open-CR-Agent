@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ReviewEvent } from "../pipeline/report.js";
 
@@ -25,6 +25,10 @@ export class JsonlSessionWriter {
   ) {
     this.dir = join(sessionsDir, id);
     mkdirSync(this.dir, { recursive: true });
+    // The directory is created before a workspace review reads its diff, and
+    // the logs hold code and findings: keep them out of git and out of reviews.
+    const ignore = join(sessionsDir, ".gitignore");
+    if (!existsSync(ignore)) writeFileSync(ignore, "*\n");
   }
 
   write(event: ReviewEvent): void {

@@ -139,9 +139,13 @@ describe("ocra review", () => {
     expect(disposed.count).toBeGreaterThan(0);
     const sessions = readdirSync(join(cwd, ".ocra", "sessions")).filter((f) => f !== ".gitignore");
     expect(sessions).toHaveLength(1);
-    expect(execFileSync("git", ["status", "--porcelain"], { cwd, encoding: "utf8" })).not.toContain(
-      ".ocra/sessions",
-    );
+    // Untracked directories collapse to ".ocra/" unless every file is listed.
+    expect(
+      execFileSync("git", ["status", "--porcelain", "--untracked-files=all"], {
+        cwd,
+        encoding: "utf8",
+      }),
+    ).not.toContain(".ocra/sessions");
     const sessionDir = join(cwd, ".ocra", "sessions", sessions[0] as string);
     expect(existsSync(join(sessionDir, "events.jsonl"))).toBe(true);
     expect(JSON.parse(readFileSync(join(sessionDir, "report.json"), "utf8")).findings).toHaveLength(

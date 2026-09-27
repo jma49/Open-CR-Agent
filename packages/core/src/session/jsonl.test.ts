@@ -28,6 +28,13 @@ describe("JsonlSessionWriter", () => {
     expect(JSON.parse(readFileSync(join(root, "s1", REPORT_FILE), "utf8"))).toEqual(report);
   });
 
+  it("ignores every file in the sessions directory for git", () => {
+    const root = mkdtempSync(join(tmpdir(), "ocra-session-"));
+    dirs.push(root);
+    new JsonlSessionWriter(root, "s1");
+    expect(readFileSync(join(root, ".gitignore"), "utf8")).toBe("*\n");
+  });
+
   it("creates sortable, unique session ids", () => {
     const id = newSessionId(new Date("2026-09-24T21:40:55.123Z"));
     expect(id).toMatch(/^20260924T214055Z-[0-9a-f]{6}$/);
