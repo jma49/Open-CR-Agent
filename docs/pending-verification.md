@@ -10,7 +10,7 @@ The only thing a local build cannot show is the live site itself: https://ocra-n
 
 ## After a model key is available
 
-The Gemini key was removed from the maintainer's shell on 2026-09-26; see `docs/handoff.md`.
+Parked: the maintainer has no model API budget as of 2026-09-26 and will provide a key later. Work through this table in order once it is available.
 
 | Item | Check | How |
 |---|---|---|

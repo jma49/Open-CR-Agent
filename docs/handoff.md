@@ -24,13 +24,16 @@ State of the project as of 2026-09-26, for whoever picks it up next (human or ag
 
 Pipeline today: ingest → select → triage → bundle → **matrix** (reviewer scopes, risk tiers, overrides; ADR-0007) → review (correctness, security, performance; OpenCode runtime, read-only MCP tools, 20-step cap, per-model circuit breaker) → anchor → **verify** (drops only findings the code disproves) → memory (`.ocra/memory.json`) → re-review reconciliation → **judge** (merge, drop, recalibrate on the top tier) → verdict by a fixed rubric → report. Pull requests: `ocra review --pr [--publish]` and `action.yml` (ADR-0008) with inline comments, one summary comment, thread resolution, and respect for human dismissals; trusted inputs come from the base commit. Also: `--ultra`, `--reviewers`, `--max-cost-usd`, `--no-repo-config`, `extends` (shared config over https), Ctrl-C handling, exit codes 0/1/2/3/130. The 2026-09-26 audit's P0/P1 findings (#32–#39) are fixed.
 
+**No model API for now.** As of 2026-09-26 the maintainer has no budget for a model API. Everything that calls a model (evaluation, tuning, #66, #12, #67) is parked until a key is provided; `docs/pending-verification.md` lists that work in order. Until then, work only on what is free: deterministic stages, `ocra review --plan`, `ocra-eval ceiling`, tests, docs, and the site checked on a local production build (Vercel deploys are optional).
+
+**What we know without a model:** `ocra-eval ceiling --limit 100 --max-change-lines 300` (94 PRs, 530 annotated issues) puts the recall ceiling of ocra's deterministic stages at **57.7%**. 40.0% of the benchmark's issues are maintainability and readability, which ocra does not report by design; selection and the review matrix lose 6 issues (1.1%), and #76 addresses the security ones. So on AACR-Bench, recall above ~58% is impossible whatever the model, and precision is where ocra should be judged.
+
 Open work, in order:
 
-1. **Get a working model key** (see Environment notes), then **#66**: `complete()` fails on Gemini ("Requests ending with a model turn"), so grouping, Verify and Judge currently fail safe and do nothing on Gemini.
-2. **#12 baseline with a stronger standard model.** The flash-lite baseline found 1 issue in 17 PRs (precision/recall 0%): a floor, not a signal. Then measure Verify, Judge and the new reviewers against it, as AGENTS.md requires for prompt and stage changes (they were merged with unit tests only; PRs #52–#54 say so).
-3. **#67**: exercise the GitHub Action on a live pull request (needs a model key as a repository secret; ask the maintainer before adding one).
-4. Not implemented from the architecture: `--ultra`'s plan phase and caller impact analysis; the judge reassessing findings a person disagrees with; LLM relocation in anchoring (exists in core, not wired).
-5. Publishing to npm (so `npx` works) once the above are verified.
+1. Free: #76 (wider sensitive-path triage, measured with `ocra-eval ceiling`).
+2. When a key is available: #66 (`complete()` on Gemini), then the #12 baseline with a model stronger than flash-lite, then measuring the new reviewers, Verify, Judge and `--ultra`, then #67 (the Action on a live pull request).
+3. Not implemented from the architecture: `--ultra`'s plan phase and caller impact analysis; the judge reassessing findings a reviewer disagrees with; LLM relocation in anchoring (exists in core, not wired).
+4. Publishing to npm: ready and checked in CI; the maintainer decides scope and timing (`docs/releasing.md`).
 
 ## Environment notes
 
