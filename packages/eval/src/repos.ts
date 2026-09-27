@@ -6,9 +6,18 @@ import { exec } from "./exec.js";
 
 const HOUR = 60 * 60_000;
 
-// Reviews read source, not LFS media; smudging needs the LFS client and often
-// fails on quota, so checkouts keep the pointer files.
-const GIT_ENV = { ...process.env, GIT_LFS_SKIP_SMUDGE: "1" };
+// Reviews read source, not LFS media, so checkouts keep the pointer files.
+// Skipping the smudge is not enough when a global or repository config
+// declares the LFS filter but git-lfs is not installed: the filter process
+// then fails to start. Marking the filter optional lets git fall back to the
+// raw content for every call (config passed through the environment).
+export const GIT_ENV: NodeJS.ProcessEnv = {
+  ...process.env,
+  GIT_LFS_SKIP_SMUDGE: "1",
+  GIT_CONFIG_COUNT: "1",
+  GIT_CONFIG_KEY_0: "filter.lfs.required",
+  GIT_CONFIG_VALUE_0: "false",
+};
 
 // Blobless clones keep the full commit graph (needed for merge-base) without
 // every historical file version; checking out the head commit then fetches its
@@ -52,7 +61,11 @@ export class UnavailableCommitError extends Error {}
 
 async function ensureCommit(dir: string, commit: string, prUrl: string): Promise<void> {
   if (await hasCommit(dir, commit)) return;
-  await exec("git", ["fetch", "--quiet", "origin", commit], { cwd: dir, timeoutMs: HOUR });
+  await exec("git", ["fetch", "--quiet", "origin", commit], {
+    cwd: dir,
+    timeoutMs: HOUR,
+    env: GIT_ENV,
+  });
   if (await hasCommit(dir, commit)) return;
   const pr = /\/pull\/(\d+)/.exec(prUrl)?.[1];
   if (pr)
