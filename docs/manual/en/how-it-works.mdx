@@ -75,7 +75,7 @@ Models are unreliable with line numbers, so they quote code instead. ocra resolv
 1. normalized match in the file's changed hunks;
 2. match in the whole file;
 3. match in another changed file (the model named the wrong file), only for a whole-line quote found in exactly one place;
-4. *(planned)* a relocation request to a light model;
+4. a light model is shown the finding and the file's diff and answers with the lines it means, which are matched like any quote (one small call per unmatched finding);
 5. otherwise the finding stays attached to its file, as a file-level finding.
 
 A finding that resolves to a file outside the reviewer's bundle is dropped with a warning: that reviewer was not shown the file.

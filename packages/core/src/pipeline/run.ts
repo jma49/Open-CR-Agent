@@ -1,4 +1,5 @@
 import type { AnchorContext } from "../anchor/anchor.js";
+import { runtimeRelocator } from "../anchor/relocate.js";
 import type { BundlePolicy } from "../bundle/bundle.js";
 import type { FileGrouper } from "../bundle/grouping.js";
 import type { AgentRuntime, Usage, VcsAdapter } from "../contracts.js";
@@ -42,7 +43,9 @@ export interface ReviewOptions {
   selection?: SelectionPolicy;
   bundling?: BundlePolicy;
   grouper?: FileGrouper;
-  relocate?: AnchorContext["relocate"];
+  // Replaces the runtime's light-model relocation (tests); `false` turns
+  // relocation off.
+  relocate?: AnchorContext["relocate"] | false;
   concurrency?: number;
   taskTimeoutMs?: number;
   runTimeoutMs?: number;
@@ -105,11 +108,19 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     );
   }
   emit({ type: "matrix_planned", tasks: matrix.cells.length, skipped: matrix.skipped });
+  const relocationUsage: Usage[] = [];
   const execute = {
     runtime: options.runtime,
     taskTimeoutMs: options.taskTimeoutMs ?? DEFAULTS.taskTimeoutMs,
     abortGraceMs: options.abortGraceMs,
-    relocate: options.relocate,
+    relocate:
+      options.relocate === false
+        ? undefined
+        : (options.relocate ??
+          runtimeRelocator(options.runtime, signal, (u) => {
+            relocationUsage.push(u);
+            budget.add(u);
+          })),
     ultra: options.ultra === true,
     emit,
     signal,
@@ -216,6 +227,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     usage: sumUsage([
       ...plan.usage,
       ...results.map((r) => r.usage),
+      ...relocationUsage,
       ...verification.usage,
       ...judged.usage,
     ]),
