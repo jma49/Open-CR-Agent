@@ -153,15 +153,29 @@ describe("ocra review", () => {
     );
   });
 
-  it("exits 0 when critical findings are not verified", async () => {
+  it("exits 3 when a critical finding could not be verified", async () => {
     const cwd = repoWithChange();
     const out = capture();
-    expect(await run(["review"], out, capture(), deps(cwd, critical))).toBe(0);
+    const err = capture();
+    expect(await run(["review"], out, err, deps(cwd, critical))).toBe(3);
     expect(out.text()).toContain("Verdict: minor issues");
     expect(out.text()).toContain("[not verified]");
     expect(out.text()).toContain(
+      "Incomplete: verification failed or ran out of budget for 1 critical finding(s)",
+    );
+    expect(err.text()).toContain("1 critical finding(s) could not be verified");
+  });
+
+  it("exits 0 with unverified critical findings when verification is turned off", async () => {
+    const cwd = repoWithChange();
+    mkdirSync(join(cwd, ".ocra"), { recursive: true });
+    writeFileSync(join(cwd, ".ocra", "config.json"), '{"verify": false}');
+    const out = capture();
+    expect(await run(["review"], out, capture(), deps(cwd, critical))).toBe(0);
+    expect(out.text()).toContain(
       "1 critical finding(s) are not verified, so the verdict is at most minor issues.",
     );
+    expect(out.text()).not.toContain("Incomplete:");
   });
 
   it("writes JSON to a file and exits 0 without critical findings", async () => {
@@ -250,8 +264,13 @@ describe("ocra review", () => {
       JSON.stringify({ plugins: ["./.ocra/evil.mjs"] }),
     );
     expect(
-      await run(["review", "--no-repo-config"], capture(), capture(), deps(cwd, critical)),
-    ).toBe(0);
+      await run(
+        ["review", "--no-repo-config"],
+        capture(),
+        capture(),
+        deps(cwd, critical, {}, true),
+      ),
+    ).toBe(1);
     expect(existsSync(marker)).toBe(false);
   });
 

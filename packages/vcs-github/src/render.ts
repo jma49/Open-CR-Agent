@@ -112,6 +112,12 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
       `${unverified} critical finding(s) are not verified, so they cap the verdict at minor issues.`,
     );
   }
+  if (report.unverifiedCriticals > 0) {
+    lines.push(
+      "",
+      `**Incomplete:** verification failed or ran out of budget for ${report.unverifiedCriticals} critical finding(s); check them yourself.`,
+    );
+  }
 
   const inSummary = report.findings.filter((f) => !commented.has(f.fingerprint));
   if (inSummary.length > 0) {

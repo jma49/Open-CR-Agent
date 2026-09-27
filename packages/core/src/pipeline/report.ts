@@ -35,6 +35,9 @@ export interface ReviewReport {
   tasks: TaskOutcome[];
   skipped: SkippedCell[];
   findings: Finding[];
+  // Critical findings Verify should have checked but could not (it failed,
+  // timed out or ran out of budget). With `verify: false` this stays 0.
+  unverifiedCriticals: number;
   refuted: RefutedFinding[];
   // Findings the repository's memory marks as accepted.
   remembered: MemoryEntry[];

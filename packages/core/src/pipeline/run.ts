@@ -128,6 +128,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
           checked: 0,
           kept: markUnchecked(reconciled.findings),
           refuted: [],
+          missed: [],
           usage: [],
           warnings: [],
         }
@@ -180,6 +181,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     tasks: results.map((r) => r.outcome),
     skipped: matrix.skipped,
     findings: sortFindings(judged.findings),
+    unverifiedCriticals: countMissedCriticals(judged.findings, verification.missed),
     refuted: verification.refuted,
     remembered: remembered.remembered,
     usage: sumUsage([
@@ -301,4 +303,17 @@ function sortFindings(findings: Finding[]): Finding[] {
 
 function sumUsage(usages: readonly Usage[]): Usage {
   return usages.reduce(addUsage, emptyUsage());
+}
+
+// Low-confidence findings do not count toward the verdict, so their missed
+// verification does not make the run incomplete either.
+function countMissedCriticals(findings: readonly Finding[], missed: readonly string[]): number {
+  const set = new Set(missed);
+  return findings.filter(
+    (f) =>
+      f.severity === "critical" &&
+      !f.lowConfidence &&
+      f.verification === "unchecked" &&
+      set.has(f.fingerprint),
+  ).length;
 }

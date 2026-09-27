@@ -38,6 +38,7 @@ const base: ReviewReport = {
   bundles: [],
   skipped: [],
   refuted: [],
+  unverifiedCriticals: 0,
   remembered: [],
   tasks: [
     {

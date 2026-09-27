@@ -88,6 +88,28 @@ describe("verifyFindings", () => {
     expect(skipped.kept.map((f) => f.verification)).toEqual(["unchecked"]);
   });
 
+  it("lists every finding it should have checked but could not", async () => {
+    const answered = runtime((request) =>
+      request.user.includes("b.ts") ? "not json" : '[{"index":0,"verdict":"confirmed"}]',
+    );
+    const both = await verifyFindings(
+      [finding("a.ts", "first"), finding("a.ts", "skipped by the answer"), finding("b.ts", "b")],
+      { ...base, runtime: answered },
+    );
+    expect(both.missed.sort()).toEqual(["fp-b", "fp-skipped by the answer"]);
+
+    const spent = await verifyFindings([finding("a.ts", "a")], {
+      ...base,
+      runtime: answered,
+      budget: { exhausted: () => true, add: () => {} },
+    });
+    expect(spent.missed).toEqual(["fp-a"]);
+
+    const { complete: _unused, ...noHelper } = runtime(() => "[]");
+    const none = await verifyFindings([finding("a.ts", "a")], { ...base, runtime: noHelper });
+    expect(none.missed).toEqual(["fp-a"]);
+  });
+
   it("drops only refuted findings and records why", async () => {
     const rt = runtime(
       () =>

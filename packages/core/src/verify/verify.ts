@@ -20,6 +20,10 @@ export interface VerificationResult {
   checked: number;
   kept: Finding[];
   refuted: RefutedFinding[];
+  // Fingerprints of findings Verify should have checked but could not
+  // (failed, timed out, out of budget, or no helper model): a run that
+  // could not check its blockers is incomplete, not clean.
+  missed: string[];
   usage: Usage[];
   warnings: string[];
 }
@@ -45,12 +49,14 @@ export async function verifyFindings(
     checked: 0,
     kept: [],
     refuted: [],
+    missed: [],
     usage: [],
     warnings: [],
   };
   const complete = options.runtime.complete?.bind(options.runtime);
   if (!complete || findings.length === 0) {
     result.kept = markUnchecked(findings);
+    result.missed = findings.map((f) => f.fingerprint);
     return result;
   }
 
@@ -117,6 +123,9 @@ export async function verifyFindings(
       }
     });
   });
+  result.missed = result.kept
+    .filter((f) => f.verification === "unchecked")
+    .map((f) => f.fingerprint);
   if (unaffordable > 0) {
     result.warnings.push(
       `spend limit reached: ${unaffordable} finding(s) were not verified and cannot block`,

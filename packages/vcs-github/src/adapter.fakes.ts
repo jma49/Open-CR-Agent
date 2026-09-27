@@ -123,6 +123,7 @@ export function report(
     summary: "Summary.",
     coverage: [{ path: "src/login.ts", status: "reviewed" }],
     bundles: [],
+    unverifiedCriticals: 0,
     tasks: [],
     skipped: [],
     findings,

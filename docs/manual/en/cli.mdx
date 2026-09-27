@@ -56,12 +56,12 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...` so a lo
 | `0` | Review finished; verdict `approved`, `approved_with_comments` or `minor_issues` |
 | `1` | Verdict `significant_concerns`: at least one critical finding the verifier confirmed. Unconfirmed critical findings give `minor_issues` and exit `0`. The verdict is advice and can be influenced by the change under review; see [How it works](./how-it-works#verdict) |
 | `2` | Usage, Git or configuration error, or no review task completed |
-| `3` | Review incomplete: some tasks failed, timed out or hit the spend limit (and the verdict is not blocking) |
+| `3` | Review incomplete: some tasks failed, timed out or hit the spend limit, or a critical finding could not be verified because verification failed or ran out of budget (and the verdict is not blocking) |
 | `130` | Interrupted with Ctrl-C or SIGTERM; the partial report is still printed and nothing is published |
 
 ### JSON output
 
-`--format json` prints the full report: the change request, risk tier, verdict and summary, coverage for every changed file (reviewed, failed, unreviewed, unchanged since the previous review, or excluded with a reason), for pull requests whether the run was incremental or full and why (`scope`), bundles, task outcomes, reviewer/bundle pairs the matrix skipped, findings verification dropped (`refuted`, with the reason), what the judge merged, dropped or recalibrated (`judgement`), findings with their resolved line ranges, token usage and cost, and warnings.
+`--format json` prints the full report: the change request, risk tier, verdict and summary, coverage for every changed file (reviewed, failed, unreviewed, unchanged since the previous review, or excluded with a reason), for pull requests whether the run was incremental or full and why (`scope`), bundles, task outcomes, reviewer/bundle pairs the matrix skipped, findings verification dropped (`refuted`, with the reason), how many critical findings verification failed to check (`unverifiedCriticals`), what the judge merged, dropped or recalibrated (`judgement`), findings with their resolved line ranges, token usage and cost, and warnings.
 
 ### Sessions
 

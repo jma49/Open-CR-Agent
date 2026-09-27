@@ -43,6 +43,11 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
       `${unverified} critical finding(s) are not verified, so the verdict is at most minor issues.`,
     );
   }
+  if (report.unverifiedCriticals > 0) {
+    lines.push(
+      `Incomplete: verification failed or ran out of budget for ${report.unverifiedCriticals} critical finding(s); check them yourself.`,
+    );
+  }
   const { refuted } = report;
   if (refuted.length > 0) {
     lines.push(

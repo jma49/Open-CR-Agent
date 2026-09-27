@@ -188,5 +188,11 @@ function exitCode(report: ReviewReport, err: Output): number {
     return EXIT.error;
   }
   if (report.verdict === "significant_concerns") return EXIT.blocking;
+  if (report.unverifiedCriticals > 0) {
+    err.write(
+      `[ocra] ${report.unverifiedCriticals} critical finding(s) could not be verified; the review is incomplete.\n`,
+    );
+    return EXIT.incomplete;
+  }
   return report.tasks.some((t) => t.status !== "completed") ? EXIT.incomplete : EXIT.ok;
 }
