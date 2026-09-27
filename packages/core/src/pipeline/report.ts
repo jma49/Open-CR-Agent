@@ -6,8 +6,10 @@ import type { ExclusionReason } from "../select/select.js";
 import type { RefutedFinding } from "../verify/verify.js";
 import type { SkippedCell } from "./matrix.js";
 
+// "unchanged": reviewed by an earlier run and not changed since, so not
+// reviewed again; its earlier findings carry over.
 export type CoverageEntry =
-  | { path: string; status: "reviewed" | "failed" | "unreviewed" }
+  | { path: string; status: "reviewed" | "failed" | "unreviewed" | "unchanged" }
   | { path: string; status: "excluded"; reason: ExclusionReason };
 
 export type TaskStatus = "completed" | "failed" | "timed_out" | "cancelled";
@@ -38,11 +40,14 @@ export interface ReviewReport {
   remembered: MemoryEntry[];
   // What the judge merged, dropped or recalibrated; absent when it did not run.
   judgement?: JudgeDecisions;
+  // With an earlier review: whether this run reviewed only what changed since.
+  scope?: { mode: "incremental"; since: string } | { mode: "full"; reason: string };
   // Compared with the previous review of the same change, when there was one.
   rereview?: {
     fixed: PriorFinding[];
     notReproduced: PriorFinding[];
     notRechecked: PriorFinding[];
+    unchanged: PriorFinding[];
     dismissed: PriorFinding[];
   };
   usage: Usage;

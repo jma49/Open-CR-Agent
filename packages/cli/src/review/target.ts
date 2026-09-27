@@ -1,6 +1,6 @@
 import type { OcraPlugin, PluginRegistry, VcsAdapter } from "@open-cr-agent/core";
 import { DEFAULT_BOT_LOGIN, GitHubApi } from "@open-cr-agent/vcs-github";
-import { ensureCommits, LocalGitAdapter } from "@open-cr-agent/vcs-local";
+import { ensureCommits, filesChangedSince, LocalGitAdapter } from "@open-cr-agent/vcs-local";
 import type { PullRequestTarget, ReviewArgs } from "./args.js";
 import { type CliConfig, ConfigError, loadConfig } from "./config.js";
 import { loadExternalPlugins } from "./plugins.js";
@@ -85,6 +85,9 @@ export async function pullRequestTarget(
         botLogin: config.github.botLogin ?? DEFAULT_BOT_LOGIN,
         requestChanges: config.github.requestChanges ?? false,
         code,
+        history: {
+          filesChangedSince: (from: string, to: string) => filesChangedSince(root, from, to),
+        },
         ...(fetchImpl ? { fetch: fetchImpl } : {}),
       }),
     readTrusted,

@@ -1,6 +1,6 @@
 import type { OcraPlugin } from "@open-cr-agent/core";
 import { z } from "zod";
-import { type CodeSource, DEFAULT_BOT_LOGIN, GitHubAdapter } from "./adapter.js";
+import { type CodeSource, DEFAULT_BOT_LOGIN, GitHubAdapter, type History } from "./adapter.js";
 import { GitHubApi } from "./client.js";
 
 const optionsSchema = z.object({
@@ -21,6 +21,15 @@ const optionsSchema = z.object({
       ),
     "code must provide getDiff, readFile and searchCode",
   ),
+  history: z
+    .custom<History>(
+      (value) =>
+        typeof value === "object" &&
+        value !== null &&
+        typeof (value as Record<string, unknown>).filesChangedSince === "function",
+      "history must provide filesChangedSince",
+    )
+    .optional(),
 });
 
 export const githubPlugin: OcraPlugin = {
@@ -42,6 +51,7 @@ export const githubPlugin: OcraPlugin = {
         code: options.code,
         botLogin: options.botLogin,
         requestChanges: options.requestChanges,
+        ...(options.history ? { history: options.history } : {}),
       });
     });
   },

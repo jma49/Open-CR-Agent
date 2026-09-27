@@ -19,6 +19,8 @@ export interface ReviewPlan {
   selected: FileDiff[];
   tier: RiskTier;
   bundles: Bundle[];
+  // Selected files left out because an earlier review covered them unchanged.
+  unchanged: ReadonlySet<string>;
   context: ReviewContext;
   guidelines: string | undefined;
   repoRules: RepoRule[];
@@ -31,7 +33,12 @@ export interface ReviewPlan {
 export type PlanOptions = Pick<
   ReviewOptions,
   "vcs" | "rules" | "readTrusted" | "selection" | "bundling" | "grouper"
-> & { runtime?: AgentRuntime };
+> & {
+  runtime?: AgentRuntime;
+  // Review only these selected files (incremental re-review); the rest of the
+  // change still sets the risk tier.
+  reviewOnly?: ReadonlySet<string>;
+};
 
 export async function planReview(
   options: PlanOptions,
@@ -63,7 +70,12 @@ export async function planReview(
   const grouper =
     options.grouper ??
     (options.runtime ? runtimeGrouper(options.runtime, signal, (u) => usage.push(u)) : undefined);
-  const bundled = await bundleFiles(selected, options.bundling ?? defaultBundlePolicy, grouper);
+  const only = options.reviewOnly;
+  const inScope = only
+    ? selected.filter((d) => only.has(d.newPath) || only.has(d.oldPath))
+    : selected;
+  const unchanged = new Set(selected.filter((d) => !inScope.includes(d)).map((d) => d.newPath));
+  const bundled = await bundleFiles(inScope, options.bundling ?? defaultBundlePolicy, grouper);
   emit({
     type: "files_bundled",
     strategy: bundled.strategy,
@@ -77,6 +89,7 @@ export async function planReview(
     selected,
     tier,
     bundles: bundled.bundles,
+    unchanged,
     context: reviewContext(vcs, diffs),
     guidelines,
     repoRules: [...(options.rules ?? []), ...fileRules],

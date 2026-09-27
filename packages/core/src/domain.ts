@@ -114,4 +114,10 @@ export interface PriorFinding {
 
 export interface PriorReview {
   findings: PriorFinding[];
+  // Set when the platform can tell what changed since the earlier review:
+  // the files that differ between its head and this one, plus files it did
+  // not finish. Only those are reviewed again; absent means review everything.
+  changedSince?: { head: string; files: string[] };
+  // Why everything is reviewed again although an earlier review exists.
+  fullReviewReason?: string;
 }

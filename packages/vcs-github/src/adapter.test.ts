@@ -1,144 +1,7 @@
-import type { Finding, ReviewReport } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
-import { type CodeSource, GitHubAdapter } from "./adapter.js";
-import { GitHubApi } from "./client.js";
+import { A, adapter, B, fakeGitHub, finding, postedSummary, report } from "./adapter.fakes.js";
 import { renderSummary } from "./render.js";
 import { readState, SUMMARY_MARKER, writeState } from "./state.js";
-
-interface Call {
-  method: string;
-  path: string;
-  body?: unknown;
-}
-
-function fakeGitHub(
-  comments: unknown[] = [],
-  reviewStatus = 200,
-  threads: unknown[] = [],
-  graphqlFails = false,
-) {
-  const calls: Call[] = [];
-  const fetchImpl = (async (url: string, init?: RequestInit) => {
-    const path = url.replace("https://api.github.com/repos/o/r", "");
-    const method = init?.method ?? "GET";
-    const call: Call = { method, path };
-    if (init?.body) call.body = JSON.parse(init.body as string);
-    calls.push(call);
-    const json = (status: number, value: unknown) =>
-      new Response(JSON.stringify(value), {
-        status,
-        headers: { "Content-Type": "application/json" },
-      });
-    if (url.endsWith("/graphql")) {
-      if (graphqlFails) return json(502, { message: "Bad gateway" });
-      const query = (call.body as { query: string }).query;
-      if (query.startsWith("mutation"))
-        return json(200, { data: { resolveReviewThread: { thread: {} } } });
-      return json(200, {
-        data: {
-          repository: {
-            pullRequest: {
-              reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: threads },
-            },
-          },
-        },
-      });
-    }
-    if (path === "/pulls/7") {
-      return json(200, {
-        number: 7,
-        title: "Add login",
-        body: null,
-        html_url: "https://github.com/o/r/pull/7",
-        user: { login: "author" },
-        base: { sha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", ref: "main" },
-        head: { sha: "cccccccccccccccccccccccccccccccccccccccc", ref: "feat" },
-      });
-    }
-    if (path.startsWith("/issues/7/comments") && method === "GET") return json(200, comments);
-    if (path === "/pulls/7/reviews") {
-      const rejected =
-        reviewStatus !== 200 && (call.body as { comments: unknown[] }).comments.length > 0;
-      return rejected ? json(reviewStatus, { message: "Unprocessable" }) : json(200, {});
-    }
-    return json(201, {});
-  }) as typeof fetch;
-  return { calls, fetchImpl };
-}
-
-const code: CodeSource = {
-  getDiff: async () => [],
-  readFile: async () => undefined,
-  searchCode: async () => [],
-};
-
-function adapter(fetchImpl: typeof fetch, requestChanges = false) {
-  return new GitHubAdapter({
-    pullRequest: { owner: "o", repo: "r", number: 7 },
-    api: new GitHubApi({ owner: "o", repo: "r" }, { token: "t", fetch: fetchImpl }),
-    code,
-    botLogin: "github-actions[bot]",
-    requestChanges,
-  });
-}
-
-function finding(
-  fingerprint: string,
-  inDiff: boolean,
-  severity: Finding["severity"] = "warning",
-): Finding {
-  return {
-    id: fingerprint,
-    fingerprint,
-    reviewer: "security",
-    category: "security",
-    severity,
-    file: "src/login.ts",
-    existingCode: "x",
-    title: `Issue ${fingerprint.slice(0, 2)} @here <img src=x>`,
-    body: "Body",
-    evidence: [],
-    lineRange: { start: 3, end: 4 },
-    anchor: { method: inDiff ? "hunk" : "file", inDiff },
-    status: "new",
-  };
-}
-
-function report(
-  findings: Finding[],
-  verdict: ReviewReport["verdict"] = "approved_with_comments",
-): ReviewReport {
-  return {
-    changeRequest: {
-      id: "o/r#7",
-      title: "t",
-      description: "",
-      baseSha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      headSha: "cccccccccccccccccccccccccccccccccccccccc",
-    },
-    tier: "lite",
-    verdict,
-    summary: "Summary.",
-    coverage: [{ path: "src/login.ts", status: "reviewed" }],
-    bundles: [],
-    tasks: [],
-    skipped: [],
-    findings,
-    refuted: [],
-    remembered: [],
-    usage: { inputTokens: 1, outputTokens: 1, reasoningTokens: 0, cachedTokens: 0, costUsd: 0.01 },
-    warnings: [],
-  };
-}
-
-function postedSummary(calls: Call[]): string {
-  const post = calls.find((c) => c.method === "POST" && c.path === "/issues/7/comments");
-  if (!post) throw new Error("no summary comment was posted");
-  return (post.body as { body: string }).body;
-}
-
-const A = "aaaaaaaaaaaaaaaa";
-const B = "bbbbbbbbbbbbbbbb";
 
 describe("GitHubAdapter", () => {
   it("maps the pull request to a change request", async () => {
@@ -167,7 +30,7 @@ describe("GitHubAdapter", () => {
     expect(body).toContain("### Findings outside the diff");
     expect(body).toContain("@​here");
     expect(body).not.toContain("<img");
-    expect(readState(body)).toEqual([
+    expect(readState(body)?.findings).toEqual([
       {
         fingerprint: A,
         title: expect.any(String),
@@ -189,7 +52,7 @@ describe("GitHubAdapter", () => {
     const previous = {
       id: 99,
       user: { login: "github-actions[bot]", type: "Bot" },
-      body: `${SUMMARY_MARKER}\n${writeState([{ fingerprint: A, title: "t", file: "src/login.ts", severity: "warning", commented: true }])}`,
+      body: `${SUMMARY_MARKER}\n${writeState({ findings: [{ fingerprint: A, title: "t", file: "src/login.ts", severity: "warning", commented: true }] })}`,
     };
     const forged = { ...previous, id: 5, user: { login: "mallory", type: "User" } };
     const { calls, fetchImpl } = fakeGitHub([previous, forged]);
@@ -212,7 +75,7 @@ describe("GitHubAdapter", () => {
     expect(reviews.map((c) => (c.body as { comments: unknown[] }).comments.length)).toEqual([1, 0]);
     expect(reviews[0]?.body).toMatchObject({ event: "REQUEST_CHANGES" });
     const body = postedSummary(calls);
-    expect(readState(body)?.[0]?.commented).toBe(false);
+    expect(readState(body)?.findings[0]?.commented).toBe(false);
   });
 
   it("resolves the threads of fixed findings it commented on, and only those", async () => {
@@ -237,7 +100,13 @@ describe("GitHubAdapter", () => {
     };
     const result = await adapter(fetchImpl).publish({
       ...report([]),
-      rereview: { fixed: [fixed], notReproduced: [], notRechecked: [], dismissed: [] },
+      rereview: {
+        fixed: [fixed],
+        notReproduced: [],
+        notRechecked: [],
+        unchanged: [],
+        dismissed: [],
+      },
     });
 
     const mutations = calls.filter((c) =>
@@ -251,7 +120,13 @@ describe("GitHubAdapter", () => {
     const broken = fakeGitHub([], 200, [], true);
     const failed = await adapter(broken.fetchImpl).publish({
       ...report([]),
-      rereview: { fixed: [fixed], notReproduced: [], notRechecked: [], dismissed: [] },
+      rereview: {
+        fixed: [fixed],
+        notReproduced: [],
+        notRechecked: [],
+        unchanged: [],
+        dismissed: [],
+      },
     });
     expect(failed.warnings[0]).toContain("could not resolve the threads of fixed findings");
     expect(broken.calls.some((c) => c.path === "/issues/7/comments" && c.method === "POST")).toBe(
@@ -271,7 +146,7 @@ describe("GitHubAdapter", () => {
     const body = postedSummary(calls);
     expect(body).toContain("1 critical finding(s) are not verified");
     expect(body).toContain("Do not use it as a security gate.");
-    expect(readState(body)?.[0]?.verification).toBe("uncertain");
+    expect(readState(body)?.findings[0]?.verification).toBe("uncertain");
   });
 
   it("keeps findings that were not reproduced open: no resolve, no new comment", async () => {
@@ -295,7 +170,13 @@ describe("GitHubAdapter", () => {
     ]);
     await adapter(fetchImpl).publish({
       ...report([{ ...finding(A, true), quote }], "significant_concerns"),
-      rereview: { fixed: [], notReproduced: [open], notRechecked: [], dismissed: [] },
+      rereview: {
+        fixed: [],
+        notReproduced: [open],
+        notRechecked: [],
+        unchanged: [],
+        dismissed: [],
+      },
     });
     expect(
       calls.some((c) => (c.body as { query?: string } | undefined)?.query?.startsWith("mutation")),
@@ -304,7 +185,7 @@ describe("GitHubAdapter", () => {
     expect((review?.body as { comments: unknown[] } | undefined)?.comments).toHaveLength(1);
     const body = postedSummary(calls);
     expect(body).toContain("### Not reported this time, code unchanged");
-    expect(readState(body)).toEqual([
+    expect(readState(body)?.findings).toEqual([
       {
         fingerprint: A,
         title: finding(A, true).title,
@@ -329,7 +210,7 @@ describe("GitHubAdapter", () => {
     const previous = {
       id: 99,
       user: { login: "github-actions[bot]", type: "Bot" },
-      body: `${SUMMARY_MARKER}\n${writeState(state)}`,
+      body: `${SUMMARY_MARKER}\n${writeState({ findings: state })}`,
     };
     const thread = (
       fingerprint: string,
@@ -387,7 +268,11 @@ describe("GitHubAdapter", () => {
       file: "src/`![x](https://evil.example/p.png)`.ts",
       body: "See [the fix](https://evil.example/login) and ![](https://evil.example/t.png)",
     };
-    const body = renderSummary({ report: report([f]), commented: new Set(), state: [] });
+    const body = renderSummary({
+      report: report([f]),
+      commented: new Set(),
+      state: { findings: [] },
+    });
     // The path stays one code span, where nothing renders.
     expect(body).toContain("`src/ˋ![x](https://evil.example/p.png)ˋ.ts:3-4`");
     // Model text cannot form a link or an image.

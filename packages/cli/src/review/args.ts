@@ -18,6 +18,7 @@ export interface ReviewArgs {
   reviewers?: string[];
   maxCostUsd?: number;
   ultra?: true;
+  full?: true;
   plan?: true;
 }
 
@@ -34,6 +35,8 @@ Options:
   --pr <number>      Review a GitHub pull request (needs GITHUB_TOKEN)
   --repo <owner/name>  Repository of --pr (default: GITHUB_REPOSITORY or origin)
   --publish          With --pr: post the review to the pull request
+  --full             With --pr: review every file, not only what changed since
+                     the previous review
   --format <format>  text (default) or json
   --output <file>    Write the result to a file instead of stdout
   --reviewers <ids>  Run only these reviewers (comma-separated)
@@ -67,6 +70,10 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
   if (values.output !== undefined) args.output = values.output;
   if (values["no-repo-config"]) args.ignoreRepoConfig = true;
   if (values.ultra) args.ultra = true;
+  if (values.full) {
+    if (!pullRequest) throw new UsageError("--full needs --pr");
+    args.full = true;
+  }
   if (values.plan) {
     if (values.publish) throw new UsageError("--plan cannot be combined with --publish");
     args.plan = true;
@@ -105,6 +112,7 @@ function parse(argv: string[]) {
       reviewers: { type: "string" },
       "max-cost-usd": { type: "string" },
       ultra: { type: "boolean" },
+      full: { type: "boolean" },
       plan: { type: "boolean" },
       pr: { type: "string" },
       repo: { type: "string" },

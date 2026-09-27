@@ -48,6 +48,9 @@ export interface ReviewOptions {
   // Judge use the rest, and are skipped (findings left unchecked) once it is
   // gone. Calls already running finish, so a run can end slightly above it.
   maxCostUsd?: number;
+  // Review every file even when the platform reports what changed since the
+  // previous review.
+  fullReview?: boolean;
   // Recall over cost: every reviewer at every tier, two samples per cell, and
   // findings the judge would drop kept as low confidence.
   ultra?: boolean;
@@ -65,8 +68,13 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   const reviewers = options.reviewers ?? [correctnessReviewer];
   if (reviewers.length === 0) throw new Error("No reviewer is registered");
 
-  const plan = await planReview(options, emit, signal);
   const prior = await loadPriorReview(options.vcs);
+  const scope = reviewScope(prior.review, options.fullReview === true);
+  const plan = await planReview(
+    scope.only ? { ...options, reviewOnly: scope.only } : options,
+    emit,
+    signal,
+  );
 
   const planned = planMatrix(plan.bundles, reviewers, plan.tier, options.reviewerOverrides, {
     allTiers: options.ultra === true,
@@ -102,7 +110,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   // keeps a finding out of the verdict whatever the models say.
   const concurrency = options.concurrency ?? DEFAULTS.concurrency;
   const found = dedupeFindings(results.flatMap((r) => r.findings));
-  const fileCoverage = coverage(plan.decisions, results);
+  const fileCoverage = coverage(plan.decisions, results, plan.unchanged);
   const remembered = applyMemory(found, plan.memory);
   const reported = new Set(found.map((f) => f.fingerprint));
   const priorReview = withoutRemembered(prior.review, plan.memory);
@@ -193,9 +201,11 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
       fixed: reconciled.fixed,
       notReproduced: reconciled.notReproduced,
       notRechecked: reconciled.notRechecked,
+      unchanged: reconciled.unchanged,
       dismissed: reconciled.dismissed,
     };
   }
+  if (scope.note) report.scope = scope.note;
   if (prior.warning) report.warnings.push(prior.warning);
   emit({ type: "run_finished", report });
   return report;
@@ -230,6 +240,24 @@ function withoutRemembered(
   return { findings: review.findings.filter((f) => !accepted.has(f.fingerprint)) };
 }
 
+// Review only what changed since the earlier review when the platform can
+// tell; otherwise everything, with the reason in the report.
+function reviewScope(
+  review: PriorReview | undefined,
+  full: boolean,
+): { only?: ReadonlySet<string>; note?: NonNullable<ReviewReport["scope"]> } {
+  if (!review) return {};
+  if (full) return { note: { mode: "full", reason: "a full review was requested" } };
+  if (review.changedSince) {
+    return {
+      only: new Set(review.changedSince.files),
+      note: { mode: "incremental", since: review.changedSince.head },
+    };
+  }
+  const reason = review.fullReviewReason ?? "the platform cannot tell what changed since";
+  return { note: { mode: "full", reason } };
+}
+
 // A missing earlier review only costs the comparison, never the review.
 async function loadPriorReview(
   vcs: VcsAdapter,
@@ -245,6 +273,7 @@ async function loadPriorReview(
 function coverage(
   decisions: readonly FileDecision[],
   results: readonly JobResult[],
+  unchanged: ReadonlySet<string>,
 ): CoverageEntry[] {
   const failed = new Set(
     results.filter((r) => r.outcome.status !== "completed").flatMap((r) => r.outcome.files),
@@ -253,6 +282,7 @@ function coverage(
   return decisions.map((d): CoverageEntry => {
     const path = d.diff.newPath;
     if (!d.selected) return { path, status: "excluded", reason: d.reason };
+    if (unchanged.has(path)) return { path, status: "unchanged" };
     if (!assigned.has(path)) return { path, status: "unreviewed" };
     return { path, status: failed.has(path) ? "failed" : "reviewed" };
   });

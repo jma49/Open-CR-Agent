@@ -141,10 +141,16 @@ describe("renderText", () => {
     };
     const report: ReviewReport = {
       ...base,
-      rereview: { fixed: [old], dismissed: [old, old], notReproduced: [old], notRechecked: [] },
+      rereview: {
+        fixed: [old],
+        dismissed: [old, old],
+        notReproduced: [old],
+        notRechecked: [],
+        unchanged: [],
+      },
     };
     expect(renderText(report)).toContain(
-      "Since the last review: 1 fixed, 2 dismissed by reviewers, 1 not reported again but unchanged, 0 not re-checked (still open ones count in the verdict).",
+      "Since the last review: 1 fixed, 2 dismissed by reviewers, 1 not reported again but unchanged, 0 not re-checked, 0 in unchanged files (still open ones count in the verdict).",
     );
   });
 

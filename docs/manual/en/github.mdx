@@ -44,7 +44,9 @@ Pull requests from forks do not receive repository secrets on `pull_request`, so
 - **Inline comments** for findings anchored inside the diff, each marked verified, unverified or not verified, in one review with the `COMMENT` event. ocra never approves. Set `github.requestChanges` to request changes when the verdict is `significant_concerns`.
 - **One summary comment**, updated in place on every push: verdict, summary, findings outside the diff, what was fixed since the last review, and coverage and cost.
 
-On the next push ocra compares findings with the previous review:
+On the next push ocra reviews **only what changed**: the files changed since the commit the previous review covered, plus any file that review did not finish (a failed task, for example). Findings in unchanged files carry over as they were: still open, still counted in the verdict, not commented again. Everything is reviewed again when the previous commit is no longer part of the branch (force-push or rebase), when the summary comment was last edited by someone other than ocra, or when you pass `--full` (for example in the action's `args`). The summary says which it was and why.
+
+ocra then compares findings with the previous review:
 
 - A finding it already commented on is not commented again.
 - A finding counts as **fixed** only when the code it pointed at is no longer in the file, or the file was deleted. Fixed findings are listed and their inline threads resolved.

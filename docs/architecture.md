@@ -88,7 +88,7 @@ Findings carry fingerprints, so a re-review can compare against the previous run
 - Not reported again but the code is unchanged → `notReproduced`; its file not reviewed this time → `notRechecked`. Both stay open, keep their severity in the verdict and their thread.
 - Resolved by a reviewer, or declined with "won't fix" / "acknowledged" by someone with write access other than the author → dismissed, quiet unless it comes back more severe.
 - "I disagree" → reassessed by Judge **(planned)**; today the finding simply keeps being reported.
-- Incremental re-review **(planned)**: today every push reviews the whole pull request again and reconciles by fingerprint, so cost grows with the number of pushes.
+- Incremental (ADR-0010): the state records the head it reviewed and the files it did not finish. When that head is an ancestor of the new one and ocra was the last to edit its summary, only files changed since then plus the unfinished ones are reviewed; other files are `unchanged` and their findings carry over. Otherwise, or with `--full`, everything is reviewed and the report says why.
 
 `reconcile` is pure; the pipeline reads the earlier findings' files beforehand and passes whether each one's code is still present.
 
@@ -112,7 +112,7 @@ interface VcsAdapter {            // one instance per change request
   getDiff(): Promise<FileDiff[]>
   readFile(path): Promise<string | undefined>   // file content at head
   searchCode(literal): Promise<CodeMatch[]>
-  getPriorReview(): Promise<PriorReview | undefined>  // fingerprints the platform remembers
+  getPriorReview(): Promise<PriorReview | undefined>  // earlier findings, and what changed since
   publish(report: ReviewReport): Promise<{ warnings: string[] }>
 }
 
@@ -161,5 +161,5 @@ packages/
 |---|---|
 | M1 | CLI on local diffs · Select, Bundle, Anchor · one `correctness` reviewer · eval harness running |
 | M2 | Multiple reviewers · Matrix planner · Verify and Judge · risk tiers |
-| M3 | GitHub Action · inline comments and verdicts · re-review by fingerprint (incremental re-review planned) |
+| M3 | GitHub Action · inline comments and verdicts · incremental re-review |
 | M4 | Failback and circuit breakers · remote config · long-term review memory · `--ultra` |

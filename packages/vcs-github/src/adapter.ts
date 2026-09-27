@@ -16,7 +16,7 @@ import {
   type ReviewThread,
 } from "./client.js";
 import { FINDING_MARKER, inlineComment, renderSummary } from "./render.js";
-import { readState, SUMMARY_MARKER } from "./state.js";
+import { type ReviewState, readState, SUMMARY_MARKER } from "./state.js";
 
 export interface GitHubPullRequest {
   owner: string;
@@ -28,6 +28,12 @@ export interface GitHubPullRequest {
 // adapter on the pull request's base..head range.
 export type CodeSource = Pick<VcsAdapter, "getDiff" | "readFile" | "searchCode">;
 
+// The repository's history, to review only what changed since the previous
+// review. The CLI answers from the local clone.
+export interface History {
+  filesChangedSince(from: string, to: string): Promise<{ files: string[] } | { reason: string }>;
+}
+
 export interface GitHubAdapterOptions {
   pullRequest: GitHubPullRequest;
   api: GitHubApi;
@@ -35,6 +41,7 @@ export interface GitHubAdapterOptions {
   // Only comments by this account count as ocra's earlier review.
   botLogin: string;
   requestChanges?: boolean;
+  history?: History;
 }
 
 export const DEFAULT_BOT_LOGIN = "github-actions[bot]";
@@ -80,11 +87,42 @@ export class GitHubAdapter implements VcsAdapter {
 
   async getPriorReview(): Promise<PriorReview | undefined> {
     const comment = await this.summaryComment();
-    const findings = comment ? readState(comment.body) : undefined;
-    if (!findings) return undefined;
-    const dismissed = await this.dismissedByPeople(findings);
+    const state = comment ? readState(comment.body) : undefined;
+    if (!comment || !state) return undefined;
+    const dismissed = await this.dismissedByPeople(state.findings);
     return {
-      findings: findings.map((f) => (dismissed.has(f.fingerprint) ? { ...f, dismissed: true } : f)),
+      findings: state.findings.map((f) =>
+        dismissed.has(f.fingerprint) ? { ...f, dismissed: true } : f,
+      ),
+      ...(await this.changesSince(state, comment)),
+    };
+  }
+
+  // Anyone with write access can edit the summary comment, including a pull
+  // request's author; a head they wrote could skip their next changes, so the
+  // state counts only when ocra was the last to edit it.
+  private async changesSince(
+    state: ReviewState,
+    comment: IssueComment,
+  ): Promise<Pick<PriorReview, "changedSince" | "fullReviewReason">> {
+    const { history } = this.options;
+    if (!state.head) return { fullReviewReason: "the previous review did not record its commit" };
+    if (!history) return { fullReviewReason: "no repository history to compare with" };
+    const editor = await this.lastEditor(comment);
+    if (editor === undefined) {
+      return { fullReviewReason: "could not check who last edited the previous review's summary" };
+    }
+    if (!this.isBot(editor)) {
+      return { fullReviewReason: "the previous review's summary was edited by someone else" };
+    }
+    const head = (await this.pr()).head.sha;
+    const changed = await history.filesChangedSince(state.head, head);
+    if ("reason" in changed) return { fullReviewReason: changed.reason };
+    return {
+      changedSince: {
+        head: state.head,
+        files: [...new Set([...changed.files, ...(state.pending ?? [])])],
+      },
     };
   }
 
@@ -121,7 +159,7 @@ export class GitHubAdapter implements VcsAdapter {
     const { number } = this.options.pullRequest;
     const pr = await this.pr();
     const previous = await this.summaryComment();
-    const before = (previous ? readState(previous.body) : undefined) ?? [];
+    const before = (previous ? readState(previous.body)?.findings : undefined) ?? [];
     const alreadyCommented = new Set(before.filter((f) => f.commented).map((f) => f.fingerprint));
 
     const fresh = report.findings.flatMap((f) => {
@@ -137,6 +175,7 @@ export class GitHubAdapter implements VcsAdapter {
     const quiet = [
       ...(rereview?.notReproduced ?? []),
       ...(rereview?.notRechecked ?? []),
+      ...(rereview?.unchanged ?? []),
       ...(rereview?.dismissed ?? []),
     ];
     const state: PriorFinding[] = [
@@ -151,7 +190,14 @@ export class GitHubAdapter implements VcsAdapter {
       })),
       ...quiet.filter((f) => !current.has(f.fingerprint)),
     ];
-    const body = renderSummary({ report, commented, state });
+    const pending = report.coverage
+      .filter((c) => c.status === "failed" || c.status === "unreviewed")
+      .map((c) => c.path);
+    const body = renderSummary({
+      report,
+      commented,
+      state: { findings: state, head: report.changeRequest.headSha, pending },
+    });
     if (previous) await this.options.api.updateIssueComment(previous.id, body);
     else await this.options.api.createIssueComment(number, body);
     return { warnings: await this.resolveFixedThreads(number, report) };
@@ -175,6 +221,17 @@ export class GitHubAdapter implements VcsAdapter {
       return [];
     } catch (error) {
       return [`could not resolve the threads of fixed findings: ${errorMessage(error)}`];
+    }
+  }
+
+  // The account that last edited the comment (ocra itself when nobody did),
+  // or undefined when that cannot be told.
+  private async lastEditor(comment: IssueComment): Promise<string | undefined> {
+    if (!comment.node_id) return undefined;
+    try {
+      return (await this.options.api.commentEditor(comment.node_id)) ?? this.options.botLogin;
+    } catch {
+      return undefined;
     }
   }
 

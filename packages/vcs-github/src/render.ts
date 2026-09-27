@@ -6,7 +6,7 @@ import type {
   Verification,
 } from "@open-cr-agent/core";
 import type { ReviewComment } from "./client.js";
-import { SUMMARY_MARKER, writeState } from "./state.js";
+import { type ReviewState, SUMMARY_MARKER, writeState } from "./state.js";
 
 const MAX_SUMMARY_CHARS = 60_000;
 const ICON: Record<Severity, string> = { critical: "🔴", warning: "🟠", suggestion: "🔵" };
@@ -83,7 +83,7 @@ export interface SummaryInput {
   report: ReviewReport;
   // Findings shown as inline comments (now or in an earlier review).
   commented: ReadonlySet<string>;
-  state: readonly PriorFinding[];
+  state: ReviewState;
 }
 
 export function renderSummary({ report, commented, state }: SummaryInput): string {
@@ -98,6 +98,11 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
     "",
     `**${report.findings.length} finding(s)** (${counts}) · risk tier \`${report.tier}\``,
   ];
+  if (report.scope?.mode === "incremental") {
+    lines.push("", `Reviewed only what changed since ${codeSpan(report.scope.since.slice(0, 7))}.`);
+  } else if (report.scope) {
+    lines.push("", `Reviewed every file again: ${safeMarkdown(report.scope.reason)}.`);
+  }
   const unverified = report.findings.filter(
     (f) => f.severity === "critical" && f.verification !== "confirmed",
   ).length;
@@ -142,6 +147,19 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
         `- ${ICON[f.severity]} ${safeMarkdown(f.title)} ${codeSpan(f.file)} _(${verification(f)})_`,
       );
   }
+  if (rereview && rereview.unchanged.length > 0) {
+    lines.push(
+      "",
+      "### Still open in unchanged files",
+      "",
+      "Reported earlier in files not changed since; they count in the verdict.",
+      "",
+    );
+    for (const f of rereview.unchanged)
+      lines.push(
+        `- ${ICON[f.severity]} ${safeMarkdown(f.title)} ${codeSpan(f.file)} _(${verification(f)})_`,
+      );
+  }
   if (rereview && rereview.dismissed.length > 0) {
     lines.push("", "### Dismissed by reviewers");
     for (const f of rereview.dismissed)
@@ -169,7 +187,7 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
     "",
     "<details><summary>Coverage and cost</summary>",
     "",
-    `${report.coverage.filter((c) => c.status === "reviewed").length} reviewed · ${failed.length} not reviewed · ${report.coverage.filter((c) => c.status === "excluded").length} excluded · ${inputTokens} in / ${outputTokens} out tokens · $${costUsd.toFixed(4)}`,
+    `${report.coverage.filter((c) => c.status === "reviewed").length} reviewed · ${report.coverage.filter((c) => c.status === "unchanged").length} unchanged since the last review · ${failed.length} not reviewed · ${report.coverage.filter((c) => c.status === "excluded").length} excluded · ${inputTokens} in / ${outputTokens} out tokens · $${costUsd.toFixed(4)}`,
     ...failed.map((c) => `- not reviewed: ${codeSpan(c.path)}`),
     "",
     "</details>",

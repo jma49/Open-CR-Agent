@@ -22,6 +22,7 @@ ocra review [options]
 | `--pr <number>` | Review a GitHub pull request; see [GitHub pull requests](./github) |
 | `--repo <owner/name>` | Repository of `--pr` (default: `GITHUB_REPOSITORY` or `origin`) |
 | `--publish` | With `--pr`: post the review to the pull request |
+| `--full` | With `--pr`: review every file, not only what changed since the previous review |
 | `--max-cost-usd <n>` | Spend limit for the run. Review tasks stop starting at 80% of it (tasks already running finish); verification and judging use the rest. If that runs out too, the remaining findings are reported *not verified*, so they cannot block, and the report says so |
 | `--plan` | Show selected and excluded files, bundles, review tasks and the size of each first prompt, without calling a model (free). Grouping by the light model is skipped, so bundles are shown per file |
 | `--ultra` | Favor recall over cost; see [Modes](./how-it-works#modes) |
@@ -60,7 +61,7 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...` so a lo
 
 ### JSON output
 
-`--format json` prints the full report: the change request, risk tier, verdict and summary, coverage for every changed file (reviewed, failed, unreviewed, or excluded with a reason), bundles, task outcomes, reviewer/bundle pairs the matrix skipped, findings verification dropped (`refuted`, with the reason), what the judge merged, dropped or recalibrated (`judgement`), findings with their resolved line ranges, token usage and cost, and warnings.
+`--format json` prints the full report: the change request, risk tier, verdict and summary, coverage for every changed file (reviewed, failed, unreviewed, unchanged since the previous review, or excluded with a reason), for pull requests whether the run was incremental or full and why (`scope`), bundles, task outcomes, reviewer/bundle pairs the matrix skipped, findings verification dropped (`refuted`, with the reason), what the judge merged, dropped or recalibrated (`judgement`), findings with their resolved line ranges, token usage and cost, and warnings.
 
 ### Sessions
 

@@ -55,9 +55,14 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
     );
   }
   const rereview = report.rereview;
+  if (report.scope?.mode === "incremental") {
+    lines.push(`Reviewed only what changed since ${report.scope.since.slice(0, 7)}.`);
+  } else if (report.scope) {
+    lines.push(`Reviewed every file again: ${report.scope.reason}.`);
+  }
   if (rereview) {
     lines.push(
-      `Since the last review: ${rereview.fixed.length} fixed, ${rereview.dismissed.length} dismissed by reviewers, ${rereview.notReproduced.length} not reported again but unchanged, ${rereview.notRechecked.length} not re-checked (still open ones count in the verdict).`,
+      `Since the last review: ${rereview.fixed.length} fixed, ${rereview.dismissed.length} dismissed by reviewers, ${rereview.notReproduced.length} not reported again but unchanged, ${rereview.notRechecked.length} not re-checked, ${rereview.unchanged.length} in unchanged files (still open ones count in the verdict).`,
     );
   }
   const judged = report.judgement;
@@ -90,6 +95,7 @@ function coverageLine(report: ReviewReport): string {
     `${count("reviewed")} reviewed`,
     `${count("failed")} failed`,
     ...(unreviewed > 0 ? [`${unreviewed} not covered by any reviewer`] : []),
+    ...(count("unchanged") > 0 ? [`${count("unchanged")} unchanged since the last review`] : []),
     `${count("excluded")} excluded`,
   ].join(" · ");
 }

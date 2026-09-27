@@ -21,6 +21,7 @@ const commentSchema = z.object({
     .nullable()
     .transform((b) => b ?? ""),
   user: z.object({ login: z.string(), type: z.string() }).nullable(),
+  node_id: z.string().optional(),
 });
 export type IssueComment = z.infer<typeof commentSchema>;
 
@@ -153,6 +154,23 @@ export class GitHubApi {
       "mutation($id: ID!) { resolveReviewThread(input: { threadId: $id }) { thread { id } } }",
       { id: threadId },
     );
+  }
+
+  // Who last edited a comment, if anyone did.
+  async commentEditor(nodeId: string): Promise<string | undefined> {
+    const data = z
+      .object({
+        node: z
+          .object({ editor: z.object({ login: z.string() }).nullable().optional() })
+          .nullable(),
+      })
+      .parse(
+        await this.graphql(
+          "query($id: ID!) { node(id: $id) { ... on IssueComment { editor { login } } } }",
+          { id: nodeId },
+        ),
+      );
+    return data.node?.editor?.login;
   }
 
   async getPullRequest(number: number): Promise<PullRequest> {

@@ -52,6 +52,7 @@ describe("reconcile", () => {
       fixed: [],
       notReproduced: [],
       notRechecked: [],
+      unchanged: [],
       dismissed: [],
     });
   });
@@ -110,9 +111,28 @@ describe("reconcile", () => {
     expect(ids(stillOpen(result))).toEqual(["task-failed", "left"]);
   });
 
+  it("carries findings in files an incremental review left out as unchanged", () => {
+    const result = run(
+      [],
+      { findings: [prior("kept", "same.ts")] },
+      {
+        coverage: [{ path: "same.ts", status: "unchanged" }],
+        present: { kept: true },
+      },
+    );
+    expect(ids(result.unchanged)).toEqual(["kept"]);
+    expect(ids(stillOpen(result))).toEqual(["kept"]);
+  });
+
   it("drops earlier findings that were reported again but not kept", () => {
     const result = run([], { findings: [prior("refuted")] }, { reported: ["refuted"] });
-    expect(result).toMatchObject({ fixed: [], notReproduced: [], notRechecked: [], dismissed: [] });
+    expect(result).toMatchObject({
+      fixed: [],
+      notReproduced: [],
+      notRechecked: [],
+      unchanged: [],
+      dismissed: [],
+    });
   });
 
   it("keeps findings a person dismissed quiet unless they got more severe", () => {

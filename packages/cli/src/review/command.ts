@@ -113,6 +113,7 @@ export async function reviewCommand(
       reviewerOverrides: overrides,
       ...(args.maxCostUsd !== undefined ? { maxCostUsd: args.maxCostUsd } : {}),
       ...(args.ultra ? { ultra: true } : {}),
+      ...(args.full ? { fullReview: true } : {}),
       ...(target.readTrusted ? { readTrusted: target.readTrusted } : {}),
       vcs,
       runtime,

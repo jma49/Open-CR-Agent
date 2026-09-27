@@ -23,6 +23,9 @@ export interface Reconciled {
   notReproduced: PriorFinding[];
   // Their file was not reviewed this time: status unknown, the finding stays open.
   notRechecked: PriorFinding[];
+  // Their file has not changed since the earlier review, which covered it; the
+  // finding carries over as it was.
+  unchanged: PriorFinding[];
   // A person dismissed them and they did not come back more severe.
   dismissed: PriorFinding[];
 }
@@ -37,6 +40,7 @@ export function reconcile(input: ReconcileInput): Reconciled {
     fixed: [],
     notReproduced: [],
     notRechecked: [],
+    unchanged: [],
     dismissed: [],
   };
   if (!prior) {
@@ -44,13 +48,14 @@ export function reconcile(input: ReconcileInput): Reconciled {
     return result;
   }
   const before = new Map(prior.findings.map((f) => [f.fingerprint, f]));
-  const reviewed = new Set(coverage.filter((c) => c.status === "reviewed").map((c) => c.path));
+  const status = new Map(coverage.map((c) => [c.path, c.status]));
 
   for (const old of prior.findings) {
     if (reported.has(old.fingerprint)) continue;
     if (stillPresent.get(old.fingerprint) === false) result.fixed.push(old);
     else if (old.dismissed) result.dismissed.push(old);
-    else if (reviewed.has(old.file)) result.notReproduced.push(old);
+    else if (status.get(old.file) === "reviewed") result.notReproduced.push(old);
+    else if (status.get(old.file) === "unchanged") result.unchanged.push(old);
     else result.notRechecked.push(old);
   }
 
@@ -68,5 +73,5 @@ export function reconcile(input: ReconcileInput): Reconciled {
 // Earlier findings that are neither fixed nor dismissed keep counting towards
 // the verdict, so the same code reviewed twice cannot flip it by chance.
 export function stillOpen(reconciled: Reconciled): PriorFinding[] {
-  return [...reconciled.notReproduced, ...reconciled.notRechecked];
+  return [...reconciled.notReproduced, ...reconciled.notRechecked, ...reconciled.unchanged];
 }
