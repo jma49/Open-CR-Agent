@@ -11,20 +11,48 @@ interface Match {
   touchesAdded: boolean;
 }
 
-export function matchInHunks(diff: FileDiff, snippet: string): LineRange | undefined {
+// "ambiguous": the snippet fits several places equally well, so no line is
+// picked; a wrong line is worse than a file-level comment.
+export type SnippetMatch =
+  | { kind: "found"; range: LineRange }
+  | { kind: "ambiguous" }
+  | { kind: "none" };
+
+// Shortest quote (normalized characters) that may match part of a line. Models
+// often quote part of a single line, but a fragment like `err` or `i++`
+// occurs on many lines; this is roughly one meaningful expression.
+export const MIN_PARTIAL_QUOTE_CHARS = 12;
+
+const NONE: SnippetMatch = { kind: "none" };
+
+export function matchInHunks(diff: FileDiff, snippet: string): SnippetMatch {
   const target = normalizeSnippet(snippet);
-  if (target.length === 0) return undefined;
-  const matches = diff.hunks.flatMap((hunk) => findMatches(newSideLines(hunk), target));
-  return preferAdded(matches);
+  if (target.length === 0) return NONE;
+  return pick(findMatches(diff.hunks.map(newSideLines), target));
 }
 
-export function matchInContent(content: string, snippet: string): LineRange | undefined {
+export function matchInContent(content: string, snippet: string): SnippetMatch {
   const target = normalizeSnippet(snippet);
-  if (target.length === 0) return undefined;
+  if (target.length === 0) return NONE;
   const lines = content
     .split("\n")
     .map((text, i) => ({ line: i + 1, text: normalizeLine(text), added: false }));
-  return preferAdded(findMatches(lines, target));
+  return pick(findMatches([lines], target));
+}
+
+// Every exact match of the snippet in the hunks of the given files, for
+// finding a quote the model attached to the wrong file.
+export function exactMatchesInHunks(diffs: readonly FileDiff[], snippet: string) {
+  const target = normalizeSnippet(snippet);
+  if (target.length === 0) return [];
+  return diffs.flatMap((diff) =>
+    diff.hunks.flatMap((hunk) =>
+      consecutiveMatches(nonBlank(newSideLines(hunk)), target, (a, b) => a === b).map((m) => ({
+        file: diff.newPath,
+        range: m.range,
+      })),
+    ),
+  );
 }
 
 export function isWithinHunks(diff: FileDiff, range: LineRange): boolean {
@@ -41,13 +69,24 @@ function newSideLines(hunk: Hunk): NumberedLine[] {
   );
 }
 
-// Models often quote only part of a single line, so a one-line snippet may
-// also match as a substring once no exact line match exists.
-function findMatches(lines: NumberedLine[], target: string[]): Match[] {
-  const candidates = lines.filter((l) => l.text !== "");
-  const exact = consecutiveMatches(candidates, target, (a, b) => a === b);
+// Whole lines first. A one-line snippet may also match part of a line, but
+// only when it is long enough to mean something and fits exactly one line.
+// Each group (a hunk, or a whole file) is matched on its own, so a snippet
+// never spans two hunks.
+function findMatches(groups: NumberedLine[][], target: string[]): Match[] {
+  const candidates = groups.map(nonBlank);
+  const across = (equals: (line: string, target: string) => boolean) =>
+    candidates.flatMap((lines) => consecutiveMatches(lines, target, equals));
+  const exact = across((a, b) => a === b);
   if (exact.length > 0 || target.length > 1) return exact;
-  return consecutiveMatches(candidates, target, (line, t) => line.includes(t));
+  const fragment = target[0] as string;
+  if (fragment.length < MIN_PARTIAL_QUOTE_CHARS) return [];
+  const partial = across((line, t) => line.includes(t));
+  return partial.length === 1 ? partial : [];
+}
+
+function nonBlank(lines: NumberedLine[]): NumberedLine[] {
+  return lines.filter((l) => l.text !== "");
 }
 
 function consecutiveMatches(
@@ -71,8 +110,13 @@ function consecutiveMatches(
   return matches;
 }
 
-function preferAdded(matches: Match[]): LineRange | undefined {
-  return (matches.find((m) => m.touchesAdded) ?? matches[0])?.range;
+// Matches touching added lines win; several at the winning level are ambiguous.
+function pick(matches: Match[]): SnippetMatch {
+  const added = matches.filter((m) => m.touchesAdded);
+  const best = added.length > 0 ? added : matches;
+  if (best.length === 0) return NONE;
+  if (best.length > 1) return { kind: "ambiguous" };
+  return { kind: "found", range: (best[0] as Match).range };
 }
 
 export function normalizeSnippet(code: string): string[] {

@@ -45,7 +45,8 @@ export interface Finding extends ReportedFinding {
   fingerprint: string;
   reviewer: string;
   lineRange?: LineRange;
-  anchor: { method: AnchorMethod; inDiff: boolean };
+  // ambiguous: the quote fitted several places, so the finding is file-level.
+  anchor: { method: AnchorMethod; inDiff: boolean; ambiguous?: true };
   status: FindingStatus;
   // --ultra keeps findings the judge would drop and marks them instead.
   lowConfidence?: boolean;

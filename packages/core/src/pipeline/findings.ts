@@ -24,7 +24,11 @@ export function toFinding(
     id: randomUUID(),
     fingerprint: fingerprint(reported.category, anchor.file, reported.existingCode),
     reviewer,
-    anchor: { method: anchor.method, inDiff: anchor.inDiff },
+    anchor: {
+      method: anchor.method,
+      inDiff: anchor.inDiff,
+      ...(anchor.ambiguous ? { ambiguous: true as const } : {}),
+    },
     status: "new",
   };
   if (anchor.lineRange) {

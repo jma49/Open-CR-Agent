@@ -69,6 +69,8 @@ export interface ReviewReport {
     unchanged: PriorFinding[];
     dismissed: PriorFinding[];
   };
+  // Findings left file-level because their quote fitted several places.
+  anchoring?: { ambiguous: number };
   usage: Usage;
   warnings: string[];
 }

@@ -91,6 +91,12 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
       `Since the last review: ${rereview.fixed.length} fixed, ${rereview.dismissed.length} dismissed by reviewers, ${rereview.notReproduced.length} not reported again but unchanged, ${rereview.notRechecked.length} not re-checked, ${rereview.unchanged.length} in unchanged files (still open ones count in the verdict).`,
     );
   }
+  const ambiguous = report.anchoring?.ambiguous ?? 0;
+  if (ambiguous > 0) {
+    lines.push(
+      `${ambiguous} finding(s) quote code that appears in several places; shown without a line.`,
+    );
+  }
   const judged = report.judgement;
   if (judged && judged.merged.length + judged.dropped.length > 0) {
     lines.push(

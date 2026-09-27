@@ -58,6 +58,50 @@ describe("anchorFinding", () => {
     });
   });
 
+  it("moves a finding only for an exact quote found in exactly one other file", async () => {
+    const twice = parseUnifiedDiff(
+      [
+        "diff --git a/c.ts b/c.ts",
+        "--- a/c.ts",
+        "+++ b/c.ts",
+        "@@ -1,1 +1,2 @@",
+        " x();",
+        "+runTask(spec);",
+      ].join("\n"),
+    );
+    const both = context({ diffs: [...diffs, ...twice] });
+    expect(await anchorFinding(finding("a.ts", "runTask(spec);"), both)).toMatchObject({
+      file: "a.ts",
+      method: "file_level",
+    });
+    // Part of a line never moves a finding to another file.
+    expect(await anchorFinding(finding("a.ts", "runTask(spec"), context())).toMatchObject({
+      file: "a.ts",
+      method: "file_level",
+    });
+  });
+
+  it("leaves an ambiguous quote file-level without looking further", async () => {
+    const relocate = vi.fn(async () => "const b = 2;");
+    const repeated = parseUnifiedDiff(
+      [
+        "diff --git a/d.ts b/d.ts",
+        "--- a/d.ts",
+        "+++ b/d.ts",
+        "@@ -1,1 +1,3 @@",
+        " x();",
+        "+return err;",
+        "+return err;",
+      ].join("\n"),
+    );
+    const anchor = await anchorFinding(
+      finding("d.ts", "return err;"),
+      context({ diffs: repeated, relocate }),
+    );
+    expect(anchor).toEqual({ file: "d.ts", method: "file_level", inDiff: false, ambiguous: true });
+    expect(relocate).not.toHaveBeenCalled();
+  });
+
   it("asks the relocator only after deterministic matching fails", async () => {
     const relocate = vi.fn(async () => "const b = 2;");
     const anchor = await anchorFinding(finding("a.ts", "const b = 3;"), context({ relocate }));

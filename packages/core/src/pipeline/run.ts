@@ -227,6 +227,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     ],
   };
   if (judged.decisions) report.judgement = judged.decisions;
+  report.anchoring = { ambiguous: report.findings.filter((f) => f.anchor.ambiguous).length };
   if (prior.review) {
     report.rereview = {
       fixed: reconciled.fixed,
