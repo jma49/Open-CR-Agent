@@ -7,7 +7,7 @@ export interface Bundle {
   files: FileDiff[];
 }
 
-export type BundleStrategy = "single" | "small_set" | "grouped" | "per_file";
+export type BundleStrategy = "single" | "small_set" | "grouped" | "per_file" | "per_directory";
 
 export interface BundleResult {
   bundles: Bundle[];
@@ -19,6 +19,9 @@ export interface BundlePolicy {
   groupingMinFiles: number;
   maxFilesPerBundle: number;
   maxBundleChars: number;
+  // Without a model's grouping, up to this many files are reviewed one per
+  // task; more are grouped by directory so tasks do not grow with every file.
+  perFileMaxFiles?: number;
 }
 
 export const defaultBundlePolicy: BundlePolicy = {
@@ -28,6 +31,7 @@ export const defaultBundlePolicy: BundlePolicy = {
 };
 
 export const SMALL_SET_LABEL = "small change set";
+const PER_FILE_MAX_FILES = 20;
 
 export async function bundleFiles(
   files: readonly FileDiff[],
@@ -42,16 +46,16 @@ export async function bundleFiles(
     return { bundles, strategy: "small_set", warnings: [] };
   }
 
-  if (!grouper) return { bundles: perFile(files), strategy: "per_file", warnings: [] };
+  if (!grouper) return withoutGrouping(files, policy, []);
 
   let raw: unknown;
   try {
     raw = await grouper.group(buildGroupingPrompt(files, policy.maxFilesPerBundle));
   } catch (error) {
-    return fallback(files, `grouping failed: ${errorMessage(error)}`);
+    return fallback(files, policy, `grouping failed: ${errorMessage(error)}`);
   }
   const parsed = groupingResponseSchema.safeParse(raw);
-  if (!parsed.success) return fallback(files, "grouping returned an invalid response");
+  if (!parsed.success) return fallback(files, policy, "grouping returned an invalid response");
 
   const warnings: string[] = [];
   const bundles = fromGroups(files, parsed.data, warnings);
@@ -100,12 +104,40 @@ function enforceLimits(bundles: Bundle[], policy: BundlePolicy): Bundle[] {
   });
 }
 
-function fallback(files: readonly FileDiff[], warning: string): BundleResult {
+function fallback(files: readonly FileDiff[], policy: BundlePolicy, warning: string): BundleResult {
+  return withoutGrouping(files, policy, [warning]);
+}
+
+function withoutGrouping(
+  files: readonly FileDiff[],
+  policy: BundlePolicy,
+  reasons: string[],
+): BundleResult {
+  if (files.length <= (policy.perFileMaxFiles ?? PER_FILE_MAX_FILES)) {
+    return {
+      bundles: perFile(files),
+      strategy: "per_file",
+      warnings: reasons.map((r) => `${r}; reviewing per file`),
+    };
+  }
   return {
-    bundles: perFile(files),
-    strategy: "per_file",
-    warnings: [`${warning}; reviewing per file`],
+    bundles: byDirectory(files, policy),
+    strategy: "per_directory",
+    warnings: reasons.map((r) => `${r}; grouping by directory`),
   };
+}
+
+function byDirectory(files: readonly FileDiff[], policy: BundlePolicy): Bundle[] {
+  const groups = new Map<string, FileDiff[]>();
+  for (const file of files) {
+    const slash = file.newPath.lastIndexOf("/");
+    const dir = slash < 0 ? "." : file.newPath.slice(0, slash);
+    groups.set(dir, [...(groups.get(dir) ?? []), file]);
+  }
+  return enforceLimits(
+    [...groups].map(([dir, members]) => ({ label: dir === "." ? "(root)" : dir, files: members })),
+    policy,
+  );
 }
 
 function perFile(files: readonly FileDiff[]): Bundle[] {

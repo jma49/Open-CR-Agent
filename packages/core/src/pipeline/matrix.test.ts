@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Bundle } from "../bundle/bundle.js";
 import type { FileDiff } from "../domain.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
-import { planMatrix } from "./matrix.js";
+import { planMatrix, planTasks } from "./matrix.js";
 
 function bundle(label: string, ...paths: string[]): Bundle {
   return { label, files: paths.map((p) => ({ newPath: p, oldPath: p }) as FileDiff) };
@@ -77,5 +77,42 @@ describe("planMatrix", () => {
       "disabled",
       "below_tier",
     ]);
+  });
+});
+
+describe("planTasks", () => {
+  const many = Array.from({ length: 4 }, (_, i) => bundle(`b${i}`, `src/f${i}.ts`));
+  const performance = reviewer("performance");
+
+  it("keeps every file's first reviewer and drops second samples first past the limit", () => {
+    const ultra = planTasks(
+      many,
+      [correctness, performance],
+      "full",
+      {},
+      {
+        ultra: true,
+        maxTasks: 6,
+      },
+    );
+    expect(ultra.cells.map((c) => c.taskId)).toEqual([
+      "correctness-1",
+      "performance-1",
+      "correctness-2",
+      "performance-2",
+      "correctness-3",
+      "correctness-4",
+    ]);
+    expect(ultra.cells.every((c) => !c.taskId.endsWith("b"))).toBe(true);
+    expect(ultra.skipped.filter((s) => s.reason === "task_limit")).toHaveLength(10);
+
+    const plain = planTasks(many, [correctness, performance], "full", {}, { maxTasks: 5 });
+    expect(plain.cells.map((c) => c.taskId).sort()).toEqual(
+      ["correctness-1", "correctness-2", "correctness-3", "correctness-4", "performance-1"].sort(),
+    );
+  });
+
+  it("changes nothing under the limit", () => {
+    expect(planTasks(many, [correctness], "full").cells).toHaveLength(4);
   });
 });

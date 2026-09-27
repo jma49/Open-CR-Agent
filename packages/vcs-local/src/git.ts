@@ -5,6 +5,9 @@ export interface GitOptions {
   input?: string;
   okExitCodes?: readonly number[];
   env?: Readonly<Record<string, string>>;
+  // Keep at most this much output and treat a longer one as complete, for
+  // commands whose output is only sampled (search results).
+  truncateAt?: number;
 }
 
 export class GitError extends Error {
@@ -29,10 +32,17 @@ export function git(args: readonly string[], options: GitOptions): Promise<strin
       {
         cwd: options.cwd,
         encoding: "utf8",
-        maxBuffer: MAX_OUTPUT_BYTES,
+        maxBuffer: options.truncateAt ?? MAX_OUTPUT_BYTES,
         env: { ...process.env, LC_ALL: "C", GIT_OPTIONAL_LOCKS: "0", ...options.env },
       },
       (error, stdout, stderr) => {
+        if (
+          options.truncateAt !== undefined &&
+          (error as { code?: unknown } | null)?.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
+        ) {
+          resolve(stdout);
+          return;
+        }
         const exitCode = error ? (typeof error.code === "number" ? error.code : undefined) : 0;
         if (exitCode !== undefined && okExitCodes.includes(exitCode)) resolve(stdout);
         else reject(new GitError(args, exitCode, stderr || String(error?.message ?? "")));

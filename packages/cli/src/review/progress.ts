@@ -57,7 +57,7 @@ function describe(event: ReviewEvent): string | undefined {
       );
     case "matrix_planned": {
       const skipped = event.skipped.length;
-      return `${event.tasks} review task(s)${skipped > 0 ? `, ${skipped} reviewer/bundle pair(s) skipped by scope` : ""}`;
+      return `${event.tasks} review task(s)${skipped > 0 ? `, ${skipped} reviewer/bundle pair(s) skipped` : ""}`;
     }
     case "verification_finished":
       return `Verified ${event.checked} finding(s)${event.refuted.length > 0 ? `, dropped ${event.refuted.length} that the code disproves` : ""}`;

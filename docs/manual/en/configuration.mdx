@@ -63,6 +63,7 @@ For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Gro
 | `taskTimeoutMinutes` | `10` | Limit for one review task |
 | `runTimeoutMinutes` | `25` | Limit for the whole run |
 | `maxCostUsd` | none | Spend limit for the run: review tasks use up to 80% of it, verification and judging the rest (see `--max-cost-usd`) |
+| `maxTasks` | `60` | Most review tasks one run starts. Past it, `--ultra`'s second passes go first, then later reviewers, so every file keeps its first reviewer as long as possible; skipped files are reported as not reviewed (exit code `3`) |
 | `judge` | `true` | Merge, filter and recalibrate findings across reviewers (one top-tier call per run with findings) |
 | `verify` | `true` | Fact-check findings before reporting them (one standard-tier call per file with findings) |
 
@@ -93,7 +94,7 @@ An organization can keep common settings in one place and let repositories exten
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `maxCostUsd`, `include`, `exclude`, `reviewers`, `github` and `rules` (the same shape as `.ocra/rules.json` entries). It cannot list plugins or choose a runtime: it comes from outside the repository and must not run code. The repository's own values win; `include`, `exclude` and `rules` are combined and `models`, `reviewers` and `github` are merged key by key.
+The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `reviewers`, `github` and `rules` (the same shape as `.ocra/rules.json` entries). It cannot list plugins or choose a runtime: it comes from outside the repository and must not run code. The repository's own values win; `include`, `exclude` and `rules` are combined and `models`, `reviewers` and `github` are merged key by key.
 
 Only `https` URLs are accepted, without redirects, up to 256 KB. The optional `#sha256=` fragment pins the exact content. If the file cannot be loaded or is invalid, ocra warns and continues with the repository's own settings.
 

@@ -29,6 +29,7 @@ const configSchema = z
     verify: z.boolean().optional(),
     judge: z.boolean().optional(),
     maxCostUsd: z.number().positive().optional(),
+    maxTasks: z.number().int().min(1).max(1_000).optional(),
     github: z
       .object({ requestChanges: z.boolean(), botLogin: z.string().min(1) })
       .partial()

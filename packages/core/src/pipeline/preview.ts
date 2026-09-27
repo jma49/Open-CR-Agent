@@ -6,7 +6,7 @@ import type { ReviewerDefinition } from "../review/reviewer.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import { resolveRules } from "../rules/resolve.js";
 import type { FileDecision } from "../select/select.js";
-import { planMatrix, type ReviewerOverrides, type SkippedCell } from "./matrix.js";
+import { planTasks, type ReviewerOverrides, type SkippedCell } from "./matrix.js";
 import { type PlanOptions, planReview } from "./plan.js";
 
 export interface PreviewTask {
@@ -36,6 +36,7 @@ export type PreviewOptions = Omit<PlanOptions, "runtime"> & {
   reviewers?: readonly ReviewerDefinition[];
   reviewerOverrides?: ReviewerOverrides;
   ultra?: boolean;
+  maxTasks?: number;
 };
 
 // Everything a review would do before its first model call, for free: which
@@ -43,12 +44,11 @@ export type PreviewOptions = Omit<PlanOptions, "runtime"> & {
 export async function previewReview(options: PreviewOptions): Promise<ReviewPreview> {
   const plan = await planReview(options, () => {}, new AbortController().signal);
   const reviewers = options.reviewers ?? [correctnessReviewer];
-  const planned = planMatrix(plan.bundles, reviewers, plan.tier, options.reviewerOverrides, {
-    allTiers: options.ultra === true,
+  const planned = planTasks(plan.bundles, reviewers, plan.tier, options.reviewerOverrides, {
+    ultra: options.ultra === true,
+    ...(options.maxTasks !== undefined ? { maxTasks: options.maxTasks } : {}),
   });
-  const cells = options.ultra
-    ? planned.cells.flatMap((cell) => [cell, { ...cell, taskId: `${cell.taskId}b` }])
-    : planned.cells;
+  const { cells } = planned;
 
   const tasks = cells.map((cell): PreviewTask => {
     const files = cell.bundle.files.map((f) => f.newPath);

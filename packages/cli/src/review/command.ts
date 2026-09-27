@@ -89,6 +89,7 @@ export async function reviewCommand(
       selection: { ...defaultSelectionPolicy, include: config.include, exclude: config.exclude },
       ...(target.readTrusted ? { readTrusted: target.readTrusted } : {}),
       ...(args.ultra ? { ultra: true } : {}),
+      ...(config.maxTasks !== undefined ? { maxTasks: config.maxTasks } : {}),
     });
     const rendered =
       args.format === "json" ? `${JSON.stringify(preview, null, 2)}\n` : renderPlan(preview);
@@ -159,6 +160,7 @@ function runOptions(config: CliConfig): Omit<ReviewOptions, "vcs" | "runtime"> {
   if (config.verify !== undefined) options.verify = config.verify;
   if (config.judge !== undefined) options.judge = config.judge;
   if (config.maxCostUsd !== undefined) options.maxCostUsd = config.maxCostUsd;
+  if (config.maxTasks !== undefined) options.maxTasks = config.maxTasks;
   if (config.runTimeoutMinutes !== undefined)
     options.runTimeoutMs = config.runTimeoutMinutes * 60_000;
   return options;

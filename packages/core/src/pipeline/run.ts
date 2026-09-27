@@ -16,7 +16,7 @@ import { markUnchecked, verifyFindings } from "../verify/verify.js";
 import { spendTracker } from "./budget.js";
 import { type JobResult, runJob } from "./execute.js";
 import { dedupeFindings } from "./findings.js";
-import { type MatrixCell, planMatrix, type ReviewerOverrides } from "./matrix.js";
+import { DEFAULT_MAX_TASKS, type MatrixCell, planTasks, type ReviewerOverrides } from "./matrix.js";
 import { planReview } from "./plan.js";
 import { mapWithConcurrency } from "./pool.js";
 import {
@@ -56,6 +56,9 @@ export interface ReviewOptions {
   // Judge use the rest, and are skipped (findings left unchecked) once it is
   // gone. Calls already running finish, so a run can end slightly above it.
   maxCostUsd?: number;
+  // At most this many review tasks (DEFAULT_MAX_TASKS); the rest are skipped
+  // and their files reported as not reviewed.
+  maxTasks?: number;
   // Review every file even when the platform reports what changed since the
   // previous review.
   fullReview?: boolean;
@@ -84,15 +87,16 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     signal,
   );
 
-  const planned = planMatrix(plan.bundles, reviewers, plan.tier, options.reviewerOverrides, {
-    allTiers: options.ultra === true,
+  const matrix = planTasks(plan.bundles, reviewers, plan.tier, options.reviewerOverrides, {
+    ultra: options.ultra === true,
+    ...(options.maxTasks !== undefined ? { maxTasks: options.maxTasks } : {}),
   });
-  const matrix = options.ultra
-    ? {
-        ...planned,
-        cells: planned.cells.flatMap((cell) => [cell, { ...cell, taskId: `${cell.taskId}b` }]),
-      }
-    : planned;
+  const limited = matrix.skipped.filter((s) => s.reason === "task_limit").length;
+  if (limited > 0) {
+    plan.warnings.push(
+      `task limit of ${options.maxTasks ?? DEFAULT_MAX_TASKS} reached: ${limited} review task(s) skipped; their files are reported as not reviewed`,
+    );
+  }
   emit({ type: "matrix_planned", tasks: matrix.cells.length, skipped: matrix.skipped });
   const execute = {
     runtime: options.runtime,

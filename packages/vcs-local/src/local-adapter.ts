@@ -1,4 +1,4 @@
-import { cp, lstat, mkdtemp, readFile, readlink, realpath, rm } from "node:fs/promises";
+import { cp, lstat, mkdtemp, open, readFile, readlink, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
@@ -30,6 +30,10 @@ interface ResolvedTarget {
 
 const WORKING_TREE = "working-tree";
 const SEARCH_RESULT_LIMIT = 100;
+const SEARCH_OUTPUT_BYTES = 4 * 1024 * 1024;
+// A run keeps every file it reads in memory; files beyond this are read in
+// part (larger ones are diffed as binary and not reviewed anyway).
+export const MAX_READ_BYTES = 2 * 1024 * 1024;
 
 // Explicit prefixes and flags keep the output parseable whatever the user's
 // diff configuration (noprefix, mnemonicPrefix, external drivers, relative).
@@ -82,6 +86,7 @@ export class LocalGitAdapter implements VcsAdapter {
     try {
       return await git(["cat-file", "blob", `${head}:${inside.split(sep).join("/")}`], {
         cwd: root,
+        truncateAt: MAX_READ_BYTES,
       });
     } catch (error) {
       if (error instanceof GitError && error.exitCode === 128) return undefined;
@@ -95,10 +100,16 @@ export class LocalGitAdapter implements VcsAdapter {
     if (head === undefined) args.push("--untracked");
     args.push("-e", literal);
     if (head !== undefined) args.push(head);
-    const out = await git([...args, "--"], { cwd: root, okExitCodes: [0, 1] });
+    const out = await git([...args, "--"], {
+      cwd: root,
+      okExitCodes: [0, 1],
+      truncateAt: SEARCH_OUTPUT_BYTES,
+    });
     const prefix = head === undefined ? "" : `${head}:`;
-    return out
-      .split("\n")
+    const lines = out.split("\n");
+    // Output cut at the byte cap ends inside a line.
+    if (!out.endsWith("\n")) lines.pop();
+    return lines
       .filter((line) => line !== "")
       .slice(0, SEARCH_RESULT_LIMIT)
       .map((line) => {
@@ -231,7 +242,16 @@ async function readWorkingTreeFile(root: string, inside: string): Promise<string
     const path = join(realParent, basename(inside));
     const stat = await lstat(path);
     if (stat.isSymbolicLink()) return await readlink(path, "utf8");
-    return stat.isFile() ? await readFile(path, "utf8") : undefined;
+    if (!stat.isFile()) return undefined;
+    if (stat.size <= MAX_READ_BYTES) return await readFile(path, "utf8");
+    const handle = await open(path, "r");
+    try {
+      const buffer = Buffer.alloc(MAX_READ_BYTES);
+      const { bytesRead } = await handle.read(buffer, 0, MAX_READ_BYTES, 0);
+      return buffer.subarray(0, bytesRead).toString("utf8");
+    } finally {
+      await handle.close();
+    }
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === "ENOENT" || code === "ENOTDIR") return undefined;

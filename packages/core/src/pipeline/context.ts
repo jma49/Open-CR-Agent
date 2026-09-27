@@ -12,6 +12,7 @@ export class AccessDeniedError extends Error {}
 // and anchoring and every agent re-read the same files.
 export function reviewContext(vcs: VcsAdapter, diffs: readonly FileDiff[]): ReviewContext {
   const reads = new Map<string, Promise<string | undefined>>();
+  const searches = new Map<string, Promise<CodeMatch[]>>();
   // A file renamed away from a secret name still holds the secret, and
   // selection already excludes it from review for that reason.
   const renamedSecrets = new Set(
@@ -43,9 +44,17 @@ export function reviewContext(vcs: VcsAdapter, diffs: readonly FileDiff[]): Revi
       const allowed = allowedPath(path);
       return diffs.find((d) => d.newPath === allowed || d.oldPath === allowed)?.patch;
     },
-    async searchCode(literal) {
-      const matches = await vcs.searchCode(literal);
-      return matches.filter((m: CodeMatch) => isReadable(m.path));
+    // Agents in parallel often search for the same symbol.
+    searchCode(literal) {
+      let search = searches.get(literal);
+      if (!search) {
+        search = vcs
+          .searchCode(literal)
+          .then((matches) => matches.filter((m: CodeMatch) => isReadable(m.path)));
+        searches.set(literal, search);
+        search.catch(() => searches.delete(literal));
+      }
+      return search;
     },
   };
 }

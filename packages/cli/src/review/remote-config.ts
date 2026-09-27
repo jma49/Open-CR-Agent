@@ -16,6 +16,7 @@ export const remoteConfigSchema = z
     verify: z.unknown().optional(),
     judge: z.unknown().optional(),
     maxCostUsd: z.unknown().optional(),
+    maxTasks: z.unknown().optional(),
     include: z.array(z.string()).optional(),
     exclude: z.array(z.string()).optional(),
     reviewers: z.record(z.string(), z.unknown()).optional(),

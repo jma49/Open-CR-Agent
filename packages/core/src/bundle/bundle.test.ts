@@ -107,4 +107,23 @@ describe("bundleFiles", () => {
       warnings: ["grouping returned an invalid response; reviewing per file"],
     });
   });
+
+  it("groups a large change set by directory when no model groups it", async () => {
+    const many = [
+      ...Array.from({ length: 15 }, (_, i) => file(`src/api/f${i}.ts`)),
+      ...Array.from({ length: 8 }, (_, i) => file(`web/f${i}.ts`)),
+      file("README.md"),
+    ];
+    const failing: FileGrouper = { group: async () => Promise.reject(new Error("quota")) };
+    const result = await bundleFiles(many, defaultBundlePolicy, failing);
+    expect(result.strategy).toBe("per_directory");
+    expect(result.warnings).toEqual(["grouping failed: quota; grouping by directory"]);
+    expect(result.bundles.map((b) => [b.label, b.files.length])).toEqual([
+      ["src/api", 10],
+      ["src/api", 5],
+      ["web", 8],
+      ["(root)", 1],
+    ]);
+    expect((await bundleFiles(many)).strategy).toBe("per_directory");
+  });
 });

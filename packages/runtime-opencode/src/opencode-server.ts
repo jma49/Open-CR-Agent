@@ -37,6 +37,8 @@ export async function startOpencodeServer(options: StartOptions): Promise<Openco
   };
 }
 
+const STARTUP_OUTPUT_CHARS = 16_000;
+
 function waitForListening(child: ChildProcess, timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
     let output = "";
@@ -46,19 +48,26 @@ function waitForListening(child: ChildProcess, timeoutMs: number): Promise<strin
       reject(new Error(`${message}${output.trim() ? `\n${output.trim()}` : ""}`));
     };
     const timer = setTimeout(() => fail(`OpenCode did not start within ${timeoutMs}ms`), timeoutMs);
+    // Only the tail matters for a startup error message.
+    const keep = (chunk: Buffer) => {
+      output = (output + chunk.toString()).slice(-STARTUP_OUTPUT_CHARS);
+    };
     const onData = (chunk: Buffer) => {
-      output += chunk.toString();
+      keep(chunk);
       const match = LISTENING.exec(output);
       if (match?.[1]) {
         clearTimeout(timer);
+        // Past startup the output is not needed, but it must still be read:
+        // a full pipe would block OpenCode's next write.
         child.stdout?.off("data", onData);
+        child.stderr?.off("data", keep);
+        child.stdout?.resume();
+        child.stderr?.resume();
         resolve(match[1]);
       }
     };
     child.stdout?.on("data", onData);
-    child.stderr?.on("data", (chunk: Buffer) => {
-      output += chunk.toString();
-    });
+    child.stderr?.on("data", keep);
     child.once("error", (error) => fail(`OpenCode failed to start: ${error.message}`));
     child.once("exit", (code) => fail(`OpenCode exited with code ${code} during startup`));
   });

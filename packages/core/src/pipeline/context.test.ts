@@ -25,6 +25,14 @@ const diffs = [
 ] as FileDiff[];
 
 describe("reviewContext", () => {
+  it("runs each search once per run", async () => {
+    const vcs = fakeVcs();
+    const context = reviewContext(vcs, diffs);
+    await Promise.all([context.searchCode("API_KEY"), context.searchCode("API_KEY")]);
+    await context.searchCode("API_KEY");
+    expect(vcs.searchCode).toHaveBeenCalledTimes(1);
+  });
+
   it("refuses a file renamed away from a secret name", async () => {
     const renamed = [
       { oldPath: ".env.production", newPath: "config/settings.txt", patch: "p" },
