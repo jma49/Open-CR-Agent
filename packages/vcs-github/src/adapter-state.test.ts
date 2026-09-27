@@ -174,35 +174,55 @@ describe("summary state", () => {
 
 describe("verdict override", () => {
   const head = "cccccccccccccccccccccccccccccccccccccccc";
-  const comment = (login: string, association: string, body: string) => ({
+  const comment = (login: string, body: string) => ({
     id: 1,
+    node_id: "IC_1",
     user: { login, type: "User" },
-    author_association: association,
+    author_association: "MEMBER",
     body,
   });
+  const override = async (
+    comments: unknown[],
+    editor: { login: string } | null = null,
+    permissions?: Record<string, string>,
+  ) => {
+    const { fetchImpl } = fakeGitHub(comments, 200, [], false, editor, [], undefined, permissions);
+    return (await adapter(fetchImpl).getChangeRequest()).override;
+  };
 
-  it("takes /ocra override for the head commit from a maintainer other than the author", async () => {
-    const cases: [unknown[], unknown][] = [
-      [
-        [comment("maintainer", "MEMBER", "/ocra override ccccccc accepted risk, see #12")],
-        { by: "maintainer", reason: "accepted risk, see #12" },
-      ],
-      [[comment("author", "OWNER", "/ocra override ccccccc mine")], undefined],
-      [[comment("passerby", "NONE", "/ocra override ccccccc lgtm")], undefined],
-      [[comment("maintainer", "OWNER", "/ocra override ddddddd older commit")], undefined],
-      [[comment("github-actions[bot]", "NONE", "/ocra override ccccccc bot")], undefined],
-      [[comment("maintainer", "OWNER", "please /ocra override ccccccc later")], undefined],
-    ];
-    for (const [comments, expected] of cases) {
-      const { fetchImpl } = fakeGitHub(comments);
-      expect((await adapter(fetchImpl).getChangeRequest()).override).toEqual(expected);
+  it("takes /ocra override for the full head commit from someone with write access", async () => {
+    expect(
+      await override([comment("maintainer", `/ocra override ${head} accepted risk, see #12`)]),
+    ).toEqual({
+      by: "maintainer",
+      reason: "accepted risk, see #12",
+    });
+  });
+
+  it("refuses the author, readers, bots, other commits, short prefixes and misplaced commands", async () => {
+    for (const c of [
+      comment("author", `/ocra override ${head} mine`),
+      comment("member-without-access", `/ocra override ${head} lgtm`),
+      comment("github-actions[bot]", `/ocra override ${head} bot`),
+      comment("maintainer", `/ocra override ${"d".repeat(40)} older commit`),
+      comment("maintainer", "/ocra override ccccccc prefix only"),
+      comment("maintainer", `please /ocra override ${head} later`),
+    ]) {
+      expect(await override([c])).toBeUndefined();
     }
+  });
+
+  it("ignores a command someone else edited into another person's comment", async () => {
+    const c = comment("maintainer", `/ocra override ${head} planted by the author`);
+    expect(await override([c], { login: "author" })).toBeUndefined();
+    expect(await override([c], { login: "maintainer" })).toBeDefined();
+    expect(await override([{ ...c, node_id: undefined }])).toBeUndefined();
   });
 
   it("shows the override in the summary, or how to give one", () => {
     const blocking = report([finding(A, false, "critical")], "significant_concerns");
     const how = renderSummary({ report: blocking, commented: new Set(), state: { findings: [] } });
-    expect(how).toContain("`/ocra override ccccccc <reason>`");
+    expect(how).toContain(`\`/ocra override ${head} <reason>\``);
     blocking.changeRequest = {
       ...blocking.changeRequest,
       headSha: head,
@@ -212,5 +232,59 @@ describe("verdict override", () => {
     expect(done).toContain("## ocra review · 🛑 Significant concerns · overridden");
     expect(done).toContain("**Overridden** by @\u200bmaintainer for `ccccccc`");
     expect(done).toContain("risk accepted [x]\\(https://evil.example)");
+  });
+
+  it("withdraws its request for changes when the commit is overridden", async () => {
+    const bot = { login: "github-actions[bot]" };
+    const { calls, fetchImpl } = fakeGitHub([], 200, [], false, null, [
+      { id: 11, state: "CHANGES_REQUESTED", user: bot },
+    ]);
+    const blocking = report([finding(A, true, "critical")], "significant_concerns");
+    blocking.changeRequest = {
+      ...blocking.changeRequest,
+      override: { by: "maintainer", reason: "ok" },
+    };
+    await adapter(fetchImpl, true).publish(blocking);
+    expect(calls.filter((c) => c.method === "PUT").map((c) => c.path)).toEqual([
+      "/pulls/7/reviews/11/dismissals",
+    ]);
+  });
+});
+
+describe("dismissals from replies", () => {
+  const summary = (fingerprint: string) => ({
+    id: 99,
+    node_id: "IC_99",
+    user: { login: "github-actions[bot]", type: "Bot" },
+    body: `${SUMMARY_MARKER}\n${writeState({ findings: [prior({ fingerprint })] })}`,
+  });
+  const thread = (fingerprint: string, reply: Record<string, unknown>) => ({
+    id: `T-${fingerprint}`,
+    isResolved: false,
+    resolvedBy: null,
+    comments: {
+      nodes: [
+        { body: `<!-- ocra:finding ${fingerprint} -->`, author: { login: "github-actions" } },
+        { authorAssociation: "MEMBER", ...reply },
+      ],
+    },
+  });
+  const dismissed = async (reply: Record<string, unknown>) => {
+    const { fetchImpl } = fakeGitHub([summaryComment(summary(A).body)], 200, [thread(A, reply)]);
+    return (await adapter(fetchImpl).getPriorReview())?.findings[0]?.dismissed === true;
+  };
+
+  it("count only unedited replies from people with write access", async () => {
+    expect(await dismissed({ body: "won't fix", author: { login: "maintainer" } })).toBe(true);
+    expect(
+      await dismissed({
+        body: "won't fix",
+        author: { login: "maintainer" },
+        editor: { login: "author" },
+      }),
+    ).toBe(false);
+    expect(await dismissed({ body: "won't fix", author: { login: "member-without-access" } })).toBe(
+      false,
+    );
   });
 });

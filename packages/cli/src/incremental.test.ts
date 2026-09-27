@@ -58,7 +58,7 @@ function fixture() {
     const json = (value: unknown) =>
       new Response(JSON.stringify(value), { headers: { "Content-Type": "application/json" } });
     if (url.endsWith("/graphql")) {
-      if ((body.query as string).includes("editor"))
+      if ((body.query as string).includes("node(id: $id)"))
         return json({ data: { node: { editor: null } } });
       return json({
         data: {

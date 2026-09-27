@@ -77,8 +77,9 @@ export interface ReviewThread {
   id: string;
   isResolved: boolean;
   resolvedBy: string | undefined;
-  // In order; the first carries ocra's finding marker.
-  comments: { author: string; association: string; body: string }[];
+  // In order; the first carries ocra's finding marker. `editor` is set when
+  // someone edited the comment after posting it.
+  comments: { author: string; association: string; body: string; editor?: string }[];
 }
 
 const REVIEW_THREADS_QUERY = `query($owner: String!, $repo: String!, $number: Int!, $after: String) {
@@ -86,7 +87,7 @@ const REVIEW_THREADS_QUERY = `query($owner: String!, $repo: String!, $number: In
     pullRequest(number: $number) {
       reviewThreads(first: 100, after: $after) {
         pageInfo { hasNextPage endCursor }
-        nodes { id isResolved resolvedBy { login } comments(first: 30) { nodes { body authorAssociation author { login } } } }
+        nodes { id isResolved resolvedBy { login } comments(first: 30) { nodes { body authorAssociation author { login } editor { login } } } }
       }
     }
   }
@@ -108,6 +109,7 @@ const reviewThreadsSchema = z.object({
                   body: z.string(),
                   authorAssociation: z.string().default("NONE"),
                   author: z.object({ login: z.string() }).nullable(),
+                  editor: z.object({ login: z.string() }).nullable().optional(),
                 }),
               ),
             }),
@@ -154,6 +156,7 @@ export class GitHubApi {
             author: c.author?.login ?? "",
             association: c.authorAssociation,
             body: c.body,
+            ...(c.editor ? { editor: c.editor.login } : {}),
           })),
         });
       }
@@ -226,6 +229,16 @@ export class GitHubApi {
       if (batch.length < 100) break;
     }
     return files;
+  }
+
+  // The repository permission of a user: author_association only says how
+  // someone relates to the repository (MEMBER is any organization member),
+  // not whether they may write to it.
+  async canWrite(login: string): Promise<boolean> {
+    const data = z
+      .object({ permission: z.string() })
+      .parse(await this.request("GET", `/collaborators/${encodeURIComponent(login)}/permission`));
+    return data.permission === "admin" || data.permission === "write";
   }
 
   async listReviews(number: number): Promise<PullRequestReview[]> {

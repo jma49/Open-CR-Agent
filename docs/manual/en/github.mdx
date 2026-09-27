@@ -64,17 +64,23 @@ ocra then compares findings with the previous review:
 - A finding that no reviewer reported this time, while its code is unchanged, is listed as **not reported this time**. Model runs vary, so it stays open: its thread is not resolved, it is not commented again, and it keeps counting towards the verdict with its original severity until the code changes or a reviewer dismisses it. The same code reviewed twice gets the same verdict.
 - A finding whose file was not reviewed this time (a failed task, for example) is listed as **not re-checked** and also stays open.
 
-Reviewers stay in charge. If someone other than the pull request's author resolves one of ocra's threads, or a repository owner, member or collaborator (not the author) replies `/ocra dismiss`, or replies with a message that opens with a clear decline ("won't fix", "will not fix", "by design", "false positive", "not a bug", "working as intended", "intended behavior") and is not a question, the finding counts as dismissed: it is no longer reported and no longer affects the verdict, unless a later run finds it with a higher severity. The same words elsewhere in a reply ("this is not intended, good catch", "is this by design?") do not count, and neither does "I disagree". The author cannot dismiss findings on their own pull request, so the check cannot be resolved away.
+Reviewers stay in charge. If someone with write access to the repository (admin, maintain or write permission) other than the pull request's author resolves one of ocra's threads, or replies `/ocra dismiss`, or replies with a message that opens with a clear decline ("won't fix", "will not fix", "by design", "false positive", "not a bug", "working as intended", "intended behavior") and is not a question, the finding counts as dismissed: it is no longer reported and no longer affects the verdict, unless a later run finds it with a higher severity. The same words elsewhere in a reply ("this is not intended, good catch", "is this by design?") do not count, and neither does "I disagree". The author cannot dismiss findings on their own pull request, and a reply someone else edited does not count (anyone with write access can edit any comment), so the check cannot be resolved away. Only findings with an inline thread can be dismissed this way; for others use [`ocra memory`](./cli).
 
 ## Overriding a blocking verdict
 
 When ocra blocks a change you have decided to merge anyway, someone with write access other than the pull request's author can comment:
 
 ```
-/ocra override <first 7 characters of the head commit> <reason>
+/ocra override <full head commit id> <reason>
 ```
 
-For that commit the run exits `0` instead of `1`, so `fail-on-concerns` passes; the verdict itself stays `significant_concerns`, and the summary shows who overrode it and why. A new push needs a new override. The author cannot override their own pull request, and an incomplete review (exit `3`) is not overridden.
+For that commit the run exits `0` instead of `1`, so `fail-on-concerns` passes, and a `requestChanges` review is withdrawn; the verdict itself stays `significant_concerns`, and the summary shows who overrode it and why (it also prints the command with the commit id to copy). A new push needs a new override. The full commit id is required because a short prefix can be matched by a new commit made for the purpose. Write access is checked through the repository's permissions, the author cannot override their own pull request, a command someone else edited into a comment does not count, and an incomplete review (exit `3`) is not overridden.
+
+<Callout type="warn">
+
+With `on: pull_request`, a pull request from a branch of the same repository runs its own copy of the workflow file, so its author can change `fail-on-concerns` or the arguments, and can post as `github-actions[bot]`. Protect `.github/workflows` with CODEOWNERS and required reviews, and for a stronger identity post with a dedicated bot or app token and set `github.botLogin` to it.
+
+</Callout>
 
 ## What the pull request can and cannot change
 

@@ -64,17 +64,23 @@ jobs:
 - 如果这次没有任何审查员再报这个问题，而它指向的代码没有变，就列为**本次未复现**。模型每次运行的结果会有波动，所以这类问题保持打开：不关闭评论串，不重复评论，并按原来的严重程度继续计入结论，直到代码被修改或有审查者驳回它。同样的代码跑两次，结论不会变。
 - 所在文件这次没有被审查的问题（比如任务失败）列为**未重新检查**，同样保持打开。
 
-由审查者来做主。如果 PR 作者以外的人 resolve 了 ocra 的评论串，或者仓库的 owner、member 或 collaborator（不包括 PR 作者）回复 `/ocra dismiss`，或者回复以明确的拒绝开头（"won't fix"、"will not fix"、"by design"、"false positive"、"not a bug"、"working as intended"、"intended behavior"）且不是问句，这条问题就算被驳回：之后不再报告，也不再影响结论，除非后续运行发现它的严重程度升高。同样的词出现在回复的其他位置（例如 "this is not intended, good catch"、"is this by design?"）不算驳回，回复 "I disagree" 也不算；PR 作者也无法驳回自己 PR 上的问题，因此不能靠 resolve 评论串绕过检查。
+由审查者来做主。如果对仓库有写权限（admin、maintain 或 write 权限）且不是 PR 作者的人 resolve 了 ocra 的评论串，或者回复 `/ocra dismiss`，或者回复以明确的拒绝开头（"won't fix"、"will not fix"、"by design"、"false positive"、"not a bug"、"working as intended"、"intended behavior"）且不是问句，这条问题就算被驳回：之后不再报告，也不再影响结论，除非后续运行发现它的严重程度升高。同样的词出现在回复的其他位置（例如 "this is not intended, good catch"、"is this by design?"）不算驳回，回复 "I disagree" 也不算；PR 作者也无法驳回自己 PR 上的问题；被他人编辑过的回复不算数（有写权限的人可以编辑任何评论），因此不能靠 resolve 评论串绕过检查。只有带行内评论串的问题能这样驳回，其他问题请用 [`ocra memory`](./cli)。
 
 ## 强制放行阻塞的结论
 
 如果 ocra 拦下了一个你们决定仍要合并的改动，由 PR 作者以外、有写权限的人评论：
 
 ```
-/ocra override <head commit 的前 7 个字符> <理由>
+/ocra override <完整的 head commit id> <理由>
 ```
 
-对这个 commit，运行的退出码从 `1` 变成 `0`，`fail-on-concerns` 就会通过；结论本身仍是 `significant_concerns`，摘要里会写明谁、以什么理由放行。新的 push 需要重新放行。PR 作者不能放行自己的 PR，审查不完整（退出码 `3`）也不会被放行。
+对这个 commit，运行的退出码从 `1` 变成 `0`，`fail-on-concerns` 就会通过，`requestChanges` 的修改请求也会撤回；结论本身仍是 `significant_concerns`，摘要里会写明谁、以什么理由放行（摘要里也会给出带 commit id、可以直接复制的命令）。新的 push 需要重新放行。之所以要完整的 commit id，是因为短前缀可能被专门构造的新 commit 撞上。写权限通过仓库权限接口确认；PR 作者不能放行自己的 PR；被他人编辑进别人评论的命令不算数；审查不完整（退出码 `3`）也不会被放行。
+
+<Callout type="warn">
+
+使用 `on: pull_request` 时，来自同一仓库分支的 PR 会运行它自己那份 workflow 文件，作者因此可以改掉 `fail-on-concerns` 或参数，也可以以 `github-actions[bot]` 的身份发评论。请用 CODEOWNERS 和必需的审查保护 `.github/workflows`；需要更强的身份保证时，用专门的机器人或 GitHub App 的 token 发布，并把 `github.botLogin` 设为它。
+
+</Callout>
 
 ## PR 能改变什么、不能改变什么
 

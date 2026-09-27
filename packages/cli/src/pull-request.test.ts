@@ -96,6 +96,11 @@ function fakeGitHub(base: string, head: string, comments: unknown[] = []) {
       });
     }
     if (path.startsWith("/issues/7/comments") && method === "GET") return json(comments);
+    if (path === "/collaborators/maintainer/permission") return json({ permission: "write" });
+    if (url.endsWith("/graphql")) {
+      const query = (JSON.parse(init?.body as string) as { query: string }).query;
+      if (query.includes("node(id: $id)")) return json({ data: { node: { editor: null } } });
+    }
     return json({});
   }) as typeof fetch;
   return { calls, fetchImpl };
@@ -249,9 +254,10 @@ describe("ocra review --pr", () => {
     };
     const override = (sha: string) => ({
       id: 3,
+      node_id: "IC_3",
       user: { login: "maintainer", type: "User" },
       author_association: "MEMBER",
-      body: `/ocra override ${sha.slice(0, 7)} known issue, fixed in #9`,
+      body: `/ocra override ${sha} known issue, fixed in #9`,
     });
     expect((await review([])).code).toBe(1);
     const passed = await review([override(head)]);

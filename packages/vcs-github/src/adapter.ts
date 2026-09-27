@@ -46,8 +46,7 @@ export interface GitHubAdapterOptions {
 
 export const DEFAULT_BOT_LOGIN = "github-actions[bot]";
 
-const WRITE_ACCESS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
-const OVERRIDE = /^\/ocra override ([0-9a-fA-F]{7,40})\s+(\S.*)$/m;
+const OVERRIDE = /^\/ocra override ([0-9a-fA-F]{40}(?:[0-9a-fA-F]{24})?)\s+(\S.*)$/m;
 const MAX_OVERRIDE_REASON = 300;
 
 const DECLINE =
@@ -75,6 +74,7 @@ export class GitHubAdapter implements VcsAdapter {
   private previous: Promise<IssueComment | undefined> | undefined;
   private reviewThreads: Promise<ReviewThread[]> | undefined;
   private issueComments: Promise<IssueComment[]> | undefined;
+  private readonly writers = new Map<string, Promise<boolean>>();
   private prior: Promise<{ state?: ReviewState } | { untrusted: string }> | undefined;
 
   constructor(private readonly options: GitHubAdapterOptions) {}
@@ -106,12 +106,37 @@ export class GitHubAdapter implements VcsAdapter {
       const login = c.user?.login;
       const match = OVERRIDE.exec(c.body);
       if (!match || !login || login === author || this.isBot(login)) continue;
-      if (!WRITE_ACCESS.has(c.author_association ?? "")) continue;
       const [, commit = "", reason = ""] = match;
-      if (!pr.head.sha.startsWith(commit.toLowerCase())) continue;
+      // The full commit id: a short prefix can be matched by a new commit.
+      if (commit.toLowerCase() !== pr.head.sha) continue;
+      if (!(await this.unedited(c.node_id, login)) || !(await this.canWrite(login))) continue;
       found = { by: login, reason: reason.trim().slice(0, MAX_OVERRIDE_REASON) };
     }
     return found;
+  }
+
+  // Anyone with write access can edit anyone's comment, and GitHub keeps
+  // showing the original author: a command counts only when nobody else
+  // edited it. Unknown means no.
+  private async unedited(nodeId: string | undefined, login: string): Promise<boolean> {
+    if (!nodeId) return false;
+    try {
+      const editor = await this.options.api.commentEditor(nodeId);
+      return editor === undefined || editor === login;
+    } catch {
+      return false;
+    }
+  }
+
+  // Write access from the repository's permissions, memoized per login;
+  // a failed lookup means no.
+  private canWrite(login: string): Promise<boolean> {
+    let known = this.writers.get(login);
+    if (!known) {
+      known = this.options.api.canWrite(login).catch(() => false);
+      this.writers.set(login, known);
+    }
+    return known;
   }
 
   getDiff(): Promise<FileDiff[]> {
@@ -199,11 +224,23 @@ export class GitHubAdapter implements VcsAdapter {
       const fingerprint = first && FINDING_MARKER.exec(first.body)?.[1];
       if (!first || !fingerprint || !commented.has(fingerprint) || !this.isBot(first.author))
         continue;
-      // Only people with write access (or the author) can resolve threads.
-      const resolvedByReviewer = thread.isResolved && reviewer(thread.resolvedBy);
-      const declined = replies.some(
-        (r) => reviewer(r.author) && WRITE_ACCESS.has(r.association) && declinesFinding(r.body),
-      );
+      const resolvedByReviewer =
+        thread.isResolved &&
+        reviewer(thread.resolvedBy) &&
+        (await this.canWrite(thread.resolvedBy as string));
+      let declined = false;
+      for (const r of replies) {
+        const own = r.editor === undefined || r.editor === r.author;
+        if (
+          reviewer(r.author) &&
+          own &&
+          declinesFinding(r.body) &&
+          (await this.canWrite(r.author))
+        ) {
+          declined = true;
+          break;
+        }
+      }
       if (resolvedByReviewer || declined) dismissed.add(fingerprint);
     }
     return dismissed;
@@ -297,7 +334,9 @@ export class GitHubAdapter implements VcsAdapter {
   ): Promise<{ request: boolean; warnings: string[]; withdraw(): Promise<string[]> }> {
     const none = { request: false, warnings: [], withdraw: async () => [] };
     if (this.options.requestChanges !== true) return none;
-    const blocking = report.verdict === "significant_concerns";
+    // An override lets the commit pass, so it lifts the request too.
+    const blocking =
+      report.verdict === "significant_concerns" && report.changeRequest.override === undefined;
     let active: number[];
     try {
       active = (await this.options.api.listReviews(number))

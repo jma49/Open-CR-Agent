@@ -77,7 +77,7 @@ Finding {
 | Three or more warnings, or critical findings Verify did not confirm | `minor_issues` |
 | Any critical finding Verify confirmed | `significant_concerns` (blocks) |
 
-The rubric is biased toward approval. Findings carry `verification: confirmed | uncertain | unchecked` from Verify (refuted ones are dropped); unchecked covers a skipped or failed check and carries over with earlier findings. The judge may neither drop nor downgrade a confirmed critical finding. Every model reads attacker-controlled text, so the verdict is advice, not a security gate. A "break glass" override exists for pull requests: `/ocra override <commit> <reason>` from someone with write access other than the author lets that commit pass (exit 0) while the verdict stays.
+The rubric is biased toward approval. Findings carry `verification: confirmed | uncertain | unchecked` from Verify (refuted ones are dropped); unchecked covers a skipped or failed check and carries over with earlier findings. The judge may neither drop nor downgrade a confirmed critical finding. Every model reads attacker-controlled text, so the verdict is advice, not a security gate. A "break glass" override exists for pull requests: `/ocra override <full commit id> <reason>`, in a comment nobody else edited, from someone the repository grants write access other than the author, lets that commit pass (exit 0) and withdraws a request for changes, while the verdict stays.
 
 ## Re-review
 

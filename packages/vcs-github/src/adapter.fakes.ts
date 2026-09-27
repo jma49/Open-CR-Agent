@@ -19,6 +19,8 @@ export function fakeGitHub(
   editor: { login: string } | null = null,
   reviews: unknown[] = [],
   files?: unknown[],
+  // Repository permissions by login; everyone else has read access.
+  permissions: Record<string, string> = { maintainer: "write" },
 ) {
   const calls: Call[] = [];
   const fetchImpl = (async (url: string, init?: RequestInit) => {
@@ -35,7 +37,7 @@ export function fakeGitHub(
     if (url.endsWith("/graphql")) {
       if (graphqlFails) return json(502, { message: "Bad gateway" });
       const query = (call.body as { query: string }).query;
-      if (query.includes("editor")) return json(200, { data: { node: { editor } } });
+      if (query.includes("node(id: $id)")) return json(200, { data: { node: { editor } } });
       if (query.startsWith("mutation"))
         return json(200, { data: { resolveReviewThread: { thread: {} } } });
       return json(200, {
@@ -61,6 +63,12 @@ export function fakeGitHub(
     }
     if (path.startsWith("/issues/7/comments") && method === "GET") return json(200, comments);
     if (path.startsWith("/pulls/7/reviews?") && method === "GET") return json(200, reviews);
+    const permission = /^\/collaborators\/([^/]+)\/permission$/.exec(path);
+    if (permission) {
+      return json(200, {
+        permission: permissions[decodeURIComponent(permission[1] ?? "")] ?? "read",
+      });
+    }
     if (path.startsWith("/pulls/7/files?") && files) return json(200, files);
     if (path === "/pulls/7/reviews") {
       const rejected =

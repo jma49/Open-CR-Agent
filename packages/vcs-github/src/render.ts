@@ -43,7 +43,7 @@ function overrideNote(report: ReviewReport): string[] {
   }
   return [
     "",
-    `Someone with write access other than the author can let this commit pass by commenting \`/ocra override ${report.changeRequest.headSha.slice(0, 7)} <reason>\`.`,
+    `Someone with write access other than the author can let this commit pass by commenting \`/ocra override ${report.changeRequest.headSha} <reason>\`.`,
   ];
 }
 
