@@ -20,6 +20,8 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 |---|---|
 | `--limit`、`--seed`、`--languages`、`--max-change-lines`、`--ids` | 用固定随机种子抽样，可复现 |
 | `--label` | 运行名称；用同一个名称再次运行会接着上次继续 |
+| `--out`、`--repos-dir` | 运行结果目录（默认 `.ocra/eval`）和克隆缓存（默认 `~/.cache/ocra/aacr-bench/repos`） |
+| `--timeout-minutes` | 每个 PR 的超时时间（默认 30） |
 | `--max-cost-usd` | 审查花费达到上限后，不再开始新的 PR |
 | `--retry-failed` | 重新审查同一次运行里之前失败的 PR |
 | `--reviewers` | 透传给 `ocra review --reviewers`，用来比较不同的审查员组合 |

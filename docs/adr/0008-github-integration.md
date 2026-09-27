@@ -20,3 +20,11 @@ M3 brings ocra to pull requests. Code search needs the repository at an exact re
 - One pipeline serves local and pull request reviews; only the code source's range and the publishing differ.
 - The workflow needs `contents: read` and `pull-requests: write`, and a checkout with both commits (`fetch-depth: 0`).
 - The published comment format is a contract: the state block is versioned so later releases can read earlier reviews.
+
+## Implementation notes (2026-09-27)
+
+The decision stands; these parts of it changed or were added later:
+
+- When GitHub rejects an inline position, no review is posted unless `REQUEST_CHANGES` is on (then it is posted without comments); the findings move to the summary.
+- Thread resolution and dismissals by reviewers are implemented (ADR-0009, and #107 for which replies count).
+- With `REQUEST_CHANGES` on, ocra requests changes once while the verdict blocks and dismisses its own request when it no longer does (#110).

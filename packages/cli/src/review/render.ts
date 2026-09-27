@@ -14,8 +14,17 @@ const VERIFICATION: Record<Verification, string> = {
   unchecked: "not verified",
 };
 
+// JSON.stringify escapes C0 controls but not C1 controls or bidirectional
+// overrides, which a terminal or an editor would act on.
 export function renderJson(report: ReviewReport): string {
-  return `${JSON.stringify(report, null, 2)}\n`;
+  return `${safeJson(report)}\n`;
+}
+
+export function safeJson(value: unknown): string {
+  return JSON.stringify(value, null, 2).replace(
+    /[\u0080-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g,
+    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
 }
 
 export function renderText(report: ReviewReport, sessionDir?: string): string {

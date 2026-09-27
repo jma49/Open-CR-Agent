@@ -195,4 +195,12 @@ describe("renderJson", () => {
   it("renders the full report", () => {
     expect(JSON.parse(renderJson(base))).toEqual(base);
   });
+
+  it("escapes C1 controls and bidirectional overrides that JSON.stringify leaves raw", () => {
+    const hostile = { ...base, summary: "a\u009b2Jb\u202eevil\u2066x" };
+    const json = renderJson(hostile);
+    for (const c of ["\u009b", "\u202e", "\u2066"]) expect(json).not.toContain(c);
+    expect(json).toContain("\\u009b");
+    expect(JSON.parse(json)).toEqual(hostile);
+  });
 });

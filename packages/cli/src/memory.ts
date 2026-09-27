@@ -98,7 +98,7 @@ async function readMemory(root: string): Promise<MemoryEntry[]> {
 async function newestSession(root: string): Promise<string> {
   const dir = join(root, SESSIONS_DIR);
   const sessions = (await readdir(dir).catch(() => [])).filter((n) => !n.startsWith(".")).sort();
-  // Interrupted runs and --plan leave sessions without a report.
+  // An interrupted run leaves a session without a report.
   for (const name of sessions.reverse()) {
     if (existsSync(join(dir, name, "report.json"))) return join(dir, name);
   }

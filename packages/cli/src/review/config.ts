@@ -142,9 +142,10 @@ async function readConfigFile(
   }
   const merged = configSchema.safeParse(mergeConfig(remote, data as Record<string, unknown>));
   if (!merged.success) {
-    throw new ConfigError(
-      `${CONFIG_PATH} with ${local.data.extends} is invalid: ${z.prettifyError(merged.error)}`,
+    options.warn?.(
+      `ignoring extends ${local.data.extends}: its settings are invalid (${z.prettifyError(merged.error)})`,
     );
+    return { config: local.data, rules: [] };
   }
   return { config: merged.data, rules: remote.rules ?? [] };
 }

@@ -23,7 +23,7 @@ import type { ReviewArgs } from "./args.js";
 import { type CliConfig, ConfigError } from "./config.js";
 import { renderPlan } from "./plan-render.js";
 import { type Output, ProgressPrinter } from "./progress.js";
-import { renderJson, renderText } from "./render.js";
+import { renderJson, renderText, safeJson } from "./render.js";
 import { localTarget, pullRequestTarget } from "./target.js";
 import { forTerminal } from "./terminal.js";
 
@@ -63,13 +63,27 @@ export async function reviewCommand(
   const root = await findRepositoryRoot(deps.cwd);
   const warn = (message: string) => io.err.write(`[ocra] Warning: ${forTerminal(message)}\n`);
   const target = args.pullRequest
-    ? await pullRequestTarget(args.pullRequest, deps.cwd, root, deps.env, warn, deps.fetch)
+    ? await pullRequestTarget(
+        args.pullRequest,
+        deps.cwd,
+        root,
+        deps.env,
+        warn,
+        deps.fetch,
+        args.ignoreRepoConfig === true,
+      )
     : await localTarget(args, deps.cwd, root, deps.env, warn, deps.fetch);
   const { config } = target;
   const session = { dir: join(root, SESSIONS_DIR), id: newSessionId() };
 
-  const registry = await startPlugins([...deps.builtinPlugins, ...target.plugins], {
-    settings: { ...config.pluginSettings, [sessionJsonlPlugin.name]: session },
+  // A plan calls no model and writes no session log.
+  const builtins = args.plan
+    ? deps.builtinPlugins.filter((p) => p.name !== sessionJsonlPlugin.name)
+    : deps.builtinPlugins;
+  const registry = await startPlugins([...builtins, ...target.plugins], {
+    settings: args.plan
+      ? config.pluginSettings
+      : { ...config.pluginSettings, [sessionJsonlPlugin.name]: session },
     env: deps.env,
     warn,
   });
@@ -91,8 +105,7 @@ export async function reviewCommand(
       ...(args.ultra ? { ultra: true } : {}),
       ...(config.maxTasks !== undefined ? { maxTasks: config.maxTasks } : {}),
     });
-    const rendered =
-      args.format === "json" ? `${JSON.stringify(preview, null, 2)}\n` : renderPlan(preview);
+    const rendered = args.format === "json" ? `${safeJson(preview)}\n` : renderPlan(preview);
     if (args.output === undefined) io.out.write(rendered);
     else await deps.writeFile(resolve(deps.cwd, args.output), rendered);
     return EXIT.ok;

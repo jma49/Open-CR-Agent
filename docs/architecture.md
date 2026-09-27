@@ -28,7 +28,7 @@ The two split work along different axes: Cloudflare by **review domain**, OCR by
 | # | Stage | Kind | Responsibility |
 |---|---|---|---|
 | 1 | Ingest | code | Load the change set and metadata through a `VcsAdapter` (GitHub PR or local working tree). |
-| 2 | Select | code | Pure function that decides per file: review, or exclude with a reason (binary, secret path, user rule, extension, generated/vendored/lock file, too large). Migrations are always kept. |
+| 2 | Select | code | Pure function that decides per file: review, or exclude with a reason (binary, secret path, user rule, extension, generated/vendored/lock file, too large). Migrations are never excluded as generated. |
 | 3 | Triage | code | Assign a risk tier (`trivial` / `lite` / `full`) from churn, file count and sensitive paths. Sensitive paths always force `full`. |
 | 4 | Bundle | code + cheap LLM | Group related files into review units. Small change sets are bundled without an LLM; larger ones are grouped by an LLM that answers with file indices; oversized bundles fall back to per-file. |
 | 5 | Matrix | code | Choose reviewers per bundle from tier, file kinds, paths and rules, and resolve the rule text for each (bundle, reviewer) cell. |
@@ -36,7 +36,7 @@ The two split work along different axes: Cloudflare by **review domain**, OCR by
 | 7 | Anchor | code | Resolve each finding's `existingCode` snippet to exact lines by normalized matching in hunks, then full files, then other files' hunks; otherwise a file-level comment. The LLM never supplies line numbers. LLM re-location before the file-level fallback exists in core (`AnchorContext.relocate`) but the CLI does not wire it **(planned)**. |
 | 8 | Filter | code | Drop findings in the repository's memory and those a reviewer dismissed, and compare with the previous review (Re-review), before any money is spent checking them. |
 | 9 | Verify | LLM | Fact-check each finding against the diff. Only findings the diff proves wrong are dropped; the rest are marked confirmed, uncertain or unchecked. |
-| 10 | Judge | top-tier LLM | Coordinator deduplicates across reviewers, recalibrates severity, filters speculation and nitpicks, and decides the verdict. |
+| 10 | Judge | top-tier LLM | Coordinator deduplicates across reviewers, recalibrates severity, filters speculation and nitpicks, and writes the summary. The verdict itself is code (`judge/verdict.ts`) over the judged findings. |
 | 11 | Publish | code | Post one summary comment plus inline comments, apply the verdict, update threads from the previous review. |
 
 ## Reviewers
@@ -72,9 +72,9 @@ Finding {
 
 | Condition | Verdict |
 |---|---|
-| No findings or only trivial suggestions | `approved` |
-| Suggestions, or warnings without production risk | `approved_with_comments` |
-| Several warnings forming a pattern, or critical findings Verify did not confirm | `minor_issues` |
+| No findings | `approved` |
+| Suggestions, or fewer than three warnings | `approved_with_comments` |
+| Three or more warnings, or critical findings Verify did not confirm | `minor_issues` |
 | Any critical finding Verify confirmed | `significant_concerns` (blocks) |
 
 The rubric is biased toward approval. Findings carry `verification: confirmed | uncertain | unchecked` from Verify (refuted ones are dropped); unchecked covers a skipped or failed check and carries over with earlier findings. The judge may neither drop nor downgrade a confirmed critical finding. Every model reads attacker-controlled text, so the verdict is advice, not a security gate. A "break glass" override is planned, not implemented.

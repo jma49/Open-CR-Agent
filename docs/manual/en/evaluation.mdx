@@ -20,6 +20,8 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 |---|---|
 | `--limit`, `--seed`, `--languages`, `--max-change-lines`, `--ids` | Seeded, reproducible selection |
 | `--label` | Run name; rerunning the same label resumes |
+| `--out`, `--repos-dir` | Runs directory (default `.ocra/eval`) and clone cache (default `~/.cache/ocra/aacr-bench/repos`) |
+| `--timeout-minutes` | Timeout per PR (default 30) |
 | `--max-cost-usd` | Stop starting new PRs once review spend reaches the cap |
 | `--retry-failed` | Review PRs again that failed in an earlier attempt of the same run |
 | `--reviewers` | Passed to `ocra review --reviewers`, for comparing reviewer sets |

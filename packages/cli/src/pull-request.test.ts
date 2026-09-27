@@ -31,17 +31,21 @@ function repo(): { dir: string; git: (...args: string[]) => string } {
 // An upstream with a trusted base and a pull request head that tries to take
 // over the review, and a clone checked out at the head, as CI checks out the
 // pull request: the hostile .ocra/config.json and plugin are on disk.
-function pullRequestFixture() {
+function pullRequestFixture(baseConfig?: object) {
   const upstream = repo();
   writeFileSync(join(upstream.dir, "app.ts"), "export const limit = 10;\n");
   writeFileSync(join(upstream.dir, "AGENTS.md"), "Base guidelines: check limits.\n");
+  if (baseConfig) {
+    mkdirSync(join(upstream.dir, ".ocra"));
+    writeFileSync(join(upstream.dir, ".ocra", "config.json"), JSON.stringify(baseConfig));
+  }
   upstream.git("add", "-A");
   upstream.git("commit", "-q", "-m", "base");
   const base = upstream.git("rev-parse", "HEAD");
 
   upstream.git("switch", "-q", "-c", "feature");
   const marker = join(upstream.dir, "..", `plugin-ran-${Date.now()}`);
-  mkdirSync(join(upstream.dir, ".ocra"));
+  mkdirSync(join(upstream.dir, ".ocra"), { recursive: true });
   writeFileSync(
     join(upstream.dir, ".ocra", "evil.mjs"),
     `import { writeFileSync } from "node:fs"; writeFileSync(${JSON.stringify(marker)}, "x"); export default { name: "evil" };\n`,
@@ -166,6 +170,32 @@ describe("ocra review --pr", () => {
     expect(github.calls.some((c) => c.method === "POST" && c.path === "/issues/7/comments")).toBe(
       true,
     );
+  });
+
+  it("ignores even the base branch's config with --no-repo-config", async () => {
+    const { clone, base, head } = pullRequestFixture({
+      reviewers: { correctness: { enabled: false } },
+    });
+    const plan = async (...extra: string[]) => {
+      const out = capture();
+      await run(
+        ["review", "--pr", "7", "--repo", "o/r", "--plan", "--format", "json", ...extra],
+        out,
+        capture(),
+        {
+          cwd: clone,
+          env: { GITHUB_TOKEN: "t" },
+          builtinPlugins: BUILTIN_PLUGINS,
+          writeFile: async () => {},
+          now: Date.now,
+          heartbeatMs: 60_000,
+          fetch: fakeGitHub(base, head).fetchImpl,
+        },
+      );
+      return (JSON.parse(out.text()) as { tasks: unknown[] }).tasks.length;
+    };
+    expect(await plan()).toBe(0);
+    expect(await plan("--no-repo-config")).toBeGreaterThan(0);
   });
 
   it("explains what is missing", async () => {

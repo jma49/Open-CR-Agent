@@ -71,14 +71,14 @@ A task that fails or times out never fails the run; its files are reported as `f
 
 ## File selection
 
-ocra skips binary files, likely secrets (`.env`, keys, certificates, cloud and registry credentials, Terraform variables and state), deleted files, media and archives, lock files, vendored and generated code, and very large diffs. Files over 1 MB are diffed as binary and skipped. Database migrations are always reviewed.
+ocra skips binary files, likely secrets (`.env`, keys, certificates, cloud and registry credentials, Terraform variables and state), deleted files, media and archives, lock files, vendored and generated code, and very large diffs. Files over 1 MB are diffed as binary and skipped. Database migrations are never skipped as generated code (the other rules still apply).
 
 - `exclude`: globs to skip in addition.
 - `include`: globs to review even if they would be skipped as generated or by extension. Secrets can never be included.
 
 ## Reviewers
 
-`reviewers.<id>` turns a reviewer off or raises the risk tier it starts at. Risk tiers, from lowest: `trivial` (≤10 changed lines), `lite` (≤100), `full` (larger changes, more than 20 files, or sensitive paths such as `auth/` and CI workflows).
+`reviewers.<id>` turns a reviewer off or sets the risk tier it starts at (higher or lower than its default). Risk tiers, from lowest: `trivial` (≤10 changed lines), `lite` (≤100), `full` (larger changes, more than 20 files, or sensitive paths such as `auth/` and CI workflows).
 
 ```json
 { "reviewers": { "correctness": { "minTier": "lite" }, "security": { "enabled": false } } }

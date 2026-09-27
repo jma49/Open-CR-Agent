@@ -33,7 +33,7 @@ Register it in `.ocra/config.json`:
 }
 ```
 
-Plugins are resolved from the repository's own dependencies (package names) or from paths inside the repository.
+Plugins are resolved from the repository's own dependencies (package names) or from file paths relative to the repository. Plugins run code, so they load only from a repository's own config in local reviews, never for pull requests or with `--no-repo-config`.
 
 ## Lifecycle
 

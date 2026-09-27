@@ -72,7 +72,9 @@ Models are unreliable with line numbers, so they quote code instead. ocra resolv
 2. match in the whole file;
 3. match in another changed file (the model named the wrong file);
 4. *(planned)* a relocation request to a light model;
-5. otherwise the finding stays attached to the file, never dropped.
+5. otherwise the finding stays attached to its file, as a file-level finding.
+
+A finding that resolves to a file outside the reviewer's bundle is dropped with a warning: that reviewer was not shown the file.
 
 ## Robustness
 

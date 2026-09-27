@@ -15,3 +15,7 @@ The default mode optimizes precision: risk-tiered reviewer selection, strict Jud
 
 - Both modes are tracked separately in the eval package (precision, recall, F1, cost, latency).
 - Features that raise recall at a precision cost belong in `--ultra` first.
+
+## Implementation notes (2026-09-27)
+
+`--ultra` today runs every reviewer at every tier, samples twice and relaxes the judge. Its plan phase and the search for callers of changed symbols are planned, not implemented (see `docs/architecture.md`).

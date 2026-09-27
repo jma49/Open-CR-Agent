@@ -45,6 +45,7 @@ export async function pullRequestTarget(
   env: Env,
   warn: (message: string) => void,
   fetchImpl?: typeof fetch,
+  ignoreRepoConfig = false,
 ): Promise<ReviewTarget> {
   const token = env.GITHUB_TOKEN ?? env.GH_TOKEN;
   if (!token) throw new ConfigError("--pr needs a GitHub token in GITHUB_TOKEN or GH_TOKEN");
@@ -60,7 +61,7 @@ export async function pullRequestTarget(
   const base = new LocalGitAdapter({ cwd, target: { mode: "commit", commit: pull.base.sha } });
   const readTrusted = (path: string) => base.readFile(path);
   const config = await loadConfig(root, env, {
-    repository: true,
+    repository: !ignoreRepoConfig,
     read: readTrusted,
     warn,
     ...(fetchImpl ? { fetch: fetchImpl } : {}),

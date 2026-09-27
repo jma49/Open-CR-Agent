@@ -24,10 +24,10 @@ ocra review [options]
 | `--publish` | With `--pr`: post the review to the pull request |
 | `--full` | With `--pr`: review every file, not only what changed since the previous review |
 | `--max-cost-usd <n>` | Spend limit for the run. Review tasks stop starting at 80% of it (tasks already running finish); verification and judging use the rest. If that runs out too, the remaining findings are reported *not verified*, so they cannot block, and the report says so |
-| `--plan` | Show selected and excluded files, bundles, review tasks and the size of each first prompt, without calling a model (free). Grouping by the light model is skipped, so a change set large enough to be grouped is shown one file per bundle |
+| `--plan` | Show selected and excluded files, bundles, review tasks and the size of each first prompt, without calling a model (free). Grouping by the light model is skipped, so a change set large enough to be grouped is shown one file per bundle (by directory past 20 files). With `--pr` it plans a full review, not only what changed since the last one, and it writes no session log |
 | `--ultra` | Favor recall over cost; see [Modes](./how-it-works#modes) |
 | `--reviewers <ids>` | Run only these reviewers, comma-separated (for example `security`) |
-| `--no-repo-config` | Ignore `.ocra/config.json` and the plugins it lists; models come from `OCRA_MODEL_*`. Use it on code you do not trust |
+| `--no-repo-config` | Ignore `.ocra/config.json` and the plugins it lists (with `--pr`, also the base branch's); models come from `OCRA_MODEL_*`. Use it on code you do not trust |
 | `-h, --help` | Show help |
 
 `--commit` cannot be combined with `--from` or `--to`.
@@ -65,7 +65,7 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...` so a lo
 
 ### Sessions
 
-Every run writes `.ocra/sessions/<id>/events.jsonl` (one event per line, appended as the run progresses) and `report.json`. The directory carries its own `.gitignore`, so logs are never committed and never show up as changes in the next review.
+Every review (not `--plan`) writes `.ocra/sessions/<id>/events.jsonl` (one event per line, appended as the run progresses) and `report.json`. The directory carries its own `.gitignore`, so logs are never committed and never show up as changes in the next review.
 
 ## ocra --version
 
@@ -81,4 +81,4 @@ ocra memory add 1a2b3c4d --reason "Retries are capped by the gateway."
 ocra memory list
 ```
 
-Entries go to `.ocra/memory.json`; commit the file to share them. A remembered finding (same reviewer, file and quoted code) is left out of the report and counted instead, and reviewers see the accepted findings for the files they review so they do not raise them again. For pull requests the file is read from the base commit, so a pull request cannot silence its own findings.
+`ocra memory add` looks the id up in the newest session under `.ocra/sessions/`; pass `--session <dir>` to use another one. Entries go to `.ocra/memory.json`; commit the file to share them. A remembered finding (same reviewer, file and quoted code) is left out of the report and counted instead, and reviewers see the accepted findings for the files they review so they do not raise them again. For pull requests the file is read from the base commit, so a pull request cannot silence its own findings.

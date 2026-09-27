@@ -378,6 +378,8 @@ describe("ocra review", () => {
     const json = capture();
     await run(["review", "--plan", "--format", "json"], json, capture(), deps(cwd, critical));
     expect(JSON.parse(json.text())).toMatchObject({ tier: "trivial", selected: ["app.ts"] });
+    // A plan writes no session log.
+    expect(existsSync(join(cwd, ".ocra", "sessions"))).toBe(false);
   });
 
   it("reports missing or invalid external plugins", async () => {
