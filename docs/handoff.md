@@ -9,7 +9,7 @@ State of the project as of 2026-09-26, for whoever picks it up next (human or ag
 | Main repository | https://github.com/jma49/Open-CR-Agent (public, Apache-2.0) |
 | Site repository | https://github.com/jma49/open-cr-agent-site (public) |
 | Live site | https://ocra-nine.vercel.app (English at `/`, Chinese at `/zh`) |
-| Vercel project | `ocra` in team `jonsons-projects`; deploys the site repo's `main` on push |
+| Vercel project | `ocra`; deploys the site repo's `main` through the deploy hook |
 | Contributor rules | `AGENTS.md` in each repository (`CLAUDE.md` imports it) |
 | Architecture | `docs/architecture.md`, decisions in `docs/adr/0001`–`0008`, spike report `docs/spikes/0001-opencode-runtime.md` |
 | Audits | `docs/audits/` (latest: `2026-09-26-self-audit.md`) |
@@ -37,13 +37,10 @@ Open work, in order:
 
 ## Environment notes
 
-- **Model key: missing.** `GEMINI_API_KEY` was removed from `~/.zshrc` during the 2026-09-26 session and is in no other shell profile; nothing that calls a model can run until the maintainer provides a key. When it is back: agent shells capture the environment at session start, so load just that line without printing it: `eval "$(grep -E '^export GEMINI_API_KEY=' ~/.zshrc)"`. The runtime now names a missing key instead of failing with "model not found".
-- **Quota:** with the old key, only `gemini-flash-lite-latest` answered; the Flash models returned empty responses. flash-lite is too weak to evaluate prompts (see #12).
+- **Model key: none.** Nothing that calls a model can run until the maintainer provides a key. The runtime names a missing key instead of failing with "model not found".
+- **Models for evaluation:** `gemini-flash-lite-latest` is too weak to evaluate prompts (see #12); use a Flash or Pro class model.
 - **Model chain:** `gemini-3.8-flash` was removed from the dogfood `.ocra/config.json` and the README example: it fails inside OpenCode's step loop (400 "Requests ending with a model turn") and cost ~$0.02 and ~20 s per run before failing over.
 - **Secrets:** `SITE_DEPLOY_HOOK` (main repo, Vercel deploy hook for the site). No other secrets are configured. Never print or commit secret values.
-- **Git identity:** commits as `jincheng_m <majincheng990128@gmail.com>`.
-- **Vercel connector:** the claude.ai Vercel connector's authorization is broken ("User not found", sees no projects). Use the Vercel dashboard or `npx vercel login` + CLI instead.
-- **Browser automation:** the Chrome extension has no permission to screenshot `ocra-nine.vercel.app`, and screenshots of a local `next start` can time out; checking the DOM with JavaScript works.
 - **Vercel build limit:** the Hobby plan rate-limits builds. Every manual change on `main` triggers a site build, and on 2026-09-26 ~15 such merges exhausted it ("retry in 24 hours"); the site's latest copy deploys on the next build.
 
 ## Traps and rules

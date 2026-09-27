@@ -3,6 +3,8 @@
 Open-CR-Agent (`ocra`) reviews code changes with a pipeline of deterministic stages that surround a small number of LLM-driven steps. It combines two proven designs:
 
 - **Cloudflare AI Code Review** ([blog](https://blog.cloudflare.com/ai-code-review/)): plugin architecture, domain-specialised reviewers with explicit "what not to flag" rules, a top-tier coordinator that judges and deduplicates, risk tiering, model failback with circuit breakers, incremental re-review.
+
+Sections below describe the target design. Anything marked **(planned)** is not implemented yet; the user manual describes only what exists.
 - **Alibaba OpenCodeReview** ([repo](https://github.com/alibaba/open-code-review)): deterministic file selection, semantic file bundling, per-file-type rule matching, plan → multi-round review → fact-check filter, snippet-based comment anchoring, coverage manifests and resumable sessions.
 
 The two split work along different axes: Cloudflare by **review domain**, OCR by **file bundle**. `ocra` uses both, and a deterministic **Review Matrix Planner** decides which reviewer runs on which bundle so cost does not grow as bundles × reviewers.
@@ -30,8 +32,8 @@ The two split work along different axes: Cloudflare by **review domain**, OCR by
 | 3 | Triage | code | Assign a risk tier (`trivial` / `lite` / `full`) from churn, file count and sensitive paths. Sensitive paths always force `full`. |
 | 4 | Bundle | code + cheap LLM | Group related files into review units. Small change sets are bundled without an LLM; larger ones are grouped by an LLM that answers with file indices; oversized bundles fall back to per-file. |
 | 5 | Matrix | code | Choose reviewers per bundle from tier, file kinds, paths and rules, and resolve the rule text for each (bundle, reviewer) cell. |
-| 6 | Execute | LLM agents | Run each cell as an isolated agent task via `AgentRuntime`: optional plan, up to two review rounds, read-only tools, findings submitted through the `report_finding` tool. |
-| 7 | Anchor | code + cheap LLM | Resolve each finding's `existingCode` snippet to exact lines by normalized matching in hunks, then full files; fall back to LLM re-location, then to a file-level comment. The LLM never supplies line numbers. |
+| 6 | Execute | LLM agents | Run each cell as an isolated agent task via `AgentRuntime`: read-only tools, findings submitted through the `report_finding` tool. A plan phase and a second review round are **(planned)**. |
+| 7 | Anchor | code | Resolve each finding's `existingCode` snippet to exact lines by normalized matching in hunks, then full files, then other files' hunks; otherwise a file-level comment. The LLM never supplies line numbers. LLM re-location before the file-level fallback exists in core (`AnchorContext.relocate`) but the CLI does not wire it **(planned)**. |
 | 8 | Filter | code | Drop findings in the repository's memory and those a reviewer dismissed, and compare with the previous review (Re-review), before any money is spent checking them. |
 | 9 | Verify | LLM | Fact-check each finding against the diff. Only findings the diff proves wrong are dropped; the rest are marked confirmed, uncertain or unchecked. |
 | 10 | Judge | top-tier LLM | Coordinator deduplicates across reviewers, recalibrates severity, filters speculation and nitpicks, and decides the verdict. |
@@ -44,12 +46,12 @@ The two split work along different axes: Cloudflare by **review domain**, OCR by
 | `correctness` | Logic errors, broken contracts, error handling | standard |
 | `security` | Exploitable or concretely dangerous issues only | standard |
 | `performance` | Measurable regressions on hot paths | standard |
-| `docs` | Public API and user-facing documentation drift | light |
-| `agents-md` | Material changes that should update `AGENTS.md` | light |
+| `docs` **(planned)** | Public API and user-facing documentation drift | light |
+| `agents-md` **(planned)** | Material changes that should update `AGENTS.md` | light |
 
 Reviewers are plugins; teams can add their own (for example, compliance with internal standards).
 
-Model tiers are configurable. Defaults: **top** for Judge, **standard** for code reviewers, **light** for grouping, re-location and text-heavy reviewers.
+Model tiers are configurable. Defaults: **top** for Judge, **standard** for code reviewers and Verify, **light** for grouping (and, when implemented, re-location and text-heavy reviewers).
 
 ## Finding model
 
@@ -85,7 +87,8 @@ Findings carry fingerprints, so a re-review can compare against the previous run
 - Fixed → only when the anchored code is gone from the file at head (hash of its normalized lines) or the file was deleted; listed and its thread resolved.
 - Not reported again but the code is unchanged → `notReproduced`; its file not reviewed this time → `notRechecked`. Both stay open, keep their severity in the verdict and their thread.
 - Resolved by a reviewer, or declined with "won't fix" / "acknowledged" by someone with write access other than the author → dismissed, quiet unless it comes back more severe.
-- "I disagree" → reassessed by Judge (planned; today the finding simply keeps being reported).
+- "I disagree" → reassessed by Judge **(planned)**; today the finding simply keeps being reported.
+- Incremental re-review **(planned)**: today every push reviews the whole pull request again and reconciles by fingerprint, so cost grows with the number of pushes.
 
 `reconcile` is pure; the pipeline reads the earlier findings' files beforehand and passes whether each one's code is still present.
 
@@ -94,9 +97,9 @@ Findings carry fingerprints, so a re-review can compare against the previous run
 | | Default (precision) | `--ultra` (recall) |
 |---|---|---|
 | Reviewers | By tier and matrix | All, every bundle |
-| Plan phase | Skipped for small bundles | Always |
+| Plan phase **(planned)** | Skipped for small bundles | Always |
 | Sampling | One run per cell | Two runs per cell, merged |
-| Impact analysis | Off | Callers of changed symbols searched |
+| Impact analysis **(planned)** | Off | Callers of changed symbols searched |
 | Judge threshold | Strict | Relaxed; extra findings marked low confidence |
 
 Implemented today: reviewers, sampling and judge threshold. Plan phase and impact analysis are not.
@@ -110,7 +113,7 @@ interface VcsAdapter {            // one instance per change request
   readFile(path): Promise<string | undefined>   // file content at head
   searchCode(literal): Promise<CodeMatch[]>
   getPriorReview(): Promise<PriorReview | undefined>  // fingerprints the platform remembers
-  publish(report: ReviewReport): Promise<void>
+  publish(report: ReviewReport): Promise<{ warnings: string[] }>
 }
 
 interface AgentRuntime {
@@ -135,8 +138,8 @@ The pipeline owns orchestration. `AgentRuntime` only executes one isolated agent
 
 ## Resilience
 
-- Per-task timeout, whole-run timeout, inactivity detection, and a periodic "model is thinking" heartbeat.
-- Circuit breaker per model family (healthy → open → half-open probe). Only retryable errors (429, 503) trigger failback, and only within the same family.
+- Per-task timeout, whole-run timeout, and a periodic "model is thinking" heartbeat. Inactivity detection that ends a silent task early is **(planned)**.
+- Circuit breaker per model (closed → open → half-open probe, cooldown doubling up to a limit). Any model error except a credential error fails over to the next model in the tier's chain.
 - A failed task never fails the run; it is recorded in the coverage manifest.
 - A spend limit keeps a reserve: review tasks stop starting at 80% of it (`REVIEW_BUDGET_SHARE`), Verify and Judge use the rest, and findings left unchecked when it runs out cannot block.
 
@@ -158,5 +161,5 @@ packages/
 |---|---|
 | M1 | CLI on local diffs · Select, Bundle, Anchor · one `correctness` reviewer · eval harness running |
 | M2 | Multiple reviewers · Matrix planner · Verify and Judge · risk tiers |
-| M3 | GitHub Action · inline comments and verdicts · incremental re-review |
+| M3 | GitHub Action · inline comments and verdicts · re-review by fingerprint (incremental re-review planned) |
 | M4 | Failback and circuit breakers · remote config · long-term review memory · `--ultra` |

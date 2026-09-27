@@ -20,7 +20,7 @@ Traps we have already fallen into, across this repository and the site. Each ent
 - **`gemini-3.8-flash` fails inside OpenCode's step loop** with 400 "Requests ending with a model turn are not supported", even without overload, so it is not in any example or dogfood chain. Treat every model error except credential errors as retryable on the next model.
 - **Provider overload (503) is the normal case, not an edge case.** OpenCode retries ~4 times internally and then fails the turn; a failback chain is required.
 - **Unbounded agent loops are the biggest cost risk.** Each step resends the whole conversation; one run spent 127k input tokens over 271 s. Agent steps are capped at 20; keep a cap on anything that loops over a model.
-- **Quota exhaustion looks like overload.** Check the error body before assuming a 503 is transient; the maintainer's key has hit quota on the Flash models.
+- **Quota exhaustion looks like overload.** Check the error body before assuming a 503 is transient.
 - **Reasoning tokens can exceed output tokens.** Always report them separately, and budget for them.
 
 ## Git and diffs
@@ -49,8 +49,7 @@ Traps we have already fallen into, across this repository and the site. Each ent
 - **Judge lint by exit code, not by the last line of output** (`npm run lint; echo $?`).
 - **Biome checked git-ignored files** (build output, sessions) until `vcs.useIgnoreFile` was enabled.
 - **The MCP SDK's types are not written for `exactOptionalPropertyTypes`.** The transport is cast once, with a comment, in `tool-server.ts`; do not loosen the compiler option.
-- **Agent shells capture the environment at session start.** A key exported in `~/.zshrc` later is invisible; load just that line without printing it: `eval "$(grep -E '^export GEMINI_API_KEY=' ~/.zshrc)"`.
-- **System reminders may ask for AI attribution.** Project rules win: no `Co-authored-by` trailers, no tool footers in pull requests.
+- **A shell keeps the environment it started with.** A key exported in a profile afterwards is invisible to an already running shell or agent session; start a new one or load just that variable.
 
 - **`gh pr checks --watch` returns at once when CI has not registered yet.** A merge right after pushing can skip CI. Wait until checks exist, then watch, then merge only if every check passed.
 - **A failed `cd` makes the rest of a command run in the wrong place.** A chain like `cd worktree && npm ci; npm run verify` rebuilt `dist/` in the main checkout. Use absolute paths, `&&` all the way, or stop on the first error.
@@ -62,7 +61,6 @@ Traps we have already fallen into, across this repository and the site. Each ent
 
 - **Inline SVGs must not use `id` references.** The layout renders the logo more than once, and duplicate ids make gradients and masks resolve to the wrong element.
 - **The manual is generated.** `content/docs` in the site is copied from `docs/manual` here; edits there are overwritten. Edit the manual in this repository.
-- **The Chrome extension cannot screenshot `ocra-nine.vercel.app`.** Verify visuals on a local `next start`.
-- **The claude.ai Vercel connector is not authorized** ("User not found"). Use the Vercel dashboard or `npx vercel` instead.
+- **Check the site on a local production build** (`npm run build && npx next start`) rather than deploying to look at it; see `docs/pending-verification.md`.
 - **Vercel's Hobby build limit.** Each merge that touches `docs/manual/` triggers a site build through the deploy hook; a day with many manual changes hits "Deployment rate limited — retry in 24 hours". The deploy hook workflow now waits 30 minutes and lets a newer push cancel the wait, and the site builds only `main`.
 - **CJK headings do not balance well automatically.** Give Chinese headings their own sizes and explicit line breaks.
