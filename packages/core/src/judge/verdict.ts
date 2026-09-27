@@ -1,10 +1,10 @@
-import type { Finding, Verdict } from "../domain.js";
+import type { Finding, Severity, Verdict } from "../domain.js";
 
 export const PATTERN_WARNINGS = 3;
 
 // The rubric is code, so the same findings always give the same verdict and
 // a failed judge call cannot change it; it leans towards approval.
-export function decideVerdict(findings: readonly Finding[]): Verdict {
+export function decideVerdict(findings: readonly { severity: Severity }[]): Verdict {
   if (findings.some((f) => f.severity === "critical")) return "significant_concerns";
   const warnings = findings.filter((f) => f.severity === "warning").length;
   if (warnings >= PATTERN_WARNINGS) return "minor_issues";

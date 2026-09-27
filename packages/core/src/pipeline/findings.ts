@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { Anchor } from "../anchor/anchor.js";
 import { normalizeSnippet } from "../anchor/match.js";
 import type { Finding, ReportedFinding, Severity } from "../domain.js";
+import { quoteSignature } from "../rereview/quote.js";
 
 const SEVERITY_RANK: Record<Severity, number> = { suggestion: 0, warning: 1, critical: 2 };
 
@@ -10,7 +11,13 @@ export function fingerprint(category: string, file: string, existingCode: string
   return createHash("sha256").update(key).digest("hex").slice(0, 16);
 }
 
-export function toFinding(reported: ReportedFinding, reviewer: string, anchor: Anchor): Finding {
+// content is the anchored file at head, when the anchor found lines in it.
+export function toFinding(
+  reported: ReportedFinding,
+  reviewer: string,
+  anchor: Anchor,
+  content?: string,
+): Finding {
   const finding: Finding = {
     ...reported,
     file: anchor.file,
@@ -20,7 +27,11 @@ export function toFinding(reported: ReportedFinding, reviewer: string, anchor: A
     anchor: { method: anchor.method, inDiff: anchor.inDiff },
     status: "new",
   };
-  if (anchor.lineRange) finding.lineRange = anchor.lineRange;
+  if (anchor.lineRange) {
+    finding.lineRange = anchor.lineRange;
+    const quote = content === undefined ? undefined : quoteSignature(content, anchor.lineRange);
+    if (quote) finding.quote = quote;
+  }
   return finding;
 }
 

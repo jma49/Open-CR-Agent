@@ -55,10 +55,11 @@ Model tiers are configurable. Defaults: **top** for Judge, **standard** for code
 ```ts
 Finding {
   id, fingerprint,            // fingerprint = hash(category + file + normalized existingCode)
-  reviewer, category,
+  reviewer, category,         // category is always the reviewer's, never the model's
   severity: 'critical' | 'warning' | 'suggestion',
   file, existingCode, lineRange?,  // lineRange is computed by Anchor, never by the LLM
   title, body, suggestion?, evidence[],
+  quote?: { lines, hash },    // normalized anchored lines, to tell later whether the code is still there
   status: 'new' | 'unfixed' | 'fixed' | 'dismissed'
 }
 ```
@@ -76,12 +77,15 @@ The rubric is biased toward approval. A "break glass" override forces approval a
 
 ## Re-review
 
-Findings carry fingerprints, so a re-review can compare against the previous run:
+Findings carry fingerprints, so a re-review can compare against the previous run (ADR-0009):
 
-- Fixed → omitted and its thread resolved.
-- Still present → re-emitted to keep the thread alive.
-- Resolved by a human → respected unless it materially worsened.
-- Human replies "won't fix" / "acknowledged" → resolved; "I disagree" → reassessed by Judge.
+- Reported again → `unfixed`, the existing thread is kept and not commented again.
+- Fixed → only when the anchored code is gone from the file at head (hash of its normalized lines) or the file was deleted; listed and its thread resolved.
+- Not reported again but the code is unchanged → `notReproduced`; its file not reviewed this time → `notRechecked`. Both stay open, keep their severity in the verdict and their thread.
+- Resolved by a reviewer, or declined with "won't fix" / "acknowledged" by someone with write access other than the author → dismissed, quiet unless it comes back more severe.
+- "I disagree" → reassessed by Judge (planned; today the finding simply keeps being reported).
+
+`reconcile` is pure; the pipeline reads the earlier findings' files beforehand and passes whether each one's code is still present.
 
 ## Modes
 

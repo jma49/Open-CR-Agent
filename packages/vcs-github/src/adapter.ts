@@ -133,7 +133,12 @@ export class GitHubAdapter implements VcsAdapter {
 
     const commented = new Set([...alreadyCommented, ...posted]);
     const current = new Set(report.findings.map((f) => f.fingerprint));
-    const quiet = [...(report.rereview?.notRechecked ?? []), ...(report.rereview?.dismissed ?? [])];
+    const rereview = report.rereview;
+    const quiet = [
+      ...(rereview?.notReproduced ?? []),
+      ...(rereview?.notRechecked ?? []),
+      ...(rereview?.dismissed ?? []),
+    ];
     const state: PriorFinding[] = [
       ...report.findings.map((f) => ({
         fingerprint: f.fingerprint,
@@ -141,6 +146,7 @@ export class GitHubAdapter implements VcsAdapter {
         file: f.file,
         severity: f.severity,
         commented: commented.has(f.fingerprint),
+        ...(f.quote ? { quote: f.quote } : {}),
       })),
       ...quiet.filter((f) => !current.has(f.fingerprint)),
     ];

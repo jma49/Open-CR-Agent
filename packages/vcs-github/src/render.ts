@@ -104,15 +104,32 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
     for (const f of rereview.fixed)
       lines.push(`- ~~${safeMarkdown(f.title)}~~ ${codeSpan(f.file)}`);
   }
+  if (rereview && rereview.notReproduced.length > 0) {
+    lines.push(
+      "",
+      "### Not reported this time, code unchanged",
+      "",
+      "Still open and counted in the verdict until the code changes or a reviewer dismisses them.",
+      "",
+    );
+    for (const f of rereview.notReproduced)
+      lines.push(`- ${ICON[f.severity]} ${safeMarkdown(f.title)} ${codeSpan(f.file)}`);
+  }
   if (rereview && rereview.dismissed.length > 0) {
     lines.push("", "### Dismissed by reviewers");
     for (const f of rereview.dismissed)
       lines.push(`- ${safeMarkdown(f.title)} ${codeSpan(f.file)}`);
   }
   if (rereview && rereview.notRechecked.length > 0) {
-    lines.push("", "### Not re-checked this time");
+    lines.push(
+      "",
+      "### Not re-checked this time",
+      "",
+      "Their files were not reviewed in this run; they stay open and count in the verdict.",
+      "",
+    );
     for (const f of rereview.notRechecked)
-      lines.push(`- ${safeMarkdown(f.title)} ${codeSpan(f.file)}`);
+      lines.push(`- ${ICON[f.severity]} ${safeMarkdown(f.title)} ${codeSpan(f.file)}`);
   }
 
   const failed = report.coverage.filter((c) => c.status === "failed" || c.status === "unreviewed");

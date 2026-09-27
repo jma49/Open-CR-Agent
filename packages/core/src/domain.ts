@@ -26,6 +26,13 @@ export type ReportedFinding = z.infer<typeof reportedFindingSchema>;
 
 export type AnchorMethod = "hunk" | "file" | "cross_file" | "relocated" | "file_level";
 
+// Normalized line count and hash of the code a finding is anchored to, so a
+// later review can tell whether that code still exists without storing it.
+export interface QuoteSignature {
+  lines: number;
+  hash: string;
+}
+
 export interface Finding extends ReportedFinding {
   id: string;
   fingerprint: string;
@@ -35,6 +42,8 @@ export interface Finding extends ReportedFinding {
   status: FindingStatus;
   // --ultra keeps findings the judge would drop and marks them instead.
   lowConfidence?: boolean;
+  // Absent when the finding is not anchored to lines.
+  quote?: QuoteSignature;
 }
 
 export type FileChangeKind = "added" | "modified" | "deleted" | "renamed";
@@ -90,6 +99,9 @@ export interface PriorFinding {
   commented: boolean;
   // A person resolved or declined it ("won't fix"); it stays quiet unless it gets worse.
   dismissed?: boolean;
+  // Absent for findings without anchored lines and in state written before
+  // it existed; such findings are never judged fixed by their code alone.
+  quote?: QuoteSignature;
 }
 
 export interface PriorReview {

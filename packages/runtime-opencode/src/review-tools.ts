@@ -15,7 +15,6 @@ export const reportFindingInput = z.object({
   body: z.string().min(1),
   suggestion: z.string().optional(),
   evidence: z.array(z.string()).optional(),
-  category: z.string().optional(),
 });
 
 const readFile: ToolDefinition = {

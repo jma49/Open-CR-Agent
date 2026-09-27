@@ -10,5 +10,6 @@
 | [0006](0006-plugin-contract.md) | ocra plugin contract: bootstrap / configure / postConfigure |
 | [0007](0007-review-matrix.md) | Review matrix: reviewer scopes, risk tiers and overrides decide the cells |
 | [0008](0008-github-integration.md) | GitHub: code from git, conversation from the API, trusted inputs from the base revision |
+| [0009](0009-fixed-needs-code-evidence.md) | A finding is fixed only when its code is gone; unreproduced findings stay open |
 
 Copy [0000-template.md](0000-template.md) to add a new record.

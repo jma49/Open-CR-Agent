@@ -5,8 +5,9 @@ import type { AgentRuntime, Usage, VcsAdapter } from "../contracts.js";
 import type { Finding, PriorReview, Severity } from "../domain.js";
 import { errorMessage } from "../errors.js";
 import { judgeFindings } from "../judge/judge.js";
-import { applyMemory } from "../memory/memory.js";
-import { reconcile } from "../rereview/reconcile.js";
+import { applyMemory, type MemoryEntry } from "../memory/memory.js";
+import { priorCodePresence } from "../rereview/presence.js";
+import { reconcile, stillOpen } from "../rereview/reconcile.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import type { RepoRule } from "../rules/repo-rules.js";
@@ -118,7 +119,15 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   // dismissed neither reach the judge nor count towards the verdict.
   const fileCoverage = coverage(plan.decisions, results);
   const remembered = applyMemory(verification.kept, plan.memory);
-  const reconciled = reconcile(remembered.kept, prior.review, fileCoverage);
+  const reported = new Set(found.map((f) => f.fingerprint));
+  const priorReview = withoutRemembered(prior.review, plan.memory);
+  const reconciled = reconcile({
+    findings: remembered.kept,
+    reported,
+    prior: priorReview,
+    coverage: fileCoverage,
+    stillPresent: await priorCodePresence(priorReview, reported, plan.context.readFile),
+  });
 
   const judged = await judgeFindings(reconciled.findings, {
     runtime: options.runtime,
@@ -127,6 +136,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     signal,
     enabled: options.judge !== false && !budget.exhausted(),
     keepDropped: options.ultra === true,
+    carried: stillOpen(reconciled),
   });
   emit(
     judged.decisions
@@ -166,6 +176,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   if (prior.review) {
     report.rereview = {
       fixed: reconciled.fixed,
+      notReproduced: reconciled.notReproduced,
       notRechecked: reconciled.notRechecked,
       dismissed: reconciled.dismissed,
     };
@@ -198,6 +209,16 @@ function spendTracker(maxCostUsd: number | undefined, initial: readonly Usage[])
       return { outcome, findings: [], usage: emptyUsage(), warnings: [] };
     },
   };
+}
+
+// An earlier finding the team has since accepted is no longer open.
+function withoutRemembered(
+  review: PriorReview | undefined,
+  memory: readonly MemoryEntry[],
+): PriorReview | undefined {
+  if (!review) return undefined;
+  const accepted = new Set(memory.map((e) => e.fingerprint));
+  return { findings: review.findings.filter((f) => !accepted.has(f.fingerprint)) };
 }
 
 // A missing earlier review only costs the comparison, never the review.

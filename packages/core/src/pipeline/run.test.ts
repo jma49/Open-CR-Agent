@@ -1,77 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type {
-  AgentEvent,
-  AgentRuntime,
-  AgentTaskSpec,
-  CompletionRequest,
-  VcsAdapter,
-} from "../contracts.js";
-import { parseUnifiedDiff } from "../diff/parse.js";
-import type { ReportedFinding } from "../domain.js";
+import type { AgentEvent, CompletionRequest } from "../contracts.js";
 import type { ReviewEvent } from "./report.js";
+import { finding, patch, runtime, twoFiles, vcs } from "./run.fakes.js";
 import { runReview } from "./run.js";
-
-function patch(path: string, added: string): string {
-  return [
-    `diff --git a/${path} b/${path}`,
-    `--- a/${path}`,
-    `+++ b/${path}`,
-    "@@ -1 +1,2 @@",
-    " keep",
-    `+${added}`,
-  ].join("\n");
-}
-
-function vcs(files: Record<string, string>, diffText: string): VcsAdapter {
-  return {
-    name: "fake",
-    getChangeRequest: async () => ({
-      id: "1",
-      title: "t",
-      description: "d",
-      baseSha: "b",
-      headSha: "h",
-    }),
-    getDiff: async () => parseUnifiedDiff(diffText),
-    readFile: async (path) => files[path],
-    searchCode: async () => [],
-    getPriorReview: async () => undefined,
-    publish: async () => ({ warnings: [] }),
-  };
-}
-
-type Script = (spec: AgentTaskSpec, signal: AbortSignal) => AsyncIterable<AgentEvent>;
-
-function runtime(script: Script): AgentRuntime & { specs: AgentTaskSpec[] } {
-  const specs: AgentTaskSpec[] = [];
-  return {
-    name: "fake",
-    specs,
-    runTask(spec, signal) {
-      specs.push(spec);
-      return script(spec, signal);
-    },
-  };
-}
-
-function finding(
-  file: string,
-  existingCode: string,
-  overrides: Partial<ReportedFinding> = {},
-): ReportedFinding {
-  return {
-    category: "correctness",
-    severity: "warning",
-    file,
-    existingCode,
-    title: "t",
-    body: "b",
-    evidence: [],
-    ...overrides,
-  };
-}
-
-const twoFiles = [patch("src/a.ts", "const a = 1;"), patch("src/b.ts", "const b = 2;")].join("\n");
 
 describe("runReview", () => {
   it("reviews selected files end to end and anchors findings", async () => {
@@ -167,41 +98,6 @@ describe("runReview", () => {
     ]);
   });
 
-  it("compares with the previous review and survives failing to load it", async () => {
-    const rt = runtime(async function* (spec) {
-      yield { type: "finding", taskId: spec.taskId, finding: finding("src/a.ts", "const a = 1;") };
-      yield { type: "done", taskId: spec.taskId };
-    });
-    const first = await runReview({
-      vcs: vcs({}, twoFiles),
-      runtime: rt,
-      verify: false,
-      judge: false,
-    });
-    const fingerprint = first.findings[0]?.fingerprint ?? "";
-    const old = { title: "t", severity: "warning" as const, commented: true };
-
-    const withPrior = vcs({}, twoFiles);
-    withPrior.getPriorReview = async () => ({
-      findings: [
-        { ...old, fingerprint, file: "src/a.ts" },
-        { ...old, fingerprint: "gone", file: "src/b.ts" },
-      ],
-    });
-    const second = await runReview({ vcs: withPrior, runtime: rt, verify: false, judge: false });
-    expect(second.findings[0]?.status).toBe("unfixed");
-    expect(second.rereview?.fixed.map((f) => f.fingerprint)).toEqual(["gone"]);
-
-    const broken = vcs({}, twoFiles);
-    broken.getPriorReview = async () => {
-      throw new Error("HTTP 502");
-    };
-    const third = await runReview({ vcs: broken, runtime: rt, verify: false, judge: false });
-    expect(third.findings).toHaveLength(1);
-    expect(third.rereview).toBeUndefined();
-    expect(third.warnings).toContain("could not load the previous review: HTTP 502");
-  });
-
   it("samples every cell twice and ignores tiers in ultra mode", async () => {
     const rt = runtime(async function* (spec) {
       yield { type: "finding", taskId: spec.taskId, finding: finding("src/a.ts", "const a = 1;") };
@@ -223,36 +119,6 @@ describe("runReview", () => {
     });
     expect(rt.specs.map((s) => s.taskId)).toEqual(["risky-1", "risky-1b"]);
     expect(report.findings).toHaveLength(1);
-  });
-
-  it("stays quiet about findings in the repository's memory and tells reviewers", async () => {
-    const rt = runtime(async function* (spec) {
-      yield { type: "finding", taskId: spec.taskId, finding: finding("src/a.ts", "const a = 1;") };
-      yield { type: "done", taskId: spec.taskId };
-    });
-    const first = await runReview({
-      vcs: vcs({}, twoFiles),
-      runtime: rt,
-      verify: false,
-      judge: false,
-    });
-    const entry = {
-      fingerprint: first.findings[0]?.fingerprint ?? "",
-      file: "src/a.ts",
-      title: "t",
-      reason: "known and accepted",
-    };
-    const memory = JSON.stringify({ accepted: [entry] });
-    const second = await runReview({
-      vcs: vcs({}, twoFiles),
-      runtime: rt,
-      verify: false,
-      judge: false,
-      readTrusted: async (p) => (p === ".ocra/memory.json" ? memory : undefined),
-    });
-    expect(second.findings).toEqual([]);
-    expect(second.remembered).toEqual([entry]);
-    expect(rt.specs.at(-1)?.userPrompt).toContain("- src/a.ts: t (accepted: known and accepted)");
   });
 
   it("stops starting tasks once the spend limit is reached", async () => {

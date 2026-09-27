@@ -44,7 +44,7 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
   const rereview = report.rereview;
   if (rereview) {
     lines.push(
-      `Since the last review: ${rereview.fixed.length} fixed, ${rereview.dismissed.length} dismissed by reviewers, ${rereview.notRechecked.length} not re-checked.`,
+      `Since the last review: ${rereview.fixed.length} fixed, ${rereview.dismissed.length} dismissed by reviewers, ${rereview.notReproduced.length} not reported again but unchanged, ${rereview.notRechecked.length} not re-checked (still open ones count in the verdict).`,
     );
   }
   const judged = report.judgement;

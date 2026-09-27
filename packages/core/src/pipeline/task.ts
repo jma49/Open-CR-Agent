@@ -14,7 +14,7 @@ export interface TaskResult {
 
 export interface TaskCallbacks {
   onProgress(message: string): void;
-  defaultCategory: string;
+  category: string;
 }
 
 export async function executeTask(
@@ -64,7 +64,7 @@ function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks)
       return false;
     case "finding": {
       const parsed = reportedFindingSchema.safeParse(
-        withDefaultCategory(event.finding, callbacks.defaultCategory),
+        withReviewerCategory(event.finding, callbacks.category),
       );
       if (parsed.success) result.findings.push(parsed.data);
       else result.warnings.push("runtime reported a finding that failed validation");
@@ -82,9 +82,12 @@ function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks)
   }
 }
 
-function withDefaultCategory(finding: unknown, category: string): unknown {
+// The category is part of the fingerprint, so it comes from the reviewer and
+// never from the model: a model choosing another word would make the same
+// issue look new, and its earlier report look fixed.
+function withReviewerCategory(finding: unknown, category: string): unknown {
   if (typeof finding !== "object" || finding === null) return finding;
-  return { category, ...finding };
+  return { ...finding, category };
 }
 
 // Runtimes may ignore the abort signal, so waiting for their next event is

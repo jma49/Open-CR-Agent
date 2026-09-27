@@ -65,7 +65,7 @@ export async function runJob(
     options.signal,
     {
       onProgress: (message) => emit({ type: "task_progress", taskId: job.taskId, message }),
-      defaultCategory: job.reviewer.category,
+      category: job.reviewer.category,
     },
   );
 
@@ -88,7 +88,10 @@ export async function runJob(
       outside += 1;
       continue;
     }
-    const finding = toFinding(reported, job.reviewer.id, anchor);
+    const content = anchor.lineRange
+      ? await plan.context.readFile(anchor.file).catch(() => undefined)
+      : undefined;
+    const finding = toFinding(reported, job.reviewer.id, anchor, content);
     findings.push(finding);
     emit({ type: "finding", taskId: job.taskId, finding });
   }

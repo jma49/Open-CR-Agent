@@ -1,5 +1,12 @@
 import type { AgentRuntime, Usage } from "../contracts.js";
-import type { ChangeRequest, Finding, RiskTier, Severity, Verdict } from "../domain.js";
+import type {
+  ChangeRequest,
+  Finding,
+  PriorFinding,
+  RiskTier,
+  Severity,
+  Verdict,
+} from "../domain.js";
 import { errorMessage } from "../errors.js";
 import { parseJsonAnswer } from "../pipeline/helpers.js";
 import { buildJudgePrompt, type JudgeResponse, judgeResponseSchema } from "./prompt.js";
@@ -31,15 +38,19 @@ export interface JudgeOptions {
   enabled: boolean;
   // --ultra: keep what the judge would drop, marked low confidence.
   keepDropped?: boolean;
+  // Earlier findings still open but not reported this time; the judge does
+  // not see them, the verdict counts them.
+  carried?: readonly PriorFinding[];
 }
 
 export async function judgeFindings(
   findings: readonly Finding[],
   options: JudgeOptions,
 ): Promise<JudgeResult> {
+  const carried = options.carried ?? [];
   const fallback = (warnings: string[] = [], usage: Usage[] = []): JudgeResult => ({
     findings: [...findings],
-    verdict: decideVerdict(findings),
+    verdict: decideVerdict([...findings, ...carried]),
     summary: defaultSummary(findings),
     usage,
     warnings,
@@ -75,7 +86,7 @@ export async function judgeFindings(
   return {
     findings: judged.findings,
     // Low-confidence extras are shown, not counted: the verdict stays precise.
-    verdict: decideVerdict(judged.findings.filter((f) => !f.lowConfidence)),
+    verdict: decideVerdict([...judged.findings.filter((f) => !f.lowConfidence), ...carried]),
     summary: response.summary.trim() || defaultSummary(judged.findings),
     decisions: judged.decisions,
     usage,

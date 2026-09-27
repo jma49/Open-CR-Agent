@@ -237,7 +237,7 @@ describe("GitHubAdapter", () => {
     };
     const result = await adapter(fetchImpl).publish({
       ...report([]),
-      rereview: { fixed: [fixed], notRechecked: [], dismissed: [] },
+      rereview: { fixed: [fixed], notReproduced: [], notRechecked: [], dismissed: [] },
     });
 
     const mutations = calls.filter((c) =>
@@ -251,12 +251,55 @@ describe("GitHubAdapter", () => {
     const broken = fakeGitHub([], 200, [], true);
     const failed = await adapter(broken.fetchImpl).publish({
       ...report([]),
-      rereview: { fixed: [fixed], notRechecked: [], dismissed: [] },
+      rereview: { fixed: [fixed], notReproduced: [], notRechecked: [], dismissed: [] },
     });
     expect(failed.warnings[0]).toContain("could not resolve the threads of fixed findings");
     expect(broken.calls.some((c) => c.path === "/issues/7/comments" && c.method === "POST")).toBe(
       true,
     );
+  });
+
+  it("keeps findings that were not reproduced open: no resolve, no new comment", async () => {
+    const quote = { lines: 2, hash: "0123456789abcdef" };
+    const open = {
+      fingerprint: B,
+      title: "t",
+      file: "src/login.ts",
+      severity: "critical" as const,
+      commented: true,
+      quote,
+    };
+    const { calls, fetchImpl } = fakeGitHub([], 200, [
+      {
+        id: "T1",
+        isResolved: false,
+        comments: {
+          nodes: [{ body: `<!-- ocra:finding ${B} -->\nold`, author: { login: "github-actions" } }],
+        },
+      },
+    ]);
+    await adapter(fetchImpl).publish({
+      ...report([{ ...finding(A, true), quote }], "significant_concerns"),
+      rereview: { fixed: [], notReproduced: [open], notRechecked: [], dismissed: [] },
+    });
+    expect(
+      calls.some((c) => (c.body as { query?: string } | undefined)?.query?.startsWith("mutation")),
+    ).toBe(false);
+    const review = calls.find((c) => c.path === "/pulls/7/reviews");
+    expect((review?.body as { comments: unknown[] } | undefined)?.comments).toHaveLength(1);
+    const body = postedSummary(calls);
+    expect(body).toContain("### Not reported this time, code unchanged");
+    expect(readState(body)).toEqual([
+      {
+        fingerprint: A,
+        title: finding(A, true).title,
+        file: "src/login.ts",
+        severity: "warning",
+        commented: true,
+        quote,
+      },
+      open,
+    ]);
   });
 
   it("counts only reviewers' dismissals, never the author's or outsiders'", async () => {

@@ -39,7 +39,12 @@ export interface ReviewReport {
   // What the judge merged, dropped or recalibrated; absent when it did not run.
   judgement?: JudgeDecisions;
   // Compared with the previous review of the same change, when there was one.
-  rereview?: { fixed: PriorFinding[]; notRechecked: PriorFinding[]; dismissed: PriorFinding[] };
+  rereview?: {
+    fixed: PriorFinding[];
+    notReproduced: PriorFinding[];
+    notRechecked: PriorFinding[];
+    dismissed: PriorFinding[];
+  };
   usage: Usage;
   warnings: string[];
 }

@@ -54,7 +54,7 @@ Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) i
 
 - Quality is unmeasured (see Status). Verify and Judge fail safe, so the worst case of a broken model call is today's behavior, not lost findings.
 - The judge sees findings, not code; it is told to be conservative and never to drop a finding only because it doubts it.
-- `.ocra/memory.json` matches by fingerprint (category, file, normalized quoted code): moving the code to another file makes the finding new again.
+- `.ocra/memory.json` matches by fingerprint (reviewer category, file, normalized quoted code): moving the code to another file, or the model quoting different lines, makes the finding new again. Re-review no longer calls such findings fixed (ADR-0009), but memory still misses them.
 - The runtime has no live integration test in CI (needs a model key); behavior is covered by unit tests, a test against the real OpenCode binary without a model, and a faked GitHub API.
 
 ## Open questions for the maintainer
