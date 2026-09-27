@@ -33,7 +33,7 @@ The verdict is decided by a fixed rubric over the final findings, not by a model
 | three or more warnings, or critical findings the verifier did not confirm | `minor_issues` |
 | any critical finding the verifier confirmed | `significant_concerns` |
 
-Every finding shows whether Verify **confirmed** it, was **unsure**, or did **not check** it (verification skipped, failed, or out of budget). Unconfirmed critical findings are shown as critical, marked unverified, and cap the verdict at `minor_issues`, so a single model's unchecked claim cannot block a change. The judge can downgrade a confirmed critical finding with a reason but cannot drop it; an attempt is ignored and listed as a warning.
+Every finding shows whether Verify **confirmed** it, was **unsure**, or did **not check** it (verification skipped, failed, or out of budget). Unconfirmed critical findings are shown as critical, marked unverified, and cap the verdict at `minor_issues`, so a single model's unchecked claim cannot block a change. The judge can neither drop nor downgrade a confirmed critical finding; an attempt is ignored and listed as a warning.
 
 If the judge is disabled, has no `top` model or fails, findings are reported unjudged and the rubric still applies.
 

@@ -33,7 +33,7 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Fi
 | 三个及以上 warning，或未经核查确认的 critical | `minor_issues` |
 | 任何经核查确认的 critical | `significant_concerns` |
 
-每条问题都会标明核查（Verify）的结果：**已确认**、**不确定**，或**未核查**（核查被跳过、调用失败或预算不足）。未经确认的 critical 照常显示为 critical 并标为未核实，但结论最高只到 `minor_issues`，一个模型未经核查的判断不能单独拦下改动。Judge 可以在给出理由的前提下给已确认的 critical 降级，但不能丢弃它；越权的丢弃会被忽略，并记入警告。
+每条问题都会标明核查（Verify）的结果：**已确认**、**不确定**，或**未核查**（核查被跳过、调用失败或预算不足）。未经确认的 critical 照常显示为 critical 并标为未核实，但结论最高只到 `minor_issues`，一个模型未经核查的判断不能单独拦下改动。Judge 既不能丢弃、也不能降级已确认的 critical；这类尝试会被忽略，并记入警告。
 
 如果 Judge 被关闭、没有配置 `top` 模型或调用失败，问题会不经裁决直接报告，结论规则照样适用。
 

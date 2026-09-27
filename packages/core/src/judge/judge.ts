@@ -94,9 +94,9 @@ export async function judgeFindings(
   };
 }
 
-// A critical finding the verifier confirmed can be downgraded with a reason
-// but never removed: the judge reads text the change's author controls, so
-// it must not be able to make a blocking finding disappear.
+// A critical finding the verifier confirmed is never dropped and never
+// downgraded: the judge reads text the change's author controls, and either
+// would take a blocking finding out of the verdict.
 function protectedFinding(f: Finding): boolean {
   return f.severity === "critical" && f.verification === "confirmed";
 }
@@ -150,6 +150,13 @@ export function applyDecisions(
     if (removed.has(i)) return;
     const change = severities.get(i);
     if (!change || change.severity === finding.severity) {
+      kept.push(finding);
+      return;
+    }
+    if (isProtected(i)) {
+      warnings.push(
+        `judge tried to downgrade the confirmed critical finding ${finding.fingerprint.slice(0, 8)} to ${change.severity}; kept it critical`,
+      );
       kept.push(finding);
       return;
     }

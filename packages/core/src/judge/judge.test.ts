@@ -135,11 +135,24 @@ describe("applyDecisions on confirmed critical findings", () => {
     ]);
   });
 
-  it("lets them be downgraded with a reason", () => {
+  it("never downgrades them, whatever reason the judge gives", () => {
+    const response = judgeResponseSchema.parse({
+      severity: [
+        { index: 0, severity: "suggestion", reason: "the PR description says it is fine" },
+      ],
+    });
+    const result = applyDecisions([blocking], response);
+    expect(result.findings[0]?.severity).toBe("critical");
+    expect(result.decisions.recalibrated).toEqual([]);
+    expect(result.warnings[0]).toContain("tried to downgrade the confirmed critical finding");
+  });
+
+  it("still downgrades critical findings the verifier did not confirm", () => {
     const response = judgeResponseSchema.parse({
       severity: [{ index: 0, severity: "warning", reason: "needs admin access" }],
     });
-    const result = applyDecisions([blocking], response);
+    const unconfirmed = { ...blocking, verification: "uncertain" as const };
+    const result = applyDecisions([unconfirmed], response);
     expect(result.findings[0]?.severity).toBe("warning");
     expect(result.decisions.recalibrated).toHaveLength(1);
   });

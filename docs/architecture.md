@@ -77,7 +77,7 @@ Finding {
 | Several warnings forming a pattern, or critical findings Verify did not confirm | `minor_issues` |
 | Any critical finding Verify confirmed | `significant_concerns` (blocks) |
 
-The rubric is biased toward approval. Findings carry `verification: confirmed | uncertain | unchecked` from Verify (refuted ones are dropped); unchecked covers a skipped or failed check and carries over with earlier findings. The judge may downgrade a confirmed critical finding with a reason but never drop it. Every model reads attacker-controlled text, so the verdict is advice, not a security gate. A "break glass" override is planned, not implemented.
+The rubric is biased toward approval. Findings carry `verification: confirmed | uncertain | unchecked` from Verify (refuted ones are dropped); unchecked covers a skipped or failed check and carries over with earlier findings. The judge may neither drop nor downgrade a confirmed critical finding. Every model reads attacker-controlled text, so the verdict is advice, not a security gate. A "break glass" override is planned, not implemented.
 
 ## Re-review
 
