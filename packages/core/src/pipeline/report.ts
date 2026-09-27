@@ -12,6 +12,20 @@ export type CoverageEntry =
   | { path: string; status: "reviewed" | "failed" | "unreviewed" | "unchanged" }
   | { path: string; status: "excluded"; reason: ExclusionReason };
 
+// How much of the selection this run actually reviewed. Every surface (exit
+// code, terminal, pull request summary) reads it from here, so none of them
+// can call a run that reviewed nothing "approved".
+export function coverageGaps(coverage: readonly CoverageEntry[]): {
+  notReviewed: number;
+  nothingReviewed: boolean;
+} {
+  const notReviewed = coverage.filter(
+    (c) => c.status === "failed" || c.status === "unreviewed",
+  ).length;
+  const reviewed = coverage.some((c) => c.status === "reviewed");
+  return { notReviewed, nothingReviewed: notReviewed > 0 && !reviewed };
+}
+
 export type TaskStatus = "completed" | "failed" | "timed_out" | "cancelled";
 
 export interface TaskOutcome {

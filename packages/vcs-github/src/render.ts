@@ -1,9 +1,10 @@
-import type {
-  Finding,
-  PriorFinding,
-  ReviewReport,
-  Severity,
-  Verification,
+import {
+  coverageGaps,
+  type Finding,
+  type PriorFinding,
+  type ReviewReport,
+  type Severity,
+  type Verification,
 } from "@open-cr-agent/core";
 import type { ReviewComment } from "./client.js";
 import { type ReviewState, SUMMARY_MARKER, writeState } from "./state.js";
@@ -16,6 +17,15 @@ const VERIFICATION: Record<Verification, string> = {
   uncertain: "unverified (verifier unsure)",
   unchecked: "not verified",
 };
+
+// A run that reviewed nothing has no verdict to announce, and one that missed
+// files or could not verify a critical finding says so next to its verdict.
+function headline(report: ReviewReport): string {
+  const { notReviewed, nothingReviewed } = coverageGaps(report.coverage);
+  if (nothingReviewed) return "⏸️ Not reviewed";
+  const incomplete = notReviewed > 0 || report.unverifiedCriticals > 0;
+  return `${VERDICT[report.verdict]}${incomplete ? " · incomplete" : ""}`;
+}
 
 function verification(f: { verification?: Verification }): string {
   return VERIFICATION[f.verification ?? "unchecked"];
@@ -99,7 +109,7 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
     .join(", ");
   const lines = [
     SUMMARY_MARKER,
-    `## ocra review · ${VERDICT[report.verdict]}`,
+    `## ocra review · ${headline(report)}`,
     "",
     safeMarkdown(report.summary),
     "",

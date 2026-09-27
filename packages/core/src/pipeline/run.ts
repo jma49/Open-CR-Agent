@@ -19,7 +19,13 @@ import { dedupeFindings } from "./findings.js";
 import { type MatrixCell, planMatrix, type ReviewerOverrides } from "./matrix.js";
 import { planReview } from "./plan.js";
 import { mapWithConcurrency } from "./pool.js";
-import type { CoverageEntry, ReviewEvent, ReviewReport, TaskOutcome } from "./report.js";
+import {
+  type CoverageEntry,
+  coverageGaps,
+  type ReviewEvent,
+  type ReviewReport,
+  type TaskOutcome,
+} from "./report.js";
 import { addUsage, emptyUsage } from "./usage.js";
 
 export { GUIDELINES_PATH } from "./plan.js";
@@ -162,20 +168,22 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   if (judgeWanted && !judgeAffordable) {
     judged.warnings.push(`spend limit of $${options.maxCostUsd} reached: findings were not judged`);
   }
-  emit(
-    judged.decisions
-      ? { type: "judge_finished", verdict: judged.verdict, judgement: judged.decisions }
-      : { type: "judge_finished", verdict: judged.verdict },
-  );
+  const { nothingReviewed } = coverageGaps(fileCoverage);
+  if (!nothingReviewed) {
+    emit(
+      judged.decisions
+        ? { type: "judge_finished", verdict: judged.verdict, judgement: judged.decisions }
+        : { type: "judge_finished", verdict: judged.verdict },
+    );
+  }
 
   const report: ReviewReport = {
     changeRequest: plan.changeRequest,
     tier: plan.tier,
     verdict: judged.verdict,
-    summary:
-      results.length > 0 && results.every((r) => r.outcome.status !== "completed")
-        ? "Nothing was reviewed: no review task completed."
-        : judged.summary,
+    summary: nothingReviewed
+      ? "Nothing was reviewed: no reviewer covered or finished any selected file."
+      : judged.summary,
     coverage: fileCoverage,
     bundles: plan.bundles.map((b) => ({ label: b.label, files: b.files.map((f) => f.newPath) })),
     tasks: results.map((r) => r.outcome),

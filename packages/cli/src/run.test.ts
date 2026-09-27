@@ -291,6 +291,19 @@ describe("ocra review", () => {
     expect(err.text()).toContain("Unknown reviewer(s): nope");
   });
 
+  it("exits 3 when no reviewer covers a selected file", async () => {
+    const cwd = repoWithChange();
+    const out = capture();
+    const err = capture();
+    // performance starts at the lite tier; this change is trivial.
+    expect(await run(["review", "--reviewers", "performance"], out, err, deps(cwd, critical))).toBe(
+      3,
+    );
+    expect(out.text()).toContain("Verdict: not reached (nothing was reviewed)");
+    expect(err.text()).toContain("1 selected file(s) were not reviewed");
+    expect(err.text()).not.toContain("Verdict: approved");
+  });
+
   it("exits 3 when some review tasks did not finish", async () => {
     const cwd = repoWithChange();
     writeFileSync(join(cwd, "other.ts"), "export const other = 1;\n");

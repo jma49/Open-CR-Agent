@@ -1,4 +1,10 @@
-import type { Finding, ReviewReport, Severity, Verification } from "@open-cr-agent/core";
+import {
+  coverageGaps,
+  type Finding,
+  type ReviewReport,
+  type Severity,
+  type Verification,
+} from "@open-cr-agent/core";
 import { forTerminal } from "./terminal.js";
 
 const SEVERITIES: Severity[] = ["critical", "warning", "suggestion"];
@@ -14,18 +20,18 @@ export function renderJson(report: ReviewReport): string {
 
 export function renderText(report: ReviewReport, sessionDir?: string): string {
   const incomplete = report.tasks.filter((t) => t.status !== "completed");
-  const nothingReviewed = report.tasks.length > 0 && incomplete.length === report.tasks.length;
+  const { notReviewed, nothingReviewed } = coverageGaps(report.coverage);
   const lines: string[] = [
     `Review: ${report.changeRequest.title}`,
     coverageLine(report),
     ...(nothingReviewed
-      ? ["Verdict: not reached (no review task completed)"]
+      ? ["Verdict: not reached (nothing was reviewed)"]
       : [`Verdict: ${report.verdict.replaceAll("_", " ")}`, ...indented(report.summary, "  ")]),
     "",
   ];
 
   if (report.findings.length === 0) {
-    lines.push(emptyMessage(report.tasks.length, incomplete.length), "");
+    lines.push(emptyMessage(report, nothingReviewed, notReviewed), "");
   } else {
     for (const [file, findings] of groupByFile(report.findings)) {
       lines.push(file);
@@ -81,14 +87,20 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
       `Incomplete: ${incomplete.length} of ${report.tasks.length} review task(s) did not finish.`,
     );
   }
+  if (notReviewed > 0) {
+    lines.push(`Incomplete: ${notReviewed} selected file(s) were not reviewed.`);
+  }
   for (const warning of report.warnings) lines.push(`Warning: ${warning}`);
   if (sessionDir) lines.push(`Session: ${sessionDir}`);
   return forTerminal(`${lines.join("\n")}\n`);
 }
 
-function emptyMessage(tasks: number, incomplete: number): string {
-  if (tasks > 0 && incomplete === tasks) return "Nothing was reviewed: no review task completed.";
-  if (incomplete > 0) return "No issues found in the files that were reviewed.";
+function emptyMessage(report: ReviewReport, nothingReviewed: boolean, notReviewed: number): string {
+  if (nothingReviewed) return "Nothing was reviewed.";
+  if (notReviewed > 0) return "No issues found in the files that were reviewed.";
+  if (!report.coverage.some((c) => c.status !== "excluded")) {
+    return "Nothing to review: no changed file was selected.";
+  }
   return "No issues found.";
 }
 

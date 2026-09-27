@@ -112,6 +112,7 @@ describe("renderText", () => {
   it("says when nothing was found and flags incomplete runs", () => {
     const report: ReviewReport = {
       ...base,
+      coverage: [...base.coverage, { path: "src/b.ts", status: "failed" }],
       tasks: [
         ...base.tasks,
         { ...base.tasks[0], taskId: "correctness-2", status: "failed", error: "x" } as never,
@@ -120,7 +121,12 @@ describe("renderText", () => {
     const text = renderText(report);
     expect(text).toContain("No issues found in the files that were reviewed.");
     expect(text).toContain("Incomplete: 1 of 2 review task(s) did not finish.");
+    expect(text).toContain("Incomplete: 1 selected file(s) were not reviewed.");
     expect(renderText(base)).toContain("No issues found.\n");
+    const nothingSelected = { ...base, coverage: [base.coverage[1] as never] };
+    expect(renderText(nothingSelected)).toContain(
+      "Nothing to review: no changed file was selected.",
+    );
   });
 
   it("cannot be steered into terminal escape sequences by finding text", () => {
@@ -166,12 +172,22 @@ describe("renderText", () => {
   });
 
   it("never claims a clean result when nothing was reviewed", () => {
-    const report: ReviewReport = {
+    const failed: ReviewReport = {
       ...base,
+      coverage: [{ path: "src/a.ts", status: "failed" }],
       tasks: [{ ...base.tasks[0], status: "failed" } as never],
     };
-    expect(renderText(report)).toContain("Nothing was reviewed: no review task completed.");
-    expect(renderText(report)).not.toContain("No issues found");
+    // The matrix skipped every reviewer: no task ran at all.
+    const skipped: ReviewReport = {
+      ...base,
+      coverage: [{ path: "src/a.ts", status: "unreviewed" }],
+    };
+    for (const report of [failed, skipped]) {
+      expect(renderText(report)).toContain("Verdict: not reached (nothing was reviewed)");
+      expect(renderText(report)).toContain("Nothing was reviewed.");
+      expect(renderText(report)).not.toContain("No issues found");
+      expect(renderText(report)).not.toContain("Verdict: approved");
+    }
   });
 });
 

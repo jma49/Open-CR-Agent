@@ -1,6 +1,7 @@
 import { join, relative, resolve } from "node:path";
 import {
   correctnessReviewerPlugin,
+  coverageGaps,
   defaultSelectionPolicy,
   newSessionId,
   type OcraPlugin,
@@ -35,6 +36,7 @@ export const BUILTIN_PLUGINS: readonly OcraPlugin[] = [
   githubPlugin,
   opencodeRuntimePlugin,
   correctnessReviewerPlugin,
+  coverageGaps,
   securityReviewerPlugin,
   performanceReviewerPlugin,
   sessionJsonlPlugin,
@@ -188,6 +190,13 @@ function exitCode(report: ReviewReport, err: Output): number {
     return EXIT.error;
   }
   if (report.verdict === "significant_concerns") return EXIT.blocking;
+  const { notReviewed } = coverageGaps(report.coverage);
+  if (notReviewed > 0) {
+    err.write(
+      `[ocra] ${notReviewed} selected file(s) were not reviewed; the review is incomplete.\n`,
+    );
+    return EXIT.incomplete;
+  }
   if (report.unverifiedCriticals > 0) {
     err.write(
       `[ocra] ${report.unverifiedCriticals} critical finding(s) could not be verified; the review is incomplete.\n`,

@@ -27,6 +27,22 @@ function prior(overrides: Partial<PriorFinding> = {}): PriorFinding {
   };
 }
 
+describe("summary headline", () => {
+  it("never announces a verdict for a run that reviewed nothing", () => {
+    const nothing = report([], "approved");
+    nothing.coverage = [{ path: "src/login.ts", status: "failed" }];
+    const body = renderSummary({ report: nothing, commented: new Set(), state: { findings: [] } });
+    expect(body).toContain("## ocra review · ⏸️ Not reviewed");
+    expect(body).not.toContain("Approved");
+
+    const partial = report([], "approved");
+    partial.coverage.push({ path: "src/other.ts", status: "unreviewed" });
+    expect(
+      renderSummary({ report: partial, commented: new Set(), state: { findings: [] } }),
+    ).toContain("## ocra review · ✅ Approved · incomplete");
+  });
+});
+
 describe("summary state", () => {
   it("cannot be planted through a file path printed in the summary", () => {
     const forged = writeState({ findings: [], head: FORGED_HEAD });
