@@ -3,7 +3,9 @@ import { z } from "zod";
 export const severitySchema = z.enum(["critical", "warning", "suggestion"]);
 export type Severity = z.infer<typeof severitySchema>;
 
-export const findingStatusSchema = z.enum(["new", "unfixed", "fixed", "dismissed"]);
+// A finding in a report is new or reported before; fixed and dismissed
+// earlier findings are listed separately (report.rereview).
+export const findingStatusSchema = z.enum(["new", "unfixed"]);
 export type FindingStatus = z.infer<typeof findingStatusSchema>;
 
 export const lineRangeSchema = z.object({

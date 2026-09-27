@@ -23,3 +23,7 @@ Paths that force reviewers onto a bundle (for example, security on `auth/`) are 
 - Cost follows risk: trivial changes get only reviewers without a `minTier`.
 - Reviewers stay plugins; the matrix reads only their declared scope.
 - Adding a rule type (for example, reviewers by language) means extending `ReviewerScope`, not the pipeline.
+
+## Implementation notes (2026-09-27)
+
+- A fourth skip reason, `task_limit`: past `maxTasks` (default 60) the least important cells are not run (`--ultra`'s second samples first, then reviewers in reverse registration order), and their files are reported as not reviewed.

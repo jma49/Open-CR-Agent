@@ -45,7 +45,7 @@ The default mode favors precision. `--ultra` trades cost for recall:
 
 | | Default | `--ultra` |
 |---|---|---|
-| Reviewers | By risk tier and scope | Every reviewer at every tier (files outside a reviewer's scope are still skipped) |
+| Reviewers | By risk tier and scope | Every reviewer at every tier, including tiers set with `reviewers.<id>.minTier` (files outside a reviewer's scope are still skipped, and `enabled: false` still applies) |
 | Samples | One run per reviewer and bundle | Two runs, merged by fingerprint |
 | Judge | Drops speculation and nitpicks | Keeps them, marked *low confidence*; they do not count towards the verdict |
 | Cost | Baseline | About twice or more |

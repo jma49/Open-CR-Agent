@@ -52,10 +52,10 @@ jobs:
 
 ## 会发布什么
 
-- **行内评论**：落在 diff 内的问题（每条都标明已核实、未核实或未核查），放在同一个 `COMMENT` 事件的评审里。ocra 从不批准 PR。设置 `github.requestChanges` 后，结论为 `significant_concerns` 时会请求修改：只请求一次，之后某次运行的结论不再阻塞时，ocra 会撤回（dismiss）自己的修改请求。
+- **行内评论**：落在 diff 内的问题（每条都标明已核实、未核实或未核查），放在同一个 `COMMENT` 事件的评审里。ocra 从不批准 PR。设置 `github.requestChanges` 后，结论为 `significant_concerns` 时会请求修改：只请求一次，之后某次运行的结论不再阻塞、或者这个 commit 被放行时，ocra 会撤回（dismiss）自己的修改请求。
 - **一条摘要评论**：每次 push 都在原评论上更新，包括结论、总结、diff 之外的问题、上次评审后已修复的问题，以及覆盖范围和花费。
 
-下一次 push 时，ocra **只审查有改动的部分**：自上次评审所在的提交以来改动过的文件，加上上次没有审完的文件（比如任务失败）。未改动文件里的问题原样沿用：保持打开，继续计入结论，不重复评论。以下情况会重新审查全部文件：上次的提交已不在分支上（force-push 或 rebase）、这次 push 让风险档位升高（在更高档位才启动的审查员还没看过未改动的文件）、摘要评论最后一次是被 ocra 以外的人编辑的（这时 ocra 也会忽略这条评论记录的全部状态，之前的行内评论可能会再发一次），或者传了 `--full`（例如写在 Action 的 `args` 里）。摘要里会写明本次属于哪种情况以及原因。
+下一次 push 时，ocra **只审查有改动的部分**：自上次评审所在的提交以来改动过的文件，加上上次没有审完的文件（比如任务失败）。未改动文件里的问题原样沿用：保持打开，继续计入结论，不重复评论。以下情况会重新审查全部文件：上次的提交已不在分支上（force-push 或 rebase）、这次 push 让风险档位升高（在更高档位才启动的审查员还没看过未改动的文件）、摘要评论最后一次是被 ocra 以外的人编辑的（这时 ocra 也会忽略这条评论记录的全部状态，之前的行内评论可能会再发一次），或者传了 `--full`（例如写在 Action 的 `args` 里）。只改变运行哪些审查员（base 分支的 `reviewers`、`--reviewers`、`--ultra`）不会让未改动的文件重新审查；这样改时请手动传一次 `--full`。摘要里会写明本次属于哪种情况以及原因。
 
 随后 ocra 会和上一次评审对比：
 
@@ -102,4 +102,4 @@ ocra review --pr 42               # 审查并打印，和本地审查一样
 ocra review --pr 42 --publish     # 同时发布评审
 ```
 
-token 来自 `GITHUB_TOKEN` 或 `GH_TOKEN`；使用 GitHub Enterprise 时设置 `GITHUB_API_URL`（例如 `https://github.example.com/api/v3`）。仓库来自 `--repo owner/name`、`GITHUB_REPOSITORY` 或 `origin` 远端。如果本地缺少 PR 的 commit，ocra 会自动拉取。
+token 来自 `GITHUB_TOKEN` 或 `GH_TOKEN`；使用 GitHub Enterprise 时设置 `GITHUB_API_URL`（例如 `https://github.example.com/api/v3`）。仓库来自 `--repo owner/name`、`GITHUB_REPOSITORY` 或指向 github.com 的 `origin` 远端（GitHub Enterprise 请传 `--repo`）。如果本地缺少 PR 的 commit，ocra 会自动拉取。

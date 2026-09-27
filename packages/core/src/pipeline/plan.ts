@@ -7,7 +7,7 @@ import { defaultSelectionPolicy, type FileDecision, selectFiles } from "../selec
 import { triage } from "../triage.js";
 import { reviewContext } from "./context.js";
 import { runtimeGrouper } from "./helpers.js";
-import { RISK_TIERS } from "./matrix.js";
+import { rank } from "./matrix.js";
 import type { ReviewEvent } from "./report.js";
 import type { ReviewOptions } from "./run.js";
 
@@ -114,8 +114,4 @@ async function loadRepoRules(
 ): Promise<RepoRule[]> {
   const text = await read(REPO_RULES_PATH);
   return text === undefined ? [] : parseRepoRules(text);
-}
-
-function rank(tier: RiskTier): number {
-  return RISK_TIERS.indexOf(tier);
 }

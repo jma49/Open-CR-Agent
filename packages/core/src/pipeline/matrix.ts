@@ -135,7 +135,7 @@ export function planTasks(
   };
 }
 
-function rank(tier: RiskTier): number {
+export function rank(tier: RiskTier): number {
   return RISK_TIERS.indexOf(tier);
 }
 

@@ -84,7 +84,7 @@ export async function loadConfig(
   env: Readonly<Record<string, string | undefined>>,
   options: LoadOptions = { repository: true },
 ): Promise<CliConfig> {
-  const read = options.read ?? ((path: string) => readWorkingTreeFile(root, path));
+  const read = options.read ?? ((path: string) => readConfigFromDisk(root, path));
   const { config: parsed, rules } = options.repository
     ? await readConfigFile(read, options)
     : { config: configSchema.parse({}), rules: [] };
@@ -105,7 +105,10 @@ export async function loadConfig(
   return { ...parsed, models, rules };
 }
 
-async function readWorkingTreeFile(root: string, path: string): Promise<string | undefined> {
+// The user's own checkout, read like any local file (links followed): unlike
+// the review's reads, which never follow links (vcs-local), this is trusted
+// configuration, and --no-repo-config skips it for code that is not.
+async function readConfigFromDisk(root: string, path: string): Promise<string | undefined> {
   try {
     return await readFile(join(root, path), "utf8");
   } catch (error) {

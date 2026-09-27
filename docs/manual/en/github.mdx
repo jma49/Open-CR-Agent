@@ -52,10 +52,10 @@ Pull requests from forks do not receive repository secrets on `pull_request`, so
 
 ## What gets posted
 
-- **Inline comments** for findings anchored inside the diff, each marked verified, unverified or not verified, in one review with the `COMMENT` event. ocra never approves. Set `github.requestChanges` to request changes when the verdict is `significant_concerns`.
+- **Inline comments** for findings anchored inside the diff, each marked verified, unverified or not verified, in one review with the `COMMENT` event. ocra never approves. Set `github.requestChanges` to request changes when the verdict is `significant_concerns`: ocra requests them once, and withdraws (dismisses) its own request when a later run's verdict no longer blocks or the commit is overridden.
 - **One summary comment**, updated in place on every push: verdict, summary, findings outside the diff, what was fixed since the last review, and coverage and cost.
 
-On the next push ocra reviews **only what changed**: the files changed since the commit the previous review covered, plus any file that review did not finish (a failed task, for example). Findings in unchanged files carry over as they were: still open, still counted in the verdict, not commented again. Everything is reviewed again when the previous commit is no longer part of the branch (force-push or rebase), when the push raises the risk tier (reviewers that start at the higher tier have not seen the unchanged files yet), when the summary comment was last edited by someone other than ocra (ocra then also ignores what that comment remembers, so earlier inline comments may be posted again), or when you pass `--full` (for example in the action's `args`). The summary says which it was and why.
+On the next push ocra reviews **only what changed**: the files changed since the commit the previous review covered, plus any file that review did not finish (a failed task, for example). Findings in unchanged files carry over as they were: still open, still counted in the verdict, not commented again. Everything is reviewed again when the previous commit is no longer part of the branch (force-push or rebase), when the push raises the risk tier (reviewers that start at the higher tier have not seen the unchanged files yet), when the summary comment was last edited by someone other than ocra (ocra then also ignores what that comment remembers, so earlier inline comments may be posted again), or when you pass `--full` (for example in the action's `args`). Changing which reviewers run (the base branch's `reviewers`, `--reviewers`, `--ultra`) does not by itself review unchanged files again; pass `--full` once when you do. The summary says which it was and why.
 
 ocra then compares findings with the previous review:
 
@@ -102,4 +102,4 @@ ocra review --pr 42               # review and print, like a local review
 ocra review --pr 42 --publish     # also post the review
 ```
 
-The token comes from `GITHUB_TOKEN` or `GH_TOKEN`; set `GITHUB_API_URL` for GitHub Enterprise (for example `https://github.example.com/api/v3`). The repository comes from `--repo owner/name`, `GITHUB_REPOSITORY`, or the `origin` remote. ocra fetches the pull request's commits if they are missing locally.
+The token comes from `GITHUB_TOKEN` or `GH_TOKEN`; set `GITHUB_API_URL` for GitHub Enterprise (for example `https://github.example.com/api/v3`). The repository comes from `--repo owner/name`, `GITHUB_REPOSITORY`, or an `origin` remote on github.com (for GitHub Enterprise pass `--repo`). ocra fetches the pull request's commits if they are missing locally.

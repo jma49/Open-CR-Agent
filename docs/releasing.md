@@ -16,7 +16,7 @@ Nothing has been published yet. This is what is ready, what is missing, and the 
 ## Decisions for the maintainer
 
 1. **Scope: decided, `@open-cr-agent`** (2026-09-26). Publishing needs an npm organization named `open-cr-agent`, created by the maintainer before the first release.
-2. **When.** Quality is not measured yet (#12, #66). Publishing as `0.x` with that stated in the README is reasonable; waiting for a baseline is safer.
+2. **When.** Quality is not measured yet (#12). Publishing as `0.x` with that stated in the README is reasonable; waiting for a baseline is safer.
 3. **How.** Either an npm automation token stored as a repository secret, or npm trusted publishing (OIDC) from a GitHub workflow, which needs no long-lived token and adds provenance. Trusted publishing is recommended.
 
 ## First release, step by step

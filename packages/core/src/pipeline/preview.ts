@@ -84,6 +84,13 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
     tasks,
     skipped: planned.skipped,
     promptTokens: tasks.reduce((sum, t) => sum + t.promptTokens, 0),
-    warnings: plan.warnings,
+    warnings: [
+      ...plan.warnings,
+      ...(planned.limited?.length
+        ? [
+            `task limit reached: ${planned.limited.length} review task(s) would be skipped and their files reported as not reviewed`,
+          ]
+        : []),
+    ],
   };
 }

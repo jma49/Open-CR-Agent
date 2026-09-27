@@ -4,8 +4,9 @@ Open-CR-Agent (`ocra`) reviews code changes with a pipeline of deterministic sta
 
 - **Cloudflare AI Code Review** ([blog](https://blog.cloudflare.com/ai-code-review/)): plugin architecture, domain-specialised reviewers with explicit "what not to flag" rules, a top-tier coordinator that judges and deduplicates, risk tiering, model failback with circuit breakers, incremental re-review.
 
-Sections below describe the target design. Anything marked **(planned)** is not implemented yet; the user manual describes only what exists.
 - **Alibaba OpenCodeReview** ([repo](https://github.com/alibaba/open-code-review)): deterministic file selection, semantic file bundling, per-file-type rule matching, plan → multi-round review → fact-check filter, snippet-based comment anchoring, coverage manifests and resumable sessions.
+
+Sections below describe the target design. Anything marked **(planned)** is not implemented yet; the user manual describes only what exists.
 
 The two split work along different axes: Cloudflare by **review domain**, OCR by **file bundle**. `ocra` uses both, and a deterministic **Review Matrix Planner** decides which reviewer runs on which bundle so cost does not grow as bundles × reviewers.
 
@@ -64,7 +65,7 @@ Finding {
   title, body, suggestion?, evidence[],
   quote?: { lines, hash },    // normalized anchored lines, to tell later whether the code is still there
   verification?: 'confirmed' | 'uncertain' | 'unchecked',  // set by Verify
-  status: 'new' | 'unfixed' | 'fixed' | 'dismissed'
+  status: 'new' | 'unfixed'    // fixed and dismissed earlier findings: report.rereview
 }
 ```
 
@@ -86,7 +87,7 @@ Findings carry fingerprints, so a re-review can compare against the previous run
 - Reported again → `unfixed`, the existing thread is kept and not commented again.
 - Fixed → only when the anchored code is gone from the file at head (hash of its normalized lines) or the file was deleted; listed and its thread resolved.
 - Not reported again but the code is unchanged → `notReproduced`; its file not reviewed this time → `notRechecked`. Both stay open, keep their severity in the verdict and their thread.
-- Resolved by a reviewer, or declined with "won't fix" / "acknowledged" by someone with write access other than the author → dismissed, quiet unless it comes back more severe.
+- Resolved by a reviewer, or declined with `/ocra dismiss` or a reply opening with "won't fix", "by design", "false positive" and the like, by someone with write access other than the author, in a comment nobody else edited → dismissed, quiet unless it comes back more severe.
 - "I disagree" → reassessed by Judge **(planned)**; today the finding simply keeps being reported.
 - Incremental (ADR-0010): the state records the head it reviewed and the files it did not finish. When that head is an ancestor of the new one and ocra was the last to edit its summary, only files changed since then plus the unfinished ones are reviewed; other files are `unchanged` and their findings carry over. Otherwise, or with `--full`, everything is reviewed and the report says why.
 
