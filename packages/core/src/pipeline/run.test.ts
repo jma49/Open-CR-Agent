@@ -224,7 +224,12 @@ describe("runReview", () => {
     const rt = runtime(async function* () {
       await new Promise(() => {});
     });
-    const report = await runReview({ vcs: vcs({}, twoFiles), runtime: rt, taskTimeoutMs: 20 });
+    const report = await runReview({
+      vcs: vcs({}, twoFiles),
+      runtime: rt,
+      taskTimeoutMs: 20,
+      abortGraceMs: 20,
+    });
     expect(report.tasks[0]).toMatchObject({ status: "timed_out", error: "timed out after 20ms" });
   });
 
@@ -238,6 +243,7 @@ describe("runReview", () => {
       vcs: vcs({}, twoFiles),
       runtime: rt,
       signal: controller.signal,
+      abortGraceMs: 20,
     });
     expect(report.tasks[0]).toMatchObject({ status: "cancelled", error: "run cancelled" });
   });

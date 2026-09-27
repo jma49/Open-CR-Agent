@@ -1,5 +1,6 @@
 import type { FileGrouper } from "../bundle/grouping.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
+import { usageSpent } from "../errors.js";
 
 export const HELPER_TIMEOUT_MS = 60_000;
 
@@ -17,7 +18,11 @@ export function runtimeGrouper(
       const result = await complete(
         { tier: "light", system: prompt.system, user: prompt.user, timeoutMs: HELPER_TIMEOUT_MS },
         AbortSignal.any([signal, AbortSignal.timeout(HELPER_TIMEOUT_MS)]),
-      );
+      ).catch((error: unknown) => {
+        const spent = usageSpent(error);
+        if (spent) onUsage(spent);
+        throw error;
+      });
       onUsage(result.usage);
       return parseJsonAnswer(result.text);
     },

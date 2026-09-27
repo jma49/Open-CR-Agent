@@ -1,6 +1,6 @@
 import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
 import type { FileDiff, Finding, Verification } from "../domain.js";
-import { errorMessage } from "../errors.js";
+import { errorMessage, usageSpent } from "../errors.js";
 import type { SpendTracker } from "../pipeline/budget.js";
 import { parseJsonAnswer } from "../pipeline/helpers.js";
 import { mapWithConcurrency } from "../pipeline/pool.js";
@@ -105,6 +105,11 @@ export async function verifyFindings(
         else outcomes.set(index, entry.verdict);
       }
     } catch (error) {
+      const spent = usageSpent(error);
+      if (spent) {
+        result.usage.push(spent);
+        options.budget?.add(spent);
+      }
       result.warnings.push(
         `verification of ${file} failed, keeping its findings: ${errorMessage(error)}`,
       );

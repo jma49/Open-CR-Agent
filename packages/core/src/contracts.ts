@@ -68,6 +68,7 @@ export interface CompletionResult {
 export interface AgentRuntime {
   readonly name: string;
   runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent>;
+  // Throws a CompletionError carrying the usage of failed attempts.
   complete?(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult>;
   dispose?(): Promise<void>;
 }

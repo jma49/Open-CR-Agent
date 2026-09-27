@@ -15,6 +15,7 @@ export interface TaskResult {
 export interface TaskCallbacks {
   onProgress(message: string): void;
   category: string;
+  abortGraceMs?: number | undefined;
 }
 
 export async function executeTask(
@@ -33,10 +34,13 @@ export async function executeTask(
   };
 
   let iterator: AsyncIterator<AgentEvent> | undefined;
+  let pending: Promise<IteratorResult<AgentEvent>> | undefined;
   try {
     iterator = runtime.runTask(spec, signal)[Symbol.asyncIterator]();
     for (;;) {
-      const next = await untilAborted(iterator.next(), signal);
+      pending = iterator.next();
+      const next = await untilAborted(pending, signal);
+      pending = undefined;
       if (next.done) break;
       if (handle(next.value, result, callbacks)) {
         void iterator.return?.();
@@ -48,6 +52,7 @@ export async function executeTask(
       const timedOut = timeout.aborted && !runSignal.aborted;
       result.status = timedOut ? "timed_out" : "cancelled";
       result.error = timedOut ? `timed out after ${spec.timeoutMs}ms` : "run cancelled";
+      if (iterator) await collectAfterAbort(iterator, pending, result, callbacks);
       void iterator?.return?.();
     } else {
       result.status = "failed";
@@ -55,6 +60,35 @@ export async function executeTask(
     }
   }
   return result;
+}
+
+// A task cut off by its timeout or by Ctrl-C has still spent tokens and may
+// have reported findings; a runtime that stops its session delivers them
+// shortly after. Waiting a bounded moment keeps them in the report and in
+// the spend limit, without letting a runtime that ignores the abort hang.
+export const ABORT_GRACE_MS = 10_000;
+
+async function collectAfterAbort(
+  iterator: AsyncIterator<AgentEvent>,
+  pending: Promise<IteratorResult<AgentEvent>> | undefined,
+  result: TaskResult,
+  callbacks: TaskCallbacks,
+): Promise<void> {
+  const grace = AbortSignal.timeout(callbacks.abortGraceMs ?? ABORT_GRACE_MS);
+  let next = pending ?? iterator.next();
+  try {
+    for (;;) {
+      const event = await untilAborted(next, grace);
+      if (event.done) return;
+      const { value } = event;
+      if (value.type === "usage" || value.type === "finding") handle(value, result, callbacks);
+      if (value.type === "done" || value.type === "error") return;
+      next = iterator.next();
+    }
+  } catch {
+    // The runtime did not finish within the grace period, or failed: keep
+    // what arrived.
+  }
 }
 
 function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks): boolean {

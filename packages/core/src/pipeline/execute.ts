@@ -20,6 +20,7 @@ export interface JobResult {
 export interface ExecuteOptions {
   runtime: AgentRuntime;
   taskTimeoutMs: number;
+  abortGraceMs?: number | undefined;
   relocate?: AnchorContext["relocate"] | undefined;
   emit: (event: ReviewEvent) => void;
   signal: AbortSignal;
@@ -66,6 +67,7 @@ export async function runJob(
     {
       onProgress: (message) => emit({ type: "task_progress", taskId: job.taskId, message }),
       category: job.reviewer.category,
+      abortGraceMs: options.abortGraceMs,
     },
   );
 

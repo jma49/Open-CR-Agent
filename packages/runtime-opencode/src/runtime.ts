@@ -6,6 +6,7 @@ import {
   type AgentRuntime,
   type AgentTaskSpec,
   addUsage,
+  CompletionError,
   type CompletionRequest,
   type CompletionResult,
   emptyUsage,
@@ -22,8 +23,10 @@ import { type OpencodeServer, startOpencodeServer } from "./opencode-server.js";
 import { sleep } from "./quota.js";
 import { reviewTools } from "./review-tools.js";
 import { missingCredentials, serverEnv } from "./server-env.js";
-import { type SessionMessage, type SessionOutcome, summarizeSession } from "./session-outcome.js";
+import type { SessionOutcome } from "./session-outcome.js";
+import { type PromptInput, promptSession } from "./session-prompt.js";
 import { startToolServer, type ToolServer } from "./tool-server.js";
+import { createUntimedDispatcher, untimedFetch } from "./transport.js";
 
 export const MCP_SERVER = "ocra";
 const REVIEW_AGENT = "ocra-reviewer";
@@ -69,15 +72,7 @@ interface Infra {
   tools: ToolServer;
   server: OpencodeServer;
   client: OpencodeClient;
-}
-
-interface PromptInput {
-  title: string;
-  agent: string;
-  model: string;
-  system: string;
-  user: string;
-  tools: Record<string, boolean>;
+  dispatcher: ReturnType<typeof createUntimedDispatcher>;
 }
 
 export class OpenCodeRuntime implements AgentRuntime {
@@ -145,7 +140,7 @@ export class OpenCodeRuntime implements AgentRuntime {
     for (const model of this.health.order(chain)) {
       for (;;) {
         await sleep(this.health.pausedFor(model), signal);
-        if (signal.aborted) throw new Error("cancelled");
+        if (signal.aborted) throw new CompletionError("cancelled", usage);
         const outcome = await this.prompt(
           infra,
           {
@@ -163,7 +158,9 @@ export class OpenCodeRuntime implements AgentRuntime {
           this.health.recordSuccess(model);
           return { text: outcome.text, usage };
         }
-        if (!outcome.error.retryable) throw new Error(`${model}: ${outcome.error.message}`);
+        if (!outcome.error.retryable) {
+          throw new CompletionError(`${model}: ${outcome.error.message}`, usage);
+        }
         if (outcome.error.quota && this.health.recordQuota(model, outcome.error.quota) === "wait") {
           continue;
         }
@@ -172,58 +169,27 @@ export class OpenCodeRuntime implements AgentRuntime {
         break;
       }
     }
-    if (!lastError) throw new Error(`every ${request.tier} model is out of quota for this run`);
-    throw new Error(`every ${request.tier} model failed (${lastError})`);
+    if (!lastError) {
+      throw new CompletionError(`every ${request.tier} model is out of quota for this run`, usage);
+    }
+    throw new CompletionError(`every ${request.tier} model failed (${lastError})`, usage);
   }
 
   async dispose(): Promise<void> {
     const infra = await this.infra?.catch(() => undefined);
     this.infra = undefined;
     if (!infra) return;
-    await Promise.allSettled([infra.server.close(), infra.tools.close()]);
+    await Promise.allSettled([infra.server.close(), infra.tools.close(), infra.dispatcher.close()]);
     await rm(infra.root, { recursive: true, force: true });
   }
 
-  private async prompt(
-    infra: Infra,
-    input: PromptInput,
-    signal: AbortSignal,
-  ): Promise<SessionOutcome> {
-    const { client } = infra;
-    const created = await client.session.create({ title: input.title }, { signal });
-    if (!created.data) {
-      throw new Error(`OpenCode could not create a session: ${JSON.stringify(created.error)}`);
-    }
-    const sessionID = created.data.id;
-
-    const abort = () => void client.session.abort({ sessionID }).catch(() => {});
-    signal.addEventListener("abort", abort, { once: true });
-    try {
-      const response = await client.session.prompt(
-        {
-          sessionID,
-          agent: input.agent,
-          model: parseModel(input.model),
-          system: input.system,
-          tools: input.tools,
-          parts: [{ type: "text", text: input.user }],
-        },
-        { signal },
-      );
-      if (response.error) {
-        return {
-          ...emptyOutcome(),
-          error: { message: JSON.stringify(response.error), retryable: false },
-        };
-      }
-      const messages = await client.session.messages({ sessionID }, { signal });
-      return summarizeSession(
-        (messages.data ?? []) as SessionMessage[],
-        `${MCP_SERVER}_${REVIEW_TOOLS.reportFinding}`,
-      );
-    } finally {
-      signal.removeEventListener("abort", abort);
-    }
+  private prompt(infra: Infra, input: PromptInput, signal: AbortSignal): Promise<SessionOutcome> {
+    return promptSession(
+      infra.client.session,
+      input,
+      `${MCP_SERVER}_${REVIEW_TOOLS.reportFinding}`,
+      signal,
+    );
   }
 
   private start(): Promise<Infra> {
@@ -255,12 +221,14 @@ export class OpenCodeRuntime implements AgentRuntime {
         env: serverEnv(this.options.env, dirs, providersOf(this.options.models)),
         config: openCodeConfig(tools, this.helperTools),
       });
+      const dispatcher = createUntimedDispatcher();
       const client = createOpencodeClient({
         baseUrl: server.url,
         directory: workspace,
         headers: { Authorization: server.authorization },
+        fetch: untimedFetch(dispatcher),
       });
-      return { root, tools, server, client };
+      return { root, tools, server, client, dispatcher };
     } catch (error) {
       await tools.close();
       await rm(root, { recursive: true, force: true });
@@ -313,8 +281,4 @@ function providersOf(models: RuntimeOptions["models"]): string[] {
 
 function noModel(tier: ModelTier): string {
   return `No model configured for the "${tier}" tier; set models.${tier} in .ocra/config.json or OCRA_MODEL_${tier.toUpperCase()}`;
-}
-
-function emptyOutcome(): SessionOutcome {
-  return { findings: [], toolCalls: [], text: "", usage: emptyUsage() };
 }

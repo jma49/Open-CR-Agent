@@ -1,3 +1,4 @@
+import { usageSpent } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import { parseQuotaError } from "./quota.js";
 import { HELPER_AGENT_STEPS, OpenCodeRuntime, openCodeConfig } from "./runtime.js";
@@ -83,6 +84,11 @@ describe("OpenCodeRuntime.complete", () => {
     await expect(all.runtime.complete(request, new AbortController().signal)).rejects.toThrow(
       "every light model failed (b: busy)",
     );
+    // What the failed attempts spent travels with the error.
+    const failure = await all.runtime
+      .complete(request, new AbortController().signal)
+      .catch((e) => e);
+    expect(usageSpent(failure)?.inputTokens).toBe(20);
   });
 
   it("requires a model for the tier", async () => {

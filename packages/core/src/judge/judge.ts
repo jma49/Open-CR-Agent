@@ -7,7 +7,7 @@ import type {
   Severity,
   Verdict,
 } from "../domain.js";
-import { errorMessage } from "../errors.js";
+import { errorMessage, usageSpent } from "../errors.js";
 import { parseJsonAnswer } from "../pipeline/helpers.js";
 import { buildJudgePrompt, type JudgeResponse, judgeResponseSchema } from "./prompt.js";
 import { decideVerdict, defaultSummary } from "./verdict.js";
@@ -71,6 +71,8 @@ export async function judgeFindings(
     if (!parsed.success) throw new Error("the judge returned an invalid response");
     response = parsed.data;
   } catch (error) {
+    const spent = usageSpent(error);
+    if (spent) usage = [spent];
     return fallback([`judge failed, reporting findings unjudged: ${errorMessage(error)}`], usage);
   }
 

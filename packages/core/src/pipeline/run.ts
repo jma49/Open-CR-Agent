@@ -46,6 +46,8 @@ export interface ReviewOptions {
   concurrency?: number;
   taskTimeoutMs?: number;
   runTimeoutMs?: number;
+  // How long a cut-off task may still deliver its usage and findings.
+  abortGraceMs?: number;
   // Fact-check findings before reporting them (default true).
   verify?: boolean;
   // Merge, filter and recalibrate findings across reviewers on the top tier (default true).
@@ -95,6 +97,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   const execute = {
     runtime: options.runtime,
     taskTimeoutMs: options.taskTimeoutMs ?? DEFAULTS.taskTimeoutMs,
+    abortGraceMs: options.abortGraceMs,
     relocate: options.relocate,
     emit,
     signal,

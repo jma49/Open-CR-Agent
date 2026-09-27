@@ -13,6 +13,8 @@ Traps we have already fallen into, across this repository and the site. Each ent
 - **npm blocks the postinstall that places the OpenCode binary.** Resolve the platform package (`opencode-<os>-<arch>[-baseline][-musl]`) directly (`binary.ts`); `OCRA_OPENCODE_BIN` overrides.
 - **Upgrading OpenCode can add tools.** Built-in tools are disabled by an explicit list; a test fails when the pinned version's list changes. Never bump `opencode-ai` or `@opencode-ai/sdk` without re-running that test and re-reading the new tools.
 
+- **Node's fetch ends a request after 300 s without data, and the OpenCode SDK's `timeout = false` does not stop it.** That setting only works on Bun. OpenCode answers a prompt only when the agent is done, so a long review failed with `UND_ERR_BODY_TIMEOUT`, which is not an abort: the session kept running and spending, the task got no failover, and its cost was lost. The runtime now passes the SDK a fetch built on undici's own `fetch` and an `Agent` with both timeouts off (#109). Use undici's `fetch` with undici's `Agent`: mixing its `Agent` with Node's bundled fetch breaks across versions.
+
 ## Models and providers
 
 - **A missing provider key looks like a missing model.** Without its key OpenCode does not load the provider and answers `ProviderModelNotFoundError: Model not found: google/…` (surfaced to us as `UnknownError`). Check the key first; OpenCode's own log (`--print-logs`) shows the real error.

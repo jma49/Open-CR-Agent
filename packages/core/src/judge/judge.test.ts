@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentRuntime, CompletionRequest } from "../contracts.js";
 import type { Finding, Severity } from "../domain.js";
+import { CompletionError } from "../errors.js";
 import { applyDecisions, judgeFindings } from "./judge.js";
 import { buildJudgePrompt, judgeResponseSchema } from "./prompt.js";
 import { decideVerdict } from "./verdict.js";
@@ -205,6 +206,15 @@ describe("judgeFindings", () => {
     expect(failed.decisions).toBeUndefined();
     expect(failed.warnings[0]).toContain("judge failed, reporting findings unjudged");
     expect(failed.findings).toHaveLength(1);
+
+    const spending: AgentRuntime = {
+      ...runtime("{}"),
+      complete: async () => {
+        throw new CompletionError("every top model failed", usage);
+      },
+    };
+    const spent = await judgeFindings([finding("a")], options(spending));
+    expect(spent.usage).toEqual([usage]);
 
     const rt = runtime("{}");
     const disabled = await judgeFindings([finding("a")], { ...options(rt), enabled: false });
