@@ -66,7 +66,7 @@ Kept on purpose (the audit asked): an invalid `.ocra/rules.json` or `memory.json
 Open work, in order:
 
 1. Free: nothing left from the 2026-09-27 audit except what needs an eval. Candidates: the ADR-0010 tier-rise gap, the versioned JSON output before npm, #126 and #85 rebases once they are evaluated (#126 conflicts with #129 in `review-tools.ts`: keep both the caps and `promptData`).
-2. Model-dependent, in order: #66 is fixed (helper agent needs two steps on Gemini); next the #12 baseline with a model stronger than flash-lite, then the `[needs-eval]` PRs #126, #85, #86 and #103, then measuring the new reviewers, Verify, Judge, the budget reserve and `--ultra`, then #67 (the Action on a live pull request).
+2. Model-dependent (decided 2026-09-27: wait until a billable key or another provider is available; do not run quality evals on the free tier), in order: #66 is fixed (helper agent needs two steps on Gemini); next the #12 baseline with a model stronger than flash-lite, then the `[needs-eval]` PRs #126, #85, #86 and #103, then measuring the new reviewers, Verify, Judge, the budget reserve and `--ultra`, then #67 (the Action on a live pull request).
 3. Not implemented from the architecture (marked planned there): the `docs` and `agents-md` reviewers; `--ultra`'s plan phase and caller impact analysis; the judge reassessing findings a reviewer disagrees with; LLM relocation in anchoring (exists in core, not wired); inactivity detection.
 4. Publishing to npm: ready and checked in CI; the maintainer decides scope and timing (`docs/releasing.md`).
 
