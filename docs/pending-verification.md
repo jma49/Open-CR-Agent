@@ -10,7 +10,9 @@ The only thing a local build cannot show is the live site itself: https://ocra-n
 
 ## After a model key is available
 
-Parked: the maintainer has no model API budget as of 2026-09-26 and will provide a key later. Work through this table in order once it is available.
+A free-tier Gemini key is available (2026-09-26), but the maintainer will not enable billing, and the free tier allows `gemini-3.5-flash` only 20 requests a day: not enough for any row below that needs a model stronger than flash-lite. These rows wait for a paid key or another provider.
+
+Checked on the free tier with flash-lite (`ocra-eval run --ids lvgl__lvgl@4a57db3,keycloak__keycloak@805c204 --label mech-lite`, $0.07 at list price): grouping, Verify and Judge all run for real after #66; Verify marked a finding `confirmed`, the judge merged a duplicate, anchoring placed the finding on a hunk. One task hit the per-minute quota.
 
 | Item | Check | How |
 |---|---|---|
