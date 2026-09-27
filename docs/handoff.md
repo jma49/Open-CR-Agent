@@ -1,6 +1,6 @@
 # Handoff
 
-State of the project as of 2026-09-26, for whoever picks it up next (human or agent). Update this file at the end of each working session; keep it about *state and next steps*, not history (git has the history).
+State of the project as of 2026-09-27, for whoever picks it up next (human or agent). Update this file at the end of each working session; keep it about *state and next steps*, not history (git has the history).
 
 ## Where things live
 
@@ -52,7 +52,7 @@ Open work, in order:
 
 ## Environment notes
 
-- **Model key: none.** Nothing that calls a model can run until the maintainer provides a key. The runtime names a missing key instead of failing with "model not found".
+- **Model key:** a free-tier Gemini key is available for local runs only (never as a CI secret); billing will not be enabled, so quality evaluation waits for a paid key or another provider. How to load it is in `.local/agent-notes.md`. The runtime names a missing key instead of failing with "model not found".
 - **Models for evaluation:** `gemini-flash-lite-latest` is too weak to evaluate prompts (see #12); use a Flash or Pro class model.
 - **Model chain:** `gemini-3.8-flash` was removed from the dogfood `.ocra/config.json` and the README example: it fails inside OpenCode's step loop (400 "Requests ending with a model turn") and cost ~$0.02 and ~20 s per run before failing over.
 - **Secrets:** `SITE_DEPLOY_HOOK` (main repo) is no longer used since `site-deploy.yml` was removed; the maintainer may delete it. No other secrets are configured. Never print or commit secret values.
@@ -71,10 +71,4 @@ Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) i
 
 ## Open questions for the maintainer
 
-1. ~~Provide a model key~~ A free-tier Gemini key is available; billing will not be enabled, so quality evaluation waits for a paid key or another provider.
-2. ~~Key as a repository secret for #67?~~ Not for now (local use only).
-3. "ORCA" was mentioned during the site redesign; the name was kept as `ocra`. Confirm whether a rename was intended.
-4. ~~Reorder the dogfood `.ocra/config.json` chain (audit P5)?~~ Decided: `gemini-3.8-flash` is removed from the chain and the README example.
-5. ~~Decisions taken in the fix round~~ Confirmed by the maintainer (2026-09-26) as implemented in #79–#83: unrechecked findings count in the verdict, an edit of the anchored lines counts as a fix, unverified criticals give `minor_issues`, the 80% review share stays until it can be measured, an edited summary forces a full review, base-branch config changes do not re-review unchanged files. Also: tests count toward the 500-line rule (now in AGENTS.md); the `.local/` move (#82) is fine; #67 is not run for now (it would need the key as a repository secret, and the free tier cannot run it).
-6. npm scope: **`@open-cr-agent`** (decided). Still open: when, and token vs trusted publishing (`docs/releasing.md`).
-7. Site deploys: **manual only** (decided), with `npm run deploy` in the site repository; the unused `SITE_DEPLOY_HOOK` secret can be deleted.
+1. npm publishing: when, and token vs trusted publishing (`docs/releasing.md`). The scope is decided: `@open-cr-agent`.
