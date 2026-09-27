@@ -15,7 +15,8 @@
     "test": "vitest run",
     "check": "biome check .",
     "format": "biome check --write .",
-    "verify": "npm run check && npm run typecheck && npm test"
+    "verify": "npm run check && npm run typecheck && npm test",
+    "check:packages": "npm run build && node scripts/check-packages.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",

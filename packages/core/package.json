@@ -1,8 +1,24 @@
 {
   "name": "@open-cr-agent/core",
   "version": "0.0.0",
-  "description": "Domain types, pipeline stages and plugin contracts for Open-CR-Agent",
+  "description": "Domain types, review pipeline stages and plugin contracts for Open-CR-Agent",
+  "keywords": [
+    "code-review",
+    "llm",
+    "agents",
+    "pipeline"
+  ],
   "license": "Apache-2.0",
+  "homepage": "https://ocra-nine.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jma49/Open-CR-Agent.git",
+    "directory": "packages/core"
+  },
+  "bugs": "https://github.com/jma49/Open-CR-Agent/issues",
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "exports": {
     ".": {
@@ -16,5 +32,8 @@
   "dependencies": {
     "picomatch": "^4.0.7",
     "zod": "^4.6.5"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -1,8 +1,25 @@
 {
   "name": "@open-cr-agent/cli",
   "version": "0.0.0",
-  "description": "The ocra command line interface",
+  "description": "ocra: open-source multi-agent code review for local changes and GitHub pull requests",
+  "keywords": [
+    "code-review",
+    "cli",
+    "llm",
+    "agents",
+    "github-action"
+  ],
   "license": "Apache-2.0",
+  "homepage": "https://ocra-nine.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jma49/Open-CR-Agent.git",
+    "directory": "packages/cli"
+  },
+  "bugs": "https://github.com/jma49/Open-CR-Agent/issues",
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "exports": {
     ".": {
@@ -22,5 +39,8 @@
     "@open-cr-agent/vcs-github": "0.0.0",
     "@open-cr-agent/vcs-local": "0.0.0",
     "zod": "^4.6.5"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -26,3 +26,7 @@ The Gemini key was removed from the maintainer's shell on 2026-09-26; see `docs/
 | Verify (#53) and Judge (#54) | Refuted and dropped findings are wrong ones; verdicts look right | Same eval with `verify`/`judge` on and off (`.ocra/config.json` in a scratch repo, or add eval flags) |
 | `--ultra` (#62) | Recall rises, cost about doubles | Eval with `--ultra` passed through |
 | #67 GitHub Action on a live pull request | Inline positions (422 fallback), summary update in place, thread resolution permissions, fork behaviour; dismissals: `authorAssociation` and `resolvedBy` as the GraphQL API really returns them, the author's own resolve not dismissing, an outsider's "won't fix" not dismissing | Needs the key as a repository secret; ask the maintainer first |
+
+## Before the first npm release
+
+See [releasing.md](releasing.md): the maintainer decides the scope (`@open-cr-agent` needs an npm organization; `ocra` is free), the timing, and token vs trusted publishing. The packages are checked by `npm run check:packages` on every pull request, but only a real publish shows the registry page and `npx` behaviour.

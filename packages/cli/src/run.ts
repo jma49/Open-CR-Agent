@@ -1,4 +1,5 @@
 import { writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { parseArgs } from "node:util";
 import { errorMessage } from "@open-cr-agent/core";
 import { memoryCommand } from "./memory.js";
@@ -7,7 +8,8 @@ import { BUILTIN_PLUGINS, EXIT, type ReviewDeps, reviewCommand } from "./review/
 import type { Output } from "./review/progress.js";
 import { forTerminal } from "./review/terminal.js";
 
-export const VERSION = "0.0.0";
+// src/ and dist/ both sit one level below the package root.
+export const VERSION: string = createRequire(import.meta.url)("../package.json").version;
 
 const USAGE = `Usage: ocra <command> [options]
 

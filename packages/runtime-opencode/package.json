@@ -1,8 +1,23 @@
 {
   "name": "@open-cr-agent/runtime-opencode",
   "version": "0.0.0",
-  "description": "AgentRuntime for Open-CR-Agent backed by OpenCode",
+  "description": "OpenCode-based agent runtime for Open-CR-Agent",
+  "keywords": [
+    "code-review",
+    "opencode",
+    "agents"
+  ],
   "license": "Apache-2.0",
+  "homepage": "https://ocra-nine.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jma49/Open-CR-Agent.git",
+    "directory": "packages/runtime-opencode"
+  },
+  "bugs": "https://github.com/jma49/Open-CR-Agent/issues",
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "exports": {
     ".": {
@@ -19,5 +34,8 @@
     "@opencode-ai/sdk": "1.18.32",
     "opencode-ai": "1.18.32",
     "zod": "^4.6.5"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

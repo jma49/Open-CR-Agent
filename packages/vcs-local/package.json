@@ -1,8 +1,22 @@
 {
   "name": "@open-cr-agent/vcs-local",
   "version": "0.0.0",
-  "description": "Local git repository adapter for Open-CR-Agent",
+  "description": "Local git adapter for Open-CR-Agent: working tree, ranges and commits",
+  "keywords": [
+    "code-review",
+    "git"
+  ],
   "license": "Apache-2.0",
+  "homepage": "https://ocra-nine.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jma49/Open-CR-Agent.git",
+    "directory": "packages/vcs-local"
+  },
+  "bugs": "https://github.com/jma49/Open-CR-Agent/issues",
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "exports": {
     ".": {
@@ -16,5 +30,8 @@
   "dependencies": {
     "@open-cr-agent/core": "0.0.0",
     "zod": "^4.6.5"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
