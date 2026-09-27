@@ -73,6 +73,7 @@ Open work, in order:
 ## Environment notes
 
 - **Model key:** a free-tier Gemini key is available for local runs only (never as a CI secret); billing will not be enabled, so quality evaluation waits for a paid key or another provider. How to load it is in `.local/agent-notes.md`. The runtime names a missing key instead of failing with "model not found".
+- **Free-tier probe (2026-09-27):** `gemini-3.5/3.6/3.7/3.8-flash` and `gemini-flash-latest` answer with this key, each with its own daily quota; Pro models are refused (free-tier limit 0). Two one-PR runs (symfony@942f8fa, 24 lines, labels `quota-probe-1`/`-2`) reviewed nothing: 3.6 and 3.7 failed with "Requests ending with a model turn" after 10–11 tool calls, 3.5 was overloaded (503), flash-latest hit its per-minute limit, and the task timed out after 10 minutes. The blocker is #171, not quota; fix it before spending more requests. Each run used about 25–40 requests.
 - **Models for evaluation:** `gemini-flash-lite-latest` is too weak to evaluate prompts (see #12); use a Flash or Pro class model.
 - **Model chain:** `gemini-3.8-flash` was removed from the dogfood `.ocra/config.json` and the README example: it fails inside OpenCode's step loop (400 "Requests ending with a model turn") and cost ~$0.02 and ~20 s per run before failing over.
 - **Secrets:** `SITE_DEPLOY_HOOK` (main repo) is no longer used since `site-deploy.yml` was removed; the maintainer may delete it. No other secrets are configured. Never print or commit secret values.
