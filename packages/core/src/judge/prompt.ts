@@ -41,22 +41,22 @@ export function buildJudgePrompt(
     const lines = f.lineRange ? `:${f.lineRange.start}-${f.lineRange.end}` : "";
     const body = f.body.length > MAX_BODY_CHARS ? `${f.body.slice(0, MAX_BODY_CHARS)}…` : f.body;
     return [
-      `<finding index="${i}" reviewer="${escapeAttribute(f.reviewer)}" severity="${f.severity}" location="${escapeAttribute(f.file)}${lines}">`,
+      `<ocra_finding index="${i}" reviewer="${escapeAttribute(f.reviewer)}" severity="${f.severity}" location="${escapeAttribute(f.file)}${lines}">`,
       f.title,
       body,
       f.evidence.length > 0 ? `Evidence: ${f.evidence.join("; ")}` : "",
-      "</finding>",
+      "</ocra_finding>",
     ]
       .filter((line) => line !== "")
       .join("\n");
   });
   const user = [
-    "<change_request>",
-    `<title>${neutralizeTags(changeRequest.title)}</title>`,
-    `<description>\n${neutralizeTags(changeRequest.description.slice(0, 4_000))}\n</description>`,
-    "</change_request>",
+    "<ocra_change_request>",
+    `<ocra_title>${neutralizeTags(changeRequest.title)}</ocra_title>`,
+    `<ocra_description>\n${neutralizeTags(changeRequest.description.slice(0, 4_000))}\n</ocra_description>`,
+    "</ocra_change_request>",
     `Risk tier: ${tier}`,
-    `<findings>\n${neutralizeTags(items.join("\n"))}\n</findings>`,
+    `<ocra_findings>\n${neutralizeTags(items.join("\n"))}\n</ocra_findings>`,
   ].join("\n");
   return { system: SYSTEM_PROMPT, user };
 }

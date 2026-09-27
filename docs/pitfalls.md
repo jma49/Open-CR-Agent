@@ -13,6 +13,8 @@ Traps we have already fallen into, across this repository and the site. Each ent
 - **npm blocks the postinstall that places the OpenCode binary.** Resolve the platform package (`opencode-<os>-<arch>[-baseline][-musl]`) directly (`binary.ts`); `OCRA_OPENCODE_BIN` overrides.
 - **Upgrading OpenCode can add tools.** Built-in tools are disabled by an explicit list; a test fails when the pinned version's list changes. Never bump `opencode-ai` or `@opencode-ai/sdk` without re-running that test and re-reading the new tools.
 
+- **Prompt delimiters must not collide with code.** Sections were plain tags (`<title>`, `<description>`, `<file>`, `<diff>`), so neutralizing them in untrusted text also rewrote real HTML, Maven and Android XML: the model saw `‹title>`, quoted it, and the quote could not be anchored. Every section tag now starts with `ocra_`, and only that prefix is neutralized.
+
 ## Models and providers
 
 - **A missing provider key looks like a missing model.** Without its key OpenCode does not load the provider and answers `ProviderModelNotFoundError: Model not found: google/…` (surfaced to us as `UnknownError`). Check the key first; OpenCode's own log (`--print-logs`) shows the real error.

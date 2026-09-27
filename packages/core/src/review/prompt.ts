@@ -30,22 +30,22 @@ export function buildReviewPrompt(input: ReviewPromptInput): ReviewPrompt {
   ];
   if (input.guidelines?.trim()) sections.push(renderGuidelines(input.guidelines));
   if (input.rules.trim()) {
-    sections.push(`<review_rules>\n${neutralizeTags(input.rules)}\n</review_rules>`);
+    sections.push(`<ocra_review_rules>\n${neutralizeTags(input.rules)}\n</ocra_review_rules>`);
   }
   if (input.accepted && input.accepted.length > 0) sections.push(renderAccepted(input.accepted));
   sections.push(
-    `<review_files>\n${input.bundle.map(renderFile).join("\n")}\n</review_files>`,
-    `Review every file in <review_files>. Report each confirmed issue with ${REVIEW_TOOLS.reportFinding}, then call ${REVIEW_TOOLS.taskDone}.`,
+    `<ocra_review_files>\n${input.bundle.map(renderFile).join("\n")}\n</ocra_review_files>`,
+    `Review every file in <ocra_review_files>. Report each confirmed issue with ${REVIEW_TOOLS.reportFinding}, then call ${REVIEW_TOOLS.taskDone}. Where a file shows "‹ocra_", the file itself has "<ocra_"; quote it that way.`,
   );
   return { system: input.reviewer.systemPrompt, user: sections.join("\n\n") };
 }
 
 function renderChangeRequest(cr: ChangeRequest): string {
   return [
-    "<change_request>",
-    `<title>${neutralizeTags(cr.title)}</title>`,
-    `<description>\n${neutralizeTags(cr.description)}\n</description>`,
-    "</change_request>",
+    "<ocra_change_request>",
+    `<ocra_title>${neutralizeTags(cr.title)}</ocra_title>`,
+    `<ocra_description>\n${neutralizeTags(cr.description)}\n</ocra_description>`,
+    "</ocra_change_request>",
   ].join("\n");
 }
 
@@ -54,25 +54,25 @@ function renderChangedFiles(files: readonly FileDiff[]): string {
     const path = f.kind === "renamed" ? `${f.oldPath} -> ${f.newPath}` : f.newPath;
     return `${f.kind} ${neutralizeTags(path)} (+${f.additions} -${f.deletions})`;
   });
-  return `<changed_files>\n${lines.join("\n")}\n</changed_files>`;
+  return `<ocra_changed_files>\n${lines.join("\n")}\n</ocra_changed_files>`;
 }
 
 function renderAccepted(entries: readonly MemoryEntry[]): string {
   const lines = entries.map((e) => `- ${e.file}: ${e.title} (accepted: ${e.reason})`);
-  return `<accepted_findings>\nThe team has accepted these; do not report them again.\n${neutralizeTags(lines.join("\n"))}\n</accepted_findings>`;
+  return `<ocra_accepted_findings>\nThe team has accepted these; do not report them again.\n${neutralizeTags(lines.join("\n"))}\n</ocra_accepted_findings>`;
 }
 
 function renderGuidelines(guidelines: string): string {
   const truncated = guidelines.length > MAX_GUIDELINES_CHARS;
   const body = neutralizeTags(guidelines.slice(0, MAX_GUIDELINES_CHARS));
-  return `<repository_guidelines>\n${body}${truncated ? "\n[truncated]" : ""}\n</repository_guidelines>`;
+  return `<ocra_repository_guidelines>\n${body}${truncated ? "\n[truncated]" : ""}\n</ocra_repository_guidelines>`;
 }
 
 function renderFile(diff: FileDiff): string {
   const attributes = [`path="${escapeAttribute(diff.newPath)}"`, `change="${diff.kind}"`];
   if (diff.kind === "renamed") attributes.push(`from="${escapeAttribute(diff.oldPath)}"`);
   const body = diff.hunks.map(renderHunk).join("\n");
-  return `<file ${attributes.join(" ")}>\n${neutralizeTags(body)}\n</file>`;
+  return `<ocra_file ${attributes.join(" ")}>\n${neutralizeTags(body)}\n</ocra_file>`;
 }
 
 function renderHunk(hunk: Hunk): string {

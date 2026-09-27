@@ -41,24 +41,24 @@ export function buildVerificationPrompt(
 ): VerificationPrompt {
   const items = findings.map((f, i) =>
     [
-      `<finding index="${i}">`,
+      `<ocra_finding index="${i}">`,
       `Title: ${f.title}`,
       `Severity: ${f.severity}`,
       `Quoted code:\n${f.existingCode}`,
       `Explanation:\n${f.body}`,
       f.evidence.length > 0 ? `Evidence:\n${f.evidence.map((e) => `- ${e}`).join("\n")}` : "",
-      "</finding>",
+      "</ocra_finding>",
     ]
       .filter((line) => line !== "")
       .join("\n"),
   );
   const sections = [
     `File: ${file}`,
-    `<findings>\n${neutralizeTags(items.join("\n"))}\n</findings>`,
-    `<diff>\n${neutralizeTags(patch)}\n</diff>`,
+    `<ocra_findings>\n${neutralizeTags(items.join("\n"))}\n</ocra_findings>`,
+    `<ocra_diff>\n${neutralizeTags(patch)}\n</ocra_diff>`,
   ];
   if (excerpt !== undefined)
-    sections.push(`<file_excerpt>\n${neutralizeTags(excerpt)}\n</file_excerpt>`);
+    sections.push(`<ocra_file_excerpt>\n${neutralizeTags(excerpt)}\n</ocra_file_excerpt>`);
   return { system: SYSTEM_PROMPT, user: sections.join("\n\n") };
 }
 

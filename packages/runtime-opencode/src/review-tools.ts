@@ -5,7 +5,7 @@ export const MAX_READ_LINES = 400;
 export const MAX_SEARCH_RESULTS = 50;
 
 export const reportFindingInput = z.object({
-  file: z.string().min(1).describe("Path of a file in <review_files>"),
+  file: z.string().min(1).describe("Path of a file in <ocra_review_files>"),
   existingCode: z
     .string()
     .min(1)
@@ -74,7 +74,7 @@ const reportFinding: ToolDefinition = {
 
 const taskDone: ToolDefinition = {
   name: REVIEW_TOOLS.taskDone,
-  description: "Call once every file in <review_files> has been reviewed.",
+  description: "Call once every file in <ocra_review_files> has been reviewed.",
   inputSchema: z.object({}),
   execute: async () => "Done.",
 };
