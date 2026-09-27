@@ -30,6 +30,12 @@ const args = process.argv.slice(2);
 const out = args[args.indexOf("--output") + 1];
 appendFileSync(${JSON.stringify(join(dir, "calls.log"))}, args[args.indexOf("--from") + 1] + "\\n");
 if (args[args.indexOf("--from") + 1] === "fail") { process.stderr.write("boom\\n"); process.exit(2); }
+if (args[args.indexOf("--from") + 1] === "quota") {
+  writeFileSync(out, JSON.stringify({ findings: [], tasks: [{ taskId: "correctness-1", status: "failed",
+    error: "every standard model failed (google/x: You exceeded your current quota, please check your plan)" }],
+    usage: { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 } }));
+  process.exit(2);
+}
 const finding = { id: "1", fingerprint: "f", reviewer: "correctness", category: "correctness", severity: "warning",
   file: "src/a.ts", existingCode: "x", title: "Null dereference", body: "user may be missing", evidence: [],
   lineRange: { start: 10, end: 10 }, anchor: { method: "hunk", inDiff: true }, status: "new" };
@@ -75,6 +81,33 @@ function instance(id: string, baseCommit = "base"): Instance {
 }
 
 describe("runInstances", () => {
+  it("stops starting PRs once one fails on spent quota, and resumes them later", async () => {
+    const dir = temp();
+    const logs: string[] = [];
+    const options = {
+      runDir: join(dir, "run"),
+      reposDir: join(dir, "repos"),
+      command: [process.execPath, fakeOcra(dir)],
+      timeoutMs: 30_000,
+      prepare: async () => dir,
+      log: (m: string) => logs.push(m),
+    };
+    const instances = [instance("a"), instance("b", "quota"), instance("c"), instance("d")];
+    const first = await runInstances(instances, options);
+    expect(first.map((r) => r.status)).toEqual([
+      "reviewed",
+      "failed",
+      "skipped_quota",
+      "skipped_quota",
+    ]);
+    expect(logs).toContain(
+      "the model quota is spent; the remaining PRs are skipped (rerun later to resume)",
+    );
+
+    const later = await runInstances(instances, options);
+    expect(later.map((r) => r.status)).toEqual(["reviewed", "failed", "reviewed", "reviewed"]);
+  });
+
   it("reviews, records failures, stops at the budget and resumes without repeating work", async () => {
     const dir = temp();
     const options = {
@@ -117,6 +150,7 @@ describe("runInstances", () => {
       failed: 1,
       unavailable: 0,
       skippedBudget: 0,
+      skippedQuota: 0,
     });
     expect(summary.overall.counts).toEqual({
       expected: 6,
@@ -143,7 +177,7 @@ describe("runInstances", () => {
     );
     expect(markdown).toContain("| 100.0% | 50.0% | 66.7% |");
     expect(markdown).toContain(
-      "3 reviewed, 1 failed, 0 unavailable in the dataset, 0 skipped for budget (of 4)",
+      "3 reviewed, 1 failed, 0 unavailable in the dataset, 0 skipped for budget, 0 skipped for spent quota (of 4)",
     );
   });
 

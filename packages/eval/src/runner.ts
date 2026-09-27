@@ -5,7 +5,19 @@ import type { Instance } from "./dataset.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
 import { reviewInstance } from "./reviewer.js";
 
-export type InstanceStatus = "reviewed" | "failed" | "unavailable" | "skipped_budget";
+export type InstanceStatus =
+  | "reviewed"
+  | "failed"
+  | "unavailable"
+  | "skipped_budget"
+  | "skipped_quota";
+
+// What ocra's runtime reports when a provider refuses for quota. A free-tier
+// daily limit refuses every later PR too, and each ocra process would first
+// wait out the provider's retry hint, so the run stops instead. Kept as text:
+// eval sees ocra's report, not the runtime's types.
+const QUOTA_ERROR =
+  /out of quota for this run|exceeded your current quota|quota exceeded|resource[_ ]exhausted/i;
 
 export interface InstanceResult {
   id: string;
@@ -48,12 +60,14 @@ export async function runInstances(
   await mkdir(dir, { recursive: true });
   const results: InstanceResult[] = [];
   let spent = 0;
+  let quotaSpent = false;
 
   for (const [n, instance] of instances.entries()) {
     const path = join(dir, `${instance.id}.json`);
     const previous = await readResult(path);
     const retry =
       previous?.status === "skipped_budget" ||
+      previous?.status === "skipped_quota" ||
       (options.retryFailed === true && previous?.status === "failed");
     if (previous && !retry) {
       results.push(previous);
@@ -63,7 +77,12 @@ export async function runInstances(
     const label = `[${n + 1}/${instances.length}] ${instance.id}`;
     if (options.maxCostUsd !== undefined && spent >= options.maxCostUsd) {
       options.log(`${label}: skipped, budget of $${options.maxCostUsd} reached`);
-      results.push(skipped(instance.id));
+      results.push(skipped(instance.id, "skipped_budget"));
+      continue;
+    }
+    if (quotaSpent) {
+      options.log(`${label}: skipped, the model quota is spent`);
+      results.push(skipped(instance.id, "skipped_quota"));
       continue;
     }
 
@@ -79,6 +98,12 @@ export async function runInstances(
     );
     await writeFile(path, `${JSON.stringify(result, null, 2)}\n`);
     results.push(result);
+    if (failedOnQuota(result)) {
+      quotaSpent = true;
+      options.log(
+        "the model quota is spent; the remaining PRs are skipped (rerun later to resume)",
+      );
+    }
   }
   return results;
 }
@@ -128,6 +153,14 @@ async function readResult(path: string): Promise<InstanceResult | undefined> {
   }
 }
 
-function skipped(id: string): InstanceResult {
-  return { id, status: "skipped_budget", durationMs: 0, findings: [], usage: NO_USAGE, tasks: [] };
+function skipped(id: string, status: "skipped_budget" | "skipped_quota"): InstanceResult {
+  return { id, status, durationMs: 0, findings: [], usage: NO_USAGE, tasks: [] };
+}
+
+function failedOnQuota(result: InstanceResult): boolean {
+  return (
+    result.status === "failed" &&
+    result.tasks.length > 0 &&
+    result.tasks.every((t) => t.status === "completed" || QUOTA_ERROR.test(t.error ?? ""))
+  );
 }

@@ -28,6 +28,7 @@ export interface Summary {
     failed: number;
     unavailable: number;
     skippedBudget: number;
+    skippedQuota: number;
   };
   overall: Scored;
   byLanguage: Record<string, Scored>;
@@ -97,6 +98,7 @@ export async function score(
       failed: results.filter((r) => r.status === "failed").length,
       unavailable: results.filter((r) => r.status === "unavailable").length,
       skippedBudget: results.filter((r) => r.status === "skipped_budget").length,
+      skippedQuota: results.filter((r) => r.status === "skipped_quota").length,
     },
     overall: { counts: overall, metrics: qualityMetrics(overall) },
     byLanguage: Object.fromEntries(
