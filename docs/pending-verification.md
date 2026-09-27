@@ -14,7 +14,6 @@ Parked: the maintainer has no model API budget as of 2026-09-26 and will provide
 
 | Item | Check | How |
 |---|---|---|
-| #66 `complete()` on Gemini | Grouping, Verify and Judge calls succeed instead of failing safe | Probe script in the issue; run `ocra review` on a change with 4+ files and look for "grouping failed" |
 | #12 baseline | Precision, recall and cost with a standard model stronger than flash-lite | `ocra-eval run --limit 20 --max-change-lines 300 --label baseline-<model> --reviewers correctness` |
 | Security and performance reviewers (#52) | They add findings without dragging precision down | Same eval without `--reviewers`, compare with the baseline |
 | Verify (#53) and Judge (#54) | Refuted and dropped findings are wrong ones; verdicts look right | Same eval with `verify`/`judge` on and off (`.ocra/config.json` in a scratch repo, or add eval flags) |

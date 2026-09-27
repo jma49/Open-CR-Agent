@@ -34,6 +34,10 @@ const HELPER_AGENT_PROMPT = "You answer exactly as the instructions below ask, w
 // Each step resends the whole conversation, so an unbounded loop is the
 // largest cost risk; 20 steps is ample for a bundle of at most ten files.
 export const MAX_AGENT_STEPS = 20;
+// The helper answers in one step and has no tools. It still needs two:
+// OpenCode appends an assistant message on an agent's last allowed step, and
+// Gemini rejects a request that ends with a model turn (#66).
+export const HELPER_AGENT_STEPS = 2;
 
 // Every OpenCode built-in tool of the pinned version; a test fails when an
 // upgrade adds one, so a new write-capable tool can never be enabled silently.
@@ -255,7 +259,10 @@ export class OpenCodeRuntime implements AgentRuntime {
   }
 }
 
-function openCodeConfig(tools: ToolServer, helperTools: Record<string, boolean>) {
+export function openCodeConfig(
+  tools: Pick<ToolServer, "url" | "headers">,
+  helperTools: Record<string, boolean>,
+) {
   const permission = { edit: "deny", bash: "deny", webfetch: "deny", skill: "deny" };
   return {
     share: "disabled",
@@ -280,7 +287,7 @@ function openCodeConfig(tools: ToolServer, helperTools: Record<string, boolean>)
       [HELPER_AGENT]: {
         mode: "primary",
         prompt: HELPER_AGENT_PROMPT,
-        steps: 1,
+        steps: HELPER_AGENT_STEPS,
         tools: helperTools,
         permission,
       },

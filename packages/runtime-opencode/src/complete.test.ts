@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OpenCodeRuntime } from "./runtime.js";
+import { HELPER_AGENT_STEPS, OpenCodeRuntime, openCodeConfig } from "./runtime.js";
 import type { SessionOutcome } from "./session-outcome.js";
 
 const usage = {
@@ -104,5 +104,13 @@ describe("OpenCodeRuntime credentials", () => {
       'No API key for provider "google": set GEMINI_API_KEY',
     );
     await runtime.dispose();
+  });
+});
+
+describe("openCodeConfig", () => {
+  it("never gives an agent a single step, which Gemini rejects (#66)", () => {
+    const config = openCodeConfig({ url: "http://127.0.0.1:1/mcp", headers: {} }, {});
+    for (const agent of Object.values(config.agent)) expect(agent.steps).toBeGreaterThan(1);
+    expect(config.agent["ocra-helper"].steps).toBe(HELPER_AGENT_STEPS);
   });
 });
