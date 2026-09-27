@@ -33,7 +33,11 @@ describe("JsonlSessionWriter", () => {
       .split("\n");
     expect(lines.map((l) => JSON.parse(l).type)).toEqual(["run_started", "run_finished"]);
     expect(JSON.parse(lines[0] as string).time).toMatch(/^\d{4}-/);
-    expect(JSON.parse(readFileSync(join(root, "s1", REPORT_FILE), "utf8"))).toEqual(report);
+    expect(JSON.parse(readFileSync(join(root, "s1", REPORT_FILE), "utf8"))).toMatchObject({
+      version: 1,
+      changeRequest,
+      findings: [],
+    });
   });
 
   it("ignores every file in the sessions directory for git", () => {

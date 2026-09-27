@@ -1,4 +1,4 @@
-import type { Finding, Usage } from "@open-cr-agent/core";
+import type { OutputFinding, Usage } from "@open-cr-agent/core";
 import type { Instance } from "./dataset.js";
 import {
   type GeneratedComment,
@@ -39,12 +39,12 @@ export interface Summary {
   durationSeconds: { median: number; p90: number };
 }
 
-export function toGeneratedComment(finding: Finding): GeneratedComment {
+export function toGeneratedComment(finding: OutputFinding): GeneratedComment {
   return {
     path: finding.file,
     side: "right",
-    fromLine: finding.lineRange?.start ?? null,
-    toLine: finding.lineRange?.end ?? null,
+    fromLine: finding.lines?.start ?? null,
+    toLine: finding.lines?.end ?? null,
     note: `${finding.title}\n\n${finding.body}`,
   };
 }

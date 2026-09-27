@@ -11,7 +11,7 @@ Nothing has been published yet. This is what is ready, what is missing, and the 
 
 ## Before the first release
 
-- **A versioned output format.** `--format json` and `report.json` serialize the internal `ReviewReport` as is, so internal fields (per-run finding ids, anchors, statuses that are never set) would become a published contract. Add a presentation type with a `version` field before publishing (2026-09-27 audit, #114).
+- The versioned output format (`version: 1`, `packages/core/src/pipeline/output.ts`) is in place; it becomes a published contract with the first release. The `--plan` JSON is not versioned yet.
 
 ## Decisions for the maintainer
 

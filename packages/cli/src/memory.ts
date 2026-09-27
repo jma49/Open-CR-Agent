@@ -3,9 +3,9 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import {
-  type Finding,
   MEMORY_PATH,
   type MemoryEntry,
+  type OutputFinding,
   parseMemory,
   serializeMemory,
 } from "@open-cr-agent/core";
@@ -105,10 +105,10 @@ async function newestSession(root: string): Promise<string> {
   throw new UsageError(`No finished review in ${SESSIONS_DIR}; run ocra review first`);
 }
 
-async function findFinding(reportPath: string, id: string): Promise<Finding> {
-  const report = JSON.parse(await readFile(reportPath, "utf8")) as { findings?: Finding[] };
+async function findFinding(reportPath: string, id: string): Promise<OutputFinding> {
+  const report = JSON.parse(await readFile(reportPath, "utf8")) as { findings?: OutputFinding[] };
   const matches = (report.findings ?? []).filter((f) => f.fingerprint.startsWith(id));
-  if (matches.length === 1) return matches[0] as Finding;
+  if (matches.length === 1) return matches[0] as OutputFinding;
   throw new UsageError(
     matches.length === 0
       ? `No finding ${id} in ${reportPath}`

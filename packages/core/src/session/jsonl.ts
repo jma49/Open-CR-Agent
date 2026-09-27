@@ -10,6 +10,7 @@ import {
   writeSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
+import { toReportOutput } from "../pipeline/output.js";
 import type { ReviewEvent } from "../pipeline/report.js";
 
 export const EVENTS_FILE = "events.jsonl";
@@ -54,7 +55,8 @@ export class JsonlSessionWriter {
     const line = JSON.stringify({ time: new Date().toISOString(), ...event });
     appendFileSync(join(this.dir, EVENTS_FILE), `${line}\n`);
     if (event.type === "run_finished") {
-      writeFileSync(join(this.dir, REPORT_FILE), `${JSON.stringify(event.report, null, 2)}\n`);
+      const report = toReportOutput(event.report);
+      writeFileSync(join(this.dir, REPORT_FILE), `${JSON.stringify(report, null, 2)}\n`);
     }
   }
 }

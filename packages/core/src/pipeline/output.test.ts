@@ -1,0 +1,65 @@
+import { describe, expect, it } from "vitest";
+import type { Finding } from "../domain.js";
+import { REPORT_VERSION, toReportOutput } from "./output.js";
+import type { ReviewReport } from "./report.js";
+
+const finding: Finding = {
+  id: "b2c8e5f0-random-per-run",
+  fingerprint: "0123456789abcdef",
+  reviewer: "security",
+  category: "security",
+  severity: "critical",
+  file: "src/a.ts",
+  existingCode: "eval(input)",
+  title: "Eval of user input",
+  body: "Remote code execution.",
+  evidence: ["input comes from the query string"],
+  lineRange: { start: 3, end: 3 },
+  anchor: { method: "hunk", inDiff: true },
+  status: "new",
+  quote: { lines: 1, hash: "fedcba9876543210" },
+};
+
+const report = {
+  changeRequest: { id: "1", title: "t", description: "", baseSha: "b", headSha: "h" },
+  tier: "full",
+  verdict: "minor_issues",
+  summary: "s",
+  coverage: [],
+  bundles: [],
+  tasks: [],
+  skipped: [],
+  findings: [finding, { ...finding, fingerprint: "1".repeat(16), lineRange: undefined }],
+  unverifiedCriticals: 1,
+  refuted: [],
+  remembered: [],
+  usage: { inputTokens: 1, outputTokens: 1, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 },
+  warnings: [],
+} as unknown as ReviewReport;
+
+describe("toReportOutput", () => {
+  it("publishes a versioned report without internal fields", () => {
+    const output = toReportOutput(report);
+    expect(output.version).toBe(REPORT_VERSION);
+    expect(output.findings[0]).toEqual({
+      fingerprint: "0123456789abcdef",
+      reviewer: "security",
+      category: "security",
+      severity: "critical",
+      verification: "unchecked",
+      file: "src/a.ts",
+      lines: { start: 3, end: 3 },
+      inDiff: true,
+      status: "new",
+      title: "Eval of user input",
+      body: "Remote code execution.",
+      evidence: ["input comes from the query string"],
+      code: "eval(input)",
+    });
+    expect(output.findings[1]?.lines).toBeUndefined();
+    const json = JSON.stringify(output);
+    for (const internal of ["b2c8e5f0", "anchor", "quote", "lineRange", "existingCode"]) {
+      expect(json).not.toContain(internal);
+    }
+  });
+});

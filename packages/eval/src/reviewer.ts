@@ -1,14 +1,14 @@
 import { readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import type { ReviewReport } from "@open-cr-agent/core";
+import type { ReportOutput } from "@open-cr-agent/core";
 import type { Instance } from "./dataset.js";
 import { exec } from "./exec.js";
 
 export interface ReviewOutcome {
   exitCode: number;
   durationMs: number;
-  report?: ReviewReport;
+  report?: ReportOutput;
   error?: string;
 }
 
@@ -51,9 +51,9 @@ export async function reviewInstance(
   );
   const durationMs = Date.now() - started;
 
-  let report: ReviewReport | undefined;
+  let report: ReportOutput | undefined;
   try {
-    report = JSON.parse(await readFile(outputPath, "utf8")) as ReviewReport;
+    report = JSON.parse(await readFile(outputPath, "utf8")) as ReportOutput;
   } catch {}
   const outcome: ReviewOutcome = { exitCode: result.exitCode, durationMs };
   if (report) outcome.report = report;

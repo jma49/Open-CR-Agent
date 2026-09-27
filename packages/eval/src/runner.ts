@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Finding, TaskOutcome, Usage } from "@open-cr-agent/core";
+import type { OutputFinding, TaskOutcome, Usage } from "@open-cr-agent/core";
 import type { Instance } from "./dataset.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
 import { reviewInstance } from "./reviewer.js";
@@ -23,7 +23,7 @@ export interface InstanceResult {
   id: string;
   status: InstanceStatus;
   durationMs: number;
-  findings: Finding[];
+  findings: OutputFinding[];
   usage: Usage;
   tasks: Pick<TaskOutcome, "taskId" | "status" | "error">[];
   error?: string;

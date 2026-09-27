@@ -1,4 +1,4 @@
-import type { Finding, ReviewReport } from "@open-cr-agent/core";
+import { type Finding, type ReviewReport, toReportOutput } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import { renderJson, renderText } from "./render.js";
 
@@ -193,7 +193,7 @@ describe("renderText", () => {
 
 describe("renderJson", () => {
   it("renders the full report", () => {
-    expect(JSON.parse(renderJson(base))).toEqual(base);
+    expect(JSON.parse(renderJson(base))).toEqual(JSON.parse(JSON.stringify(toReportOutput(base))));
   });
 
   it("escapes C1 controls and bidirectional overrides that JSON.stringify leaves raw", () => {
@@ -201,6 +201,6 @@ describe("renderJson", () => {
     const json = renderJson(hostile);
     for (const c of ["\u009b", "\u202e", "\u2066"]) expect(json).not.toContain(c);
     expect(json).toContain("\\u009b");
-    expect(JSON.parse(json)).toEqual(hostile);
+    expect(JSON.parse(json).summary).toBe(hostile.summary);
   });
 });

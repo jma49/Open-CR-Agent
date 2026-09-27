@@ -3,6 +3,7 @@ import {
   type Finding,
   type ReviewReport,
   type Severity,
+  toReportOutput,
   type Verification,
 } from "@open-cr-agent/core";
 import { forTerminal } from "./terminal.js";
@@ -17,7 +18,7 @@ const VERIFICATION: Record<Verification, string> = {
 // JSON.stringify escapes C0 controls but not C1 controls or bidirectional
 // overrides, which a terminal or an editor would act on.
 export function renderJson(report: ReviewReport): string {
-  return `${safeJson(report)}\n`;
+  return `${safeJson(toReportOutput(report))}\n`;
 }
 
 export function safeJson(value: unknown): string {
