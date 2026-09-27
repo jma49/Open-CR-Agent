@@ -63,4 +63,51 @@ describe("promptSession", () => {
     expect(outcome.usage.inputTokens).toBe(1000);
     expect(outcome.error).toEqual({ message: "cancelled", retryable: false });
   });
+
+  it("stops a silent session and lets the next model try", async () => {
+    const aborted: string[] = [];
+    const api = {
+      create: async () => ({ data: { id: "s1" } }),
+      // Busy until something aborts the request.
+      prompt: (_: unknown, options: { signal: AbortSignal }) =>
+        new Promise((_, reject) =>
+          options.signal.addEventListener("abort", () => reject(new Error("aborted")), {
+            once: true,
+          }),
+        ),
+      messages: async () => ({ data: spent }),
+      abort: async ({ sessionID }: { sessionID: string }) => {
+        aborted.push(sessionID);
+        return { data: true };
+      },
+    } as never;
+    const outcome = await promptSession(api, input, REPORT_TOOL, new AbortController().signal, {
+      inactivityMs: 60,
+      pollMs: 20,
+    });
+    expect(outcome.error).toEqual({ message: "no activity for 0s", retryable: true });
+    expect(aborted).toContain("s1");
+    // What the session did before it went silent is kept.
+    expect(outcome.usage.costUsd).toBe(0.25);
+  });
+
+  it("lets a session that keeps writing run past the inactivity window", async () => {
+    let text = "";
+    const api = {
+      create: async () => ({ data: { id: "s1" } }),
+      prompt: () => new Promise((resolve) => setTimeout(() => resolve({ data: {} }), 200)),
+      messages: async () => {
+        text += "more ";
+        return {
+          data: [{ info: { role: "assistant" }, parts: [{ type: "text", text }] }],
+        };
+      },
+      abort: async () => ({ data: true }),
+    } as never;
+    const outcome = await promptSession(api, input, REPORT_TOOL, new AbortController().signal, {
+      inactivityMs: 60,
+      pollMs: 20,
+    });
+    expect(outcome.error).toBeUndefined();
+  });
 });

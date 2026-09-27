@@ -78,7 +78,7 @@ A finding that resolves to a file outside the reviewer's bundle is dropped with 
 
 ## Robustness
 
-- A per-task and a whole-run timeout, enforced even if a model stops responding.
+- A per-task and a whole-run timeout, enforced even if a model stops responding. A task whose agent shows no progress for five minutes (no new step, text or tool call) is stopped earlier and handed to the next model in the chain.
 - A failed task never fails the run; its files are reported as `failed`.
 - Model failback chains per tier, with a circuit breaker per model (open after repeated failures, half-open probe after a cooldown).
 - Rate limits are waited out: when a provider says to retry after a short wait (up to 90 seconds), every task pauses that model and retries it. A limit marked as daily, a longer or missing wait, or a fourth limit in a row takes the model out of the chain for the rest of the run, so ocra stops sending requests that would be refused.
