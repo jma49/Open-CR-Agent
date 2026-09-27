@@ -45,7 +45,7 @@ Pipeline today: ingest → select → triage → bundle → **matrix** (reviewer
 
 Open work, in order:
 
-1. Free, from the [2026-09-27 audit](audits/2026-09-27-audit.md), in order: #104 (P0, symlinks bypass the secret guard in workspace mode), #105 (summary state: path injection, edited dismissals, size), #108 (runs that reviewed nothing read as approved), #109 (Node fetch 300 s cut-off, lost cost of timed-out tasks), #106, #107, #110, #111, #112 (vacuous tests), then #113 (docs) and #114 (P2). `ocra-eval ceiling` now also prints the tier mix (#101).
+1. Free, from the [2026-09-27 audit](audits/2026-09-27-audit.md), in order: #104 (P0, symlinks bypass the secret guard in workspace mode), #116 (judge must not downgrade a confirmed critical), #117 (exit 3 when a critical finding could not be verified), #105 (summary state: path injection, edited dismissals, size), #108 (runs that reviewed nothing read as approved), #109 (Node fetch 300 s cut-off, lost cost of timed-out tasks), #106, #107, #110, #111, #112 (vacuous tests), then #113 (docs) and #114 (P2). `ocra-eval ceiling` now also prints the tier mix (#101).
 2. Model-dependent, in order: #66 is fixed (helper agent needs two steps on Gemini); next the #12 baseline with a model stronger than flash-lite, then the `[needs-eval]` PRs #84–#86, then measuring the new reviewers, Verify, Judge, the budget reserve and `--ultra`, then #67 (the Action on a live pull request).
 3. Not implemented from the architecture (marked planned there): the `docs` and `agents-md` reviewers; `--ultra`'s plan phase and caller impact analysis; the judge reassessing findings a reviewer disagrees with; LLM relocation in anchoring (exists in core, not wired); inactivity detection.
 4. Publishing to npm: ready and checked in CI; the maintainer decides scope and timing (`docs/releasing.md`).
@@ -72,5 +72,3 @@ Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) i
 ## Open questions for the maintainer
 
 1. npm publishing: when, and token vs trusted publishing (`docs/releasing.md`). The scope is decided: `@open-cr-agent`.
-2. May the judge downgrade a confirmed critical finding (it clears `significant_concerns`, and the judge reads PR text)? See the 2026-09-27 audit.
-3. Should a critical finding left `unchecked` because Verify failed or ran out of budget make the run incomplete (exit 3) instead of passing with `minor_issues`? See the 2026-09-27 audit.
