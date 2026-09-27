@@ -46,12 +46,26 @@ export interface GitHubAdapterOptions {
 
 export const DEFAULT_BOT_LOGIN = "github-actions[bot]";
 
-// Replies that decline a finding. Disagreement ("I disagree") is not a
-// dismissal: the finding keeps being reported.
 const WRITE_ACCESS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 
-const DISMISSAL =
-  /\b(won'?t fix|wontfix|not a bug|by design|acknowledged|intended|intentional|false positive)\b/i;
+const DECLINE =
+  /^(won['’]?t fix|wontfix|will not fix|by design|false positive|not a bug|working as intended|intended behaviou?r)(?=$|[\s.,;:!—–-])/i;
+const COMMAND = /^\/ocra dismiss\b/im;
+
+// A dismissal takes a clear decline: an explicit `/ocra dismiss`, or a reply
+// that opens with a decline and does not ask. Words anywhere else in a reply
+// ("this is not intended", "is this by design?", "acknowledged, will fix")
+// do not dismiss, since a dismissed finding leaves the verdict. Disagreement
+// ("I disagree") keeps the finding reported.
+export function declinesFinding(reply: string): boolean {
+  if (COMMAND.test(reply)) return true;
+  const opening =
+    reply
+      .trim()
+      .split(/(?<=[.!?])\s|\n/)[0]
+      ?.trim() ?? "";
+  return DECLINE.test(opening) && !opening.endsWith("?");
+}
 
 export class GitHubAdapter implements VcsAdapter {
   readonly name = "github";
@@ -161,7 +175,7 @@ export class GitHubAdapter implements VcsAdapter {
       // Only people with write access (or the author) can resolve threads.
       const resolvedByReviewer = thread.isResolved && reviewer(thread.resolvedBy);
       const declined = replies.some(
-        (r) => reviewer(r.author) && WRITE_ACCESS.has(r.association) && DISMISSAL.test(r.body),
+        (r) => reviewer(r.author) && WRITE_ACCESS.has(r.association) && declinesFinding(r.body),
       );
       if (resolvedByReviewer || declined) dismissed.add(fingerprint);
     }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { A, adapter, B, fakeGitHub, finding, postedSummary, report } from "./adapter.fakes.js";
+import { declinesFinding } from "./adapter.js";
 import { renderSummary, safeMarkdown } from "./render.js";
 import { readState, SUMMARY_MARKER, writeState } from "./state.js";
 
@@ -239,7 +240,7 @@ describe("GitHubAdapter", () => {
       },
     });
     const bot = "github-actions";
-    const [declined, resolved, disagreed, forged, byAuthor, resolvedByAuthor, byOutsider, _] =
+    const [declined, resolved, disagreed, forged, byAuthor, resolvedByAuthor, byOutsider, agreed] =
       ids as [string, string, string, string, string, string, string, string];
     const { fetchImpl } = fakeGitHub([previous], 200, [
       thread(declined, bot, [
@@ -255,6 +256,9 @@ describe("GitHubAdapter", () => {
       thread(byAuthor, bot, [{ author: "author", association: "COLLABORATOR", body: "won't fix" }]),
       thread(resolvedByAuthor, bot, [], "author"),
       thread(byOutsider, bot, [{ author: "passerby", association: "NONE", body: "won't fix" }]),
+      thread(agreed, bot, [
+        { author: "maintainer", association: "OWNER", body: "This is not intended, good catch" },
+      ]),
     ]);
 
     const prior = await adapter(fetchImpl).getPriorReview();
@@ -280,6 +284,23 @@ describe("GitHubAdapter", () => {
     // Model text cannot form a link or an image.
     expect(body).toContain("See [the fix]\\(https://evil.example/login)");
     expect(body).toContain("!\u200b[]\\(https://evil.example/t.png)");
+  });
+
+  it.each([
+    ["won't fix", true],
+    ["Won’t fix. We accept the risk here.", true],
+    ["By design: the cache is per request.", true],
+    ["false positive, the value is validated upstream", true],
+    ["Looks right to me.\n/ocra dismiss", true],
+    ["This is not intended, good catch", false],
+    ["Is this intended?", false],
+    ["By design?", false],
+    ["Acknowledged, will fix", false],
+    ["Not a bug? It crashes for me.", false],
+    ["I disagree", false],
+    ["I would not say won't fix", false],
+  ])("treats %j as a decline: %s", (reply, expected) => {
+    expect(declinesFinding(reply)).toBe(expected);
   });
 
   it("keeps reference-style links in model text from resolving", () => {
