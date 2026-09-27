@@ -71,6 +71,14 @@ describe("ocra memory", () => {
     expect(list.text()).toContain("abcdef01  src/a.ts  Unbounded retry");
   });
 
+  it("skips newer sessions that have no report", async () => {
+    const dir = repoWithSession();
+    mkdirSync(join(dir, ".ocra", "sessions", "20991231T000000Z-bbbbbb"), { recursive: true });
+    const out = capture();
+    await memoryCommand(["add", "abcdef", "--reason", "r"], out, dir);
+    expect(out.text()).toContain("Remembered abcdef01");
+  });
+
   it("asks for a unique id and a reason", async () => {
     const dir = repoWithSession();
     await expect(memoryCommand(["add", "abcd", "--reason", "r"], capture(), dir)).rejects.toThrow(

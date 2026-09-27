@@ -1,5 +1,5 @@
 import { type Bundle, bundleFiles, defaultBundlePolicy } from "../bundle/bundle.js";
-import type { ReviewContext, Usage } from "../contracts.js";
+import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
 import type { ChangeRequest, FileDiff, RiskTier } from "../domain.js";
 import { MEMORY_PATH, type MemoryEntry, parseMemory } from "../memory/memory.js";
 import { parseRepoRules, REPO_RULES_PATH, type RepoRule } from "../rules/repo-rules.js";
@@ -27,8 +27,14 @@ export interface ReviewPlan {
   warnings: string[];
 }
 
+// Planning needs no model except for grouping, which is skipped without a runtime.
+export type PlanOptions = Pick<
+  ReviewOptions,
+  "vcs" | "rules" | "readTrusted" | "selection" | "bundling" | "grouper"
+> & { runtime?: AgentRuntime };
+
 export async function planReview(
-  options: ReviewOptions,
+  options: PlanOptions,
   emit: (event: ReviewEvent) => void,
   signal: AbortSignal,
 ): Promise<ReviewPlan> {
@@ -54,7 +60,9 @@ export async function planReview(
     readTrusted(MEMORY_PATH),
   ]);
   const usage: Usage[] = [];
-  const grouper = options.grouper ?? runtimeGrouper(options.runtime, signal, (u) => usage.push(u));
+  const grouper =
+    options.grouper ??
+    (options.runtime ? runtimeGrouper(options.runtime, signal, (u) => usage.push(u)) : undefined);
   const bundled = await bundleFiles(selected, options.bundling ?? defaultBundlePolicy, grouper);
   emit({
     type: "files_bundled",

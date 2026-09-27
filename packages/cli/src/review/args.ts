@@ -18,6 +18,7 @@ export interface ReviewArgs {
   reviewers?: string[];
   maxCostUsd?: number;
   ultra?: true;
+  plan?: true;
 }
 
 export class UsageError extends Error {}
@@ -37,6 +38,7 @@ Options:
   --output <file>    Write the result to a file instead of stdout
   --reviewers <ids>  Run only these reviewers (comma-separated)
   --max-cost-usd <n> Stop starting review tasks once spend reaches this
+  --plan             Show files, bundles, review tasks and prompt sizes; call no model
   --ultra            Favor recall: all reviewers at every tier, two samples each (about 2x cost)
   --no-repo-config   Ignore .ocra/config.json and its plugins (for untrusted
                      code); models come from OCRA_MODEL_* variables
@@ -65,6 +67,10 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
   if (values.output !== undefined) args.output = values.output;
   if (values["no-repo-config"]) args.ignoreRepoConfig = true;
   if (values.ultra) args.ultra = true;
+  if (values.plan) {
+    if (values.publish) throw new UsageError("--plan cannot be combined with --publish");
+    args.plan = true;
+  }
   if (values["max-cost-usd"] !== undefined) {
     const max = Number(values["max-cost-usd"]);
     if (!(max > 0))
@@ -99,6 +105,7 @@ function parse(argv: string[]) {
       reviewers: { type: "string" },
       "max-cost-usd": { type: "string" },
       ultra: { type: "boolean" },
+      plan: { type: "boolean" },
       pr: { type: "string" },
       repo: { type: "string" },
       publish: { type: "boolean" },

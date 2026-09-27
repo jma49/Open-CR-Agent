@@ -5,6 +5,7 @@ import {
   newSessionId,
   type OcraPlugin,
   performanceReviewerPlugin,
+  previewReview,
   type ReviewerOverride,
   type ReviewerOverrides,
   type ReviewOptions,
@@ -19,6 +20,7 @@ import { githubPlugin } from "@open-cr-agent/vcs-github";
 import { findRepositoryRoot, localGitPlugin } from "@open-cr-agent/vcs-local";
 import type { ReviewArgs } from "./args.js";
 import { type CliConfig, ConfigError } from "./config.js";
+import { renderPlan } from "./plan-render.js";
 import { type Output, ProgressPrinter } from "./progress.js";
 import { renderJson, renderText } from "./render.js";
 import { localTarget, pullRequestTarget } from "./target.js";
@@ -70,12 +72,30 @@ export async function reviewCommand(
     warn,
   });
   const vcs = target.createVcs(registry);
-  const runtime = registry.createRuntime(config.runtime, { models: config.models, env: deps.env });
   const overrides = reviewerOverrides(
     config,
     args,
     registry.reviewers.map((r) => r.id),
   );
+
+  if (args.plan) {
+    const preview = await previewReview({
+      vcs,
+      reviewers: registry.reviewers,
+      reviewerOverrides: overrides,
+      rules: [...registry.rules, ...config.rules],
+      selection: { ...defaultSelectionPolicy, include: config.include, exclude: config.exclude },
+      ...(target.readTrusted ? { readTrusted: target.readTrusted } : {}),
+      ...(args.ultra ? { ultra: true } : {}),
+    });
+    const rendered =
+      args.format === "json" ? `${JSON.stringify(preview, null, 2)}\n` : renderPlan(preview);
+    if (args.output === undefined) io.out.write(rendered);
+    else await deps.writeFile(resolve(deps.cwd, args.output), rendered);
+    return EXIT.ok;
+  }
+
+  const runtime = registry.createRuntime(config.runtime, { models: config.models, env: deps.env });
 
   const progress = new ProgressPrinter(io.err, { heartbeatMs: deps.heartbeatMs, now: deps.now });
   const interrupt = new AbortController();

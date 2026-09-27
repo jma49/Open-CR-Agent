@@ -282,6 +282,35 @@ describe("ocra review", () => {
     expect(listening).toBe(false);
   });
 
+  it("previews the review with --plan without creating a runtime", async () => {
+    const cwd = repoWithChange();
+    writeFileSync(join(cwd, "yarn.lock"), "lock\n");
+    const refuseRuntime: OcraPlugin = {
+      name: "runtime-opencode",
+      configure(ctx) {
+        ctx.registerRuntime("opencode", () => {
+          throw new Error("--plan must not start a runtime");
+        });
+      },
+    };
+    const out = capture();
+    const code = await run(["review", "--plan"], out, capture(), {
+      ...deps(cwd, critical),
+      builtinPlugins: BUILTIN_PLUGINS.map((p) =>
+        p.name === refuseRuntime.name ? refuseRuntime : p,
+      ),
+    });
+    expect(code).toBe(0);
+    expect(out.text()).toContain("Plan: Working tree changes");
+    expect(out.text()).toContain("yarn.lock  (generated)");
+    expect(out.text()).toMatch(/correctness-1 +~[\d,]+ prompt tokens/);
+    expect(out.text()).toContain("No model was called.");
+
+    const json = capture();
+    await run(["review", "--plan", "--format", "json"], json, capture(), deps(cwd, critical));
+    expect(JSON.parse(json.text())).toMatchObject({ tier: "trivial", selected: ["app.ts"] });
+  });
+
   it("reports missing or invalid external plugins", async () => {
     const cwd = repoWithChange();
     mkdirSync(join(cwd, ".ocra"), { recursive: true });

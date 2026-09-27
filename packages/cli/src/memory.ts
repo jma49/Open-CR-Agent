@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -97,10 +98,11 @@ async function readMemory(root: string): Promise<MemoryEntry[]> {
 async function newestSession(root: string): Promise<string> {
   const dir = join(root, SESSIONS_DIR);
   const sessions = (await readdir(dir).catch(() => [])).filter((n) => !n.startsWith(".")).sort();
-  const newest = sessions.at(-1);
-  if (!newest)
-    throw new UsageError(`No review session found in ${SESSIONS_DIR}; run ocra review first`);
-  return join(dir, newest);
+  // Interrupted runs and --plan leave sessions without a report.
+  for (const name of sessions.reverse()) {
+    if (existsSync(join(dir, name, "report.json"))) return join(dir, name);
+  }
+  throw new UsageError(`No finished review in ${SESSIONS_DIR}; run ocra review first`);
 }
 
 async function findFinding(reportPath: string, id: string): Promise<Finding> {
