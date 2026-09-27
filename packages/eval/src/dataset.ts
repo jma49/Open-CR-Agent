@@ -8,8 +8,9 @@ export const DATASET_URL =
 const recordSchema = z.object({
   project_main_language: z.string(),
   pr_url: z.string().url(),
-  pr_source_commit: z.string().min(7),
-  pr_target_commit: z.string().min(7),
+  // Commit ids reach git as arguments; anything else could be read as an option.
+  pr_source_commit: z.string().regex(/^[0-9a-f]{7,64}$/),
+  pr_target_commit: z.string().regex(/^[0-9a-f]{7,64}$/),
   pr_change_line_count: z.coerce.number(),
   pr_category: z.string(),
   note: z.string(),

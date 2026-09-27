@@ -54,7 +54,7 @@ export async function prepareRepository(reposDir: string, instance: Instance): P
   }
   const checkout = await exec(
     "git",
-    ["checkout", "--quiet", "--force", "--detach", instance.headCommit],
+    ["checkout", "--quiet", "--force", "--detach", "--end-of-options", instance.headCommit],
     { cwd: dir, timeoutMs: HOUR, env: GIT_ENV },
   );
   if (checkout.exitCode !== 0)
@@ -68,7 +68,7 @@ export class UnavailableCommitError extends Error {}
 
 async function ensureCommit(dir: string, commit: string, prUrl: string): Promise<void> {
   if (await hasCommit(dir, commit)) return;
-  await exec("git", ["fetch", "--quiet", "origin", commit], {
+  await exec("git", ["fetch", "--quiet", "--end-of-options", "origin", commit], {
     cwd: dir,
     timeoutMs: HOUR,
     env: GIT_ENV,

@@ -44,6 +44,7 @@ export async function measureCeiling(
           "--find-renames",
           "--src-prefix=a/",
           "--dst-prefix=b/",
+          "--end-of-options",
           `${instance.baseCommit}...${instance.headCommit}`,
           "--",
         ],

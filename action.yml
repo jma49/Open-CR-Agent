@@ -22,14 +22,18 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/setup-node@v7
+    # Pinned by commit: a moved tag would run someone else's code with the
+    # model key in the environment.
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
       with:
         node-version: 22
 
     - name: Build ocra
       shell: bash
       run: |
-        npm ci --prefix "$GITHUB_ACTION_PATH" --no-audit --no-fund --loglevel=error
+        # No install scripts: they would run with the job's secrets in the
+        # environment. The OpenCode binary is resolved without one.
+        npm ci --prefix "$GITHUB_ACTION_PATH" --ignore-scripts --no-audit --no-fund --loglevel=error
         npm run build --prefix "$GITHUB_ACTION_PATH"
 
     # Inputs reach the script only through environment variables, never
@@ -46,7 +50,8 @@ runs:
           echo "::error::ocra review runs on pull_request events"
           exit 2
         fi
-        # shellcheck disable=SC2086
-        node "$GITHUB_ACTION_PATH/packages/cli/dist/main.js" review --pr "$OCRA_PR" --publish $OCRA_ARGS && code=0 || code=$?
+        # Split on whitespace without glob expansion against the checkout.
+        read -r -a extra <<< "$OCRA_ARGS"
+        node "$GITHUB_ACTION_PATH/packages/cli/dist/main.js" review --pr "$OCRA_PR" --publish "${extra[@]}" && code=0 || code=$?
         if [ "$code" -eq 1 ] && [ "$OCRA_FAIL_ON_CONCERNS" != "true" ]; then code=0; fi
         exit "$code"

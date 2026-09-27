@@ -78,6 +78,13 @@ describe("loadDataset", () => {
       loadDataset(join(dir, "d.json"), fetchImpl as unknown as typeof fetch),
     ).rejects.toThrow();
   });
+
+  it("refuses commit ids git could read as an option", () => {
+    expect(() =>
+      parseRecords([record({ pr_source_commit: "--upload-pack=touch /tmp/x" })]),
+    ).toThrow();
+    expect(() => parseRecords([record({ pr_target_commit: "abc1234" })])).not.toThrow();
+  });
 });
 
 describe("selectInstances", () => {
