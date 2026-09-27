@@ -10,7 +10,7 @@ The only thing a local build cannot show is the live site itself: https://ocra-n
 
 ## After a model key is available
 
-A free-tier Gemini key is available (2026-09-26); the maintainer will not enable billing. Its limits are short-window rate limits, which ocra now waits out (a first 3-PR smoke on `gemini-3.5-flash` failed only because it did not), so the rows below can be tried on the free tier, slowly: smoke first, then small runs.
+A free-tier Gemini key is available (2026-09-26); the maintainer will not enable billing. On the free tier `gemini-3.5-flash` allows about 20 requests a day: two 3-PR smoke runs could not finish one pull request. The rows below that need a model stronger than flash-lite wait for a paid key or another provider.
 
 Checked on the free tier with flash-lite (`ocra-eval run --ids lvgl__lvgl@4a57db3,keycloak__keycloak@805c204 --label mech-lite`, $0.07 at list price): grouping, Verify and Judge all run for real after #66; Verify marked a finding `confirmed`, the judge merged a duplicate, anchoring placed the finding on a hunk. One task hit the per-minute quota.
 

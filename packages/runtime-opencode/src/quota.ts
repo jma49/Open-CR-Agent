@@ -1,5 +1,7 @@
 export interface QuotaError {
-  // How long the provider asks to wait, when it says.
+  // How long the provider asks to wait, when it says. Gemini states a short
+  // wait even when a daily limit is spent, which is why waits are capped at
+  // QUOTA_RETRIES per model and run.
   retryAfterMs?: number;
   // A per-day limit: waiting inside one run cannot help.
   daily: boolean;
