@@ -6,7 +6,7 @@ description: The review pipeline, from diff to anchored findings.
 ocra combines two proven designs: domain-specialized reviewers with a coordinating judge, and deterministic engineering for every step that must not fail.
 
 ```text
-Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Verify → Judge → Report
+Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Filter → Verify → Judge → Report
 ```
 
 | Stage | What happens |
@@ -18,6 +18,7 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Ve
 | **Matrix** | Decide which reviewer runs on which bundle from the risk tier and each reviewer's scope (for example, no documentation for a code-only reviewer). Skipped pairs are listed in the report. |
 | **Execute** | Run each planned (bundle, reviewer) pair as an isolated agent task with read-only tools. |
 | **Anchor** | Resolve every finding's quoted code to exact lines. |
+| **Filter** | Drop findings the repository's memory accepts or a reviewer dismissed, and compare with the previous review of the same pull request, before any model call is spent on them. |
 | **Verify** | A standard-tier model fact-checks the findings of each file against its diff and the code around them. A finding is dropped only when that code proves it wrong; doubt keeps it, and so does a failed check. Dropped findings and the reason are listed in the report. |
 | **Judge** | One top-tier call sees every finding: it merges reports of the same root cause from different reviewers, drops speculation and nitpicks, recalibrates severity, and writes a short summary. Each change carries a reason in the report. |
 

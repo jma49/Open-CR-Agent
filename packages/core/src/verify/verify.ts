@@ -1,6 +1,7 @@
 import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
 import type { FileDiff, Finding, Verification } from "../domain.js";
 import { errorMessage } from "../errors.js";
+import type { SpendTracker } from "../pipeline/budget.js";
 import { parseJsonAnswer } from "../pipeline/helpers.js";
 import { mapWithConcurrency } from "../pipeline/pool.js";
 import { buildVerificationPrompt, fileExcerpt, verificationResponseSchema } from "./prompt.js";
@@ -29,6 +30,9 @@ export interface VerifyOptions {
   context: ReviewContext;
   signal: AbortSignal;
   concurrency: number;
+  // Files are not sent once the run's spend limit is used up; their findings
+  // stay, unchecked.
+  budget?: Pick<SpendTracker, "exhausted" | "add">;
 }
 
 // Precision without losing recall to doubt: a finding is dropped only when
@@ -49,14 +53,20 @@ export async function verifyFindings(
     result.kept = markUnchecked(findings);
     return result;
   }
-  result.checked = findings.length;
 
   const byFile = new Map<string, Finding[]>();
   for (const finding of findings) {
     byFile.set(finding.file, [...(byFile.get(finding.file) ?? []), finding]);
   }
 
+  let unaffordable = 0;
   await mapWithConcurrency([...byFile], options.concurrency, async ([file, group]) => {
+    if (options.budget?.exhausted()) {
+      unaffordable += group.length;
+      result.kept.push(...markUnchecked(group));
+      return;
+    }
+    result.checked += group.length;
     const refutedIndexes = new Map<number, string>();
     const outcomes = new Map<number, Verification>();
     try {
@@ -78,6 +88,7 @@ export async function verifyFindings(
         AbortSignal.any([options.signal, AbortSignal.timeout(VERIFY_TIMEOUT_MS)]),
       );
       result.usage.push(answer.usage);
+      options.budget?.add(answer.usage);
       const parsed = verificationResponseSchema.safeParse(parseJsonAnswer(answer.text));
       if (!parsed.success) throw new Error("the verifier returned an invalid response");
       for (const entry of parsed.data) {
@@ -106,6 +117,11 @@ export async function verifyFindings(
       }
     });
   });
+  if (unaffordable > 0) {
+    result.warnings.push(
+      `spend limit reached: ${unaffordable} finding(s) were not verified and cannot block`,
+    );
+  }
   return result;
 }
 

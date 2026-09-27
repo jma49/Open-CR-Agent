@@ -18,8 +18,8 @@ The two split work along different axes: Cloudflare by **review domain**, OCR by
 ## Pipeline
 
 ```
- Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Verify → Judge → Publish
- └─────────── deterministic ─────────────┘   └─ LLM ─┘  └ code ┘  └ LLM ┘  └ LLM ┘  └ code ┘
+ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Filter → Verify → Judge → Publish
+ └─────────── deterministic ─────────────┘   └─ LLM ─┘  └ code ┘  └ code ┘  └ LLM ┘  └ LLM ┘  └ code ┘
                          Session store: JSONL events · coverage manifest · finding fingerprints
 ```
 
@@ -32,9 +32,10 @@ The two split work along different axes: Cloudflare by **review domain**, OCR by
 | 5 | Matrix | code | Choose reviewers per bundle from tier, file kinds, paths and rules, and resolve the rule text for each (bundle, reviewer) cell. |
 | 6 | Execute | LLM agents | Run each cell as an isolated agent task via `AgentRuntime`: optional plan, up to two review rounds, read-only tools, findings submitted through the `report_finding` tool. |
 | 7 | Anchor | code + cheap LLM | Resolve each finding's `existingCode` snippet to exact lines by normalized matching in hunks, then full files; fall back to LLM re-location, then to a file-level comment. The LLM never supplies line numbers. |
-| 8 | Verify | LLM | Fact-check each finding against the diff. Only findings the diff proves wrong are dropped. |
-| 9 | Judge | top-tier LLM | Coordinator deduplicates across reviewers, recalibrates severity, filters speculation and nitpicks, and decides the verdict. |
-| 10 | Publish | code | Post one summary comment plus inline comments, apply the verdict, update threads from the previous review. |
+| 8 | Filter | code | Drop findings in the repository's memory and those a reviewer dismissed, and compare with the previous review (Re-review), before any money is spent checking them. |
+| 9 | Verify | LLM | Fact-check each finding against the diff. Only findings the diff proves wrong are dropped; the rest are marked confirmed, uncertain or unchecked. |
+| 10 | Judge | top-tier LLM | Coordinator deduplicates across reviewers, recalibrates severity, filters speculation and nitpicks, and decides the verdict. |
+| 11 | Publish | code | Post one summary comment plus inline comments, apply the verdict, update threads from the previous review. |
 
 ## Reviewers
 
@@ -137,6 +138,7 @@ The pipeline owns orchestration. `AgentRuntime` only executes one isolated agent
 - Per-task timeout, whole-run timeout, inactivity detection, and a periodic "model is thinking" heartbeat.
 - Circuit breaker per model family (healthy → open → half-open probe). Only retryable errors (429, 503) trigger failback, and only within the same family.
 - A failed task never fails the run; it is recorded in the coverage manifest.
+- A spend limit keeps a reserve: review tasks stop starting at 80% of it (`REVIEW_BUDGET_SHARE`), Verify and Judge use the rest, and findings left unchecked when it runs out cannot block.
 
 ## Packages
 

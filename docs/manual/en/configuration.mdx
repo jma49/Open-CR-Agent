@@ -62,7 +62,7 @@ For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Gro
 | `concurrency` | `4` | Review tasks running at once (1–32) |
 | `taskTimeoutMinutes` | `10` | Limit for one review task |
 | `runTimeoutMinutes` | `25` | Limit for the whole run |
-| `maxCostUsd` | none | Stop starting review tasks once the run has spent this much; verification and judging are skipped then |
+| `maxCostUsd` | none | Spend limit for the run: review tasks use up to 80% of it, verification and judging the rest (see `--max-cost-usd`) |
 | `judge` | `true` | Merge, filter and recalibrate findings across reviewers (one top-tier call per run with findings) |
 | `verify` | `true` | Fact-check findings before reporting them (one standard-tier call per file with findings) |
 

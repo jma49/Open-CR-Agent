@@ -6,7 +6,7 @@ description: 从 diff 到带行号的审查结果，整条审查流水线。
 ocra 结合了两种经过验证的设计：按领域分工的专项审查员加一个负责协调的裁决者，以及把所有不能出错的步骤交给确定性的工程代码。
 
 ```text
-Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Verify → Judge → Report
+Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Filter → Verify → Judge → Report
 ```
 
 | 阶段 | 做什么 |
@@ -18,6 +18,7 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Ve
 | **Matrix** | 根据风险档位和每个审查员的适用范围，决定哪个审查员审查哪个分组（例如只看代码的审查员不会收到文档）。被跳过的组合会写进报告。 |
 | **Execute** | 每个计划好的（分组，审查员）组合作为一个隔离的 agent 任务运行，只有只读工具。 |
 | **Anchor** | 把每条问题引用的代码解析成准确的行号。 |
+| **Filter** | 去掉仓库记忆里已接受的问题和审查者驳回的问题，并与同一 PR 的上一次评审对比；这一步在任何模型调用之前完成，不为这些问题花钱。 |
 | **Verify** | 由 standard 档位的模型，对照每个文件的 diff 和问题附近的代码逐条核查。只有当代码能证明某条问题是错的，它才会被丢弃；拿不准的保留，核查失败也保留。被丢弃的问题和原因会写进报告。 |
 | **Judge** | 一次 top 档位的调用看到所有问题：合并不同审查员对同一根因的报告，丢弃臆测和吹毛求疵，校准严重程度，并写一段简短总结。每一项调整都会在报告里附上原因。 |
 

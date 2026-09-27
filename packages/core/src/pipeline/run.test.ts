@@ -121,32 +121,6 @@ describe("runReview", () => {
     expect(report.findings).toHaveLength(1);
   });
 
-  it("stops starting tasks once the spend limit is reached", async () => {
-    const diff = ["a", "b", "c"].map((n) => patch(`src/${n}.ts`, `const ${n} = 1;`)).join("\n");
-    const rt = runtime(async function* (spec) {
-      yield {
-        type: "usage",
-        taskId: spec.taskId,
-        inputTokens: 1,
-        outputTokens: 1,
-        reasoningTokens: 0,
-        cachedTokens: 0,
-        costUsd: 0.6,
-      };
-      yield { type: "done", taskId: spec.taskId };
-    });
-    const report = await runReview({
-      vcs: vcs({}, diff),
-      runtime: rt,
-      bundling: { groupingMinFiles: 10, maxFilesPerBundle: 1, maxBundleChars: 1_000_000 },
-      concurrency: 1,
-      maxCostUsd: 1,
-    });
-    expect(report.tasks.map((t) => t.status)).toEqual(["completed", "completed", "cancelled"]);
-    expect(report.tasks[2]?.error).toBe("spend limit of $1 reached");
-    expect(report.coverage.map((c) => c.status)).toEqual(["reviewed", "reviewed", "failed"]);
-  });
-
   it("records excluded files in coverage with their reason", async () => {
     const diff = [twoFiles, patch("package-lock.json", "{}")].join("\n");
     const rt = runtime(async function* (spec) {

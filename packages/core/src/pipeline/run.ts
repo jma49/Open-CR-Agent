@@ -13,6 +13,7 @@ import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import type { RepoRule } from "../rules/repo-rules.js";
 import type { FileDecision, SelectionPolicy } from "../select/select.js";
 import { markUnchecked, verifyFindings } from "../verify/verify.js";
+import { spendTracker } from "./budget.js";
 import { type JobResult, runJob } from "./execute.js";
 import { dedupeFindings } from "./findings.js";
 import { type MatrixCell, planMatrix, type ReviewerOverrides } from "./matrix.js";
@@ -43,8 +44,9 @@ export interface ReviewOptions {
   verify?: boolean;
   // Merge, filter and recalibrate findings across reviewers on the top tier (default true).
   judge?: boolean;
-  // Stop starting review tasks once reported spend reaches this; tasks
-  // already running finish, so a run can end slightly above it.
+  // Review tasks stop starting at REVIEW_BUDGET_SHARE of this; Verify and
+  // Judge use the rest, and are skipped (findings left unchecked) once it is
+  // gone. Calls already running finish, so a run can end slightly above it.
   maxCostUsd?: number;
   // Recall over cost: every reviewer at every tier, two samples per cell, and
   // findings the judge would drop kept as low confidence.
@@ -88,37 +90,20 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     matrix.cells,
     options.concurrency ?? DEFAULTS.concurrency,
     async (cell) => {
-      if (budget.exhausted()) return budget.skip(cell, emit);
+      if (budget.reviewExhausted()) return skipForBudget(cell, options.maxCostUsd, emit);
       const result = await runJob(cell, plan, execute);
       budget.add(result.usage);
       return result;
     },
   );
 
+  // Memory and the previous review filter first, so Verify and Judge are not
+  // paid for findings that will not be reported, and a person's dismissal
+  // keeps a finding out of the verdict whatever the models say.
   const concurrency = options.concurrency ?? DEFAULTS.concurrency;
   const found = dedupeFindings(results.flatMap((r) => r.findings));
-  const verification =
-    options.verify === false || budget.exhausted()
-      ? { checked: 0, kept: markUnchecked(found), refuted: [], usage: [], warnings: [] }
-      : await verifyFindings(found, {
-          runtime: options.runtime,
-          diffs: plan.selected,
-          context: plan.context,
-          signal,
-          concurrency,
-        });
-  if (verification.checked > 0) {
-    emit({
-      type: "verification_finished",
-      checked: verification.checked,
-      refuted: verification.refuted,
-    });
-  }
-
-  // Compared with the previous review before judging, so findings a person
-  // dismissed neither reach the judge nor count towards the verdict.
   const fileCoverage = coverage(plan.decisions, results);
-  const remembered = applyMemory(verification.kept, plan.memory);
+  const remembered = applyMemory(found, plan.memory);
   const reported = new Set(found.map((f) => f.fingerprint));
   const priorReview = withoutRemembered(prior.review, plan.memory);
   const reconciled = reconcile({
@@ -129,15 +114,45 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     stillPresent: await priorCodePresence(priorReview, reported, plan.context.readFile),
   });
 
-  const judged = await judgeFindings(reconciled.findings, {
+  const verification =
+    options.verify === false
+      ? {
+          checked: 0,
+          kept: markUnchecked(reconciled.findings),
+          refuted: [],
+          usage: [],
+          warnings: [],
+        }
+      : await verifyFindings(reconciled.findings, {
+          runtime: options.runtime,
+          diffs: plan.selected,
+          context: plan.context,
+          signal,
+          concurrency,
+          budget,
+        });
+  if (verification.checked > 0) {
+    emit({
+      type: "verification_finished",
+      checked: verification.checked,
+      refuted: verification.refuted,
+    });
+  }
+
+  const judgeWanted = options.judge !== false && verification.kept.length > 0;
+  const judgeAffordable = !budget.exhausted();
+  const judged = await judgeFindings(verification.kept, {
     runtime: options.runtime,
     changeRequest: plan.changeRequest,
     tier: plan.tier,
     signal,
-    enabled: options.judge !== false && !budget.exhausted(),
+    enabled: judgeWanted && judgeAffordable,
     keepDropped: options.ultra === true,
     carried: stillOpen(reconciled),
   });
+  if (judgeWanted && !judgeAffordable) {
+    judged.warnings.push(`spend limit of $${options.maxCostUsd} reached: findings were not judged`);
+  }
   emit(
     judged.decisions
       ? { type: "judge_finished", verdict: judged.verdict, judgement: judged.decisions }
@@ -186,29 +201,23 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   return report;
 }
 
-function spendTracker(maxCostUsd: number | undefined, initial: readonly Usage[]) {
-  let spent = initial.reduce((sum, u) => sum + u.costUsd, 0);
-  const exhausted = () => maxCostUsd !== undefined && spent >= maxCostUsd;
-  return {
-    exhausted,
-    add(usage: Usage) {
-      spent += usage.costUsd;
-    },
-    skip(cell: MatrixCell, emit: (event: ReviewEvent) => void): JobResult {
-      const outcome: TaskOutcome = {
-        taskId: cell.taskId,
-        reviewer: cell.reviewer.id,
-        bundle: cell.bundle.label,
-        files: cell.bundle.files.map((f) => f.newPath),
-        status: "cancelled",
-        error: `spend limit of $${maxCostUsd} reached`,
-        findings: 0,
-        durationMs: 0,
-      };
-      emit({ type: "task_finished", outcome });
-      return { outcome, findings: [], usage: emptyUsage(), warnings: [] };
-    },
+function skipForBudget(
+  cell: MatrixCell,
+  maxCostUsd: number | undefined,
+  emit: (event: ReviewEvent) => void,
+): JobResult {
+  const outcome: TaskOutcome = {
+    taskId: cell.taskId,
+    reviewer: cell.reviewer.id,
+    bundle: cell.bundle.label,
+    files: cell.bundle.files.map((f) => f.newPath),
+    status: "cancelled",
+    error: `spend limit of $${maxCostUsd} reached`,
+    findings: 0,
+    durationMs: 0,
   };
+  emit({ type: "task_finished", outcome });
+  return { outcome, findings: [], usage: emptyUsage(), warnings: [] };
 }
 
 // An earlier finding the team has since accepted is no longer open.

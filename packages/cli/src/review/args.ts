@@ -37,7 +37,7 @@ Options:
   --format <format>  text (default) or json
   --output <file>    Write the result to a file instead of stdout
   --reviewers <ids>  Run only these reviewers (comma-separated)
-  --max-cost-usd <n> Stop starting review tasks once spend reaches this
+  --max-cost-usd <n> Spend limit: reviews use 80%, verification and judging the rest
   --plan             Show files, bundles, review tasks and prompt sizes; call no model
   --ultra            Favor recall: all reviewers at every tier, two samples each (about 2x cost)
   --no-repo-config   Ignore .ocra/config.json and its plugins (for untrusted

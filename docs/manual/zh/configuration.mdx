@@ -62,7 +62,7 @@ agent 运行时只会从你的环境里拿到它需要的东西：`PATH`、`HOME
 | `concurrency` | `4` | 同时运行的审查任务数（1–32） |
 | `taskTimeoutMinutes` | `10` | 单个审查任务的时间上限 |
 | `runTimeoutMinutes` | `25` | 整次运行的时间上限 |
-| `maxCostUsd` | 无 | 本次运行花费达到该值后不再启动新的审查任务，之后也跳过核查和裁决 |
+| `maxCostUsd` | 无 | 本次运行的花费上限：审查任务最多用到 80%，剩下的留给核查和裁决（见 `--max-cost-usd`） |
 | `judge` | `true` | 跨审查员合并、过滤并校准问题（每次有问题的运行调用一次 top 档位模型） |
 | `verify` | `true` | 报告前逐条核查问题（每个有问题的文件调用一次 standard 档位模型） |
 

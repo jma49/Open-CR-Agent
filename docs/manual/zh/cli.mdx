@@ -22,7 +22,7 @@ ocra review [options]
 | `--pr <number>` | 审查一个 GitHub PR，见 [GitHub Pull Request](./github) |
 | `--repo <owner/name>` | `--pr` 所在的仓库（默认取 `GITHUB_REPOSITORY` 或 `origin`） |
 | `--publish` | 配合 `--pr`：把评审发布到 PR |
-| `--max-cost-usd <n>` | 本次运行花费达到该值后不再启动新的审查任务（正在运行的任务会跑完） |
+| `--max-cost-usd <n>` | 本次运行的花费上限。花费达到上限的 80% 后不再启动新的审查任务（正在运行的任务会跑完），剩下的部分留给核查和裁决。如果这部分也用完，剩余的问题会标为*未核查*，不会拦下改动，报告里也会写明 |
 | `--plan` | 不调用任何模型（免费），显示会审查和排除的文件、分组、审查任务以及每个任务首轮提示词的大小。由于跳过了 light 模型分组，分组按文件显示 |
 | `--ultra` | 以成本换召回率，见[模式](./how-it-works#模式) |
 | `--reviewers <ids>` | 只运行这些审查员，用逗号分隔（例如 `security`） |
