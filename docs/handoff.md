@@ -12,7 +12,7 @@ State of the project as of 2026-09-27, for whoever picks it up next (human or ag
 | Vercel project | `ocra`; no automatic deploys, deploy by hand from the site repo (`npm run deploy`) |
 | Contributor rules | `AGENTS.md` in each repository (`CLAUDE.md` imports it) |
 | Architecture | `docs/architecture.md`, decisions in `docs/adr/0001`–`0010`, spike report `docs/spikes/0001-opencode-runtime.md` |
-| Audits | `docs/audits/` (latest: `2026-09-27-audit.md`) |
+| Audits | `docs/audits/` (latest: `2026-09-27-full-audit.md`) |
 | Pitfalls | `docs/pitfalls.md` |
 | Pending verification | `docs/pending-verification.md` (what still needs a deploy or a model key to check) |
 | Releasing | `docs/releasing.md` (npm: what is ready, decisions, steps) |
@@ -20,7 +20,7 @@ State of the project as of 2026-09-27, for whoever picks it up next (human or ag
 
 ## Status
 
-**M1–M4 are implemented; none of the model-dependent quality is measured yet.** ~443 tests pass (`npm run verify`).
+**M1–M4 are implemented; none of the model-dependent quality is measured yet.** ~446 tests pass (`npm run verify`).
 
 Pipeline today: ingest → select → triage → bundle → **matrix** (reviewer scopes, risk tiers, overrides; ADR-0007) → review (correctness, security, performance; OpenCode runtime, read-only MCP tools, 20-step cap, per-model circuit breaker) → anchor → memory (`.ocra/memory.json`) and re-review reconciliation → **verify** (drops only findings the code disproves, marks the rest confirmed/uncertain/unchecked) → **judge** (merge, drop, recalibrate on the top tier) → verdict by a fixed rubric (only verified critical findings block) → report. Pull requests: `ocra review --pr [--publish]` and `action.yml` (ADR-0008) with inline comments, one summary comment, thread resolution only when the anchored code is gone (ADR-0009), incremental re-review of what changed since the last reviewed head (ADR-0010, `--full` to override), and respect for human dismissals; trusted inputs come from the base commit. `fail-on-concerns` defaults to off: the verdict is advice, not a security gate. Also: `--ultra`, `--reviewers`, `--max-cost-usd`, `--no-repo-config`, `extends` (shared config over https), Ctrl-C handling, exit codes 0/1/2/3/130. The 2026-09-26 audit's P0/P1 findings (#32–#39) are fixed, and so is everything the 2026-09-27 audit found that does not change what models see (below); its prompt part waits for an eval (#126).
 
@@ -65,9 +65,9 @@ Kept on purpose (the audit asked): an invalid `.ocra/rules.json` or `memory.json
 
 Open work, in order:
 
-1. Free: done on 2026-09-27: the tier-rise re-review (#139), the versioned JSON output `version: 1` (#140), inactivity detection (#147), and a stray function in `BUILTIN_PLUGINS` (#141). Left: a default-mode plan phase for large bundles and a "break glass" verdict override (both planned in the architecture), a versioned `--plan` JSON.
+1. Free, from the [second 2026-09-27 audit](audits/2026-09-27-full-audit.md), in order: #153 (exit code and coverage: a blocking verdict hides an incomplete review in CI), #154 (override and dismissals from edited comments, write access, full-SHA override, requestChanges), #155 (markdown in containers, Verify path newline), #156 (untrusted local reviews take memory/rules/AGENTS.md from the code), #157 (publish head race, action signals), #159 (vacuous tests), then #158 and #160 (P2). Also merged on 2026-09-27: tier-rise re-review (#139), versioned JSON (#140, #152), inactivity detection (#147), the verdict override (#151); #148 (CI baseline: dependabot, npm audit, concurrency; opened from another session, reviewed in the audit, not model-facing) is open.
 2. Model-dependent (decided 2026-09-27: wait until a billable key or another provider is available; do not run quality evals on the free tier), in order: #66 is fixed (helper agent needs two steps on Gemini); next the #12 baseline with a model stronger than flash-lite, then the `[needs-eval]` PRs #126, #85, #86 and #103, then measuring the new reviewers, Verify, Judge, the budget reserve and `--ultra`, then #67 (the Action on a live pull request).
-3. Planned features: all built; the model-facing ones wait for an eval (#142–#146, above). Still planned: the default-mode plan phase and the "break glass" override.
+3. Planned features: all built. The model-facing ones wait for an eval (#142–#146, #150 stacked on #144); the audit posted findings on each open PR and the merge order (#126 first) is in the audit.
 4. Publishing to npm: ready and checked in CI; the maintainer decides scope and timing (`docs/releasing.md`).
 
 ## Environment notes
