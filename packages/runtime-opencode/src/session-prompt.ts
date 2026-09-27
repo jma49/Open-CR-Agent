@@ -59,14 +59,28 @@ export async function promptSession(
       },
       { signal: attempt },
     );
+    // The session ran even when the answer is an error, and it may have
+    // spent tokens and reported findings: keep them.
     if (response.error) {
       return {
-        ...emptyOutcome(),
+        ...(await harvest(session, sessionID, reportTool)),
         error: { message: JSON.stringify(response.error), retryable: false },
       };
     }
-    const messages = await session.messages({ sessionID }, { signal: attempt });
-    return summarizeSession((messages.data ?? []) as SessionMessage[], reportTool);
+    try {
+      const messages = await session.messages({ sessionID }, { signal: attempt });
+      return summarizeSession((messages.data ?? []) as SessionMessage[], reportTool);
+    } catch (error) {
+      // The session finished; running it again on the next model would pay
+      // twice. Keep what one more read gets, and do not retry.
+      return {
+        ...(await harvest(session, sessionID, reportTool)),
+        error: {
+          message: `could not read the finished session: ${errorMessage(error)}`,
+          retryable: false,
+        },
+      };
+    }
   } catch (error) {
     // Aborted or cut off by the transport: OpenCode may still be running the
     // session, spending tokens, so stop it and keep what it already did.

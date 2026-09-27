@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Instance } from "./dataset.js";
+import { exec } from "./exec.js";
 import { defaultOcraCommand, reviewInstance } from "./reviewer.js";
 
 const dirs: string[] = [];
@@ -36,5 +37,18 @@ describe("reviewInstance", () => {
     const argv = JSON.parse(readFileSync(join(dir, "argv.json"), "utf8")) as string[];
     expect(argv.slice(0, 1)).toEqual(["review"]);
     expect(argv).toContain("--no-repo-config");
+  });
+});
+
+describe("exec", () => {
+  it("kills a command that ignores the timeout's SIGTERM", async () => {
+    const started = Date.now();
+    const result = await exec(
+      process.execPath,
+      ["-e", "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"],
+      { timeoutMs: 100, killGraceMs: 200 },
+    );
+    expect(result.timedOut).toBe(true);
+    expect(Date.now() - started).toBeLessThan(5_000);
   });
 });

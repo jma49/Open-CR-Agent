@@ -122,4 +122,36 @@ describe("promptSession", () => {
     expect(outcome.error).toBeUndefined();
     expect(aborted).toEqual([]);
   });
+
+  it("keeps what a session spent when OpenCode answers with an error", async () => {
+    const api = {
+      create: async () => ({ data: { id: "s1" } }),
+      prompt: async () => ({ error: { name: "ProviderError" } }),
+      messages: async () => ({ data: spent }),
+      abort: async () => ({ data: true }),
+    } as never;
+    const outcome = await promptSession(api, input, REPORT_TOOL, new AbortController().signal);
+    expect(outcome.usage.costUsd).toBe(0.25);
+    expect(outcome.error?.retryable).toBe(false);
+  });
+
+  it("does not rerun a finished session whose messages could not be read", async () => {
+    let reads = 0;
+    const api = {
+      create: async () => ({ data: { id: "s1" } }),
+      prompt: async () => ({ data: {} }),
+      messages: async () => {
+        reads += 1;
+        if (reads === 1) throw new TypeError("socket hang up");
+        return { data: spent };
+      },
+      abort: async () => ({ data: true }),
+    } as never;
+    const outcome = await promptSession(api, input, REPORT_TOOL, new AbortController().signal);
+    expect(outcome.findings).toHaveLength(1);
+    expect(outcome.error).toEqual({
+      message: "could not read the finished session: socket hang up",
+      retryable: false,
+    });
+  });
 });

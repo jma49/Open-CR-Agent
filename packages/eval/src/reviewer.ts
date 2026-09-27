@@ -57,7 +57,8 @@ export async function reviewInstance(
   } catch {}
   const outcome: ReviewOutcome = { exitCode: result.exitCode, durationMs };
   if (report) outcome.report = report;
-  if (!report || result.exitCode === 2)
+  if (result.timedOut) outcome.error = `timed out after ${Math.round(options.timeoutMs / 1000)}s`;
+  else if (!report || result.exitCode === 2)
     outcome.error = lastLines(result.stderr) || `exit code ${result.exitCode}`;
   return outcome;
 }

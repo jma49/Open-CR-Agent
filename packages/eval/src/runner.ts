@@ -26,6 +26,8 @@ export interface InstanceResult {
   findings: OutputFinding[];
   usage: Usage;
   tasks: Pick<TaskOutcome, "taskId" | "status" | "error">[];
+  // The CLI's exit code; 3 means the review was incomplete.
+  exitCode?: number;
   error?: string;
 }
 
@@ -129,9 +131,13 @@ async function reviewOne(
   });
   const report = outcome.report;
   const completed = report?.tasks.some((t) => t.status === "completed") ?? false;
+  // Timed out or interrupted (130), the CLI still writes a partial report;
+  // it is a failure to retry, not a review to score.
+  const finished = outcome.exitCode === 0 || outcome.exitCode === 1 || outcome.exitCode === 3;
   const result: InstanceResult = {
     id: instance.id,
-    status: completed ? "reviewed" : "failed",
+    status: completed && finished ? "reviewed" : "failed",
+    exitCode: outcome.exitCode,
     durationMs: outcome.durationMs,
     findings: report?.findings ?? [],
     usage: report?.usage ?? NO_USAGE,

@@ -36,11 +36,13 @@ if (args[args.indexOf("--from") + 1] === "quota") {
     usage: { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 } }));
   process.exit(2);
 }
-const finding = { id: "1", fingerprint: "f", reviewer: "correctness", category: "correctness", severity: "warning",
-  file: "src/a.ts", existingCode: "x", title: "Null dereference", body: "user may be missing", evidence: [],
-  lineRange: { start: 10, end: 10 }, anchor: { method: "hunk", inDiff: true }, status: "new" };
-writeFileSync(out, JSON.stringify({ findings: [finding], tasks: [{ taskId: "correctness-1", status: "completed" }],
+const finding = { fingerprint: "f", reviewer: "correctness", category: "correctness", severity: "warning",
+  verification: "unchecked", file: "src/a.ts", code: "x", title: "Null dereference", body: "user may be missing",
+  evidence: [], lines: { start: 10, end: 10 }, inDiff: true, status: "new" };
+writeFileSync(out, JSON.stringify({ version: 1, findings: [finding], tasks: [{ taskId: "correctness-1", status: "completed" }],
   usage: { inputTokens: 100, outputTokens: 10, reasoningTokens: 0, cachedTokens: 0, costUsd: 0.5 } }));
+// Interrupted after one task finished: a partial report and exit 130.
+if (args[args.indexOf("--from") + 1] === "interrupted") process.exit(130);
 `,
   );
   chmodSync(script, 0o755);
@@ -81,6 +83,19 @@ function instance(id: string, baseCommit = "base"): Instance {
 }
 
 describe("runInstances", () => {
+  it("counts an interrupted or timed-out review as failed, not reviewed", async () => {
+    const dir = temp();
+    const [result] = await runInstances([instance("x@1", "interrupted")], {
+      runDir: join(dir, "run"),
+      reposDir: dir,
+      command: [process.execPath, fakeOcra(dir)],
+      timeoutMs: 30_000,
+      prepare: async () => dir,
+      log: () => {},
+    });
+    expect(result).toMatchObject({ status: "failed", exitCode: 130 });
+  });
+
   it("stops starting PRs once one fails on spent quota, and resumes them later", async () => {
     const dir = temp();
     const logs: string[] = [];

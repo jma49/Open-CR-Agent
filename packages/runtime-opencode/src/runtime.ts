@@ -218,12 +218,14 @@ export class OpenCodeRuntime implements AgentRuntime {
       [...reviewTools, ...this.options.tools],
       () => this.context,
     );
+    let started: OpencodeServer | undefined;
     try {
       const server = await startOpencodeServer({
         binary: this.options.binary ?? resolveOpencodeBinary(this.options.env),
         env: serverEnv(this.options.env, dirs, providersOf(this.options.models)),
         config: openCodeConfig(tools, this.helperTools),
       });
+      started = server;
       const dispatcher = createUntimedDispatcher();
       const client = createOpencodeClient({
         baseUrl: server.url,
@@ -240,7 +242,7 @@ export class OpenCodeRuntime implements AgentRuntime {
       process.on("exit", onExit);
       return { root, tools, server, client, dispatcher, onExit };
     } catch (error) {
-      await tools.close();
+      await Promise.allSettled([tools.close(), started?.close()]);
       await rm(root, { recursive: true, force: true });
       throw error;
     }
