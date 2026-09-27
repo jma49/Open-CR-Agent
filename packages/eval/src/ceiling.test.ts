@@ -69,9 +69,11 @@ describe("classifyReferences", () => {
       ["outside_diff", undefined],
       ["reachable", undefined],
     ]);
-    const summary = summarizeCeiling(reaches, 1);
+    const summary = summarizeCeiling(reaches, ["lite"]);
     expect(summary.byReach.reachable).toBe(1);
+    expect(summary.byTier).toEqual({ trivial: 0, lite: 1, full: 0 });
     expect(summary.excludedBy).toEqual({ generated: 1 });
+    expect(renderCeiling(summary)).toContain("Risk tiers: trivial 0, lite 1, full 0.");
     expect(renderCeiling(summary)).toContain(
       "Upper bound on recall: **14.3%** reachable, **28.6%**",
     );

@@ -56,6 +56,7 @@ describe("measureCeiling", () => {
     });
     expect(logs).toEqual(["[1/1] local@1: 2 issue(s) classified"]);
     expect(markdown).toContain("| Reachable | 1 | 50.0% |");
+    expect(markdown).toContain("Risk tiers: trivial 1, lite 0, full 0.");
     expect(markdown).toContain("Excluded files by reason: generated 1");
   });
 });

@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { parseUnifiedDiff, type ReviewPreview } from "@open-cr-agent/core";
+import { parseUnifiedDiff, type ReviewPreview, type RiskTier } from "@open-cr-agent/core";
 import {
   classifyReferences,
   type ReferenceReach,
@@ -26,7 +26,7 @@ export async function measureCeiling(
   options: CeilingOptions,
 ): Promise<string> {
   const reaches: ReferenceReach[] = [];
-  let measured = 0;
+  const tiers: RiskTier[] = [];
   for (const [n, instance] of instances.entries()) {
     const label = `[${n + 1}/${instances.length}] ${instance.id}`;
     try {
@@ -51,7 +51,7 @@ export async function measureCeiling(
       );
       if (diff.exitCode !== 0) throw new Error(`git diff failed: ${diff.stderr.trim()}`);
       reaches.push(...classifyReferences(instance, preview, parseUnifiedDiff(diff.stdout)));
-      measured += 1;
+      tiers.push(preview.tier);
       options.log(`${label}: ${instance.references.length} issue(s) classified`);
     } catch (error) {
       const kind = error instanceof UnavailableCommitError ? "unavailable" : "failed";
@@ -59,7 +59,7 @@ export async function measureCeiling(
     }
   }
 
-  const summary = summarizeCeiling(reaches, measured);
+  const summary = summarizeCeiling(reaches, tiers);
   const markdown = renderCeiling(summary);
   await mkdir(options.outDir, { recursive: true });
   await writeFile(

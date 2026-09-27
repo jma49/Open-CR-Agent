@@ -1,4 +1,4 @@
-import type { FileDiff, ReviewPreview } from "@open-cr-agent/core";
+import { type FileDiff, type ReviewPreview, RISK_TIERS, type RiskTier } from "@open-cr-agent/core";
 import type { Instance, ReferenceComment } from "./dataset.js";
 
 // Why an annotated issue can or cannot be found, decided by the deterministic
@@ -92,6 +92,8 @@ function withinHunks(ref: ReferenceComment, diff: FileDiff | undefined): boolean
 
 export interface CeilingSummary {
   instances: number;
+  // The tier decides which reviewers run, so it is the cost side of the ceiling.
+  byTier: Record<RiskTier, number>;
   references: number;
   byReach: Record<Reachability, number>;
   excludedBy: Record<string, number>;
@@ -100,8 +102,10 @@ export interface CeilingSummary {
 
 export function summarizeCeiling(
   reaches: readonly ReferenceReach[],
-  instances: number,
+  tiers: readonly RiskTier[],
 ): CeilingSummary {
+  const byTier = Object.fromEntries(RISK_TIERS.map((t) => [t, 0])) as Record<RiskTier, number>;
+  for (const t of tiers) byTier[t] += 1;
   const byReach = Object.fromEntries(REACHABILITY_ORDER.map((r) => [r, 0])) as Record<
     Reachability,
     number
@@ -117,7 +121,14 @@ export function summarizeCeiling(
     c.total += 1;
     if (r.reach === "reachable") c.reachable += 1;
   }
-  return { instances, references: reaches.length, byReach, excludedBy, byCategory };
+  return {
+    instances: tiers.length,
+    byTier,
+    references: reaches.length,
+    byReach,
+    excludedBy,
+    byCategory,
+  };
 }
 
 const LABEL: Record<Reachability, string> = {
@@ -137,6 +148,8 @@ export function renderCeiling(summary: CeilingSummary): string {
     "# AACR-Bench recall ceiling",
     "",
     `${summary.references} annotated issues in ${summary.instances} PR(s), classified by ocra's deterministic stages only (no model calls). "Reachable" is an upper bound on recall; issues outside the changed lines can still be found through file context, so the practical bound is between the two.`,
+    "",
+    `Risk tiers: ${RISK_TIERS.map((t) => `${t} ${summary.byTier[t]}`).join(", ")}.`,
     "",
     "| Reachability | Issues | Share |",
     "|---|---|---|",
