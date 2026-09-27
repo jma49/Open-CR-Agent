@@ -79,6 +79,7 @@ Open work, in order:
 - **Models for evaluation:** `gemini-flash-lite-latest` is too weak to evaluate prompts (see #12); use a Flash or Pro class model.
 - **Model chain:** `gemini-3.8-flash` was removed from the dogfood `.ocra/config.json` and the README example: it fails inside OpenCode's step loop (400 "Requests ending with a model turn") and cost ~$0.02 and ~20 s per run before failing over.
 - **Secrets:** `SITE_DEPLOY_HOOK` (main repo) is no longer used since `site-deploy.yml` was removed; the maintainer may delete it. No other secrets are configured. Never print or commit secret values.
+- **CI:** `main` requires a PR with the `verify` and `packages` checks green; do not rename those jobs. `verify` also runs `npm audit --omit=dev --audit-level=high`. Dependabot opens weekly grouped (minor+patch) PRs for npm and GitHub Actions; actions stay pinned to a commit SHA with a `# vX.Y.Z` comment.
 - **Vercel build limit:** the Hobby plan rate-limits builds. Every manual change on `main` triggers a site build, and on 2026-09-26 ~15 such merges exhausted it ("retry in 24 hours"); the site's latest copy deploys on the next build.
 
 ## Traps and rules
