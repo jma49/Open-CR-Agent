@@ -2,6 +2,8 @@ import { type AnchorContext, anchorFinding } from "../anchor/anchor.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
 import type { Finding } from "../domain.js";
 import { memoryFor } from "../memory/memory.js";
+import { findCallers } from "../review/impact.js";
+import { planReview as planBundle } from "../review/plan-phase.js";
 import { buildReviewPrompt } from "../review/prompt.js";
 import { resolveRules } from "../rules/resolve.js";
 import { toFinding } from "./findings.js";
@@ -9,6 +11,7 @@ import type { MatrixCell } from "./matrix.js";
 import type { ReviewPlan } from "./plan.js";
 import type { ReviewEvent, TaskOutcome } from "./report.js";
 import { executeTask } from "./task.js";
+import { addUsage } from "./usage.js";
 
 export interface JobResult {
   outcome: TaskOutcome;
@@ -19,6 +22,8 @@ export interface JobResult {
 
 export interface ExecuteOptions {
   runtime: AgentRuntime;
+  // --ultra: a plan phase and the callers of changed symbols for every task.
+  ultra?: boolean;
   taskTimeoutMs: number;
   abortGraceMs?: number | undefined;
   relocate?: AnchorContext["relocate"] | undefined;
@@ -34,7 +39,7 @@ export async function runJob(
 ): Promise<JobResult> {
   const { emit } = options;
   const files = job.bundle.files.map((f) => f.newPath);
-  const prompt = buildReviewPrompt({
+  const input = {
     reviewer: job.reviewer,
     changeRequest: plan.changeRequest,
     changedFiles: plan.selected,
@@ -42,7 +47,17 @@ export async function runJob(
     rules: resolveRules(files, plan.repoRules, job.reviewer.rules),
     guidelines: plan.guidelines,
     accepted: memoryFor(files, plan.memory),
-  });
+  };
+  const extraUsage: Usage[] = [];
+  const extraWarnings: string[] = [];
+  let prompt = buildReviewPrompt(input);
+  if (options.ultra) {
+    const callers = await findCallers(job.bundle.files, plan.context);
+    const planned = await planBundle(options.runtime, job.reviewer, prompt, options.signal);
+    extraUsage.push(...planned.usage);
+    if (planned.warning) extraWarnings.push(planned.warning);
+    prompt = buildReviewPrompt({ ...input, callers, plan: planned.plan });
+  }
 
   emit({
     type: "task_started",
@@ -71,7 +86,7 @@ export async function runJob(
     },
   );
 
-  const warnings = [...result.warnings];
+  const warnings = [...extraWarnings, ...result.warnings];
   const findings: Finding[] = [];
   const anchorContext: AnchorContext = {
     diffs: plan.selected,
@@ -112,5 +127,5 @@ export async function runJob(
   };
   if (result.error !== undefined) outcome.error = result.error;
   emit({ type: "task_finished", outcome });
-  return { outcome, findings, usage: result.usage, warnings };
+  return { outcome, findings, usage: extraUsage.reduce(addUsage, result.usage), warnings };
 }

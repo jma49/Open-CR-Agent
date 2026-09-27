@@ -18,4 +18,4 @@ The default mode optimizes precision: risk-tiered reviewer selection, strict Jud
 
 ## Implementation notes (2026-09-27)
 
-`--ultra` today runs every reviewer at every tier, samples twice and relaxes the judge. Its plan phase and the search for callers of changed symbols are planned, not implemented (see `docs/architecture.md`).
+`--ultra` runs every reviewer at every tier, samples twice, relaxes the judge, and gives every task a plan phase and the callers of the symbols its bundle changes.

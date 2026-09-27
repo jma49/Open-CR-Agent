@@ -29,6 +29,8 @@ export const SECTIONS = [
   "finding",
   "diff",
   "file_excerpt",
+  "callers",
+  "review_plan",
 ] as const;
 export type SectionName = (typeof SECTIONS)[number];
 

@@ -109,6 +109,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     taskTimeoutMs: options.taskTimeoutMs ?? DEFAULTS.taskTimeoutMs,
     abortGraceMs: options.abortGraceMs,
     relocate: options.relocate,
+    ultra: options.ultra === true,
     emit,
     signal,
   };
