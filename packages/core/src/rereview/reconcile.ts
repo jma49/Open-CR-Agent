@@ -65,7 +65,11 @@ export function reconcile(input: ReconcileInput): Reconciled {
       result.dismissed.push(old);
       continue;
     }
-    result.findings.push({ ...finding, status: old ? "unfixed" : "new" });
+    result.findings.push({
+      ...finding,
+      status: old ? "unfixed" : "new",
+      ...replyFields(prior.replies?.[finding.fingerprint]),
+    });
   }
   return result;
 }
@@ -74,4 +78,8 @@ export function reconcile(input: ReconcileInput): Reconciled {
 // the verdict, so the same code reviewed twice cannot flip it by chance.
 export function stillOpen(reconciled: Reconciled): PriorFinding[] {
   return [...reconciled.notReproduced, ...reconciled.notRechecked, ...reconciled.unchanged];
+}
+
+function replyFields(replies: readonly string[] | undefined): { replies?: string[] } {
+  return replies && replies.length > 0 ? { replies: [...replies] } : {};
 }

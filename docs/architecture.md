@@ -88,7 +88,7 @@ Findings carry fingerprints, so a re-review can compare against the previous run
 - Fixed → only when the anchored code is gone from the file at head (hash of its normalized lines) or the file was deleted; listed and its thread resolved.
 - Not reported again but the code is unchanged → `notReproduced`; its file not reviewed this time → `notRechecked`. Both stay open, keep their severity in the verdict and their thread.
 - Resolved by a reviewer, or declined with `/ocra dismiss` or a reply opening with "won't fix", "by design", "false positive" and the like, by someone with write access other than the author, in a comment nobody else edited → dismissed, quiet unless it comes back more severe.
-- "I disagree" → reassessed by Judge **(planned)**; today the finding simply keeps being reported.
+- Any other reply (for example "I disagree") from someone with write access other than the author, in a comment no one else edited, is shown to the Judge whenever that finding is reported again, even after an earlier run dropped it, so the outcome does not flip between runs. The judge may drop the finding when a reply gives a specific reason, never a confirmed critical one.
 - Incremental (ADR-0010): the state records the head it reviewed and the files it did not finish. When that head is an ancestor of the new one and ocra was the last to edit its summary, only files changed since then plus the unfinished ones are reviewed; other files are `unchanged` and their findings carry over. Otherwise, or with `--full`, everything is reviewed and the report says why.
 
 `reconcile` is pure; the pipeline reads the earlier findings' files beforehand and passes whether each one's code is still present.

@@ -52,6 +52,8 @@ export const DEFAULT_BOT_LOGIN = "github-actions[bot]";
 
 const OVERRIDE = /^\/ocra override ([0-9a-fA-F]{40}(?:[0-9a-fA-F]{24})?)\s+(\S.*)$/m;
 const MAX_OVERRIDE_REASON = 300;
+const MAX_REPLIES = 3;
+const MAX_REPLY_CHARS = 1_000;
 
 const DECLINE =
   /^(won['’]?t fix|wontfix|will not fix|by design|false positive|not a bug|working as intended|intended behaviou?r)(?=$|[\s.,;:!—–-])/i;
@@ -160,13 +162,14 @@ export class GitHubAdapter implements VcsAdapter {
     if ("untrusted" in prior) return { findings: [], fullReviewReason: prior.untrusted };
     const { state } = prior;
     if (!state) return undefined;
-    const dismissed = await this.dismissedByPeople(state.findings);
+    const { dismissed, replies } = await this.repliesByPeople(state.findings);
     return {
       findings: state.findings.map((f) =>
         dismissed.has(f.fingerprint) ? { ...f, dismissed: true } : f,
       ),
       ...(await this.changesSince(state)),
       ...(state.tier ? { tier: state.tier } : {}),
+      ...(Object.keys(replies).length > 0 ? { replies } : {}),
     };
   }
 
@@ -211,43 +214,45 @@ export class GitHubAdapter implements VcsAdapter {
 
   // A thread of ocra's that a reviewer resolved, or answered with a clear
   // "won't fix", dismisses its finding. A reviewer is someone with write
-  // access other than the pull request's author: otherwise the author could
-  // resolve a critical finding away and pass the check, and on a public
-  // repository anyone could reply "won't fix". Thread data is best effort:
-  // without it, findings are simply not dismissed.
-  private async dismissedByPeople(findings: readonly PriorFinding[]): Promise<Set<string>> {
+  // access other than the pull request's author, in a comment nobody else
+  // edited: otherwise the author could resolve or argue a finding away. Any
+  // other reply from a reviewer dismisses nothing, but the judge weighs it
+  // when the finding comes back (and cannot drop a confirmed critical for
+  // it). Replies are collected for every thread of ocra's, not only tracked
+  // findings, so a finding a reply argued away does not return without it.
+  // Thread data is best effort: without it nothing is dismissed or replied.
+  private async repliesByPeople(
+    findings: readonly PriorFinding[],
+  ): Promise<{ dismissed: Set<string>; replies: Record<string, string[]> }> {
     const commented = new Set(findings.filter((f) => f.commented).map((f) => f.fingerprint));
-    if (commented.size === 0) return new Set();
     const author = (await this.pr()).user?.login;
-    const reviewer = (login: string | undefined) =>
-      login !== undefined && login !== author && !this.isBot(login);
+    const reviewer = async (login: string | undefined) =>
+      login !== undefined && login !== author && !this.isBot(login) && (await this.canWrite(login));
     const threads = await this.threads().catch(() => []);
     const dismissed = new Set<string>();
+    const replies: Record<string, string[]> = {};
     for (const thread of threads) {
-      const [first, ...replies] = thread.comments;
+      const [first, ...rest] = thread.comments;
       const fingerprint = first && FINDING_MARKER.exec(first.body)?.[1];
-      if (!first || !fingerprint || !commented.has(fingerprint) || !this.isBot(first.author))
-        continue;
-      const resolvedByReviewer =
-        thread.isResolved &&
-        reviewer(thread.resolvedBy) &&
-        (await this.canWrite(thread.resolvedBy as string));
+      if (!first || !fingerprint || !this.isBot(first.author)) continue;
+      const said: string[] = [];
       let declined = false;
-      for (const r of replies) {
+      for (const r of rest) {
         const own = r.editor === undefined || r.editor === r.author;
-        if (
-          reviewer(r.author) &&
-          own &&
-          declinesFinding(r.body) &&
-          (await this.canWrite(r.author))
-        ) {
-          declined = true;
-          break;
+        if (!own || !(await reviewer(r.author))) continue;
+        if (declinesFinding(r.body)) declined = true;
+        else if (r.body.trim() !== "") said.push(r.body.trim().slice(0, MAX_REPLY_CHARS));
+      }
+      if (commented.has(fingerprint)) {
+        const resolved = thread.isResolved && (await reviewer(thread.resolvedBy));
+        if (resolved || declined) {
+          dismissed.add(fingerprint);
+          continue;
         }
       }
-      if (resolvedByReviewer || declined) dismissed.add(fingerprint);
+      if (said.length > 0) replies[fingerprint] = said.slice(-MAX_REPLIES);
     }
-    return dismissed;
+    return { dismissed, replies };
   }
 
   async publish(report: ReviewReport): Promise<{ warnings: string[] }> {

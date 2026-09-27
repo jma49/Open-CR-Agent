@@ -65,6 +65,17 @@ describe("reconcile", () => {
     ]);
   });
 
+  it("carries people's replies onto a finding, even one no longer tracked", () => {
+    const result = run([finding("same"), finding("dropped-before")], {
+      findings: [prior("same")],
+      replies: { same: ["Handled by the gateway."], "dropped-before": ["Validated upstream."] },
+    });
+    expect(result.findings.map((f) => f.replies)).toEqual([
+      ["Handled by the gateway."],
+      ["Validated upstream."],
+    ]);
+  });
+
   it("judges a finding fixed only when its code or its file is gone", () => {
     const result = run(
       [],

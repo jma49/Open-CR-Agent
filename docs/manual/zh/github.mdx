@@ -64,7 +64,7 @@ jobs:
 - 如果这次没有任何审查员再报这个问题，而它指向的代码没有变，就列为**本次未复现**。模型每次运行的结果会有波动，所以这类问题保持打开：不关闭评论串，不重复评论，并按原来的严重程度继续计入结论，直到代码被修改或有审查者驳回它。同样的代码跑两次，结论不会变。
 - 所在文件这次没有被审查的问题（比如任务失败）列为**未重新检查**，同样保持打开。
 
-由审查者来做主。如果对仓库有写权限（admin、maintain 或 write 权限）且不是 PR 作者的人 resolve 了 ocra 的评论串，或者回复 `/ocra dismiss`，或者回复以明确的拒绝开头（"won't fix"、"will not fix"、"by design"、"false positive"、"not a bug"、"working as intended"、"intended behavior"）且不是问句，这条问题就算被驳回：之后不再报告，也不再影响结论，除非后续运行发现它的严重程度升高。同样的词出现在回复的其他位置（例如 "this is not intended, good catch"、"is this by design?"）不算驳回，回复 "I disagree" 也不算；PR 作者也无法驳回自己 PR 上的问题；被他人编辑过的回复不算数（有写权限的人可以编辑任何评论），因此不能靠 resolve 评论串绕过检查。只有带行内评论串的问题能这样驳回，其他问题请用 [`ocra memory`](./cli)。
+由审查者来做主。如果对仓库有写权限（admin、maintain 或 write 权限）且不是 PR 作者的人 resolve 了 ocra 的评论串，或者回复 `/ocra dismiss`，或者回复以明确的拒绝开头（"won't fix"、"will not fix"、"by design"、"false positive"、"not a bug"、"working as intended"、"intended behavior"）且不是问句，这条问题就算被驳回：之后不再报告，也不再影响结论，除非后续运行发现它的严重程度升高。同样的词出现在回复的其他位置（例如 "this is not intended, good catch"、"is this by design?"）不算驳回，回复 "I disagree" 也不算。这类回复如果来自有资格驳回的人，会在这条问题每次再被报告时交给 Judge；回复给出了具体理由说明问题不成立时，Judge 可以丢弃它，但已确认的 critical 不行。PR 作者自己的回复不会交给 Judge。PR 作者也无法驳回自己 PR 上的问题；被他人编辑过的回复不算数（有写权限的人可以编辑任何评论），因此不能靠 resolve 评论串绕过检查。只有带行内评论串的问题能这样驳回，其他问题请用 [`ocra memory`](./cli)。
 
 ## 强制放行阻塞的结论
 

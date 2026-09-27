@@ -289,6 +289,20 @@ describe("dismissals from replies", () => {
       false,
     );
   });
+
+  it("passes on other replies only from reviewers, unedited", async () => {
+    const replies = async (reply: Record<string, unknown>) => {
+      const { fetchImpl } = fakeGitHub([summaryComment(summary(A).body)], 200, [thread(A, reply)]);
+      return (await adapter(fetchImpl).getPriorReview())?.replies;
+    };
+    const body = "The gateway validates this.";
+    expect(await replies({ body, author: { login: "maintainer" } })).toEqual({ [A]: [body] });
+    expect(await replies({ body, author: { login: "author" } })).toBeUndefined();
+    expect(await replies({ body, author: { login: "member-without-access" } })).toBeUndefined();
+    expect(
+      await replies({ body, author: { login: "maintainer" }, editor: { login: "author" } }),
+    ).toBeUndefined();
+  });
 });
 
 describe("publishing the reviewed commit", () => {

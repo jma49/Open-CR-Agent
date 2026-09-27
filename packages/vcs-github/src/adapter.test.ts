@@ -291,6 +291,12 @@ describe("GitHubAdapter", () => {
       declined,
       resolved,
     ]);
+    // Other replies reach the judge only from reviewers, never from the
+    // author, outsiders or forged threads.
+    expect(prior?.replies).toEqual({
+      [disagreed]: ["I disagree, this can happen."],
+      [agreed]: ["This is not intended, good catch"],
+    });
   });
 
   it("keeps author-controlled paths and model links from becoming markup", () => {

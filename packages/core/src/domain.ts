@@ -53,6 +53,8 @@ export interface Finding extends ReportedFinding {
   quote?: QuoteSignature;
   // Set by Verify; absent before it runs, which counts as "unchecked".
   verification?: Verification;
+  // Carried from the earlier review when people replied to this finding.
+  replies?: string[];
 }
 
 export type FileChangeKind = "added" | "modified" | "deleted" | "renamed";
@@ -128,4 +130,8 @@ export interface PriorReview {
   // The risk tier the earlier review ran at. A higher tier now brings in
   // reviewers the unchanged files never had, so they are reviewed again.
   tier?: RiskTier;
+  // Replies to ocra's earlier inline comments by fingerprint, including
+  // comments on findings no longer tracked (dropped earlier), so a finding a
+  // reply argued away does not come back without its reply.
+  replies?: Readonly<Record<string, readonly string[]>>;
 }
