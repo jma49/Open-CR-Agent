@@ -111,6 +111,7 @@ export class GitHubAdapter implements VcsAdapter {
         dismissed.has(f.fingerprint) ? { ...f, dismissed: true } : f,
       ),
       ...(await this.changesSince(state)),
+      ...(state.tier ? { tier: state.tier } : {}),
     };
   }
 
@@ -245,6 +246,7 @@ export class GitHubAdapter implements VcsAdapter {
         findings: state,
         head: report.changeRequest.headSha,
         pending,
+        tier: report.tier,
         ...(untracked.length > 0 ? { posted: untracked } : {}),
       },
     });

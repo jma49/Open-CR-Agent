@@ -1,5 +1,5 @@
 import type { PriorFinding } from "@open-cr-agent/core";
-import { severitySchema, verificationSchema } from "@open-cr-agent/core";
+import { RISK_TIERS, type RiskTier, severitySchema, verificationSchema } from "@open-cr-agent/core";
 import { z } from "zod";
 
 export const SUMMARY_MARKER = "<!-- ocra:review -->";
@@ -26,6 +26,8 @@ export interface ReviewState {
   // (refuted, dropped by the judge, low confidence), so a finding that comes
   // back later is not commented twice.
   posted?: string[];
+  // The risk tier this review ran at.
+  tier?: RiskTier;
 }
 
 const stateSchema = z.object({
@@ -53,6 +55,7 @@ const stateSchema = z.object({
     .array(z.string().regex(/^[0-9a-f]{16}$/))
     .max(MAX_POSTED)
     .optional(),
+  tier: z.enum(RISK_TIERS as [RiskTier, ...RiskTier[]]).optional(),
 });
 
 // The state lives in a comment anyone with write access can edit, so it is
@@ -67,7 +70,7 @@ export function readState(body: string): ReviewState | undefined {
       JSON.parse(Buffer.from(encoded, "base64").toString("utf8")),
     );
     if (!parsed.success) return undefined;
-    const { head, pending, posted } = parsed.data;
+    const { head, pending, posted, tier } = parsed.data;
     return {
       findings: parsed.data.findings.map(({ quote, verification, ...finding }) => ({
         ...finding,
@@ -77,6 +80,7 @@ export function readState(body: string): ReviewState | undefined {
       ...(head ? { head } : {}),
       ...(pending ? { pending } : {}),
       ...(posted?.length ? { posted } : {}),
+      ...(tier ? { tier } : {}),
     };
   } catch {
     return undefined;
@@ -106,9 +110,12 @@ export function writeState(state: ReviewState): string {
   // Too large a state first loses its scope (a full review next time), then
   // findings from the end of the list (this run's come first, most severe
   // first); a dropped finding's inline comment may be posted again.
-  const posted = state.posted?.length ? { posted: state.posted.slice(-MAX_POSTED) } : {};
-  let encoded = encode(kept, { ...scope, ...posted });
-  if (encoded.length > MAX_WRITTEN_STATE_CHARS) encoded = encode(kept, posted);
+  const extras = {
+    ...(state.posted?.length ? { posted: state.posted.slice(-MAX_POSTED) } : {}),
+    ...(state.tier ? { tier: state.tier } : {}),
+  };
+  let encoded = encode(kept, { ...scope, ...extras });
+  if (encoded.length > MAX_WRITTEN_STATE_CHARS) encoded = encode(kept, extras);
   if (encoded.length > MAX_WRITTEN_STATE_CHARS) encoded = encode(kept, {});
   let count = kept.length;
   while (encoded.length > MAX_WRITTEN_STATE_CHARS && count > 0) {

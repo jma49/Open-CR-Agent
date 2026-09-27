@@ -120,4 +120,7 @@ export interface PriorReview {
   changedSince?: { head: string; files: string[] };
   // Why everything is reviewed again although an earlier review exists.
   fullReviewReason?: string;
+  // The risk tier the earlier review ran at. A higher tier now brings in
+  // reviewers the unchanged files never had, so they are reviewed again.
+  tier?: RiskTier;
 }

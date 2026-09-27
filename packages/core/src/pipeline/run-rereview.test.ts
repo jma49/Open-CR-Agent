@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PriorFinding } from "../domain.js";
 import { quoteSignature } from "../rereview/quote.js";
 import type { ReviewReport } from "./report.js";
-import { finding, runtime, twoFiles, vcs } from "./run.fakes.js";
+import { finding, patch, runtime, twoFiles, vcs } from "./run.fakes.js";
 import { runReview } from "./run.js";
 
 const head = { "src/a.ts": "keep\nconst a = 1;\n", "src/b.ts": "keep\nconst b = 2;\n" };
@@ -163,5 +163,36 @@ describe("runReview against the previous review", () => {
     expect(second.rereview?.fixed).toEqual([]);
     expect(second.rereview?.notReproduced).toHaveLength(1);
     expect(second.verdict).toBe("approved_with_comments");
+  });
+
+  it("reviews unchanged files again when the risk tier rose since the earlier review", async () => {
+    const diff = [
+      patch("src/auth/session.ts", "const a = 1;"),
+      patch("src/b.ts", "const b = 2;"),
+    ].join("\n");
+    const since = async (tier: "trivial" | "full") => {
+      const adapter = vcs({}, diff);
+      adapter.getPriorReview = async () => ({
+        findings: [],
+        changedSince: { head: "h0", files: ["src/b.ts"] },
+        tier,
+      });
+      return runReview({ vcs: adapter, runtime: reporting(), verify: false, judge: false });
+    };
+    // The auth path makes this change "full"; the earlier review ran at "trivial".
+    const risen = await since("trivial");
+    expect(risen.tier).toBe("full");
+    expect(risen.scope).toEqual({
+      mode: "full",
+      reason: "the risk tier rose from trivial to full, which adds reviewers",
+    });
+    expect(risen.coverage.map((c) => c.status)).toEqual(["reviewed", "reviewed"]);
+
+    const same = await since("full");
+    expect(same.scope).toEqual({ mode: "incremental", since: "h0" });
+    expect(same.coverage.map((c) => [c.path, c.status])).toEqual([
+      ["src/auth/session.ts", "unchanged"],
+      ["src/b.ts", "reviewed"],
+    ]);
   });
 });

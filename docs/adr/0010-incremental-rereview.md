@@ -30,5 +30,5 @@ Every push to a pull request reviewed the whole pull request again and reconcile
 
 ## Implementation notes (2026-09-27)
 
-- Known gap: the risk tier is recomputed for the whole change, but only changed files are reviewed. When a push raises the tier (for example from `trivial` to `full`), reviewers that start at the higher tier review only the changed files; unchanged files keep the reviewers of the earlier tier. `--full` reviews them again. Recording the tier in the state and forcing a full review when it rises would close this; not done yet.
+- The state records the tier each review ran at. When a push raises the tier (for example from `trivial` to `full`), the review is full, because the higher tier adds reviewers the unchanged files never had; `scope.reason` says so. A state without a tier (written before this) keeps the incremental behaviour.
 - The state is trusted only when ocra last edited the summary, for all of its fields, not only `head`; dismissals are recomputed from threads and never stored (#105). A `posted` field remembers inline comments on findings that are no longer tracked (#114).

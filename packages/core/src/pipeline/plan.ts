@@ -7,6 +7,7 @@ import { defaultSelectionPolicy, type FileDecision, selectFiles } from "../selec
 import { triage } from "../triage.js";
 import { reviewContext } from "./context.js";
 import { runtimeGrouper } from "./helpers.js";
+import { RISK_TIERS } from "./matrix.js";
 import type { ReviewEvent } from "./report.js";
 import type { ReviewOptions } from "./run.js";
 
@@ -21,6 +22,8 @@ export interface ReviewPlan {
   bundles: Bundle[];
   // Selected files left out because an earlier review covered them unchanged.
   unchanged: ReadonlySet<string>;
+  // Set when an incremental review became a full one because the tier rose.
+  widened?: { from: RiskTier; to: RiskTier };
   context: ReviewContext;
   guidelines: string | undefined;
   repoRules: RepoRule[];
@@ -38,6 +41,8 @@ export type PlanOptions = Pick<
   // Review only these selected files (incremental re-review); the rest of the
   // change still sets the risk tier.
   reviewOnly?: ReadonlySet<string>;
+  // The tier of the review reviewOnly continues; a higher one reviews all.
+  priorTier?: RiskTier;
 };
 
 export async function planReview(
@@ -70,7 +75,11 @@ export async function planReview(
   const grouper =
     options.grouper ??
     (options.runtime ? runtimeGrouper(options.runtime, signal, (u) => usage.push(u)) : undefined);
-  const only = options.reviewOnly;
+  const widened =
+    options.reviewOnly && options.priorTier && rank(tier) > rank(options.priorTier)
+      ? { from: options.priorTier, to: tier }
+      : undefined;
+  const only = widened ? undefined : options.reviewOnly;
   const inScope = only
     ? selected.filter((d) => only.has(d.newPath) || only.has(d.oldPath))
     : selected;
@@ -90,6 +99,7 @@ export async function planReview(
     tier,
     bundles: bundled.bundles,
     unchanged,
+    ...(widened ? { widened } : {}),
     context: reviewContext(vcs, diffs),
     guidelines,
     repoRules: [...(options.rules ?? []), ...fileRules],
@@ -104,4 +114,8 @@ async function loadRepoRules(
 ): Promise<RepoRule[]> {
   const text = await read(REPO_RULES_PATH);
   return text === undefined ? [] : parseRepoRules(text);
+}
+
+function rank(tier: RiskTier): number {
+  return RISK_TIERS.indexOf(tier);
 }

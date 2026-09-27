@@ -159,4 +159,15 @@ describe("summary state", () => {
     expect(calls.some((c) => c.path === "/pulls/7/reviews")).toBe(false);
     expect(postedSummary(calls)).toContain("### Findings outside the diff");
   });
+
+  it("records the tier it reviewed at and hands it to the next run", async () => {
+    const { calls, fetchImpl } = fakeGitHub();
+    const r = report([finding(A, false)]);
+    r.tier = "lite";
+    await adapter(fetchImpl).publish(r);
+    const body = postedSummary(calls);
+    expect(readState(body)?.tier).toBe("lite");
+    const next = await adapter(fakeGitHub([summaryComment(body)]).fetchImpl).getPriorReview();
+    expect(next?.tier).toBe("lite");
+  });
 });

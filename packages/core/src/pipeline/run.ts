@@ -82,7 +82,13 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   const prior = await loadPriorReview(options.vcs);
   const scope = reviewScope(prior.review, options.fullReview === true);
   const plan = await planReview(
-    scope.only ? { ...options, reviewOnly: scope.only } : options,
+    scope.only
+      ? {
+          ...options,
+          reviewOnly: scope.only,
+          ...(prior.review?.tier ? { priorTier: prior.review.tier } : {}),
+        }
+      : options,
     emit,
     signal,
   );
@@ -222,7 +228,12 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
       dismissed: reconciled.dismissed,
     };
   }
-  if (scope.note) report.scope = scope.note;
+  if (plan.widened) {
+    report.scope = {
+      mode: "full",
+      reason: `the risk tier rose from ${plan.widened.from} to ${plan.widened.to}, which adds reviewers`,
+    };
+  } else if (scope.note) report.scope = scope.note;
   if (prior.warning) report.warnings.push(prior.warning);
   emit({ type: "run_finished", report });
   return report;
