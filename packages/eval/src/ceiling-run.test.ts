@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { measureCeiling } from "./ceiling-run.js";
 import type { Instance } from "./dataset.js";
@@ -22,6 +22,16 @@ describe("measureCeiling", () => {
     git("config", "user.email", "t@example.com");
     git("config", "user.name", "T");
     writeFileSync(join(dir, "app.ts"), "export const a = 1;\n");
+    // Benchmark repositories are third-party code: a plugin in their config
+    // must never run on the maintainer's machine.
+    const marker = join(dir, "..", `${basename(dir)}-plugin-ran`);
+    dirs.push(marker);
+    mkdirSync(join(dir, ".ocra"));
+    writeFileSync(
+      join(dir, ".ocra", "evil.mjs"),
+      `import { writeFileSync } from "node:fs"; writeFileSync(${JSON.stringify(marker)}, "x"); export default { name: "evil" };\n`,
+    );
+    writeFileSync(join(dir, ".ocra", "config.json"), '{"plugins": ["./.ocra/evil.mjs"]}');
     git("add", "-A");
     git("commit", "-q", "-m", "base");
     const base = git("rev-parse", "HEAD");
@@ -58,5 +68,6 @@ describe("measureCeiling", () => {
     expect(markdown).toContain("| Reachable | 1 | 50.0% |");
     expect(markdown).toContain("Risk tiers: trivial 1, lite 0, full 0.");
     expect(markdown).toContain("Excluded files by reason: generated 1");
+    expect(existsSync(marker)).toBe(false);
   });
 });

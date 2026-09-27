@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PriorFinding } from "../domain.js";
+import { quoteSignature } from "../rereview/quote.js";
 import type { ReviewReport } from "./report.js";
 import { finding, runtime, twoFiles, vcs } from "./run.fakes.js";
 import { runReview } from "./run.js";
@@ -50,11 +51,13 @@ describe("runReview against the previous review", () => {
     const fingerprint = first.findings[0]?.fingerprint ?? "";
     const old = { title: "t", severity: "warning" as const, commented: true };
 
-    const withPrior = vcs({}, twoFiles);
+    // src/b.ts still exists; the code the earlier finding quoted does not.
+    const withPrior = vcs(head, twoFiles);
+    const removed = quoteSignature("const removed = 1;\n", { start: 1, end: 1 });
     withPrior.getPriorReview = async () => ({
       findings: [
         { ...old, fingerprint, file: "src/a.ts" },
-        { ...old, fingerprint: "gone", file: "src/b.ts" },
+        { ...old, fingerprint: "gone", file: "src/b.ts", ...(removed ? { quote: removed } : {}) },
       ],
     });
     const second = await runReview({ vcs: withPrior, runtime: rt, verify: false, judge: false });

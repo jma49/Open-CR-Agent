@@ -22,6 +22,8 @@ describe("OpenCode binary", () => {
       const ids = (await (
         await fetch(url, { headers: { Authorization: server.authorization } })
       ).json()) as string[];
+      // An empty or broken answer must not pass as "nothing new".
+      expect(ids).toEqual(expect.arrayContaining(["bash", "edit", "write", "webfetch"]));
       expect(
         ids.filter((id) => !(OPENCODE_BUILTIN_TOOLS as readonly string[]).includes(id)),
       ).toEqual([]);

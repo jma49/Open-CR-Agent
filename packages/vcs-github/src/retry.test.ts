@@ -73,3 +73,27 @@ describe("GitHubApi retries", () => {
     );
   });
 });
+
+describe("GitHubApi responses", () => {
+  it("refuses commit ids that git could read as an option", async () => {
+    const pr = (sha: string) =>
+      new Response(
+        JSON.stringify({
+          number: 7,
+          title: "t",
+          body: null,
+          html_url: "u",
+          user: null,
+          base: { sha, ref: "main" },
+          head: { sha: "c".repeat(40), ref: "f" },
+        }),
+        { status: 200 },
+      );
+    await expect(api([pr("--upload-pack=touch /tmp/x")]).client.getPullRequest(7)).rejects.toThrow(
+      "not a commit id",
+    );
+    await expect(api([pr("b".repeat(40))]).client.getPullRequest(7)).resolves.toMatchObject({
+      number: 7,
+    });
+  });
+});
