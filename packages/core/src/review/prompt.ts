@@ -6,6 +6,12 @@ import { REVIEW_TOOLS } from "./tools.js";
 
 export const MAX_GUIDELINES_CHARS = 20_000;
 
+// Runtimes cap an agent's turns, and on OpenCode the last turn has no tools:
+// a reviewer that kept its findings for the end lost them. A quarter of the
+// review tasks on Vertex ended at the cap (2026-09-28).
+export const TURN_BUDGET = `## Turn budget
+Your turns are limited, and the last one allows no tool calls, so a finding you have not reported by then is lost. Report each issue with ${REVIEW_TOOLS.reportFinding} as soon as you have confirmed it, before you investigate the next one; never keep findings for the end. Spread your turns over every file in <review_files>.`;
+
 export interface ReviewPromptInput {
   reviewer: ReviewerDefinition;
   changeRequest: ChangeRequest;
@@ -35,9 +41,12 @@ export function buildReviewPrompt(input: ReviewPromptInput): ReviewPrompt {
   if (input.accepted && input.accepted.length > 0) sections.push(renderAccepted(input.accepted));
   sections.push(
     `<review_files>\n${input.bundle.map(renderFile).join("\n")}\n</review_files>`,
-    `Review every file in <review_files>. Report each confirmed issue with ${REVIEW_TOOLS.reportFinding}, then call ${REVIEW_TOOLS.taskDone}.`,
+    `Review every file in <review_files>. Report each issue with ${REVIEW_TOOLS.reportFinding} as soon as you confirm it, then call ${REVIEW_TOOLS.taskDone}.`,
   );
-  return { system: input.reviewer.systemPrompt, user: sections.join("\n\n") };
+  return {
+    system: `${input.reviewer.systemPrompt}\n\n${TURN_BUDGET}`,
+    user: sections.join("\n\n"),
+  };
 }
 
 function renderChangeRequest(cr: ChangeRequest): string {

@@ -36,5 +36,5 @@ Use npm run verify.
 </file>
 </review_files>
 
-Review every file in <review_files>. Report each confirmed issue with report_finding, then call task_done."
+Review every file in <review_files>. Report each issue with report_finding as soon as you confirm it, then call task_done."
 `;

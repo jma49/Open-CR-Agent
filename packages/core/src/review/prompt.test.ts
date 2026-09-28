@@ -52,7 +52,10 @@ describe("buildReviewPrompt", () => {
 
   it("uses the reviewer's fixed system prompt", () => {
     const { system } = buildReviewPrompt(input());
-    expect(system).toBe(correctnessReviewer.systemPrompt);
+    // Every reviewer, built in or from a plugin, is told to report early.
+    expect(system.startsWith(correctnessReviewer.systemPrompt)).toBe(true);
+    expect(system).toContain("## Turn budget");
+    expect(system).toContain("never keep findings for the end");
     expect(system).toContain("## What NOT to flag");
   });
 
