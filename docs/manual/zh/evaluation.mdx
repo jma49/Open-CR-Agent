@@ -49,7 +49,7 @@ node packages/eval/dist/main.js ceiling --dataset golden                 # 免�
 | `repo`、`base`、`head` | 公开的 GitHub 仓库（`owner/name`）以及这次改动的两个提交 |
 | `language`、`tier` | 项目语言；`smoke`（每个需要评测的改动前后各跑一次）或 `full` |
 | `source`、`rationale` | 用例来源（`ocra-history`、`dogfood` 或 `aacr`，附引用）以及选它的理由 |
-| `expect` | ocra 必须报出的问题：`file`、`lines`（新版本上的 `[from, to]`）、`category`（`correctness`、`security`、`performance`）、`minSeverity`（低于它的命中计入精确率，不计入召回率）、`concern` |
+| `expect` | ocra 必须报出的问题：`file`、`lines`（新版本上的 `[from, to]`）、`category`（`correctness`、`security`、`performance`）、`minSeverity`（低于它的命中计入精确率，不计入召回率）、`concern`，以及可选的 `also`：同一个问题也可以正确报在的其他 `file`/`lines`（比如承诺该行为的文档、漏测的测试）；无论报在哪里，这个问题只算找到一次 |
 | `forbid` | 报了就算错的范围：`file`、`lines`、`reason` |
 | `clean` | 为 `true` 表示改动没有任何问题，此时不能有 `expect` |
 
@@ -71,7 +71,7 @@ node packages/eval/dist/main.js ceiling --dataset golden                 # 免�
 node packages/eval/dist/main.js adjudicate .ocra/eval/golden-baseline
 ```
 
-每个指纹只标一次。带行号的有效问题会同时变成一条 `expect`，严重程度记为 `suggestion`（需要更高时手动调整）；`clean` 用例上出现有效问题，这个用例就不再是 clean。重新计分会保留已经填好的标注。
+每个指纹只标一次。如果一条有效问题其实是某个预期问题报在了别处，请手动把它的位置加进那条 `expect` 的 `also`，不要标注它，否则它会变成第二条预期问题。带行号的有效问题会同时变成一条 `expect`，严重程度记为 `suggestion`（需要更高时手动调整）；`clean` 用例上出现有效问题，这个用例就不再是 clean。重新计分会保留已经填好的标注。
 
 ## 比较两次运行
 

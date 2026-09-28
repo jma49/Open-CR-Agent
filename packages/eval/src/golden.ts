@@ -23,6 +23,12 @@ export interface Adjudication {
   title: string;
 }
 
+export interface Location {
+  path: string;
+  fromLine: number;
+  toLine: number;
+}
+
 export interface GoldenInfo {
   tier: GoldenTier;
   clean: boolean;
@@ -30,6 +36,9 @@ export interface GoldenInfo {
   adjudicated: Adjudication[];
   // The lowest severity that counts, one per reference, in their order.
   minSeverity: Severity[];
+  // Other places the same issue can rightly be reported (the docs that
+  // promise a behavior, the test that misses it), one list per reference.
+  alternates: Location[][];
 }
 
 // Golden cases name ocra's reviewers; scoring and the ceiling speak
@@ -78,6 +87,7 @@ const caseSchema = z
             category: z.enum(["correctness", "security", "performance"]),
             minSeverity: severitySchema,
             concern: z.string().min(1),
+            also: z.array(z.object({ file: pathSchema, lines: linesSchema }).strict()).default([]),
           })
           .strict(),
       )
@@ -172,6 +182,9 @@ export function toInstance(golden: GoldenCase): Instance {
       })),
       adjudicated: golden.adjudicated,
       minSeverity: golden.expect.map((e) => e.minSeverity),
+      alternates: golden.expect.map((e) =>
+        e.also.map((a) => ({ path: a.file, fromLine: a.lines[0], toLine: a.lines[1] })),
+      ),
     },
   };
 }
@@ -182,6 +195,7 @@ export function untouchedPaths(instance: Instance, changed: ReadonlySet<string>)
   if (!instance.golden) return [];
   const named = [
     ...instance.references.map((r) => r.path),
+    ...instance.golden.alternates.flat().map((a) => a.path),
     ...instance.golden.forbid.map((f) => f.path),
   ];
   return [...new Set(named)].filter((p) => !changed.has(p));

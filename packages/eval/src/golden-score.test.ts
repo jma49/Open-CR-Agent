@@ -92,6 +92,7 @@ describe("scoreGolden", () => {
       expected: 1,
       reported: 5,
       matched: 1,
+      correct: 1,
       underrated: 0,
       valid: 1,
       invalid: 1,
@@ -179,6 +180,7 @@ describe("adjudication", () => {
         category: "security",
         minSeverity: "suggestion",
         concern: "title 0000000000000001",
+        also: [],
       },
     ]);
   });
@@ -415,5 +417,39 @@ describe("rescoring", () => {
     const out = { write: (chunk: string) => (text += chunk) };
     expect(await main(["score", dir, "--mock-judge"], out, out)).toBe(2);
     expect(text).toContain('run.json lists an invalid id "../../etc/hosts"');
+  });
+});
+
+describe("alternate locations", () => {
+  it("finds an expected issue at an alternate once, and counts every matching report correct", async () => {
+    const instance = toInstance(
+      parseCase(
+        {
+          ...base,
+          id: "gitignore",
+          expect: [{ ...expectLogin, also: [{ file: "docs/cli.mdx", lines: [58, 58] }] }],
+        },
+        "c",
+      ),
+    );
+    const atDocs = finding("0000000000000001", {
+      file: "docs/cli.mdx",
+      lines: { start: 58, end: 58 },
+    });
+    const alone = await scoreGolden([instance], [reviewed("gitignore", [atDocs])], judge);
+    expect(alone.counts).toMatchObject({ expected: 1, matched: 1, correct: 1 });
+    expect([alone.precision, alone.recall]).toEqual([1, 1]);
+    const both = await scoreGolden(
+      [instance],
+      [
+        reviewed("gitignore", [
+          atDocs,
+          finding("0000000000000002", { lines: { start: 11, end: 11 } }),
+        ]),
+      ],
+      judge,
+    );
+    expect(both.counts).toMatchObject({ expected: 1, matched: 1, correct: 2 });
+    expect([both.precision, both.recall]).toEqual([1, 1]);
   });
 });

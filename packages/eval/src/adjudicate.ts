@@ -112,6 +112,7 @@ export async function applyLabels(labels: LabelsFile, goldenDir: string): Promis
             : "correctness") as GoldenCase["expect"][number]["category"],
           minSeverity: "suggestion",
           concern: entry.title,
+          also: [],
         });
       }
       result.applied += 1;

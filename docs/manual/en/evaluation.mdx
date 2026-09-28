@@ -49,7 +49,7 @@ A case is one JSON file named after its `id`, validated when it loads:
 | `repo`, `base`, `head` | A public GitHub repository (`owner/name`) and the two commits of the change |
 | `language`, `tier` | Project language; `smoke` (run before and after every change that needs an eval) or `full` |
 | `source`, `rationale` | Where the case comes from (`ocra-history`, `dogfood` or `aacr`, with a reference) and why it was taken |
-| `expect` | Findings ocra must report: `file`, `lines` (`[from, to]` on the new side), `category` (`correctness`, `security`, `performance`), `minSeverity` (a match below it counts for precision, not recall), `concern` |
+| `expect` | Findings ocra must report: `file`, `lines` (`[from, to]` on the new side), `category` (`correctness`, `security`, `performance`), `minSeverity` (a match below it counts for precision, not recall), `concern`, and optionally `also`: other `file`/`lines` where the same issue is rightly reported (the docs that promise a behavior, the test that misses it); it is found once wherever it is reported |
 | `forbid` | Ranges where a finding is wrong: `file`, `lines`, `reason` |
 | `clean` | `true` for a change with no issue; it cannot have `expect` |
 
@@ -71,7 +71,7 @@ Unlabeled findings are written to `adjudication.json` in the run directory. Set 
 node packages/eval/dist/main.js adjudicate .ocra/eval/golden-baseline
 ```
 
-Each fingerprint is labeled once. A valid finding with lines also becomes an `expect` entry at `suggestion` severity (raise it by hand if it should count as more), and a valid finding on a `clean` case makes the case no longer clean. Re-scoring keeps the labels already typed.
+Each fingerprint is labeled once. If a valid finding is an expected issue reported somewhere else, add its location to that entry's `also` by hand instead of labeling it, or it becomes a second expectation. A valid finding with lines also becomes an `expect` entry at `suggestion` severity (raise it by hand if it should count as more), and a valid finding on a `clean` case makes the case no longer clean. Re-scoring keeps the labels already typed.
 
 ## Comparing runs
 

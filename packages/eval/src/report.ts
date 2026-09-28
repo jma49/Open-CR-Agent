@@ -76,9 +76,9 @@ function goldenSection(golden: GoldenSummary): string[] {
   return [
     "## Golden set (ADR-0011)",
     "",
-    "| Precision | Recall | Reported | Matched | Below min severity | Valid | Invalid | In forbidden ranges | Unlabeled | Expected |",
-    "|---|---|---|---|---|---|---|---|---|---|",
-    `| ${pct(golden.precision)} | ${pct(golden.recall)} | ${c.reported} | ${c.matched} | ${c.underrated} | ${c.valid} | ${c.invalid} | ${c.forbidden} | ${c.unadjudicated} | ${c.expected} |`,
+    "| Precision | Recall | Reported | Correct | Valid | Invalid | In forbidden ranges | Unlabeled | Expected | Found | Below min severity |",
+    "|---|---|---|---|---|---|---|---|---|---|---|",
+    `| ${pct(golden.precision)} | ${pct(golden.recall)} | ${c.reported} | ${c.correct} | ${c.valid} | ${c.invalid} | ${c.forbidden} | ${c.unadjudicated} | ${c.expected} | ${c.matched} | ${c.underrated} |`,
     "",
     `Cases and labels: ${golden.casesHash}. Recall counts a match only at or above the case's minimum severity.`,
     "",

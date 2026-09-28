@@ -22,7 +22,11 @@ export interface GoldenSummary {
   counts: {
     expected: number;
     reported: number;
+    // Expected findings that were found.
     matched: number;
+    // Reported findings that match an expected one (several can, when an
+    // issue is reported at its location and at an alternate).
+    correct: number;
     // Matched an expected finding at a lower severity than it requires:
     // correct for precision, a miss for recall.
     underrated: number;
@@ -59,6 +63,7 @@ export async function scoreGolden(
       expected: 0,
       reported: 0,
       matched: 0,
+      correct: 0,
       underrated: 0,
       valid: 0,
       invalid: 0,
@@ -77,20 +82,37 @@ export async function scoreGolden(
     const result = byId.get(instance.id);
     if (!instance.golden || result?.status !== "reviewed") continue;
     const findings = result.findings;
+    // An expected finding may be reported at its location or at an
+    // alternate: every variant is matched, and the finding is found once.
+    const variants = instance.references.flatMap((reference, k) => [
+      { k, reference },
+      ...(instance.golden?.alternates[k] ?? []).map((a) => ({
+        k,
+        reference: { ...reference, path: a.path, fromLine: a.fromLine, toLine: a.toLine },
+      })),
+    ]);
     const matches = await matchComments(
-      instance.references,
+      variants.map((v) => v.reference),
       findings.map(toGeneratedComment),
       judge,
     );
     const matched = new Set(matches.flatMap((m) => m.matchedIndex ?? []));
+    const found = new Map<number, OutputFinding>();
+    for (const [i, match] of matches.entries()) {
+      const finding = match.matchedIndex === undefined ? undefined : findings[match.matchedIndex];
+      const k = variants[i]?.k;
+      if (!finding || k === undefined) continue;
+      const earlier = found.get(k);
+      if (!earlier || RANK[finding.severity] > RANK[earlier.severity]) found.set(k, finding);
+    }
     const labels = new Map(instance.golden.adjudicated.map((a) => [a.fingerprint, a]));
     counts.expected += instance.references.length;
     counts.reported += findings.length;
-    counts.matched += matched.size;
-    for (const [k, match] of matches.entries()) {
-      const finding = match.matchedIndex === undefined ? undefined : findings[match.matchedIndex];
+    counts.matched += found.size;
+    counts.correct += matched.size;
+    for (const [k, finding] of found) {
       const required = instance.golden.minSeverity[k] ?? "suggestion";
-      if (finding && RANK[finding.severity] < RANK[required]) counts.underrated += 1;
+      if (RANK[finding.severity] < RANK[required]) counts.underrated += 1;
     }
     for (const [index, finding] of findings.entries()) {
       if (matched.has(index)) continue;
@@ -119,7 +141,7 @@ export async function scoreGolden(
     }
   }
   counts.unadjudicated = summary.unadjudicated.length;
-  summary.precision = ratio(counts.matched + counts.valid, counts.reported);
+  summary.precision = ratio(counts.correct + counts.valid, counts.reported);
   summary.recall = ratio(counts.matched - counts.underrated, counts.expected);
   return summary;
 }

@@ -81,6 +81,7 @@ describe("measureCeiling", () => {
         forbid: [{ path: "other.ts", fromLine: 1, toLine: 1, reason: "r" }],
         adjudicated: [],
         minSeverity: [],
+        alternates: [],
       },
     };
     logs.length = 0;

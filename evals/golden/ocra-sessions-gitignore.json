@@ -19,7 +19,23 @@
       ],
       "category": "correctness",
       "minSeverity": "warning",
-      "concern": "Nothing in the change writes the .gitignore the docs promise, and the test cannot notice: it filters .gitignore out without requiring it, and git status --porcelain reports the new untracked directory as .ocra/, so not.toContain('.ocra/sessions') passes anyway."
+      "concern": "Nothing in the change writes the .gitignore the docs promise, and the test cannot notice: it filters .gitignore out without requiring it, and git status --porcelain reports the new untracked directory as .ocra/, so not.toContain('.ocra/sessions') passes anyway.",
+      "also": [
+        {
+          "file": "docs/manual/en/cli.mdx",
+          "lines": [
+            58,
+            58
+          ]
+        },
+        {
+          "file": "docs/manual/zh/cli.mdx",
+          "lines": [
+            58,
+            58
+          ]
+        }
+      ]
     }
   ]
 }
