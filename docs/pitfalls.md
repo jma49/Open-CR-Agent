@@ -68,6 +68,8 @@ Traps we have already fallen into, across this repository and the site. Each ent
 - **Workspace packages resolve to `dist/`.** CLI tests import `@open-cr-agent/core` through its build output, so after changing core they see the old code until `tsc -b` runs (`npm run verify` does); a failing CLI test right after a core edit may just be stale output.
 - **Gate commits on the verify exit code.** A compound command that ignores it pushes failing code; CI catches it, but the history does not need it.
 
+- **Claude's workspace on the maintainer's Mac cannot delete files in a connected folder until he allows it.** A `git switch` there stopped halfway: HEAD and the index moved to the new branch, the working tree kept the old files, and `maintenance.lock` and a pack `.keep` stayed behind. Ask for delete permission before any git command that replaces or removes files there, and never install `node_modules` into the Mac's checkout from that Linux workspace (native binaries differ).
+
 - **A line-based `sed` edit hits every matching line.** Adding an import with `sed 's/^  correctnessReviewerPlugin,$/…/'` also inserted the function `coverageGaps` into `BUILTIN_PLUGINS`, which type-checked (a function has a `name`) and did nothing (#123). Edit by exact multi-line match, and pin lists like `BUILTIN_PLUGINS` in a test.
 
 ## Site
@@ -82,4 +84,7 @@ Traps we have already fallen into, across this repository and the site. Each ent
 - **`npm run build` fails offline.** `next/font` fetches Geist and Geist Mono from `fonts.googleapis.com` at build time, so a sandbox without access to it fails with "Failed to fetch Geist from Google Fonts". That is the environment, not the change; CI builds with network access.
 - **Playwright's default screenshot threshold hides token changes.** At `threshold: 0.2` (pixelmatch's YIQ distance), amber-300 and amber-400 count as the same colour, so moving a token passed as "no difference". Both sides of the site's comparison render on one machine, where unchanged pixels match exactly; the site uses 0.02.
 - **`text-white/55` is not `rgb(255 255 255 / 0.55)`.** Tailwind's opacity modifier compiles to `color-mix(in oklab, … 55%, transparent)`, which renders a shade differently. A token that replaces such a class must use the same expression, or the screenshots change.
+- **`cn` drops a custom font size next to a colour.** tailwind-merge (behind `cn`) reads an unknown `text-title` as a colour, so `cn("text-title", "text-fg")` kept only `text-fg`. The site's type scale is registered in `lib/cn.ts`; add new `--text-*` tokens there too.
+- **Tailwind v4 sorts arbitrary `min-[…]` variants before the named breakpoints.** `sm:text-display-md` overrode `min-[1360px]:text-display` at every width. Use a `--breakpoint-*` token (the site's `wide:`) instead.
+- **The visual baseline runs the pull request's spec against the base build.** An assertion about markup the pull request adds (the 404 frog) failed every baseline test; such checks skip the baseline run.
 - **The docs table of contents changes during a full-page screenshot.** Its active item follows the headings in view, which moves while Playwright captures the page. The site's `tests/visual/stable.css` pins it.
