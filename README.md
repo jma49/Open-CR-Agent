@@ -4,7 +4,7 @@ An open-source multi-agent code review system. Deterministic engineering handles
 
 Inspired by [Cloudflare's AI code review](https://blog.cloudflare.com/ai-code-review/) and [Alibaba OpenCodeReview](https://github.com/alibaba/open-code-review).
 
-> Status: early development. Site and manual: [ocra-nine.vercel.app](https://ocra-nine.vercel.app) ([English](docs/manual/en/index.mdx) · [中文](docs/manual/zh/index.mdx) in this repository). Contributors: [architecture](docs/architecture.md), [decision records](docs/adr/) and the [handoff notes](docs/handoff.md).
+> Status: early development. Site and manual: [ocra.majincheng.com](https://ocra.majincheng.com) ([English](docs/manual/en/index.mdx) · [中文](docs/manual/zh/index.mdx) in this repository). Contributors: [architecture](docs/architecture.md), [decision records](docs/adr/) and the [handoff notes](docs/handoff.md).
 
 ## Install
 
