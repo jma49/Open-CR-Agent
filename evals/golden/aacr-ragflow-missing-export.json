@@ -19,7 +19,29 @@
       ],
       "category": "correctness",
       "minSeverity": "warning",
-      "concern": "languageOptions is imported from @/locales/config, which does not export it, and nothing in the web app defines it, so the build fails."
+      "concern": "languageOptions is imported from @/locales/config, which does not export it, and nothing in the web app defines it, so the build fails.",
+      "also": []
+    },
+    {
+      "file": "web/src/components/api-service/embed-modal/index.tsx",
+      "lines": [
+        81,
+        94
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "Missing translation keys for 'avatarHidden' and 'locale' in chat namespace",
+      "also": []
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": [
+    {
+      "fingerprint": "295f36c23e71e58a",
+      "label": "valid",
+      "reason": "Real: the chat namespace defines neither avatarHidden nor locale in any locale file, so the form shows raw keys (checked against the code by the agent, 2026-09-28)",
+      "title": "Missing translation keys for 'avatarHidden' and 'locale' in chat namespace"
     }
   ]
 }
