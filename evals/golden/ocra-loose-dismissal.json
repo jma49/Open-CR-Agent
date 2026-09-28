@@ -4,7 +4,7 @@
   "base": "ebbb5d75e330f48938a29676e006b390e29b3192",
   "head": "a7ea562b0a019e865b6e06a4facf070b49c80bb9",
   "language": "TypeScript",
-  "tier": "smoke",
+  "tier": "full",
   "source": {
     "kind": "ocra-history",
     "ref": "fixed by 74652ee (explicit decline) and 14284c4 (who may dismiss)"

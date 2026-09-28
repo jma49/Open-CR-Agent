@@ -38,7 +38,6 @@ describe("triage", () => {
       "src/Identity/Extensions.Core/src/PasswordHasher.cs",
       "lib/OAuth2Client.java",
       "pkg/jwt_verify.go",
-      "app/models/user_session.rb",
       "server/ACLService.ts",
       "config/secrets.yml",
       "src/security.rs",
@@ -52,6 +51,7 @@ describe("triage", () => {
       "src/author.ts",
       "db/oracle.sql",
       "src/lexer/tokenizer.ts",
+      "packages/runtime-opencode/src/session-outcome.ts",
       "src/cryptic.ts",
     ]) {
       expect(triage([diff(path, 1)]), path).toBe("trivial");

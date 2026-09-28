@@ -78,7 +78,7 @@ ocra skips binary files, likely secrets (`.env`, keys, certificates, cloud and r
 
 ## Reviewers
 
-`reviewers.<id>` turns a reviewer off or sets the risk tier it starts at (higher or lower than its default). Risk tiers, from lowest: `trivial` (≤10 changed lines), `lite` (≤100), `full` (larger changes, more than 20 files, or a sensitive path: CI workflows, or a directory or file name with a word such as `auth`, `oauth`, `jwt`, `password`, `credential`, `secret`, `session`, `login`, `permission`, `acl`, `identity`, `crypto` or `security`).
+`reviewers.<id>` turns a reviewer off or sets the risk tier it starts at (higher or lower than its default). Risk tiers, from lowest: `trivial` (≤10 changed lines), `lite` (≤100), `full` (larger changes, more than 20 files, or a sensitive path: CI workflows, or a directory or file name with a word such as `auth`, `oauth`, `jwt`, `password`, `credential`, `secret`, `login`, `permission`, `acl`, `identity`, `crypto` or `security`).
 
 ```json
 { "reviewers": { "correctness": { "minTier": "lite" }, "security": { "enabled": false } } }

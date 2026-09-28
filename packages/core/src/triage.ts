@@ -15,6 +15,9 @@ export const defaultTriagePolicy: TriagePolicy = {
   liteMaxLines: 100,
   maxFilesBeforeFull: 20,
   sensitivePathPatterns: [/(^|\/)\.github\/workflows\//],
+  // "token" and "session" are left out: lexers, parsers, tool and log
+  // sessions use them far more often than authentication does, and a false
+  // match costs a full-tier review.
   sensitivePathWords: new Set([
     "auth",
     "authn",
@@ -36,8 +39,6 @@ export const defaultTriagePolicy: TriagePolicy = {
     "secret",
     "secrets",
     "login",
-    "session",
-    "sessions",
     "permission",
     "permissions",
     "acl",

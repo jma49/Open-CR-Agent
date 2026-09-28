@@ -78,7 +78,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 
 ## 审查员
 
-`reviewers.<id>` 可以关闭某个审查员，或设置它开始运行的风险档位（可以比默认高，也可以更低）。风险档位从低到高：`trivial`（改动 ≤10 行）、`lite`（≤100 行）、`full`（更大的改动、超过 20 个文件，或涉及敏感路径：CI workflow，或目录名、文件名中含有 `auth`、`oauth`、`jwt`、`password`、`credential`、`secret`、`session`、`login`、`permission`、`acl`、`identity`、`crypto`、`security` 等单词）。
+`reviewers.<id>` 可以关闭某个审查员，或设置它开始运行的风险档位（可以比默认高，也可以更低）。风险档位从低到高：`trivial`（改动 ≤10 行）、`lite`（≤100 行）、`full`（更大的改动、超过 20 个文件，或涉及敏感路径：CI workflow，或目录名、文件名中含有 `auth`、`oauth`、`jwt`、`password`、`credential`、`secret`、`login`、`permission`、`acl`、`identity`、`crypto`、`security` 等单词）。
 
 ```json
 { "reviewers": { "correctness": { "minTier": "lite" }, "security": { "enabled": false } } }
