@@ -12,6 +12,6 @@
 | [0008](0008-github-integration.md) | GitHub: code from git, conversation from the API, trusted inputs from the base revision |
 | [0009](0009-fixed-needs-code-evidence.md) | A finding is fixed only when its code is gone; unreproduced findings stay open |
 | [0010](0010-incremental-rereview.md) | Incremental re-review: the state records the reviewed head; only changed and unfinished files are reviewed again |
-| [0011](0011-golden-eval-set.md) | Quality decisions on an ocra-owned golden set (expected findings, forbidden ranges, recorded adjudication); AACR-Bench stays the external number (proposed) |
+| [0011](0011-golden-eval-set.md) | Quality decisions on an ocra-owned golden set (expected findings, forbidden ranges, recorded adjudication); AACR-Bench stays the external number |
 
 Copy [0000-template.md](0000-template.md) to add a new record.

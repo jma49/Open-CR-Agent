@@ -1,6 +1,6 @@
 # ADR-0011: Quality decisions on an ocra-owned golden set; AACR-Bench stays the external number
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-09-27
 
 ## Context
@@ -21,6 +21,7 @@ AACR-Bench stays, unchanged, as the number comparable with published results. Me
 3. **Scoring names what costs trust.** A critical finding inside a `forbid` range or on a clean case is a failure, listed by case and finding. Recall is measured on `expect`; cost and latency as today.
 4. **Two tiers.** `smoke` (5–10 cases) runs before and after every `[needs-eval]` change, once each; `full` (20–30 cases to start) runs before a release. The smoke baseline is run twice once to measure run-to-run spread, and a change smaller than that spread is reported as no change.
 5. **Sources, most trusted first:** bugs fixed in ocra's own history (review the commit that introduced the bug; the fix is the answer); findings the maintainer confirmed or dismissed in real use (dismissals become `forbid`); AACR-Bench pull requests in correctness, security and performance, after checking each reference (its comments labeled incorrect can seed `forbid`). Prefer commits made after the models' training cutoff, and repositories whose license allows redistributing the excerpts a case quotes.
+6. **Until the smoke tier exists**, a `[needs-eval]` change that needs a model run is compared before and after on the same small AACR-Bench subset, with the baseline run twice for the spread. AACR-Bench's bias against precision is the same on both sides of such a comparison, so the difference is usable even though the absolute numbers are not. Changes that free evidence already decides (`ocra-eval ceiling`, `--plan`) need no model run.
 
 ## Consequences
 

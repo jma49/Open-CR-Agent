@@ -10,7 +10,7 @@ The live site, https://ocra.majincheng.com, was last deployed on 2026-09-27 and 
 
 ## After a model key is available
 
-A free-tier Gemini key is available (2026-09-26): `gemini-3.5-flash` allows about 20 requests a day, and two 3-PR smoke runs could not finish one pull request. Since 2026-09-27 Gemini on Vertex AI (a Google Cloud free trial, $300 until 2026-12-27) makes the rows below that need a model stronger than flash-lite possible; the credit is finite, so fix #171 first, price one review, then run the smallest check that answers each row (`docs/handoff.md`). Under ADR-0011 (proposed) the `[needs-eval]` rows move to the golden smoke tier once it exists.
+A free-tier Gemini key is available (2026-09-26): `gemini-3.5-flash` allows about 20 requests a day, and two 3-PR smoke runs could not finish one pull request. Since 2026-09-27 Gemini on Vertex AI (a Google Cloud free trial, $300 until 2026-12-27) makes the rows below that need a model stronger than flash-lite possible; the credit is finite, so fix #171 first, price one review, then run the smallest check that answers each row (`docs/handoff.md`). Under ADR-0011 the `[needs-eval]` rows move to the golden smoke tier once it exists.
 
 Checked on the free tier with flash-lite (`ocra-eval run --ids lvgl__lvgl@4a57db3,keycloak__keycloak@805c204 --label mech-lite`, $0.07 at list price): grouping, Verify and Judge all run for real after #66; Verify marked a finding `confirmed`, the judge merged a duplicate, anchoring placed the finding on a hunk. One task hit the per-minute quota.
 
