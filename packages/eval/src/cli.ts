@@ -5,9 +5,14 @@ import { parseArgs } from "node:util";
 import { errorMessage } from "@open-cr-agent/core";
 import { applyLabels, LABELS_FILE, labelsFor, readLabels } from "./adjudicate.js";
 import { measureCeiling } from "./ceiling-run.js";
-import { compareSummaries, renderComparison, type SavedSummary } from "./compare.js";
+import {
+  compareSummaries,
+  comparisonWarnings,
+  renderComparison,
+  type SavedSummary,
+} from "./compare.js";
 import { type Instance, loadDataset } from "./dataset.js";
-import { loadGolden } from "./golden.js";
+import { loadGolden, readJson } from "./golden.js";
 import { scoreGolden } from "./golden-score.js";
 import { CachedJudge, judgeConfigFromEnv, MockJudge, OpenAICompatibleJudge } from "./judges.js";
 import type { SemanticJudge } from "./match.js";
@@ -41,7 +46,8 @@ Selection:
   --max-change-lines <n>   Skip larger PRs
   --ids <a,b>              Exact instance ids
   --dataset <aacr|golden>  AACR-Bench (default) or ocra's golden cases (ADR-0011)
-  --golden-dir <dir>       Golden case files (default evals/golden)
+  --golden-dir <dir>       Golden case files (default evals/golden; score and
+                           adjudicate default to the run's own)
   --tier <smoke|full>      Golden cases only: the smoke tier or every case
 
 Run:
@@ -153,9 +159,12 @@ async function list(argv: string[], out: Output): Promise<number> {
       : `${i.changeLines} lines`;
     out.write(`${i.id}\t${i.language}\t${size}\t${i.references.length} issues\t${i.prUrl}\n`);
   }
+  const issues = instances.reduce((s, i) => s + i.references.length, 0);
   const lines = instances.reduce((sum, i) => sum + i.changeLines, 0);
   out.write(
-    `${instances.length} PR(s), ${lines} changed lines, ${instances.reduce((s, i) => s + i.references.length, 0)} annotated issues\n`,
+    dataset(values) === "golden"
+      ? `${instances.length} case(s), ${issues} expected finding(s)\n`
+      : `${instances.length} PR(s), ${lines} changed lines, ${issues} annotated issues\n`,
   );
   return 0;
 }
@@ -251,9 +260,17 @@ async function rescore(
     info: RunInfo;
     ids: string[];
   };
+  // run.json is a file on disk like any other: its ids become paths below.
+  const bad = saved.ids.find((id) => !/^[\w.@-]+$/.test(id) || id.startsWith("."));
+  if (bad !== undefined) throw new Error(`run.json lists an invalid id "${bad}"`);
   const savedDir = saved.info.selection.goldenDir;
+  const goldenDir = values["golden-dir"]
+    ? resolve(values["golden-dir"])
+    : typeof savedDir === "string"
+      ? savedDir
+      : undefined;
   const all = await loadInstances(saved.info.selection.dataset === "golden" ? "golden" : "aacr", {
-    "golden-dir": values["golden-dir"] ?? (typeof savedDir === "string" ? savedDir : undefined),
+    "golden-dir": goldenDir,
   });
   const instances = saved.ids
     .map((id) => all.find((i) => i.id === id))
@@ -271,7 +288,12 @@ async function rescore(
   const judge = createJudge(values["mock-judge"] === true, env);
   return writeSummary(
     runDir,
-    { ...saved.info, judge: judge.description },
+    {
+      ...saved.info,
+      // adjudicate writes labels where the cases were read from.
+      selection: { ...saved.info.selection, ...(goldenDir ? { goldenDir } : {}) },
+      judge: judge.description,
+    },
     instances,
     results,
     judge,
@@ -323,8 +345,8 @@ async function compare(argv: string[], out: Output): Promise<number> {
   const [baselineDir, runDir] = positionals;
   if (!baselineDir || !runDir) throw new Error("compare needs a baseline run and a run");
   const load = async (dir: string) => ({
-    summary: JSON.parse(await readFile(join(dir, "summary.json"), "utf8")) as SavedSummary,
-    ids: (JSON.parse(await readFile(join(dir, "run.json"), "utf8")) as { ids: string[] }).ids,
+    summary: (await readJson(join(dir, "summary.json"))) as SavedSummary,
+    ids: ((await readJson(join(dir, "run.json"))) as { ids: string[] }).ids,
   });
   const baseline = await load(baselineDir);
   const run = await load(runDir);
@@ -334,6 +356,7 @@ async function compare(argv: string[], out: Output): Promise<number> {
   const warnings = [
     ...(same(baseline.ids, run.ids) ? [] : ["the runs reviewed different PRs"]),
     ...(other && !same(baseline.ids, other.ids) ? ["the baselines reviewed different PRs"] : []),
+    ...comparisonWarnings([baseline.summary, run.summary, ...(other ? [other.summary] : [])]),
   ];
   out.write(
     renderComparison(compareSummaries(baseline.summary, run.summary, other?.summary), warnings),

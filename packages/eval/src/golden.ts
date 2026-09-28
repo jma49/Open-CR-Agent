@@ -1,6 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { severitySchema } from "@open-cr-agent/core";
+import { type Severity, severitySchema } from "@open-cr-agent/core";
 import { z } from "zod";
 import type { Instance, ReferenceComment } from "./dataset.js";
 
@@ -28,6 +28,8 @@ export interface GoldenInfo {
   clean: boolean;
   forbid: ForbiddenRange[];
   adjudicated: Adjudication[];
+  // The lowest severity that counts, one per reference, in their order.
+  minSeverity: Severity[];
 }
 
 // Golden cases name ocra's reviewers; scoring and the ceiling speak
@@ -126,7 +128,7 @@ export async function loadGolden(dir: string): Promise<Instance[]> {
   const instances: Instance[] = [];
   const ids = new Set<string>();
   for (const file of files) {
-    const golden = parseCase(JSON.parse(await readFile(join(dir, file), "utf8")), file);
+    const golden = parseCase(await readJson(join(dir, file), file), file);
     if (golden.id !== file.slice(0, -".json".length)) {
       throw new Error(`${file}: id "${golden.id}" does not match the file name`);
     }
@@ -169,6 +171,7 @@ export function toInstance(golden: GoldenCase): Instance {
         reason: f.reason,
       })),
       adjudicated: golden.adjudicated,
+      minSeverity: golden.expect.map((e) => e.minSeverity),
     },
   };
 }
@@ -182,4 +185,13 @@ export function untouchedPaths(instance: Instance, changed: ReadonlySet<string>)
     ...instance.golden.forbid.map((f) => f.path),
   ];
   return [...new Set(named)].filter((p) => !changed.has(p));
+}
+
+export async function readJson(path: string, label = path): Promise<unknown> {
+  const text = await readFile(path, "utf8");
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error(`${label}: not valid JSON (${(error as Error).message})`);
+  }
 }

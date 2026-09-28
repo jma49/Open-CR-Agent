@@ -1,8 +1,32 @@
 import type { GoldenSummary } from "./golden-score.js";
+import type { RunInfo } from "./report.js";
 import type { Summary } from "./score.js";
 
 export interface SavedSummary {
+  info?: RunInfo;
   summary: Summary & { golden?: GoldenSummary };
+}
+
+// Differences that are not the change under test. Golden numbers depend on
+// the cases and labels at scoring time, so rescore every run after labeling.
+export function comparisonWarnings(runs: readonly SavedSummary[]): string[] {
+  const differ = (pick: (s: SavedSummary) => unknown) =>
+    new Set(runs.map((s) => JSON.stringify(pick(s) ?? null))).size > 1;
+  const warnings: string[] = [];
+  if (differ((s) => s.info?.judge)) warnings.push("the runs were scored by different judges");
+  if (differ((s) => s.info?.selection.dataset ?? "aacr"))
+    warnings.push("the runs use different datasets");
+  // Summaries written before a field existed may lack it.
+  if (differ((s) => s.summary.instances?.reviewed)) {
+    warnings.push("the runs reviewed a different number of PRs (failed ones are not scored)");
+  }
+  if (differ((s) => s.summary.golden?.casesHash)) {
+    warnings.push("the runs were scored against different golden cases or labels; rescore them");
+  }
+  if (runs.some((s) => (s.summary.golden?.counts.unadjudicated ?? 0) > 0)) {
+    warnings.push("some findings are unlabeled, which lowers golden precision until labeled");
+  }
+  return warnings;
 }
 
 interface Metric {

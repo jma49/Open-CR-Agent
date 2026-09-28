@@ -15,11 +15,11 @@
       "file": "packages/core/src/judge/judge.ts",
       "lines": [
         97,
-        102
+        163
       ],
       "category": "security",
       "minSeverity": "warning",
-      "concern": "The new protection keeps the judge from dropping a confirmed critical finding but explicitly lets it downgrade one, and recalibration below applies that; a downgrade to suggestion clears significant_concerns just the same, and the judge reads text the PR's author controls."
+      "concern": "The new protection keeps the judge from dropping a confirmed critical finding but explicitly lets it downgrade one, and the recalibration loop applies any downgrade; a downgrade to suggestion clears significant_concerns just the same, and the judge reads text the PR's author controls."
     }
   ]
 }

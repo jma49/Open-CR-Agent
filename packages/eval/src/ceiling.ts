@@ -79,14 +79,16 @@ export function classifyReferences(
 }
 
 // Left-side comments are about removed lines, which reviewers see in the diff.
+// A range counts when it overlaps a hunk, as matching does: a golden range
+// can span a changed comment and the changed code it describes.
 function withinHunks(ref: ReferenceComment, diff: FileDiff | undefined): boolean {
   if (!diff || ref.fromLine === null) return false;
   const from = ref.fromLine;
   const to = ref.toLine ?? from;
   return diff.hunks.some((h) =>
     ref.side === "left"
-      ? from >= h.oldStart && to <= h.oldStart + h.oldLines - 1
-      : from >= h.newStart && to <= h.newStart + h.newLines - 1,
+      ? from <= h.oldStart + h.oldLines - 1 && to >= h.oldStart
+      : from <= h.newStart + h.newLines - 1 && to >= h.newStart,
   );
 }
 

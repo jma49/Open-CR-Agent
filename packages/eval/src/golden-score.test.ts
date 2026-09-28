@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { OutputFinding } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
-import { applyLabels, labelsFor } from "./adjudicate.js";
+import { applyLabels, labelsFor, readLabels } from "./adjudicate.js";
 import { main } from "./cli.js";
-import { compareSummaries, type SavedSummary } from "./compare.js";
+import { compareSummaries, comparisonWarnings, type SavedSummary } from "./compare.js";
 import { parseCase, toInstance } from "./golden.js";
 import { scoreGolden } from "./golden-score.js";
 import type { InstanceResult } from "./runner.js";
@@ -92,6 +92,7 @@ describe("scoreGolden", () => {
       expected: 1,
       reported: 5,
       matched: 1,
+      underrated: 0,
       valid: 1,
       invalid: 1,
       forbidden: 1,
@@ -248,5 +249,171 @@ describe("compareSummaries", () => {
     expect(code).toBe(0);
     expect(text).toContain("| Precision | 30.0% | 50.0% | +20.0% | 2.0% | better |");
     expect(text).toContain("Warning: the runs reviewed different PRs");
+  });
+});
+
+describe("golden scoring edge cases", () => {
+  const login = (overrides: Record<string, unknown> = {}) =>
+    toInstance(parseCase({ ...base, id: "login", expect: [expectLogin], ...overrides }, "c"));
+  const at = (line: number, overrides: Partial<OutputFinding> = {}) =>
+    finding("0000000000000009", { lines: { start: line, end: line }, ...overrides });
+
+  it("counts a match below the case's minimum severity for precision, not recall", async () => {
+    const summary = await scoreGolden(
+      [login()],
+      [reviewed("login", [at(11, { severity: "suggestion" })])],
+      judge,
+    );
+    expect(summary.counts).toMatchObject({ matched: 1, underrated: 1 });
+    expect(summary.precision).toBe(1);
+    expect(summary.recall).toBe(0);
+  });
+
+  it("fails only unmatched, unlabeled criticals in a forbidden range or on a clean case", async () => {
+    const forbidding = login({
+      forbid: [{ file: "src/login.ts", lines: [10, 12], reason: "r" }],
+      adjudicated: [
+        { fingerprint: "0000000000000007", label: "valid", reason: "real", title: "t" },
+      ],
+    });
+    const summary = await scoreGolden(
+      [forbidding],
+      [
+        reviewed("login", [
+          // Matches the expected finding although it overlaps the range.
+          at(11, { severity: "critical" }),
+          // A critical outside any range on a case that is not clean.
+          finding("0000000000000008", { severity: "critical", lines: { start: 90, end: 90 } }),
+          // Labeled valid by the maintainer.
+          finding("0000000000000007", { severity: "critical", lines: { start: 12, end: 12 } }),
+        ]),
+      ],
+      judge,
+    );
+    expect(summary.failures).toEqual([]);
+  });
+
+  it("skips results that were not reviewed", async () => {
+    const summary = await scoreGolden(
+      [login()],
+      [{ ...reviewed("login", [at(11)]), status: "failed" }],
+      judge,
+    );
+    expect(summary.counts).toMatchObject({ expected: 0, reported: 0 });
+  });
+
+  it("lists a label reused for a different title, and fingerprints cases and labels", async () => {
+    const labeled = login({
+      adjudicated: [
+        { fingerprint: "0000000000000009", label: "valid", reason: "r", title: "old claim" },
+      ],
+    });
+    const summary = await scoreGolden(
+      [labeled],
+      [reviewed("login", [at(80, { title: "a new claim" })])],
+      judge,
+    );
+    expect(summary.relabeled.map((f) => [f.title, f.labeledTitle])).toEqual([
+      ["a new claim", "old claim"],
+    ]);
+    const unlabeled = await scoreGolden([login()], [], judge);
+    expect(unlabeled.casesHash).not.toBe(summary.casesHash);
+  });
+});
+
+describe("adjudication safety", () => {
+  const entry = (caseId: string, overrides: Record<string, unknown> = {}) => ({
+    case: caseId,
+    fingerprint: "0000000000000001",
+    category: "correctness",
+    severity: "warning" as const,
+    file: "src/login.ts",
+    lines: { start: 5, end: 6 },
+    title: "t",
+    body: "b",
+    label: "valid" as const,
+    reason: "real",
+    ...overrides,
+  });
+
+  it("refuses a valid finding without lines on a clean case, and writes nothing", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "ocra-adjudicate-"));
+    const clean = JSON.stringify({ ...base, id: "clean", clean: true });
+    await writeFile(join(dir, "clean.json"), clean);
+    const labels = { goldenDir: dir, entries: [entry("clean", { lines: undefined })] };
+    await expect(applyLabels(labels, dir)).rejects.toThrow("labeled valid on a clean case");
+    expect(await readFile(join(dir, "clean.json"), "utf8")).toBe(clean);
+  });
+
+  it("writes no case when a later one fails", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "ocra-adjudicate-"));
+    const a = JSON.stringify({ ...base, id: "a", expect: [expectLogin] });
+    await writeFile(join(dir, "a.json"), a);
+    await writeFile(
+      join(dir, "b.json"),
+      JSON.stringify({ ...base, id: "b", expect: [expectLogin] }),
+    );
+    const labels = {
+      goldenDir: dir,
+      entries: [entry("a"), entry("b", { lines: { start: 0, end: 1 } })],
+    };
+    await expect(applyLabels(labels, dir)).rejects.toThrow("b.json");
+    expect(await readFile(join(dir, "a.json"), "utf8")).toBe(a);
+  });
+
+  it("names the file when the labels are malformed, and treats only a missing file as none", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "ocra-labels-"));
+    expect(await readLabels(dir)).toBeUndefined();
+    await writeFile(join(dir, "adjudication.json"), JSON.stringify({ goldenDir: 1, entries: [] }));
+    await expect(readLabels(dir)).rejects.toThrow(/adjudication\.json: goldenDir: /);
+    await writeFile(join(dir, "adjudication.json"), "{");
+    await expect(readLabels(dir)).rejects.toThrow(/adjudication\.json: not valid JSON/);
+  });
+});
+
+describe("comparisonWarnings", () => {
+  const run = (overrides: Record<string, unknown> = {}): SavedSummary =>
+    ({
+      info: { judge: "j", selection: { dataset: "golden" } },
+      summary: {
+        instances: { reviewed: 5 },
+        golden: { casesHash: "h1", counts: { unadjudicated: 0 } },
+      },
+      ...overrides,
+    }) as unknown as SavedSummary;
+
+  it("names every difference that is not the change under test", () => {
+    expect(comparisonWarnings([run(), run()])).toEqual([]);
+    expect(
+      comparisonWarnings([
+        run(),
+        run({
+          info: { judge: "mock", selection: { dataset: "golden" } },
+          summary: {
+            instances: { reviewed: 4 },
+            golden: { casesHash: "h2", counts: { unadjudicated: 2 } },
+          },
+        }),
+      ]),
+    ).toEqual([
+      "the runs were scored by different judges",
+      "the runs reviewed a different number of PRs (failed ones are not scored)",
+      "the runs were scored against different golden cases or labels; rescore them",
+      "some findings are unlabeled, which lowers golden precision until labeled",
+    ]);
+  });
+});
+
+describe("rescoring", () => {
+  it("refuses a run.json whose ids would leave the run directory", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "ocra-rescore-"));
+    await writeFile(
+      join(dir, "run.json"),
+      JSON.stringify({ info: { selection: {} }, ids: ["../../etc/hosts"] }),
+    );
+    let text = "";
+    const out = { write: (chunk: string) => (text += chunk) };
+    expect(await main(["score", dir, "--mock-judge"], out, out)).toBe(2);
+    expect(text).toContain('run.json lists an invalid id "../../etc/hosts"');
   });
 });

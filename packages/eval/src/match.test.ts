@@ -72,6 +72,26 @@ describe("matchComments", () => {
     expect(qualityMetrics(counts)).toMatchObject({ precision: 1, recall: 0.5 });
   });
 
+  it("never reports fewer lenient matches than official ones", async () => {
+    // Greedy pairing without the line stage can take a comment another
+    // reference needed: A@10 grabs the "A B" comment at 50, and B is left.
+    const refs = [
+      ref({ fromLine: 10, toLine: 10, note: "A" }),
+      ref({ fromLine: 50, toLine: 50, note: "B" }),
+    ];
+    const gens = [
+      gen({ fromLine: 50, toLine: 50, note: "A B" }),
+      gen({ fromLine: 10, toLine: 10, note: "A" }),
+    ];
+    const contains: SemanticJudge = { sameIssue: async (r, g) => g.includes(r) };
+    const official = await matchComments(refs, gens, contains);
+    const lenient = await matchComments(refs, gens, contains, { anyLine: true });
+    expect(lenient.filter((m) => m.semanticMatch).length).toBeLessThan(
+      official.filter((m) => m.semanticMatch).length,
+    );
+    expect(countMatches(official, 2, lenient).lenientMatches).toBe(2);
+  });
+
   it("matches a concern anchored lines away only in the lenient diagnostic", async () => {
     const far = gen({ fromLine: 40, toLine: 42 });
     expect((await matchComments([ref()], [far], always))[0]?.semanticMatch).toBe(false);

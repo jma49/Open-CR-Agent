@@ -1,7 +1,7 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { type GoldenCase, parseCase } from "./golden.js";
+import { type GoldenCase, parseCase, readJson } from "./golden.js";
 import type { GoldenFinding } from "./golden-score.js";
 
 export const LABELS_FILE = "adjudication.json";
@@ -45,13 +45,20 @@ export function labelsFor(
 }
 
 export async function readLabels(runDir: string): Promise<LabelsFile | undefined> {
-  let text: string;
+  const path = join(runDir, LABELS_FILE);
+  let data: unknown;
   try {
-    text = await readFile(join(runDir, LABELS_FILE), "utf8");
-  } catch {
-    return undefined;
+    data = await readJson(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
   }
-  return labelsSchema.parse(JSON.parse(text));
+  const result = labelsSchema.safeParse(data);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    throw new Error(`${path}: ${issue?.path.join(".") || "file"}: ${issue?.message}`);
+  }
+  return result.data;
 }
 
 export interface ApplyResult {
@@ -62,6 +69,7 @@ export interface ApplyResult {
 
 // A valid finding also becomes an expect entry, at the lowest severity, so a
 // later run is scored on it; the maintainer can raise the severity by hand.
+// Every case is updated and validated before any file is written.
 export async function applyLabels(labels: LabelsFile, goldenDir: string): Promise<ApplyResult> {
   const result: ApplyResult = { applied: 0, pending: 0, alreadyRecorded: 0 };
   const ready = labels.entries.filter((e) => {
@@ -69,10 +77,11 @@ export async function applyLabels(labels: LabelsFile, goldenDir: string): Promis
     if (!labeled) result.pending += 1;
     return labeled;
   });
+  const updates: { path: string; golden: GoldenCase }[] = [];
   for (const caseId of new Set(ready.map((e) => e.case))) {
     if (!/^[a-z0-9][a-z0-9._-]{0,99}$/.test(caseId)) throw new Error(`invalid case id "${caseId}"`);
     const path = join(goldenDir, `${caseId}.json`);
-    const golden: GoldenCase = parseCase(JSON.parse(await readFile(path, "utf8")), path);
+    const golden: GoldenCase = parseCase(await readJson(path), path);
     const known = new Set(golden.adjudicated.map((a) => a.fingerprint));
     for (const entry of ready.filter((e) => e.case === caseId)) {
       if (known.has(entry.fingerprint)) {
@@ -81,15 +90,20 @@ export async function applyLabels(labels: LabelsFile, goldenDir: string): Promis
       }
       known.add(entry.fingerprint);
       const label = entry.label as "valid" | "invalid";
+      if (label === "valid" && golden.clean && !entry.lines) {
+        throw new Error(
+          `${path}: "${entry.title}" is labeled valid on a clean case but has no lines to expect; add an expect entry by hand and set clean to false, or label it invalid`,
+        );
+      }
       golden.adjudicated.push({
         fingerprint: entry.fingerprint,
         label,
         reason: entry.reason.trim(),
         title: entry.title,
       });
-      // A real issue on a case thought clean means the case was not clean.
-      if (label === "valid") golden.clean = false;
       if (label === "valid" && entry.lines) {
+        // A real issue on a case thought clean means the case was not clean.
+        golden.clean = false;
         golden.expect.push({
           file: entry.file,
           lines: [entry.lines.start, entry.lines.end],
@@ -103,7 +117,10 @@ export async function applyLabels(labels: LabelsFile, goldenDir: string): Promis
       result.applied += 1;
     }
     // Validate what is written exactly as a load would.
-    await writeFile(path, `${JSON.stringify(parseCase(golden, path), null, 2)}\n`);
+    updates.push({ path, golden: parseCase(golden, path) });
+  }
+  for (const { path, golden } of updates) {
+    await writeFile(path, `${JSON.stringify(golden, null, 2)}\n`);
   }
   return result;
 }

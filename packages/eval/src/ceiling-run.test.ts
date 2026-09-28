@@ -80,6 +80,7 @@ describe("measureCeiling", () => {
         clean: false,
         forbid: [{ path: "other.ts", fromLine: 1, toLine: 1, reason: "r" }],
         adjudicated: [],
+        minSeverity: [],
       },
     };
     logs.length = 0;

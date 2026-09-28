@@ -25,7 +25,7 @@ export function renderMarkdown(
     `- Judge: ${info.judge}`,
     `- Instances: ${summary.instances.reviewed} reviewed, ${summary.instances.failed} failed, ${summary.instances.unavailable} unavailable in the dataset, ${summary.instances.skippedBudget} skipped for budget, ${summary.instances.skippedQuota} skipped for spent quota (of ${summary.instances.selected})`,
     "",
-    "## Quality",
+    summary.golden ? "## Quality, benchmark matching (ignores labels)" : "## Quality",
     "",
     "| Precision | Recall | F1 | Line precision | Line recall | Generated | Expected | Matched |",
     "|---|---|---|---|---|---|---|---|",
@@ -76,9 +76,11 @@ function goldenSection(golden: GoldenSummary): string[] {
   return [
     "## Golden set (ADR-0011)",
     "",
-    "| Precision | Recall | Reported | Matched | Valid | Invalid | In forbidden ranges | Unlabeled | Expected |",
-    "|---|---|---|---|---|---|---|---|---|",
-    `| ${pct(golden.precision)} | ${pct(golden.recall)} | ${c.reported} | ${c.matched} | ${c.valid} | ${c.invalid} | ${c.forbidden} | ${c.unadjudicated} | ${c.expected} |`,
+    "| Precision | Recall | Reported | Matched | Below min severity | Valid | Invalid | In forbidden ranges | Unlabeled | Expected |",
+    "|---|---|---|---|---|---|---|---|---|---|",
+    `| ${pct(golden.precision)} | ${pct(golden.recall)} | ${c.reported} | ${c.matched} | ${c.underrated} | ${c.valid} | ${c.invalid} | ${c.forbidden} | ${c.unadjudicated} | ${c.expected} |`,
+    "",
+    `Cases and labels: ${golden.casesHash}. Recall counts a match only at or above the case's minimum severity.`,
     "",
     c.unadjudicated > 0
       ? `${c.unadjudicated} finding(s) are unlabeled and count against precision until labeled: edit adjudication.json in the run directory, then run \`ocra-eval adjudicate <run-dir>\`.`
@@ -92,6 +94,16 @@ function goldenSection(golden: GoldenSummary): string[] {
           ...golden.failures.map(
             (f) =>
               `- ${f.case}: ${f.file}${f.lines ? `:${f.lines.start}` : ""} "${f.title}" (${f.reason})`,
+          ),
+        ]),
+    ...(golden.relabeled.length === 0
+      ? []
+      : [
+          "",
+          `${golden.relabeled.length} finding(s) took a label recorded for another title on the same code; check the label still fits:`,
+          "",
+          ...golden.relabeled.map(
+            (f) => `- ${f.case}: "${f.title}" (labeled as "${f.labeledTitle}")`,
           ),
         ]),
     "",

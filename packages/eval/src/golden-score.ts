@@ -1,4 +1,5 @@
-import type { OutputFinding } from "@open-cr-agent/core";
+import { createHash } from "node:crypto";
+import type { OutputFinding, Severity } from "@open-cr-agent/core";
 import type { Instance } from "./dataset.js";
 import type { ForbiddenRange } from "./golden.js";
 import { matchComments, type SemanticJudge } from "./match.js";
@@ -22,6 +23,9 @@ export interface GoldenSummary {
     expected: number;
     reported: number;
     matched: number;
+    // Matched an expected finding at a lower severity than it requires:
+    // correct for precision, a miss for recall.
+    underrated: number;
     valid: number;
     invalid: number;
     forbidden: number;
@@ -33,7 +37,14 @@ export interface GoldenSummary {
   recall: number;
   failures: (GoldenFinding & { reason: string })[];
   unadjudicated: GoldenFinding[];
+  // A label applies by fingerprint (category, file, quoted code); a later
+  // finding on the same code may claim something else. Listed for a look.
+  relabeled: (GoldenFinding & { labeledTitle: string })[];
+  // Runs scored against different case files are not comparable.
+  casesHash: string;
 }
+
+const RANK: Record<Severity, number> = { suggestion: 0, warning: 1, critical: 2 };
 
 // ADR-0011: precision from recorded labels, never from a judge's guess, and
 // a critical finding where a case says findings are wrong is a failure.
@@ -48,6 +59,7 @@ export async function scoreGolden(
       expected: 0,
       reported: 0,
       matched: 0,
+      underrated: 0,
       valid: 0,
       invalid: 0,
       forbidden: 0,
@@ -57,6 +69,8 @@ export async function scoreGolden(
     recall: 0,
     failures: [],
     unadjudicated: [],
+    relabeled: [],
+    casesHash: casesHash(instances),
   };
   const { counts } = summary;
   for (const instance of instances) {
@@ -69,21 +83,35 @@ export async function scoreGolden(
       judge,
     );
     const matched = new Set(matches.flatMap((m) => m.matchedIndex ?? []));
-    const labels = new Map(instance.golden.adjudicated.map((a) => [a.fingerprint, a.label]));
+    const labels = new Map(instance.golden.adjudicated.map((a) => [a.fingerprint, a]));
     counts.expected += instance.references.length;
     counts.reported += findings.length;
     counts.matched += matched.size;
+    for (const [k, match] of matches.entries()) {
+      const finding = match.matchedIndex === undefined ? undefined : findings[match.matchedIndex];
+      const required = instance.golden.minSeverity[k] ?? "suggestion";
+      if (finding && RANK[finding.severity] < RANK[required]) counts.underrated += 1;
+    }
     for (const [index, finding] of findings.entries()) {
       if (matched.has(index)) continue;
       const golden = toGoldenFinding(instance.id, finding);
       const forbidden = instance.golden.forbid.find((f) => inRange(finding, f));
-      if (finding.severity === "critical" && (instance.golden.clean || forbidden)) {
+      const adjudicated = labels.get(finding.fingerprint);
+      const label = adjudicated?.label;
+      if (adjudicated && adjudicated.title !== finding.title) {
+        summary.relabeled.push({ ...golden, labeledTitle: adjudicated.title });
+      }
+      // The maintainer judged it real: not a failure, whatever the case says.
+      if (
+        finding.severity === "critical" &&
+        label !== "valid" &&
+        (instance.golden.clean || forbidden)
+      ) {
         summary.failures.push({
           ...golden,
           reason: forbidden?.reason ?? "the case has no issue",
         });
       }
-      const label = labels.get(finding.fingerprint);
       if (label === "valid") counts.valid += 1;
       else if (label === "invalid") counts.invalid += 1;
       else if (forbidden) counts.forbidden += 1;
@@ -92,8 +120,22 @@ export async function scoreGolden(
   }
   counts.unadjudicated = summary.unadjudicated.length;
   summary.precision = ratio(counts.matched + counts.valid, counts.reported);
-  summary.recall = ratio(counts.matched, counts.expected);
+  summary.recall = ratio(counts.matched - counts.underrated, counts.expected);
   return summary;
+}
+
+function casesHash(instances: readonly Instance[]): string {
+  const cases = instances
+    .filter((i) => i.golden)
+    .map((i) => ({
+      id: i.id,
+      base: i.baseCommit,
+      head: i.headCommit,
+      references: i.references,
+      golden: i.golden,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  return createHash("sha256").update(JSON.stringify(cases)).digest("hex").slice(0, 16);
 }
 
 function toGoldenFinding(caseId: string, finding: OutputFinding): GoldenFinding {

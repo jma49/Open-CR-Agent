@@ -1,6 +1,6 @@
 ---
 title: Evaluation
-description: Measure review quality on AACR-Bench with ocra-eval.
+description: Measure review quality on AACR-Bench and on ocra's golden cases with ocra-eval.
 ---
 
 `ocra-eval` replays [AACR-Bench](https://github.com/alibaba/aacr-bench): 200 real pull requests from 50 open-source projects in 10 languages, with 1,505 expert-verified review comments as ground truth.
@@ -49,11 +49,11 @@ A case is one JSON file named after its `id`, validated when it loads:
 | `repo`, `base`, `head` | A public GitHub repository (`owner/name`) and the two commits of the change |
 | `language`, `tier` | Project language; `smoke` (run before and after every change that needs an eval) or `full` |
 | `source`, `rationale` | Where the case comes from (`ocra-history`, `dogfood` or `aacr`, with a reference) and why it was taken |
-| `expect` | Findings ocra must report: `file`, `lines` (`[from, to]` on the new side), `category` (`correctness`, `security`, `performance`), `minSeverity`, `concern` |
+| `expect` | Findings ocra must report: `file`, `lines` (`[from, to]` on the new side), `category` (`correctness`, `security`, `performance`), `minSeverity` (a match below it counts for precision, not recall), `concern` |
 | `forbid` | Ranges where a finding is wrong: `file`, `lines`, `reason` |
 | `clean` | `true` for a change with no issue; it cannot have `expect` |
 
-Paths must stay inside the repository, and a case naming a file the change does not touch is refused when the repository is checked out. `--tier smoke` selects the smoke tier and `--tier full` every case; `--golden-dir` reads cases from another directory. `--max-change-lines` does not apply to golden cases.
+Paths must stay inside the repository, and `ceiling` refuses a case naming a file the change does not touch; run it after adding or editing cases, since `run` does not check. `--tier smoke` selects the smoke tier and `--tier full` every case; `--golden-dir` reads cases from another directory. `--max-change-lines` does not apply to golden cases.
 
 ### Golden scoring and labels
 
@@ -63,7 +63,7 @@ A golden run adds its own metrics to `summary.md`. A finding that matches an `ex
 - invalid when it falls in a `forbid` range;
 - otherwise unlabeled.
 
-Precision is (matched + valid) / reported, so an unlabeled finding counts against it until someone labels it; it is never guessed. A critical finding in a `forbid` range or on a `clean` case is listed as a failure.
+Precision is (matched + valid) / reported, so an unlabeled finding counts against it until someone labels it; it is never guessed. A critical finding in a `forbid` range or on a `clean` case, unless labeled valid, is listed as a failure.
 
 Unlabeled findings are written to `adjudication.json` in the run directory. Set each entry's `label` to `"valid"` or `"invalid"` with a one-line `reason`, then record them in the cases:
 
@@ -79,7 +79,7 @@ Each fingerprint is labeled once. A valid finding with lines also becomes an `ex
 node packages/eval/dist/main.js compare .ocra/eval/baseline-a .ocra/eval/change --spread-of .ocra/eval/baseline-b
 ```
 
-Prints each metric of both runs and the difference. Model runs vary, so with `--spread-of` (a second run of the baseline) a difference no larger than the gap between the two baseline runs is reported as `no change`; without it the direction is not judged. It works on AACR-Bench and golden runs, and warns when the runs reviewed different pull requests.
+Prints each metric of both runs and the difference. Model runs vary, so with `--spread-of` (a second run of the baseline) a difference no larger than the gap between the two baseline runs is reported as `no change`; without it the direction is not judged. It works on AACR-Bench and golden runs, and warns when the runs reviewed different pull requests, were scored by different judges or against different golden cases or labels, reviewed a different number of pull requests, or still have unlabeled findings. Golden numbers depend on the cases and labels at scoring time, so after labeling, re-score every run you compare (`ocra-eval score <run-dir>`).
 
 ## Recall ceiling (free)
 

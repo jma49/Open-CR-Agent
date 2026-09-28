@@ -58,6 +58,14 @@ const diffs = [
 ] as unknown as FileDiff[];
 
 describe("classifyReferences", () => {
+  it("counts a range that overlaps a hunk, not only one inside it", () => {
+    const spanning = {
+      ...instance,
+      references: [{ ...ref("src/a.ts", "Code Defect", 2), toLine: 9 }],
+    };
+    expect(classifyReferences(spanning, preview, diffs)[0]?.reach).toBe("reachable");
+  });
+
   it("explains what the deterministic stages leave reachable", () => {
     const reaches = classifyReferences(instance, preview, diffs);
     expect(reaches.map((r) => [r.reach, r.detail])).toEqual([

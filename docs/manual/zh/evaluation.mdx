@@ -1,6 +1,6 @@
 ---
 title: 评测
-description: 用 ocra-eval 在 AACR-Bench 上衡量审查质量。
+description: 用 ocra-eval 在 AACR-Bench 和 ocra 的黄金用例上衡量审查质量。
 ---
 
 `ocra-eval` 会回放 [AACR-Bench](https://github.com/alibaba/aacr-bench)：来自 50 个开源项目、覆盖 10 种语言的 200 个真实 PR，以 1,505 条经专家核实的审查意见作为标准答案。
@@ -49,11 +49,11 @@ node packages/eval/dist/main.js ceiling --dataset golden                 # 免�
 | `repo`、`base`、`head` | 公开的 GitHub 仓库（`owner/name`）以及这次改动的两个提交 |
 | `language`、`tier` | 项目语言；`smoke`（每个需要评测的改动前后各跑一次）或 `full` |
 | `source`、`rationale` | 用例来源（`ocra-history`、`dogfood` 或 `aacr`，附引用）以及选它的理由 |
-| `expect` | ocra 必须报出的问题：`file`、`lines`（新版本上的 `[from, to]`）、`category`（`correctness`、`security`、`performance`）、`minSeverity`、`concern` |
+| `expect` | ocra 必须报出的问题：`file`、`lines`（新版本上的 `[from, to]`）、`category`（`correctness`、`security`、`performance`）、`minSeverity`（低于它的命中计入精确率，不计入召回率）、`concern` |
 | `forbid` | 报了就算错的范围：`file`、`lines`、`reason` |
 | `clean` | 为 `true` 表示改动没有任何问题，此时不能有 `expect` |
 
-路径必须在仓库内；如果用例指向的文件不在这次改动里，检出仓库时会被拒绝。`--tier smoke` 只选 smoke 档，`--tier full` 选全部用例；`--golden-dir` 可以从其他目录读取用例。`--max-change-lines` 对黄金用例不起作用。
+路径必须在仓库内；如果用例指向的文件不在这次改动里，`ceiling` 会拒绝它；新增或修改用例后先跑一次 `ceiling`，因为 `run` 不做这项检查。`--tier smoke` 只选 smoke 档，`--tier full` 选全部用例；`--golden-dir` 可以从其他目录读取用例。`--max-change-lines` 对黄金用例不起作用。
 
 ### 黄金集计分与标注
 
@@ -63,7 +63,7 @@ node packages/eval/dist/main.js ceiling --dataset golden                 # 免�
 - 落在 `forbid` 范围内的算无效；
 - 其余为未标注。
 
-精确率 =（命中数 + 有效数）/ 报出总数，所以未标注的问题在被标注前会拉低精确率，但绝不靠猜。落在 `forbid` 范围内或出现在 `clean` 用例上的 critical 会被单独列为失败。
+精确率 =（命中数 + 有效数）/ 报出总数，所以未标注的问题在被标注前会拉低精确率，但绝不靠猜。落在 `forbid` 范围内或出现在 `clean` 用例上的 critical（已标为有效的除外）会被单独列为失败。
 
 未标注的问题会写进运行目录下的 `adjudication.json`。把每条的 `label` 填成 `"valid"` 或 `"invalid"`，再写一句 `reason`，然后记录到用例里：
 
@@ -79,7 +79,7 @@ node packages/eval/dist/main.js adjudicate .ocra/eval/golden-baseline
 node packages/eval/dist/main.js compare .ocra/eval/baseline-a .ocra/eval/change --spread-of .ocra/eval/baseline-b
 ```
 
-逐项列出两次运行的指标和差值。模型每次运行都有波动，所以加上 `--spread-of`（基线的第二次运行）时，差值不超过两次基线之间差距的会报告为 `no change`；不加时不判断方向。AACR-Bench 和黄金集的运行都能比较；两次运行审查的 PR 不同时会给出警告。
+逐项列出两次运行的指标和差值。模型每次运行都有波动，所以加上 `--spread-of`（基线的第二次运行）时，差值不超过两次基线之间差距的会报告为 `no change`；不加时不判断方向。AACR-Bench 和黄金集的运行都能比较；两次运行审查的 PR 不同、评分用的 judge 不同、用的黄金用例或标注不同、审查成功的 PR 数不同，或还有未标注的问题时，都会给出警告。黄金集的数字取决于评分时的用例和标注，所以标注之后，要把参与比较的每次运行都重新评分（`ocra-eval score <run-dir>`）。
 
 ## 召回率上限（免费）
 
