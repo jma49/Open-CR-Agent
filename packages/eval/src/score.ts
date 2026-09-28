@@ -64,12 +64,10 @@ export async function score(
   const allMatches: ReferenceMatch[] = [];
   for (const instance of reviewed) {
     const findings = byId.get(instance.id)?.findings ?? [];
-    const matches = await matchComments(
-      instance.references,
-      findings.map(toGeneratedComment),
-      judge,
-    );
-    const counts = countMatches(matches, findings.length);
+    const generated = findings.map(toGeneratedComment);
+    const matches = await matchComments(instance.references, generated, judge);
+    const lenient = await matchComments(instance.references, generated, judge, { anyLine: true });
+    const counts = countMatches(matches, findings.length, lenient);
     overall = addCounts(overall, counts);
     languages.set(
       instance.language,

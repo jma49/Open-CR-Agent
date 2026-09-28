@@ -24,10 +24,13 @@ export const LINE_TOLERANCE = 1;
 // Port of AACR-Bench's evaluate_comments so results stay comparable with the
 // published numbers: path, then side, then line proximity, then the judge.
 // Each generated comment counts at most once per stage.
+// `anyLine` drops the line stage: a diagnostic, not the benchmark's metric,
+// that tells a concern found at another line apart from one not found.
 export async function matchComments(
   references: readonly ReferenceComment[],
   generated: readonly GeneratedComment[],
   judge: SemanticJudge,
+  options: { anyLine?: boolean } = {},
 ): Promise<ReferenceMatch[]> {
   const usedByLine = new Set<number>();
   const usedBySemantic = new Set<number>();
@@ -39,7 +42,7 @@ export async function matchComments(
       if (!candidate.note.trim() || normalizePath(candidate.path) !== normalizePath(reference.path))
         continue;
       if (candidate.side !== reference.side) continue;
-      if (!linesClose(reference, candidate)) continue;
+      if (!options.anyLine && !linesClose(reference, candidate)) continue;
 
       if (!result.lineMatch && !usedByLine.has(index)) {
         result.lineMatch = true;

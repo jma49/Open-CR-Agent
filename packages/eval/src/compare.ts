@@ -27,6 +27,18 @@ const METRICS: Metric[] = [
   },
   { name: "F1", value: (s) => s.summary.overall.metrics.f1, higherIsBetter: true, percent: true },
   {
+    name: "Lenient precision (any line)",
+    value: (s) => s.summary.overall.metrics.lenientPrecision,
+    higherIsBetter: true,
+    percent: true,
+  },
+  {
+    name: "Lenient recall (any line)",
+    value: (s) => s.summary.overall.metrics.lenientRecall,
+    higherIsBetter: true,
+    percent: true,
+  },
+  {
     name: "Golden precision",
     value: (s) => s.summary.golden?.precision,
     higherIsBetter: true,

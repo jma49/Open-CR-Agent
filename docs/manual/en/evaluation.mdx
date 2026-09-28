@@ -99,4 +99,6 @@ A port of the benchmark's official matching: same file, same diff side, line ran
 | Recall | matched findings / annotated comments |
 | F1 | harmonic mean of the two |
 
+Reports also give a diagnostic that is not the benchmark's metric: precision and recall when the same concern in the same file matches at any line. A gap between the two means findings were anchored away from the reference (the benchmark allows one line), not that they were missed.
+
 The judge uses `JUDGE_BASE_URL`, `JUDGE_API_KEY` and `JUDGE_MODEL`, or a Gemini key. Answers are cached per run, so re-scoring is free. Reports break results down by language, issue category and context level, with tokens, cost and latency.

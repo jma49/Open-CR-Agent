@@ -145,7 +145,7 @@ export function renderCeiling(summary: CeilingSummary): string {
   const pct = (n: number) =>
     summary.references === 0 ? "0.0" : ((100 * n) / summary.references).toFixed(1);
   const lines = [
-    "# AACR-Bench recall ceiling",
+    "# Recall ceiling",
     "",
     `${summary.references} annotated issues in ${summary.instances} PR(s), classified by ocra's deterministic stages only (no model calls). "Reachable" is an upper bound on recall; issues outside the changed lines can still be found through file context, so the practical bound is between the two.`,
     "",

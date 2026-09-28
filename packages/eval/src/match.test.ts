@@ -71,6 +71,23 @@ describe("matchComments", () => {
     const counts = countMatches(matches, 1);
     expect(qualityMetrics(counts)).toMatchObject({ precision: 1, recall: 0.5 });
   });
+
+  it("matches a concern anchored lines away only in the lenient diagnostic", async () => {
+    const far = gen({ fromLine: 40, toLine: 42 });
+    expect((await matchComments([ref()], [far], always))[0]?.semanticMatch).toBe(false);
+    const lenient = await matchComments([ref()], [far], always, { anyLine: true });
+    expect(lenient[0]?.semanticMatch).toBe(true);
+    const official = await matchComments([ref()], [far], always);
+    expect(countMatches(official, 1, lenient)).toMatchObject({
+      semanticMatches: 0,
+      lenientMatches: 1,
+    });
+    // Another file never matches, lenient or not.
+    const elsewhere = gen({ path: "src/other.ts" });
+    expect((await matchComments([ref()], [elsewhere], always, { anyLine: true }))[0]).toMatchObject(
+      { semanticMatch: false },
+    );
+  });
 });
 
 describe("qualityMetrics", () => {
@@ -80,13 +97,21 @@ describe("qualityMetrics", () => {
       generated: 8,
       lineMatches: 7,
       semanticMatches: 6,
+      lenientMatches: 8,
     });
     expect(metrics.precision).toBeCloseTo(0.75);
     expect(metrics.recall).toBeCloseTo(0.5);
     expect(metrics.f1).toBeCloseTo(0.6);
     expect(metrics.linePrecision).toBeCloseTo(0.875);
+    expect(metrics.lenientRecall).toBeCloseTo(8 / 12);
     expect(
-      qualityMetrics({ expected: 0, generated: 0, lineMatches: 0, semanticMatches: 0 }).f1,
+      qualityMetrics({
+        expected: 0,
+        generated: 0,
+        lineMatches: 0,
+        semanticMatches: 0,
+        lenientMatches: 0,
+      }).f1,
     ).toBe(0);
   });
 });

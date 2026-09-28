@@ -31,6 +31,8 @@ export function renderMarkdown(
     "|---|---|---|---|---|---|---|---|",
     `| ${pct(metrics.precision)} | ${pct(metrics.recall)} | ${pct(metrics.f1)} | ${pct(metrics.linePrecision)} | ${pct(metrics.lineRecall)} | ${counts.generated} | ${counts.expected} | ${counts.semanticMatches} |`,
     "",
+    `Diagnostic, not the benchmark's metric: counting the same concern in the same file at any line, precision ${pct(metrics.lenientPrecision)} and recall ${pct(metrics.lenientRecall)} (${counts.lenientMatches} matched). A gap to the official numbers is findings anchored away from the reference.`,
+    "",
     ...(summary.golden ? goldenSection(summary.golden) : []),
     "## Cost and latency",
     "",

@@ -172,6 +172,7 @@ describe("runInstances", () => {
       generated: 3,
       lineMatches: 3,
       semanticMatches: 3,
+      lenientMatches: 3,
     });
     expect(summary.overall.metrics).toMatchObject({ precision: 1, recall: 0.5 });
     expect(summary.recallByContext).toEqual({
