@@ -6,6 +6,11 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # OpenCode is pinned on purpose: a new version can add tools or change the
+    # step loop, so it is bumped by hand with a security review (AGENTS.md).
+    ignore:
+      - dependency-name: opencode-ai
+      - dependency-name: "@opencode-ai/sdk"
     groups:
       minor-and-patch:
         update-types: [minor, patch]
