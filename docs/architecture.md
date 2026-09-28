@@ -164,3 +164,5 @@ packages/
 | M2 | Multiple reviewers · Matrix planner · Verify and Judge · risk tiers |
 | M3 | GitHub Action · inline comments and verdicts · incremental re-review |
 | M4 | Failback and circuit breakers · remote config · long-term review memory · `--ultra` |
+
+M1–M4 are built. What comes next, and why, is in [roadmap.md](roadmap.md).
