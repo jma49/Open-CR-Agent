@@ -19,7 +19,8 @@
       ],
       "category": "correctness",
       "minSeverity": "warning",
-      "concern": "root.OpenFile creates the file before any parent directory exists (MkdirAll runs later, in createLink), so a nested path such as dir/model.safetensors fails with ENOENT and is reported as an invalid path."
+      "concern": "root.OpenFile creates the file before any parent directory exists (MkdirAll runs later, in createLink), so a nested path such as dir/model.safetensors fails with ENOENT and is reported as an invalid path.",
+      "also": []
     },
     {
       "file": "server/create.go",
@@ -29,7 +30,58 @@
       ],
       "category": "security",
       "minSeverity": "suggestion",
-      "concern": "validRelative only treats '/' as a separator, so on Windows backslash and drive-letter paths pass the early check; os.Root still contains them, so it is defense in depth that is lost."
+      "concern": "validRelative only treats '/' as a separator, so on Windows backslash and drive-letter paths pass the early check; os.Root still contains them, so it is defense in depth that is lost.",
+      "also": []
+    },
+    {
+      "file": "server/create.go",
+      "lines": [
+        99,
+        105
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "Missing errFilePath handling in the badRequest error checking loop for base model files",
+      "also": []
+    },
+    {
+      "file": "server/create.go",
+      "lines": [
+        50,
+        58
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "Wrong error returned when 'files' is omitted from CreateRequest because r.Files is overwritten with a non-nil empty map",
+      "also": []
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": [
+    {
+      "fingerprint": "e62c626f8ab22399",
+      "label": "valid",
+      "reason": "Real, low impact: the r.Files error branch omits errFilePath, which the adapters branch includes, so a bad file path is not a 400. (checked against the code by the agent, 2026-09-28)",
+      "title": "Missing errFilePath handling in the badRequest error checking loop for base model files"
+    },
+    {
+      "fingerprint": "c3b40297805e35d7",
+      "label": "invalid",
+      "reason": "Defense in depth only: adapter keys still pass the os.Root containment check and errFilePath returns 400. (checked against the code by the agent, 2026-09-28)",
+      "title": "Missing early path validation for adapters keys in CreateHandler"
+    },
+    {
+      "fingerprint": "165fe552fc6f1d23",
+      "label": "valid",
+      "reason": "Real: files is always a non-nil map, so r.Files != nil always holds and the errNeitherFromOrFiles branch is unreachable; omitting files gives the wrong error. (checked against the code by the agent, 2026-09-28)",
+      "title": "Wrong error returned when 'files' is omitted from CreateRequest because r.Files is overwritten with a non-nil empty map"
+    },
+    {
+      "fingerprint": "aa8fe6e1c25e62ad",
+      "label": "invalid",
+      "reason": "Negligible: one extra empty-file create and delete per file next to linking or copying the blob. (checked against the code by the agent, 2026-09-28)",
+      "title": "Redundant synchronous disk write/delete operations per safetensor file during model creation"
     }
   ]
 }

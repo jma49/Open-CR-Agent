@@ -19,7 +19,16 @@
       ],
       "category": "correctness",
       "minSeverity": "warning",
-      "concern": "The header declares static two-argument isCosmeticVertex/isCosmeticEdge/isCenterLine, but the .cpp defines non-static one-argument members and CosmeticExtension.cpp still calls the removed DrawUtil versions, so the module does not compile."
+      "concern": "The header declares static two-argument isCosmeticVertex/isCosmeticEdge/isCenterLine, but the .cpp defines non-static one-argument members and CosmeticExtension.cpp still calls the removed DrawUtil versions, so the module does not compile.",
+      "also": [
+        {
+          "file": "src/Mod/TechDraw/App/DrawViewPart.cpp",
+          "lines": [
+            1502,
+            1523
+          ]
+        }
+      ]
     }
   ]
 }

@@ -19,7 +19,8 @@
       ],
       "category": "correctness",
       "minSeverity": "warning",
-      "concern": "coverageGaps is a helper function, not a plugin, yet it was added to BUILTIN_PLUGINS; it type-checks because functions have a name, and registers nothing."
+      "concern": "coverageGaps is a helper function, not a plugin, yet it was added to BUILTIN_PLUGINS; it type-checks because functions have a name, and registers nothing.",
+      "also": []
     },
     {
       "file": "packages/cli/src/review/command.ts",
@@ -29,7 +30,29 @@
       ],
       "category": "correctness",
       "minSeverity": "warning",
-      "concern": "A blocking verdict returns exit 1 before the new coverage check, so a review that left files unreviewed exits 1 instead of 3, and the action lets 1 pass by default."
+      "concern": "A blocking verdict returns exit 1 before the new coverage check, so a review that left files unreviewed exits 1 instead of 3, and the action lets 1 pass by default.",
+      "also": []
+    },
+    {
+      "file": "packages/core/src/pipeline/report.ts",
+      "lines": [
+        22,
+        26
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "coverageGaps incorrectly treats unchanged files as unreviewed, leading to incorrect \"Nothing was reviewed\" status",
+      "also": []
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": [
+    {
+      "fingerprint": "fba002ba3779d359",
+      "label": "valid",
+      "reason": "Real: with unchanged files and every new file failed or unreviewed, nothingReviewed replaces the summary and suppresses judge_finished though carried-over findings stand (run.ts:171-186); the verdict itself is kept. Still on main. (checked against the code by the agent, 2026-09-28)",
+      "title": "coverageGaps incorrectly treats unchanged files as unreviewed, leading to incorrect \"Nothing was reviewed\" status"
     }
   ]
 }
