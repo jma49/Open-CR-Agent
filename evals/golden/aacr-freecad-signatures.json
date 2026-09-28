@@ -27,6 +27,13 @@
             1502,
             1523
           ]
+        },
+        {
+          "file": "src/Mod/TechDraw/App/DrawUtil.h",
+          "lines": [
+            249,
+            254
+          ]
         }
       ]
     }

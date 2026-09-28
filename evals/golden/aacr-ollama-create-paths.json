@@ -82,6 +82,12 @@
       "label": "invalid",
       "reason": "Negligible: one extra empty-file create and delete per file next to linking or copying the blob. (checked against the code by the agent, 2026-09-28)",
       "title": "Redundant synchronous disk write/delete operations per safetensor file during model creation"
+    },
+    {
+      "fingerprint": "8882871c2456e11c",
+      "label": "invalid",
+      "reason": "Defense in depth only: adapter keys still pass the os.Root containment check and errFilePath returns 400 (checked against the code by the agent, 2026-09-28)",
+      "title": "Missing path validation on 'adapters' parameter"
     }
   ]
 }
