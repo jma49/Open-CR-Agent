@@ -164,5 +164,5 @@ async function harvest(
 }
 
 export function emptyOutcome(): SessionOutcome {
-  return { findings: [], toolCalls: [], text: "", usage: emptyUsage() };
+  return { findings: [], steps: 0, toolCalls: [], text: "", usage: emptyUsage() };
 }

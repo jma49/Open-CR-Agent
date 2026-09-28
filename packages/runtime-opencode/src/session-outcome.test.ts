@@ -18,6 +18,7 @@ describe("summarizeSession", () => {
         assistant(
           { cost: 0.001, tokens: { input: 100, output: 10, reasoning: 5, cache: { read: 60 } } },
           [
+            { type: "step-start" },
             {
               type: "tool",
               tool: "ocra_read_file",
@@ -26,6 +27,7 @@ describe("summarizeSession", () => {
           ],
         ),
         assistant({ cost: 0.002, tokens: { input: 200, output: 20 } }, [
+          { type: "step-start" },
           { type: "tool", tool: REPORT, state: { status: "completed", input: { title: "bug" } } },
           { type: "tool", tool: REPORT, state: { status: "error", input: { title: "bad args" } } },
           { type: "tool", tool: "ocra_task_done", state: { status: "completed", input: {} } },
@@ -34,6 +36,7 @@ describe("summarizeSession", () => {
       REPORT,
     );
     expect(outcome.findings).toEqual([{ title: "bug" }]);
+    expect(outcome.steps).toBe(2);
     expect(outcome.toolCalls).toEqual(["ocra_read_file", REPORT, REPORT, "ocra_task_done"]);
     expect(outcome.usage).toEqual({
       inputTokens: 300,

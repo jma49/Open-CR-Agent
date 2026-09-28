@@ -34,12 +34,13 @@ describe("OpenCodeRuntime.complete", () => {
       {
         a: {
           findings: [],
+          steps: 0,
           toolCalls: [],
           text: "",
           usage,
           error: { message: "high demand", retryable: true },
         },
-        b: { findings: [], toolCalls: [], text: '[{"label":"x","files":[0]}]', usage },
+        b: { findings: [], steps: 0, toolCalls: [], text: '[{"label":"x","files":[0]}]', usage },
       },
       ["a", "b"],
     );
@@ -60,6 +61,7 @@ describe("OpenCodeRuntime.complete", () => {
       {
         a: {
           findings: [],
+          steps: 0,
           toolCalls: [],
           text: "",
           usage,
@@ -75,6 +77,7 @@ describe("OpenCodeRuntime.complete", () => {
 
     const busy = {
       findings: [],
+      steps: 0,
       toolCalls: [],
       text: "",
       usage,
@@ -118,6 +121,7 @@ describe("OpenCodeRuntime.complete on rate limits", () => {
   it("waits and retries, then gives up on a model out of quota", async () => {
     const limited = (message: string): SessionOutcome => ({
       findings: [],
+      steps: 0,
       toolCalls: [],
       text: "",
       usage,

@@ -73,5 +73,5 @@ function attemptSummary(model: string, outcome: SessionOutcome): string {
   const tools =
     outcome.toolCalls.length === 0 ? "no tool calls" : `${outcome.toolCalls.length} tool call(s)`;
   const { inputTokens, outputTokens, reasoningTokens, costUsd } = outcome.usage;
-  return `${model}: ${tools}, ${inputTokens} in / ${outputTokens} out / ${reasoningTokens} reasoning tokens, $${costUsd.toFixed(4)}`;
+  return `${model}: ${outcome.steps} step(s), ${tools}, ${inputTokens} in / ${outputTokens} out / ${reasoningTokens} reasoning tokens, $${costUsd.toFixed(4)}`;
 }

@@ -13,6 +13,7 @@ const usage = {
 };
 const ok = (findings: unknown[] = []): SessionOutcome => ({
   findings,
+  steps: 1,
   toolCalls: [],
   text: "",
   usage,
@@ -52,7 +53,7 @@ describe("withFailback", () => {
     expect(run.attempted).toEqual(["a"]);
     expect(run.types).toEqual(["progress", "usage", "progress", "finding", "done"]);
     expect(run.events[2]).toMatchObject({
-      message: "a: no tool calls, 1 in / 1 out / 0 reasoning tokens, $0.0010",
+      message: "a: 1 step(s), no tool calls, 1 in / 1 out / 0 reasoning tokens, $0.0010",
     });
   });
 

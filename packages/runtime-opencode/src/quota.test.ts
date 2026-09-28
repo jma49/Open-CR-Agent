@@ -71,7 +71,7 @@ describe("withFailback on rate limits", () => {
     cachedTokens: 0,
     costUsd: 0,
   };
-  const ok: SessionOutcome = { findings: [], toolCalls: [], text: "", usage };
+  const ok: SessionOutcome = { findings: [], steps: 0, toolCalls: [], text: "", usage };
   const limited = (message: string): SessionOutcome => ({
     ...ok,
     error: { message, retryable: true, quota: parseQuotaError(message) as never },

@@ -21,6 +21,8 @@ export interface SessionMessage {
 
 export interface SessionOutcome {
   findings: unknown[];
+  // Model requests OpenCode started, one per agent step.
+  steps: number;
   toolCalls: string[];
   text: string;
   usage: Usage;
@@ -40,6 +42,7 @@ export function summarizeSession(
     findings: tools
       .filter((p) => p.tool === reportTool && p.state?.status === "completed")
       .map((p) => p.state?.input),
+    steps: assistant.reduce((n, m) => n + m.parts.filter((p) => p.type === "step-start").length, 0),
     toolCalls: tools.map((p) => p.tool ?? "unknown"),
     text: assistant
       .flatMap((m) => m.parts.filter((p) => p.type === "text").map((p) => p.text ?? ""))
