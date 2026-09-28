@@ -195,4 +195,34 @@ describe("runReview against the previous review", () => {
       ["src/b.ts", "reviewed"],
     ]);
   });
+
+  it("shows the judge people's replies to a finding reported again", async () => {
+    const reporting = runtime(async function* (spec) {
+      yield {
+        type: "finding",
+        taskId: spec.taskId,
+        finding: finding("src/a.ts", "const a = 1;", { severity: "warning" }),
+      };
+      yield { type: "done", taskId: spec.taskId };
+    });
+    const first = await runReview({ vcs: vcs(head, twoFiles), runtime: reporting, verify: false });
+    const fingerprint = first.findings[0]?.fingerprint ?? "";
+    const judgePrompts: string[] = [];
+    const judging = Object.assign(reporting, {
+      complete: async (request: { system: string; user: string }) => {
+        if (request.system.includes("judge")) judgePrompts.push(request.user);
+        return { text: "{}", usage: first.usage };
+      },
+    });
+    const adapter = vcs(head, twoFiles);
+    adapter.getPriorReview = async () => ({
+      findings: asPrior(first),
+      replies: { [fingerprint]: ["Handled by the caller in api.ts."] },
+    });
+    await runReview({ vcs: adapter, runtime: judging, verify: false, fullReview: true });
+    expect(judgePrompts).toHaveLength(1);
+    expect(judgePrompts[0]).toContain(
+      "<ocra_reply>\nHandled by the caller in api.ts.\n</ocra_reply>",
+    );
+  });
 });

@@ -109,7 +109,12 @@ export async function runJob(
   const bundleFiles = new Set(files);
   let outside = 0;
   for (const reported of result.findings) {
-    const anchor = await anchorFinding(reported, anchorContext);
+    // Relocating a quote on a file outside the bundle would pay for an
+    // answer the next check throws away.
+    const context = bundleFiles.has(reported.file)
+      ? anchorContext
+      : { diffs: anchorContext.diffs, readNewFile: anchorContext.readNewFile };
+    const anchor = await anchorFinding(reported, context);
     if (anchor.warning) warnings.push(`${job.taskId}: ${anchor.warning}`);
     if (!bundleFiles.has(anchor.file)) {
       outside += 1;

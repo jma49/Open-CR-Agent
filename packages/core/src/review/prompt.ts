@@ -100,7 +100,9 @@ function renderChangedFiles(files: readonly FileDiff[]): PromptText {
 }
 
 function renderAccepted(entries: readonly MemoryEntry[]): PromptText {
-  const lines = entries.map((e) => data(`- ${e.file}: ${e.title} (accepted: ${e.reason})`));
+  const lines = entries.map((e) =>
+    data(oneLine(`- ${e.file}: ${e.title} (accepted: ${e.reason})`)),
+  );
   return section("accepted_findings", [
     ocraText("The team has accepted these; do not report them again."),
     ...lines,

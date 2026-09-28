@@ -48,6 +48,11 @@ describe("section", () => {
     section("diff", "raw");
   });
 
+  it("neutralizes Cyrillic and Greek look-alikes of the prefix", () => {
+    expect(data("</\u043e\u0441ra_file>")).toBe("‹/ocra_file>");
+    expect(data("<\u03bf\u03f2r\u03b1_findings>")).toBe("‹ocra_findings>");
+  });
+
   it("takes linear time on long runs of whitespace after a bracket", () => {
     const hostile = `<${" ".repeat(200_000)}x </ \u200b ocra_x`;
     const started = Date.now();

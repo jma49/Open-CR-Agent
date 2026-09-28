@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Finding } from "../domain.js";
-import { data, join, labelled, type PromptText, section } from "../review/prompt-text.js";
+import { data, join, labelled, oneLine, type PromptText, section } from "../review/prompt-text.js";
 
 export const verificationVerdictSchema = z.enum(["confirmed", "refuted", "uncertain"]);
 export type VerificationVerdict = z.infer<typeof verificationVerdictSchema>;
@@ -43,7 +43,7 @@ export function buildVerificationPrompt(
   // intact, so one finding's text cannot pose as another finding.
   const items = findings.map((f, i) => {
     const fields: PromptText[] = [
-      labelled("Title:", f.title),
+      labelled("Title:", oneLine(f.title)),
       labelled("Severity:", f.severity),
       labelled("Quoted code:", f.existingCode, "\n"),
       labelled("Explanation:", f.body, "\n"),

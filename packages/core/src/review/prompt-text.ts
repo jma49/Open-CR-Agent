@@ -31,6 +31,7 @@ export const SECTIONS = [
   "file_excerpt",
   "callers",
   "review_plan",
+  "reply",
 ] as const;
 export type SectionName = (typeof SECTIONS)[number];
 
@@ -41,7 +42,14 @@ const INVISIBLE =
 // `<` and the characters that render like it. `‹` is left out: it is what
 // neutralized tags become.
 const OPEN_BRACKET = "[<\\u02c2\\u2329\\u27e8\\u3008\\ufe64\\uff1c]";
-const PREFIX = ["[oｏ]", "[cｃ]", "[rｒ]", "[aａ]", "[_＿]"].join(INVISIBLE);
+// Fullwidth, Cyrillic and Greek letters that render like the Latin ones.
+const PREFIX = [
+  "[oｏ\u043e\u03bf]",
+  "[cｃ\u0441\u03f2]",
+  "[rｒ]",
+  "[aａ\u0430\u03b1]",
+  "[_＿]",
+].join(INVISIBLE);
 const SLASH = "[/\\u2044\\u2215\\uff0f]";
 // One run of invisible characters before an optional slash, never two
 // adjacent ones: two let a failed match retry every split of a long run,

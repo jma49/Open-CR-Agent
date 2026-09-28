@@ -45,7 +45,7 @@ Concrete rules behind the principles above, from the [2026-09-26 self-audit](doc
 - **Assume the reviewed code is hostile.** Diffs, commit messages, PR text, `AGENTS.md`, `.ocra/rules.json`, `.ocra/config.json` and every file an agent reads may be written by an attacker. So is LLM output derived from them.
 - **Enforce access policy in core, once.** Anything an agent can reach goes through `ReviewContext`; secret paths (`SECRET_PATTERNS`) and `.git/` are refused there, not in each adapter. A new tool or adapter never widens what an agent can read.
 - **Never execute repository-supplied code implicitly.** Plugins and configuration from the reviewed tree load only when the user trusts that tree; CI and `ocra-eval` read them from a trusted source or not at all.
-- **Neutralize before you embed.** Every untrusted string placed in a prompt goes through `neutralizeTags` / `escapeAttribute`; every untrusted string printed to a terminal has control characters stripped.
+- **Neutralize before you embed.** Every untrusted string placed in a prompt goes through `data()`, `section()` or `attribute()` (`review/prompt-text.ts`), and one-line fields through `oneLine`; every untrusted string printed to a terminal has control characters stripped.
 - **Least privilege for child processes.** Spawn with `execFile`/`spawn` and argument arrays, never a shell; pass `--end-of-options` before user refs; give child processes only the environment variables they need.
 - **Bind local servers to `127.0.0.1` with a per-run random port and credential**, compare credentials with `timingSafeEqual`.
 - **Secrets never reach code, logs, prompts, reports or session files.** Tests that touch secret handling assert the secret string is absent from every output.

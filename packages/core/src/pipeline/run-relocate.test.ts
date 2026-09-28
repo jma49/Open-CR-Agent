@@ -51,4 +51,72 @@ describe("runReview relocation", () => {
     });
     expect(report.findings[0]?.anchor.method).toBe("file_level");
   });
+
+  it("stops relocating once the spend limit is reached", async () => {
+    let calls = 0;
+    const paraphrasing: AgentRuntime = {
+      ...runtime,
+      async *runTask(spec) {
+        for (const title of ["one", "two", "three"]) {
+          yield {
+            type: "finding",
+            taskId: spec.taskId,
+            finding: finding("src/a.ts", `retries ${title}`, { title }),
+          };
+        }
+        yield { type: "done", taskId: spec.taskId };
+      },
+      complete: async (request) => {
+        if (request.system.includes("You locate the code")) calls += 1;
+        return runtime.complete?.(request, new AbortController().signal) as ReturnType<
+          NonNullable<AgentRuntime["complete"]>
+        >;
+      },
+    };
+    const report = await runReview({
+      vcs: vcs({}, patch("src/a.ts", "const retries = -1;")),
+      runtime: paraphrasing,
+      verify: false,
+      judge: false,
+      maxCostUsd: 0.6,
+    });
+    expect(calls).toBe(2);
+    expect(report.findings.map((f) => f.anchor.method).sort()).toEqual([
+      "file_level",
+      "relocated",
+      "relocated",
+    ]);
+  });
+
+  it("does not relocate a quote on a file outside the task's bundle", async () => {
+    let calls = 0;
+    const elsewhere: AgentRuntime = {
+      ...runtime,
+      async *runTask(spec) {
+        if (spec.userPrompt.includes('path="src/a.ts"')) {
+          yield {
+            type: "finding",
+            taskId: spec.taskId,
+            finding: finding("src/b.ts", "retries is set to minus one"),
+          };
+        }
+        yield { type: "done", taskId: spec.taskId };
+      },
+      complete: async (request) => {
+        if (request.system.includes("You locate the code")) calls += 1;
+        return { text: "{}", usage: { ...usage, costUsd: 0 } };
+      },
+    };
+    await runReview({
+      vcs: vcs(
+        {},
+        [patch("src/a.ts", "const retries = -1;"), patch("src/b.ts", "const b = 2;")].join("\n"),
+      ),
+      runtime: elsewhere,
+      verify: false,
+      judge: false,
+      bundling: { groupingMinFiles: 100, maxFilesPerBundle: 1, maxBundleChars: 100_000 },
+    });
+    expect(calls).toBe(0);
+  });
 });

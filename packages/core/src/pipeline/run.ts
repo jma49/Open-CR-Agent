@@ -1,4 +1,4 @@
-import type { AnchorContext } from "../anchor/anchor.js";
+import type { AnchorContext, RelocationRequest } from "../anchor/anchor.js";
 import { runtimeRelocator } from "../anchor/relocate.js";
 import type { BundlePolicy } from "../bundle/bundle.js";
 import type { FileGrouper } from "../bundle/grouping.js";
@@ -109,23 +109,27 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   }
   emit({ type: "matrix_planned", tasks: matrix.cells.length, skipped: matrix.skipped });
   const relocationUsage: Usage[] = [];
+  const budget = spendTracker(options.maxCostUsd, plan.usage);
+  const relocator =
+    options.relocate === false
+      ? undefined
+      : (options.relocate ??
+        runtimeRelocator(options.runtime, signal, (u) => {
+          relocationUsage.push(u);
+          budget.add(u);
+        }));
   const execute = {
     runtime: options.runtime,
     taskTimeoutMs: options.taskTimeoutMs ?? DEFAULTS.taskTimeoutMs,
     abortGraceMs: options.abortGraceMs,
+    // Past the spend limit a quote that does not match stays file-level.
     relocate:
-      options.relocate === false
-        ? undefined
-        : (options.relocate ??
-          runtimeRelocator(options.runtime, signal, (u) => {
-            relocationUsage.push(u);
-            budget.add(u);
-          })),
+      relocator &&
+      (async (request: RelocationRequest) => (budget.exhausted() ? undefined : relocator(request))),
     ultra: options.ultra === true,
     emit,
     signal,
   };
-  const budget = spendTracker(options.maxCostUsd, plan.usage);
   const results = await mapWithConcurrency(
     matrix.cells,
     options.concurrency ?? DEFAULTS.concurrency,
@@ -282,7 +286,8 @@ function withoutRemembered(
 ): PriorReview | undefined {
   if (!review) return undefined;
   const accepted = new Set(memory.map((e) => e.fingerprint));
-  return { findings: review.findings.filter((f) => !accepted.has(f.fingerprint)) };
+  // Everything else the earlier review carries (replies, tier, head) stays.
+  return { ...review, findings: review.findings.filter((f) => !accepted.has(f.fingerprint)) };
 }
 
 // Review only what changed since the earlier review when the platform can
