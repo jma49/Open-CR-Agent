@@ -22,7 +22,9 @@ export function coverageGaps(coverage: readonly CoverageEntry[]): {
   const notReviewed = coverage.filter(
     (c) => c.status === "failed" || c.status === "unreviewed",
   ).length;
-  const reviewed = coverage.some((c) => c.status === "reviewed");
+  // Unchanged files were reviewed by an earlier run, and their findings and
+  // verdict carry over: a re-review whose new files all failed still has them.
+  const reviewed = coverage.some((c) => c.status === "reviewed" || c.status === "unchanged");
   return { notReviewed, nothingReviewed: notReviewed > 0 && !reviewed };
 }
 
