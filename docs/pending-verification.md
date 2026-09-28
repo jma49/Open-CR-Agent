@@ -4,7 +4,7 @@ Work that is merged and tested locally but still needs a check that could not be
 
 ## Site
 
-Everything the site shows is verified on a local production build (2026-09-26): `npm run build && npx next start` in the site repository renders the manual from `../Open-CR-Agent/docs/manual`, so it shows exactly what a deploy would. Checked: every landing and manual page in both languages returns 200 and contains the new content, the Aqua gel icon and Apple touch icon, light and dark themes, and no horizontal overflow at 390 px. Repeat that check after site or manual changes instead of deploying.
+Everything the site shows is verified on a local production build (2026-09-26): `npm run build && npx next start` in the site repository renders the manual from the main repository checkout next to it (`../ocra` or `../Open-CR-Agent`), so it shows exactly what a deploy would. Checked: every landing and manual page in both languages returns 200 and contains the new content, the Aqua gel icon and Apple touch icon, light and dark themes, and no horizontal overflow at 390 px. Repeat that check after site or manual changes instead of deploying.
 
 The live site, https://ocra-nine.vercel.app, was last deployed on 2026-09-27 and matches both repositories' `main` as of then. Deploying is manual and only on request: `VERCEL_SCOPE=<team> npm run deploy` in the site repository (deploys its committed HEAD through a logged-in Vercel CLI; one build per run). Nothing deploys on a merge in either repository.
 
