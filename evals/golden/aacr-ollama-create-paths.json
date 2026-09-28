@@ -1,0 +1,35 @@
+{
+  "id": "aacr-ollama-create-paths",
+  "repo": "ollama/ollama",
+  "base": "2db96c18e72289928e45704a77f96f7bdfaee30f",
+  "head": "af112d6365207a5a3f65136c7057d6bb98203c35",
+  "language": "Go",
+  "tier": "smoke",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/ollama/ollama/pull/9379 (MIT); hand-checked 2026-09-28"
+  },
+  "rationale": "Path handling in model creation: a real failure on nested paths (not in AACR-Bench's references) and the Windows separator gap the references do name.",
+  "expect": [
+    {
+      "file": "server/create.go",
+      "lines": [
+        277,
+        280
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "root.OpenFile creates the file before any parent directory exists (MkdirAll runs later, in createLink), so a nested path such as dir/model.safetensors fails with ENOENT and is reported as an invalid path."
+    },
+    {
+      "file": "server/create.go",
+      "lines": [
+        161,
+        188
+      ],
+      "category": "security",
+      "minSeverity": "suggestion",
+      "concern": "validRelative only treats '/' as a separator, so on Windows backslash and drive-letter paths pass the early check; os.Root still contains them, so it is defense in depth that is lost."
+    }
+  ]
+}

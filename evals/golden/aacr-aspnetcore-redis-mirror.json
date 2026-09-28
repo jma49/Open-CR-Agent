@@ -1,0 +1,25 @@
+{
+  "id": "aacr-aspnetcore-redis-mirror",
+  "repo": "dotnet/aspnetcore",
+  "base": "e7d49f52363753a4faa2a22538eace7a923382ce",
+  "head": "2f372e8ff137aa24114269576fc1912f12ff5402",
+  "language": "C#",
+  "tier": "smoke",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/dotnet/aspnetcore/pull/62936 (MIT); hand-checked 2026-09-28"
+  },
+  "rationale": "The change moves the Redis test containers to an internal mirror but misses one; AACR-Bench's references do not mention it, ocra found it in two runs. The defect is a line the change did not touch (an omission), so the ceiling counts it outside the changed lines; reviewers see it in the file.",
+  "expect": [
+    {
+      "file": "src/SignalR/server/StackExchangeRedis/test/Docker.cs",
+      "lines": [
+        138,
+        138
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "The monitor container still runs the public redis image while the server container was switched to the mirror image, so the test still pulls from Docker Hub, which the change set out to avoid."
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "aacr-ragflow-missing-export",
+  "repo": "infiniflow/ragflow",
+  "base": "469460483665000f522b6c9a6583bb34f17a954b",
+  "head": "2d06022b78536bd22a0fd83f38804f39aa34cce8",
+  "language": "TypeScript",
+  "tier": "smoke",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/infiniflow/ragflow/pull/5065 (Apache-2.0); hand-checked 2026-09-28"
+  },
+  "rationale": "A broken import that fails the web build; not among AACR-Bench's references, found by ocra in two runs.",
+  "expect": [
+    {
+      "file": "web/src/components/api-service/embed-modal/index.tsx",
+      "lines": [
+        21,
+        21
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "languageOptions is imported from @/locales/config, which does not export it, and nothing in the web app defines it, so the build fails."
+    }
+  ]
+}

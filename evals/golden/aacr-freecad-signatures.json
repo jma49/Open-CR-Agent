@@ -1,0 +1,25 @@
+{
+  "id": "aacr-freecad-signatures",
+  "repo": "FreeCAD/FreeCAD",
+  "base": "79008331b30d098b2c32e59752e24e0705b350bc",
+  "head": "ec3da2e93e3fd8f69f113ca14abf892dfb86c11b",
+  "language": "C++",
+  "tier": "smoke",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/FreeCAD/FreeCAD/pull/20612 (LGPL-2.1); hand-checked 2026-09-28"
+  },
+  "rationale": "Moving helpers from DrawUtil to DrawViewPart leaves declarations, definitions and callers out of step, a compile failure that AACR-Bench's references also name.",
+  "expect": [
+    {
+      "file": "src/Mod/TechDraw/App/DrawViewPart.h",
+      "lines": [
+        242,
+        244
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "The header declares static two-argument isCosmeticVertex/isCosmeticEdge/isCenterLine, but the .cpp defines non-static one-argument members and CosmeticExtension.cpp still calls the removed DrawUtil versions, so the module does not compile."
+    }
+  ]
+}

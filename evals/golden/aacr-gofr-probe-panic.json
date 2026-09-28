@@ -1,0 +1,23 @@
+{
+  "id": "aacr-gofr-probe-panic",
+  "repo": "gofr-dev/gofr",
+  "base": "d0300073f685bb1154f7437f3172799d31bfddbe",
+  "head": "c1a26ade6db7da96622c9bdca7674ef7094c122f",
+  "language": "Go",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/gofr-dev/gofr/pull/1681 (Apache-2.0); hand-checked 2026-09-28"
+  },
+  "rationale": "A plausible-sounding but false claim ocra made: skipping the logger for probe routes does not skip panic recovery. Checks that it is not reported.",
+  "forbid": [
+    {
+      "file": "pkg/gofr/http/middleware/logger.go",
+      "lines": [
+        111,
+        114
+      ],
+      "reason": "Probe routes are wrapped by handler.ServeHTTP, which recovers panics itself (handler.go:79); skipping the logger middleware skips only logging."
+    }
+  ]
+}
