@@ -31,7 +31,7 @@ export interface ExecuteOptions {
   signal: AbortSignal;
 }
 
-// In default mode only bundles large enough that a reviewer's 20 steps may
+// In default mode only bundles large enough that a reviewer's 30 steps may
 // not cover them get a plan phase; --ultra plans every task.
 export const PLAN_MIN_FILES = 5;
 export const PLAN_MIN_PATCH_CHARS = 40_000;

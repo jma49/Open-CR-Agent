@@ -37,8 +37,11 @@ const REVIEW_AGENT_PROMPT =
   "You are a code review agent run by ocra. Follow the review instructions below.";
 const HELPER_AGENT_PROMPT = "You answer exactly as the instructions below ask, with no tools.";
 // Each step resends the whole conversation, so an unbounded loop is the
-// largest cost risk; 20 steps is ample for a bundle of at most ten files.
-export const MAX_AGENT_STEPS = 20;
+// largest cost risk. At 20 steps a quarter of the review tasks on Vertex
+// ended at the cap and one golden bug was never found; at 30 it was found in
+// both runs, for about a third more cost on average (2026-09-28). Most tasks
+// finish in about 15 steps and never reach it.
+export const MAX_AGENT_STEPS = 30;
 // The helper answers in one step and has no tools. It still needs two:
 // OpenCode appends an assistant message on an agent's last allowed step, and
 // Gemini rejects a request that ends with a model turn (#66).
