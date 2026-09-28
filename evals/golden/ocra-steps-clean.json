@@ -1,0 +1,14 @@
+{
+  "id": "ocra-steps-clean",
+  "repo": "jma49/Open-CR-Agent",
+  "base": "2ca6dd360e26a4165703c8d4e114ab2da917b93e",
+  "head": "696d0c844a0d418364d7ffaba7dc6d9506303b11",
+  "language": "TypeScript",
+  "tier": "smoke",
+  "source": {
+    "kind": "ocra-history",
+    "ref": "#177, no later fix"
+  },
+  "rationale": "A small, fully tested change (count agent steps in the attempt summary) with no known issue.",
+  "clean": true
+}

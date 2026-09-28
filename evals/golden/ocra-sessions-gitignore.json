@@ -1,0 +1,25 @@
+{
+  "id": "ocra-sessions-gitignore",
+  "repo": "jma49/Open-CR-Agent",
+  "base": "206f36a6a5e762574ec3827e25af16b0b901c602",
+  "head": "07052b67de5be986998fc4bc21a6aa3cb6c3caaf",
+  "language": "TypeScript",
+  "tier": "smoke",
+  "source": {
+    "kind": "ocra-history",
+    "ref": "fixed by b58993d"
+  },
+  "rationale": "The change documents that the sessions directory carries a .gitignore, but no code writes it; the test passes vacuously because git status collapses the untracked directory to .ocra/.",
+  "expect": [
+    {
+      "file": "packages/cli/src/run.test.ts",
+      "lines": [
+        118,
+        122
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "Nothing in the change writes the .gitignore the docs promise, and the test cannot notice: it filters .gitignore out without requiring it, and git status --porcelain reports the new untracked directory as .ocra/, so not.toContain('.ocra/sessions') passes anyway."
+    }
+  ]
+}

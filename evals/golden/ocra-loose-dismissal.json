@@ -1,0 +1,35 @@
+{
+  "id": "ocra-loose-dismissal",
+  "repo": "jma49/Open-CR-Agent",
+  "base": "ebbb5d75e330f48938a29676e006b390e29b3192",
+  "head": "a7ea562b0a019e865b6e06a4facf070b49c80bb9",
+  "language": "TypeScript",
+  "tier": "smoke",
+  "source": {
+    "kind": "ocra-history",
+    "ref": "fixed by 74652ee (explicit decline) and 14284c4 (who may dismiss)"
+  },
+  "rationale": "The first version of human dismissals matched decline words anywhere in any person's reply, so maintainers' questions and the PR author could silence findings.",
+  "expect": [
+    {
+      "file": "packages/vcs-github/src/adapter.ts",
+      "lines": [
+        44,
+        45
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "The dismissal pattern matches 'intended', 'intentional' and 'acknowledged' anywhere in a reply, so 'This is not intended, good catch' or 'Is this intended?' dismisses the finding."
+    },
+    {
+      "file": "packages/vcs-github/src/adapter.ts",
+      "lines": [
+        102,
+        104
+      ],
+      "category": "security",
+      "minSeverity": "warning",
+      "concern": "Any non-bot account, including the pull request's author or an outsider, can dismiss a finding by resolving its thread or replying, so the author can clear findings, critical ones included, on their own change."
+    }
+  ]
+}

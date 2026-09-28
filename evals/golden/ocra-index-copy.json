@@ -1,0 +1,25 @@
+{
+  "id": "ocra-index-copy",
+  "repo": "jma49/Open-CR-Agent",
+  "base": "098f7a711761d86dd1e74c041f109f8588fb8246",
+  "head": "5668c7b65d777cf8524d2142fbdfadffcaa84d3b",
+  "language": "TypeScript",
+  "tier": "smoke",
+  "source": {
+    "kind": "ocra-history",
+    "ref": "fixed by 390c8ab"
+  },
+  "rationale": "A performance change copies the git index to add untracked files; the copy's fresh timestamp disables git's racy-git check, a subtle correctness bug that showed only as an intermittent test failure.",
+  "expect": [
+    {
+      "file": "packages/vcs-local/src/local-adapter.ts",
+      "lines": [
+        174,
+        176
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "copyFile gives the temporary index a new modification time, which disables git's racy-git check: a file edited in the same second as the real index, with the same size, looks unchanged and is left out of the review."
+    }
+  ]
+}

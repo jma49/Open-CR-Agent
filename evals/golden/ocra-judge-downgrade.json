@@ -1,0 +1,25 @@
+{
+  "id": "ocra-judge-downgrade",
+  "repo": "jma49/Open-CR-Agent",
+  "base": "87de74109a5fadebb8a65061a1568ca7538cc21c",
+  "head": "46a99243f01c2e6ea9fdde50031fa70e297d5b73",
+  "language": "TypeScript",
+  "tier": "full",
+  "source": {
+    "kind": "ocra-history",
+    "ref": "fixed by 4d27271"
+  },
+  "rationale": "The verdict change protects confirmed critical findings from being dropped by the judge but lets the judge downgrade them, which clears the blocking verdict just the same; the judge reads author-controlled text.",
+  "expect": [
+    {
+      "file": "packages/core/src/judge/judge.ts",
+      "lines": [
+        97,
+        102
+      ],
+      "category": "security",
+      "minSeverity": "warning",
+      "concern": "The new protection keeps the judge from dropping a confirmed critical finding but explicitly lets it downgrade one, and recalibration below applies that; a downgrade to suggestion clears significant_concerns just the same, and the judge reads text the PR's author controls."
+    }
+  ]
+}

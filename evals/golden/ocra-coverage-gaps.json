@@ -1,0 +1,35 @@
+{
+  "id": "ocra-coverage-gaps",
+  "repo": "jma49/Open-CR-Agent",
+  "base": "ec3e8757a79cf311e0b1491e9e93a2bc9e85ac4d",
+  "head": "3f85eafece9dc9ada7ce68bcc92faa104384dcee",
+  "language": "TypeScript",
+  "tier": "smoke",
+  "source": {
+    "kind": "ocra-history",
+    "ref": "fixed by b5dcdb3 (stray plugin) and eadf263 (exit code order)"
+  },
+  "rationale": "A sed edit added a function to the built-in plugin list, and the new incomplete-review check sits after the blocking return, so both bugs are visible in the diff.",
+  "expect": [
+    {
+      "file": "packages/cli/src/review/command.ts",
+      "lines": [
+        39,
+        39
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "coverageGaps is a helper function, not a plugin, yet it was added to BUILTIN_PLUGINS; it type-checks because functions have a name, and registers nothing."
+    },
+    {
+      "file": "packages/cli/src/review/command.ts",
+      "lines": [
+        192,
+        198
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "A blocking verdict returns exit 1 before the new coverage check, so a review that left files unreviewed exits 1 instead of 3, and the action lets 1 pass by default."
+    }
+  ]
+}
