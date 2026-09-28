@@ -7,7 +7,7 @@ State of the project as of 2026-09-27, for whoever picks it up next (human or ag
 | What | Where |
 |---|---|
 | Main repository | https://github.com/jma49/Open-CR-Agent (public, Apache-2.0) |
-| Site repository | https://github.com/jma49/open-cr-agent-site (public) |
+| Site repository | https://github.com/jma49/ocra-site (public) |
 | Live site | https://ocra-nine.vercel.app (English at `/`, Chinese at `/zh`) |
 | Vercel project | `ocra`; no automatic deploys, deploy by hand from the site repo (`npm run deploy`) |
 | Contributor rules | `AGENTS.md` in each repository (`CLAUDE.md` imports it) |
