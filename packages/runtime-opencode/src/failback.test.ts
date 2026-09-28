@@ -1,6 +1,6 @@
 import type { AgentEvent } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
-import { withFailback } from "./failback.js";
+import { toolSummary, withFailback } from "./failback.js";
 import { ModelHealth, parseModel } from "./models.js";
 import type { SessionOutcome } from "./session-outcome.js";
 
@@ -175,5 +175,17 @@ describe("parseModel", () => {
       modelID: "anthropic/claude",
     });
     expect(() => parseModel("gemini")).toThrow("must be written as provider/model");
+  });
+});
+
+describe("toolSummary", () => {
+  it("counts each tool and says when the review never finished", () => {
+    expect(
+      toolSummary(["ocra_read_file", "ocra_code_search", "ocra_read_file", "ocra_report_finding"]),
+    ).toBe("4 tool call(s) (read_file 2, code_search 1, report_finding 1; no task_done)");
+    expect(toolSummary(["ocra_read_file", "ocra_task_done"])).toBe(
+      "2 tool call(s) (read_file 1, task_done 1)",
+    );
+    expect(toolSummary([])).toBe("no tool calls");
   });
 });

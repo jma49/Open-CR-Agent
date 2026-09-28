@@ -1,4 +1,4 @@
-import type { AgentEvent, ModelTier } from "@open-cr-agent/core";
+import { type AgentEvent, type ModelTier, REVIEW_TOOLS } from "@open-cr-agent/core";
 import type { ModelHealth } from "./models.js";
 import { sleep } from "./quota.js";
 import type { SessionOutcome } from "./session-outcome.js";
@@ -69,9 +69,20 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
   };
 }
 
+// Which tools an attempt spent its steps on, and whether it finished: a
+// review that never called task_done was cut off, usually by the step cap.
 function attemptSummary(model: string, outcome: SessionOutcome): string {
-  const tools =
-    outcome.toolCalls.length === 0 ? "no tool calls" : `${outcome.toolCalls.length} tool call(s)`;
   const { inputTokens, outputTokens, reasoningTokens, costUsd } = outcome.usage;
-  return `${model}: ${outcome.steps} step(s), ${tools}, ${inputTokens} in / ${outputTokens} out / ${reasoningTokens} reasoning tokens, $${costUsd.toFixed(4)}`;
+  return `${model}: ${outcome.steps} step(s), ${toolSummary(outcome.toolCalls)}, ${inputTokens} in / ${outputTokens} out / ${reasoningTokens} reasoning tokens, $${costUsd.toFixed(4)}`;
+}
+
+export function toolSummary(toolCalls: readonly string[]): string {
+  if (toolCalls.length === 0) return "no tool calls";
+  // MCP tools carry the server's name as a prefix (MCP_SERVER in runtime.ts).
+  const names = toolCalls.map((t) => t.replace(/^ocra_/, ""));
+  const counts = new Map<string, number>();
+  for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
+  const byUse = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const finished = names.includes(REVIEW_TOOLS.taskDone) ? "" : "; no task_done";
+  return `${toolCalls.length} tool call(s) (${byUse.map(([n, c]) => `${n} ${c}`).join(", ")}${finished})`;
 }
