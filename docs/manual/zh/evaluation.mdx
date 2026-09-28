@@ -32,6 +32,29 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 
 评测总是带着 `--no-repo-config` 运行，基准仓库无法加载插件；模型从 `OCRA_MODEL_*` 读取。仓库以 blobless clone 的方式缓存在 `~/.cache/ocra/aacr-bench/repos`。commit 已经拉取不到的 PR 会被标记为不可用，不计入评分。
 
+## 黄金用例
+
+AACR-Bench 的标准答案是人工评审碰巧留下的评论，没人评论过的真问题会被算作 ocra 的误报。评估 ocra 自身的改动时，使用仓库里自己维护的用例 `evals/golden/`（[ADR-0011](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)）；`--dataset golden` 用它们代替 AACR-Bench。
+
+```bash
+node packages/eval/dist/main.js list    --dataset golden --tier smoke    # 免费
+node packages/eval/dist/main.js ceiling --dataset golden                 # 免费
+```
+
+每个用例是一个以 `id` 命名的 JSON 文件，加载时会校验：
+
+| 字段 | 含义 |
+|---|---|
+| `id` | 小写字母、数字、`.`、`_`、`-`；即去掉 `.json` 的文件名 |
+| `repo`、`base`、`head` | 公开的 GitHub 仓库（`owner/name`）以及这次改动的两个提交 |
+| `language`、`tier` | 项目语言；`smoke`（每个需要评测的改动前后各跑一次）或 `full` |
+| `source`、`rationale` | 用例来源（`ocra-history`、`dogfood` 或 `aacr`，附引用）以及选它的理由 |
+| `expect` | ocra 必须报出的问题：`file`、`lines`（新版本上的 `[from, to]`）、`category`（`correctness`、`security`、`performance`）、`minSeverity`、`concern` |
+| `forbid` | 报了就算错的范围：`file`、`lines`、`reason` |
+| `clean` | 为 `true` 表示改动没有任何问题，此时不能有 `expect` |
+
+路径必须在仓库内；如果用例指向的文件不在这次改动里，检出仓库时会被拒绝。`--tier smoke` 只选 smoke 档，`--tier full` 选全部用例；`--golden-dir` 可以从其他目录读取用例。`--max-change-lines` 对黄金用例不起作用。
+
 ## 召回率上限（免费）
 
 ```bash

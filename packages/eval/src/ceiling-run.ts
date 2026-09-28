@@ -9,6 +9,7 @@ import {
 } from "./ceiling.js";
 import type { Instance } from "./dataset.js";
 import { exec } from "./exec.js";
+import { untouchedPaths } from "./golden.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
 
 export interface CeilingOptions {
@@ -51,7 +52,12 @@ export async function measureCeiling(
         { cwd: dir },
       );
       if (diff.exitCode !== 0) throw new Error(`git diff failed: ${diff.stderr.trim()}`);
-      reaches.push(...classifyReferences(instance, preview, parseUnifiedDiff(diff.stdout)));
+      const files = parseUnifiedDiff(diff.stdout);
+      const untouched = untouchedPaths(instance, new Set(files.map((f) => f.newPath)));
+      if (untouched.length > 0) {
+        throw new Error(`the case names files the change does not touch: ${untouched.join(", ")}`);
+      }
+      reaches.push(...classifyReferences(instance, preview, files));
       tiers.push(preview.tier);
       options.log(`${label}: ${instance.references.length} issue(s) classified`);
     } catch (error) {

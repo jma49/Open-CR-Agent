@@ -5,6 +5,7 @@ import { parseArgs } from "node:util";
 import { errorMessage } from "@open-cr-agent/core";
 import { measureCeiling } from "./ceiling-run.js";
 import { type Instance, loadDataset } from "./dataset.js";
+import { loadGolden } from "./golden.js";
 import { CachedJudge, judgeConfigFromEnv, MockJudge, OpenAICompatibleJudge } from "./judges.js";
 import type { SemanticJudge } from "./match.js";
 import { type RunInfo, renderMarkdown } from "./report.js";
@@ -33,6 +34,9 @@ Selection:
   --languages <a,b>        Filter by project language
   --max-change-lines <n>   Skip larger PRs
   --ids <a,b>              Exact instance ids
+  --dataset <aacr|golden>  AACR-Bench (default) or ocra's golden cases (ADR-0011)
+  --golden-dir <dir>       Golden case files (default evals/golden)
+  --tier <smoke|full>      Golden cases only: the smoke tier or every case
 
 Run:
   --label <name>           Run directory name (default: timestamp); an existing run resumes
@@ -75,6 +79,9 @@ const OPTIONS = {
   languages: { type: "string" },
   "max-change-lines": { type: "string" },
   ids: { type: "string" },
+  dataset: { type: "string" },
+  "golden-dir": { type: "string" },
+  tier: { type: "string" },
   label: { type: "string" },
   out: { type: "string" },
   "repos-dir": { type: "string" },
@@ -98,19 +105,44 @@ function selection(values: ReturnType<typeof parse>["values"]): SelectionOptions
   if (maxChangeLines !== undefined) options.maxChangeLines = maxChangeLines;
   if (values.languages) options.languages = values.languages.split(",").map((l) => l.trim());
   if (values.ids) options.ids = values.ids.split(",").map((i) => i.trim());
+  if (values.tier !== undefined) {
+    if (values.tier !== "smoke" && values.tier !== "full") {
+      throw new Error("--tier must be smoke or full");
+    }
+    if (dataset(values) !== "golden") throw new Error("--tier needs --dataset golden");
+    options.tier = values.tier;
+  }
   return options;
+}
+
+type Dataset = "aacr" | "golden";
+
+function dataset(values: { dataset?: string | undefined }): Dataset {
+  const name = values.dataset ?? "aacr";
+  if (name !== "aacr" && name !== "golden") throw new Error("--dataset must be aacr or golden");
+  return name;
+}
+
+function loadInstances(
+  name: Dataset,
+  values: { "golden-dir"?: string | undefined },
+): Promise<Instance[]> {
+  return name === "golden"
+    ? loadGolden(resolve(values["golden-dir"] ?? "evals/golden"))
+    : loadDataset(join(CACHE_DIR, "dataset.json"));
 }
 
 async function list(argv: string[], out: Output): Promise<number> {
   const { values } = parse(argv);
   const instances = selectInstances(
-    await loadDataset(join(CACHE_DIR, "dataset.json")),
+    await loadInstances(dataset(values), values),
     selection(values),
   );
   for (const i of instances) {
-    out.write(
-      `${i.id}\t${i.language}\t${i.changeLines} lines\t${i.references.length} issues\t${i.prUrl}\n`,
-    );
+    const size = i.golden
+      ? `${i.golden.tier}\t${i.golden.clean ? "clean" : `${i.golden.forbid.length} forbidden`}`
+      : `${i.changeLines} lines`;
+    out.write(`${i.id}\t${i.language}\t${size}\t${i.references.length} issues\t${i.prUrl}\n`);
   }
   const lines = instances.reduce((sum, i) => sum + i.changeLines, 0);
   out.write(
@@ -122,7 +154,7 @@ async function list(argv: string[], out: Output): Promise<number> {
 async function ceiling(argv: string[], out: Output, err: Output): Promise<number> {
   const { values } = parse(argv);
   const instances = selectInstances(
-    await loadDataset(join(CACHE_DIR, "dataset.json")),
+    await loadInstances(dataset(values), values),
     selection(values),
   );
   const outDir = resolve(values.out ?? ".ocra/eval", values.label ?? "ceiling");
@@ -144,7 +176,8 @@ async function run(
 ): Promise<number> {
   const { values } = parse(argv);
   const select = selection(values);
-  const instances = selectInstances(await loadDataset(join(CACHE_DIR, "dataset.json")), select);
+  const name = dataset(values);
+  const instances = selectInstances(await loadInstances(name, values), select);
   const runId =
     values.label ??
     new Date()
@@ -177,7 +210,7 @@ async function run(
   const info: RunInfo = {
     runId,
     createdAt: new Date().toISOString(),
-    selection: { ...select },
+    selection: { dataset: name, ...select },
     models: {
       top: env.OCRA_MODEL_TOP,
       standard: env.OCRA_MODEL_STANDARD,
@@ -205,7 +238,10 @@ async function rescore(
     info: RunInfo;
     ids: string[];
   };
-  const all = await loadDataset(join(CACHE_DIR, "dataset.json"));
+  const all = await loadInstances(
+    saved.info.selection.dataset === "golden" ? "golden" : "aacr",
+    values,
+  );
   const instances = saved.ids
     .map((id) => all.find((i) => i.id === id))
     .filter((i): i is Instance => !!i);

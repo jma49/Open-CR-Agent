@@ -6,6 +6,8 @@ export interface SelectionOptions {
   languages?: readonly string[];
   maxChangeLines?: number;
   ids?: readonly string[];
+  // Golden cases only: smoke picks the smoke tier, full every case.
+  tier?: "smoke" | "full";
 }
 
 export function selectInstances(all: readonly Instance[], options: SelectionOptions): Instance[] {
@@ -13,7 +15,8 @@ export function selectInstances(all: readonly Instance[], options: SelectionOpti
   const ids = options.ids ? new Set(options.ids) : undefined;
   const eligible = all.filter(
     (i) =>
-      i.references.length > 0 &&
+      (i.references.length > 0 || i.golden !== undefined) &&
+      (options.tier !== "smoke" || i.golden?.tier === "smoke") &&
       (!ids || ids.has(i.id)) &&
       (!languages || languages.includes(i.language.toLowerCase())) &&
       (options.maxChangeLines === undefined || i.changeLines <= options.maxChangeLines),

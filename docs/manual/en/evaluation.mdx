@@ -32,6 +32,29 @@ When a pull request fails because the model's quota is spent (for example a free
 
 Reviews always run with `--no-repo-config`, so benchmark repositories cannot load plugins; models come from `OCRA_MODEL_*`. Repositories are cached as blobless clones under `~/.cache/ocra/aacr-bench/repos`. PRs whose commits can no longer be fetched are reported as unavailable and excluded from scoring.
 
+## Golden cases
+
+AACR-Bench's references are the comments human reviewers happened to leave, so a real issue nobody commented on counts against ocra. For decisions about ocra itself, the repository keeps its own cases in `evals/golden/` ([ADR-0011](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)); `--dataset golden` uses them instead of AACR-Bench.
+
+```bash
+node packages/eval/dist/main.js list    --dataset golden --tier smoke    # free
+node packages/eval/dist/main.js ceiling --dataset golden                 # free
+```
+
+A case is one JSON file named after its `id`, validated when it loads:
+
+| Field | Meaning |
+|---|---|
+| `id` | Lowercase letters, digits, `.`, `_`, `-`; the file name without `.json` |
+| `repo`, `base`, `head` | A public GitHub repository (`owner/name`) and the two commits of the change |
+| `language`, `tier` | Project language; `smoke` (run before and after every change that needs an eval) or `full` |
+| `source`, `rationale` | Where the case comes from (`ocra-history`, `dogfood` or `aacr`, with a reference) and why it was taken |
+| `expect` | Findings ocra must report: `file`, `lines` (`[from, to]` on the new side), `category` (`correctness`, `security`, `performance`), `minSeverity`, `concern` |
+| `forbid` | Ranges where a finding is wrong: `file`, `lines`, `reason` |
+| `clean` | `true` for a change with no issue; it cannot have `expect` |
+
+Paths must stay inside the repository, and a case naming a file the change does not touch is refused when the repository is checked out. `--tier smoke` selects the smoke tier and `--tier full` every case; `--golden-dir` reads cases from another directory. `--max-change-lines` does not apply to golden cases.
+
 ## Recall ceiling (free)
 
 ```bash

@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { z } from "zod";
+import type { GoldenInfo } from "./golden.js";
 
 export const DATASET_URL =
   "https://huggingface.co/datasets/Alibaba-Aone/aacr-bench/resolve/main/dataset.json";
@@ -43,6 +44,8 @@ export interface Instance {
   headCommit: string;
   changeLines: number;
   references: ReferenceComment[];
+  // Set for golden cases (ADR-0011), which may expect nothing.
+  golden?: GoldenInfo;
 }
 
 export async function loadDataset(

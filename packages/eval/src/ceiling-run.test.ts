@@ -69,5 +69,28 @@ describe("measureCeiling", () => {
     expect(markdown).toContain("Risk tiers: trivial 1, lite 0, full 0.");
     expect(markdown).toContain("Excluded files by reason: generated 1");
     expect(existsSync(marker)).toBe(false);
+
+    // A golden case written against the wrong commits is refused, not scored.
+    const golden: Instance = {
+      ...instance,
+      id: "golden-case",
+      references: [],
+      golden: {
+        tier: "smoke",
+        clean: false,
+        forbid: [{ path: "other.ts", fromLine: 1, toLine: 1, reason: "r" }],
+      },
+    };
+    logs.length = 0;
+    await measureCeiling([golden], {
+      outDir: join(dir, "out"),
+      reposDir: dir,
+      command: defaultOcraCommand(),
+      prepare: async () => dir,
+      log: (m) => logs.push(m),
+    });
+    expect(logs).toEqual([
+      "[1/1] golden-case: failed: the case names files the change does not touch: other.ts",
+    ]);
   });
 });
