@@ -1,3 +1,4 @@
+import type { GoldenSummary } from "./golden-score.js";
 import type { Summary } from "./score.js";
 
 export interface RunInfo {
@@ -10,10 +11,13 @@ export interface RunInfo {
 
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 
-export function renderMarkdown(info: RunInfo, summary: Summary): string {
+export function renderMarkdown(
+  info: RunInfo,
+  summary: Summary & { golden?: GoldenSummary },
+): string {
   const { counts, metrics } = summary.overall;
   const lines = [
-    `# AACR-Bench run ${info.runId}`,
+    `# ${info.selection.dataset === "golden" ? "Golden" : "AACR-Bench"} run ${info.runId}`,
     "",
     `- Date: ${info.createdAt}`,
     `- Selection: ${JSON.stringify(info.selection)}`,
@@ -27,6 +31,7 @@ export function renderMarkdown(info: RunInfo, summary: Summary): string {
     "|---|---|---|---|---|---|---|---|",
     `| ${pct(metrics.precision)} | ${pct(metrics.recall)} | ${pct(metrics.f1)} | ${pct(metrics.linePrecision)} | ${pct(metrics.lineRecall)} | ${counts.generated} | ${counts.expected} | ${counts.semanticMatches} |`,
     "",
+    ...(summary.golden ? goldenSection(summary.golden) : []),
     "## Cost and latency",
     "",
     `- Total $${summary.usage.costUsd.toFixed(4)}, $${summary.costPerReviewedUsd.toFixed(4)} per reviewed PR`,
@@ -61,5 +66,32 @@ function recallTable(groups: Summary["recallByCategory"]): string[] {
     ...Object.entries(groups).map(
       ([name, g]) => `| ${name} | ${pct(g.recall)} | ${g.matched} | ${g.expected} |`,
     ),
+  ];
+}
+
+function goldenSection(golden: GoldenSummary): string[] {
+  const c = golden.counts;
+  return [
+    "## Golden set (ADR-0011)",
+    "",
+    "| Precision | Recall | Reported | Matched | Valid | Invalid | In forbidden ranges | Unlabeled | Expected |",
+    "|---|---|---|---|---|---|---|---|---|",
+    `| ${pct(golden.precision)} | ${pct(golden.recall)} | ${c.reported} | ${c.matched} | ${c.valid} | ${c.invalid} | ${c.forbidden} | ${c.unadjudicated} | ${c.expected} |`,
+    "",
+    c.unadjudicated > 0
+      ? `${c.unadjudicated} finding(s) are unlabeled and count against precision until labeled: edit adjudication.json in the run directory, then run \`ocra-eval adjudicate <run-dir>\`.`
+      : "Every finding is matched or labeled.",
+    "",
+    ...(golden.failures.length === 0
+      ? ["No critical finding where a case says findings are wrong."]
+      : [
+          `**${golden.failures.length} critical finding(s) where a case says findings are wrong:**`,
+          "",
+          ...golden.failures.map(
+            (f) =>
+              `- ${f.case}: ${f.file}${f.lines ? `:${f.lines.start}` : ""} "${f.title}" (${f.reason})`,
+          ),
+        ]),
+    "",
   ];
 }

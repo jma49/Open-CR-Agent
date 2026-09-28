@@ -16,10 +16,18 @@ export interface ForbiddenRange {
   reason: string;
 }
 
+export interface Adjudication {
+  fingerprint: string;
+  label: "valid" | "invalid";
+  reason: string;
+  title: string;
+}
+
 export interface GoldenInfo {
   tier: GoldenTier;
   clean: boolean;
   forbid: ForbiddenRange[];
+  adjudicated: Adjudication[];
 }
 
 // Golden cases name ocra's reviewers; scoring and the ceiling speak
@@ -76,6 +84,20 @@ const caseSchema = z
       .array(z.object({ file: pathSchema, lines: linesSchema, reason: z.string().min(1) }).strict())
       .default([]),
     clean: z.boolean().default(false),
+    // The maintainer's verdict on findings that matched no expect entry,
+    // recorded once per fingerprint so no run has to guess.
+    adjudicated: z
+      .array(
+        z
+          .object({
+            fingerprint: z.string().regex(/^[0-9a-f]{8,64}$/),
+            label: z.enum(["valid", "invalid"]),
+            reason: z.string().min(1),
+            title: z.string(),
+          })
+          .strict(),
+      )
+      .default([]),
   })
   .strict()
   .refine((c) => !c.clean || c.expect.length === 0, "a clean case cannot expect findings")
@@ -146,6 +168,7 @@ export function toInstance(golden: GoldenCase): Instance {
         toLine: f.lines[1],
         reason: f.reason,
       })),
+      adjudicated: golden.adjudicated,
     },
   };
 }

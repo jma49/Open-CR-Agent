@@ -55,6 +55,32 @@ A case is one JSON file named after its `id`, validated when it loads:
 
 Paths must stay inside the repository, and a case naming a file the change does not touch is refused when the repository is checked out. `--tier smoke` selects the smoke tier and `--tier full` every case; `--golden-dir` reads cases from another directory. `--max-change-lines` does not apply to golden cases.
 
+### Golden scoring and labels
+
+A golden run adds its own metrics to `summary.md`. A finding that matches an `expect` entry counts as correct. One that does not is counted by its label:
+
+- labeled valid or invalid earlier (the case's `adjudicated` list, keyed by fingerprint);
+- invalid when it falls in a `forbid` range;
+- otherwise unlabeled.
+
+Precision is (matched + valid) / reported, so an unlabeled finding counts against it until someone labels it; it is never guessed. A critical finding in a `forbid` range or on a `clean` case is listed as a failure.
+
+Unlabeled findings are written to `adjudication.json` in the run directory. Set each entry's `label` to `"valid"` or `"invalid"` with a one-line `reason`, then record them in the cases:
+
+```bash
+node packages/eval/dist/main.js adjudicate .ocra/eval/golden-baseline
+```
+
+Each fingerprint is labeled once. A valid finding with lines also becomes an `expect` entry at `suggestion` severity (raise it by hand if it should count as more), and a valid finding on a `clean` case makes the case no longer clean. Re-scoring keeps the labels already typed.
+
+## Comparing runs
+
+```bash
+node packages/eval/dist/main.js compare .ocra/eval/baseline-a .ocra/eval/change --spread-of .ocra/eval/baseline-b
+```
+
+Prints each metric of both runs and the difference. Model runs vary, so with `--spread-of` (a second run of the baseline) a difference no larger than the gap between the two baseline runs is reported as `no change`; without it the direction is not judged. It works on AACR-Bench and golden runs, and warns when the runs reviewed different pull requests.
+
 ## Recall ceiling (free)
 
 ```bash

@@ -55,6 +55,32 @@ node packages/eval/dist/main.js ceiling --dataset golden                 # 免�
 
 路径必须在仓库内；如果用例指向的文件不在这次改动里，检出仓库时会被拒绝。`--tier smoke` 只选 smoke 档，`--tier full` 选全部用例；`--golden-dir` 可以从其他目录读取用例。`--max-change-lines` 对黄金用例不起作用。
 
+### 黄金集计分与标注
+
+黄金集的运行会在 `summary.md` 里加上自己的指标。命中 `expect` 的问题算正确；没命中的按标注计：
+
+- 之前已标为有效或无效的（用例里的 `adjudicated` 列表，按指纹记录）；
+- 落在 `forbid` 范围内的算无效；
+- 其余为未标注。
+
+精确率 =（命中数 + 有效数）/ 报出总数，所以未标注的问题在被标注前会拉低精确率，但绝不靠猜。落在 `forbid` 范围内或出现在 `clean` 用例上的 critical 会被单独列为失败。
+
+未标注的问题会写进运行目录下的 `adjudication.json`。把每条的 `label` 填成 `"valid"` 或 `"invalid"`，再写一句 `reason`，然后记录到用例里：
+
+```bash
+node packages/eval/dist/main.js adjudicate .ocra/eval/golden-baseline
+```
+
+每个指纹只标一次。带行号的有效问题会同时变成一条 `expect`，严重程度记为 `suggestion`（需要更高时手动调整）；`clean` 用例上出现有效问题，这个用例就不再是 clean。重新计分会保留已经填好的标注。
+
+## 比较两次运行
+
+```bash
+node packages/eval/dist/main.js compare .ocra/eval/baseline-a .ocra/eval/change --spread-of .ocra/eval/baseline-b
+```
+
+逐项列出两次运行的指标和差值。模型每次运行都有波动，所以加上 `--spread-of`（基线的第二次运行）时，差值不超过两次基线之间差距的会报告为 `no change`；不加时不判断方向。AACR-Bench 和黄金集的运行都能比较；两次运行审查的 PR 不同时会给出警告。
+
 ## 召回率上限（免费）
 
 ```bash

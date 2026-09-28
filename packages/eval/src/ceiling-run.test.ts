@@ -79,6 +79,7 @@ describe("measureCeiling", () => {
         tier: "smoke",
         clean: false,
         forbid: [{ path: "other.ts", fromLine: 1, toLine: 1, reason: "r" }],
+        adjudicated: [],
       },
     };
     logs.length = 0;

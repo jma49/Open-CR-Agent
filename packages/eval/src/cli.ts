@@ -3,9 +3,12 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { errorMessage } from "@open-cr-agent/core";
+import { applyLabels, LABELS_FILE, labelsFor, readLabels } from "./adjudicate.js";
 import { measureCeiling } from "./ceiling-run.js";
+import { compareSummaries, renderComparison, type SavedSummary } from "./compare.js";
 import { type Instance, loadDataset } from "./dataset.js";
 import { loadGolden } from "./golden.js";
+import { scoreGolden } from "./golden-score.js";
 import { CachedJudge, judgeConfigFromEnv, MockJudge, OpenAICompatibleJudge } from "./judges.js";
 import type { SemanticJudge } from "./match.js";
 import { type RunInfo, renderMarkdown } from "./report.js";
@@ -27,6 +30,9 @@ Commands:
   ceiling              Recall ceiling of the deterministic stages (free, no model)
   run                  Review the selected PRs with ocra, then score them
   score <run-dir>      Re-score an existing run
+  adjudicate <run-dir> Record the labels typed into a golden run's adjudication.json in its cases
+  compare <baseline-run> <run> [--spread-of <second-baseline-run>]
+                       Difference per metric; within the baselines' spread it is "no change"
 
 Selection:
   --limit <n>              Number of PRs (default: all eligible)
@@ -65,6 +71,8 @@ export async function main(
     if (command === "ceiling") return await ceiling(rest, out, err);
     if (command === "run") return await run(rest, out, err, env);
     if (command === "score") return await rescore(rest, out, err, env);
+    if (command === "adjudicate") return await adjudicate(rest, out);
+    if (command === "compare") return await compare(rest, out);
     out.write(USAGE);
     return command === undefined || command === "--help" || command === "-h" ? 0 : 2;
   } catch (error) {
@@ -91,6 +99,7 @@ const OPTIONS = {
   "mock-judge": { type: "boolean" },
   "retry-failed": { type: "boolean" },
   reviewers: { type: "string" },
+  "spread-of": { type: "string" },
 } as const;
 
 function parse(argv: string[]) {
@@ -210,7 +219,11 @@ async function run(
   const info: RunInfo = {
     runId,
     createdAt: new Date().toISOString(),
-    selection: { dataset: name, ...select },
+    selection: {
+      dataset: name,
+      ...(name === "golden" ? { goldenDir: resolve(values["golden-dir"] ?? "evals/golden") } : {}),
+      ...select,
+    },
     models: {
       top: env.OCRA_MODEL_TOP,
       standard: env.OCRA_MODEL_STANDARD,
@@ -238,10 +251,10 @@ async function rescore(
     info: RunInfo;
     ids: string[];
   };
-  const all = await loadInstances(
-    saved.info.selection.dataset === "golden" ? "golden" : "aacr",
-    values,
-  );
+  const savedDir = saved.info.selection.goldenDir;
+  const all = await loadInstances(saved.info.selection.dataset === "golden" ? "golden" : "aacr", {
+    "golden-dir": values["golden-dir"] ?? (typeof savedDir === "string" ? savedDir : undefined),
+  });
   const instances = saved.ids
     .map((id) => all.find((i) => i.id === id))
     .filter((i): i is Instance => !!i);
@@ -276,12 +289,55 @@ async function writeSummary(
 ): Promise<number> {
   const cache = new CachedJudge(judge.judge, join(runDir, judge.cacheFile));
   await cache.load();
-  const summary = await score(instances, results, cache);
+  const summary: SavedSummary["summary"] = await score(instances, results, cache);
+  const goldenDir = info.selection.goldenDir;
+  if (typeof goldenDir === "string") {
+    summary.golden = await scoreGolden(instances, results, cache);
+    const labels = labelsFor(goldenDir, summary.golden.unadjudicated, await readLabels(runDir));
+    await writeFile(join(runDir, LABELS_FILE), `${JSON.stringify(labels, null, 2)}\n`);
+  }
   await cache.save();
   const markdown = renderMarkdown(info, summary);
   await writeFile(join(runDir, "summary.json"), `${JSON.stringify({ info, summary }, null, 2)}\n`);
   await writeFile(join(runDir, "summary.md"), markdown);
   out.write(`${markdown}\nWritten to ${runDir}\n`);
+  return 0;
+}
+
+async function adjudicate(argv: string[], out: Output): Promise<number> {
+  const { values, positionals } = parse(argv);
+  const runDir = positionals[0];
+  if (!runDir) throw new Error("adjudicate needs a run directory");
+  const labels = await readLabels(runDir);
+  if (!labels)
+    throw new Error(`${join(runDir, LABELS_FILE)} does not exist; is this a golden run?`);
+  const result = await applyLabels(labels, values["golden-dir"] ?? labels.goldenDir);
+  out.write(
+    `${result.applied} label(s) recorded, ${result.alreadyRecorded} already recorded, ${result.pending} still unlabeled\n`,
+  );
+  return 0;
+}
+
+async function compare(argv: string[], out: Output): Promise<number> {
+  const { values, positionals } = parse(argv);
+  const [baselineDir, runDir] = positionals;
+  if (!baselineDir || !runDir) throw new Error("compare needs a baseline run and a run");
+  const load = async (dir: string) => ({
+    summary: JSON.parse(await readFile(join(dir, "summary.json"), "utf8")) as SavedSummary,
+    ids: (JSON.parse(await readFile(join(dir, "run.json"), "utf8")) as { ids: string[] }).ids,
+  });
+  const baseline = await load(baselineDir);
+  const run = await load(runDir);
+  const other = values["spread-of"] ? await load(values["spread-of"]) : undefined;
+  const same = (a: string[], b: string[]) =>
+    a.length === b.length && a.every((id, i) => id === b[i]);
+  const warnings = [
+    ...(same(baseline.ids, run.ids) ? [] : ["the runs reviewed different PRs"]),
+    ...(other && !same(baseline.ids, other.ids) ? ["the baselines reviewed different PRs"] : []),
+  ];
+  out.write(
+    renderComparison(compareSummaries(baseline.summary, run.summary, other?.summary), warnings),
+  );
   return 0;
 }
 
