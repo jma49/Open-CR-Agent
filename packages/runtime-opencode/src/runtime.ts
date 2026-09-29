@@ -47,6 +47,13 @@ export const MAX_AGENT_STEPS = 30;
 // Gemini rejects a request that ends with a model turn (#66).
 export const HELPER_AGENT_STEPS = 2;
 
+// Sent once to a review agent that stopped before finishing (session-prompt.ts).
+export const REVIEW_RESUME = {
+  doneTool: `${MCP_SERVER}_${REVIEW_TOOLS.taskDone}`,
+  maxSteps: MAX_AGENT_STEPS,
+  message: `You stopped before finishing the review. Continue with the files in <ocra_review_files> you have not reviewed yet, report each confirmed issue with ${REVIEW_TOOLS.reportFinding}, and call ${REVIEW_TOOLS.taskDone} when every file is done.`,
+};
+
 // Every OpenCode built-in tool of the pinned version; a test fails when an
 // upgrade adds one, so a new write-capable tool can never be enabled silently.
 export const OPENCODE_BUILTIN_TOOLS = [
@@ -129,6 +136,7 @@ export class OpenCodeRuntime implements AgentRuntime {
             system: spec.systemPrompt,
             user: spec.userPrompt,
             tools: DISABLED_BUILTINS,
+            resume: REVIEW_RESUME,
           },
           signal,
         ),

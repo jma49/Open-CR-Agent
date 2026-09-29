@@ -73,7 +73,8 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
 // review that never called task_done was cut off, usually by the step cap.
 function attemptSummary(model: string, outcome: SessionOutcome): string {
   const { inputTokens, outputTokens, reasoningTokens, costUsd } = outcome.usage;
-  return `${model}: ${outcome.steps} step(s), ${toolSummary(outcome.toolCalls)}, ${inputTokens} in / ${outputTokens} out / ${reasoningTokens} reasoning tokens, $${costUsd.toFixed(4)}`;
+  const resumed = outcome.resumed ? ", resumed after stopping early" : "";
+  return `${model}: ${outcome.steps} step(s), ${toolSummary(outcome.toolCalls)}${resumed}, ${inputTokens} in / ${outputTokens} out / ${reasoningTokens} reasoning tokens, $${costUsd.toFixed(4)}`;
 }
 
 export function toolSummary(toolCalls: readonly string[]): string {

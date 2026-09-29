@@ -154,4 +154,82 @@ describe("promptSession", () => {
       retryable: false,
     });
   });
+
+  describe("an agent that stops before finishing", () => {
+    const DONE = "ocra_task_done";
+    const resume = { doneTool: DONE, maxSteps: 30, message: "Finish the review." };
+    const step = (parts: SessionMessage["parts"], cost = 0.1): SessionMessage => ({
+      info: { role: "assistant", cost, tokens: { input: 100, output: 10 } },
+      parts: [{ type: "step-start" }, ...parts],
+    });
+    const read = step([{ type: "tool", tool: "ocra_read_file", state: { status: "completed" } }]);
+    const report = (title: string) =>
+      step([{ type: "tool", tool: REPORT_TOOL, state: { status: "completed", input: { title } } }]);
+    const done = step([{ type: "tool", tool: DONE, state: { status: "completed" } }]);
+
+    // Each prompt appends the turns it produced to the session.
+    function scripted(turns: SessionMessage[][]) {
+      const sent: string[] = [];
+      const messages: SessionMessage[] = [];
+      const api = {
+        create: async () => ({ data: { id: "s1" } }),
+        prompt: async (body: { parts: { text: string }[] }) => {
+          sent.push(body.parts[0]?.text ?? "");
+          messages.push(...(turns.shift() ?? []));
+          return { data: {} };
+        },
+        messages: async () => ({ data: messages }),
+        abort: async () => ({ data: true }),
+      } as never;
+      return { api, sent };
+    }
+
+    it("is told once to finish, and both turns count", async () => {
+      const { api, sent } = scripted([
+        [read, report("first")],
+        [report("second"), done],
+      ]);
+      const outcome = await promptSession(
+        api,
+        { ...input, resume },
+        REPORT_TOOL,
+        new AbortController().signal,
+      );
+      expect(sent).toEqual(["u", "Finish the review."]);
+      expect(outcome.resumed).toBe(true);
+      expect(outcome.findings).toEqual([{ title: "first" }, { title: "second" }]);
+      expect(outcome.usage.costUsd).toBeCloseTo(0.4);
+    });
+
+    it("is told only once even when it stops again", async () => {
+      const { api, sent } = scripted([[read], [read], [done]]);
+      await promptSession(api, { ...input, resume }, REPORT_TOOL, new AbortController().signal);
+      expect(sent).toHaveLength(2);
+    });
+
+    it.each([
+      ["it called the done tool", [read, done]],
+      [
+        "it answered in text",
+        [read, { ...step([]), parts: [{ type: "text", text: "No issues." }] }],
+      ],
+      ["it used every step", Array.from({ length: 30 }, () => read)],
+    ])("is left alone when %s", async (_why, turn) => {
+      const { api, sent } = scripted([turn as SessionMessage[]]);
+      const outcome = await promptSession(
+        api,
+        { ...input, resume },
+        REPORT_TOOL,
+        new AbortController().signal,
+      );
+      expect(sent).toHaveLength(1);
+      expect(outcome.resumed).toBeUndefined();
+    });
+
+    it("is not resumed for helper calls, which have no resume options", async () => {
+      const { api, sent } = scripted([[read]]);
+      await promptSession(api, input, REPORT_TOOL, new AbortController().signal);
+      expect(sent).toHaveLength(1);
+    });
+  });
 });

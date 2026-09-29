@@ -27,6 +27,27 @@ export interface PromptInput {
   system: string;
   user: string;
   tools: Record<string, boolean>;
+  // Review agents only: when the agent stops early (no done tool, no answer,
+  // steps left), the same session is told once to finish.
+  resume?: ResumeOptions;
+}
+
+export interface ResumeOptions {
+  doneTool: string;
+  maxSteps: number;
+  message: string;
+}
+
+// About one review attempt in twelve on Gemini ended after a step or two
+// with no text, no done tool and steps to spare (2026-09-28), and the task
+// counted as completed with its files unread. Continuing the same session
+// keeps what it read and is cheaper than starting over.
+export function stoppedEarly(outcome: SessionOutcome, resume: ResumeOptions): boolean {
+  return (
+    !outcome.toolCalls.includes(resume.doneTool) &&
+    outcome.steps < resume.maxSteps &&
+    outcome.text.trim() === ""
+  );
 }
 
 type SessionApi = Pick<OpencodeClient["session"], "create" | "prompt" | "messages" | "abort">;
@@ -67,9 +88,10 @@ export async function promptSession(
         error: { message: JSON.stringify(response.error), retryable: false },
       };
     }
+    let outcome: SessionOutcome;
     try {
       const messages = await session.messages({ sessionID }, { signal: attempt });
-      return summarizeSession((messages.data ?? []) as SessionMessage[], reportTool);
+      outcome = summarizeSession((messages.data ?? []) as SessionMessage[], reportTool);
     } catch (error) {
       // The session finished; running it again on the next model would pay
       // twice. Keep what one more read gets, and do not retry.
@@ -81,6 +103,25 @@ export async function promptSession(
         },
       };
     }
+    if (!input.resume || !stoppedEarly(outcome, input.resume)) return outcome;
+    const again = await session.prompt(
+      {
+        sessionID,
+        agent: input.agent,
+        model: parseModel(input.model),
+        system: input.system,
+        tools: input.tools,
+        parts: [{ type: "text", text: input.resume.message }],
+      },
+      { signal: attempt },
+    );
+    // Both turns are in the session: their findings and their spend.
+    const resumed: SessionOutcome = {
+      ...(await harvest(session, sessionID, reportTool)),
+      resumed: true,
+    };
+    if (again.error) resumed.error = { message: JSON.stringify(again.error), retryable: false };
+    return resumed;
   } catch (error) {
     // Aborted or cut off by the transport: OpenCode may still be running the
     // session, spending tokens, so stop it and keep what it already did.

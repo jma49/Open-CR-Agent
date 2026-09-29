@@ -25,6 +25,8 @@ export interface SessionOutcome {
   steps: number;
   toolCalls: string[];
   text: string;
+  // The agent stopped early and was told once to finish.
+  resumed?: true;
   usage: Usage;
   error?: { message: string; retryable: boolean; quota?: QuotaError };
 }
