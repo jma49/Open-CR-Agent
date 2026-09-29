@@ -58,6 +58,7 @@ describe("measureCeiling", () => {
     };
     const logs: string[] = [];
     const markdown = await measureCeiling([instance], {
+      dataset: "aacr",
       outDir: join(dir, "out"),
       reposDir: dir,
       command: defaultOcraCommand(),
@@ -65,6 +66,7 @@ describe("measureCeiling", () => {
       log: (m) => logs.push(m),
     });
     expect(logs).toEqual(["[1/1] local@1: 2 issue(s) classified"]);
+    expect(markdown).toContain("# Recall ceiling, AACR-Bench");
     expect(markdown).toContain("| Reachable | 1 | 50.0% |");
     expect(markdown).toContain("Risk tiers: trivial 1, lite 0, full 0.");
     expect(markdown).toContain("Excluded files by reason: generated 1");
@@ -85,7 +87,8 @@ describe("measureCeiling", () => {
       },
     };
     logs.length = 0;
-    await measureCeiling([golden], {
+    const refused = await measureCeiling([golden], {
+      dataset: "golden",
       outDir: join(dir, "out"),
       reposDir: dir,
       command: defaultOcraCommand(),
@@ -95,5 +98,8 @@ describe("measureCeiling", () => {
     expect(logs).toEqual([
       "[1/1] golden-case: failed: the case names files the change does not touch: other.ts",
     ]);
+    expect(refused).toContain(
+      "# Recall ceiling, golden cases\n\n0 expected findings in 0 case(s),",
+    );
   });
 });

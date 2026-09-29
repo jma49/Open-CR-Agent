@@ -11,7 +11,7 @@ import {
   renderComparison,
   type SavedSummary,
 } from "./compare.js";
-import { type Instance, loadDataset } from "./dataset.js";
+import { type Dataset, type Instance, loadDataset } from "./dataset.js";
 import { loadGolden, readJson } from "./golden.js";
 import { scoreGolden } from "./golden-score.js";
 import { CachedJudge, judgeConfigFromEnv, MockJudge, OpenAICompatibleJudge } from "./judges.js";
@@ -130,8 +130,6 @@ function selection(values: ReturnType<typeof parse>["values"]): SelectionOptions
   return options;
 }
 
-type Dataset = "aacr" | "golden";
-
 function dataset(values: { dataset?: string | undefined }): Dataset {
   const name = values.dataset ?? "aacr";
   if (name !== "aacr" && name !== "golden") throw new Error("--dataset must be aacr or golden");
@@ -171,12 +169,11 @@ async function list(argv: string[], out: Output): Promise<number> {
 
 async function ceiling(argv: string[], out: Output, err: Output): Promise<number> {
   const { values } = parse(argv);
-  const instances = selectInstances(
-    await loadInstances(dataset(values), values),
-    selection(values),
-  );
+  const name = dataset(values);
+  const instances = selectInstances(await loadInstances(name, values), selection(values));
   const outDir = resolve(values.out ?? ".ocra/eval", values.label ?? "ceiling");
   const markdown = await measureCeiling(instances, {
+    dataset: name,
     outDir,
     reposDir: values["repos-dir"] ?? join(CACHE_DIR, "repos"),
     command: defaultOcraCommand(),

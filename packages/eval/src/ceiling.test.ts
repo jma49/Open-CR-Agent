@@ -77,13 +77,25 @@ describe("classifyReferences", () => {
       ["outside_diff", undefined],
       ["reachable", undefined],
     ]);
-    const summary = summarizeCeiling(reaches, ["lite"]);
+    const summary = summarizeCeiling("aacr", reaches, ["lite"]);
     expect(summary.byReach.reachable).toBe(1);
     expect(summary.byTier).toEqual({ trivial: 0, lite: 1, full: 0 });
     expect(summary.excludedBy).toEqual({ generated: 1 });
+    expect(renderCeiling(summary)).toContain(
+      "# Recall ceiling, AACR-Bench\n\n7 annotated issues in 1 PR(s),",
+    );
     expect(renderCeiling(summary)).toContain("Risk tiers: trivial 0, lite 1, full 0.");
     expect(renderCeiling(summary)).toContain(
       "Upper bound on recall: **14.3%** reachable, **28.6%**",
+    );
+  });
+
+  it("names golden cases as cases with expected findings", () => {
+    const summary = summarizeCeiling("golden", classifyReferences(instance, preview, diffs), [
+      "lite",
+    ]);
+    expect(renderCeiling(summary)).toContain(
+      "# Recall ceiling, golden cases\n\n7 expected findings in 1 case(s),",
     );
   });
 });

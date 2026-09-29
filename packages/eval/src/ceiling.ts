@@ -1,5 +1,5 @@
 import { type FileDiff, type ReviewPreview, RISK_TIERS, type RiskTier } from "@open-cr-agent/core";
-import type { Instance, ReferenceComment } from "./dataset.js";
+import type { Dataset, Instance, ReferenceComment } from "./dataset.js";
 
 // Why an annotated issue can or cannot be found, decided by the deterministic
 // stages alone. It bounds recall before any model is involved.
@@ -93,6 +93,7 @@ function withinHunks(ref: ReferenceComment, diff: FileDiff | undefined): boolean
 }
 
 export interface CeilingSummary {
+  dataset: Dataset;
   instances: number;
   // The tier decides which reviewers run, so it is the cost side of the ceiling.
   byTier: Record<RiskTier, number>;
@@ -103,6 +104,7 @@ export interface CeilingSummary {
 }
 
 export function summarizeCeiling(
+  dataset: Dataset,
   reaches: readonly ReferenceReach[],
   tiers: readonly RiskTier[],
 ): CeilingSummary {
@@ -124,6 +126,7 @@ export function summarizeCeiling(
     if (r.reach === "reachable") c.reachable += 1;
   }
   return {
+    dataset,
     instances: tiers.length,
     byTier,
     references: reaches.length,
@@ -143,13 +146,25 @@ const LABEL: Record<Reachability, string> = {
   reachable: "Reachable",
 };
 
+const SCOPE: Record<Dataset, { title: string; count(summary: CeilingSummary): string }> = {
+  aacr: {
+    title: "AACR-Bench",
+    count: (s) => `${s.references} annotated issues in ${s.instances} PR(s)`,
+  },
+  golden: {
+    title: "golden cases",
+    count: (s) => `${s.references} expected findings in ${s.instances} case(s)`,
+  },
+};
+
 export function renderCeiling(summary: CeilingSummary): string {
   const pct = (n: number) =>
     summary.references === 0 ? "0.0" : ((100 * n) / summary.references).toFixed(1);
+  const scope = SCOPE[summary.dataset];
   const lines = [
-    "# Recall ceiling",
+    `# Recall ceiling, ${scope.title}`,
     "",
-    `${summary.references} annotated issues in ${summary.instances} PR(s), classified by ocra's deterministic stages only (no model calls). "Reachable" is an upper bound on recall; issues outside the changed lines can still be found through file context, so the practical bound is between the two.`,
+    `${scope.count(summary)}, classified by ocra's deterministic stages only (no model calls). "Reachable" is an upper bound on recall; issues outside the changed lines can still be found through file context, so the practical bound is between the two.`,
     "",
     `Risk tiers: ${RISK_TIERS.map((t) => `${t} ${summary.byTier[t]}`).join(", ")}.`,
     "",

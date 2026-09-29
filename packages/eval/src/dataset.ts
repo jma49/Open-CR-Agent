@@ -34,6 +34,9 @@ export interface ReferenceComment {
   context: string;
 }
 
+// AACR-Bench, or ocra's own golden cases (ADR-0011).
+export type Dataset = "aacr" | "golden";
+
 export interface Instance {
   id: string;
   repo: string;

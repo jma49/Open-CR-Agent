@@ -7,12 +7,13 @@ import {
   renderCeiling,
   summarizeCeiling,
 } from "./ceiling.js";
-import type { Instance } from "./dataset.js";
+import type { Dataset, Instance } from "./dataset.js";
 import { exec } from "./exec.js";
 import { untouchedPaths } from "./golden.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
 
 export interface CeilingOptions {
+  dataset: Dataset;
   outDir: string;
   reposDir: string;
   command: readonly string[];
@@ -66,7 +67,7 @@ export async function measureCeiling(
     }
   }
 
-  const summary = summarizeCeiling(reaches, tiers);
+  const summary = summarizeCeiling(options.dataset, reaches, tiers);
   const markdown = renderCeiling(summary);
   await mkdir(options.outDir, { recursive: true });
   await writeFile(
