@@ -216,6 +216,8 @@ Open work, in order:
 
 Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) is in [docs/pitfalls.md](pitfalls.md); the rules that follow from them are in `AGENTS.md` under "Engineering best practices". Read both before touching the runtime, git or eval code.
 
+What must stay out of git (secrets, generated output, personal agent tooling) is in `AGENTS.md` under "Repository hygiene" (2026-09-29 audit: nothing sensitive in HEAD or history).
+
 ## Known gaps and trade-offs
 
 - Quality is measured on 8 golden cases (16 expected issues), in one run of the current configuration: 7 found, 7 of 7 reported findings correct. The labels are an agent's, and 12 of the 16 expectations came from ocra's own earlier findings. See the quality page. Verify and Judge fail safe, so the worst case of a broken model call is today's behavior, not lost findings.

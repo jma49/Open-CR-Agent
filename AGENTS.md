@@ -97,6 +97,18 @@ Concrete rules behind the principles above, from the [2026-09-26 self-audit](doc
 - The author may merge their own PR once CI is green and they have self-reviewed the full diff; the maintainer spot-checks merged PRs afterwards. Link the issue with `Closes #N` so it closes on merge.
 - Merge with rebase so each Conventional Commit lands on `main` unchanged.
 - Keep PRs small and focused on one increment; split work that grows beyond a reviewable size.
+- Remove agent worktrees (`git worktree remove`) and their local branches when the work is done.
+
+## Repository hygiene
+
+The repository is public: anything committed stays readable in history even after a later commit deletes it.
+
+- **Never commit secrets or env files.** Real keys live in `.local/` (git-ignored) or the environment; only `.env.example` with placeholders may be committed.
+- **Never commit generated or runtime output:** `dist/`, `*.tsbuildinfo`, `*.tgz` from `npm pack`, logs, `.ocra/sessions/`, `.ocra/eval/`, coverage. `.ocra/config.json` is committed on purpose and holds no secrets.
+- **Personal tool files stay local:** `.claude/settings.local.json`, `.claude/worktrees/`, `CLAUDE.local.md`, `.cursor/`, editor settings.
+- When a new tool or script writes files into the repo, add its output to `.gitignore` in the same change.
+- Stage paths explicitly and read `git status` and `git diff --cached` before committing.
+- If something sensitive was committed, a follow-up delete is not enough: stop and tell the maintainer, since it needs credential rotation and a history rewrite.
 
 ## Commit messages
 
