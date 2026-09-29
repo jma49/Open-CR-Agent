@@ -3,6 +3,8 @@ title: 安全与隐私
 description: 哪些内容会离开你的机器，以及 ocra 如何做隔离。
 ---
 
+恶意 PR 能尝试什么、由什么挡住，见[威胁模型](./threat-model)。
+
 ## 会发送给模型供应商的内容
 
 - 审查员的指令、变更的标题和描述，以及被审查文件的 diff。
@@ -46,7 +48,7 @@ PR 的文字、diff、仓库文件、规则、仓库指南、工具返回的结�
 ## CI
 
 - 把 key 存为 CI 的 secret。
-- 不要用 `pull_request_target` 带着 secret 在不可信的代码上运行 ocra。
+- 要审查来自 fork 的 PR，请按[来自 fork 的 PR](./github#来自-fork-的-pr) 配置。它运行在 `pull_request_target` 上，会把你的 secret 交给 job；之所以可以接受，只是因为 ocra 不运行 PR 里的任何东西，所以绝不要再加一个会运行 PR 代码的步骤。
 - `ocra review --pr` 和 GitHub Action 会从 PR 的 base 提交读取 `.ocra/config.json`、`.ocra/rules.json` 和 `AGENTS.md`，并且从不加载仓库插件。见 [GitHub Pull Request](./github)。
 
 ## 审查不信任的代码

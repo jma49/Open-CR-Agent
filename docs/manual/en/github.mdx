@@ -48,11 +48,7 @@ Store your model key as a repository secret. Models come from the base branch's 
 
 The verdict is advice. The models read the pull request, so its author can plant text that steers a reviewer away from an issue or talks the judge out of one, and an unverified model claim can be wrong. Do not make the check a required status in place of human review; if you turn on `fail-on-concerns`, treat a pass as "nothing confirmed", not "safe".
 
-<Callout type="warn">
-
-Pull requests from forks do not receive repository secrets on `pull_request`, so the review fails with a message naming the missing key. Do not switch to `pull_request_target` to work around it: that runs with secrets on code the fork controls.
-
-</Callout>
+Pull requests from forks get no secrets on `pull_request`, so their review stops with a message naming the missing key. To review them, see [Pull requests from forks](#pull-requests-from-forks).
 
 ## What gets posted
 
@@ -89,6 +85,55 @@ With `on: pull_request`, a pull request from a branch of the same repository run
 ## What the pull request can and cannot change
 
 The pull request is untrusted input. ocra reads `.ocra/config.json`, `.ocra/rules.json`, `.ocra/memory.json` and `AGENTS.md` from the **base** commit, never from the pull request, and never loads repository plugins in this mode. The diff, title and description still reach the reviewers as data, with the protections described in [Security](./security).
+
+## Pull requests from forks
+
+On `pull_request`, a pull request from a fork runs without your repository's secrets and with a read-only token. To review such pull requests, run the Action on `pull_request_target` instead. That event runs the workflow file of your base branch, with your secrets and the permissions you grant. This workflow replaces the one above and reviews your own branches too:
+
+```yaml
+name: ocra
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ocra-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    # Members and collaborators: every push. Anyone else: one review each
+    # time a maintainer adds the ocra-review label.
+    if: >-
+      (github.event.action == 'labeled' && github.event.label.name == 'ocra-review') ||
+      (github.event.action != 'labeled' &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
+    runs-on: ubuntu-latest
+    steps:
+      # The base branch. Nothing from the pull request is checked out.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jma49/Open-CR-Agent@<commit> # v0.1.1
+        with:
+          args: --max-cost-usd 2
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+```
+
+GitHub warns against `pull_request_target` because it gives a job your secrets while someone else controls the pull request: a job that checks out and builds the pull request's code runs that code with your secrets. ocra runs nothing from the pull request. It fetches the pull request's commits and reads them as data, takes configuration, rules and guidelines from the base commit, and never loads repository plugins (see [Threat model](./threat-model)). The workflow around it has to keep it that way:
+
+- **Never check out, install, build or test the pull request in this workflow:** no `ref: ${{ github.event.pull_request.head.sha }}`, no dependency install, no test run. Run those in a separate `pull_request` workflow, which gets no secrets for forks.
+- **Keep the `if:` gate.** Anyone can open a pull request, and every review costs money. With the gate, an outsider's pull request is reviewed once each time a maintainer adds the label; remove the label and add it again for the next review. `--max-cost-usd` caps each review.
+- **Use a model key that serves only these reviews**, with a spending limit at the provider.
+- **Pin the Action by commit**, as above.
+
+`author_association` is `MEMBER` only for public members of an organization; private members need the label too. In a private repository, drop `persist-credentials: false`: ocra fetches the pull request's commits with the checkout's credentials.
 
 ## Configuration
 

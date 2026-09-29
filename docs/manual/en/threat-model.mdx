@@ -1,0 +1,54 @@
+---
+title: Threat model
+description: What a hostile pull request can try, what stops it, and what ocra does not protect against.
+---
+
+ocra is built to review pull requests from people you do not know. This page lists what such a pull request can try, what stops each attempt, and what remains your risk, so you can decide where to run ocra. [Security and privacy](./security) describes the mechanisms in more detail.
+
+It covers pull request reviews (the GitHub Action and `ocra review --pr`) and local reviews with `--no-repo-config`. A plain local review trusts the checkout's `.ocra/config.json`, plugins included: pass `--no-repo-config` for code you do not trust.
+
+## What is protected
+
+- **Your secrets:** the model provider's key, the GitHub token, and any file that is outside the reviewed revision or looks like a secret.
+- **Your runner or machine:** nothing from the pull request runs.
+- **Your repository:** ocra posts review comments and, when configured, requests or withdraws changes. It writes nothing else.
+- **What ocra posts:** a pull request cannot make ocra's comments hide a link's target, show images, mention people, carry hidden markup or issue commands.
+- **Your spend:** every loop over a model has a cap.
+
+Not promised: a correct verdict. The models read the pull request, so they can be steered, and they can be wrong.
+
+## Who can attack
+
+| Who | What they control |
+|---|---|
+| The author of a pull request, from a fork or a branch | The diff and every file at its head (including `.ocra/`, `.opencode/` and `AGENTS.md`), file names, commit messages, the title and the description |
+| Anyone who can comment | Replies and review comments on the pull request |
+| Someone with push access to your repository | All of the above and, with `on: pull_request`, the copy of the workflow file their branch runs |
+| The model provider | Everything ocra sends it ([what is sent](./security#what-is-sent-to-the-model-provider)) |
+| A compromised package or registry account | Code that ocra installs |
+
+## Attacks and what stops them
+
+| The pull request tries to | What stops it |
+|---|---|
+| Run code: plugins in `.ocra/config.json`, OpenCode plugins or tools in `.opencode/`, install scripts, git drivers | Configuration, rules, memory and `AGENTS.md` come from the base commit, and repository plugins never load for pull requests. OpenCode's project configuration is off, so nothing in `.opencode/` or `opencode.json` loads. ocra never checks out, installs or builds the pull request, and git reads it with external diff drivers and text conversion off. |
+| Read secrets through a reviewer | Reviewers have no shell, file-editing or web tools: they can only read the reviewed revision. Paths stay inside the repository, symbolic links are not followed, and secret-looking files and `.git/` are refused. OpenCode's process gets system basics and the model provider's credentials only (plus names you list in `OCRA_RUNTIME_ENV`), never `GITHUB_TOKEN` or other CI variables. |
+| Get a secret into ocra's comments | No secret reaches a prompt, so no model can repeat one. |
+| Hide an issue or argue a finding away (prompt injection) | Pull request text, code, replies and model output reach models as data, and text that could pose as ocra's own sections is rewritten. Only confirmed critical findings can block, and the judge can neither drop nor downgrade them. This limits steering; it does not prevent it (see below). |
+| Forge a command or a dismissal | A command or dismissal counts only when it comes from someone with write access other than the author, and not from a comment someone else has edited. An override names the full head commit id. |
+| Plant markup in ocra's comments | Model text cannot close ocra's markup, embed images or HTML, mention people, or form a link whose text differs from its target. |
+| Tamper with the state in ocra's summary comment | State counts only when ocra's account posted the comment and edited it last. It is validated and its size is capped. |
+| Rewrite your terminal (local runs) | Control characters, escape sequences and bidirectional overrides are replaced in everything ocra prints and in its JSON output. |
+| Run up your model bill | 30 steps per task, 60 tasks per run, bounded reads and tool answers, 50 findings per task, and `--max-cost-usd` per run. In CI, also limit who can start a review ([pull requests from forks](./github#pull-requests-from-forks)). |
+
+The defenses are covered by tests next to the code, in [the repository](https://github.com/jma49/Open-CR-Agent).
+
+## What ocra does not protect against
+
+- **Steering.** A pull request can hide an issue from a reviewer or talk the judge out of a finding. A clean verdict proves nothing. Keep human review and security tooling for anything that must not slip through.
+- **Bare web addresses.** A finding can contain a plain URL, which GitHub shows as a link to exactly that address.
+- **The model provider.** It sees the code under review. Choose one whose data policy you accept.
+- **Bugs in ocra or in what it builds on.** ocra, OpenCode, git and Node.js all process the pull request. A flaw in one of them would run with your model key and GitHub token present. Limit what a flaw could reach: a model key used only for reviews, with a spending limit at the provider, and the token permissions in the examples.
+- **Your own workflow.** A step that checks out and installs, builds or tests the pull request in a job that has your secrets undoes everything above.
+- **Push access.** With `on: pull_request`, a branch in your repository runs its own copy of the workflow file. Protect `.github/workflows` with CODEOWNERS and required reviews ([GitHub pull requests](./github)).
+- **The supply chain.** The Action installs the published ocra with every dependency pinned by its lockfile, install scripts off and registry signatures checked. ocra's packages are published with provenance, and OpenCode is pinned, with its built-in tools checked by a test. A stolen npm login could still publish a bad version, which two-factor authentication with a security key makes hard. Pin the Action by commit.

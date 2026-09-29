@@ -1,6 +1,6 @@
 # ADR-0008: GitHub integration
 
-- Status: accepted
+- Status: accepted; pull requests from forks: [ADR-0013](0013-fork-pull-requests.md)
 - Date: 2026-09-26
 
 ## Context

@@ -48,11 +48,7 @@ jobs:
 
 结论只是参考意见。模型会读到 PR 的内容，PR 作者可以在其中埋入文字，诱导审查员漏报问题，或说服 Judge 丢掉问题；未经核查的模型判断也可能是错的。不要用这项检查代替人工审查、把它设为必需的状态检查；如果打开 `fail-on-concerns`，通过只代表“没有被确认的问题”，不代表“安全”。
 
-<Callout type="warn">
-
-来自 fork 的 PR 在 `pull_request` 事件下拿不到仓库 secret，审查会失败，并提示缺少哪个 key。不要为此改用 `pull_request_target`：那样会带着 secret 运行 fork 控制的代码。
-
-</Callout>
+来自 fork 的 PR 在 `pull_request` 事件下拿不到 secret，审查会停下，并提示缺少哪个 key。如何审查这类 PR，见[来自 fork 的 PR](#来自-fork-的-pr)。
 
 ## 会发布什么
 
@@ -89,6 +85,55 @@ jobs:
 ## PR 能改变什么、不能改变什么
 
 PR 是不可信的输入。ocra 从 **base** 提交读取 `.ocra/config.json`、`.ocra/rules.json`、`.ocra/memory.json` 和 `AGENTS.md`，绝不从 PR 里读取，并且在这个模式下从不加载仓库插件。diff、标题和描述仍然会作为数据交给审查员，防护措施见[安全](./security)。
+
+## 来自 fork 的 PR
+
+在 `pull_request` 事件下，来自 fork 的 PR 拿不到仓库的 secret，token 也是只读的。要审查这类 PR，请改在 `pull_request_target` 事件上运行 Action。这个事件运行的是 base 分支上的 workflow 文件，带着你的 secret 和你授予的权限。下面的 workflow 用来替换上面那个，你自己分支上的 PR 也由它审查：
+
+```yaml
+name: ocra
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ocra-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    # Members and collaborators: every push. Anyone else: one review each
+    # time a maintainer adds the ocra-review label.
+    if: >-
+      (github.event.action == 'labeled' && github.event.label.name == 'ocra-review') ||
+      (github.event.action != 'labeled' &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
+    runs-on: ubuntu-latest
+    steps:
+      # The base branch. Nothing from the pull request is checked out.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jma49/Open-CR-Agent@<commit> # v0.1.1
+        with:
+          args: --max-cost-usd 2
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+```
+
+GitHub 提醒慎用 `pull_request_target`，是因为它把你的 secret 交给了一个由别人控制 PR 内容的 job：如果 job 检出并构建 PR 的代码，这些代码就会带着你的 secret 运行。ocra 不运行 PR 里的任何东西。它获取 PR 的提交，只把它们当作数据来读；配置、规则和指南都从 base 提交读取；从不加载仓库插件（见[威胁模型](./threat-model)）。能否一直保持这一点，取决于它周围的 workflow：
+
+- **不要在这个 workflow 里检出、安装、构建或测试 PR：**不要写 `ref: ${{ github.event.pull_request.head.sha }}`，不要安装依赖，不要跑测试。这些放到单独的 `pull_request` workflow 里，fork 的 PR 在那里拿不到 secret。
+- **保留 `if:` 这道门槛。**任何人都能开 PR，而每次审查都要花钱。有了这道门槛，外部贡献者的 PR 只在维护者每加一次标签时审查一次；下次审查前先移除标签再重新加上。`--max-cost-usd` 限制每次审查的花费。
+- **使用只用于这些审查的模型 key**，并在供应商那里设置花费上限。
+- **按提交固定 Action 的版本**，如上所示。
+
+只有组织的公开成员，`author_association` 才是 `MEMBER`；非公开成员也需要标签。私有仓库请去掉 `persist-credentials: false`：ocra 会用检出时的凭据获取 PR 的提交。
 
 ## 配置
 
