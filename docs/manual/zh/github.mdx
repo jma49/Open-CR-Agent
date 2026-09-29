@@ -141,7 +141,7 @@ GitHub 提醒慎用 `pull_request_target`，是因为它把你的 secret 交给�
 { "github": { "requestChanges": false, "botLogin": "github-actions[bot]" } }
 ```
 
-`botLogin` 是哪个账号发的摘要评论才算 ocra 之前的评审；如果你用别的 token 发布，就改成对应的账号。
+`botLogin` 是哪个账号发的摘要评论才算 ocra 之前的评审；如果你用别的 token 发布，就改成对应的账号。即使 ocra 用某个人的 token 发布，它自己的摘要评论和模型写的文字里出现的 `/ocra override` 等命令也永远不算数。
 
 ## 在命令行里使用
 

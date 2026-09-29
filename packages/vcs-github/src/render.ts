@@ -59,8 +59,10 @@ const VERDICT: Record<ReviewReport["verdict"], string> = {
 };
 
 // Model text is untrusted: it may not close our markup, mention people,
-// pull in images, or render as a link that says one thing and goes elsewhere
-// (a bot comment lends it credibility). Inline links lose their `](`, and
+// pull in images, spell one of ocra's commands (`/ocra …`, which would count
+// if ocra posted as a person with write access), or render as a link that
+// says one thing and goes elsewhere (a bot comment lends it credibility).
+// Inline links lose their `](`, and
 // every `]:` is escaped, so no link reference definition (`[1]: https://…`)
 // can form, at line start or inside a blockquote or list item, and no
 // reference-style link (`[x][1]`, `[x][]`, `[1]`) has anything to resolve to.
@@ -71,6 +73,7 @@ export function safeMarkdown(text: string): string {
     .replace(/<\/?[a-zA-Z][^>]*>/g, (tag) => tag.replaceAll("<", "&lt;"))
     .replace(/@(?=[A-Za-z0-9-])/g, "@\u200b")
     .replace(/!\[/g, "!\u200b[")
+    .replace(/\/(?=ocra)/gi, "/\u200b")
     .replaceAll("](", "]\\(")
     .replaceAll("]:", "]\\:");
 }

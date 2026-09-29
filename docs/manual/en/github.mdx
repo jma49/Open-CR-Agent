@@ -141,7 +141,7 @@ GitHub warns against `pull_request_target` because it gives a job your secrets w
 { "github": { "requestChanges": false, "botLogin": "github-actions[bot]" } }
 ```
 
-`botLogin` is the account whose summary comment counts as ocra's earlier review; change it if you post with another token.
+`botLogin` is the account whose summary comment counts as ocra's earlier review; change it if you post with another token. Commands such as `/ocra override` never count from ocra's own summary or from text a model wrote, even when ocra posts with a person's token.
 
 ## From the command line
 

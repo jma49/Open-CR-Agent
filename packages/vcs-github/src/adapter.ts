@@ -112,6 +112,8 @@ export class GitHubAdapter implements VcsAdapter {
       const login = c.user?.login;
       const match = OVERRIDE.exec(c.body);
       if (!match || !login || login === author || this.isBot(login)) continue;
+      // ocra's own summary is never a command, whichever account posted it.
+      if (c.body.includes(SUMMARY_MARKER)) continue;
       const [, commit = "", reason = ""] = match;
       // The full commit id: a short prefix can be matched by a new commit.
       if (commit.toLowerCase() !== pr.head.sha) continue;
