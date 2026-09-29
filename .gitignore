@@ -15,3 +15,6 @@ coverage/
 .ocra/sessions/
 .ocra/eval/
 .local/
+
+# Credentials google-github-actions/auth writes into the workspace.
+gha-creds-*.json

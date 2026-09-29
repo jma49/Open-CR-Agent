@@ -77,6 +77,12 @@ Traps we have already fallen into, across this repository and the site. Each ent
 
 - **A line-based `sed` edit hits every matching line.** Adding an import with `sed 's/^  correctnessReviewerPlugin,$/…/'` also inserted the function `coverageGaps` into `BUILTIN_PLUGINS`, which type-checked (a function has a `name`) and did nothing (#123). Edit by exact multi-line match, and pin lists like `BUILTIN_PLUGINS` in a test.
 
+## CI credentials
+
+- **`google-github-actions/auth` writes its credentials into the workspace.** The file is `$GITHUB_WORKSPACE/gha-creds-*.json`, and until the job ends it holds a token that mints the job's OIDC tokens. ocra reviews a pull request from git objects (`git cat-file` and `git grep` at the head commit), so agents never see the untracked file, and `gha-creds-*.json` is a secret path besides. Keep `--pr` mode off the working tree, check out before `auth`, and never upload the workspace as an artifact in a job that authenticated.
+- **Pull requests from forks get no OIDC token on a public repository.** GitHub does not grant them `id-token: write` (the setting that sends write tokens to fork pull requests applies to private repositories only), so a keyless credential cannot be reached from a fork. `ocra-review.yml` skips them explicitly anyway. Never grant `id-token: write` under `pull_request_target`, which runs with the base repository's permissions on a fork's code.
+- **The gcloud CLI login and application-default credentials are separate.** ocra's Vertex runs use application-default credentials (`gcloud auth application-default login`); commands such as `gcloud iam …` need `gcloud auth login` as well, and without it report "No credentialed accounts".
+
 ## Site
 
 - **Inline SVGs must not use `id` references.** The layout renders the logo more than once, and duplicate ids make gradients and masks resolve to the wrong element.

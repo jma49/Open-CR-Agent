@@ -1,0 +1,38 @@
+# Dogfooding: ocra reviews this repository's pull requests on Vertex AI.
+# Off unless the repository variable OCRA_REVIEW is "on". The budget, the
+# keyless credential and the ledger are in ocra-dogfood.yml; the other
+# repositories call it pinned by commit, this one from the same commit.
+name: ocra review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions: {}
+
+# One review per pull request at a time: a new push cancels the older run,
+# which still records what it spent.
+concurrency:
+  group: ocra-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    # A pull request from a fork gets no OIDC token anyway: skip it outright.
+    # Dependabot's version bumps are not worth the credit.
+    if: >-
+      vars.OCRA_REVIEW == 'on' &&
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      pull-requests: write
+    uses: ./.github/workflows/ocra-dogfood.yml
+    with:
+      budget-usd: ${{ vars.OCRA_REVIEW_BUDGET_USD }}
+      workload-identity-provider: ${{ vars.GCP_WIF_PROVIDER }}
+      service-account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+      vertex-project: ${{ vars.GOOGLE_VERTEX_PROJECT }}
