@@ -11,7 +11,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { pinnedLockfile } from "./pinned-lock.mjs";
 import { readWorkspaces } from "./release-lib.mjs";
 
@@ -42,7 +42,7 @@ function findsOpencode(dir) {
     [
       "--input-type=module",
       "-e",
-      `const { resolveOpencodeBinary } = await import(${JSON.stringify(binaryModule)}); console.log(resolveOpencodeBinary({}));`,
+      `const { resolveOpencodeBinary } = await import(${JSON.stringify(pathToFileURL(binaryModule).href)}); console.log(resolveOpencodeBinary({}));`,
     ],
     dir,
   ).trim();

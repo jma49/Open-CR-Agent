@@ -85,15 +85,17 @@ jobs:
             exit 1
           fi
           # The install used an npm cache of its own, not ~/.npm.
-          test -d "$RUNNER_TEMP/ocra-npm-cache/_cacache"
+          node -e 'require("fs").statSync(require("path").join(process.env.RUNNER_TEMP, "ocra-npm-cache", "_cacache"))'
           node "$OCRA_MAIN" --version
           # The runtime finds the OpenCode binary in the installed layout.
           node --input-type=module -e '
             import { execFileSync } from "node:child_process";
             import { createRequire } from "node:module";
             import { dirname, join } from "node:path";
+            import { pathToFileURL } from "node:url";
             const index = createRequire(process.env.OCRA_MAIN).resolve("@open-cr-agent/runtime-opencode");
-            const { resolveOpencodeBinary } = await import(join(dirname(index), "binary.js"));
+            // import() takes a URL: a Windows path would read as the scheme "d:".
+            const { resolveOpencodeBinary } = await import(pathToFileURL(join(dirname(index), "binary.js")).href);
             const binary = resolveOpencodeBinary({});
             console.log(binary, execFileSync(binary, ["--version"], { encoding: "utf8" }).trim());
           '
