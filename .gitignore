@@ -3,18 +3,24 @@
 .env.*
 !.env.example
 node_modules/
-__pycache__/
-*.pyc
-.venv/
 dist/
 build/
 .idea/
 .vscode/
+*.swp
 *.tsbuildinfo
+*.tgz
+*.log
 coverage/
 .ocra/sessions/
 .ocra/eval/
 .local/
+
+# Personal agent tooling
+.claude/settings.local.json
+.claude/worktrees/
+CLAUDE.local.md
+.cursor/
 
 # Credentials google-github-actions/auth writes into the workspace.
 gha-creds-*.json
