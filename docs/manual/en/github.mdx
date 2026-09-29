@@ -32,7 +32,9 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-`@v0.1.0` is a release. A tag can be moved, so to fix the exact code that runs with your model key, pin the release's commit instead (`jma49/Open-CR-Agent@<commit> # v0.1.0`). `@main` runs whatever `main` holds, unreleased changes included.
+`@v0.1.0` is a release. A tag can be moved, so to fix the exact code that runs with your model key, pin the release's commit instead (`jma49/Open-CR-Agent@<commit> # v0.1.0`).
+
+From v0.1.1, the Action installs ocra from npm: the `@open-cr-agent/cli` published at the Action's own version, with every dependency at the version the Action's `package-lock.json` pins, install scripts off and, on the npm registry, the registry's signatures checked. npm never changes a published version. While a version is not on npm yet, in a release's first minutes, the Action builds its own source instead; v0.1.0 always does. So `@main` runs the Action code on `main` with the release `main` names, not unreleased package code, unless `main` has changed the packages' dependencies since that release: then it builds `main`.
 
 Keep `fetch-depth: 0`: ocra needs the history between the base and the head, and a shallow checkout stops with a message saying so. The `concurrency` group matters too: without it, two quick pushes run two reviews that post the same inline comments, and the slower one can overwrite the summary with an older head. A cancelled run stops, keeps its partial report in the job log and publishes nothing (the action forwards the cancellation to ocra; if it arrives while ocra is already publishing, publishing completes). ocra retries GitHub's rate limits and short outages a few times; it never repeats a request that may have posted a comment already.
 
