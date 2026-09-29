@@ -44,12 +44,18 @@ jobs:
   # model call: `npm` installs the published CLI at this commit's version
   # with dependencies pinned by this commit's lockfile (or builds this commit
   # while its version is not on npm); `source` builds this commit, as the
-  # Action did before 0.1.1. Cold npm cache, like the Action.
+  # Action did before 0.1.1. Cold npm cache, like the Action, on each OS a
+  # GitHub-hosted runner offers: the OpenCode binary is per platform.
   action:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
         install: [npm, source]
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -78,6 +84,8 @@ jobs:
             echo "::error::@open-cr-agent/cli@$version is on npm, but the Action built it from source"
             exit 1
           fi
+          # The install used an npm cache of its own, not ~/.npm.
+          test -d "$RUNNER_TEMP/ocra-npm-cache/_cacache"
           node "$OCRA_MAIN" --version
           # The runtime finds the OpenCode binary in the installed layout.
           node --input-type=module -e '
