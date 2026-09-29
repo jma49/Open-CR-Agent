@@ -20,19 +20,33 @@ import { readWorkspaces } from "./release-lib.mjs";
 const TARGET = "@open-cr-agent/cli";
 const NPMJS = /^https:\/\/registry\.npmjs\.org\/?$/;
 const DEPENDENCY_FIELDS = ["dependencies", "optionalDependencies", "peerDependencies"];
-// No install scripts: they would run with the job's secrets in the
-// environment. The OpenCode binary is resolved without one.
-const INSTALL_FLAGS = ["--ignore-scripts", "--no-audit", "--no-fund", "--loglevel=error"];
 
 const root = fileURLToPath(new URL("..", import.meta.url));
+const temp = process.env.RUNNER_TEMP ?? tmpdir();
+// An npm cache of this install's own: packages and registry answers come
+// from the registry, never from a cache an earlier step or a restored
+// actions/cache left in ~/.npm.
+const CACHE = ["--cache", join(temp, "ocra-npm-cache")];
+// No install scripts: they would run with the job's secrets in the
+// environment. The OpenCode binary is resolved without one.
+const INSTALL_FLAGS = [...CACHE, "--ignore-scripts", "--no-audit", "--no-fund", "--loglevel=error"];
 const started = Date.now();
-// npm is a .cmd shim on Windows, which Node runs only through a shell.
-const shell = process.platform === "win32";
+
+// How to start npm: a .cmd shim on Windows, which Node starts only through a
+// shell and then as one command line, with an argument holding a space (a
+// runner under "C:\Program Files") quoted; a Windows path cannot hold the
+// quote itself.
+function npmCommand(args) {
+  if (process.platform !== "win32") return { file: "npm", args, shell: false };
+  const line = ["npm", ...args].map((arg) => (/\s/.test(arg) ? `"${arg}"` : arg)).join(" ");
+  return { file: line, args: [], shell: true };
+}
 
 function npm(args, cwd, capture = false) {
-  const result = spawnSync("npm", args, {
+  const command = npmCommand(args);
+  const result = spawnSync(command.file, command.args, {
     cwd,
-    shell,
+    shell: command.shell,
     encoding: "utf8",
     stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
   });
@@ -69,9 +83,10 @@ function fromSource() {
 // parallel for every package: each npm view takes most of a second.
 function published(name, version) {
   return new Promise((done) => {
-    const child = spawn("npm", ["view", `${name}@${version}`, "--json"], {
+    const command = npmCommand(["view", `${name}@${version}`, "--json", ...CACHE]);
+    const child = spawn(command.file, command.args, {
       cwd: root,
-      shell,
+      shell: command.shell,
       stdio: ["ignore", "pipe", "ignore"],
     });
     let out = "";
@@ -130,7 +145,7 @@ async function fromRegistry(workspaces, version) {
   } catch (error) {
     return { reason: `no pinned install: ${error.message}`, warn: true };
   }
-  const dir = join(process.env.RUNNER_TEMP ?? tmpdir(), "ocra-cli");
+  const dir = join(temp, "ocra-cli");
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "package.json"), `${JSON.stringify(pinned.manifest, null, 2)}\n`);
@@ -145,7 +160,7 @@ async function fromRegistry(workspaces, version) {
   // integrity hashes still hold there.
   const registry = npm(["config", "get", "registry"], dir, true).out;
   if (NPMJS.test(registry)) {
-    if (!npm(["audit", "signatures"], dir).ok) fail("npm audit signatures failed");
+    if (!npm(["audit", "signatures", ...CACHE], dir).ok) fail("npm audit signatures failed");
   } else {
     console.log(`::notice::Not verifying signatures: the registry is ${registry}, not npmjs.`);
   }

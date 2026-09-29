@@ -27,6 +27,10 @@ runs:
     - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
       with:
         node-version: 22
+        # setup-node caches ~/.npm on its own when the caller's package.json
+        # names npm as its package manager: a cache entry in the caller's
+        # repository that the install below would never read anyway.
+        package-manager-cache: false
 
     # The published @open-cr-agent/cli of this action's version, with every
     # dependency at the version this ref's package-lock.json pins, install
