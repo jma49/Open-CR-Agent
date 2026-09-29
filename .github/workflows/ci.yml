@@ -68,8 +68,16 @@ jobs:
             node scripts/action-install.mjs
           fi
       - env:
+          OCRA_INSTALL: ${{ matrix.install }}
           OCRA_MAIN: ${{ steps.install.outputs.main }}
         run: |
+          # Building is right only while this version is not on npm yet.
+          version=$(node -p 'require("./packages/cli/package.json").version')
+          if [ "$OCRA_INSTALL" = npm ] && [ "${OCRA_MAIN#"$RUNNER_TEMP"}" = "$OCRA_MAIN" ] &&
+            npm view "@open-cr-agent/cli@$version" version >/dev/null 2>&1; then
+            echo "::error::@open-cr-agent/cli@$version is on npm, but the Action built it from source"
+            exit 1
+          fi
           node "$OCRA_MAIN" --version
           # The runtime finds the OpenCode binary in the installed layout.
           node --input-type=module -e '

@@ -106,14 +106,14 @@ const sameDependencies = (a, b) =>
 async function fromRegistry(workspaces, version) {
   const packages = workspaces.filter((w) => !w.json.private).map((w) => w.json);
   const answers = await Promise.all(packages.map((json) => published(json.name, json.version)));
-  const integrities = new Map();
+  const dist = new Map();
   for (const [i, json] of packages.entries()) {
     const { manifest, reason } = answers[i];
     if (!manifest) return { reason };
     if (!sameDependencies(manifest, json)) {
       return { reason: `${json.name}@${json.version} on npm declares other dependencies` };
     }
-    integrities.set(json.name, manifest.dist?.integrity);
+    dist.set(json.name, manifest.dist ?? {});
   }
 
   let pinned;
@@ -124,7 +124,8 @@ async function fromRegistry(workspaces, version) {
       root,
       workspaces,
       target: TARGET,
-      integrity: (name) => integrities.get(name),
+      integrity: (name) => dist.get(name)?.integrity,
+      resolved: (name) => dist.get(name)?.tarball,
     });
   } catch (error) {
     return { reason: `no pinned install: ${error.message}`, warn: true };
