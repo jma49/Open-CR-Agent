@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { OutputFinding, Severity } from "@open-cr-agent/core";
 import type { Instance } from "./dataset.js";
-import type { ForbiddenRange } from "./golden.js";
+import type { Adjudication, ForbiddenRange } from "./golden.js";
 import { matchComments, type SemanticJudge } from "./match.js";
 import type { InstanceResult } from "./runner.js";
 import { toGeneratedComment } from "./score.js";
@@ -41,8 +41,8 @@ export interface GoldenSummary {
   recall: number;
   failures: (GoldenFinding & { reason: string })[];
   unadjudicated: GoldenFinding[];
-  // A label applies by fingerprint (category, file, quoted code); a later
-  // finding on the same code may claim something else. Listed for a look.
+  // Findings that took a label recorded for another title, because the
+  // judge called it the same claim (labelFor). Listed for a look.
   relabeled: (GoldenFinding & { labeledTitle: string })[];
   // Runs scored against different case files are not comparable.
   casesHash: string;
@@ -105,7 +105,6 @@ export async function scoreGolden(
       const earlier = found.get(k);
       if (!earlier || RANK[finding.severity] > RANK[earlier.severity]) found.set(k, finding);
     }
-    const labels = new Map(instance.golden.adjudicated.map((a) => [a.fingerprint, a]));
     counts.expected += instance.references.length;
     counts.reported += findings.length;
     counts.matched += found.size;
@@ -118,7 +117,7 @@ export async function scoreGolden(
       if (matched.has(index)) continue;
       const golden = toGoldenFinding(instance.id, finding);
       const forbidden = instance.golden.forbid.find((f) => inRange(finding, f));
-      const adjudicated = labels.get(finding.fingerprint);
+      const adjudicated = await labelFor(finding, instance.golden.adjudicated, judge);
       const label = adjudicated?.label;
       if (adjudicated && adjudicated.title !== finding.title) {
         summary.relabeled.push({ ...golden, labeledTitle: adjudicated.title });
@@ -144,6 +143,25 @@ export async function scoreGolden(
   summary.precision = ratio(counts.correct + counts.valid, counts.reported);
   summary.recall = ratio(counts.matched - counts.underrated, counts.expected);
   return summary;
+}
+
+// Labels are keyed by the quoted code, and code that drew one claim can draw
+// another: a valid label must not make a wrong claim on the same lines count
+// as correct (#235). A label applies to its own claim only, matched by title
+// or, when the wording changed, by the judge.
+async function labelFor(
+  finding: OutputFinding,
+  labels: readonly Adjudication[],
+  judge: SemanticJudge,
+): Promise<Adjudication | undefined> {
+  const onSameCode = labels.filter((l) => l.fingerprint === finding.fingerprint);
+  const sameTitle = onSameCode.find((l) => l.title === finding.title);
+  if (sameTitle) return sameTitle;
+  const claim = toGeneratedComment(finding).note;
+  for (const label of onSameCode) {
+    if (await judge.sameIssue(label.title, claim)) return label;
+  }
+  return undefined;
 }
 
 function casesHash(instances: readonly Instance[]): string {

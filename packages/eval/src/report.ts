@@ -109,7 +109,7 @@ function goldenSection(golden: GoldenSummary): string[] {
       ? []
       : [
           "",
-          `${golden.relabeled.length} finding(s) took a label recorded for another title on the same code; check the label still fits:`,
+          `${golden.relabeled.length} finding(s) took a label recorded for another title on the same code, because the judge called it the same claim; check the label still fits:`,
           "",
           ...golden.relabeled.map(
             (f) => `- ${f.case}: "${f.title}" (labeled as "${f.labeledTitle}")`,

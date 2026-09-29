@@ -136,7 +136,7 @@ describe("golden scoring edge cases", () => {
     expect(summary.counts).toMatchObject({ expected: 0, reported: 0 });
   });
 
-  it("lists a label reused for a different title, and fingerprints cases and labels", async () => {
+  it("lends a label to a reworded claim the judge calls the same, lists it, and fingerprints cases and labels", async () => {
     const labeled = login({
       adjudicated: [
         { fingerprint: "0000000000000009", label: "valid", reason: "r", title: "old claim" },
@@ -152,6 +152,78 @@ describe("golden scoring edge cases", () => {
     ]);
     const unlabeled = await scoreGolden([login()], [], judge);
     expect(unlabeled.casesHash).not.toBe(summary.casesHash);
+  });
+});
+
+describe("labels belong to a claim on the code", () => {
+  const labeled = (...labels: ["valid" | "invalid", string][]) =>
+    toInstance(
+      parseCase(
+        {
+          ...base,
+          id: "login",
+          expect: [expectLogin],
+          adjudicated: labels.map(([label, title]) => ({
+            fingerprint: "0000000000000009",
+            label,
+            reason: "r",
+            title,
+          })),
+        },
+        "c",
+      ),
+    );
+  const onLabeledCode = (title: string) =>
+    finding("0000000000000009", { lines: { start: 80, end: 80 }, title });
+  // Tells claims apart: a reworded claim keeps the labeled title as its start.
+  const claims = { sameIssue: async (labeled: string, claim: string) => claim.startsWith(labeled) };
+
+  it("does not lend a valid label to another claim quoting the same code", async () => {
+    const summary = await scoreGolden(
+      [labeled(["valid", "The session is never cleared"])],
+      [reviewed("login", [onLabeledCode("Adapters are not validated early")])],
+      claims,
+    );
+    expect(summary.counts).toMatchObject({ reported: 1, valid: 0, unadjudicated: 1 });
+    expect(summary.precision).toBe(0);
+    expect(summary.unadjudicated.map((f) => f.title)).toEqual(["Adapters are not validated early"]);
+    expect(summary.relabeled).toEqual([]);
+  });
+
+  it("applies the label recorded for the claim among several on the same code", async () => {
+    const summary = await scoreGolden(
+      [
+        labeled(
+          ["valid", "The session is never cleared"],
+          ["invalid", "Adapters are not validated early"],
+        ),
+      ],
+      [
+        reviewed("login", [
+          onLabeledCode("Adapters are not validated early"),
+          onLabeledCode("The session is never cleared on logout"),
+        ]),
+      ],
+      claims,
+    );
+    expect(summary.counts).toMatchObject({ valid: 1, invalid: 1, unadjudicated: 0 });
+    expect(summary.relabeled.map((f) => [f.title, f.labeledTitle])).toEqual([
+      ["The session is never cleared on logout", "The session is never cleared"],
+    ]);
+  });
+
+  it("applies a label to its own title without asking the judge", async () => {
+    const silent = {
+      sameIssue: async (): Promise<boolean> => {
+        throw new Error("the judge was asked");
+      },
+    };
+    const summary = await scoreGolden(
+      [labeled(["invalid", "Adapters are not validated early"])],
+      [reviewed("login", [onLabeledCode("Adapters are not validated early")])],
+      silent,
+    );
+    expect(summary.counts).toMatchObject({ invalid: 1, unadjudicated: 0 });
   });
 });
 

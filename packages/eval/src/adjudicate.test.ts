@@ -55,6 +55,59 @@ describe("adjudication", () => {
     ]);
   });
 
+  it("records another claim on labeled code as a label of its own, each claim once", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "ocra-adjudicate-"));
+    const fingerprint = "0000000000000009";
+    await writeFile(
+      join(dir, "login.json"),
+      JSON.stringify({
+        ...base,
+        id: "login",
+        expect: [expectLogin],
+        adjudicated: [{ fingerprint, label: "valid", reason: "real", title: "Session kept" }],
+      }),
+    );
+    const claim = (title: string) => ({
+      case: "login",
+      fingerprint,
+      category: "correctness",
+      severity: "warning" as const,
+      file: "src/login.ts",
+      lines: { start: 80, end: 80 },
+      title,
+      body: "b",
+    });
+    const labels = labelsFor(dir, [claim("Adapters unchecked"), claim("Adapters unchecked")]);
+    for (const e of labels.entries)
+      Object.assign(e, { label: "invalid", reason: "Checked later." });
+    labels.entries.push({ ...claim("Session kept"), label: "valid", reason: "real" });
+    expect(await applyLabels(labels, dir)).toEqual({ applied: 1, pending: 0, alreadyRecorded: 2 });
+    const saved = parseCase(JSON.parse(await readFile(join(dir, "login.json"), "utf8")), "login");
+    expect(saved.adjudicated.map((a) => [a.title, a.label])).toEqual([
+      ["Session kept", "valid"],
+      ["Adapters unchecked", "invalid"],
+    ]);
+  });
+
+  it("keeps typed labels with their claim when two claims quote the same code", () => {
+    const claim = (title: string) => ({
+      case: "login",
+      fingerprint: "0000000000000009",
+      category: "correctness",
+      severity: "warning" as const,
+      file: "src/login.ts",
+      title,
+      body: "b",
+    });
+    const labels = labelsFor("/tmp", [claim("first"), claim("second")]);
+    Object.assign(labels.entries[1] ?? {}, { label: "invalid", reason: "wrong" });
+    const rescored = labelsFor("/tmp", [claim("first"), claim("second")], labels);
+    expect(rescored.entries.map((e) => [e.title, e.label])).toEqual([
+      ["first", null],
+      ["second", "invalid"],
+    ]);
+  });
+
   it("refuses a case id that could name a file outside the directory", async () => {
     const labels = labelsFor("/tmp", []);
     labels.entries.push({

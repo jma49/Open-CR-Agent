@@ -28,17 +28,22 @@ export type LabelsFile = z.infer<typeof labelsSchema>;
 
 const CASE_CATEGORIES = new Set(["correctness", "security", "performance"]);
 
+// A label belongs to one claim on one piece of code (labelFor in
+// golden-score.ts), so two claims quoting the same code are two entries.
+const claimKey = (e: { case: string; fingerprint: string; title: string }) =>
+  [e.case, e.fingerprint, e.title].join("\0");
+
 // Rescoring a run keeps the labels already typed into its file.
 export function labelsFor(
   goldenDir: string,
   unadjudicated: readonly GoldenFinding[],
   previous?: LabelsFile,
 ): LabelsFile {
-  const earlier = new Map(previous?.entries.map((e) => [`${e.case}/${e.fingerprint}`, e]));
+  const earlier = new Map(previous?.entries.map((e) => [claimKey(e), e]));
   return {
     goldenDir,
     entries: unadjudicated.map((f) => {
-      const old = earlier.get(`${f.case}/${f.fingerprint}`);
+      const old = earlier.get(claimKey(f));
       return { ...f, label: old?.label ?? null, reason: old?.reason ?? "" };
     }),
   };
@@ -82,13 +87,13 @@ export async function applyLabels(labels: LabelsFile, goldenDir: string): Promis
     if (!/^[a-z0-9][a-z0-9._-]{0,99}$/.test(caseId)) throw new Error(`invalid case id "${caseId}"`);
     const path = join(goldenDir, `${caseId}.json`);
     const golden: GoldenCase = parseCase(await readJson(path), path);
-    const known = new Set(golden.adjudicated.map((a) => a.fingerprint));
+    const known = new Set(golden.adjudicated.map((a) => claimKey({ ...a, case: caseId })));
     for (const entry of ready.filter((e) => e.case === caseId)) {
-      if (known.has(entry.fingerprint)) {
+      if (known.has(claimKey(entry))) {
         result.alreadyRecorded += 1;
         continue;
       }
-      known.add(entry.fingerprint);
+      known.add(claimKey(entry));
       const label = entry.label as "valid" | "invalid";
       if (label === "valid" && golden.clean && !entry.lines) {
         throw new Error(

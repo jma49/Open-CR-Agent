@@ -88,6 +88,16 @@ describe("golden cases", () => {
     expect(() => parseCase({ ...valid, ...change }, "case.json")).toThrow(/^case\.json: /);
   });
 
+  it("refuses two labels for one claim on the same code", () => {
+    const label = { fingerprint: "0000000000000009", label: "valid", reason: "r", title: "t" };
+    expect(() =>
+      parseCase({ ...valid, adjudicated: [label, { ...label, label: "invalid" }] }, "case.json"),
+    ).toThrow("case.json: case: a claim on the same code (fingerprint and title) is labeled once");
+    expect(() =>
+      parseCase({ ...valid, adjudicated: [label, { ...label, title: "another claim" }] }, "c"),
+    ).not.toThrow();
+  });
+
   it("accepts a clean case without expectations", () => {
     const clean = parseCase({ ...valid, expect: [], forbid: [], clean: true }, "case.json");
     expect(toInstance(clean).references).toEqual([]);

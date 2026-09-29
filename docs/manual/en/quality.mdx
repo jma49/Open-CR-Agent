@@ -63,7 +63,7 @@ All runs on the 8-case smoke tier, scored against today's cases and labels so th
 | 09-29 | The current configuration | 7/15 (47%) | 7/7 (100%) | $1.57 |
 | 09-29 | A later `main` plus a prompt change that was not merged | 6/15 (40%)² | 8/9 (89%) | $1.26 |
 
-¹ `ocra-eval score` counts 9 of 9. One of the nine repeats a claim labeled invalid in other runs but quotes the same code as a finding labeled valid, and labels are keyed by the quoted code; counted as invalid, precision is 8 of 9 (89%).
+¹ Scored 9 of 9 while a label still applied to every finding that quoted the labeled code. One of the nine repeats a claim labeled invalid in other runs, but quotes the same code as a finding labeled valid; counted as invalid, precision is 8 of 9 (89%). Labels now apply only to the claim they were recorded for, and this run is not yet scored again under that rule.
 
 ² One more expected issue was found below the severity its case asks for.
 

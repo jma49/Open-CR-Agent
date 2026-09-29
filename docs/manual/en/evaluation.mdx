@@ -59,7 +59,7 @@ Paths must stay inside the repository, and `ceiling` refuses a case naming a fil
 
 A golden run adds its own metrics to `summary.md`. A finding that matches an `expect` entry counts as correct. One that does not is counted by its label:
 
-- labeled valid or invalid earlier (the case's `adjudicated` list, keyed by fingerprint);
+- labeled valid or invalid earlier (the case's `adjudicated` list; see below for when a label applies);
 - invalid when it falls in a `forbid` range;
 - otherwise unlabeled.
 
@@ -71,7 +71,7 @@ Unlabeled findings are written to `adjudication.json` in the run directory. Set 
 node packages/eval/dist/main.js adjudicate .ocra/eval/golden-baseline
 ```
 
-Each fingerprint is labeled once. If a valid finding is an expected issue reported somewhere else, add its location to that entry's `also` by hand instead of labeling it, or it becomes a second expectation. A valid finding with lines also becomes an `expect` entry at `suggestion` severity (raise it by hand if it should count as more), and a valid finding on a `clean` case makes the case no longer clean. Re-scoring keeps the labels already typed.
+A label belongs to one claim about one piece of code. It applies to a later finding with the same fingerprint (reviewer category, file and quoted code) and the same title, or a reworded title that the judge calls the same claim; `summary.md` lists the reworded ones, so you can check that the label still fits. Another claim about the same code stays unlabeled until it gets a label of its own, so a finding labeled valid cannot make a wrong claim on the same lines count as correct. Each claim is labeled once. If a valid finding is an expected issue reported somewhere else, add its location to that entry's `also` by hand instead of labeling it, or it becomes a second expectation. A valid finding with lines also becomes an `expect` entry at `suggestion` severity (raise it by hand if it should count as more), and a valid finding on a `clean` case makes the case no longer clean. Re-scoring keeps the labels already typed.
 
 ## Comparing runs
 

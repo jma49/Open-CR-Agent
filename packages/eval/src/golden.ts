@@ -114,6 +114,12 @@ const caseSchema = z
   .strict()
   .refine((c) => !c.clean || c.expect.length === 0, "a clean case cannot expect findings")
   .refine(
+    (c) =>
+      new Set(c.adjudicated.map((a) => `${a.fingerprint}\0${a.title}`)).size ===
+      c.adjudicated.length,
+    "a claim on the same code (fingerprint and title) is labeled once",
+  )
+  .refine(
     (c) => c.clean || c.expect.length > 0 || c.forbid.length > 0,
     "a case needs expect, forbid or clean: true",
   );
