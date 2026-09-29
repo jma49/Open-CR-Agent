@@ -5,18 +5,13 @@
 // undeclared dependencies and broken bin entries before anything is
 // published. Needs network access for third-party dependencies.
 import { execFileSync } from "node:child_process";
-import {
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { readWorkspaces } from "./release-lib.mjs";
 
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url));
 const run = (cmd, args, cwd, extra = {}) =>
   execFileSync(cmd, args, {
     cwd,
@@ -25,12 +20,7 @@ const run = (cmd, args, cwd, extra = {}) =>
     ...extra,
   });
 
-const packages = readdirSync(join(root, "packages"))
-  .map((dir) => ({
-    dir: join(root, "packages", dir),
-    json: JSON.parse(readFileSync(join(root, "packages", dir, "package.json"), "utf8")),
-  }))
-  .filter((p) => !p.json.private);
+const packages = readWorkspaces(root).filter((p) => !p.json.private);
 
 const work = mkdtempSync(join(tmpdir(), "ocra-pack-"));
 try {
