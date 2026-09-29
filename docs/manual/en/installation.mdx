@@ -1,11 +1,11 @@
 ---
 title: Installation
-description: Requirements and installing ocra from source.
+description: Requirements, installing ocra from npm, and building it from source.
 ---
 
 <Callout>
 
-ocra is not published to npm yet. Install it from source as below; the npm package will be `@open-cr-agent/cli`.
+ocra is an early 0.x release: options and output may still change between minor versions. [Measured quality](./quality) shows what its reviews find and miss.
 
 </Callout>
 
@@ -17,7 +17,26 @@ ocra is not published to npm yet. Install it from source as below; the npm packa
 
 The OpenCode agent runtime is installed automatically as a dependency; no separate install is needed.
 
+## From npm
+
+```bash
+npm install -g @open-cr-agent/cli
+ocra --version
+```
+
+To update: `npm install -g @open-cr-agent/cli@latest`. To remove it: `npm uninstall -g @open-cr-agent/cli`.
+
+To run it without installing, npx downloads it first:
+
+```bash
+npx @open-cr-agent/cli review
+```
+
+Do not install with `--omit=optional`: the OpenCode binary comes as an optional dependency (see [OpenCode binary](#opencode-binary)).
+
 ## From source
+
+To work on ocra itself, or to run a version that is not released yet:
 
 ```bash
 git clone https://github.com/jma49/Open-CR-Agent.git
@@ -35,9 +54,7 @@ git pull && npm install && npm run build
 
 To remove it: `npm unlink --global @open-cr-agent/cli`.
 
-## Without linking
-
-Run the built CLI directly:
+Or run the built CLI directly, without linking:
 
 ```bash
 node /path/to/Open-CR-Agent/packages/cli/dist/main.js review

@@ -9,18 +9,14 @@ description: 五分钟完成第一次审查。
 
 ## 安装
 
-ocra 还没有发布到 npm，需要从源码安装（要求 Node.js 22+ 和 Git）：
+要求 Node.js 22+ 和 Git：
 
 ```bash
-git clone https://github.com/jma49/Open-CR-Agent.git
-cd Open-CR-Agent
-npm install
-npm run build
-npm link --workspace @open-cr-agent/cli
+npm install -g @open-cr-agent/cli
 ocra --version
 ```
 
-详见[安装](./installation)。
+npx 用法和从源码构建见[安装](./installation)。ocra 目前是早期的 0.x 版本；[质量实测](./quality)说明了它的审查能发现什么、会漏掉什么。
 
 </Step>
 

@@ -1,11 +1,11 @@
 ---
 title: 安装
-description: 环境要求与从源码安装 ocra。
+description: 环境要求、从 npm 安装 ocra，以及从源码构建。
 ---
 
 <Callout>
 
-ocra 还没有发布到 npm，请按下面的方式从源码安装；将来的 npm 包名是 `@open-cr-agent/cli`。
+ocra 目前是早期的 0.x 版本：不同的次版本之间，选项和输出仍可能变化。[质量实测](./quality)说明了它的审查能发现什么、会漏掉什么。
 
 </Callout>
 
@@ -17,7 +17,26 @@ ocra 还没有发布到 npm，请按下面的方式从源码安装；将来的 n
 
 OpenCode agent 运行时会作为依赖自动安装，不需要单独安装。
 
+## 从 npm 安装
+
+```bash
+npm install -g @open-cr-agent/cli
+ocra --version
+```
+
+更新：`npm install -g @open-cr-agent/cli@latest`。卸载：`npm uninstall -g @open-cr-agent/cli`。
+
+不想安装也可以用 npx，它会先下载再运行：
+
+```bash
+npx @open-cr-agent/cli review
+```
+
+不要用 `--omit=optional` 安装：OpenCode 二进制文件是可选依赖（见 [OpenCode 二进制文件](#opencode-二进制文件)）。
+
 ## 从源码安装
+
+要参与开发 ocra，或者运行尚未发布的版本：
 
 ```bash
 git clone https://github.com/jma49/Open-CR-Agent.git
@@ -35,9 +54,7 @@ git pull && npm install && npm run build
 
 卸载：`npm unlink --global @open-cr-agent/cli`。
 
-## 不用 link 直接运行
-
-直接执行构建好的 CLI：
+也可以不 link，直接运行构建好的 CLI：
 
 ```bash
 node /path/to/Open-CR-Agent/packages/cli/dist/main.js review

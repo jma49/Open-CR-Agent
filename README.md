@@ -4,17 +4,18 @@ An open-source multi-agent code review system. Deterministic engineering handles
 
 Inspired by [Cloudflare's AI code review](https://blog.cloudflare.com/ai-code-review/) and [Alibaba OpenCodeReview](https://github.com/alibaba/open-code-review).
 
-> Status: early development. Site and manual: [ocra.majincheng.com](https://ocra.majincheng.com) ([English](docs/manual/en/index.mdx) · [中文](docs/manual/zh/index.mdx) in this repository). Contributors: [architecture](docs/architecture.md), [decision records](docs/adr/) and the [handoff notes](docs/handoff.md).
+> Status: early 0.x release; options and output may still change. [Measured quality](docs/manual/en/quality.mdx) shows what reviews find and miss. Site and manual: [ocra.majincheng.com](https://ocra.majincheng.com) ([English](docs/manual/en/index.mdx) · [中文](docs/manual/zh/index.mdx) in this repository). Contributors: [architecture](docs/architecture.md), [decision records](docs/adr/) and the [handoff notes](docs/handoff.md).
 
 ## Install
 
-Not published to npm yet; install from source (Node.js 22+ and Git):
+Requires Node.js 22 or newer and Git:
 
 ```bash
-git clone https://github.com/jma49/Open-CR-Agent.git
-cd Open-CR-Agent && npm install && npm run build
-npm link --workspace @open-cr-agent/cli
+npm install -g @open-cr-agent/cli
+ocra --version
 ```
+
+Or without installing: `npx @open-cr-agent/cli review`. To build from source, see [Development](#development).
 
 ## Usage
 
@@ -79,11 +80,13 @@ A list is a failback chain: when a model is overloaded or rejects a request, the
 Requires Node.js 22 or newer.
 
 ```bash
-npm install
-npm run typecheck
-npm test
-npm run check
+git clone https://github.com/jma49/Open-CR-Agent.git
+cd Open-CR-Agent && npm install && npm run build
+npm link --workspace @open-cr-agent/cli   # ocra from this checkout
+npm run verify                            # Biome, type check and tests
 ```
+
+Releases: [docs/releasing.md](docs/releasing.md), [CHANGELOG.md](CHANGELOG.md).
 
 Contribution rules for humans and AI agents live in [AGENTS.md](AGENTS.md).
 
