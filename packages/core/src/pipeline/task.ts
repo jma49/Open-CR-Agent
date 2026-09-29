@@ -1,6 +1,7 @@
 import type { AgentEvent, AgentRuntime, AgentTaskSpec, Usage } from "../contracts.js";
 import { type ReportedFinding, reportedFindingSchema } from "../domain.js";
 import { errorMessage } from "../errors.js";
+import { SpendLimitReached } from "./budget.js";
 import type { TaskStatus } from "./report.js";
 import { addUsage, emptyUsage } from "./usage.js";
 
@@ -14,6 +15,9 @@ export interface TaskResult {
 
 export interface TaskCallbacks {
   onProgress(message: string): void;
+  // Spend as the runtime reports it, so the run's limit can stop the task
+  // while it runs.
+  onUsage?: ((usage: Usage) => void) | undefined;
   category: string;
   abortGraceMs?: number | undefined;
 }
@@ -51,8 +55,20 @@ export async function executeTask(
     if (signal.aborted) {
       const timedOut = timeout.aborted && !runSignal.aborted;
       result.status = timedOut ? "timed_out" : "cancelled";
-      result.error = timedOut ? `timed out after ${spec.timeoutMs}ms` : "run cancelled";
-      if (iterator) await collectAfterAbort(iterator, pending, result, callbacks);
+      result.error = timedOut
+        ? `timed out after ${spec.timeoutMs}ms`
+        : runSignal.reason instanceof SpendLimitReached
+          ? runSignal.reason.message
+          : "run cancelled";
+      const ending = iterator
+        ? await collectAfterAbort(iterator, pending, result, callbacks)
+        : undefined;
+      // The task's last usage report crossed the limit, and it finished
+      // anyway: its review is complete.
+      if (ending === "done" && runSignal.reason instanceof SpendLimitReached) {
+        result.status = "completed";
+        delete result.error;
+      }
       void iterator?.return?.();
     } else {
       result.status = "failed";
@@ -73,21 +89,22 @@ async function collectAfterAbort(
   pending: Promise<IteratorResult<AgentEvent>> | undefined,
   result: TaskResult,
   callbacks: TaskCallbacks,
-): Promise<void> {
+): Promise<"done" | "error" | undefined> {
   const grace = AbortSignal.timeout(callbacks.abortGraceMs ?? ABORT_GRACE_MS);
   let next = pending ?? iterator.next();
   try {
     for (;;) {
       const event = await untilAborted(next, grace);
-      if (event.done) return;
+      if (event.done) return undefined;
       const { value } = event;
       if (value.type === "usage" || value.type === "finding") handle(value, result, callbacks);
-      if (value.type === "done" || value.type === "error") return;
+      if (value.type === "done" || value.type === "error") return value.type;
       next = iterator.next();
     }
   } catch {
     // The runtime did not finish within the grace period, or failed: keep
     // what arrived.
+    return undefined;
   }
 }
 
@@ -110,9 +127,12 @@ function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks)
       }
       return false;
     }
-    case "usage":
-      result.usage = addUsage(result.usage, event);
+    case "usage": {
+      const { type: _type, taskId: _taskId, ...usage } = event;
+      result.usage = addUsage(result.usage, usage);
+      callbacks.onUsage?.(usage);
       return false;
+    }
     case "done":
       return true;
     case "error":

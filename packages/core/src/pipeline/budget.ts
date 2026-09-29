@@ -4,9 +4,18 @@ import type { Usage } from "../contracts.js";
 // and Judge, so the run that hits the limit still gets its findings checked.
 // Those stages are one short call per file with findings plus one top-tier
 // call, while every agent step resends a task's whole conversation, so a fifth
-// covers them in typical runs. The reserve also absorbs review tasks that were
-// already running when their share ran out.
+// covers them in typical runs. Review tasks still running when their share
+// runs out are stopped; what they spend while stopping (the step in flight,
+// and whatever the runtime had not reported yet) comes out of the reserve.
 export const REVIEW_BUDGET_SHARE = 0.8;
+
+// Why running review tasks were stopped.
+export class SpendLimitReached extends Error {
+  constructor(maxCostUsd: number) {
+    super(`stopped at the spend limit of $${maxCostUsd}`);
+    this.name = "SpendLimitReached";
+  }
+}
 
 export interface SpendTracker {
   // No new review task may start.

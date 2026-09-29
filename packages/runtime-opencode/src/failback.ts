@@ -1,4 +1,10 @@
-import { type AgentEvent, type ModelTier, REVIEW_TOOLS } from "@open-cr-agent/core";
+import {
+  type AgentEvent,
+  emptyUsage,
+  type ModelTier,
+  REVIEW_TOOLS,
+  type Usage,
+} from "@open-cr-agent/core";
 import type { ModelHealth } from "./models.js";
 import { sleep } from "./quota.js";
 import type { SessionOutcome } from "./session-outcome.js";
@@ -9,7 +15,8 @@ export interface FailbackOptions {
   chain: readonly string[];
   health: ModelHealth;
   signal: AbortSignal;
-  attempt(model: string): Promise<SessionOutcome>;
+  // onUsage receives what the attempt has spent so far, as it grows.
+  attempt(model: string, onUsage: (spent: Usage) => void): Promise<SessionOutcome>;
 }
 
 // Findings from a failed attempt are still emitted: the pipeline deduplicates
@@ -31,8 +38,19 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
         if (signal.aborted) return;
       }
       yield { type: "progress", taskId, message: `reviewing with ${model}` };
-      const outcome = await options.attempt(model);
-      yield { type: "usage", taskId, ...outcome.usage };
+      // Spend is reported while the attempt runs, so a run's spend limit
+      // can stop it; the finished attempt's total settles the rest.
+      const live = new LiveUsage();
+      const running = options.attempt(model, (spent) => live.observe(spent));
+      const finished = running.then(
+        () => false,
+        () => false,
+      );
+      while (await Promise.race([finished, live.changed().then(() => true)])) {
+        yield { type: "usage", taskId, ...live.take() };
+      }
+      const outcome = await running;
+      yield { type: "usage", taskId, ...live.rest(outcome.usage) };
       yield { type: "progress", taskId, message: attemptSummary(model, outcome) };
       for (const finding of outcome.findings) yield { type: "finding", taskId, finding };
 
@@ -67,6 +85,64 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
       : `every ${options.tier} model is out of quota for this run`,
     retryable: true,
   };
+}
+
+// Hands out what an attempt has spent in increments, each what grew since the
+// last one; `rest` settles the finished attempt's total, so the increments
+// add up to it and nothing is counted twice.
+export class LiveUsage {
+  private seen = emptyUsage();
+  private given = emptyUsage();
+  private wake: (() => void) | undefined;
+
+  observe(spent: Usage): void {
+    this.seen = larger(this.seen, spent);
+    if (ahead(this.seen, this.given)) {
+      this.wake?.();
+      this.wake = undefined;
+    }
+  }
+
+  // Resolves once more has been seen than handed out.
+  changed(): Promise<void> {
+    if (ahead(this.seen, this.given)) return Promise.resolve();
+    return new Promise((resolve) => {
+      this.wake = resolve;
+    });
+  }
+
+  take(): Usage {
+    const increment = beyond(this.seen, this.given);
+    this.given = this.seen;
+    return increment;
+  }
+
+  rest(total: Usage): Usage {
+    const settled = larger(total, this.given);
+    const increment = beyond(settled, this.given);
+    this.given = settled;
+    return increment;
+  }
+}
+
+const FIELDS = [
+  "inputTokens",
+  "outputTokens",
+  "reasoningTokens",
+  "cachedTokens",
+  "costUsd",
+] as const satisfies readonly (keyof Usage)[];
+
+function larger(a: Usage, b: Usage): Usage {
+  return Object.fromEntries(FIELDS.map((f) => [f, Math.max(a[f], b[f])])) as unknown as Usage;
+}
+
+function beyond(a: Usage, b: Usage): Usage {
+  return Object.fromEntries(FIELDS.map((f) => [f, Math.max(0, a[f] - b[f])])) as unknown as Usage;
+}
+
+function ahead(a: Usage, b: Usage): boolean {
+  return FIELDS.some((f) => a[f] > b[f]);
 }
 
 // Which tools an attempt spent its steps on, and whether it finished: a

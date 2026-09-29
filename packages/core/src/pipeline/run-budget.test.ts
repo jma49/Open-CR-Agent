@@ -66,6 +66,39 @@ describe("runReview with a spend limit", () => {
     ]);
   });
 
+  it("stops review tasks still running once the review share is spent", async () => {
+    // Like the OpenCode runtime: spend grows while a task runs; stopped, it
+    // reports what its last step cost and ends.
+    const rt = runtime(async function* (spec, signal) {
+      for (let step = 0; step < 50 && !signal.aborted; step += 1) {
+        yield { type: "usage", taskId: spec.taskId, ...usage(0.2) };
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+      yield { type: "usage", taskId: spec.taskId, ...usage(0.05) };
+      yield { type: "error", taskId: spec.taskId, error: "cancelled", retryable: false };
+    });
+    const report = await runReview({
+      vcs: vcs({}, files(4)),
+      runtime: rt,
+      bundling: perFile,
+      concurrency: 2,
+      maxCostUsd: 2,
+      verify: false,
+      judge: false,
+    });
+    expect(report.tasks.map((t) => [t.status, t.error])).toEqual([
+      ["cancelled", "stopped at the spend limit of $2"],
+      ["cancelled", "stopped at the spend limit of $2"],
+      ["cancelled", "spend limit of $2 reached"],
+      ["cancelled", "spend limit of $2 reached"],
+    ]);
+    // $1.60 is the review share; each running task adds at most its step in
+    // flight and what it reports while stopping.
+    expect(report.usage.costUsd).toBeGreaterThanOrEqual(1.6);
+    expect(report.usage.costUsd).toBeLessThanOrEqual(1.6 + 2 * (0.2 + 0.05) + 1e-9);
+    expect(report.coverage.every((c) => c.status === "failed")).toBe(true);
+  });
+
   it("verifies and judges with the reserved rest", async () => {
     const rt = pricedRuntime(0.3);
     const report = await runReview({

@@ -30,6 +30,9 @@ export interface ExecuteOptions {
   // One plan per reviewer and bundle, shared by --ultra's two samples.
   plans?: Map<string, Promise<PlannedBundle>>;
   emit: (event: ReviewEvent) => void;
+  // Spend as it happens: plan calls when they return, review tasks as their
+  // runtime reports it. JobResult.usage still carries the total.
+  onUsage?: ((usage: Usage) => void) | undefined;
   signal: AbortSignal;
 }
 
@@ -82,6 +85,7 @@ export async function runJob(
     // The sample that made the call pays for it and reports its warning.
     if (!shared) {
       extraUsage.push(...planned.usage);
+      for (const usage of planned.usage) options.onUsage?.(usage);
       if (planned.warning) extraWarnings.push(planned.warning);
     }
     prompt = buildReviewPrompt({ ...input, callers, plan: planned.plan });
@@ -109,6 +113,7 @@ export async function runJob(
     options.signal,
     {
       onProgress: (message) => emit({ type: "task_progress", taskId: job.taskId, message }),
+      onUsage: options.onUsage,
       category: job.reviewer.category,
       abortGraceMs: options.abortGraceMs,
     },

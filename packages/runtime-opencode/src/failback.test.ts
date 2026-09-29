@@ -188,4 +188,35 @@ describe("toolSummary", () => {
     );
     expect(toolSummary([])).toBe("no tool calls");
   });
+
+  it("reports spend while an attempt runs, adding up to its total", async () => {
+    const spent = (costUsd: number) => ({ ...usage, inputTokens: costUsd * 1000, costUsd });
+    const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
+    const events: AgentEvent[] = [];
+    for await (const event of withFailback({
+      taskId: "t",
+      tier: "standard",
+      chain: ["a"],
+      health: new ModelHealth(),
+      signal: new AbortController().signal,
+      attempt: async (_model, onUsage) => {
+        onUsage(spent(0.1));
+        await tick();
+        onUsage(spent(0.3));
+        await tick();
+        // A poll that saw less than before changes nothing.
+        onUsage(spent(0.2));
+        await tick();
+        return { ...ok(), usage: spent(0.5) };
+      },
+    })) {
+      events.push(event);
+    }
+    const costs = events.flatMap((e) => (e.type === "usage" ? [e.costUsd] : []));
+    expect(costs.length).toBe(3);
+    expect(costs[0]).toBeCloseTo(0.1);
+    expect(costs[1]).toBeCloseTo(0.2);
+    expect(costs[2]).toBeCloseTo(0.2);
+    expect(costs.reduce((a, b) => a + b, 0)).toBeCloseTo(0.5);
+  });
 });

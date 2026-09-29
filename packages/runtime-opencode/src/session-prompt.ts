@@ -1,7 +1,12 @@
-import { emptyUsage, errorMessage } from "@open-cr-agent/core";
+import { emptyUsage, errorMessage, type Usage } from "@open-cr-agent/core";
 import type { OpencodeClient } from "@opencode-ai/sdk/v2";
 import { parseModel } from "./models.js";
-import { type SessionMessage, type SessionOutcome, summarizeSession } from "./session-outcome.js";
+import {
+  type SessionMessage,
+  type SessionOutcome,
+  sessionUsage,
+  summarizeSession,
+} from "./session-outcome.js";
 
 // A session that was cut off has still spent tokens and may have reported
 // findings; this bounds the one extra request that collects them.
@@ -13,11 +18,16 @@ export const HARVEST_TIMEOUT_MS = 5_000;
 // stopped and the task moves to the next model instead of waiting for its
 // full timeout. Generous, so a slow step that is still writing survives.
 export const INACTIVITY_MS = 5 * 60_000;
-export const ACTIVITY_POLL_MS = 30_000;
+// Each poll also reports what the session has spent, and a run's spend limit
+// stops running tasks on those reports: this bounds how far past the limit a
+// task can get before it is stopped.
+export const ACTIVITY_POLL_MS = 10_000;
 
 export interface ActivityOptions {
   inactivityMs?: number;
   pollMs?: number;
+  // What the session has spent so far, whenever a poll sees it grow.
+  onUsage?: (spent: Usage) => void;
 }
 
 export interface PromptInput {
@@ -154,6 +164,7 @@ function watchActivity(
   let last = "";
   let changedAt = Date.now();
   let polling = false;
+  let reported = emptyUsage();
   const timer = setInterval(async () => {
     if (polling) return;
     polling = true;
@@ -162,7 +173,15 @@ function watchActivity(
         { sessionID },
         { signal: AbortSignal.timeout(HARVEST_TIMEOUT_MS) },
       );
-      const now = activitySignature((messages.data ?? []) as SessionMessage[]);
+      const list = (messages.data ?? []) as SessionMessage[];
+      if (options.onUsage) {
+        const spent = sessionUsage(list);
+        if (spent.costUsd > reported.costUsd || spent.inputTokens > reported.inputTokens) {
+          reported = spent;
+          options.onUsage(spent);
+        }
+      }
+      const now = activitySignature(list);
       if (now !== last) {
         last = now;
         changedAt = Date.now();

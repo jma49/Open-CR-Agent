@@ -23,7 +23,7 @@ ocra review [options]
 | `--repo <owner/name>` | Repository of `--pr` (default: `GITHUB_REPOSITORY` or `origin`) |
 | `--publish` | With `--pr`: post the review to the pull request |
 | `--full` | With `--pr`: review every file, not only what changed since the previous review |
-| `--max-cost-usd <n>` | Spend limit for the run. Review tasks stop starting at 80% of it (tasks already running finish); verification and judging use the rest. If that runs out too, the remaining findings are reported *not verified*, so they cannot block, and the report says so |
+| `--max-cost-usd <n>` | Spend limit for the run. At 80% of it review tasks stop: no new one starts, and those still running are stopped, keeping what they found; their files count as not reviewed, so the run exits `3`. Verification and judging use the rest. If that runs out too, the remaining findings are reported *not verified*, so they cannot block, and the report says so. Running tasks report their spend about every 10 seconds, so a run can pass the limit by what each one spends in that time plus its step in progress |
 | `--plan` | Show selected and excluded files, bundles, review tasks and the size of each first prompt, including the one plan call a task makes under `--ultra` or for a bundle of five or more files, without calling a model (free). Grouping by the light model is skipped, so a change set large enough to be grouped is shown one file per bundle (by directory past 20 files). With `--pr` it plans a full review, not only what changed since the last one, and it writes no session log |
 | `--ultra` | Favor recall over cost; see [Modes](./how-it-works#modes) |
 | `--reviewers <ids>` | Run only these reviewers, comma-separated (for example `security`) |

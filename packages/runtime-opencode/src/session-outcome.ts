@@ -50,13 +50,7 @@ export function summarizeSession(
       .flatMap((m) => m.parts.filter((p) => p.type === "text").map((p) => p.text ?? ""))
       .join("\n")
       .trim(),
-    usage: {
-      inputTokens: sum(assistant, (m) => m.info.tokens?.input),
-      outputTokens: sum(assistant, (m) => m.info.tokens?.output),
-      reasoningTokens: sum(assistant, (m) => m.info.tokens?.reasoning),
-      cachedTokens: sum(assistant, (m) => m.info.tokens?.cache?.read),
-      costUsd: sum(assistant, (m) => m.info.cost),
-    },
+    usage: sessionUsage(messages),
   };
 
   const errors = assistant.flatMap((m) => (m.info.error ? [m.info.error] : []));
@@ -71,6 +65,19 @@ export function summarizeSession(
     if (quota) outcome.error.quota = quota;
   }
   return outcome;
+}
+
+// Every finished step carries its tokens and cost, so this grows while the
+// session runs.
+export function sessionUsage(messages: readonly SessionMessage[]): Usage {
+  const assistant = messages.filter((m) => m.info.role === "assistant");
+  return {
+    inputTokens: sum(assistant, (m) => m.info.tokens?.input),
+    outputTokens: sum(assistant, (m) => m.info.tokens?.output),
+    reasoningTokens: sum(assistant, (m) => m.info.tokens?.reasoning),
+    cachedTokens: sum(assistant, (m) => m.info.tokens?.cache?.read),
+    costUsd: sum(assistant, (m) => m.info.cost),
+  };
 }
 
 function isAuthError(error: NonNullable<SessionMessage["info"]["error"]>): boolean {

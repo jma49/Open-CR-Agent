@@ -15,6 +15,7 @@ import {
   REVIEW_TOOLS,
   type ReviewContext,
   type RuntimeOptions,
+  type Usage,
 } from "@open-cr-agent/core";
 import { createOpencodeClient, type OpencodeClient } from "@opencode-ai/sdk/v2";
 import { resolveOpencodeBinary } from "./binary.js";
@@ -126,7 +127,7 @@ export class OpenCodeRuntime implements AgentRuntime {
       chain,
       health: this.health,
       signal,
-      attempt: (model) =>
+      attempt: (model, onUsage) =>
         this.prompt(
           infra,
           {
@@ -139,6 +140,7 @@ export class OpenCodeRuntime implements AgentRuntime {
             resume: REVIEW_RESUME,
           },
           signal,
+          onUsage,
         ),
     });
   }
@@ -197,12 +199,18 @@ export class OpenCodeRuntime implements AgentRuntime {
     await rm(infra.root, { recursive: true, force: true });
   }
 
-  private prompt(infra: Infra, input: PromptInput, signal: AbortSignal): Promise<SessionOutcome> {
+  private prompt(
+    infra: Infra,
+    input: PromptInput,
+    signal: AbortSignal,
+    onUsage?: (spent: Usage) => void,
+  ): Promise<SessionOutcome> {
     return promptSession(
       infra.client.session,
       input,
       `${MCP_SERVER}_${REVIEW_TOOLS.reportFinding}`,
       signal,
+      onUsage ? { onUsage } : {},
     );
   }
 

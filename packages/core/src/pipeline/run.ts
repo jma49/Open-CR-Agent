@@ -14,7 +14,7 @@ import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import type { RepoRule } from "../rules/repo-rules.js";
 import type { FileDecision, SelectionPolicy } from "../select/select.js";
 import { markUnchecked, verifyFindings } from "../verify/verify.js";
-import { spendTracker } from "./budget.js";
+import { SpendLimitReached, spendTracker } from "./budget.js";
 import { type JobResult, runJob } from "./execute.js";
 import { dedupeFindings } from "./findings.js";
 import { DEFAULT_MAX_TASKS, type MatrixCell, planTasks, type ReviewerOverrides } from "./matrix.js";
@@ -119,6 +119,15 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
           relocationUsage.push(u);
           budget.add(u);
         }));
+  // Tasks report spend while they run, so the one that uses up the review
+  // share stops every task still running, not only the ones not yet started.
+  const spendLimit = new AbortController();
+  const spend = (usage: Usage) => {
+    budget.add(usage);
+    if (budget.reviewExhausted() && !spendLimit.signal.aborted) {
+      spendLimit.abort(new SpendLimitReached(options.maxCostUsd ?? 0));
+    }
+  };
   const execute = {
     runtime: options.runtime,
     taskTimeoutMs: options.taskTimeoutMs ?? DEFAULTS.taskTimeoutMs,
@@ -130,7 +139,8 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     ultra: options.ultra === true,
     plans: new Map(),
     emit,
-    signal,
+    onUsage: spend,
+    signal: AbortSignal.any([signal, spendLimit.signal]),
   };
   const results = await mapWithConcurrency(
     matrix.cells,
@@ -141,9 +151,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
       if (budget.reviewExhausted()) {
         return skipCell(cell, `spend limit of $${options.maxCostUsd} reached`, emit);
       }
-      const result = await runJob(cell, plan, execute);
-      budget.add(result.usage);
-      return result;
+      return runJob(cell, plan, execute);
     },
   );
 

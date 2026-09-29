@@ -123,6 +123,32 @@ describe("promptSession", () => {
     expect(aborted).toEqual([]);
   });
 
+  it("reports what a running session has spent as it grows", async () => {
+    let step = 0;
+    const api = {
+      create: async () => ({ data: { id: "s1" } }),
+      prompt: () => new Promise((resolve) => setTimeout(() => resolve({ data: {} }), 150)),
+      // One more finished step, costing $0.10, every time the session is read.
+      messages: async () => {
+        step += 1;
+        return {
+          data: Array.from({ length: step }, () => ({
+            info: { role: "assistant", cost: 0.1, tokens: { input: 100 } },
+            parts: [{ type: "step-start" }],
+          })),
+        };
+      },
+      abort: async () => ({ data: true }),
+    } as never;
+    const reports: number[] = [];
+    await promptSession(api, input, REPORT_TOOL, new AbortController().signal, {
+      pollMs: 20,
+      onUsage: (spent) => reports.push(spent.costUsd),
+    });
+    expect(reports.length).toBeGreaterThanOrEqual(3);
+    expect(reports.every((cost, i) => i === 0 || cost > (reports[i - 1] ?? 0))).toBe(true);
+  });
+
   it("keeps what a session spent when OpenCode answers with an error", async () => {
     const api = {
       create: async () => ({ data: { id: "s1" } }),
