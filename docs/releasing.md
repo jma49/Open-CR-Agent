@@ -1,33 +1,99 @@
 # Releasing
 
-Nothing has been published yet. This is what is ready, what is missing, and the steps for the first release.
+How the packages reach npm. Five packages are published: `@open-cr-agent/core`, `runtime-opencode`, `vcs-local`, `vcs-github` and `cli` (the `ocra` command). `@open-cr-agent/eval` is private. All of them share one version and depend on each other at exactly that version, so a published `cli` never pairs with a `core` from another release.
 
-## Ready
+Releases go out through [npm trusted publishing](https://docs.npmjs.com/trusted-publishers): publishing a GitHub release starts `.github/workflows/release.yml`, which publishes with a short-lived OIDC token, and npm attaches [provenance](https://docs.npmjs.com/generating-provenance-statements). No npm token is stored anywhere. npm can trust a workflow only for a package that already exists, so the first version is published once by hand.
 
-- Publishable packages: `@open-cr-agent/core`, `runtime-opencode`, `vcs-local`, `vcs-github` and `cli` (which provides the `ocra` command). `@open-cr-agent/eval` is private.
-- Each has repository, homepage, bugs, keywords, `engines` (Node ≥ 22), `files: ["dist"]` and `publishConfig.access: public`.
-- `npm run check:packages` packs every package, installs the tarballs into an empty project the way a user would, and checks that the installed `ocra` reports the right version, that `ocra review --plan` works, and that the runtime finds the OpenCode binary. CI runs it on every pull request (job `packages`).
-- `ocra --version` reads the CLI's `package.json`.
+Decided on 2026-09-26 and 2026-09-28: the scope is `@open-cr-agent` (npm organization `open-cr-agent`, owned by the maintainer's account `majincheng_ocra`), releases are `0.x` with the early status stated in the README, and publishing is trusted publishing rather than a stored token.
 
-## Before the first release
+## Tools
 
-- The versioned output format (`version: 1`, `packages/core/src/pipeline/output.ts`) is in place; it becomes a published contract with the first release. The `--plan` JSON is versioned too (`toPlanOutput`).
+- **`node scripts/release.mjs version <x.y.z>`** sets the version on every workspace package and on the dependencies between them, and updates `package-lock.json`. (`npm version --workspaces` leaves those dependencies behind.)
+- **`node scripts/release.mjs publish`** is a dry run. It checks that the packages share one version, that the checkout is clean and its commit is on `origin/main`, that `CHANGELOG.md` has a section for the version and that npm is logged in; it asks the registry which versions are missing, runs `npm run verify` and `npm run check:packages`, packs those packages and runs `npm publish --dry-run` on each. It ends with "Dry run finished: --publish would publish N package(s)", or lists what `--publish` would refuse and fails.
+- **`node scripts/release.mjs publish --publish`** does the same and publishes, dependencies first, stopping at the first failure. Versions already on the registry are skipped, so running it again resumes where it stopped.
+- **`node scripts/release.mjs notes <x.y.z>`** prints that version's section of `CHANGELOG.md`, the body of the GitHub release.
+- **`npm run check:packages`**, also the `packages` job of every pull request, packs every package, installs the tarballs into an empty project as a user would, and runs the installed `ocra`.
+- **`.github/workflows/release.yml`** runs on a published GitHub release, or by hand as a dry run (`gh workflow run release.yml --ref main`; its `dry-run` input defaults to true). Its `pack` job runs the checks and packs the tarballs with no right to publish. Its `publish` job, the only one that can mint a publish token, installs nothing and runs only npm and `scripts/release.mjs`, which has no dependencies. It publishes only from a tag that matches the version, `v<x.y.z>`, and a prerelease (`0.2.0-rc.1`) goes to the `next` dist-tag instead of `latest`.
 
-## Decisions for the maintainer
+## The first release
 
-1. **Scope: decided, `@open-cr-agent`** (2026-09-26). Publishing needs an npm organization named `open-cr-agent`, created by the maintainer before the first release.
-2. **When.** Quality is not measured yet (#12). Publishing as `0.x` with that stated in the README is reasonable; waiting for a baseline is safer.
-3. **How.** Either an npm automation token stored as a repository secret, or npm trusted publishing (OIDC) from a GitHub workflow, which needs no long-lived token and adds provenance. Trusted publishing is recommended.
+Done: the organization `open-cr-agent` exists, and the owner account has two-factor authentication for authorization and writes, with a security key (Touch ID).
 
-## First release, step by step
+1. In a checkout of the repository, on an up-to-date `main` with nothing uncommitted:
 
-1. Pick the version (all packages share one), for example `0.1.0`, and set it in every publishable `package.json` and in each internal dependency on `@open-cr-agent/*` (they are exact versions).
-2. Update the README install section to `npm install -g @open-cr-agent/cli` and the manual's installation page (both languages).
-3. `npm run verify && npm run check:packages`.
-4. Publish in dependency order: `core`, then `runtime-opencode`, `vcs-local`, `vcs-github`, then `cli`: `npm publish --workspace packages/<name>` (add `--provenance` from CI).
-5. Tag `v<version>` and create a GitHub release.
-6. Point `action.yml` at the published CLI instead of building from source, if that proves faster in practice.
+   ```bash
+   git switch main && git pull
+   npm ci
+   npm whoami        # majincheng_ocra
+   ```
 
-## Known install caveat
+2. Dry run. It must end with "Dry run finished: --publish would publish 5 package(s)."
 
-`opencode-ai`'s postinstall fails when optional dependencies are omitted (`npm install --omit=optional`), because the OpenCode binary comes as an optional platform package. Default installs work.
+   ```bash
+   node scripts/release.mjs publish
+   ```
+
+3. Publish:
+
+   ```bash
+   node scripts/release.mjs publish --publish
+   ```
+
+   The checks take a minute or two. Then, for the first package, npm prints a link (Enter opens it) where you confirm with the security key; tick the option there to skip two-factor authentication for the next five minutes, and the other four publish without asking again (without it, each package asks once). If a package fails, fix the cause and run the same command again.
+
+4. Trust the release workflow for each package. `npm trust` needs npm 11.15 or newer and asks for the security key the same way:
+
+   ```bash
+   for p in core runtime-opencode vcs-local vcs-github cli; do
+     npm trust github "@open-cr-agent/$p" --file release.yml --repo jma49/Open-CR-Agent --allow-publish --yes
+     sleep 2
+   done
+   npm trust list @open-cr-agent/cli
+   ```
+
+   The file name and the repository are matched exactly, case included.
+
+5. On npmjs.com, for each package: **Settings → Publishing access → Require two-factor authentication and disallow tokens.** Trusted publishing keeps working; a token, even a leaked one, can no longer publish.
+
+6. Create the GitHub release on the commit that was published (the publish command prints this line with the commit filled in):
+
+   ```bash
+   node scripts/release.mjs notes 0.1.0 | gh release create v0.1.0 --target "$(git rev-parse HEAD)" --title v0.1.0 --notes-file -
+   ```
+
+   The release workflow runs; it finds every package on the registry, skips them all, and passes.
+
+7. Merge the pull request that switches the README and the manual's installation pages to npm (#234, a draft until then: mark it ready first), then deploy the site so the manual and the quality page are live.
+
+8. Try it as a user, outside the repository: `npm install -g @open-cr-agent/cli`, `ocra --version`, and `npx @open-cr-agent/cli --version`.
+
+## Later releases
+
+1. On a branch: `node scripts/release.mjs version <x.y.z>`, and a `## <x.y.z>` section at the top of `CHANGELOG.md`. Open a pull request and merge it.
+2. Optionally, a dry run in CI: `gh workflow run release.yml --ref main`, then `gh run watch`.
+3. Release from the merged commit on `main`:
+
+   ```bash
+   node scripts/release.mjs notes <x.y.z> | gh release create v<x.y.z> --target <commit> --title v<x.y.z> --notes-file -
+   ```
+
+   The workflow checks that the tag matches the version and that the commit is on `main`, runs the checks, and publishes with provenance.
+
+### When a publish fails halfway
+
+- Re-run the failed jobs (`gh run rerun <run-id> --failed`); the packages already published are skipped. Locally, run the same `publish --publish` again.
+- If the fix needs a code change and nothing was published (the `pack` job failed), fix it on `main`, delete the release and its tag (`gh release delete v<x.y.z> --cleanup-tag`), and release again.
+- If some packages were published, do not move the tag: release the next patch version. Users are not affected in between: `cli` is published last, and each `cli` depends on exactly its own version of the others.
+- A version number can never be published twice, even after an unpublish, and npm allows unpublishing only [under conditions](https://docs.npmjs.com/policies/unpublish). To withdraw a broken release, deprecate it (`npm deprecate "@open-cr-agent/cli@<x.y.z>" "<reason>"`) and release a fix.
+
+## Caveats
+
+- **Optional dependencies.** The OpenCode binary comes as an optional platform package of `opencode-ai`, and ocra looks for it there. With `npm install --omit=optional` the install succeeds, but `ocra review` stops with "No OpenCode binary …; set OCRA_OPENCODE_BIN". (Where npm runs `opencode-ai`'s install script, that script fetches a copy into `opencode-ai/bin/`, which ocra does not look at.) Default installs work whether or not npm runs install scripts: npm 11.16 and later warn about them, npm 12 skips them by default.
+- **Node versions.** The packages need Node.js 22 or newer (`engines`). The release workflow runs on Node 24 because trusted publishing needs npm 11.5.1 or newer and Node 22 ships npm 10.
+- **A user-level `allow-scripts` npm setting** used to break `npm run check:packages` (`EALLOWSCRIPTS`, see `docs/pitfalls.md`); the check now removes it for its nested install.
+
+## Follow-ups
+
+- `resolveOpencodeBinary` could fall back to `opencode-ai/bin/`, so an install without optional dependencies works wherever npm runs `opencode-ai`'s install script.
+- The GitHub Action (`action.yml`) builds ocra from source at the ref a workflow names (`jma49/Open-CR-Agent@v0.1.0`). Installing the published CLI instead (`npm install -g @open-cr-agent/cli@<version> --ignore-scripts`) would skip the build; measure whether it is faster before switching, and keep install scripts off, as now.
+- A GitHub environment with required reviewers would add an approval before each publish. To use one, add `environment: <name>` to the `publish` job and pass `--env <name>` to `npm trust`; not needed while one maintainer releases.

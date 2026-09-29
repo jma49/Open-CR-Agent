@@ -49,7 +49,7 @@ try {
   run("mkdir", ["-p", app], work);
   writeFileSync(join(app, "package.json"), '{ "name": "pack-check", "private": true }\n');
   // A default install, as users run it: the OpenCode platform binary comes as
-  // an optional dependency (with --omit=optional, opencode-ai's postinstall fails).
+  // an optional dependency (with --omit=optional, ocra cannot find it).
   // `npm run` exports a user-level allow-scripts setting as
   // npm_config_allow_scripts, which npm 11 refuses in a project install.
   const env = Object.fromEntries(
