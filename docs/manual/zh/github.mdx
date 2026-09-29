@@ -27,10 +27,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@main
+      - uses: jma49/Open-CR-Agent@v0.1.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
+
+`@v0.1.0` 是一个发布版本。tag 可以被移动，要确保带着你的模型 key 运行的代码确定不变，可以改为固定到该版本的提交（`jma49/Open-CR-Agent@<提交> # v0.1.0`）。`@main` 运行的是 `main` 当时的内容，包括尚未发布的改动。
 
 保留 `fetch-depth: 0`：ocra 需要 base 与 head 之间的历史，浅克隆会直接停下并给出提示。`concurrency` 分组也很重要：没有它，连续两次 push 会同时跑两次审查，重复发同样的行内评论，较慢的那次还可能用更旧的 head 覆盖摘要。被取消的运行会停下，把部分报告留在 job 日志里，不发布任何内容（Action 会把取消信号转给 ocra；如果信号到达时 ocra 已在发布，发布会完成）。遇到 GitHub 限流或短暂故障，ocra 会有限次地重试；可能已经发出评论的请求绝不会重复。
 

@@ -27,10 +27,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@main
+      - uses: jma49/Open-CR-Agent@v0.1.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
+
+`@v0.1.0` is a release. A tag can be moved, so to fix the exact code that runs with your model key, pin the release's commit instead (`jma49/Open-CR-Agent@<commit> # v0.1.0`). `@main` runs whatever `main` holds, unreleased changes included.
 
 Keep `fetch-depth: 0`: ocra needs the history between the base and the head, and a shallow checkout stops with a message saying so. The `concurrency` group matters too: without it, two quick pushes run two reviews that post the same inline comments, and the slower one can overwrite the summary with an older head. A cancelled run stops, keeps its partial report in the job log and publishes nothing (the action forwards the cancellation to ocra; if it arrives while ocra is already publishing, publishing completes). ocra retries GitHub's rate limits and short outages a few times; it never repeats a request that may have posted a comment already.
 
