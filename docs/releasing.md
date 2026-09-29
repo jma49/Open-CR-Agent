@@ -81,19 +81,20 @@ Done: the organization `open-cr-agent` exists, and the owner account has two-fac
 
 ### When a publish fails halfway
 
-- Re-run the failed jobs (`gh run rerun <run-id> --failed`); the packages already published are skipped. Locally, run the same `publish --publish` again.
+- Re-run the failed jobs (`gh run rerun <run-id> --failed`); the packages already published are skipped. Locally, run the same `publish --publish` again. The registry can take a minute to list a version it just accepted; a re-run in that window tries it again, and npm refuses (`E403`, cannot publish over a published version). Wait a minute and run it once more.
 - If the fix needs a code change and nothing was published (the `pack` job failed), fix it on `main`, delete the release and its tag (`gh release delete v<x.y.z> --cleanup-tag`), and release again.
 - If some packages were published, do not move the tag: release the next patch version. Users are not affected in between: `cli` is published last, and each `cli` depends on exactly its own version of the others.
 - A version number can never be published twice, even after an unpublish, and npm allows unpublishing only [under conditions](https://docs.npmjs.com/policies/unpublish). To withdraw a broken release, deprecate it (`npm deprecate "@open-cr-agent/cli@<x.y.z>" "<reason>"`) and release a fix.
 
 ## Caveats
 
-- **Optional dependencies.** The OpenCode binary comes as an optional platform package of `opencode-ai`, and ocra looks for it there. With `npm install --omit=optional` the install succeeds, but `ocra review` stops with "No OpenCode binary …; set OCRA_OPENCODE_BIN". (Where npm runs `opencode-ai`'s install script, that script fetches a copy into `opencode-ai/bin/`, which ocra does not look at.) Default installs work whether or not npm runs install scripts: npm 11.16 and later warn about them, npm 12 skips them by default.
-- **Node versions.** The packages need Node.js 22 or newer (`engines`). The release workflow runs on Node 24 because trusted publishing needs npm 11.5.1 or newer and Node 22 ships npm 10.
+- **Optional dependencies.** The OpenCode binary comes as an optional platform package of `opencode-ai`, and ocra looks for it there. With `npm install --omit=optional` the install succeeds, but `ocra review` stops with "No OpenCode binary …; set OCRA_OPENCODE_BIN". (Where npm runs `opencode-ai`'s install script, it copies the binary into `opencode-ai/bin/`, downloading it when the platform package is missing; ocra does not look there.) Default installs work whether or not npm runs install scripts: npm 11.16 and later warn about `opencode-ai`'s, npm 12 blocks it by default (checked with npm 11.19 and 12.1 on 2026-09-29). Like that script, ocra picks the musl build on musl Linux and the baseline build on x64 without AVX2.
+- **Node versions.** The packages need Node.js 22.19 or newer (`engines`), the minimum of undici 8, which the OpenCode runtime uses. The release workflow runs on Node 24 because trusted publishing needs npm 11.5.1 or newer and Node 22 ships npm 10.
 - **A user-level `allow-scripts` npm setting** used to break `npm run check:packages` (`EALLOWSCRIPTS`, see `docs/pitfalls.md`); the check now removes it for its nested install.
 
 ## Follow-ups
 
 - `resolveOpencodeBinary` could fall back to `opencode-ai/bin/`, so an install without optional dependencies works wherever npm runs `opencode-ai`'s install script.
 - The GitHub Action (`action.yml`) builds ocra from source at the ref a workflow names (`jma49/Open-CR-Agent@v0.1.0`). Installing the published CLI instead (`npm install -g @open-cr-agent/cli@<version> --ignore-scripts`) would skip the build; measure whether it is faster before switching, and keep install scripts off, as now.
+- The `pack` job installs the repository from the lockfile without install scripts, but `check:packages` then installs the packed tarballs into a scratch project as a user would: dependencies resolved fresh from the registry, install scripts on, and the installed `ocra` run. A dependency compromised since the lockfile was written would run in that job before the final tarballs are packed. Moving the check into its own job, after `pack` has uploaded the tarballs and before `publish`, would keep it away from what gets published.
 - A GitHub environment with required reviewers would add an approval before each publish. To use one, add `environment: <name>` to the `publish` job and pass `--env <name>` to `npm trust`; not needed while one maintainer releases.

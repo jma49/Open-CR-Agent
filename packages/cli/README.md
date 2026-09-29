@@ -6,7 +6,7 @@ This is an early 0.x release: options and output may change between minor versio
 
 ## Install
 
-Requires Node.js 22 or newer and Git.
+Requires Node.js 22.19 or newer and Git.
 
 ```bash
 npm install -g @open-cr-agent/cli
@@ -15,10 +15,11 @@ ocra --version
 
 ## First review
 
-ocra runs its agents on [OpenCode](https://opencode.ai), which is installed with it, using the models you choose; a comma-separated list is a failback chain. With Google Gemini:
+ocra runs its agents on [OpenCode](https://opencode.ai), which is installed with it, using the models you choose for three tiers: `standard` reviews, `light` does helper work, and `top` judges the findings. A comma-separated list is a failback chain. With Google Gemini:
 
 ```bash
 export GEMINI_API_KEY="your-key"
+export OCRA_MODEL_TOP=google/gemini-3.1-pro-preview
 export OCRA_MODEL_STANDARD=google/gemini-3.5-flash,google/gemini-flash-lite-latest
 export OCRA_MODEL_LIGHT=google/gemini-flash-lite-latest
 
