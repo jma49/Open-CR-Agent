@@ -1,37 +1,26 @@
 # Dogfooding: ocra reviews pull requests in the maintainer's repositories on
-# Vertex AI, within a hard budget. Each repository calls this file from its
-# own ocra-review.yml, pinned by commit. Google Cloud trusts only this file
-# (the token's job_workflow_ref), only for pull_request events of the
-# repositories named in the identity provider's condition, so the credential
-# is keyless and no other workflow can use it.
+# Vertex AI, within a hard budget. Each repository calls this file at main
+# from its own ocra-review.yml. Google Cloud issues the keyless credential only
+# to this file at refs/heads/main (the token's job_workflow_ref), only for
+# pull_request events of the maintainer's repositories. A pull request can
+# edit its own copy of this file or of the caller, but a copy at its own ref
+# gets no credential, and the caller passes nothing that moves the budget: the
+# switch and the budget are repository variables, read here.
 name: ocra dogfood
 
 on:
   workflow_call:
-    inputs:
-      budget-usd:
-        description: This repository's share of the credit, in dollars. No review starts once the ledger could exceed it.
-        type: string
-        required: true
-      daily-usd:
-        description: Dollars a UTC day this repository may start reviews with.
-        type: string
-        default: "2"
-      run-cap-usd:
-        description: Spend limit of one review (ocra's --max-cost-usd).
-        type: string
-        default: "2"
-      workload-identity-provider:
+    secrets:
+      # Secrets rather than variables: the job log of a public repository
+      # would show a variable's value, and these name the Vertex project.
+      GCP_WIF_PROVIDER:
         description: Full resource name of the Workload Identity provider.
-        type: string
         required: true
-      service-account:
-        description: Email of the service account that holds roles/aiplatform.user.
-        type: string
+      GCP_SERVICE_ACCOUNT:
+        description: Email of the service account that may call Vertex AI models.
         required: true
-      vertex-project:
+      GOOGLE_VERTEX_PROJECT:
         description: Google Cloud project that serves Vertex AI.
-        type: string
         required: true
 
 permissions: {}
@@ -41,11 +30,18 @@ jobs:
   # earlier cost: a later run waits, and GitHub keeps only the newest waiting
   # run of the group.
   #
-  # The ledger is one artifact per review, named
-  # ocra-cost-<run>-<attempt>-c<cents>: listing names needs only actions: read,
-  # and every run of the repository adds to the same sum. A failed listing
-  # fails the job before anything is spent.
+  # The ledger is artifacts named ocra-cost-<run>-<attempt>-<kind><cents>:
+  # r, the reservation uploaded before a review may spend anything, and c,
+  # what the review spent, uploaded after it. A review with no c entry counts
+  # at its reservation, so a job that dies before recording still counts.
+  # Listing names needs only actions: read, and a failed listing fails the job
+  # before anything is spent.
   review:
+    if: >-
+      vars.OCRA_REVIEW == 'on' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
@@ -56,15 +52,19 @@ jobs:
       contents: read
       id-token: write
       pull-requests: write
+    env:
+      # One review's spend limit (ocra's --max-cost-usd), and the dollars a
+      # UTC day may start reviews with.
+      CAP_USD: "2"
+      DAILY_USD: "2"
     steps:
       - id: guard
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-          BUDGET_USD: ${{ inputs.budget-usd }}
-          DAILY_USD: ${{ inputs.daily-usd }}
-          CAP_USD: ${{ inputs.run-cap-usd }}
+          SWITCH: ${{ vars.OCRA_REVIEW }}
+          BUDGET_USD: ${{ vars.OCRA_REVIEW_BUDGET_USD }}
         run: |
           set -euo pipefail
           cents() {
@@ -85,21 +85,29 @@ jobs:
           listing=$(gh api --paginate "repos/$REPOSITORY/actions/artifacts?per_page=100" \
             --jq '.artifacts[] | select(.name | startswith("ocra-cost-")) | "\(.created_at[0:10]) \(.name)"')
           today=$(date -u +%F)
-          spent=0
-          spent_today=0
-          runs=0
-          while read -r day name; do
-            if [ -z "${name:-}" ]; then continue; fi
-            c=${name##*-c}
-            # A name the recorder below did not write counts as a full run.
-            if ! [[ "$c" =~ ^[0-9]+$ ]]; then c=$cap; fi
-            spent=$((spent + c))
-            runs=$((runs + 1))
-            if [ "$day" = "$today" ]; then spent_today=$((spent_today + c)); fi
-          done <<< "$listing"
+          # A name the steps below did not write counts as a full reservation.
+          read -r spent spent_today runs < <(printf '%s\n' "$listing" |
+            awk -v today="$today" -v reserve="$reserve" '
+              NF < 2 { next }
+              $2 ~ /^ocra-cost-[0-9]+-[0-9]+-[cr][0-9]+$/ {
+                split($2, part, "-")
+                key = part[3] "-" part[4]
+                if (substr(part[5], 1, 1) == "c") { done[key] = substr(part[5], 2) + 0; doneDay[key] = $1 }
+                else { held[key] = substr(part[5], 2) + 0; heldDay[key] = $1 }
+                next
+              }
+              { spent += reserve; runs++; if ($1 == today) spentToday += reserve }
+              END {
+                for (key in done) { spent += done[key]; runs++; if (doneDay[key] == today) spentToday += done[key] }
+                for (key in held) if (!(key in done)) { spent += held[key]; runs++; if (heldDay[key] == today) spentToday += held[key] }
+                printf "%d %d %d\n", spent, spentToday, runs
+              }')
 
           allowed=true
-          if [ $((spent + reserve)) -gt "$budget" ]; then
+          if [ "$SWITCH" != on ]; then
+            allowed=false
+            reason="reviews are off (OCRA_REVIEW is '$SWITCH')"
+          elif [ $((spent + reserve)) -gt "$budget" ]; then
             allowed=false
             reason="the budget of $(usd "$budget") is spent: $(usd "$spent") over $runs review(s), and one more may cost $(usd "$reserve")"
           elif [ "$spent_today" -ge "$daily" ]; then
@@ -107,6 +115,7 @@ jobs:
             reason="today's $(usd "$daily") is spent ($(usd "$spent_today")); reviews start again tomorrow (UTC)"
           fi
           echo "allowed=$allowed" >> "$GITHUB_OUTPUT"
+          echo "reserve=$reserve" >> "$GITHUB_OUTPUT"
           {
             echo "### ocra dogfood budget"
             echo
@@ -118,6 +127,29 @@ jobs:
               echo "**No review:** $reason."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # The reservation goes into the ledger before anything can be spent; if
+      # it cannot be recorded, the job stops here.
+      - id: reserve
+        if: steps.guard.outputs.allowed == 'true'
+        shell: bash
+        env:
+          RESERVE_CENTS: ${{ steps.guard.outputs.reserve }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          jq -n --argjson cents "$RESERVE_CENTS" '{reservedUsd: ($cents / 100)}' > "$RUNNER_TEMP/ocra-reserve.json"
+          echo "name=ocra-cost-$RUN_ID-$RUN_ATTEMPT-r$RESERVE_CENTS" >> "$GITHUB_OUTPUT"
+
+      - if: steps.guard.outputs.allowed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.reserve.outputs.name }}
+          path: ${{ runner.temp }}/ocra-reserve.json
+          # The Vertex trial ends on 2026-12-27; the ledger must outlive it.
+          retention-days: 90
+          if-no-files-found: error
 
       # Before auth: its credentials file goes into the workspace checkout
       # creates. ocra reviews a pull request from git objects, so agents never
@@ -131,8 +163,8 @@ jobs:
       - if: steps.guard.outputs.allowed == 'true'
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
-          workload_identity_provider: ${{ inputs.workload-identity-provider }}
-          service_account: ${{ inputs.service-account }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       # Only a report written after this mark is this run's: a pull request
       # can commit files under .ocra/sessions, but not newer ones.
@@ -146,23 +178,22 @@ jobs:
         uses: jma49/Open-CR-Agent@d9e92543af27923f744721fb9fae257161bd1c32 # v0.1.1
         continue-on-error: true
         env:
-          GOOGLE_VERTEX_PROJECT: ${{ inputs.vertex-project }}
+          GOOGLE_VERTEX_PROJECT: ${{ secrets.GOOGLE_VERTEX_PROJECT }}
           GOOGLE_VERTEX_LOCATION: global
           OCRA_MODEL_TOP: google-vertex/gemini-3.1-pro-preview
           OCRA_MODEL_STANDARD: google-vertex/gemini-3.5-flash,google-vertex/gemini-3.5-flash-lite
           OCRA_MODEL_LIGHT: google-vertex/gemini-3.5-flash-lite
         with:
-          args: --max-cost-usd ${{ inputs.run-cap-usd }}
+          args: --max-cost-usd ${{ env.CAP_USD }}
 
       # Runs after a failure or a cancellation too: ocra writes its report,
       # partial or not, before it exits. A review that ran and left no
       # readable report is counted at its cap.
       - id: cost
-        if: always() && steps.guard.outputs.allowed == 'true'
+        if: always() && steps.reserve.outputs.name != ''
         shell: bash
         env:
           REVIEW_OUTCOME: ${{ steps.review.outcome }}
-          CAP_USD: ${{ inputs.run-cap-usd }}
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
           PULL_REQUEST: ${{ github.event.pull_request.number }}
@@ -196,6 +227,5 @@ jobs:
           # Outside the workspace, where nothing in the pull request can
           # stand in for it.
           path: ${{ runner.temp }}/ocra-cost.json
-          # The Vertex trial ends on 2026-12-27; the ledger must outlive it.
           retention-days: 90
           if-no-files-found: error
