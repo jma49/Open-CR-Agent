@@ -27,7 +27,7 @@ What comes after M1–M4 (`docs/architecture.md`, all built), as of 2026-09-29. 
 
 Goal: a quality number that is stable enough to decide changes and honest enough to publish.
 
-- Golden set (ADR-0011): review and merge the seed (#186); run the smoke tier twice for its spread; grow it to 10 smoke and 25 full cases, including other languages from adjudicated AACR-Bench findings. #258 reaches 10 smoke cases (14 in all, Java among them); full needs 11 more.
+- Golden set (ADR-0011): review and merge the seed (#186); run the smoke tier twice for its spread; grow it to 10 smoke and 25 full cases, including other languages from adjudicated AACR-Bench findings. #258 reaches 10 smoke cases (15 in all, Java among them); full needs 10 more.
 - Evaluation fixes, done: a lenient diagnostic match (same file, same concern, any line) reported next to the official one, so anchoring distance and model quality are told apart; the ceiling heading names the dataset (#250); a golden label applies only to the claim it was recorded for (#251, ADR-0012).
 - Decide the `[needs-eval]` backlog with the cheapest check that answers each: targeted runs on the PRs a change affects (#85, #103 done), the golden smoke tier, or 30+ PRs for prompt changes (#126 first, then #142–#146, #150).
 - Budget: about $60 of the Vertex credit.

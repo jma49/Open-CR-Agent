@@ -35,7 +35,7 @@ State of the project as of 2026-09-29, for whoever picks it up next (human or ag
 | #253 | M8 | Manual: threat-model page, and a gated `pull_request_target` recipe for pull requests from forks (ADR-0013). **Changes a security recommendation**; the maintainer should read it |
 | #254 | M8 | Model text and ocra's own summary can never form `/ocra override`. With a person's token and the default `botLogin`, a judge summary could override a blocking verdict |
 | #256 | M8 | Adversarial golden tier (ADR-0014): six attacks on four smoke cases, planted as deterministic commits and scored against their clean case. Not run |
-| #258 | M5 | Golden set: two Java smoke cases (Keycloak switch fall-through; Elasticsearch, the first performance expectation) and a second codex expectation (reasoning ids dropped on resume). Each is checked against the code and backed by an AACR-Bench reference. Smoke grows to 10 cases, the set to 14 cases with 22 expected findings |
+| #258 | M5 | Golden set:<br>• two Java smoke cases: the Keycloak switch fall-through, and Elasticsearch, the first performance expectation;<br>• a second codex expectation: reasoning ids dropped on resume;<br>• a full security case from ocra's history: the first `/ocra override`, three flaws from the second 2026-09-27 audit.<br>Each is checked against the code; the AACR ones also have a reference. Smoke grows to 10 cases, the set to 15 cases with 25 expected findings |
 
 Merge notes:
 - #251 and #256 both edit neighbouring lines of `packages/eval/src/golden-score.ts`, so the second one merged needs a small rebase. Both add the same `golden.fakes.ts` and `tsconfig` line, which merge cleanly.
