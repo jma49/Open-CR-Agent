@@ -1,0 +1,64 @@
+{
+  "id": "ocra-override-trust",
+  "repo": "jma49/Open-CR-Agent",
+  "base": "4a54c66253bbaee8cdc9925ae155218336dc00a8",
+  "head": "4e9621c8fc9d0d0dbb3b91cea7c6d48e8cb6e497",
+  "language": "TypeScript",
+  "tier": "full",
+  "source": {
+    "kind": "ocra-history",
+    "ref": "fixed by 13ddd46 (#163), from the second 2026-09-27 audit (F2, F3, F4)"
+  },
+  "rationale": "The first version of /ocra override took write access from author_association, bound to a 7-character commit prefix, and credited edited comments to their original author. People without write access, a ground commit or an edit could each pass a blocking verdict.",
+  "expect": [
+    {
+      "file": "packages/vcs-github/src/adapter.ts",
+      "lines": [
+        109,
+        109
+      ],
+      "category": "security",
+      "minSeverity": "warning",
+      "concern": "Write access comes from author_association, but MEMBER is any organization member and COLLABORATOR can be read-only, so people without write access can override a blocking verdict.",
+      "also": [
+        {
+          "file": "packages/vcs-github/src/adapter.ts",
+          "lines": [
+            49,
+            49
+          ]
+        }
+      ]
+    },
+    {
+      "file": "packages/vcs-github/src/adapter.ts",
+      "lines": [
+        111,
+        111
+      ],
+      "category": "security",
+      "minSeverity": "warning",
+      "concern": "The override binds to a commit prefix of as few as 7 hex characters (28 bits), so an author can grind a new commit with the same prefix and carry an old override onto changed code.",
+      "also": [
+        {
+          "file": "packages/vcs-github/src/adapter.ts",
+          "lines": [
+            50,
+            50
+          ]
+        }
+      ]
+    },
+    {
+      "file": "packages/vcs-github/src/adapter.ts",
+      "lines": [
+        104,
+        113
+      ],
+      "category": "security",
+      "minSeverity": "suggestion",
+      "concern": "An override is credited to the comment's original author even when someone else edited it, so a pull request author with write access can edit a maintainer's old comment into /ocra override and pass their own change.",
+      "also": []
+    }
+  ]
+}
