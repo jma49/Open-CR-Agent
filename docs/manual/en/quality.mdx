@@ -97,7 +97,7 @@ Cost grows with the size of the change and with the reviewers its risk tier runs
 ## Limits
 
 - **Small.** 8 changes and 15 expected issues, of which only 4 were written independently of ocra's own findings. The current configuration ran once, and the full tier has not run.
-- **Not independent.** The cases and labels are the project's own. The labels so far were made by an AI agent working on ocra, which checked each finding against the code and recorded its reason; nobody outside the project has reviewed them. Recent changes, the 30-step limit among them, were chosen on these cases, which flatters the current configuration.
+- **Not independent.** The cases and labels are the project's own. The labels so far were made by an AI agent working on ocra, which checked each finding against the code and recorded its reason. A second model (Claude Fable 5.1), not told the labels, re-judged 5 of the 11 against the code and agreed with all 5 ([spot-check](https://github.com/jma49/Open-CR-Agent/blob/main/docs/audits/2026-09-29-label-spot-check.md)); no person outside the project has reviewed them. Recent changes, the 30-step limit among them, were chosen on these cases, which flatters the current configuration.
 - **A model decides matches.** Whether a finding describes an expected issue is decided by `gemini-flash-lite-latest`. Its answers are cached, so scoring the same run again gives the same result, but another judge could decide differently.
 - **One model family.** Every run used Gemini on Vertex AI. Other models will score differently.
 - **Runs vary.** Two runs of the same configuration differed by one finding in precision.

@@ -13,7 +13,7 @@ State of the project as of 2026-09-29, for whoever picks it up next (human or ag
 | Contributor rules | `AGENTS.md` in each repository (`CLAUDE.md` imports it) |
 | Site design system | `DESIGN.md` in the site repository (tokens, type scale, migration plan, how the Visual check works); `AGENTS.md` there keeps the rules for every change |
 | Architecture | `docs/architecture.md`, decisions in `docs/adr/0001`–`0010`, spike report `docs/spikes/0001-opencode-runtime.md` |
-| Audits | `docs/audits/` (latest: `2026-09-29-release-0.1.0.md`) |
+| Audits | `docs/audits/` (latest: `2026-09-29-label-spot-check.md`) |
 | Pitfalls | `docs/pitfalls.md` |
 | Pending verification | `docs/pending-verification.md` (what still needs a deploy or a model key to check) |
 | Releasing | `docs/releasing.md` (the runbook: first release by hand, later ones through `.github/workflows/release.yml`); `scripts/release.mjs`; release notes in `CHANGELOG.md` |
@@ -167,4 +167,4 @@ Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) i
 ## Open questions for the maintainer
 
 1. Should the unused $24 of Assay's and vouch's shares move to jmos (`OCRA_REVIEW_BUDGET_USD`)? The total stays $60.
-2. Golden-label spot-check: the maintainer is judging 5 of the 11 agent-made labels (3 valid, 2 invalid) on a private page, https://claude.ai/artifact/KBtmds54VF11D9LZCt68cV. The verdicts are in its `verdicts` collection (`ArtifactData list`). Correct any label the maintainer rejects in `evals/golden`, then update the quality page's note on who made the labels.
+2. Done: the golden-label spot-check. The maintainer delegated it to a second model rather than judging by hand. Claude Fable 5.1, blind to the labels, agreed with all 5 of the 5 sampled out of 11 (3 valid, 2 invalid). It also called two valid findings' severities overstated, and found the RAGFlow case's expected issue unprompted ([audit](audits/2026-09-29-label-spot-check.md)). The quality page says so. The private page https://claude.ai/artifact/KBtmds54VF11D9LZCt68cV stays unfilled. Still unchecked: the 6 other labels and the 11 expected issues added from ocra's own findings.
