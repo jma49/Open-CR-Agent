@@ -1,0 +1,84 @@
+name: Release
+
+# Publishes the packages to npm when a GitHub release is published, through
+# npm trusted publishing: no npm token is stored anywhere, and npm attaches
+# provenance. Versions the registry already has are skipped, so re-running a
+# failed run resumes it, and the release of a version published by hand (the
+# first one, see docs/releasing.md) passes.
+# A dry run by hand: gh workflow run release.yml --ref main
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Check, build and pack, and publish nothing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # Installs the dependencies, runs the tests and packs the tarballs, without
+  # the right to publish.
+  pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The release commit must be on main; the script checks.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      # An install script could change what gets packed; building and
+      # testing need none.
+      - run: npm ci --ignore-scripts
+      - run: node scripts/release.mjs pack packed
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: packages
+          path: packed/
+          if-no-files-found: error
+          retention-days: 7
+
+  # Can mint a publish token, so it installs nothing and runs no code but npm
+  # and scripts/release.mjs, which has no dependencies.
+  publish:
+    needs: pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          # Trusted publishing needs npm 11.5.1 or newer, which Node 24 ships.
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: packages
+          path: packed
+      - name: Publish
+        if: github.event_name == 'release' || !inputs.dry-run
+        run: node scripts/release.mjs upload packed --publish
+      - name: Dry run
+        if: github.event_name == 'workflow_dispatch' && inputs.dry-run
+        run: node scripts/release.mjs upload packed
