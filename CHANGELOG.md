@@ -13,7 +13,7 @@ npm install -g @open-cr-agent/cli
 ocra --version
 ```
 
-Requires Node.js 22 or newer and Git. Reviews run on [OpenCode](https://opencode.ai), which is installed with ocra, and on the models you choose from any provider OpenCode supports, with your own API key. Start with the [quickstart](https://ocra.majincheng.com/en/docs/quickstart). The GitHub Action is `jma49/Open-CR-Agent@v0.1.0`.
+Requires Node.js 22.19 or newer and Git. Reviews run on [OpenCode](https://opencode.ai), which is installed with ocra, and on the models you choose from any provider OpenCode supports, with your own API key. Start with the [quickstart](https://ocra.majincheng.com/en/docs/quickstart). The GitHub Action is `jma49/Open-CR-Agent@v0.1.0`.
 
 ### What it does
 

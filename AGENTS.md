@@ -6,7 +6,7 @@ Rules for humans and AI agents working on Open-CR-Agent (`ocra`). This file is a
 
 Open-CR-Agent is an open-source multi-agent code review system. Deterministic engineering (file selection, bundling, rule matching, anchoring) wraps LLM agents that only make judgment calls. See [docs/architecture.md](docs/architecture.md) and the decision records in [docs/adr/](docs/adr/).
 
-- Language: TypeScript (ESM, strict), Node >= 22
+- Language: TypeScript (ESM, strict), Node >= 22.19
 - Monorepo: npm workspaces under `packages/`
 - Tests: Vitest (`npm test`) · Types: `npm run typecheck` · Lint/format: Biome (`npm run check`) · All three: `npm run verify`
 
