@@ -1,6 +1,6 @@
 {
   "name": "@open-cr-agent/core",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Domain types, review pipeline stages and plugin contracts for Open-CR-Agent",
   "keywords": [
     "code-review",

@@ -1,6 +1,6 @@
 {
   "name": "@open-cr-agent/vcs-github",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "GitHub pull request adapter for Open-CR-Agent",
   "keywords": [
     "code-review",
@@ -30,7 +30,7 @@
     "!dist/**/*.map"
   ],
   "dependencies": {
-    "@open-cr-agent/core": "0.0.0",
+    "@open-cr-agent/core": "0.1.0",
     "zod": "^4.6.5"
   },
   "publishConfig": {

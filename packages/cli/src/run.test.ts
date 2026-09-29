@@ -125,7 +125,10 @@ describe("ocra", () => {
   it("prints the version and usage", async () => {
     const out = capture();
     expect(await run(["--version"], out, capture())).toBe(0);
-    expect(out.text()).toBe("0.0.0\n");
+    const { version } = JSON.parse(
+      readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+    );
+    expect(out.text()).toBe(`${version}\n`);
     const usage = capture();
     expect(await run([], usage, capture())).toBe(0);
     expect(usage.text()).toContain("Usage: ocra");

@@ -1,6 +1,6 @@
 {
   "name": "@open-cr-agent/eval",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Benchmark replay and review quality metrics for Open-CR-Agent",
   "license": "Apache-2.0",
@@ -15,8 +15,8 @@
     "dist"
   ],
   "dependencies": {
-    "@open-cr-agent/cli": "0.0.0",
-    "@open-cr-agent/core": "0.0.0",
+    "@open-cr-agent/cli": "0.1.0",
+    "@open-cr-agent/core": "0.1.0",
     "zod": "^4.6.5"
   },
   "bin": {
