@@ -80,7 +80,10 @@ State:
    - Per repository: secrets `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT` and `GOOGLE_VERTEX_PROJECT`, and the variable `OCRA_REVIEW_BUDGET_USD` (ocra $24; Assay, jmos and vouch $12 each, $60 in all).
    - `OCRA_REVIEW=on` in ocra only. Stop a repository with `gh variable set OCRA_REVIEW -R jma49/<repo> --body off`.
    - The first review ran on #246: the keyless login worked with the predict-only role, and the summary comment was posted ("Approved", lite tier, 132k input tokens). The ledger holds a $3.00 reservation and the recorded cost of $0.25, and the guard counts the recorded cost.
-   - The other three have no caller yet. Their rules make a drive-by pull request intrusive: Assay takes pull requests against `develop`, jmos and vouch require their own handoff updates, and vouch merges with `--merge`. The caller is ready in `.local/ocra-review-caller.yml`.
+   - **jmos is live too** (jma49/jmos#168, merged 2026-09-29): the caller, a `HANDOFF.md` entry, and a README note that calling `ocra-dogfood.yml@main` is the one exception to jmos's rule that every action is pinned to a SHA (Google Cloud trusts only `main`'s copy).
+     - First review: full tier, 3 files, approved, $0.21.
+     - jmos gets many pull requests from other agent sessions, so the $2-a-day start threshold reviews only the first few each day, and its $12 lasts one to two weeks.
+   - Assay and vouch stay off, by the maintainer's decision (2026-09-29). Their caller is ready in `.local/ocra-review-caller.yml`.
 
 Pipeline today: ingest → select → triage → bundle → **matrix** (reviewer scopes, risk tiers, overrides; ADR-0007) → review (correctness, security, performance; OpenCode runtime, read-only MCP tools, 20-step cap, per-model circuit breaker) → anchor → memory (`.ocra/memory.json`) and re-review reconciliation → **verify** (drops only findings the code disproves, marks the rest confirmed/uncertain/unchecked) → **judge** (merge, drop, recalibrate on the top tier) → verdict by a fixed rubric (only verified critical findings block) → report. Pull requests: `ocra review --pr [--publish]` and `action.yml` (ADR-0008) with inline comments, one summary comment, thread resolution only when the anchored code is gone (ADR-0009), incremental re-review of what changed since the last reviewed head (ADR-0010, `--full` to override), and respect for human dismissals; trusted inputs come from the base commit. `fail-on-concerns` defaults to off: the verdict is advice, not a security gate. Also: `--ultra`, `--reviewers`, `--max-cost-usd`, `--no-repo-config`, `extends` (shared config over https), Ctrl-C handling, exit codes 0/1/2/3/130. The 2026-09-26 audit's P0/P1 findings (#32–#39) are fixed, and so is everything the 2026-09-27 audit found that does not change what models see (below); its prompt part waits for an eval (#126).
 
@@ -163,5 +166,5 @@ Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) i
 
 ## Open questions for the maintainer
 
-1. Dogfooding in Assay, jmos and vouch: add the caller there? (See "State" above.)
-2. Would the maintainer spot-check some golden labels? All of them are an agent's, and the quality page says so.
+1. Should the unused $24 of Assay's and vouch's shares move to jmos (`OCRA_REVIEW_BUDGET_USD`)? The total stays $60.
+2. Golden-label spot-check: the maintainer is judging 5 of the 11 agent-made labels (3 valid, 2 invalid) on a private page, https://claude.ai/artifact/KBtmds54VF11D9LZCt68cV. The verdicts are in its `verdicts` collection (`ArtifactData list`). Correct any label the maintainer rejects in `evals/golden`, then update the quality page's note on who made the labels.
