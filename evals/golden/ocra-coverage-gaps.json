@@ -43,6 +43,17 @@
       "minSeverity": "suggestion",
       "concern": "coverageGaps incorrectly treats unchanged files as unreviewed, leading to incorrect \"Nothing was reviewed\" status",
       "also": []
+    },
+    {
+      "file": "packages/vcs-github/src/render.ts",
+      "lines": [
+        44,
+        51
+      ],
+      "category": "security",
+      "minSeverity": "suggestion",
+      "concern": "Reference-Style Markdown Link Bypass in safeMarkdown",
+      "also": []
     }
   ],
   "forbid": [],
@@ -53,6 +64,12 @@
       "label": "valid",
       "reason": "Real: with unchanged files and every new file failed or unreviewed, nothingReviewed replaces the summary and suppresses judge_finished though carried-over findings stand (run.ts:171-186); the verdict itself is kept. Still on main. (checked against the code by the agent, 2026-09-28)",
       "title": "coverageGaps incorrectly treats unchanged files as unreviewed, leading to incorrect \"Nothing was reviewed\" status"
+    },
+    {
+      "fingerprint": "af56ec5a5e6a9f9e",
+      "label": "valid",
+      "reason": "Real: safeMarkdown at this commit broke inline links only, so [text][1] with a [1]: definition still rendered a link whose label differs from its target; fixed later by 0981bbd (checked by the agent, 2026-09-29)",
+      "title": "Reference-Style Markdown Link Bypass in safeMarkdown"
     }
   ]
 }
