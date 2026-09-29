@@ -9,7 +9,7 @@ description: Run your first review in five minutes.
 
 ## Install
 
-Requires Node.js 22+ and Git:
+Requires Node.js 22.19+ and Git:
 
 ```bash
 npm install -g @open-cr-agent/cli
@@ -43,13 +43,14 @@ Create `.ocra/config.json` in the repository you want to review:
 ```json
 {
   "models": {
+    "top": "google/gemini-3.1-pro-preview",
     "standard": ["google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
     "light": "google/gemini-flash-lite-latest"
   }
 }
 ```
 
-`standard` models review code; `light` models do cheap helper work such as grouping files. A list is a failback chain.
+`standard` models review code, `light` models do cheap helper work such as grouping files, and the `top` model judges the findings, one call per review that has any. A list is a failback chain.
 
 </Step>
 

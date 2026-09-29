@@ -11,7 +11,7 @@ ocra is an early 0.x release: options and output may still change between minor 
 
 ## Requirements
 
-- **Node.js 22** or newer
+- **Node.js 22.19** or newer
 - **Git**
 - An API key for at least one model provider
 
@@ -33,6 +33,8 @@ npx @open-cr-agent/cli review
 ```
 
 Do not install with `--omit=optional`: the OpenCode binary comes as an optional dependency (see [OpenCode binary](#opencode-binary)).
+
+npm 11.16 and later warn that `opencode-ai` has an install script not covered by `allowScripts`, and npm 12 blocks it. ocra does not need that script: it finds the OpenCode binary in the platform package without it, so you can leave it blocked.
 
 ## From source
 

@@ -9,7 +9,7 @@ description: 五分钟完成第一次审查。
 
 ## 安装
 
-要求 Node.js 22+ 和 Git：
+要求 Node.js 22.19+ 和 Git：
 
 ```bash
 npm install -g @open-cr-agent/cli
@@ -43,13 +43,14 @@ key 请放在 shell 配置文件或密钥管理工具里，不要放进任何仓
 ```json
 {
   "models": {
+    "top": "google/gemini-3.1-pro-preview",
     "standard": ["google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
     "light": "google/gemini-flash-lite-latest"
   }
 }
 ```
 
-`standard` 层级的模型负责审查代码，`light` 层级负责分组文件这类便宜的辅助工作。写成列表就是降级链。
+`standard` 层级的模型负责审查代码，`light` 层级负责分组文件这类便宜的辅助工作，`top` 层级负责 Judge（最终裁决），每次有问题的审查调用一次。写成列表就是降级链。
 
 </Step>
 

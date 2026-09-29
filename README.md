@@ -8,7 +8,7 @@ Inspired by [Cloudflare's AI code review](https://blog.cloudflare.com/ai-code-re
 
 ## Install
 
-Requires Node.js 22 or newer and Git:
+Requires Node.js 22.19 or newer and Git:
 
 ```bash
 npm install -g @open-cr-agent/cli
@@ -77,7 +77,7 @@ A list is a failback chain: when a model is overloaded or rejects a request, the
 
 ## Development
 
-Requires Node.js 22 or newer.
+Requires Node.js 22.19 or newer.
 
 ```bash
 git clone https://github.com/jma49/Open-CR-Agent.git
