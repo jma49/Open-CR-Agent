@@ -27,7 +27,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/**/*.map"
   ],
   "dependencies": {
     "picomatch": "^4.0.7",

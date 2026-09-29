@@ -25,7 +25,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/**/*.map"
   ],
   "dependencies": {
     "@open-cr-agent/core": "0.0.0",

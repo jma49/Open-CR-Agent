@@ -29,8 +29,15 @@ try {
     const files = info.files.map((f) => f.path);
     if (!files.some((f) => f.startsWith("dist/")))
       throw new Error(`${p.json.name} packs no dist/ files`);
-    if (files.some((f) => f.endsWith(".test.js") || f.startsWith("src/"))) {
+    if (
+      files.some((f) => f.endsWith(".test.js") || f.includes(".fakes.") || f.startsWith("src/"))
+    ) {
       throw new Error(`${p.json.name} packs sources or tests`);
+    }
+    // The maps would point at src/, which is not published.
+    if (files.some((f) => f.endsWith(".map"))) throw new Error(`${p.json.name} packs source maps`);
+    for (const required of ["README.md", "LICENSE"]) {
+      if (!files.includes(required)) throw new Error(`${p.json.name} packs no ${required}`);
     }
     console.log(
       `packed ${info.filename} (${files.length} files, ${(info.size / 1024).toFixed(0)} kB)`,
