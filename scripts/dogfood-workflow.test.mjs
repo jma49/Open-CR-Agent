@@ -213,6 +213,17 @@ describe("dogfood workflow contract", () => {
     expect(workflow).toMatch(/if: >-\n\s+vars\.OCRA_REVIEW == 'on' &&/);
   });
 
+  it("is called at main by ocra's own caller, the only ref Google Cloud trusts", () => {
+    const callerPath = fileURLToPath(
+      new URL("../.github/workflows/ocra-review.yml", import.meta.url),
+    );
+    const caller = readFileSync(callerPath, "utf8");
+    expect(caller).toMatch(
+      /^ {4}uses: jma49\/Open-CR-Agent\/\.github\/workflows\/ocra-dogfood\.yml@main$/m,
+    );
+    expect(caller).not.toMatch(/^ {4}with:/m);
+  });
+
   it("records a reservation before it authenticates", () => {
     const at = (text) => workflow.indexOf(text);
     const reservation = `name: ${expression("steps.reserve.outputs.name")}`;

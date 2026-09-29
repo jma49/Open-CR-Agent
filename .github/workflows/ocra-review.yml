@@ -1,6 +1,7 @@
 # Dogfooding: ocra reviews this repository's pull requests on Vertex AI.
 # Off unless the repository variable OCRA_REVIEW is "on". The budget, the
-# keyless credential and the ledger are in ocra-dogfood.yml.
+# keyless credential and the ledger are in ocra-dogfood.yml, called at main
+# as every other repository calls it.
 name: ocra review
 
 on:
@@ -31,7 +32,10 @@ jobs:
       contents: read
       id-token: write
       pull-requests: write
-    uses: ./.github/workflows/ocra-dogfood.yml
+    # At main, not at this pull request's ref: Google Cloud issues the
+    # credential only to ocra-dogfood.yml@refs/heads/main, so a pull request
+    # that edits the called workflow cannot spend with its own copy.
+    uses: jma49/Open-CR-Agent/.github/workflows/ocra-dogfood.yml@main
     secrets:
       GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
       GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
