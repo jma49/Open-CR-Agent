@@ -12,7 +12,7 @@ description: Open-CR-Agent (ocra) is an open-source, multi-agent code review sys
 - **Plugins all the way down.** VCS platforms, agent runtimes, reviewers, rule packs, tools and listeners are all plugins.
 - **Any model, with failback.** Configure a chain of models per tier; overloads move to the next model, short rate limits are waited out, and a model out of quota is dropped for the run.
 - **Transparent cost.** Every run reports input, output, reasoning and cached tokens and the cost of each attempt.
-- **Measured, not guessed.** Changes are evaluated on the [AACR-Bench](/docs/evaluation) benchmark.
+- **Measured, not guessed.** ocra is evaluated on its own golden cases and on the AACR-Bench benchmark, and [the results](/docs/quality) are published with their limits.
 
 ## Status
 
@@ -23,7 +23,7 @@ ocra is in early development.
 | M1 | Local CLI, selection, bundling, anchoring, correctness reviewer, OpenCode runtime, plugins, evaluation | Done |
 | M2 | Specialized reviewers, review matrix, verification and judging, risk tiers | Done |
 | M3 | GitHub Action with inline comments and incremental re-review | Done; not yet exercised on a live repository |
-| M4 | Circuit breakers, remote configuration, long-term review memory, `--ultra` mode | Done (`--ultra` without planning and impact analysis) |
+| M4 | Circuit breakers, remote configuration, long-term review memory, `--ultra` mode | Done |
 
 ## Where to next
 
