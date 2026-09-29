@@ -63,15 +63,23 @@ State of the project as of 2026-09-29, for whoever picks it up next (human or ag
 
 **Credit (2026-09-29).** The maintainer read $166 left of $300 in the Cloud console. ocra's own accounting of Vertex spend is $133.81, which leaves $166.19, so the reported costs track the bill. The maintainer's floor is $100 ("还剩100的时候就别再花额度了"), so the budget for dogfooding is $60, with $6 of margin for runs that overshoot their cap. Nothing else may spend credit.
 
-Still open:
+State:
 1. The site is deployed.
    - The maintainer deployed site `8777447` (#37) on 2026-09-29, so `/docs/quality` and the landing copy for npm are live.
    - The agent deploys again after the Action examples move to `@v0.1.1`: site #38 and the manual's GitHub page.
    - The maintainer has now allowed the agent to deploy (`VERCEL_SCOPE=<scope> npm run deploy` in the site repository; the scope is in `.local/agent-notes.md`).
-2. Dogfooding.
-   - It needs a service account in the Vertex project that holds only `roles/aiplatform.user`, reached through Workload Identity Federation limited to chosen repositories. No key.
-   - The maintainer allowed the agent to make the grant on 2026-09-29.
-   - Then an agent adds the workflow (`pull_request` only) with a budget guard: a ledger of the reported costs, a per-run cap, and an `OCRA_REVIEW` kill switch.
+2. Dogfooding is on for ocra (2026-09-29).
+   - GitHub:
+     - #243: the reusable workflow `ocra-dogfood.yml` and its caller `ocra-review.yml` (`pull_request` only; no drafts, forks or Dependabot).
+     - #244 and #245, from the [audit](audits/2026-09-29-dogfood-ci.md): the called workflow reads the switch and the budget itself, ocra calls it at `@main`, and only `main`'s copy can get a Vertex token.
+     - Guard: a ledger of artifacts `ocra-cost-*`, one reservation of 1.5× the cap uploaded before authentication, `--max-cost-usd 2` per review, and at most $2 of starts a day per repository.
+   - Google Cloud, set up by the maintainer with `.local/dogfood-setup.sh` on 2026-09-29:
+     - the custom role `ocraVertexPredict` (only `aiplatform.endpoints.predict`) on the service account `ocra-dogfood`; no key;
+     - Workload Identity pool `github` with provider `ocra-dogfood`, limited to the owner id, the four repositories, `pull_request`, and `ocra-dogfood.yml@refs/heads/main`;
+     - the budget "ocra: Vertex credit floor", whose alerts email at $180 and $200 of gross spend.
+   - Per repository: secrets `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT` and `GOOGLE_VERTEX_PROJECT`, and the variable `OCRA_REVIEW_BUDGET_USD` (ocra $24; Assay, jmos and vouch $12 each, $60 in all).
+   - `OCRA_REVIEW=on` in ocra only. Stop a repository with `gh variable set OCRA_REVIEW -R jma49/<repo> --body off`.
+   - The other three have no caller yet. Their rules make a drive-by pull request intrusive: Assay takes pull requests against `develop`, jmos and vouch require their own handoff updates, and vouch merges with `--merge`. The caller is ready in `.local/ocra-review-caller.yml`.
 
 Pipeline today: ingest → select → triage → bundle → **matrix** (reviewer scopes, risk tiers, overrides; ADR-0007) → review (correctness, security, performance; OpenCode runtime, read-only MCP tools, 20-step cap, per-model circuit breaker) → anchor → memory (`.ocra/memory.json`) and re-review reconciliation → **verify** (drops only findings the code disproves, marks the rest confirmed/uncertain/unchecked) → **judge** (merge, drop, recalibrate on the top tier) → verdict by a fixed rubric (only verified critical findings block) → report. Pull requests: `ocra review --pr [--publish]` and `action.yml` (ADR-0008) with inline comments, one summary comment, thread resolution only when the anchored code is gone (ADR-0009), incremental re-review of what changed since the last reviewed head (ADR-0010, `--full` to override), and respect for human dismissals; trusted inputs come from the base commit. `fail-on-concerns` defaults to off: the verdict is advice, not a security gate. Also: `--ultra`, `--reviewers`, `--max-cost-usd`, `--no-repo-config`, `extends` (shared config over https), Ctrl-C handling, exit codes 0/1/2/3/130. The 2026-09-26 audit's P0/P1 findings (#32–#39) are fixed, and so is everything the 2026-09-27 audit found that does not change what models see (below); its prompt part waits for an eval (#126).
 
@@ -155,7 +163,7 @@ Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) i
 ## Open questions for the maintainer
 
 1. None about the site: deploys are allowed (2026-09-29).
-2. Dogfooding: approved within a $60 budget. The permission grant in Google Cloud waits for the maintainer (see "Still open" above).
+2. Dogfooding in Assay, jmos and vouch: add the caller there? (See "State" above.)
 3. Would the maintainer spot-check some golden labels? All of them are an agent's, and the quality page says so.
 4. Leftovers to delete, which the permission classifier blocked for the agent:
    - #230's branch `feat/correctness-report-supported` and its worktree;
