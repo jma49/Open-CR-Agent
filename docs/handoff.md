@@ -163,9 +163,5 @@ Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) i
 
 ## Open questions for the maintainer
 
-1. None about the site: deploys are allowed (2026-09-29).
-2. Dogfooding in Assay, jmos and vouch: add the caller there? (See "State" above.)
-3. Would the maintainer spot-check some golden labels? All of them are an agent's, and the quality page says so.
-4. Leftovers to delete, which the permission classifier blocked for the agent:
-   - #230's branch `feat/correctness-report-supported` and its worktree;
-   - stale worktree entries under the session scratchpad (`git worktree prune` in both repositories once the scratchpad is gone).
+1. Dogfooding in Assay, jmos and vouch: add the caller there? (See "State" above.)
+2. Would the maintainer spot-check some golden labels? All of them are an agent's, and the quality page says so.
