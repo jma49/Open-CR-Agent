@@ -25,7 +25,7 @@ State of the project as of 2026-09-29, for whoever picks it up next (human or ag
 
 **M1–M4 are implemented, quality is measured on a small golden set, and v0.1.1 is on npm** (`npm run verify` green).
 
-**Roadmap work of 2026-09-29 (evening): six pull requests wait for the maintainer.** The auto-mode classifier refused the agent's merge of its own green pull request ("Merge Without Review"), so none of these is merged. All six have `verify` and `packages` green. None spends credit.
+**Roadmap work of 2026-09-29 (evening): seven pull requests wait for the maintainer.** The auto-mode classifier refused the agent's merge of its own green pull request ("Merge Without Review"), so none of these is merged. All have `verify` and `packages` green. None spends credit.
 
 | PR | Roadmap | What |
 |---|---|---|
@@ -35,6 +35,7 @@ State of the project as of 2026-09-29, for whoever picks it up next (human or ag
 | #253 | M8 | Manual: threat-model page, and a gated `pull_request_target` recipe for pull requests from forks (ADR-0013). **Changes a security recommendation**; the maintainer should read it |
 | #254 | M8 | Model text and ocra's own summary can never form `/ocra override`. With a person's token and the default `botLogin`, a judge summary could override a blocking verdict |
 | #256 | M8 | Adversarial golden tier (ADR-0014): six attacks on four smoke cases, planted as deterministic commits and scored against their clean case. Not run |
+| #258 | M5 | Golden set: two Java smoke cases (Keycloak switch fall-through; Elasticsearch, the first performance expectation) and a second codex expectation (reasoning ids dropped on resume). Each is checked against the code and backed by an AACR-Bench reference. Smoke grows to 10 cases, the set to 14 cases with 22 expected findings |
 
 Merge notes:
 - #251 and #256 both edit neighbouring lines of `packages/eval/src/golden-score.ts`, so the second one merged needs a small rebase. Both add the same `golden.fakes.ts` and `tsconfig` line, which merge cleanly.
@@ -188,7 +189,7 @@ Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) i
 
 ## Open questions for the maintainer
 
-1. Merge #250–#254 and #256, or allow the agent to merge its own green pull requests (the auto-mode classifier refuses it now). #253 changes a security recommendation, from "never use `pull_request_target`" to a gated recipe, and deserves a read first.
+1. Merge #250–#254, #256 and #258, or allow the agent to merge its own green pull requests (the auto-mode classifier refuses it now). #253 changes a security recommendation, from "never use `pull_request_target`" to a gated recipe, and deserves a read first.
 2. Paid runs, both outside today's allocation:
    - Rescoring the recorded golden runs under #251's rule asks the judge a few new questions, well under $0.01.
    - The first adversarial run is about $12. The credit above the $100 floor is the $60 dogfood budget plus $6 of margin, so it needs part of that budget or a lower floor.
