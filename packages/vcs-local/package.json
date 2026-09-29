@@ -1,6 +1,6 @@
 {
   "name": "@open-cr-agent/vcs-local",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Local git adapter for Open-CR-Agent: working tree, ranges and commits",
   "keywords": [
     "code-review",
@@ -29,7 +29,7 @@
     "!dist/**/*.map"
   ],
   "dependencies": {
-    "@open-cr-agent/core": "0.1.1",
+    "@open-cr-agent/core": "0.1.2",
     "zod": "^4.6.5"
   },
   "publishConfig": {

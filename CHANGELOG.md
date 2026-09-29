@@ -2,6 +2,23 @@
 
 Changes to the `@open-cr-agent/*` packages and the GitHub Action. The packages are released together at one version. While that version is 0.x, a minor release may change options, configuration and output; each such change is listed here.
 
+## 0.1.2
+
+A run's spend limit now holds, and text a model wrote can no longer count as a command.
+
+### Packages
+
+- **`--max-cost-usd` stops running review tasks.** It used to stop only new ones from starting, so tasks already running went on: one review with a $2 limit spent $4.70.
+  - Running tasks now report their spend about every 10 seconds.
+  - When the review share (80% of the limit) runs out, every running review task stops. It keeps what it found, its files count as not reviewed, and the run exits `3`.
+  - A run can still pass the limit by what each running task spends between two reports, plus its step in progress.
+- **Commands never come from ocra's own comments.** `/ocra override` in text a model wrote, or anywhere in ocra's summary comment, no longer counts, even when ocra posts with a person's token and `github.botLogin` is left at its default. In that configuration, a judge summary that repeated an override planted in the pull request could let a blocked pull request pass.
+
+### GitHub Action
+
+- Use `jma49/Open-CR-Agent@v0.1.2`.
+- The manual now has a threat model, and a way to review pull requests from forks on `pull_request_target` with a maintainer's label as the gate.
+
 ## 0.1.1
 
 The GitHub Action now runs the published CLI instead of building the repository on every run. This is also the first release published from GitHub Actions with npm provenance. The CLI and the libraries have not changed since 0.1.0.
