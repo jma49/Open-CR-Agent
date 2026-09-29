@@ -2,6 +2,31 @@
 
 Changes to the `@open-cr-agent/*` packages and the GitHub Action. The packages are released together at one version. While that version is 0.x, a minor release may change options, configuration and output; each such change is listed here.
 
+## 0.1.1
+
+The GitHub Action now runs the published CLI instead of building the repository on every run. This is also the first release published from GitHub Actions with npm provenance. The CLI and the libraries have not changed since 0.1.0.
+
+### GitHub Action
+
+- Use `jma49/Open-CR-Agent@v0.1.1`.
+- It installs `@open-cr-agent/cli` at the Action's own version from npm, into a directory of its own.
+  - Every dependency is at the version the release was tested with: the tag's `package-lock.json`, with integrity hashes.
+  - Install scripts are off.
+  - `npm audit signatures` checks the registry's signature on every installed package, and its provenance where it has one. A failed check stops the job.
+- Setup takes about as long as before: 8–9 s on GitHub-hosted runners, either way. What changes is what runs:
+  - the published, attested packages;
+  - no build tools run with your model key in the environment.
+- It still builds the Action's ref from source when:
+  - that version is not on npm yet (a release's first minutes);
+  - npm has that version with other dependencies than the ref declares;
+  - the pinned install fails.
+- `@main` now runs the latest release named on `main` rather than unreleased code, unless `main` has changed its dependencies since. Pin a release tag or its commit.
+
+### Packages
+
+- Published by `.github/workflows/release.yml` through npm trusted publishing. `npm audit signatures` shows each package's provenance: the repository, workflow and commit it was built from.
+- `npm install -g @open-cr-agent/cli` still resolves third-party dependencies when it runs. Pinning them with an `npm-shrinkwrap.json` would make npm install every OpenCode binary for every OS and CPU, 2.1 GB instead of 175 MB.
+
 ## 0.1.0
 
 The first release of ocra (Open-CR-Agent), an open-source multi-agent code reviewer for local changes and GitHub pull requests. It is early: it has been measured on a small set of cases, with one family of models, and options may still change. Read [what reviews find and miss](https://ocra.majincheng.com/en/docs/quality) before you rely on it.

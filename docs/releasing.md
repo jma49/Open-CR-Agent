@@ -78,7 +78,9 @@ Done: the organization `open-cr-agent` exists, and the owner account has two-fac
    node scripts/release.mjs notes <x.y.z> | gh release create v<x.y.z> --target <commit> --title v<x.y.z> --notes-file -
    ```
 
-   The workflow checks that the tag matches the version and that the commit is on `main`, runs the checks, and publishes with provenance.
+   The workflow checks that the tag matches the version and that the commit is on `main`, runs the checks, and publishes with provenance. Until it has published, the Action at the new tag builds from source: it finds the version missing on npm.
+4. Check the release as a user, in a scratch project outside the repository: `npm install @open-cr-agent/cli@<x.y.z>`, `npx --no-install ocra --version`, and `npm audit signatures`. The last should count verified attestations for the five packages: the provenance that ties each one to this repository's workflow and tagged commit.
+5. Move the Action examples to the new tag (README, `docs/manual/*/github.mdx`, the site's landing page), with the manual's pinned-commit example if it names one.
 
 ### When a publish fails halfway
 
