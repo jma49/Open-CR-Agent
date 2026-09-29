@@ -1,9 +1,9 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveOpencodeBinary } from "./binary.js";
-import { startOpencodeServer } from "./opencode-server.js";
+import { type OpencodeServer, startOpencodeServer } from "./opencode-server.js";
 import { OPENCODE_BUILTIN_TOOLS, OpenCodeRuntime } from "./runtime.js";
 import { serverEnv } from "./server-env.js";
 
@@ -13,6 +13,7 @@ describe("OpenCode binary", () => {
     const dirs = { config: join(root, "c"), data: join(root, "d"), state: join(root, "s") };
     const server = await startOpencodeServer({
       binary: resolveOpencodeBinary(process.env),
+      cwd: root,
       env: serverEnv(process.env, dirs, []),
       config: { share: "disabled", autoupdate: false },
     });
@@ -35,6 +36,23 @@ describe("OpenCode binary", () => {
 });
 
 describe("OpenCodeRuntime", () => {
+  it("runs OpenCode in its own empty workspace, not in the directory ocra runs in", async () => {
+    const runtime = new OpenCodeRuntime({ models: {}, tools: [], env: process.env });
+    try {
+      const infra = await (
+        runtime as unknown as { start(): Promise<{ root: string; server: OpencodeServer }> }
+      ).start();
+      // Without a directory, OpenCode answers for the directory it runs in.
+      const answer = await fetch(`${infra.server.url}/path`, {
+        headers: { Authorization: infra.server.authorization },
+      });
+      const { directory } = (await answer.json()) as { directory: string };
+      expect(directory).toBe(realpathSync(join(infra.root, "workspace")));
+    } finally {
+      await runtime.dispose();
+    }
+  }, 60_000);
+
   it("stops OpenCode and removes its directory even when the process exits before dispose", async () => {
     const runtime = new OpenCodeRuntime({ models: {}, tools: [], env: process.env });
     const before = process.listenerCount("exit");

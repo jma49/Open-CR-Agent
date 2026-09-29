@@ -241,6 +241,7 @@ export class OpenCodeRuntime implements AgentRuntime {
     try {
       const server = await startOpencodeServer({
         binary: this.options.binary ?? resolveOpencodeBinary(this.options.env),
+        cwd: workspace,
         env: serverEnv(this.options.env, dirs, providersOf(this.options.models)),
         config: openCodeConfig(tools, this.helperTools),
       });

@@ -1,5 +1,19 @@
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { binaryVariants } from "./binary.js";
+import { binaryVariants, resolveOpencodeBinary } from "./binary.js";
+
+describe("resolveOpencodeBinary", () => {
+  it("resolves a relative override here, since OpenCode runs in a directory of its own", () => {
+    expect(resolveOpencodeBinary({ OCRA_OPENCODE_BIN: "bin/opencode" })).toBe(
+      resolve("bin/opencode"),
+    );
+    expect(resolveOpencodeBinary({ OCRA_OPENCODE_BIN: "/opt/opencode" })).toBe(
+      resolve("/opt/opencode"),
+    );
+    // A bare name is looked up in PATH, wherever OpenCode runs.
+    expect(resolveOpencodeBinary({ OCRA_OPENCODE_BIN: "opencode" })).toBe("opencode");
+  });
+});
 
 const host = { platform: "linux", arch: "x64", musl: false, baseline: false };
 

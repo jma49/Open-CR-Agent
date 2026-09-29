@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import type { Env } from "@open-cr-agent/core";
 
 const PLATFORMS: Record<string, string> = { darwin: "darwin", linux: "linux", win32: "windows" };
@@ -18,7 +18,9 @@ export interface Host {
 // versions block the postinstall script that would otherwise place it.
 export function resolveOpencodeBinary(env: Env): string {
   const override = env.OCRA_OPENCODE_BIN;
-  if (override) return override;
+  // OpenCode runs in a directory of its own, where a relative path would
+  // not resolve; a bare name is still looked up in PATH.
+  if (override) return /[\\/]/.test(override) ? resolve(override) : override;
 
   const platform = PLATFORMS[process.platform] ?? process.platform;
   const executable = platform === "windows" ? "opencode.exe" : "opencode";

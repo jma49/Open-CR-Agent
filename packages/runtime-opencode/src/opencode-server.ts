@@ -12,6 +12,10 @@ export interface OpencodeServer {
 
 export interface StartOptions {
   binary: string;
+  // OpenCode treats the directory it runs in as a project: a request that
+  // names no directory loads that project's plugins, tools and config. It
+  // must be a directory ocra owns, never the reviewed checkout.
+  cwd: string;
   env: Record<string, string>;
   config: unknown;
   startupTimeoutMs?: number;
@@ -23,6 +27,7 @@ export async function startOpencodeServer(options: StartOptions): Promise<Openco
   const port = await freePort();
   const password = randomBytes(24).toString("hex");
   const child = spawn(options.binary, ["serve", "--hostname=127.0.0.1", `--port=${port}`], {
+    cwd: options.cwd,
     env: {
       ...options.env,
       OPENCODE_CONFIG_CONTENT: JSON.stringify(options.config),

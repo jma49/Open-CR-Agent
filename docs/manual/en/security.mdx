@@ -18,6 +18,7 @@ Nothing else is added: ocra starts its agent runtime with your global OpenCode c
 ## Isolation
 
 - The OpenCode runtime runs on `127.0.0.1` with a random port and a random password per run, and keeps its state in a temporary directory that is removed afterwards.
+- OpenCode runs in an empty directory of its own, not in your checkout, with OpenCode's project configuration off. Plugins, custom tools and settings committed to the reviewed code (`.opencode/`, `opencode.json`) never load; a test plants them and checks each of the two protections on its own.
 - Review tools are served from ocra's own process on `127.0.0.1`, protected by a random bearer token.
 - The runtime receives only system basics and the credentials of the providers in your model chains, not your whole environment.
 - All built-in agent tools (shell, file editing, web access) are disabled; reviewers can only read the revision under review.
