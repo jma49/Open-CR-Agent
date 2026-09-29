@@ -54,6 +54,17 @@
       "minSeverity": "suggestion",
       "concern": "Wrong error returned when 'files' is omitted from CreateRequest because r.Files is overwritten with a non-nil empty map",
       "also": []
+    },
+    {
+      "file": "server/create_test.go",
+      "lines": [
+        90,
+        94
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "Unit test case ValidNestedWithValidParentRef is inconsistent with the handler's path validation",
+      "also": []
     }
   ],
   "forbid": [],
@@ -88,6 +99,18 @@
       "label": "invalid",
       "reason": "Defense in depth only: adapter keys still pass the os.Root containment check and errFilePath returns 400 (checked against the code by the agent, 2026-09-28)",
       "title": "Missing path validation on 'adapters' parameter"
+    },
+    {
+      "fingerprint": "e129364b6c83e668",
+      "label": "valid",
+      "reason": "Real, minor: validRelative rejects any path with /../ in the handler, so the test's nested/../model.safetensors case exercises a state production never reaches; the same inconsistency the benchmark's reference names (checked by the agent, 2026-09-29)",
+      "title": "Unit test case ValidNestedWithValidParentRef is inconsistent with the handler's path validation"
+    },
+    {
+      "fingerprint": "f538ac93b1edc605",
+      "label": "invalid",
+      "reason": "Defense in depth only: adapter keys still pass the os.Root containment check and errFilePath returns 400 (checked by the agent, 2026-09-29)",
+      "title": "Validation of r.Adapters paths is deferred, allowing expensive base model loading before failing"
     }
   ]
 }

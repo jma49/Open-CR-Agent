@@ -19,7 +19,18 @@
       ],
       "category": "correctness",
       "minSeverity": "suggestion",
-      "concern": "copyFile gives the temporary index a new modification time, which disables git's racy-git check: a file edited in the same second as the real index, with the same size, looks unchanged and is left out of the review."
+      "concern": "copyFile gives the temporary index a new modification time, which disables git's racy-git check: a file edited in the same second as the real index, with the same size, looks unchanged and is left out of the review.",
+      "also": []
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": [
+    {
+      "fingerprint": "d3390fe27df22fd2",
+      "label": "valid",
+      "reason": "Real but pre-existing: at 5668c7b workspace reads followed symlinks inside the root, so a committed link to .env passed the path check (fixed later by d41ae60). Not caused by this change, so it counts for precision but is not an expectation (checked by the agent, 2026-09-29)",
+      "title": "Security Policy Bypass via Symlinks in ReviewContext"
     }
   ]
 }
