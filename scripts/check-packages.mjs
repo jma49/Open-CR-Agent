@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 // Packs every publishable workspace, installs the tarballs into an empty
 // project as a user would, and runs the installed ocra: --version, and a
-// free --plan review of a scratch repository. Catches missing files,
-// undeclared dependencies and broken bin entries before anything is
-// published. Needs network access for third-party dependencies.
+// free --plan review of a scratch repository. Then installs them as the
+// GitHub Action does, with the dependency versions this lockfile pins
+// (scripts/pinned-lock.mjs). Catches missing files, undeclared dependencies,
+// broken bin entries and a lockfile the Action cannot pin before anything
+// is published. Needs network access for third-party dependencies.
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { pinnedLockfile } from "./pinned-lock.mjs";
 import { readWorkspaces } from "./release-lib.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -21,6 +25,30 @@ const run = (cmd, args, cwd, extra = {}) =>
   });
 
 const packages = readWorkspaces(root).filter((p) => !p.json.private);
+
+// The runtime must find the OpenCode binary in an installed layout, not
+// only inside this monorepo.
+function findsOpencode(dir) {
+  const binaryModule = join(
+    dir,
+    "node_modules",
+    "@open-cr-agent",
+    "runtime-opencode",
+    "dist",
+    "binary.js",
+  );
+  const binary = run(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      `const { resolveOpencodeBinary } = await import(${JSON.stringify(binaryModule)}); console.log(resolveOpencodeBinary({}));`,
+    ],
+    dir,
+  ).trim();
+  run(binary, ["--version"], dir);
+  console.log(`installed runtime finds OpenCode at ${binary.replace(realpathSync(dir), ".")}`);
+}
 
 const work = mkdtempSync(join(tmpdir(), "ocra-pack-"));
 try {
@@ -67,27 +95,7 @@ try {
   if (version !== expected)
     throw new Error(`installed ocra reports ${version}, expected ${expected}`);
 
-  // The runtime must find the OpenCode binary in an installed layout, not
-  // only inside this monorepo.
-  const binaryModule = join(
-    app,
-    "node_modules",
-    "@open-cr-agent",
-    "runtime-opencode",
-    "dist",
-    "binary.js",
-  );
-  const binary = run(
-    process.execPath,
-    [
-      "--input-type=module",
-      "-e",
-      `const { resolveOpencodeBinary } = await import(${JSON.stringify(binaryModule)}); console.log(resolveOpencodeBinary({}));`,
-    ],
-    app,
-  ).trim();
-  run(binary, ["--version"], app);
-  console.log(`installed runtime finds OpenCode at ${binary.replace(realpathSync(app), ".")}`);
+  findsOpencode(app);
 
   const repo = join(work, "repo");
   run("mkdir", ["-p", repo], work);
@@ -108,6 +116,33 @@ try {
   const plan = run(ocra, ["review", "--plan"], repo);
   if (!plan.includes("Review tasks: 1")) throw new Error(`unexpected --plan output:\n${plan}`);
   console.log(`installed ocra ${version} runs: --version and review --plan`);
+
+  const pinned = join(work, "pinned");
+  mkdirSync(pinned);
+  const tarballOf = new Map(packages.map((p, i) => [p.json.name, tarballs[i]]));
+  const { manifest, lockfile } = pinnedLockfile({
+    lock: JSON.parse(readFileSync(join(root, "package-lock.json"), "utf8")),
+    root,
+    workspaces: readWorkspaces(root),
+    target: "@open-cr-agent/cli",
+    integrity: (name) =>
+      `sha512-${createHash("sha512")
+        .update(readFileSync(tarballOf.get(name)))
+        .digest("base64")}`,
+    resolved: (name) => `file:${tarballOf.get(name)}`,
+  });
+  writeFileSync(join(pinned, "package.json"), JSON.stringify(manifest));
+  writeFileSync(join(pinned, "package-lock.json"), JSON.stringify(lockfile));
+  run("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund", "--loglevel=error"], pinned, {
+    env,
+  });
+  const main = join(pinned, "node_modules", "@open-cr-agent", "cli", "dist", "main.js");
+  const pinnedVersion = run(process.execPath, [main, "--version"], pinned).trim();
+  if (pinnedVersion !== expected) {
+    throw new Error(`the pinned install reports ${pinnedVersion}, expected ${expected}`);
+  }
+  findsOpencode(pinned);
+  console.log(`installed ocra ${pinnedVersion} as the Action does, pinned by package-lock.json`);
 } finally {
   rmSync(work, { recursive: true, force: true });
 }
