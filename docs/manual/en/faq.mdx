@@ -9,7 +9,7 @@ By design. ocra favors precision: reviewers are told what not to flag, findings 
 
 ## How much does a review cost?
 
-It depends on the model and the size of the change. Every run prints tokens and cost per attempt and in total. As a reference, a two-file, 32-line commit cost $0.006 on `gemini-flash-lite-latest`. Grouping related files and the 30-step cap per review agent keep costs bounded.
+It depends on the models and the size of the change. In the evaluation runs, with Gemini on Vertex AI at list prices, a review cost $1.57 on average (median $1.15, from $0.07 to $3.98); see [Measured quality](./quality). `ocra review --plan` shows the tasks and the size of each first prompt without calling a model, `--max-cost-usd` sets a spend limit for the run, and every run prints tokens and cost per attempt and in total. Grouping related files and the 30-step cap per review agent keep costs bounded.
 
 ## Which models can I use?
 
