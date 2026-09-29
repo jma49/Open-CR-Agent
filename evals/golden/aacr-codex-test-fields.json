@@ -7,9 +7,9 @@
   "tier": "full",
   "source": {
     "kind": "aacr",
-    "ref": "https://github.com/openai/codex/pull/3212 (Apache-2.0); hand-checked 2026-09-28"
+    "ref": "https://github.com/openai/codex/pull/3212 (Apache-2.0); hand-checked 2026-09-28 and 2026-09-29"
   },
-  "rationale": "Removing a request field and a profile field leaves tests that still set or omit them; a compile failure in the test targets that AACR-Bench's references do not name.",
+  "rationale": "Removing a request field and a profile field leaves tests that still set or omit them, a compile failure in the test targets that AACR-Bench's references do not name. The same change stops serializing a reasoning item's id that deserializing still requires, so resumed sessions drop their reasoning; two AACR-Bench references name that one.",
   "expect": [
     {
       "file": "codex-rs/core/src/client_common.rs",
@@ -20,6 +20,17 @@
       "category": "correctness",
       "minSeverity": "warning",
       "concern": "ResponsesApiRequest still declares store, but the test initializers had store removed, so the core unit tests fail to compile with a missing field."
+    },
+    {
+      "file": "codex-rs/protocol/src/models.rs",
+      "lines": [
+        50,
+        52
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "Reasoning's id is now skipped when serializing but still required when deserializing, so every reasoning item the rollout recorder writes fails to parse on resume and is dropped with only a warning.",
+      "also": []
     }
   ]
 }

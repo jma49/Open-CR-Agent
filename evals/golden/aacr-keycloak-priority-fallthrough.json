@@ -1,0 +1,25 @@
+{
+  "id": "aacr-keycloak-priority-fallthrough",
+  "repo": "keycloak/keycloak",
+  "base": "8521b9952a989d0dac17697278610b053c613528",
+  "head": "805c204a9dbfb5b8128de8f70c9f3fbd6d6583f9",
+  "language": "Java",
+  "tier": "smoke",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/keycloak/keycloak/pull/38723 (Apache-2.0); hand-checked 2026-09-29"
+  },
+  "rationale": "The change adds a switch case right after one that had no break because it used to be last, so every guide that sets a priority also has its tile hidden. ocra reported it in all four runs on this pull request, and an AACR-Bench reference names the missing break.",
+  "expect": [
+    {
+      "file": "docs/maven-plugin/src/main/java/org/keycloak/guides/maven/GuideParser.java",
+      "lines": [
+        79,
+        82
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "The priority case has no break, so it falls through into the new tileVisible case: a guide that sets priority also calls setTileVisible(Boolean.parseBoolean(null)), which is false, and its tile is hidden."
+    }
+  ]
+}
