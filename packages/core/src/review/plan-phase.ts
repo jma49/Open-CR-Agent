@@ -13,7 +13,7 @@ List at most five specific things the {{reviewer}} reviewer must check in this b
 // --ultra's plan phase: one short call that turns the bundle into a checklist
 // for the reviewer, so its steps go to the riskiest code first. A failed
 // plan costs the checklist, not the review.
-export async function planReview(
+export async function planBundle(
   runtime: AgentRuntime,
   reviewer: ReviewerDefinition,
   prompt: ReviewPrompt,

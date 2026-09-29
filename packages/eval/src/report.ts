@@ -39,6 +39,15 @@ export function renderMarkdown(
     `- Total $${summary.usage.costUsd.toFixed(4)}, $${summary.costPerReviewedUsd.toFixed(4)} per reviewed PR`,
     `- Tokens: ${summary.usage.inputTokens} in (${summary.usage.cachedTokens} cached), ${summary.usage.outputTokens} out, ${summary.usage.reasoningTokens} reasoning`,
     `- Duration per PR: median ${summary.durationSeconds.median.toFixed(0)} s, p90 ${summary.durationSeconds.p90.toFixed(0)} s`,
+    ...(summary.anchoring
+      ? [
+          `- Anchoring: ${Object.entries(summary.anchoring.byMethod)
+            .map(([method, n]) => `${method} ${n}`)
+            .join(
+              ", ",
+            )}; file-level ${pct(summary.anchoring.fileLevelShare)} (${summary.anchoring.ambiguous} ambiguous), ${summary.anchoring.relocationCalls} relocation call(s)`,
+        ]
+      : []),
     "",
     "## By language",
     "",

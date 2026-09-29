@@ -25,6 +25,7 @@ import {
   coverageGaps,
   type ReviewEvent,
   type ReviewReport,
+  summarizeAnchoring,
   type TaskOutcome,
 } from "./report.js";
 import { addUsage, emptyUsage } from "./usage.js";
@@ -243,7 +244,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     ],
   };
   if (judged.decisions) report.judgement = judged.decisions;
-  report.anchoring = { ambiguous: report.findings.filter((f) => f.anchor.ambiguous).length };
+  report.anchoring = summarizeAnchoring(report.findings, relocationUsage.length);
   if (prior.review) {
     report.rereview = {
       fixed: reconciled.fixed,

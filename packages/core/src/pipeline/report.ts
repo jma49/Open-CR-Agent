@@ -1,5 +1,12 @@
 import type { Usage } from "../contracts.js";
-import type { ChangeRequest, Finding, PriorFinding, RiskTier, Verdict } from "../domain.js";
+import type {
+  AnchorMethod,
+  ChangeRequest,
+  Finding,
+  PriorFinding,
+  RiskTier,
+  Verdict,
+} from "../domain.js";
 import type { JudgeDecisions } from "../judge/judge.js";
 import type { MemoryEntry } from "../memory/memory.js";
 import type { ExclusionReason } from "../select/select.js";
@@ -69,8 +76,7 @@ export interface ReviewReport {
     unchanged: PriorFinding[];
     dismissed: PriorFinding[];
   };
-  // Findings left file-level because their quote fitted several places.
-  anchoring?: { ambiguous: number };
+  anchoring?: AnchoringSummary;
   usage: Usage;
   warnings: string[];
 }
@@ -87,3 +93,31 @@ export type ReviewEvent =
   | { type: "verification_finished"; checked: number; refuted: RefutedFinding[] }
   | { type: "judge_finished"; verdict: Verdict; judgement?: JudgeDecisions }
   | { type: "run_finished"; report: ReviewReport };
+
+// How this run's findings were tied to lines, so a change to anchoring can
+// be measured: counts per method, how many stayed file-level because their
+// quote fitted several places, and how many relocation calls were paid for.
+export interface AnchoringSummary {
+  byMethod: Record<AnchorMethod, number>;
+  ambiguous: number;
+  relocationCalls: number;
+}
+
+export function summarizeAnchoring(
+  findings: readonly Finding[],
+  relocationCalls: number,
+): AnchoringSummary {
+  const byMethod: Record<AnchorMethod, number> = {
+    hunk: 0,
+    file: 0,
+    cross_file: 0,
+    relocated: 0,
+    file_level: 0,
+  };
+  for (const f of findings) byMethod[f.anchor.method] += 1;
+  return {
+    byMethod,
+    ambiguous: findings.filter((f) => f.anchor.ambiguous).length,
+    relocationCalls,
+  };
+}

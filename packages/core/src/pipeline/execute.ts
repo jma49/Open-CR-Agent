@@ -3,7 +3,7 @@ import type { AgentRuntime, Usage } from "../contracts.js";
 import type { Finding } from "../domain.js";
 import { memoryFor } from "../memory/memory.js";
 import { findCallers } from "../review/impact.js";
-import { planReview as planBundle } from "../review/plan-phase.js";
+import { planBundle } from "../review/plan-phase.js";
 import { buildReviewPrompt } from "../review/prompt.js";
 import { resolveRules } from "../rules/resolve.js";
 import { toFinding } from "./findings.js";

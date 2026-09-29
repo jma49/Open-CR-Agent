@@ -13,12 +13,13 @@ import type { MemoryEntry } from "../memory/memory.js";
 import type { RefutedFinding } from "../verify/verify.js";
 import type { SkippedCell } from "./matrix.js";
 import type { ReviewPreview } from "./preview.js";
-import type { CoverageEntry, ReviewReport, TaskOutcome } from "./report.js";
+import type { AnchoringSummary, CoverageEntry, ReviewReport, TaskOutcome } from "./report.js";
 
 // The published shape of a review: `--format json` and a session's
 // report.json. It is a contract with scripts and CI, so it carries a version
-// and only what a reader can rely on; internal fields (per-run ids, how a
-// finding was anchored, code signatures, platform state) stay out. Change it
+// and only what a reader can rely on; internal fields (per-run ids, how each
+// finding was anchored, code signatures, platform state) stay out, though the
+// anchoring counts of the whole run are in. Change it
 // only by adding optional fields, or by a new version.
 export const REPORT_VERSION = 1;
 
@@ -74,6 +75,8 @@ export interface ReportOutput {
   tasks: TaskOutcome[];
   skipped: SkippedCell[];
   bundles: { label: string; files: string[] }[];
+  // Added in version 1 without a bump: optional, so older readers ignore it.
+  anchoring?: AnchoringSummary;
   usage: Usage;
   warnings: string[];
 }
@@ -98,6 +101,7 @@ export function toReportOutput(report: ReviewReport): ReportOutput {
   };
   if (report.scope) output.scope = report.scope;
   if (report.judgement) output.judgement = report.judgement;
+  if (report.anchoring) output.anchoring = report.anchoring;
   if (report.rereview) {
     const r = report.rereview;
     output.rereview = {

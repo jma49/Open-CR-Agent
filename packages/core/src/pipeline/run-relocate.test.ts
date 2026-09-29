@@ -39,6 +39,11 @@ describe("runReview relocation", () => {
     expect(report.findings[0]?.anchor.method).toBe("relocated");
     expect(report.findings[0]?.lineRange).toEqual({ start: 2, end: 2 });
     expect(report.usage.costUsd).toBeCloseTo(0.5);
+    expect(report.anchoring).toEqual({
+      byMethod: { hunk: 0, file: 0, cross_file: 0, relocated: 1, file_level: 0 },
+      ambiguous: 0,
+      relocationCalls: 1,
+    });
   });
 
   it("can be turned off", async () => {

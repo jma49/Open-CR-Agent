@@ -1,4 +1,4 @@
-import type { OutputFinding, Usage } from "@open-cr-agent/core";
+import type { AnchoringSummary, OutputFinding, Usage } from "@open-cr-agent/core";
 import type { Instance } from "./dataset.js";
 import {
   type GeneratedComment,
@@ -37,6 +37,8 @@ export interface Summary {
   usage: Usage;
   costPerReviewedUsd: number;
   durationSeconds: { median: number; p90: number };
+  // Summed over reviewed PRs that reported it.
+  anchoring?: AnchoringSummary & { fileLevelShare: number };
 }
 
 export function toGeneratedComment(finding: OutputFinding): GeneratedComment {
@@ -109,6 +111,7 @@ export async function score(
     usage,
     costPerReviewedUsd: reviewedResults.length === 0 ? 0 : usage.costUsd / reviewedResults.length,
     durationSeconds: { median: percentile(durations, 0.5), p90: percentile(durations, 0.9) },
+    ...anchoringOf(reviewedResults),
   };
 }
 
@@ -130,4 +133,36 @@ function recallBy(matches: readonly ReferenceMatch[], key: (m: ReferenceMatch) =
 function percentile(sorted: readonly number[], p: number): number {
   if (sorted.length === 0) return 0;
   return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] as number;
+}
+
+function anchoringOf(
+  results: readonly InstanceResult[],
+): { anchoring: NonNullable<Summary["anchoring"]> } | Record<string, never> {
+  const reported = results.flatMap((r) => (r.anchoring ? [r.anchoring] : []));
+  if (reported.length === 0) return {};
+  const byMethod: AnchoringSummary["byMethod"] = {
+    hunk: 0,
+    file: 0,
+    cross_file: 0,
+    relocated: 0,
+    file_level: 0,
+  };
+  let ambiguous = 0;
+  let relocationCalls = 0;
+  for (const a of reported) {
+    for (const method of Object.keys(byMethod) as (keyof typeof byMethod)[]) {
+      byMethod[method] += a.byMethod[method] ?? 0;
+    }
+    ambiguous += a.ambiguous;
+    relocationCalls += a.relocationCalls;
+  }
+  const total = Object.values(byMethod).reduce((sum, n) => sum + n, 0);
+  return {
+    anchoring: {
+      byMethod,
+      ambiguous,
+      relocationCalls,
+      fileLevelShare: total === 0 ? 0 : byMethod.file_level / total,
+    },
+  };
 }

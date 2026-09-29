@@ -80,7 +80,7 @@ Models are unreliable with line numbers, so they quote code instead. ocra resolv
 
 A finding that resolves to a file outside the reviewer's bundle is dropped with a warning: that reviewer was not shown the file.
 
-Whole lines are matched first. Part of a single line counts only when it is at least 12 characters long and only one line contains it: a fragment like `err` would otherwise land on the first line that happens to contain it. When a quote fits several places equally well (three identical `return err;` lines), no line is picked; the finding is shown at file level and the report counts it under `anchoring.ambiguous`.
+Whole lines are matched first. Part of a single line counts only when it is at least 12 characters long and only one line contains it: a fragment like `err` would otherwise land on the first line that happens to contain it. When a quote fits several places equally well (three identical `return err;` lines), no line is picked; the finding is shown at file level and counted under `anchoring.ambiguous`. The JSON report (`--format json`, a session's `report.json`) gives `anchoring` for the whole run: findings per method (`hunk`, `file`, `cross_file`, `relocated`, `file_level`), the ambiguous ones, and how many relocation calls were made.
 
 ## Robustness
 

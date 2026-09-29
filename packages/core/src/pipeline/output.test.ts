@@ -76,10 +76,16 @@ describe("output contract", () => {
       judgement: { merged: [], dropped: [], recalibrated: [] },
       rereview: { fixed: [], notReproduced: [], notRechecked: [], unchanged: [], dismissed: [] },
       changeRequest: { ...report.changeRequest, override: { by: "m", reason: "r" } },
+      anchoring: {
+        byMethod: { hunk: 1, file: 0, cross_file: 0, relocated: 0, file_level: 1 },
+        ambiguous: 1,
+        relocationCalls: 0,
+      },
     } as ReviewReport;
     const output = toReportOutput(full);
     expect(Object.keys(output).sort()).toEqual(
       [
+        "anchoring",
         "bundles",
         "changeRequest",
         "coverage",
@@ -102,6 +108,9 @@ describe("output contract", () => {
     );
     expect(Object.keys(output.changeRequest).sort()).toEqual(
       ["baseSha", "description", "headSha", "id", "override", "title"].sort(),
+    );
+    expect(Object.keys(output.anchoring ?? {}).sort()).toEqual(
+      ["ambiguous", "byMethod", "relocationCalls"].sort(),
     );
     expect(Object.keys(output.usage).sort()).toEqual(
       ["cachedTokens", "costUsd", "inputTokens", "outputTokens", "reasoningTokens"].sort(),

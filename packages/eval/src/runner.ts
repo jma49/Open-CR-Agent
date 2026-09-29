@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { OutputFinding, TaskOutcome, Usage } from "@open-cr-agent/core";
+import type { AnchoringSummary, OutputFinding, TaskOutcome, Usage } from "@open-cr-agent/core";
 import type { Instance } from "./dataset.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
 import { reviewInstance } from "./reviewer.js";
@@ -24,6 +24,9 @@ export interface InstanceResult {
   status: InstanceStatus;
   durationMs: number;
   findings: OutputFinding[];
+  // How ocra anchored the findings; absent in results written before it
+  // was published.
+  anchoring?: AnchoringSummary;
   usage: Usage;
   tasks: Pick<TaskOutcome, "taskId" | "status" | "error">[];
   // The CLI's exit code; 3 means the review was incomplete.
@@ -147,6 +150,7 @@ async function reviewOne(
       return task;
     }),
   };
+  if (report?.anchoring) result.anchoring = report.anchoring;
   if (outcome.error) result.error = outcome.error;
   return result;
 }

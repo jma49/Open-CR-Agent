@@ -81,6 +81,12 @@ const METRICS: Metric[] = [
     percent: false,
   },
   {
+    name: "File-level findings (share)",
+    value: (s) => s.summary.anchoring?.fileLevelShare,
+    higherIsBetter: false,
+    percent: true,
+  },
+  {
     name: "Cost per reviewed PR ($)",
     value: (s) => s.summary.costPerReviewedUsd,
     higherIsBetter: false,
