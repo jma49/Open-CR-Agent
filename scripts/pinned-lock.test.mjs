@@ -219,12 +219,16 @@ describe("pinnedLockfile", () => {
       integrity: (name) => `sha512-${name}`,
     });
     const paths = Object.keys(lockfile.packages);
-    const platforms = paths.filter((p) =>
-      /^node_modules\/opencode-(darwin|linux|windows)-/.test(p),
-    );
-    expect(platforms.length).toBeGreaterThanOrEqual(6);
-    for (const path of platforms) {
-      expect(lockfile.packages[path]).toMatchObject({ optional: true, os: expect.any(Array) });
+    // Every OpenCode build opencode-ai offers, for every OS and CPU: a
+    // lockfile regenerated on one platform must not lose the others'.
+    const builds = Object.keys(lock.packages["node_modules/opencode-ai"].optionalDependencies);
+    expect(builds.length).toBeGreaterThanOrEqual(6);
+    for (const name of builds) {
+      expect(lockfile.packages[`node_modules/${name}`]).toMatchObject({
+        optional: true,
+        os: expect.any(Array),
+        cpu: expect.any(Array),
+      });
     }
     for (const tool of ["typescript", "vitest", "@biomejs/biome", "@open-cr-agent/eval"]) {
       expect(paths).not.toContain(`node_modules/${tool}`);
