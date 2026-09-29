@@ -1,6 +1,6 @@
 {
   "name": "@open-cr-agent/runtime-opencode",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "OpenCode-based agent runtime for Open-CR-Agent",
   "keywords": [
     "code-review",
@@ -31,7 +31,7 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.1",
-    "@open-cr-agent/core": "0.1.0",
+    "@open-cr-agent/core": "0.1.1",
     "@opencode-ai/sdk": "1.18.32",
     "opencode-ai": "1.18.32",
     "undici": "^8.11.2",
