@@ -27,12 +27,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@v0.1.0
+      - uses: jma49/Open-CR-Agent@v0.1.1
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-`@v0.1.0` 是一个发布版本。tag 可以被移动，要确保带着你的模型 key 运行的代码确定不变，可以改为固定到该版本的提交（`jma49/Open-CR-Agent@<提交> # v0.1.0`）。
+`@v0.1.1` 是一个发布版本。tag 可以被移动，要确保带着你的模型 key 运行的代码确定不变，可以改为固定到该版本的提交（`jma49/Open-CR-Agent@<提交> # v0.1.1`）。
 
 从 v0.1.1 起，Action 从 npm 安装 ocra：安装与 Action 自身版本号相同的 `@open-cr-agent/cli`，每个依赖都固定在 Action 的 `package-lock.json` 锁定的版本，不运行安装脚本，使用 npm 官方源时还会校验源的签名。npm 上已发布的版本不会再改变。某个版本还没发布到 npm 时（发布后的最初几分钟），Action 改为从自身源码构建；v0.1.0 始终从源码构建。所以 `@main` 运行的是 `main` 上的 Action 代码，加上 `main` 所写版本号对应的发布版，而不是尚未发布的包代码；只有 `main` 在那次发布之后改了包的依赖时，才会构建 `main`。
 

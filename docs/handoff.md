@@ -23,9 +23,9 @@ State of the project as of 2026-09-29, for whoever picks it up next (human or ag
 
 ## Status
 
-**M1–M4 are implemented, quality is measured on a small golden set, and v0.1.0 is on npm** (`npm run verify` green).
+**M1–M4 are implemented, quality is measured on a small golden set, and v0.1.1 is on npm** (`npm run verify` green).
 
-**v0.1.0 (2026-09-29).** The maintainer decided to ship without further evaluation: prompts stay as they are on `main` (no prompt change without an eval run), paid benchmark runs stop, and the rest of the Vertex credit (about $150 of $300 left) goes to real reviews. Done:
+**v0.1.0 (2026-09-29).** The maintainer decided to ship without further evaluation: prompts stay as they are on `main` (no prompt change without an eval run), paid benchmark runs stop, and the rest of the Vertex credit goes to real reviews, down to a floor of $100 (see Credit below). Done:
 - #233: every workspace at 0.1.0, exact internal pins, npm metadata, a README per package, `scripts/release.mjs`, the release workflow (tag = version, skips versions already published), CHANGELOG. The workflow's CI dry run passed.
 - #236: the pre-publish audit ([audit](audits/2026-09-29-release-0.1.0.md)). Verdict: safe to publish, no P0/P1. It fixed `engines` (undici 8 needs Node ≥22.19), the OpenCode binary order on musl and non-AVX2 machines, and the README's missing `top` model. Tarballs were installed three ways and started OpenCode without a model call.
 - #232: the measured-quality page. Site #36 links it from the roadmap.
@@ -41,12 +41,37 @@ State of the project as of 2026-09-29, for whoever picks it up next (human or ag
   - `npx @open-cr-agent/cli@0.1.0 --version` also gives 0.1.0.
 - The packages were published from tarballs, so npm records no `gitHead`. OIDC and provenance first run on 0.1.1.
 
+**v0.1.1 (2026-09-29).**
+- #239: the Action installs the published CLI from npm into `$RUNNER_TEMP`.
+  - It uses a lockfile built from the tag's `package-lock.json`, with registry integrity for our five packages.
+  - It runs `npm ci --ignore-scripts`, then `npm audit signatures`.
+  - It builds from source while the version is not on npm yet.
+  - Setup time is unchanged at about 8 s. A shrinkwrap inside the CLI was rejected: npm installed all 12 OpenCode binaries, 2.1 GB (`docs/pitfalls.md`).
+- #240: 0.1.1.
+- #241: the audit ([audit](audits/2026-09-29-action-npm-install.md)), with no P0 or P1. It added:
+  - an npm cache of the Action's own;
+  - no `setup-node` cache entry in callers' repositories;
+  - quoting of Windows arguments;
+  - the `action` CI job on ubuntu, macOS and Windows;
+  - corrected claims in the docs and the CHANGELOG.
+
+  Still to do: require provenance for our packages (`docs/releasing.md`).
+- The release [v0.1.1](https://github.com/jma49/Open-CR-Agent/releases/tag/v0.1.1) is on `d9e9254`. It is the first publish through the workflow (OIDC), and it worked.
+  - All five are on npm with SLSA provenance (`dist.attestations`, predicate `https://slsa.dev/provenance/v1`), and `latest` is 0.1.1.
+  - `npm audit signatures --include-attestations` lists all five as verified, with attestations.
+- The v0.1.0 release run (36535885723) passed: it skipped the five packages published by hand.
+
+**Credit (2026-09-29).** The maintainer read $166 left of $300 in the Cloud console. ocra's own accounting of Vertex spend is $133.81, which leaves $166.19, so the reported costs track the bill. The maintainer's floor is $100 ("还剩100的时候就别再花额度了"), so the budget for dogfooding is $60, with $6 of margin for runs that overshoot their cap. Nothing else may spend credit.
+
 Still open:
-1. The release workflow's run for v0.1.0 should have skipped all five packages and passed. Nobody has checked it: the permission classifier denied the agent reading that run.
-2. The site. Its `main` is at `290a925` (#36) and is not deployed; the live site still runs `2693463`.
-   - `/docs/quality` returns 404 there, yet the npm README of `@open-cr-agent/cli` and the release notes link to it.
-   - The landing page's roadmap still says ocra installs from source (M7).
-   - Update that copy, then deploy. The classifier denied the agent looking up the deploy scope, so the maintainer deploys, or allows it.
+1. The site is deployed.
+   - The maintainer deployed site `8777447` (#37) on 2026-09-29, so `/docs/quality` and the landing copy for npm are live.
+   - The agent deploys again after the Action examples move to `@v0.1.1`: site #38 and the manual's GitHub page.
+   - The maintainer has now allowed the agent to deploy (`VERCEL_SCOPE=<scope> npm run deploy` in the site repository; the scope is in `.local/agent-notes.md`).
+2. Dogfooding.
+   - It needs a service account in the Vertex project that holds only `roles/aiplatform.user`, reached through Workload Identity Federation limited to chosen repositories. No key.
+   - The maintainer allowed the agent to make the grant on 2026-09-29.
+   - Then an agent adds the workflow (`pull_request` only) with a budget guard: a ledger of the reported costs, a per-run cap, and an `OCRA_REVIEW` kill switch.
 
 Pipeline today: ingest → select → triage → bundle → **matrix** (reviewer scopes, risk tiers, overrides; ADR-0007) → review (correctness, security, performance; OpenCode runtime, read-only MCP tools, 20-step cap, per-model circuit breaker) → anchor → memory (`.ocra/memory.json`) and re-review reconciliation → **verify** (drops only findings the code disproves, marks the rest confirmed/uncertain/unchecked) → **judge** (merge, drop, recalibrate on the top tier) → verdict by a fixed rubric (only verified critical findings block) → report. Pull requests: `ocra review --pr [--publish]` and `action.yml` (ADR-0008) with inline comments, one summary comment, thread resolution only when the anchored code is gone (ADR-0009), incremental re-review of what changed since the last reviewed head (ADR-0010, `--full` to override), and respect for human dismissals; trusted inputs come from the base commit. `fail-on-concerns` defaults to off: the verdict is advice, not a security gate. Also: `--ultra`, `--reviewers`, `--max-cost-usd`, `--no-repo-config`, `extends` (shared config over https), Ctrl-C handling, exit codes 0/1/2/3/130. The 2026-09-26 audit's P0/P1 findings (#32–#39) are fixed, and so is everything the 2026-09-27 audit found that does not change what models see (below); its prompt part waits for an eval (#126).
 
@@ -129,8 +154,8 @@ Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) i
 
 ## Open questions for the maintainer
 
-1. The site deploy and the landing-page copy for v0.1.0 (see "Still open" above).
-2. Dogfooding the Action on this repository needs a Vertex credential as a CI secret. It stays off until the maintainer approves; cap it with `--max-cost-usd`.
+1. None about the site: deploys are allowed (2026-09-29).
+2. Dogfooding: approved within a $60 budget. The permission grant in Google Cloud waits for the maintainer (see "Still open" above).
 3. Would the maintainer spot-check some golden labels? All of them are an agent's, and the quality page says so.
 4. Leftovers to delete, which the permission classifier blocked for the agent:
    - #230's branch `feat/correctness-report-supported` and its worktree;
