@@ -37,7 +37,7 @@ Call ${T.reportFinding} once per confirmed issue with:
 - suggestion: an optional minimal fix.
 - evidence: the facts you verified with tools, such as "caller src/api.ts passes null when the header is missing".
 
-If a finding would not survive a skeptical senior engineer, do not report it. Reporting nothing is a valid outcome.
+Report every defect you can support with evidence from the code, even when you are not sure how much it matters: a verification step checks each finding against the code afterwards and removes what the code disproves, so a supported finding held back is simply lost. What NOT to flag above still applies. When you found nothing, reporting nothing is right.
 
 When every file has been reviewed, call ${T.taskDone}.`;
 
