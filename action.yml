@@ -28,13 +28,14 @@ runs:
       with:
         node-version: 22
 
-    - name: Build ocra
+    # The published @open-cr-agent/cli of this action's version, with every
+    # dependency at the version this ref's package-lock.json pins, install
+    # scripts off and registry signatures verified; this ref built from
+    # source while its version is not on npm yet.
+    - name: Install ocra
+      id: install
       shell: bash
-      run: |
-        # No install scripts: they would run with the job's secrets in the
-        # environment. The OpenCode binary is resolved without one.
-        npm ci --prefix "$GITHUB_ACTION_PATH" --ignore-scripts --no-audit --no-fund --loglevel=error
-        npm run build --prefix "$GITHUB_ACTION_PATH"
+      run: node "$GITHUB_ACTION_PATH/scripts/action-install.mjs"
 
     # Inputs reach the script only through environment variables, never
     # interpolated into it, so pull request text cannot inject shell code.
@@ -45,6 +46,7 @@ runs:
         OCRA_PR: ${{ github.event.pull_request.number }}
         OCRA_ARGS: ${{ inputs.args }}
         OCRA_FAIL_ON_CONCERNS: ${{ inputs.fail-on-concerns }}
+        OCRA_MAIN: ${{ steps.install.outputs.main }}
       run: |
         if [ -z "$OCRA_PR" ]; then
           echo "::error::ocra review runs on pull_request events"
@@ -56,7 +58,7 @@ runs:
         # Bash does not pass a cancellation's SIGINT/SIGTERM on to a child it
         # waits for, so ocra runs in the background and gets them forwarded:
         # it then stops, writes its partial report and publishes nothing.
-        node "$GITHUB_ACTION_PATH/packages/cli/dist/main.js" review --pr "$OCRA_PR" --publish "${extra[@]}" &
+        node "$OCRA_MAIN" review --pr "$OCRA_PR" --publish "${extra[@]}" &
         pid=$!
         trap 'kill -INT "$pid" 2>/dev/null' INT TERM
         code=0

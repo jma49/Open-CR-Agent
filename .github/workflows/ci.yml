@@ -39,3 +39,45 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check:packages
+
+  # The Action's install step both ways, then the installed ocra, with no
+  # model call: `npm` installs the published CLI at this commit's version
+  # with dependencies pinned by this commit's lockfile (or builds this commit
+  # while its version is not on npm); `source` builds this commit, as the
+  # Action did before 0.1.1. Cold npm cache, like the Action.
+  action:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        install: [npm, source]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - id: install
+        env:
+          OCRA_INSTALL: ${{ matrix.install }}
+        run: |
+          if [ "$OCRA_INSTALL" = source ]; then
+            node scripts/action-install.mjs --from-source
+          else
+            node scripts/action-install.mjs
+          fi
+      - env:
+          OCRA_MAIN: ${{ steps.install.outputs.main }}
+        run: |
+          node "$OCRA_MAIN" --version
+          # The runtime finds the OpenCode binary in the installed layout.
+          node --input-type=module -e '
+            import { execFileSync } from "node:child_process";
+            import { createRequire } from "node:module";
+            import { dirname, join } from "node:path";
+            const index = createRequire(process.env.OCRA_MAIN).resolve("@open-cr-agent/runtime-opencode");
+            const { resolveOpencodeBinary } = await import(join(dirname(index), "binary.js"));
+            const binary = resolveOpencodeBinary({});
+            console.log(binary, execFileSync(binary, ["--version"], { encoding: "utf8" }).trim());
+          '
