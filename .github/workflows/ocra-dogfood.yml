@@ -78,8 +78,9 @@ jobs:
           budget=$(cents "$BUDGET_USD")
           daily=$(cents "$DAILY_USD")
           cap=$(cents "$CAP_USD")
-          # ocra's limit is soft: review tasks already running when it is
-          # reached still finish. Keep half the cap again for them.
+          # ocra stops running review tasks at its limit, but what they spend
+          # between two reports and their steps in progress can still pass
+          # it. Half the cap again covers that with room to spare.
           reserve=$((cap * 3 / 2))
 
           listing=$(gh api --paginate "repos/$REPOSITORY/actions/artifacts?per_page=100" \
@@ -175,7 +176,10 @@ jobs:
       # Advice only: a failed or incomplete review never fails the pull request.
       - id: review
         if: steps.guard.outputs.allowed == 'true'
-        uses: jma49/Open-CR-Agent@d9e92543af27923f744721fb9fae257161bd1c32 # v0.1.1
+        # 0.1.2 before its release: the Action builds this commit, the first
+        # that stops running review tasks at the spend limit (#259). Pin
+        # v0.1.2 once it is on npm.
+        uses: jma49/Open-CR-Agent@5e1e87176bb672db2568115f94bc4998ea573007 # 0.1.2 (unreleased)
         continue-on-error: true
         env:
           GOOGLE_VERTEX_PROJECT: ${{ secrets.GOOGLE_VERTEX_PROJECT }}
