@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { ReviewContext } from "@open-cr-agent/core";
@@ -48,6 +49,8 @@ async function call(client: Client, name: string, args: Record<string, unknown> 
 describe("tool server", () => {
   it("serves the review tools over MCP", async () => {
     const client = await connect(context);
+    const { version } = createRequire(import.meta.url)("../package.json");
+    expect(client.getServerVersion()).toMatchObject({ name: "ocra", version });
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name)).toEqual([
       "read_file",

@@ -1,8 +1,12 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage } from "node:http";
+import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { errorMessage, type ReviewContext, type ToolDefinition } from "@open-cr-agent/core";
+
+// src/ and dist/ both sit one level below the package root.
+const VERSION: string = createRequire(import.meta.url)("../package.json").version;
 
 export interface ToolServer {
   url: string;
@@ -51,7 +55,7 @@ function buildMcpServer(
   tools: readonly ToolDefinition[],
   context: () => ReviewContext | undefined,
 ): McpServer {
-  const mcp = new McpServer({ name: "ocra", version: "0.0.0" });
+  const mcp = new McpServer({ name: "ocra", version: VERSION });
   for (const tool of tools) {
     mcp.registerTool(
       tool.name,
