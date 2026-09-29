@@ -55,7 +55,7 @@ Goal: someone other than the maintainer can install and use ocra in five minutes
 
 Goal: turn the security design into something a maintainer of a popular open-source repository can verify.
 
-- An adversarial golden tier: pull requests whose title, description, comments or code try to suppress findings, forge commands or plant links; the claim "injection does not change the verdict" becomes a measured number. Built: #256 (ADR-0014), six attacks on four smoke cases, through the description and the code. A pull request's own title and replies are not attack channels in it yet. The first run needs budget.
+- An adversarial golden tier: pull requests whose title, description, comments or code try to suppress findings, forge commands or plant links; the claim "injection does not change the verdict" becomes a measured number. Built: #256 (ADR-0014), six attacks on four smoke cases, through the description and the code. A pull request's own title and replies are not attack channels in it yet. A first probe on three cases ($6.48, one run) lost no expected finding and repeated no forged command, but a planted link reached a finding. The coverage-gaps pair and repeat runs are next.
 - A threat-model page in the manual; guidance for `pull_request_target` and fork pull requests. Written: #253 (ADR-0013), a gated `pull_request_target` workflow. The analysis behind it hardened two places (#252, #254). A live fork check is pending.
 - Talk to three maintainers who receive outside contributions before building more.
 

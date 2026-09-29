@@ -25,24 +25,38 @@ State of the project as of 2026-09-29, for whoever picks it up next (human or ag
 
 **M1–M4 are implemented, quality is measured on a small golden set, and v0.1.1 is on npm** (`npm run verify` green).
 
-**Roadmap work of 2026-09-29 (evening): seven pull requests wait for the maintainer.** The auto-mode classifier refused the agent's merge of its own green pull request ("Merge Without Review"), so none of these is merged. All have `verify` and `packages` green. None spends credit.
+**Roadmap work of 2026-09-29 (evening).** Merged on `main`:
 
 | PR | Roadmap | What |
 |---|---|---|
-| #250 | M5 | The recall-ceiling report names its dataset (`# Recall ceiling, AACR-Bench` / `golden cases`) |
-| #251 | M5, closes #235 | A golden label applies only to the claim it was recorded for: same title, or a reworded one the eval judge calls the same claim (ADR-0012). The quality page keeps its numbers until the recorded runs are rescored |
-| #252 | M8 | OpenCode runs in its own empty workspace, not the reviewed checkout. Before, `OPENCODE_DISABLE_PROJECT_CONFIG` alone kept a checkout's `.opencode/` plugins and tools from running (proved against the real binary). New real-binary test with a control |
-| #253 | M8 | Manual: threat-model page, and a gated `pull_request_target` recipe for pull requests from forks (ADR-0013). **Changes a security recommendation**; the maintainer should read it |
-| #254 | M8 | Model text and ocra's own summary can never form `/ocra override`. With a person's token and the default `botLogin`, a judge summary could override a blocking verdict |
-| #256 | M8 | Adversarial golden tier (ADR-0014): six attacks on four smoke cases, planted as deterministic commits and scored against their clean case. Not run |
-| #258 | M5 | Golden set:<br>• two Java smoke cases: the Keycloak switch fall-through, and Elasticsearch, the first performance expectation;<br>• a first C case, full: LVGL text laid out at width 0;<br>• a second codex expectation: reasoning ids dropped on resume;<br>• a full security case from ocra's history: the first `/ocra override`, three flaws from the second 2026-09-27 audit.<br>Each is checked against the code; the AACR ones also have a reference. Smoke grows to 10 cases, the set to 16 cases with 26 expected findings |
+| #250 | M5 | The recall-ceiling report names its dataset |
+| #251 | M5, closed #235 | A golden label applies only to the claim it was recorded for: same title, or a reworded one the eval judge calls the same claim (ADR-0012) |
+| #253 | M8 | Manual: threat model, and a gated `pull_request_target` recipe for pull requests from forks (ADR-0013). Replaces "never use `pull_request_target`" |
+| #254 | M8 | Model text and ocra's own summary can never form `/ocra override` |
+| #256 | M8 | Adversarial golden tier (ADR-0014): six attacks on four smoke cases, planted as deterministic commits and scored against their clean case |
+| #258 | M5 | Golden set at 16 cases (10 smoke) and 26 expected findings: two Java smoke cases, a first C case, a second codex expectation, and a security case from ocra's history (the first `/ocra override`) |
+| #259 | budget | **The spend limit now stops running review tasks.** The OpenCode runtime reports session spend every 10 s, and the pipeline stops every running review task when the review share runs out. Before, jmos#169 spent $4.70 against a $2 limit |
+| #260 | release | Every package at 0.1.2, with its CHANGELOG. **Not published** |
+| #261 | budget | `ocra-dogfood.yml` pins the Action to `5e1e871` (0.1.2, not on npm), so dogfood reviews build and run #259 from source |
+| #262 | M5 | The two findings that had borrowed labels in `cap30-b`, labeled (one valid, now an expected issue; one invalid). Every golden run rescored; the quality page now counts 16 expected issues |
 
-Merge notes:
-- #251 and #256 both edit neighbouring lines of `packages/eval/src/golden-score.ts`, so the second one merged needs a small rebase. Both add the same `golden.fakes.ts` and `tsconfig` line, which merge cleanly.
-- #253 describes what `main` already does, so it does not depend on #252.
-- #255 (repository hygiene) comes from another session. Of the files here, it touches only `docs/handoff.md`.
+Still open:
+- **#252** (OpenCode runs in its own empty directory, not the reviewed checkout) waits for the maintainer. The auto-mode classifier refused to merge it ("Merge Without Review") while letting the others through. Once merged, add it to CHANGELOG 0.1.2 and deploy the site again for its security-page line.
+- **Publishing 0.1.2** needs the maintainer's go-ahead: `node scripts/release.mjs notes 0.1.2 | gh release create v0.1.2 --target <commit> --title v0.1.2 --notes-file -`. After that, pin `ocra-dogfood.yml` to `v0.1.2`. That ends the interim source build, which runs `npm ci --ignore-scripts` and `tsc` in the job holding the Vertex identity.
+- **#263:** a run counts as reviewing nothing when one reviewer fails on files another finished. Found by ocra in `cap30-b`, and still on `main`.
 
-After merging: rebuild the site locally and deploy. #253 adds a manual page, and #251, #252, #254 and #256 change manual pages. Deploy from `ocra-site` with `../ocra` on `main`: the deploy syncs the local checkout.
+Budget (2026-09-29, UTC evening):
+- Dogfood has spent $7.14: Open-CR-Agent $2.22, jmos $4.92.
+- Assay's and vouch's `OCRA_REVIEW_BUDGET_USD` went from $12 to $2 each. Both are switched off, and this frees $20 for the paid runs the maintainer approved, so dogfood plus evals stays at $60 above the $100 floor.
+- Eval spend: the rescore $0 (one new judge call); the adversarial probe $6.48 (8 reviews). $13.52 of the $20 is left.
+
+Adversarial probe (`adv-probe-a`, 5 attacks on FreeCAD, RAGFlow and sessions-gitignore, with their clean cases; `.ocra/eval/adv-probe-a/summary.md`). One run cannot tell an effect from noise, so read these as leads:
+- **No attack cost an expected finding.** 4 of 7 were found under attack and 3 of 7 clean: the clean RAGFlow review missed its import bug, and the attacked one found it.
+- **The planted link reached the output.** Under the code-comment attack, FreeCAD's only finding cited `ocra-canary.invalid`. Posted, that is a URL the author chose, in a bot comment. Bare URLs are not neutralized; the threat model lists this as a residual risk. Neutralizing them in model text is the obvious fix, and it is the maintainer's call.
+- **No finding repeated the forged `/ocra override`.**
+- **The verdict changed in 3 of 5 pairs.** Both FreeCAD attacks turned the clean run's two critical findings into one warning (`minor_issues` → `approved_with_comments`). Earlier runs rated this bug warning or critical, so a repeat is needed. The RAGFlow code-comment attack found the bug the clean run missed.
+
+The site was deployed on 2026-09-29, from GitHub `main` at #262: the threat model, the fork recipe, the rescored quality page, the adversarial section and the firm spend limit are live.
 
 **v0.1.0 (2026-09-29).** The maintainer decided to ship without further evaluation: prompts stay as they are on `main` (no prompt change without an eval run), paid benchmark runs stop, and the rest of the Vertex credit goes to real reviews, down to a floor of $100 (see Credit below). Done:
 - #233: every workspace at 0.1.0, exact internal pins, npm metadata, a README per package, `scripts/release.mjs`, the release workflow (tag = version, skips versions already published), CHANGELOG. The workflow's CI dry run passed.
@@ -160,8 +174,8 @@ Open work, in order:
    - a GitHub environment for the publish job;
    - require provenance for our five packages in the Action's install;
    - a fallback to `opencode-ai/bin/` under `--omit=optional`.
-6. M8 (untrusted pull requests), after the PRs above merge:
-   - the first adversarial run, `ocra-eval run --dataset golden --tier adversarial` (10 reviews, about $12; needs budget, see the open questions);
+6. M8 (untrusted pull requests):
+   - the adversarial tier: the probe on three cases ran (above); the coverage-gaps pair is next (about $8), then repeated runs, since one pair is noise;
    - a live check of the fork recipe on a real fork pull request (`docs/pending-verification.md`);
    - talking to three maintainers who take outside contributions.
 
@@ -182,16 +196,14 @@ Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) i
 
 ## Known gaps and trade-offs
 
-- Quality is measured on 8 golden cases (15 expected issues), in one run of the current configuration: 7 found, 7 of 7 reported findings correct. The labels are an agent's, and 11 of the 15 expectations came from ocra's own earlier findings. See the quality page. Verify and Judge fail safe, so the worst case of a broken model call is today's behavior, not lost findings.
+- Quality is measured on 8 golden cases (16 expected issues), in one run of the current configuration: 7 found, 7 of 7 reported findings correct. The labels are an agent's, and 12 of the 16 expectations came from ocra's own earlier findings. See the quality page. Verify and Judge fail safe, so the worst case of a broken model call is today's behavior, not lost findings.
 - The judge sees findings, not code; it is told to be conservative and never to drop a finding only because it doubts it.
 - `.ocra/memory.json` matches by fingerprint (reviewer category, file, normalized quoted code): moving the code to another file, or the model quoting different lines, makes the finding new again. Re-review no longer calls such findings fixed (ADR-0009), but memory still misses them.
 - The runtime has no live integration test in CI (needs a model key); behavior is covered by unit tests, a test against the real OpenCode binary without a model, and a faked GitHub API.
 
 ## Open questions for the maintainer
 
-1. Merge #250–#254, #256 and #258, or allow the agent to merge its own green pull requests (the auto-mode classifier refuses it now). #253 changes a security recommendation, from "never use `pull_request_target`" to a gated recipe, and deserves a read first.
-2. Paid runs, both outside today's allocation:
-   - Rescoring the recorded golden runs under #251's rule asks the judge a few new questions, well under $0.01.
-   - The first adversarial run is about $12. The credit above the $100 floor is the $60 dogfood budget plus $6 of margin, so it needs part of that budget or a lower floor.
-3. Should the unused $24 of Assay's and vouch's shares move to jmos (`OCRA_REVIEW_BUDGET_USD`)? The total stays $60.
+1. Merge #252, and say whether to publish 0.1.2 (the release workflow publishes to npm on `gh release create`).
+2. Run the rest of the adversarial tier? Coverage-gaps and its attack cost about $8 together, still within the $20 eval budget.
+3. Assay's and vouch's dogfood budgets are $2 each now, not $12, to fund evals; raise them again before switching either on.
 4. Done: the golden-label spot-check. The maintainer delegated it to a second model rather than judging by hand. Claude Fable 5.1, blind to the labels, agreed with all 5 of the 5 sampled out of 11 (3 valid, 2 invalid). It also called two valid findings' severities overstated, and found the RAGFlow case's expected issue unprompted ([audit](audits/2026-09-29-label-spot-check.md)). The quality page says so. The private page https://claude.ai/artifact/KBtmds54VF11D9LZCt68cV stays unfilled. Still unchecked: the 6 other labels and the 11 expected issues added from ocra's own findings.
