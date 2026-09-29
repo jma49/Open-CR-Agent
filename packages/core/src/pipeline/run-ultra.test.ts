@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentRuntime, AgentTaskSpec } from "../contracts.js";
+import { previewReview } from "./preview.js";
 import { patch, vcs } from "./run.fakes.js";
 import { runReview } from "./run.js";
 
@@ -45,8 +46,10 @@ describe("runReview --ultra", () => {
     expect(prompt).toContain("src/api.ts:12: const n = parseRetries(header);");
     expect(prompt).toContain("<ocra_review_plan>");
     expect(prompt).toContain("check negative input");
-    // One plan per task (a cell and its second sample), nothing else here.
-    expect(report.usage.costUsd).toBeCloseTo(0.25 * rt.prompts.length);
+    // One plan for the cell, shared by its two samples; nothing else is paid.
+    expect(rt.prompts).toHaveLength(2);
+    expect(rt.prompts.every((p) => p.userPrompt.includes("check negative input"))).toBe(true);
+    expect(report.usage.costUsd).toBeCloseTo(0.25);
   });
 
   it("reviews without a plan when planning fails, and says so", async () => {
@@ -96,5 +99,31 @@ describe("runReview --ultra", () => {
     const prompt = rt.prompts[0]?.userPrompt ?? "";
     expect(prompt).toContain("<ocra_review_plan>");
     expect(prompt).not.toContain("<ocra_callers>");
+  });
+
+  it("sends the planner the bundle without the instruction to report findings", async () => {
+    const planPrompts: string[] = [];
+    const rt = runtime(async () => "- check it");
+    const complete = rt.complete?.bind(rt);
+    rt.complete = async (request, signal) => {
+      if (request.system.includes("prepare one reviewer's pass")) planPrompts.push(request.user);
+      return complete ? complete(request, signal) : { text: "", usage };
+    };
+    await runReview({ vcs: change(), runtime: rt, ultra: true, verify: false });
+    expect(planPrompts).toHaveLength(1);
+    expect(planPrompts[0]).toContain("<ocra_review_files>");
+    expect(planPrompts[0]).not.toContain("report_finding");
+  });
+
+  it("counts plan calls in --plan, once per cell under --ultra", async () => {
+    const preview = await previewReview({ vcs: change(), ultra: true });
+    expect(preview.tasks.map((t) => [t.taskId, t.planPromptTokens !== undefined])).toEqual([
+      ["correctness-1", true],
+      ["correctness-1b", false],
+    ]);
+    expect(preview.planCalls).toBe(1);
+    const reviews = preview.tasks.reduce((sum, t) => sum + t.promptTokens, 0);
+    expect(preview.promptTokens).toBe(reviews + (preview.tasks[0]?.planPromptTokens ?? 0));
+    expect((await previewReview({ vcs: change() })).planCalls).toBe(0);
   });
 });

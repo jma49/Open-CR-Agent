@@ -6,6 +6,7 @@ import type { ReviewerDefinition } from "../review/reviewer.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import { resolveRules } from "../rules/resolve.js";
 import type { FileDecision } from "../select/select.js";
+import { isLargeBundle } from "./execute.js";
 import { planTasks, type ReviewerOverrides, type SkippedCell } from "./matrix.js";
 import { type PlanOptions, planReview } from "./plan.js";
 
@@ -16,6 +17,9 @@ export interface PreviewTask {
   files: string[];
   // The first request's prompt, estimated at four characters per token.
   promptTokens: number;
+  // The plan phase's one call before the review (--ultra, or a large bundle),
+  // on the reviewer's tier; shared by --ultra's two samples.
+  planPromptTokens?: number;
 }
 
 export interface ReviewPreview {
@@ -29,6 +33,8 @@ export interface ReviewPreview {
   tasks: PreviewTask[];
   skipped: SkippedCell[];
   promptTokens: number;
+  // Plan-phase calls the run would make; their prompts are in promptTokens.
+  planCalls: number;
   warnings: string[];
 }
 
@@ -51,9 +57,10 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
   });
   const { cells } = planned;
 
+  const plannedBundles = new Set<string>();
   const tasks = cells.map((cell): PreviewTask => {
     const files = cell.bundle.files.map((f) => f.newPath);
-    const prompt = buildReviewPrompt({
+    const input = {
       reviewer: cell.reviewer,
       changeRequest: plan.changeRequest,
       changedFiles: plan.selected,
@@ -61,14 +68,21 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
       rules: resolveRules(files, plan.repoRules, cell.reviewer.rules),
       guidelines: plan.guidelines,
       accepted: memoryFor(files, plan.memory),
-    });
-    return {
+    };
+    const prompt = buildReviewPrompt(input);
+    const task: PreviewTask = {
       taskId: cell.taskId,
       reviewer: cell.reviewer.id,
       bundle: cell.bundle.label,
       files,
-      promptTokens: Math.ceil((prompt.system.length + prompt.user.length) / 4),
+      promptTokens: tokens(prompt),
     };
+    const key = `${cell.reviewer.id}\0${cell.bundle.label}`;
+    if ((options.ultra || isLargeBundle(cell.bundle.files)) && !plannedBundles.has(key)) {
+      plannedBundles.add(key);
+      task.planPromptTokens = tokens(buildReviewPrompt({ ...input, forPlanning: true }));
+    }
+    return task;
   });
 
   const policy = options.bundling ?? defaultBundlePolicy;
@@ -84,7 +98,8 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
       options.grouper === undefined && plan.selected.length >= policy.groupingMinFiles,
     tasks,
     skipped: planned.skipped,
-    promptTokens: tasks.reduce((sum, t) => sum + t.promptTokens, 0),
+    promptTokens: tasks.reduce((sum, t) => sum + t.promptTokens + (t.planPromptTokens ?? 0), 0),
+    planCalls: tasks.filter((t) => t.planPromptTokens !== undefined).length,
     warnings: [
       ...plan.warnings,
       ...(planned.limited?.length
@@ -94,4 +109,9 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
         : []),
     ],
   };
+}
+
+// Four characters per token: an estimate, not a tokenizer.
+function tokens(prompt: { system: string; user: string }): number {
+  return Math.ceil((prompt.system.length + prompt.user.length) / 4);
 }

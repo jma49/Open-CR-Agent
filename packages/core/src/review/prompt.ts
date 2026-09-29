@@ -33,6 +33,9 @@ export interface ReviewPromptInput {
   callers?: readonly SymbolUse[];
   // --ultra: the plan phase's checklist for this bundle.
   plan?: string | undefined;
+  // For the plan phase itself: the same sections without the instruction to
+  // report findings, which the planner must not do.
+  forPlanning?: boolean;
 }
 
 export interface ReviewPrompt {
@@ -67,10 +70,14 @@ export function buildReviewPrompt(input: ReviewPromptInput): ReviewPrompt {
           ]),
         ]
       : []),
-    ocraText(
-      `Review every file in <ocra_review_files>. Report each issue with ${REVIEW_TOOLS.reportFinding} as soon as you confirm it, then call ${REVIEW_TOOLS.taskDone}. Where a file shows "‹ocra_", the file itself has "<ocra_"; quote it that way.`,
-    ),
   );
+  if (!input.forPlanning) {
+    sections.push(
+      ocraText(
+        `Review every file in <ocra_review_files>. Report each issue with ${REVIEW_TOOLS.reportFinding} as soon as you confirm it, then call ${REVIEW_TOOLS.taskDone}. Where a file shows "‹ocra_", the file itself has "<ocra_"; quote it that way.`,
+      ),
+    );
+  }
   return {
     system: `${input.reviewer.systemPrompt}\n\n${TURN_BUDGET}`,
     user: join(sections, "\n\n"),

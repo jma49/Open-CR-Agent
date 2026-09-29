@@ -128,6 +128,7 @@ describe("output contract", () => {
       tasks: [],
       skipped: [],
       promptTokens: 0,
+      planCalls: 0,
       warnings: [],
     } as ReviewPreview;
     expect(Object.keys(toPlanOutput(preview)).sort()).toEqual(
@@ -136,6 +137,7 @@ describe("output contract", () => {
         "changeRequest",
         "excluded",
         "groupingSkipped",
+        "planCalls",
         "promptTokens",
         "selected",
         "skipped",

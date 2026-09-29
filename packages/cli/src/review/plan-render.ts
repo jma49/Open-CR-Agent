@@ -27,7 +27,7 @@ export function renderPlan(preview: ReviewPreview): string {
   const width = Math.max(0, ...preview.tasks.map((t) => t.taskId.length));
   for (const t of preview.tasks) {
     lines.push(
-      `  ${t.taskId.padEnd(width)}  ~${number.format(t.promptTokens)} prompt tokens  ${t.bundle}`,
+      `  ${t.taskId.padEnd(width)}  ~${number.format(t.promptTokens)} prompt tokens${t.planPromptTokens === undefined ? "" : ` + plan ~${number.format(t.planPromptTokens)}`}  ${t.bundle}`,
     );
   }
   if (preview.skipped.length > 0) {
@@ -39,7 +39,7 @@ export function renderPlan(preview: ReviewPreview): string {
   for (const warning of preview.warnings) lines.push(`Warning: ${warning}`);
   lines.push(
     "",
-    `First prompts: ~${number.format(preview.promptTokens)} input tokens in total. This is a floor: agents read files and take several turns, so a run usually uses several times as much, plus verification and judging. No model was called.`,
+    `First prompts: ~${number.format(preview.promptTokens)} input tokens in total${preview.planCalls > 0 ? `, ${preview.planCalls} plan call(s) included` : ""}. This is a floor: agents read files and take several turns, so a run usually uses several times as much, plus verification and judging. No model was called.`,
   );
   return forTerminal(`${lines.join("\n")}\n`);
 }

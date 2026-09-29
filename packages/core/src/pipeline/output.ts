@@ -165,6 +165,8 @@ export function toPlanOutput(preview: ReviewPreview): PlanOutput {
     tasks: preview.tasks,
     skipped: preview.skipped,
     promptTokens: preview.promptTokens,
+    // Added in version 1 without a bump: a new field older readers ignore.
+    planCalls: preview.planCalls,
     warnings: preview.warnings,
   };
 }

@@ -27,9 +27,13 @@ export interface ExecuteOptions {
   taskTimeoutMs: number;
   abortGraceMs?: number | undefined;
   relocate?: AnchorContext["relocate"] | undefined;
+  // One plan per reviewer and bundle, shared by --ultra's two samples.
+  plans?: Map<string, Promise<PlannedBundle>>;
   emit: (event: ReviewEvent) => void;
   signal: AbortSignal;
 }
+
+type PlannedBundle = Awaited<ReturnType<typeof planBundle>>;
 
 // In default mode only bundles large enough that a reviewer's 30 steps may
 // not cover them get a plan phase; --ultra plans every task.
@@ -63,9 +67,23 @@ export async function runJob(
   let prompt = buildReviewPrompt(input);
   if (options.ultra || isLargeBundle(job.bundle.files)) {
     const callers = options.ultra ? await findCallers(job.bundle.files, plan.context) : [];
-    const planned = await planBundle(options.runtime, job.reviewer, prompt, options.signal);
-    extraUsage.push(...planned.usage);
-    if (planned.warning) extraWarnings.push(planned.warning);
+    const key = `${job.reviewer.id}\0${job.bundle.label}`;
+    const shared = options.plans?.get(key);
+    const planning =
+      shared ??
+      planBundle(
+        options.runtime,
+        job.reviewer,
+        buildReviewPrompt({ ...input, forPlanning: true }),
+        options.signal,
+      );
+    if (!shared) options.plans?.set(key, planning);
+    const planned = await planning;
+    // The sample that made the call pays for it and reports its warning.
+    if (!shared) {
+      extraUsage.push(...planned.usage);
+      if (planned.warning) extraWarnings.push(planned.warning);
+    }
     prompt = buildReviewPrompt({ ...input, callers, plan: planned.plan });
   }
 

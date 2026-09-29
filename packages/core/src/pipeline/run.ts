@@ -128,6 +128,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
       relocator &&
       (async (request: RelocationRequest) => (budget.exhausted() ? undefined : relocator(request))),
     ultra: options.ultra === true,
+    plans: new Map(),
     emit,
     signal,
   };
