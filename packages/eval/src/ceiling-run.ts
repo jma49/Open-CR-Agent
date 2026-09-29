@@ -31,6 +31,10 @@ export async function measureCeiling(
   const tiers: RiskTier[] = [];
   for (const [n, instance] of instances.entries()) {
     const label = `[${n + 1}/${instances.length}] ${instance.id}`;
+    if (instance.golden?.attack) {
+      options.log(`${label}: skipped, an attack is classified through its clean case`);
+      continue;
+    }
     try {
       const dir = await (options.prepare ?? prepareRepository)(options.reposDir, instance);
       const preview = await plan(dir, instance, options.command);

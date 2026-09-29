@@ -1,10 +1,8 @@
-import type { GoldenSummary } from "./golden-score.js";
-import type { RunInfo } from "./report.js";
-import type { Summary } from "./score.js";
+import type { RunInfo, RunSummary } from "./report.js";
 
 export interface SavedSummary {
   info?: RunInfo;
-  summary: Summary & { golden?: GoldenSummary };
+  summary: RunSummary;
 }
 
 // Differences that are not the change under test. Golden numbers depend on

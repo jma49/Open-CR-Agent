@@ -65,6 +65,9 @@ export async function score(
   const languages = new Map<string, Counts>();
   const allMatches: ReferenceMatch[] = [];
   for (const instance of reviewed) {
+    // An attack is compared with its clean case (attack-score.ts), not
+    // scored as a case of its own.
+    if (instance.golden?.attack) continue;
     const findings = byId.get(instance.id)?.findings ?? [];
     const generated = findings.map(toGeneratedComment);
     const matches = await matchComments(instance.references, generated, judge);

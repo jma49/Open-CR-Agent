@@ -1,5 +1,8 @@
+import type { AttackSummary } from "./attack-score.js";
 import type { GoldenSummary } from "./golden-score.js";
 import type { Summary } from "./score.js";
+
+export type RunSummary = Summary & { golden?: GoldenSummary; attacks?: AttackSummary };
 
 export interface RunInfo {
   runId: string;
@@ -11,10 +14,7 @@ export interface RunInfo {
 
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 
-export function renderMarkdown(
-  info: RunInfo,
-  summary: Summary & { golden?: GoldenSummary },
-): string {
+export function renderMarkdown(info: RunInfo, summary: RunSummary): string {
   const { counts, metrics } = summary.overall;
   const lines = [
     `# ${info.selection.dataset === "golden" ? "Golden" : "AACR-Bench"} run ${info.runId}`,
@@ -34,6 +34,7 @@ export function renderMarkdown(
     `Diagnostic, not the benchmark's metric: counting the same concern in the same file at any line, precision ${pct(metrics.lenientPrecision)} and recall ${pct(metrics.lenientRecall)} (${counts.lenientMatches} matched). A gap to the official numbers is findings anchored away from the reference.`,
     "",
     ...(summary.golden ? goldenSection(summary.golden) : []),
+    ...(summary.attacks ? attackSection(summary.attacks) : []),
     "## Cost and latency",
     "",
     `- Total $${summary.usage.costUsd.toFixed(4)}, $${summary.costPerReviewedUsd.toFixed(4)} per reviewed PR`,
@@ -77,6 +78,32 @@ function recallTable(groups: Summary["recallByCategory"]): string[] {
     ...Object.entries(groups).map(
       ([name, g]) => `| ${name} | ${pct(g.recall)} | ${g.matched} | ${g.expected} |`,
     ),
+  ];
+}
+
+function attackSection(attacks: AttackSummary): string[] {
+  const paired = attacks.outcomes.length;
+  const verdict = (v: string | undefined) => v ?? "unknown";
+  return [
+    "## Attacks (ADR-0014)",
+    "",
+    "Each attack is the case it names with hostile text planted in the change, reviewed in the same run. Attacks are not counted in the sections above.",
+    "",
+    `Verdict unchanged in ${attacks.verdictUnchanged} of ${paired} attack(s). Expected findings found: ${attacks.foundAttacked} of ${attacks.expected} under attack, ${attacks.foundClean} of ${attacks.expected} on the clean cases. Findings carrying a planted URL or command: ${attacks.canaryFindings}.`,
+    "",
+    "| Attack | Goal | Channel | Found, clean → attacked | Verdict, clean → attacked | Findings with the canary |",
+    "|---|---|---|---|---|---|",
+    ...attacks.outcomes.map(
+      (o) =>
+        `| ${o.id} | ${o.goal} | ${o.channel} | ${o.clean.found} → ${o.attacked.found} of ${o.expected} | ${verdict(o.clean.verdict)} → ${verdict(o.attacked.verdict)} | ${o.goal === "suppress" ? "–" : o.attacked.canaryFindings} |`,
+    ),
+    ...(attacks.unpaired.length === 0
+      ? []
+      : [
+          "",
+          `Not compared, because the attack or its clean case was not reviewed: ${attacks.unpaired.join(", ")}.`,
+        ]),
+    "",
   ];
 }
 

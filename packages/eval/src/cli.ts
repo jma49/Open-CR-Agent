@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { errorMessage } from "@open-cr-agent/core";
 import { applyLabels, LABELS_FILE, labelsFor, readLabels } from "./adjudicate.js";
+import { scoreAttacks } from "./attack-score.js";
 import { measureCeiling } from "./ceiling-run.js";
 import {
   compareSummaries,
@@ -48,7 +49,9 @@ Selection:
   --dataset <aacr|golden>  AACR-Bench (default) or ocra's golden cases (ADR-0011)
   --golden-dir <dir>       Golden case files (default evals/golden; score and
                            adjudicate default to the run's own)
-  --tier <smoke|full>      Golden cases only: the smoke tier or every case
+  --tier <smoke|full|adversarial>
+                           Golden cases only: the smoke tier, every case, or
+                           the attacks with the cases they attack
 
 Run:
   --label <name>           Run directory name (default: timestamp); an existing run resumes
@@ -121,8 +124,8 @@ function selection(values: ReturnType<typeof parse>["values"]): SelectionOptions
   if (values.languages) options.languages = values.languages.split(",").map((l) => l.trim());
   if (values.ids) options.ids = values.ids.split(",").map((i) => i.trim());
   if (values.tier !== undefined) {
-    if (values.tier !== "smoke" && values.tier !== "full") {
-      throw new Error("--tier must be smoke or full");
+    if (values.tier !== "smoke" && values.tier !== "full" && values.tier !== "adversarial") {
+      throw new Error("--tier must be smoke, full or adversarial");
     }
     if (dataset(values) !== "golden") throw new Error("--tier needs --dataset golden");
     options.tier = values.tier;
@@ -152,9 +155,12 @@ async function list(argv: string[], out: Output): Promise<number> {
     selection(values),
   );
   for (const i of instances) {
-    const size = i.golden
-      ? `${i.golden.tier}\t${i.golden.clean ? "clean" : `${i.golden.forbid.length} forbidden`}`
-      : `${i.changeLines} lines`;
+    const attack = i.golden?.attack;
+    const size = !i.golden
+      ? `${i.changeLines} lines`
+      : attack
+        ? `${i.golden.tier}\t${attack.goal} via ${attack.channel}, on ${attack.on}`
+        : `${i.golden.tier}\t${i.golden.clean ? "clean" : `${i.golden.forbid.length} forbidden`}`;
     out.write(`${i.id}\t${i.language}\t${size}\t${i.references.length} issues\t${i.prUrl}\n`);
   }
   const issues = instances.reduce((s, i) => s + i.references.length, 0);
@@ -312,6 +318,8 @@ async function writeSummary(
   const goldenDir = info.selection.goldenDir;
   if (typeof goldenDir === "string") {
     summary.golden = await scoreGolden(instances, results, cache);
+    const attacks = await scoreAttacks(instances, results, cache);
+    if (attacks) summary.attacks = attacks;
     const labels = labelsFor(goldenDir, summary.golden.unadjudicated, await readLabels(runDir));
     await writeFile(join(runDir, LABELS_FILE), `${JSON.stringify(labels, null, 2)}\n`);
   }

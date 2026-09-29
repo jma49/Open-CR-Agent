@@ -80,39 +80,15 @@ export async function scoreGolden(
   const { counts } = summary;
   for (const instance of instances) {
     const result = byId.get(instance.id);
-    if (!instance.golden || result?.status !== "reviewed") continue;
+    // An attack is compared with its clean case (attack-score.ts).
+    if (!instance.golden || instance.golden.attack || result?.status !== "reviewed") continue;
     const findings = result.findings;
-    // An expected finding may be reported at its location or at an
-    // alternate: every variant is matched, and the finding is found once.
-    const variants = instance.references.flatMap((reference, k) => [
-      { k, reference },
-      ...(instance.golden?.alternates[k] ?? []).map((a) => ({
-        k,
-        reference: { ...reference, path: a.path, fromLine: a.fromLine, toLine: a.toLine },
-      })),
-    ]);
-    const matches = await matchComments(
-      variants.map((v) => v.reference),
-      findings.map(toGeneratedComment),
-      judge,
-    );
-    const matched = new Set(matches.flatMap((m) => m.matchedIndex ?? []));
-    const found = new Map<number, OutputFinding>();
-    for (const [i, match] of matches.entries()) {
-      const finding = match.matchedIndex === undefined ? undefined : findings[match.matchedIndex];
-      const k = variants[i]?.k;
-      if (!finding || k === undefined) continue;
-      const earlier = found.get(k);
-      if (!earlier || RANK[finding.severity] > RANK[earlier.severity]) found.set(k, finding);
-    }
+    const { matched, found } = await matchExpected(instance, findings, judge);
     counts.expected += instance.references.length;
     counts.reported += findings.length;
     counts.matched += found.size;
     counts.correct += matched.size;
-    for (const [k, finding] of found) {
-      const required = instance.golden.minSeverity[k] ?? "suggestion";
-      if (RANK[finding.severity] < RANK[required]) counts.underrated += 1;
-    }
+    counts.underrated += found.size - foundAtSeverity(instance, found);
     for (const [index, finding] of findings.entries()) {
       if (matched.has(index)) continue;
       const golden = toGoldenFinding(instance.id, finding);
@@ -162,6 +138,58 @@ async function labelFor(
     if (await judge.sameIssue(label.title, claim)) return label;
   }
   return undefined;
+}
+
+export interface ExpectedMatch {
+  // Indices of reported findings that match an expected one.
+  matched: Set<number>;
+  // Each expected finding that was found, by its index, with its most
+  // severe report.
+  found: Map<number, OutputFinding>;
+}
+
+// An expected finding may be reported at its location or at an alternate:
+// every variant is matched, and the finding is found once.
+export async function matchExpected(
+  instance: Instance,
+  findings: readonly OutputFinding[],
+  judge: SemanticJudge,
+): Promise<ExpectedMatch> {
+  const variants = instance.references.flatMap((reference, k) => [
+    { k, reference },
+    ...(instance.golden?.alternates[k] ?? []).map((a) => ({
+      k,
+      reference: { ...reference, path: a.path, fromLine: a.fromLine, toLine: a.toLine },
+    })),
+  ]);
+  const matches = await matchComments(
+    variants.map((v) => v.reference),
+    findings.map(toGeneratedComment),
+    judge,
+  );
+  const matched = new Set(matches.flatMap((m) => m.matchedIndex ?? []));
+  const found = new Map<number, OutputFinding>();
+  for (const [i, match] of matches.entries()) {
+    const finding = match.matchedIndex === undefined ? undefined : findings[match.matchedIndex];
+    const k = variants[i]?.k;
+    if (!finding || k === undefined) continue;
+    const earlier = found.get(k);
+    if (!earlier || RANK[finding.severity] > RANK[earlier.severity]) found.set(k, finding);
+  }
+  return { matched, found };
+}
+
+// Expected findings found at or above the severity their case asks for.
+export function foundAtSeverity(
+  instance: Instance,
+  found: ReadonlyMap<number, OutputFinding>,
+): number {
+  let count = 0;
+  for (const [k, finding] of found) {
+    const required = instance.golden?.minSeverity[k] ?? "suggestion";
+    if (RANK[finding.severity] >= RANK[required]) count += 1;
+  }
+  return count;
 }
 
 function casesHash(instances: readonly Instance[]): string {

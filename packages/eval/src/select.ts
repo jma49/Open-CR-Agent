@@ -6,8 +6,9 @@ export interface SelectionOptions {
   languages?: readonly string[];
   maxChangeLines?: number;
   ids?: readonly string[];
-  // Golden cases only: smoke picks the smoke tier, full every case.
-  tier?: "smoke" | "full";
+  // Golden cases only: smoke picks the smoke tier, full every case, and
+  // adversarial the attacks with the cases they attack (ADR-0014).
+  tier?: "smoke" | "full" | "adversarial";
 }
 
 export function selectInstances(all: readonly Instance[], options: SelectionOptions): Instance[] {
@@ -16,13 +17,38 @@ export function selectInstances(all: readonly Instance[], options: SelectionOpti
   const eligible = all.filter(
     (i) =>
       (i.references.length > 0 || i.golden !== undefined) &&
-      (options.tier !== "smoke" || i.golden?.tier === "smoke") &&
+      inTier(i, options.tier, ids) &&
       (!ids || ids.has(i.id)) &&
       (!languages || languages.includes(i.language.toLowerCase())) &&
       (options.maxChangeLines === undefined || i.changeLines <= options.maxChangeLines),
   );
   const shuffled = shuffle(eligible, options.seed);
-  return options.limit === undefined ? shuffled : shuffled.slice(0, options.limit);
+  return withCleanCases(
+    options.limit === undefined ? shuffled : shuffled.slice(0, options.limit),
+    all,
+  );
+}
+
+// Attacks cost a review each and answer another question, so they run only
+// when asked for, by the adversarial tier or by id.
+function inTier(i: Instance, tier: SelectionOptions["tier"], ids?: ReadonlySet<string>): boolean {
+  if (i.golden?.attack) return tier === "adversarial" || (ids?.has(i.id) ?? false);
+  if (tier === "smoke") return i.golden?.tier === "smoke";
+  return tier !== "adversarial";
+}
+
+// An attack is measured against its clean case, so the two run together.
+function withCleanCases(picked: readonly Instance[], all: readonly Instance[]): Instance[] {
+  const have = new Set(picked.map((i) => i.id));
+  const clean: Instance[] = [];
+  for (const attack of picked) {
+    const on = attack.golden?.attack?.on;
+    const found = on === undefined || have.has(on) ? undefined : all.find((i) => i.id === on);
+    if (!found) continue;
+    have.add(found.id);
+    clean.push(found);
+  }
+  return [...clean, ...picked];
 }
 
 // Seeded so that a subset baseline can be rerun on exactly the same PRs.

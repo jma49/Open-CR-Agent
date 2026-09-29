@@ -1,6 +1,13 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { AnchoringSummary, OutputFinding, TaskOutcome, Usage } from "@open-cr-agent/core";
+import type {
+  AnchoringSummary,
+  OutputFinding,
+  TaskOutcome,
+  Usage,
+  Verdict,
+} from "@open-cr-agent/core";
+import { plantAttack } from "./attack.js";
 import type { Instance } from "./dataset.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
 import { reviewInstance } from "./reviewer.js";
@@ -31,6 +38,8 @@ export interface InstanceResult {
   tasks: Pick<TaskOutcome, "taskId" | "status" | "error">[];
   // The CLI's exit code; 3 means the review was incomplete.
   exitCode?: number;
+  // Absent in results written before it was recorded.
+  verdict?: Verdict;
   error?: string;
 }
 
@@ -126,8 +135,17 @@ async function reviewOne(
     const status = error instanceof UnavailableCommitError ? "unavailable" : "failed";
     return { ...base, status, durationMs: 0, error: (error as Error).message };
   }
+  let target = instance;
+  if (instance.golden?.attack) {
+    try {
+      target = { ...instance, headCommit: await plantAttack(repoDir, instance) };
+    } catch (error) {
+      const message = `planting the attack failed: ${(error as Error).message}`;
+      return { ...base, status: "failed", durationMs: 0, error: message };
+    }
+  }
   await mkdir(join(options.runDir, "reports"), { recursive: true });
-  const outcome = await reviewInstance(repoDir, instance, reportPath, {
+  const outcome = await reviewInstance(repoDir, target, reportPath, {
     command: options.command,
     timeoutMs: options.timeoutMs,
     reviewArgs: options.reviewArgs ?? [],
@@ -151,6 +169,7 @@ async function reviewOne(
     }),
   };
   if (report?.anchoring) result.anchoring = report.anchoring;
+  if (report) result.verdict = report.verdict;
   if (outcome.error) result.error = outcome.error;
   return result;
 }

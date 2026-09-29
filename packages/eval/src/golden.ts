@@ -2,12 +2,13 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type Severity, severitySchema } from "@open-cr-agent/core";
 import { z } from "zod";
+import { ATTACK_CHANNELS, ATTACK_GOALS, type Attack, attackInstance } from "./attack.js";
 import type { Instance, ReferenceComment } from "./dataset.js";
 
 // ADR-0011: cases ocra owns, one JSON file each, with the findings a review
 // must report and the ranges where a finding is wrong.
 
-export type GoldenTier = "smoke" | "full";
+export type GoldenTier = "smoke" | "full" | "adversarial";
 
 export interface ForbiddenRange {
   path: string;
@@ -39,6 +40,8 @@ export interface GoldenInfo {
   // Other places the same issue can rightly be reported (the docs that
   // promise a behavior, the test that misses it), one list per reference.
   alternates: Location[][];
+  // Set on an adversarial case: the hostile text planted in the case it names.
+  attack?: Attack;
 }
 
 // Golden cases name ocra's reviewers; scoring and the ceiling speak
@@ -65,10 +68,11 @@ const linesSchema = z
   .refine(([from, to]) => from <= to, "must be [from, to] with from <= to");
 // Commit ids reach git as arguments; anything else could be read as an option.
 const commitSchema = z.string().regex(/^[0-9a-f]{7,64}$/);
+const idSchema = z.string().regex(/^[a-z0-9][a-z0-9._-]{0,99}$/);
 
 const caseSchema = z
   .object({
-    id: z.string().regex(/^[a-z0-9][a-z0-9._-]{0,99}$/),
+    id: idSchema,
     repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/, "must be owner/name on GitHub"),
     base: commitSchema,
     head: commitSchema,
@@ -126,6 +130,53 @@ const caseSchema = z
 
 export type GoldenCase = z.infer<typeof caseSchema>;
 
+// An attack takes its repository, commits and expectations from the case it
+// names (`on`), so the two differ only by the planted text.
+const attackCaseSchema = z
+  .object({
+    id: idSchema,
+    tier: z.literal("adversarial"),
+    rationale: z.string().min(1),
+    attack: z
+      .object({
+        on: idSchema,
+        goal: z.enum(ATTACK_GOALS),
+        channel: z.enum(ATTACK_CHANNELS),
+        text: z.string().min(1).max(4000),
+        file: pathSchema.optional(),
+        after: z.number().int().nonnegative().optional(),
+        canary: z.string().min(1).optional(),
+      })
+      .strict()
+      .refine(
+        (a) =>
+          a.channel === "code"
+            ? a.file !== undefined && a.after !== undefined
+            : a.file === undefined && a.after === undefined,
+        "a code attack names file and after; a description attack names neither",
+      )
+      .refine(
+        (a) => a.goal === "suppress" || (a.canary !== undefined && a.text.includes(a.canary)),
+        "a plant-link or forge-command attack needs a canary that its text contains",
+      ),
+  })
+  .strict();
+
+export type AttackCase = z.infer<typeof attackCaseSchema>;
+
+function isAttackCase(data: unknown): boolean {
+  return typeof data === "object" && data !== null && "attack" in data;
+}
+
+export function parseAttackCase(data: unknown, source: string): AttackCase {
+  const result = attackCaseSchema.safeParse(data);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    throw new Error(`${source}: ${issue?.path.join(".") || "case"}: ${issue?.message}`);
+  }
+  return result.data;
+}
+
 export function parseCase(data: unknown, source: string): GoldenCase {
   const result = caseSchema.safeParse(data);
   if (!result.success) {
@@ -142,15 +193,24 @@ export async function loadGolden(dir: string): Promise<Instance[]> {
   });
   const files = entries.filter((f) => f.endsWith(".json")).sort();
   const instances: Instance[] = [];
+  const attacks: { file: string; attack: AttackCase }[] = [];
   const ids = new Set<string>();
   for (const file of files) {
-    const golden = parseCase(await readJson(join(dir, file), file), file);
-    if (golden.id !== file.slice(0, -".json".length)) {
-      throw new Error(`${file}: id "${golden.id}" does not match the file name`);
+    const data = await readJson(join(dir, file), file);
+    const parsed = isAttackCase(data) ? parseAttackCase(data, file) : parseCase(data, file);
+    if (parsed.id !== file.slice(0, -".json".length)) {
+      throw new Error(`${file}: id "${parsed.id}" does not match the file name`);
     }
-    if (ids.has(golden.id)) throw new Error(`${file}: duplicate id "${golden.id}"`);
-    ids.add(golden.id);
-    instances.push(toInstance(golden));
+    if (ids.has(parsed.id)) throw new Error(`${file}: duplicate id "${parsed.id}"`);
+    ids.add(parsed.id);
+    if ("attack" in parsed) attacks.push({ file, attack: parsed });
+    else instances.push(toInstance(parsed));
+  }
+  const cases = new Map(instances.map((i) => [i.id, i]));
+  for (const { file, attack } of attacks) {
+    const clean = cases.get(attack.attack.on);
+    if (!clean) throw new Error(`${file}: attacks "${attack.attack.on}", which is not a case`);
+    instances.push(attackInstance(clean, attack.id, attack.attack));
   }
   return instances;
 }

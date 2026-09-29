@@ -15,5 +15,6 @@
 | [0011](0011-golden-eval-set.md) | Quality decisions on an ocra-owned golden set (expected findings, forbidden ranges, recorded adjudication); AACR-Bench stays the external number |
 | [0012](0012-golden-labels-per-claim.md) | A golden label belongs to one claim about the code, not to every finding that quotes it |
 | [0013](0013-fork-pull-requests.md) | Pull requests from forks run on `pull_request_target`; ocra runs nothing from a pull request |
+| [0014](0014-adversarial-golden-cases.md) | Adversarial golden cases: hostile text planted in a golden case, measured against the case itself |
 
 Copy [0000-template.md](0000-template.md) to add a new record.
