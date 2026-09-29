@@ -40,13 +40,16 @@ Goal: move recall without giving back precision, measured on the golden set and 
 - Then context: #144's callers of changed symbols, and whether reviewers use their step budget (some stop after 8 steps).
 - Budget: about $80.
 
-### M7 — Ship v0.1 (in progress)
+### M7 — Ship v0.1 (published 2026-09-29; dogfooding next)
 
 Goal: someone other than the maintainer can install and use ocra in five minutes.
 
-- Publish to npm and tag v0.1.0; a one-line install in the README and quickstart. Ready on 2026-09-28: every package at 0.1.0 with a README and the license, `scripts/release.mjs`, a trusted-publishing workflow and the runbook, `docs/releasing.md`. The maintainer publishes 0.1.0 by hand once (npm trusts a workflow only for packages that exist); later releases publish from GitHub releases. The install documentation merges right after the first publish.
-- Dogfood: the Action on the maintainer's other repositories and on ocra itself (#67, a live pull request), for a month; every dismissal and confirmed finding there feeds the golden set.
-- Publish the evaluation: method, golden and AACR-Bench numbers, cost per review, and the known limits, on the site.
+- Done on 2026-09-29.
+  - `@open-cr-agent/cli` and its four library packages are on npm at 0.1.0. The first publish was by hand; later releases publish from GitHub releases through trusted publishing, and token publishing is disallowed.
+  - The GitHub release is v0.1.0.
+  - The README and quickstart install with one line (#234).
+- Dogfood: the Action on the maintainer's other repositories and on ocra itself (#67, a live pull request), for a month; every dismissal and confirmed finding there feeds the golden set. This needs a model credential as a CI secret, which the maintainer has not approved yet.
+- Publish the evaluation: done in the manual (#232, the quality page), and live once the site is deployed.
 
 ### M8 — Own the untrusted-PR niche
 
