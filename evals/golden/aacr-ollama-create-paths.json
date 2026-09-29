@@ -111,6 +111,12 @@
       "label": "invalid",
       "reason": "Defense in depth only: adapter keys still pass the os.Root containment check and errFilePath returns 400 (checked by the agent, 2026-09-29)",
       "title": "Validation of r.Adapters paths is deferred, allowing expensive base model loading before failing"
+    },
+    {
+      "fingerprint": "165fe552fc6f1d23",
+      "label": "invalid",
+      "reason": "Defense in depth only: adapter keys still pass the os.Root containment check and errFilePath returns 400; the same claim is labeled invalid under three other fingerprints (checked by the agent, 2026-09-29)",
+      "title": "Lack of early validation and cleaning for r.Adapters"
     }
   ]
 }

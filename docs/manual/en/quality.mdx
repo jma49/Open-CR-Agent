@@ -6,19 +6,19 @@ description: What ocra found and missed on its golden cases and on AACR-Bench, h
 This page reports what ocra's evaluation runs have measured so far, how they were scored, and their limits. The sample is small and every run used one model family, so read [Limits](#limits) before relying on a number.
 
 <Callout>
-On 8 changes with 15 known issues, the current configuration found **7 (47%)** in its one run, and **all 7 findings it reported were correct**. It found 5 of the 6 issues the cases rate as warnings and 2 of the 9 rated as suggestions. Use ocra as a second reviewer: read what it reports, and do not take an empty report as approval.
+On 8 changes with 16 known issues, the current configuration found **7 (44%)** in its one run, and **all 7 findings it reported were correct**. It found 5 of the 6 issues the cases rate as warnings and 2 of the 10 rated as suggestions. Use ocra as a second reviewer: read what it reports, and do not take an empty report as approval.
 </Callout>
 
 ## How it is measured
 
 `ocra-eval` runs the real `ocra review` on changes pinned at fixed commits and scores what it reports ([Evaluation](./evaluation) shows how to run it). There are two datasets:
 
-- **Golden cases** ([ADR-0011](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)) belong to ocra. Each case pins a public repository at two commits and lists the issues ocra must report, other places where the same issue may rightly be reported, ranges where a finding would be wrong, or that the change has no issue at all. Every run so far used the *smoke* tier: 8 cases with 15 expected issues. The *full* tier adds 4 cases and has not been run yet.
+- **Golden cases** ([ADR-0011](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)) belong to ocra. Each case pins a public repository at two commits and lists the issues ocra must report, other places where the same issue may rightly be reported, ranges where a finding would be wrong, or that the change has no issue at all. Every run so far used the 8 cases the *smoke* tier had then, now with 16 expected issues. The smoke tier has since grown to 10 cases and the *full* tier to 16; neither has been run as it is now.
 - **[AACR-Bench](https://github.com/alibaba/aacr-bench)** is an external benchmark of real pull requests; its ground truth is the comments human reviewers left. It is the number comparable with published results.
 
-| Smoke tier | Cases | Expected issues | Languages |
+| The 8 cases these runs used | Cases | Expected issues | Languages |
 |---|---|---|---|
-| Changes from ocra's own history: bugs fixed later, and one change with no issue | 4 | 6 | TypeScript |
+| Changes from ocra's own history: bugs fixed later, and one change with no issue | 4 | 7 | TypeScript |
 | AACR-Bench pull requests, with issues checked against the code | 4 | 9 | C#, C++, Go, TypeScript |
 
 On the golden cases, a finding matches an expected issue when it is in the same file, at most one line from the expected lines or from one of the other places, and a judge model says it describes the same concern.
@@ -37,37 +37,37 @@ Every run used Gemini on Vertex AI: `gemini-3.5-flash` for the reviewers and ver
 
 One run on 2026-09-29 (UTC), with ocra's default settings as of `main` at [`664c850`](https://github.com/jma49/Open-CR-Agent/commit/664c850893a7016dcf13f993e8c52ba43b3526ba) plus the 30-step limit per review agent merged right after it ([`f966d83`](https://github.com/jma49/Open-CR-Agent/commit/f966d83e5e385d75ae0285401c342228da59e13f)):
 
-- **Found 7 of the 15 expected issues (47%):** 5 of the 6 the cases rate as warnings, 2 of the 9 rated as suggestions. No case expects a critical issue.
+- **Found 7 of the 16 expected issues (44%):** 5 of the 6 the cases rate as warnings, 2 of the 10 rated as suggestions. No case expects a critical issue.
 - **Reported 7 findings, all correct (7 of 7, 100%)**, and nothing on the change with no issue.
 - **Cost $12.53** for the 8 changes: $1.57 each on average (median $1.15, from $0.07 to $3.98). A review took 243 seconds at the median and 437 at the 90th percentile.
 
 It found header declarations and callers out of step with their definitions, which breaks the build (FreeCAD, C++); a test's monitor container left on the public image when its server container moved to a mirror (ASP.NET Core, C#); files created before their parent directory exists (Ollama, Go); an import of a name the module does not export, which breaks the build (RAGFlow, TypeScript); and three bugs from ocra's history: documentation promising a `.gitignore` that no code writes, a helper function registered as a plugin, and reference-style Markdown links through which model-written text could still put live links into pull request comments.
 
-It missed three bugs from ocra's history (a temporary copy of the git index with a new modification time, so a file edited in the same second as the real index can look unchanged and be left out of the review; a blocking verdict returned before a new coverage check; unchanged files counted as not reviewed), four smaller validation, error-handling and test issues in Ollama, and missing translation keys in RAGFlow.
+It missed four bugs from ocra's history (a temporary copy of the git index with a new modification time, so a file edited in the same second as the real index can look unchanged and be left out of the review; a blocking verdict returned before a new coverage check; unchanged files counted as not reviewed; a run counted as reviewing nothing when one reviewer failed on files another had finished), four smaller validation, error-handling and test issues in Ollama, and missing translation keys in RAGFlow.
 
 ### Where the expected issues come from
 
-Recall depends on which issues are expected. Four of the 15 were written from bugs fixed in ocra's history, before any run; the current configuration found 2 of them. The other 11 were added after an ocra run reported them and a check against the code confirmed them: 5 from runs on AACR-Bench pull requests, 6 from runs on these cases, one of them the run above. On those 11, recall shows whether ocra finds again what it has found before; it found 5.
+Recall depends on which issues are expected. Four of the 16 were written from bugs fixed in ocra's history, before any run; the current configuration found 2 of them. The other 12 were added after an ocra run reported them and a check against the code confirmed them: 5 from runs on AACR-Bench pull requests, 7 from runs on these cases, one of them the run above. On those 12, recall shows whether ocra finds again what it has found before; it found 5.
 
 ### Every run
 
-All runs on the 8-case smoke tier, scored against today's cases and labels so that they compare. Three earlier runs, on its first 4 cases, each found 1 of those cases' 6 expected issues and reported nothing wrong. Runs that only checked mechanics, or compared a change on a handful of AACR-Bench pull requests, are left out.
+All runs on those 8 cases, scored against today's cases and labels so that they compare. Three earlier runs, on the first 4 of them, each found 1 of those cases' 7 expected issues and reported nothing wrong. Runs that only checked mechanics, or compared a change on a handful of AACR-Bench pull requests, are left out.
 
 | Date (UTC, 2026) | Configuration | Found | Precision | Cost per change |
 |---|---|---|---|---|
-| 09-28 | 20 steps per review agent | 6/15 (40%) | 6/7 (86%) | $1.16 |
-| 09-28 | The same, run again | 6/15 (40%) | 7/7 (100%) | $0.97 |
-| 09-28 | 30 steps per review agent | 7/15 (47%) | 7/8 (88%) | $1.06 |
-| 09-28 | The same, run again; 7 of the 8 changes (spend limit) | 7/14 (50%) | 9/9 (100%)¹ | $1.77 |
-| 09-28 | 20 steps, with prompt-injection boundaries | 4/15 (27%) | 4/5 (80%) | $1.33 |
-| 09-29 | The current configuration | 7/15 (47%) | 7/7 (100%) | $1.57 |
-| 09-29 | A later `main` plus a prompt change that was not merged | 6/15 (40%)² | 8/9 (89%) | $1.26 |
+| 09-28 | 20 steps per review agent | 6/16 (38%) | 6/7 (86%) | $1.16 |
+| 09-28 | The same, run again | 6/16 (38%) | 7/7 (100%) | $0.97 |
+| 09-28 | 30 steps per review agent | 7/16 (44%) | 7/8 (88%) | $1.06 |
+| 09-28 | The same, run again; 7 of the 8 changes (spend limit) | 8/15 (53%)¹ | 8/9 (89%) | $1.77 |
+| 09-28 | 20 steps, with prompt-injection boundaries | 4/16 (25%) | 4/5 (80%) | $1.33 |
+| 09-29 | The current configuration | 7/16 (44%) | 7/7 (100%) | $1.57 |
+| 09-29 | A later `main` plus a prompt change that was not merged | 6/16 (38%)² | 8/9 (89%) | $1.26 |
 
-¹ Scored 9 of 9 while a label still applied to every finding that quoted the labeled code. One of the nine repeats a claim labeled invalid in other runs, but quotes the same code as a finding labeled valid; counted as invalid, precision is 8 of 9 (89%). Labels now apply only to the claim they were recorded for, and this run is not yet scored again under that rule.
+¹ The 16th expected issue was taken from this run.
 
 ² One more expected issue was found below the severity its case asks for.
 
-Both configurations that ran twice found the same number of issues each time, and their precision differed by one finding. Two runs cannot show the real spread, so treat a difference of one or two issues between configurations as noise.
+Both configurations that ran twice found about the same number of issues each time (6 and 6, 7 and 8), and their precision differed by one finding. Two runs cannot show the real spread, so treat a difference of one or two issues between configurations as noise.
 
 ## AACR-Bench
 
@@ -96,8 +96,8 @@ Cost grows with the size of the change and with the reviewers its risk tier runs
 
 ## Limits
 
-- **Small.** 8 changes and 15 expected issues, of which only 4 were written independently of ocra's own findings. The current configuration ran once, and the full tier has not run.
-- **Not independent.** The cases and labels are the project's own. The labels so far were made by an AI agent working on ocra, which checked each finding against the code and recorded its reason. A second model (Claude Fable 5.1), not told the labels, re-judged 5 of the 11 against the code and agreed with all 5 ([spot-check](https://github.com/jma49/Open-CR-Agent/blob/main/docs/audits/2026-09-29-label-spot-check.md)); no person outside the project has reviewed them. Recent changes, the 30-step limit among them, were chosen on these cases, which flatters the current configuration.
+- **Small.** 8 changes and 16 expected issues, of which only 4 were written independently of ocra's own findings. The current configuration ran once, and the full tier has not run.
+- **Not independent.** The cases and labels are the project's own. The labels so far were made by an AI agent working on ocra, which checked each finding against the code and recorded its reason. A second model (Claude Fable 5.1), not told the labels, re-judged 5 of the 11 labels recorded by then against the code and agreed with all 5 ([spot-check](https://github.com/jma49/Open-CR-Agent/blob/main/docs/audits/2026-09-29-label-spot-check.md)); no person outside the project has reviewed them. Recent changes, the 30-step limit among them, were chosen on these cases, which flatters the current configuration.
 - **A model decides matches.** Whether a finding describes an expected issue is decided by `gemini-flash-lite-latest`. Its answers are cached, so scoring the same run again gives the same result, but another judge could decide differently.
 - **One model family.** Every run used Gemini on Vertex AI. Other models will score differently.
 - **Runs vary.** Two runs of the same configuration differed by one finding in precision.
@@ -111,8 +111,8 @@ ocra finds real bugs and so far has rarely reported something wrong, but it miss
 
 ## Reproduce
 
-The cases and their labels are in [`evals/golden`](https://github.com/jma49/Open-CR-Agent/tree/main/evals/golden). With models configured as in [Evaluation](./evaluation), a smoke-tier run cost $8 to $13 at list prices:
+The cases and their labels are in [`evals/golden`](https://github.com/jma49/Open-CR-Agent/tree/main/evals/golden). With models configured as in [Evaluation](./evaluation), a run on the 8 cases above cost $8 to $13 at list prices; the smoke tier now has 10:
 
 ```bash
-node packages/eval/dist/main.js run --dataset golden --tier smoke --label mine --max-cost-usd 15 --pr-max-cost-usd 4
+node packages/eval/dist/main.js run --dataset golden --tier smoke --label mine --max-cost-usd 20 --pr-max-cost-usd 6
 ```

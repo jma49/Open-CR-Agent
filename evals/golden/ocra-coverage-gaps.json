@@ -54,6 +54,17 @@
       "minSeverity": "suggestion",
       "concern": "Reference-Style Markdown Link Bypass in safeMarkdown",
       "also": []
+    },
+    {
+      "file": "packages/core/src/pipeline/report.ts",
+      "lines": [
+        22,
+        26
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "Incorrect nothingReviewed evaluation in multi-reviewer scenarios with partial task failures",
+      "also": []
     }
   ],
   "forbid": [],
@@ -70,6 +81,12 @@
       "label": "valid",
       "reason": "Real: safeMarkdown at this commit broke inline links only, so [text][1] with a [1]: definition still rendered a link whose label differs from its target; fixed later by 0981bbd (checked by the agent, 2026-09-29)",
       "title": "Reference-Style Markdown Link Bypass in safeMarkdown"
+    },
+    {
+      "fingerprint": "fba002ba3779d359",
+      "label": "valid",
+      "reason": "Real: a file counts as failed when any of its reviewers' tasks failed, even if another reviewer finished it, so a run where one reviewer completes every file and another fails reports nothing reviewed, replaces the summary and suppresses judge_finished; still on main (checked against the code by the agent, 2026-09-29)",
+      "title": "Incorrect nothingReviewed evaluation in multi-reviewer scenarios with partial task failures"
     }
   ]
 }
