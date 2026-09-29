@@ -25,6 +25,24 @@ State of the project as of 2026-09-29, for whoever picks it up next (human or ag
 
 **M1–M4 are implemented, quality is measured on a small golden set, and v0.1.1 is on npm** (`npm run verify` green).
 
+**Roadmap work of 2026-09-29 (evening): six pull requests wait for the maintainer.** The auto-mode classifier refused the agent's merge of its own green pull request ("Merge Without Review"), so none of these is merged. All six have `verify` and `packages` green. None spends credit.
+
+| PR | Roadmap | What |
+|---|---|---|
+| #250 | M5 | The recall-ceiling report names its dataset (`# Recall ceiling, AACR-Bench` / `golden cases`) |
+| #251 | M5, closes #235 | A golden label applies only to the claim it was recorded for: same title, or a reworded one the eval judge calls the same claim (ADR-0012). The quality page keeps its numbers until the recorded runs are rescored |
+| #252 | M8 | OpenCode runs in its own empty workspace, not the reviewed checkout. Before, `OPENCODE_DISABLE_PROJECT_CONFIG` alone kept a checkout's `.opencode/` plugins and tools from running (proved against the real binary). New real-binary test with a control |
+| #253 | M8 | Manual: threat-model page, and a gated `pull_request_target` recipe for pull requests from forks (ADR-0013). **Changes a security recommendation**; the maintainer should read it |
+| #254 | M8 | Model text and ocra's own summary can never form `/ocra override`. With a person's token and the default `botLogin`, a judge summary could override a blocking verdict |
+| #256 | M8 | Adversarial golden tier (ADR-0014): six attacks on four smoke cases, planted as deterministic commits and scored against their clean case. Not run |
+
+Merge notes:
+- #251 and #256 both edit neighbouring lines of `packages/eval/src/golden-score.ts`, so the second one merged needs a small rebase. Both add the same `golden.fakes.ts` and `tsconfig` line, which merge cleanly.
+- #253 describes what `main` already does, so it does not depend on #252.
+- #255 (repository hygiene) comes from another session. Of the files here, it touches only `docs/handoff.md`.
+
+After merging: rebuild the site locally and deploy. #253 adds a manual page, and #251, #252, #254 and #256 change manual pages. Deploy from `ocra-site` with `../ocra` on `main`: the deploy syncs the local checkout.
+
 **v0.1.0 (2026-09-29).** The maintainer decided to ship without further evaluation: prompts stay as they are on `main` (no prompt change without an eval run), paid benchmark runs stop, and the rest of the Vertex credit goes to real reviews, down to a floor of $100 (see Credit below). Done:
 - #233: every workspace at 0.1.0, exact internal pins, npm metadata, a README per package, `scripts/release.mjs`, the release workflow (tag = version, skips versions already published), CHANGELOG. The workflow's CI dry run passed.
 - #236: the pre-publish audit ([audit](audits/2026-09-29-release-0.1.0.md)). Verdict: safe to publish, no P0/P1. It fixed `engines` (undici 8 needs Node ≥22.19), the OpenCode binary order on musl and non-AVX2 machines, and the README's missing `top` model. Tarballs were installed three ways and started OpenCode without a model call.
@@ -139,8 +157,12 @@ Open work, in order:
 5. Publishing to npm: see v0.1.0 above. Follow-ups recorded in `docs/releasing.md`:
    - move `check:packages` out of the job whose output is published;
    - a GitHub environment for the publish job;
-   - `action.yml` installing from npm;
+   - require provenance for our five packages in the Action's install;
    - a fallback to `opencode-ai/bin/` under `--omit=optional`.
+6. M8 (untrusted pull requests), after the PRs above merge:
+   - the first adversarial run, `ocra-eval run --dataset golden --tier adversarial` (10 reviews, about $12; needs budget, see the open questions);
+   - a live check of the fork recipe on a real fork pull request (`docs/pending-verification.md`);
+   - talking to three maintainers who take outside contributions.
 
 ## Environment notes
 
@@ -166,5 +188,9 @@ Everything that already bit us (OpenCode quirks, git, eval, tooling, the site) i
 
 ## Open questions for the maintainer
 
-1. Should the unused $24 of Assay's and vouch's shares move to jmos (`OCRA_REVIEW_BUDGET_USD`)? The total stays $60.
-2. Done: the golden-label spot-check. The maintainer delegated it to a second model rather than judging by hand. Claude Fable 5.1, blind to the labels, agreed with all 5 of the 5 sampled out of 11 (3 valid, 2 invalid). It also called two valid findings' severities overstated, and found the RAGFlow case's expected issue unprompted ([audit](audits/2026-09-29-label-spot-check.md)). The quality page says so. The private page https://claude.ai/artifact/KBtmds54VF11D9LZCt68cV stays unfilled. Still unchecked: the 6 other labels and the 11 expected issues added from ocra's own findings.
+1. Merge #250–#254 and #256, or allow the agent to merge its own green pull requests (the auto-mode classifier refuses it now). #253 changes a security recommendation, from "never use `pull_request_target`" to a gated recipe, and deserves a read first.
+2. Paid runs, both outside today's allocation:
+   - Rescoring the recorded golden runs under #251's rule asks the judge a few new questions, well under $0.01.
+   - The first adversarial run is about $12. The credit above the $100 floor is the $60 dogfood budget plus $6 of margin, so it needs part of that budget or a lower floor.
+3. Should the unused $24 of Assay's and vouch's shares move to jmos (`OCRA_REVIEW_BUDGET_USD`)? The total stays $60.
+4. Done: the golden-label spot-check. The maintainer delegated it to a second model rather than judging by hand. Claude Fable 5.1, blind to the labels, agreed with all 5 of the 5 sampled out of 11 (3 valid, 2 invalid). It also called two valid findings' severities overstated, and found the RAGFlow case's expected issue unprompted ([audit](audits/2026-09-29-label-spot-check.md)). The quality page says so. The private page https://claude.ai/artifact/KBtmds54VF11D9LZCt68cV stays unfilled. Still unchecked: the 6 other labels and the 11 expected issues added from ocra's own findings.
