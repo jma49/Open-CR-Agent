@@ -1,6 +1,6 @@
 {
   "name": "@open-cr-agent/vcs-gitlab",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "GitLab merge request adapter for Open-CR-Agent",
   "keywords": [
     "code-review",
@@ -30,8 +30,8 @@
     "!dist/**/*.map"
   ],
   "dependencies": {
-    "@open-cr-agent/core": "0.1.2",
-    "@open-cr-agent/vcs-platform": "0.1.2",
+    "@open-cr-agent/core": "0.2.0",
+    "@open-cr-agent/vcs-platform": "0.2.0",
     "zod": "^4.6.5"
   },
   "publishConfig": {

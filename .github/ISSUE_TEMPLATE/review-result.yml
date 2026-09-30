@@ -42,4 +42,4 @@ body:
     id: version
     attributes:
       label: ocra version and models
-      placeholder: 0.1.2, google-vertex/gemini-3.5-flash
+      placeholder: 0.2.0, google-vertex/gemini-3.5-flash
