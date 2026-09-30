@@ -197,5 +197,22 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
         [A]: ["The caller checks this first."],
       });
     });
+
+    it("posts no line a platform would run as a command", async () => {
+      const conversation = fixture.conversation({});
+      const text = "Fix it.\n/approve\n  /merge\n/close\n/label ~bug\n/ocra dismiss";
+      await conversation.review.publish(
+        report(
+          [finding(A, { title: "/unapprove", body: text, suggestion: text })],
+          `Summary.\n/merge\n${text}`,
+        ),
+      );
+      const posted = [...conversation.inline(), conversation.summary()];
+      expect(conversation.inline()).toHaveLength(1);
+      for (const body of posted) {
+        expect(body).not.toMatch(/^[ \t]*\//m);
+        expect(body).not.toMatch(/\/ocra/);
+      }
+    });
   });
 }

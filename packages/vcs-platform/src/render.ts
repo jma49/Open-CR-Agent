@@ -74,7 +74,10 @@ const VERDICT: Record<ReviewReport["verdict"], string> = {
 
 // Model text is untrusted: it may not close our markup, mention people,
 // pull in images, spell one of ocra's commands (`/ocra …`, which would count
-// if ocra posted as a person with write access), or become a link at all. A
+// if ocra posted as a person with write access), start a line with a slash
+// (GitLab runs a line such as `/merge` or `/approve` in a comment as a quick
+// action, with the rights of the token that posted it), or become a link at
+// all. A
 // pull request can plant an address for a reviewer to repeat (the adversarial
 // probe saw one), and a bot comment lends it credibility. Inline links lose
 // their `](`, and every `]:` is escaped, so no link reference definition
@@ -90,6 +93,7 @@ export function safeMarkdown(text: string): string {
     .replace(/@(?=[A-Za-z0-9-])/g, "@\u200b")
     .replace(/!\[/g, "!\u200b[")
     .replace(/\/(?=ocra)/gi, "/\u200b")
+    .replace(/^([ \t]*)\//gm, "$1\u200b/")
     .replace(/\b(https?|ftp)(?=:\/\/)/gi, "$1\u200b")
     .replace(/\bwww(?=\.)/gi, "www\u200b")
     .replaceAll("](", "]\\(")
