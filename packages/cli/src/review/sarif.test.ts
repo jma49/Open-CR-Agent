@@ -187,6 +187,11 @@ describe("plainText", () => {
     );
   });
 
+  it("doubles braces, which SARIF reserves for placeholders", () => {
+    // Code scanning showed "{{0}}" as "{0}" (an upload on 2026-09-30).
+    expect(plainText("format({0}) with {name} }")).toBe("format({{0}}) with {{name}} }}");
+  });
+
   it("keeps other text as it is", () => {
     expect(plainText("Use a <= b; a@b.c; `code`")).toBe("Use a <= b; a@b.c; `code`");
   });

@@ -174,11 +174,13 @@ function location(file: string, lines?: { start: number; end: number }) {
 // reviewed change or a model must do neither: every backslash and bracket is
 // escaped, backslashes first so a planted "\[" cannot undo the escape, and
 // web addresses get a zero-width space in their scheme or after "www", as in
-// pull request comments (vcs-github's safeMarkdown, which also handles
-// markup SARIF text does not have).
+// pull request comments (vcs-platform's safeMarkdown, which also handles
+// markup SARIF text does not have). Braces are doubled, since "{0}" is a
+// placeholder (SARIF 3.11.5); GitHub shows "{{" as "{".
 export function plainText(text: string): string {
   return text
     .replace(/[\\[\]]/g, (c) => `\\${c}`)
+    .replace(/[{}]/g, (c) => c + c)
     .replace(/\b(https?|ftp)(?=:\/\/)/gi, "$1​")
     .replace(/\bwww(?=\.)/gi, "www​");
 }

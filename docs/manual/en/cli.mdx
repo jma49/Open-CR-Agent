@@ -81,7 +81,7 @@ The format is versioned (`"version": 1`) and is a contract: later releases only 
 - **Carried-over findings.** In a pull request, findings an earlier review reported that are still open, in files this run did not review again, are results too. They sit under the rule `ocra-carried-over`, marked `unchanged` and without lines: the review state keeps no lines for them.
 - **Incomplete reviews.** A review that exits `3` is marked unsuccessful. The number of files not reviewed and the warnings are notifications. The verdict, risk tier, files not reviewed and cost are run properties.
 
-Text from the change and from models stays text. Brackets and backslashes are escaped, so no embedded link can form, and web addresses get a zero-width space, as in pull request comments. `--plan` has no findings, so it cannot write SARIF.
+Text from the change and from models stays text. Brackets and backslashes are escaped, so no embedded link can form, braces are doubled, as SARIF requires, and web addresses get a zero-width space, as in pull request comments. `--plan` has no findings, so it cannot write SARIF.
 
 ### Sessions
 
