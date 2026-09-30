@@ -6,9 +6,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   atLeast,
   changelogSection,
+  digestProblem,
   distTag,
   isVersion,
   lockstep,
+  parseDigests,
   publishOrder,
   readWorkspaces,
   refProblem,
@@ -145,6 +147,28 @@ describe("versions", () => {
   it("names tarballs as npm pack does", () => {
     expect(tarballName("@open-cr-agent/core", "0.1.0")).toBe("open-cr-agent-core-0.1.0.tgz");
     expect(tarballName("plain", "1.0.0-rc.1")).toBe("plain-1.0.0-rc.1.tgz");
+  });
+});
+
+describe("the tarballs pack made", () => {
+  const core = "open-cr-agent-core-0.2.0.tgz";
+  const cli = "open-cr-agent-cli-0.2.0.tgz";
+  const packed = { [core]: "sha512-AAAA", [cli]: "sha512-BBBB==" };
+
+  it("reads the digests pack reported, and nothing else", () => {
+    expect(parseDigests(JSON.stringify(packed))).toEqual(packed);
+    for (const text of ["", "{}", "[]", "null", '{"a.tgz": 1}', '{"a.tgz": "md5-x"}', "{"]) {
+      expect(parseDigests(text)).toBeUndefined();
+    }
+  });
+
+  it("publishes only tarballs whose digest pack reported", () => {
+    expect(digestProblem(packed, packed)).toBeUndefined();
+    expect(digestProblem(packed, { [core]: "sha512-AAAA" })).toBeUndefined();
+    expect(digestProblem(packed, { ...packed, [cli]: "sha512-CCCC" })).toBe(
+      `${cli} changed since pack made it`,
+    );
+    expect(digestProblem({ [core]: "sha512-AAAA" }, packed)).toBe(`${cli} is not one pack made`);
   });
 });
 

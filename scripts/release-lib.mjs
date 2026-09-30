@@ -137,3 +137,30 @@ export function changelogSection(changelog, version) {
     .trim();
   return body === "" ? undefined : body;
 }
+
+// The digests `pack` reported, as a map from file name to "sha512-<base64>",
+// or undefined when the text is not one.
+export function parseDigests(text) {
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return undefined;
+  const entries = Object.entries(parsed);
+  const valid = entries.every(
+    ([, digest]) => typeof digest === "string" && /^sha512-[A-Za-z0-9+/]+=*$/.test(digest),
+  );
+  return entries.length > 0 && valid ? parsed : undefined;
+}
+
+// Why the tarballs about to be published are not the ones `pack` made, or
+// undefined. Both maps go from file name to digest.
+export function digestProblem(expected, actual) {
+  const problems = Object.entries(actual).flatMap(([file, digest]) => {
+    if (expected[file] === undefined) return [`${file} is not one pack made`];
+    return expected[file] === digest ? [] : [`${file} changed since pack made it`];
+  });
+  return problems.length > 0 ? problems.join("; ") : undefined;
+}

@@ -32,6 +32,10 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+    # The tarballs' digests: publish checks what it downloads against them,
+    # since a later job of this run could replace the artifact, not these.
+    outputs:
+      digests: ${{ steps.pack.outputs.digests }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -45,7 +49,8 @@ jobs:
       # An install script could change what gets packed; building and
       # testing need none.
       - run: npm ci --ignore-scripts
-      - run: node scripts/release.mjs pack packed
+      - id: pack
+        run: node scripts/release.mjs pack packed
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: packages
@@ -102,9 +107,13 @@ jobs:
           path: packed
       - name: Publish
         if: github.event_name == 'release' || !inputs.dry-run
+        env:
+          PACKED_DIGESTS: ${{ needs.pack.outputs.digests }}
         run: node scripts/release.mjs upload packed --publish
       - name: Dry run
         if: github.event_name == 'workflow_dispatch' && inputs.dry-run
+        env:
+          PACKED_DIGESTS: ${{ needs.pack.outputs.digests }}
         run: node scripts/release.mjs upload packed
 
   # The container image of the release, from the packages just published

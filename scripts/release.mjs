@@ -5,16 +5,27 @@
 // `upload`, which runs nothing but npm where a publish token can be minted;
 // between the two, another job installs the tarballs and runs them.
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   atLeast,
   changelogSection,
+  digestProblem,
   distTag,
   isVersion,
   lockstep,
+  parseDigests,
   publishOrder,
   readWorkspaces,
   refProblem,
@@ -28,7 +39,8 @@ const USAGE = `Usage:
   node scripts/release.mjs publish                   dry run: every check, then npm publish --dry-run
   node scripts/release.mjs publish --publish         check, build and publish what the registry lacks
   node scripts/release.mjs pack <dir>                (CI) verify, build and pack every package into <dir>
-  node scripts/release.mjs upload <dir> [--publish]  (CI) publish the tarballs in <dir>; a dry run without --publish`;
+  node scripts/release.mjs upload <dir> [--publish]  (CI) publish the tarballs in <dir> whose digests match
+                                                     PACKED_DIGESTS; a dry run without --publish`;
 
 // npm's trusted publishing (OIDC) needs this npm or newer.
 const TRUSTED_PUBLISHING_NPM = "11.5.1";
@@ -137,6 +149,19 @@ function pack(list, version, dir) {
     console.log(`packed ${filename}`);
   }
   return undefined;
+}
+
+// Each tarball's sha512, in the form npm uses for integrity.
+function digests(list, version, dir) {
+  return Object.fromEntries(
+    list.map((w) => {
+      const file = tarballName(w.json.name, version);
+      const digest = createHash("sha512")
+        .update(readFileSync(join(dir, file)))
+        .digest("base64");
+      return [file, `sha512-${digest}`];
+    }),
+  );
 }
 
 // Whether the registry has this version. An answer other than the version
@@ -265,6 +290,14 @@ function packCommand(dir) {
   verify();
   const failure = pack(order, version, resolve(dir));
   if (failure) stop(failure);
+  // The tarballs travel to the publishing job as an artifact, which a later
+  // job of the same run (the one that runs third-party install scripts) could
+  // replace; a job's outputs cannot be. `upload` checks against these.
+  const packed = digests(order, version, resolve(dir));
+  for (const [file, digest] of Object.entries(packed)) console.log(`${digest}  ${file}`);
+  if (process.env.GITHUB_OUTPUT) {
+    appendFileSync(process.env.GITHUB_OUTPUT, `digests=${JSON.stringify(packed)}\n`);
+  }
 }
 
 function uploadCommand(dir, real) {
@@ -275,6 +308,10 @@ function uploadCommand(dir, real) {
   if (absent.length > 0) {
     stop(`release: ${dir} has no tarball for ${absent.map((w) => w.json.name).join(", ")}`);
   }
+  const expected = parseDigests(process.env.PACKED_DIGESTS ?? "");
+  if (!expected) stop("release: PACKED_DIGESTS must hold the digests that pack printed");
+  const problem = digestProblem(expected, digests(order, version, resolve(dir)));
+  if (problem) stop(`release: ${problem}; nothing was published`);
   const todo = pending(order, version);
   const failure = upload(todo, version, resolve(dir), real);
   if (failure) stop(failure);
