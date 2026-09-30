@@ -1,6 +1,7 @@
 import type { OcraPlugin } from "@open-cr-agent/core";
+import type { CodeSource, History } from "@open-cr-agent/vcs-platform";
 import { z } from "zod";
-import { type CodeSource, DEFAULT_BOT_LOGIN, GitHubAdapter, type History } from "./adapter.js";
+import { DEFAULT_BOT_LOGIN, GitHubAdapter } from "./adapter.js";
 import { GitHubApi, type PullRequest } from "./client.js";
 
 const optionsSchema = z.object({

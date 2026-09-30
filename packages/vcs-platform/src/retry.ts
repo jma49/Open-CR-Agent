@@ -1,6 +1,7 @@
-// GitHub answers bursts with 429 or a 403 "secondary rate limit", and has
-// short 5xx outages. One such answer during publish used to throw away a
-// paid review, so requests are retried a bounded number of times.
+// Platforms answer bursts with a rate limit (429 on both; GitHub also a 403
+// "secondary rate limit") and have short 5xx outages. One such answer during
+// publish used to throw away a paid review, so requests are retried a
+// bounded number of times.
 export const MAX_ATTEMPTS = 3;
 const MAX_WAIT_MS = 60_000;
 
@@ -9,10 +10,10 @@ export interface RetryDecision {
   waitMs: number;
 }
 
-// A request GitHub refused without acting on it (rate limits) can always be
-// repeated. A 5xx or a lost connection may have happened after GitHub acted,
-// so only requests that are safe to repeat retry then: POST would post the
-// same comment or review twice.
+// A request the platform refused without acting on it (rate limits) can
+// always be repeated. A 5xx or a lost connection may have happened after the
+// platform acted, so only requests that are safe to repeat retry then: POST
+// would post the same comment or review twice.
 export function retryDecision(
   method: string,
   idempotent: boolean,
@@ -39,7 +40,8 @@ export function retryDecision(
 function rateLimitWait(headers: Headers, now: number): number | undefined {
   const after = Number(headers.get("retry-after"));
   if (Number.isFinite(after) && after > 0) return Math.min(after * 1_000, MAX_WAIT_MS);
-  const reset = Number(headers.get("x-ratelimit-reset"));
+  // GitHub's header, then GitLab's; both carry epoch seconds.
+  const reset = Number(headers.get("x-ratelimit-reset") ?? headers.get("ratelimit-reset"));
   if (Number.isFinite(reset) && reset > 0) {
     return Math.min(Math.max(reset * 1_000 - now, 0), MAX_WAIT_MS);
   }

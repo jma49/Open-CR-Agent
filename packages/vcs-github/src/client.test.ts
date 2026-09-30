@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { GitHubApi, GitHubApiError } from "./client.js";
-import { retryDecision } from "./retry.js";
 
 function api(responses: (Response | Error)[]) {
   const calls: string[] = [];
@@ -57,20 +56,6 @@ describe("GitHubApi retries", () => {
     await client.createIssueComment(7, "hi");
     expect(calls).toEqual(["POST", "POST", "POST"]);
     expect(waits[0]).toBe(7_000);
-  });
-
-  it("does not retry a plain 403", () => {
-    expect(
-      retryDecision("GET", true, { status: 403, headers: new Headers(), body: "Forbidden" }, 1)
-        .retry,
-    ).toBe(false);
-  });
-
-  it("caps the wait for a rate limit reset", () => {
-    const headers = new Headers({ "x-ratelimit-reset": "5000" });
-    expect(retryDecision("GET", true, { status: 429, headers, body: "" }, 1, 0).waitMs).toBe(
-      60_000,
-    );
   });
 });
 

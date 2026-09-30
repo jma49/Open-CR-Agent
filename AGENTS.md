@@ -14,12 +14,13 @@ Open-CR-Agent is an open-source multi-agent code review system. Deterministic en
 |---|---|
 | `@open-cr-agent/core` | Domain types, pipeline stages, `VcsAdapter` / `AgentRuntime` / plugin contracts |
 | `@open-cr-agent/runtime-opencode` | `AgentRuntime` backed by the OpenCode SDK |
-| `@open-cr-agent/vcs-github` | `VcsAdapter` for GitHub pull requests |
+| `@open-cr-agent/vcs-platform` | What platform adapters share: the review conversation's rules (`PlatformReview` over a `ReviewPlatform` port), the summary and inline comment text, the review state |
+| `@open-cr-agent/vcs-github` | `VcsAdapter` for GitHub pull requests, over `vcs-platform` |
 | `@open-cr-agent/vcs-local` | `VcsAdapter` for the local git repository (workspace, range, commit) |
 | `@open-cr-agent/cli` | The `ocra` command |
 | `@open-cr-agent/eval` | Benchmark replay (AACR-Bench) and quality metrics |
 
-`core` depends on nothing inside the repo. Adapters depend only on `core`. Only `cli` wires concrete adapters together.
+`core` depends on nothing inside the repo. Adapters depend only on `core`, and platform adapters also on `vcs-platform`, where the rules of the review conversation live once (ADR-0016). Only `cli` wires concrete adapters together.
 
 ## Core engineering principles
 

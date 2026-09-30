@@ -1,16 +1,24 @@
 import {
   coverageGaps,
   type Finding,
-  type PriorFinding,
   type ReviewReport,
   type Severity,
   type Verification,
 } from "@open-cr-agent/core";
-import type { ReviewComment } from "./client.js";
 import { type ReviewState, SUMMARY_MARKER, writeState } from "./state.js";
 
-// GitHub rejects comments over 65,536 characters.
+// GitHub rejects comments over 65,536 characters; GitLab takes 1,000,000,
+// but a summary that long is no use to anyone.
 const MAX_SUMMARY_CHARS = 65_000;
+
+// How the summary names things on a platform.
+export interface PlatformText {
+  // "pull request" or "merge request".
+  changeRequest: string;
+  // Who may override a blocking verdict or dismiss a finding, completing
+  // "Someone with … other than the author": "write access", for example.
+  authority: string;
+}
 const ICON: Record<Severity, string> = { critical: "🔴", warning: "🟠", suggestion: "🔵" };
 const VERIFICATION: Record<Verification, string> = {
   confirmed: "verified",
@@ -32,7 +40,7 @@ function headline(report: ReviewReport): string {
 }
 
 // Who overrode a blocking verdict, or how someone entitled to can.
-function overrideNote(report: ReviewReport): string[] {
+function overrideNote(report: ReviewReport, text: PlatformText): string[] {
   if (report.verdict !== "significant_concerns") return [];
   const override = report.changeRequest.override;
   if (override) {
@@ -43,7 +51,7 @@ function overrideNote(report: ReviewReport): string[] {
   }
   return [
     "",
-    `Someone with write access other than the author can let this commit pass by commenting \`/ocra override ${report.changeRequest.headSha} <reason>\`.`,
+    `Someone with ${text.authority} other than the author can let this commit pass by commenting \`/ocra override ${report.changeRequest.headSha} <reason>\`.`,
   ];
 }
 
@@ -119,29 +127,15 @@ export function inlineBody(f: Finding): string {
   return parts.join("\n");
 }
 
-export function inlineComment(f: Finding): ReviewComment | undefined {
-  if (!f.lineRange || !f.anchor.inDiff) return undefined;
-  const comment: ReviewComment = {
-    path: f.file,
-    line: f.lineRange.end,
-    side: "RIGHT",
-    body: inlineBody(f),
-  };
-  if (f.lineRange.start !== f.lineRange.end) {
-    comment.start_line = f.lineRange.start;
-    comment.start_side = "RIGHT";
-  }
-  return comment;
-}
-
 export interface SummaryInput {
   report: ReviewReport;
   // Findings shown as inline comments (now or in an earlier review).
   commented: ReadonlySet<string>;
   state: ReviewState;
+  text: PlatformText;
 }
 
-export function renderSummary({ report, commented, state }: SummaryInput): string {
+export function renderSummary({ report, commented, state, text }: SummaryInput): string {
   const counts = (["critical", "warning", "suggestion"] as const)
     .map((s) => `${report.findings.filter((f) => f.severity === s).length} ${s}`)
     .join(", ");
@@ -150,7 +144,7 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
     `## ocra review · ${headline(report)}`,
     "",
     safeMarkdown(report.summary),
-    ...overrideNote(report),
+    ...overrideNote(report, text),
     "",
     `**${report.findings.length} finding(s)** (${counts}) · risk tier \`${report.tier}\``,
   ];
@@ -186,7 +180,7 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
       : "";
     lines.push(
       "",
-      `**Incomplete:** ${notReviewed} selected file(s) were not reviewed${limit}. They are listed under Coverage and cost, and the next review of this pull request includes them.`,
+      `**Incomplete:** ${notReviewed} selected file(s) were not reviewed${limit}. They are listed under Coverage and cost, and the next review of this ${text.changeRequest} includes them.`,
     );
   }
 
@@ -270,8 +264,10 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
     "</details>",
   );
 
-  const text = lines.join("\n");
+  const markdown = lines.join("\n");
   const footer = `\n\n${writeState(state)}`;
   const room = MAX_SUMMARY_CHARS - footer.length;
-  return (text.length > room ? `${text.slice(0, room - 40)}\n\n…(truncated)` : text) + footer;
+  return (
+    (markdown.length > room ? `${markdown.slice(0, room - 40)}\n\n…(truncated)` : markdown) + footer
+  );
 }

@@ -1,8 +1,8 @@
+import { readState, SUMMARY_MARKER, writeState } from "@open-cr-agent/vcs-platform";
 import { describe, expect, it } from "vitest";
 import { adapter, code, fakeGitHub, postedSummary, report } from "./adapter.fakes.js";
 import { GitHubAdapter } from "./adapter.js";
 import { GitHubApi } from "./client.js";
-import { readState, SUMMARY_MARKER, writeState } from "./state.js";
 
 describe("GitHubAdapter", () => {
   describe("what changed since the previous review", () => {

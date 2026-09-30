@@ -1,6 +1,6 @@
 # Releasing
 
-How the packages reach npm. Five packages are published: `@open-cr-agent/core`, `runtime-opencode`, `vcs-local`, `vcs-github` and `cli` (the `ocra` command). `@open-cr-agent/eval` is private. All of them share one version and depend on each other at exactly that version, so a published `cli` never pairs with a `core` from another release.
+How the packages reach npm. Six packages are published: `@open-cr-agent/core`, `runtime-opencode`, `vcs-local`, `vcs-platform`, `vcs-github` and `cli` (the `ocra` command). `@open-cr-agent/eval` is private. All of them share one version and depend on each other at exactly that version, so a published `cli` never pairs with a `core` from another release.
 
 Releases go out through [npm trusted publishing](https://docs.npmjs.com/trusted-publishers): publishing a GitHub release starts `.github/workflows/release.yml`, which publishes with a short-lived OIDC token, and npm attaches [provenance](https://docs.npmjs.com/generating-provenance-statements). No npm token is stored anywhere. npm can trust a workflow only for a package that already exists, so the first version is published once by hand.
 
@@ -13,7 +13,7 @@ Decided on 2026-09-26 and 2026-09-28: the scope is `@open-cr-agent` (npm organiz
 - **`node scripts/release.mjs publish --publish`** does the same and publishes, dependencies first, stopping at the first failure. Versions already on the registry are skipped, so running it again resumes where it stopped.
 - **`node scripts/release.mjs notes <x.y.z>`** prints that version's section of `CHANGELOG.md`, the body of the GitHub release.
 - **`npm run check:packages`**, also the `packages` job of every pull request, packs every package, installs the tarballs into an empty project as a user would, and runs the installed `ocra`. Then it installs them as the GitHub Action does (below), from the tarballs, and runs that `ocra` too.
-- **The GitHub Action** (`action.yml`) runs `scripts/action-install.mjs`. It installs the published `@open-cr-agent/cli` at the version in its own `packages/cli/package.json`, into a directory of its own, with a lockfile built from the `package-lock.json` at the Action's ref (`scripts/pinned-lock.mjs`): every third-party package at the version CI tested there, with its integrity hash. Install scripts stay off, npm uses a cache of its own under `$RUNNER_TEMP`, and on the npm registry `npm audit signatures` checks the registry's signatures (and provenance, from 0.1.1). `npm audit signatures` passes a package that has no provenance, so `scripts/provenance.mjs` then requires each of the five packages to have SLSA provenance naming this repository, `.github/workflows/release.yml` and the tag `v<version>`, for the tarball npm serves. It builds the ref from source instead when that version is not on npm (between a version bump and its publish), when npm has it with other dependencies than the ref declares or without that provenance (0.1.0, published by hand), or when the pinned install fails. So a release tag runs what was published, with the dependencies it was tested with, and `@main` runs the latest release named on `main`, not unreleased code. The `action` job of every pull request runs both paths, with no model call.
+- **The GitHub Action** (`action.yml`) runs `scripts/action-install.mjs`. It installs the published `@open-cr-agent/cli` at the version in its own `packages/cli/package.json`, into a directory of its own, with a lockfile built from the `package-lock.json` at the Action's ref (`scripts/pinned-lock.mjs`): every third-party package at the version CI tested there, with its integrity hash. Install scripts stay off, npm uses a cache of its own under `$RUNNER_TEMP`, and on the npm registry `npm audit signatures` checks the registry's signatures (and provenance, from 0.1.1). `npm audit signatures` passes a package that has no provenance, so `scripts/provenance.mjs` then requires each of ocra's own packages to have SLSA provenance naming this repository, `.github/workflows/release.yml` and the tag `v<version>`, for the tarball npm serves. It builds the ref from source instead when that version is not on npm (between a version bump and its publish), when npm has it with other dependencies than the ref declares or without that provenance (0.1.0, published by hand), or when the pinned install fails. So a release tag runs what was published, with the dependencies it was tested with, and `@main` runs the latest release named on `main`, not unreleased code. The `action` job of every pull request runs both paths, with no model call.
 - **`.github/workflows/release.yml`** runs on a published GitHub release, or by hand as a dry run (`gh workflow run release.yml --ref main`; its `dry-run` input defaults to true). Its `pack` job installs the repository without install scripts, runs `npm run verify` and packs the tarballs, with no right to publish. Its `check` job then runs `scripts/check-packages.mjs --tarballs` on those exact tarballs: it installs them as a user would, with third-party install scripts on, which is why it runs apart from the job that packs. Its `publish` job, which waits for both, the only one that can mint a publish token, installs nothing and runs only npm and `scripts/release.mjs`, which has no dependencies. It publishes only from a tag that matches the version, `v<x.y.z>`, and a prerelease (`0.2.0-rc.1`) goes to the `next` dist-tag instead of `latest`.
 
 ## The first release
@@ -79,8 +79,20 @@ Done: the organization `open-cr-agent` exists, and the owner account has two-fac
    ```
 
    The workflow checks that the tag matches the version and that the commit is on `main`, runs the checks, and publishes with provenance. Until it has published, the Action at the new tag builds from source: it finds the version missing on npm.
-4. Check the release as a user, in a scratch project outside the repository: `npm install @open-cr-agent/cli@<x.y.z>`, `npx --no-install ocra --version`, and `npm audit signatures --json --include-attestations`. Its `verified` list must name the five packages (third-party packages with provenance appear there too): the provenance that ties each one to this repository's workflow and tagged commit.
+4. Check the release as a user, in a scratch project outside the repository: `npm install @open-cr-agent/cli@<x.y.z>`, `npx --no-install ocra --version`, and `npm audit signatures --json --include-attestations`. Its `verified` list must name each of ocra's packages (third-party packages with provenance appear there too): the provenance that ties each one to this repository's workflow and tagged commit.
 5. Move the Action examples to the new tag (README, `docs/manual/*/github.mdx`, the site's landing page), with the manual's pinned-commit example if it names one.
+
+### Adding a package
+
+npm lets a workflow publish with trusted publishing only to a package that already exists. So before the first release that includes a new package (`vcs-platform`, for example), publish that one package by hand, at the version `main` has before the release's version bump, then trust the workflow for it:
+
+```bash
+git switch main && git pull && npm ci && npm run build
+cd packages/<name> && npm publish --access public && cd ../..
+npm trust github "@open-cr-agent/<name>" --file release.yml --repo jma49/Open-CR-Agent --allow-publish --yes
+```
+
+That version has no provenance and no release uses it; the release workflow then publishes the new version, with provenance, like every other package. On npmjs.com, set **Require two-factor authentication and disallow tokens** for the new package too. Until this is done, a release that includes the package fails in the `publish` job, at that package.
 
 ### When a publish fails halfway
 

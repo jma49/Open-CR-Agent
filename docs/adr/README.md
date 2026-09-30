@@ -17,5 +17,6 @@
 | [0013](0013-fork-pull-requests.md) | Pull requests from forks run on `pull_request_target`; ocra runs nothing from a pull request |
 | [0014](0014-adversarial-golden-cases.md) | Adversarial golden cases: hostile text planted in a golden case, measured against the case itself |
 | [0015](0015-spend-limit-order-and-reporting.md) | Under a spend limit, tasks finish files in plan order so a pull request progresses across pushes; never-started tasks leave files unreviewed, and the report names the limit |
+| [0016](0016-shared-review-conversation.md) | One review conversation for every platform in `vcs-platform` (trust rules, state, summary); GitLab second; line-leading slashes neutralized |
 
 Copy [0000-template.md](0000-template.md) to add a new record.

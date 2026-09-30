@@ -1,8 +1,22 @@
+import {
+  declinesFinding,
+  readState,
+  renderSummary,
+  SUMMARY_MARKER,
+  safeMarkdown,
+  writeState,
+} from "@open-cr-agent/vcs-platform";
 import { describe, expect, it } from "vitest";
-import { A, adapter, B, fakeGitHub, finding, postedSummary, report } from "./adapter.fakes.js";
-import { declinesFinding } from "./adapter.js";
-import { renderSummary, safeMarkdown } from "./render.js";
-import { readState, SUMMARY_MARKER, writeState } from "./state.js";
+import {
+  A,
+  adapter,
+  B,
+  fakeGitHub,
+  finding,
+  postedSummary,
+  report,
+  text,
+} from "./adapter.fakes.js";
 
 describe("GitHubAdapter", () => {
   it("maps the pull request to a change request", async () => {
@@ -309,6 +323,7 @@ describe("GitHubAdapter", () => {
       report: report([f]),
       commented: new Set(),
       state: { findings: [] },
+      text,
     });
     // The path stays one code span, where nothing renders.
     expect(body).toContain("`src/ˋ![x](https://evil.example/p.png)ˋ.ts:3-4`");

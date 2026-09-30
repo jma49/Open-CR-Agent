@@ -1,5 +1,5 @@
+import { MAX_ATTEMPTS, retryDecision } from "@open-cr-agent/vcs-platform";
 import { z } from "zod";
-import { MAX_ATTEMPTS, retryDecision } from "./retry.js";
 
 // Commit ids reach git as arguments; anything else is refused at the boundary.
 const sha = z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/, "not a commit id");

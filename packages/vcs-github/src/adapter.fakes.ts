@@ -1,8 +1,10 @@
 import type { Finding, ReviewReport } from "@open-cr-agent/core";
-import type { CodeSource } from "./adapter.js";
+import type { CodeSource } from "@open-cr-agent/vcs-platform";
 import { GitHubAdapter } from "./adapter.js";
 import { GitHubApi } from "./client.js";
-import { SUMMARY_MARKER } from "./state.js";
+
+// How the summary words things on GitHub.
+export const text = { changeRequest: "pull request", authority: "write access" };
 
 // Fakes shared by the GitHub adapter tests.
 export interface Call {
