@@ -107,7 +107,13 @@ class GitLabPlatform implements ReviewPlatform {
   async threads(): Promise<PlatformThread[]> {
     const discussions = await this.options.api.listDiscussions(this.options.iid);
     // Without editors every reply would read as unedited, so no threads.
-    const editors = await this.noteEditors();
+    // Read after the discussions, not reused from the summary's check: a note
+    // edited in between then reads as edited, never as unedited.
+    const editors = await this.options.api.noteEditors(this.options.iid);
+    // Where a push resolves outdated threads, GitLab records the pusher as
+    // the one who resolved them, so no resolution says who dismissed what.
+    const attributable =
+      (await this.options.api.resolvesOutdatedThreads().catch(() => undefined)) === false;
     return discussions
       .filter((d) => !d.individual_note)
       .flatMap((d) => {
@@ -119,7 +125,9 @@ class GitLabPlatform implements ReviewPlatform {
           {
             id: d.id,
             resolved: first.resolved === true,
-            ...(first.resolved_by ? { resolvedBy: first.resolved_by.username } : {}),
+            ...(first.resolved_by && attributable
+              ? { resolvedBy: first.resolved_by.username }
+              : {}),
             comments: notes.map((n) => {
               const editor = editors.has(n.id) ? editors.get(n.id) : UNKNOWN_EDITOR;
               return { author: n.author.username, body: n.body, ...(editor ? { editor } : {}) };

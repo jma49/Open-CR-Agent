@@ -67,6 +67,8 @@ Models come from the target branch's `.ocra/config.json`, or from `OCRA_MODEL_*`
 
 Reviewers stay in charge. When someone with the Developer role or higher, other than the merge request's author, resolves one of ocra's threads, or answers it with `/ocra dismiss` or a reply that opens with "won't fix", "by design" or "false positive", the finding is dismissed. Other replies from them reach the judge the next time the finding comes back. A comment someone else edited counts for nothing.
 
+If the project resolves outdated threads on push (Settings → Merge requests), GitLab records whoever pushed as the one who resolved a thread, so a push by anyone would count as a reviewer's resolution. In such a project, and whenever GitLab does not say how the setting stands, resolving one of ocra's threads dismisses nothing: answer it instead. ocra reads the setting on every run, and its summary says when a resolved thread did not dismiss its finding.
+
 GitLab has no "request changes". The job's exit code is the gate: with `allow_failure` as above, only an incomplete review fails the pipeline. Without it, a blocking verdict fails it too, and **Pipelines must succeed** then blocks merging.
 
 ### Overriding a blocking verdict

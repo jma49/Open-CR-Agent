@@ -37,6 +37,11 @@ export interface FakeGitLabOptions {
   unknownEditors?: number[];
   graphqlFails?: boolean;
   diffRefs?: null;
+  // The project's "resolve outdated threads on push" setting; null leaves it
+  // out of GitLab's answer.
+  resolvesOutdatedOnPush?: boolean | null;
+  // Notes someone edits right after the first GraphQL read of editors.
+  editedAfterFirstRead?: Record<number, string>;
 }
 
 // src/login.ts, where line 2 was added and lines 1 and 3 are context.
@@ -127,6 +132,9 @@ export function fakeGitLab(scenario: Scenario, options: FakeGitLabOptions = {}) 
           id: `gid://gitlab/Note/${id}`,
           lastEditedBy: edited.has(id) ? { username: edited.get(id) } : null,
         }));
+      for (const [id, by] of Object.entries(options.editedAfterFirstRead ?? {})) {
+        edited.set(Number(id), spell(by));
+      }
       return json({
         data: {
           project: {
@@ -143,7 +151,15 @@ export function fakeGitLab(scenario: Scenario, options: FakeGitLabOptions = {}) 
       return json(USER_IDS[name] ? [user(name)] : []);
     }
     const project = "/projects/group%2Fproject";
-    if (path === project) return json({ id: 42, path_with_namespace: "group/project" });
+    if (path === project) {
+      const setting =
+        options.resolvesOutdatedOnPush === undefined ? false : options.resolvesOutdatedOnPush;
+      return json({
+        id: 42,
+        path_with_namespace: "group/project",
+        ...(setting === null ? {} : { resolve_outdated_diff_discussions: setting }),
+      });
+    }
     const rest = path.startsWith(project) ? path.slice(project.length) : path;
     if (rest === "/merge_requests/7") {
       return json({

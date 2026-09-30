@@ -144,9 +144,17 @@ export interface SummaryInput {
   commented: ReadonlySet<string>;
   state: ReviewState;
   text: PlatformText;
+  // Findings still reported whose thread was resolved without saying by whom.
+  unattributed?: number;
 }
 
-export function renderSummary({ report, commented, state, text }: SummaryInput): string {
+export function renderSummary({
+  report,
+  commented,
+  state,
+  text,
+  unattributed = 0,
+}: SummaryInput): string {
   const counts = (["critical", "warning", "suggestion"] as const)
     .map((s) => `${report.findings.filter((f) => f.severity === s).length} ${s}`)
     .join(", ");
@@ -192,6 +200,13 @@ export function renderSummary({ report, commented, state, text }: SummaryInput):
     lines.push(
       "",
       `**Incomplete:** ${notReviewed} selected file(s) were not reviewed${limit}. They are listed under Coverage and cost, and the next review of this ${text.changeRequest} includes them.`,
+    );
+  }
+
+  if (unattributed > 0) {
+    lines.push(
+      "",
+      `${unattributed} resolved thread(s) of ocra's did not dismiss their finding: nothing says who resolved them, as when a push resolves outdated threads. To dismiss a finding, answer its thread with \`/ocra dismiss\` or "won't fix".`,
     );
   }
 

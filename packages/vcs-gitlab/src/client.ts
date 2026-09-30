@@ -128,6 +128,15 @@ export class GitLabApi {
     return data.path_with_namespace;
   }
 
+  // Whether a push resolves the threads on lines it changed, recording the
+  // pusher as the one who resolved them; undefined when GitLab does not say.
+  async resolvesOutdatedThreads(): Promise<boolean | undefined> {
+    const data = z
+      .object({ resolve_outdated_diff_discussions: z.boolean().nullish() })
+      .parse(await this.request("GET", ""));
+    return data.resolve_outdated_diff_discussions ?? undefined;
+  }
+
   async getMergeRequest(iid: number): Promise<MergeRequest> {
     return mergeRequestSchema.parse(await this.request("GET", `/merge_requests/${iid}`));
   }

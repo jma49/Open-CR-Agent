@@ -17,6 +17,14 @@ const refs = { base_sha: BASE, start_sha: START, head_sha: HEAD };
 const A = "a".repeat(16);
 const B = "b".repeat(16);
 
+const summaryOf = (fingerprint: string) =>
+  `${SUMMARY_MARKER}\n${writeState({
+    findings: [
+      { fingerprint, title: "t", file: "src/login.ts", severity: "warning", commented: true },
+    ],
+    head: HEAD,
+  })}`;
+
 describe("GitLabAdapter", () => {
   it("maps the merge request to a change request", async () => {
     const { fetchImpl } = fakeGitLab({});
@@ -145,6 +153,58 @@ describe("GitLabAdapter", () => {
     expect(prior?.findings.map((f) => f.fingerprint)).toEqual([A]);
     expect(prior?.replies).toBeUndefined();
   });
+
+  it("reads who edited a thread after reading the thread", async () => {
+    // The author edits the maintainer's reply (note 101) right after ocra
+    // checked who edited its summary: the reply must not count unedited.
+    const { fetchImpl } = fakeGitLab(
+      {
+        comments: [{ author: OCRA, body: summaryOf(A) }],
+        threads: [
+          {
+            comments: [
+              { author: OCRA, body: `<!-- ocra:finding ${A} -->` },
+              { author: MAINTAINER, body: "The caller checks it." },
+            ],
+          },
+        ],
+      },
+      { editedAfterFirstRead: { 101: AUTHOR } },
+    );
+    const prior = await adapter(fetchImpl).getPriorReview();
+    expect(prior?.findings.map((f) => f.fingerprint)).toEqual([A]);
+    expect(prior?.replies).toBeUndefined();
+  });
+
+  it.each([
+    [false, true],
+    [true, false],
+    // GitLab did not say: no resolution counts.
+    [null, false],
+  ])(
+    "with resolving outdated threads on push set to %s, a resolution dismisses: %s",
+    async (setting, dismissed) => {
+      const scenario = {
+        comments: [{ author: OCRA, body: summaryOf(A) }],
+        threads: [
+          {
+            resolvedBy: MAINTAINER,
+            comments: [{ author: OCRA, body: `<!-- ocra:finding ${A} -->` }],
+          },
+        ],
+      };
+      const { calls, fetchImpl } = fakeGitLab(scenario, { resolvesOutdatedOnPush: setting });
+      const review = adapter(fetchImpl);
+      const prior = await review.getPriorReview();
+      expect(prior?.findings.find((f) => f.fingerprint === A)?.dismissed === true).toBe(dismissed);
+      if (dismissed) return;
+      // The finding comes back, and the summary says why resolving did nothing.
+      await review.publish(report([finding(A, { lineRange: { start: 2, end: 2 } })]));
+      expect(bodies(calls, "PUT", "/notes/1")[0]).toContain(
+        "1 resolved thread(s) of ocra's did not dismiss their finding",
+      );
+    },
+  );
 
   it("dismisses nothing when GitLab cannot say who edited what", async () => {
     const summary = await (async () => {

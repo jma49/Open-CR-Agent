@@ -290,6 +290,7 @@ export class PlatformReview implements VcsAdapter {
       .map((c) => c.path);
     const tracked = new Set(state.map((f) => f.fingerprint));
     const untracked = [...commented].filter((fp) => !tracked.has(fp));
+    const unattributed = await this.unattributedResolutions(current);
     const body = renderSummary({
       report,
       commented,
@@ -301,6 +302,7 @@ export class PlatformReview implements VcsAdapter {
         ...(untracked.length > 0 ? { posted: untracked } : {}),
       },
       text: this.platform.text,
+      unattributed,
     });
     await this.platform.writeSummary(previous, body);
     const lost = lostProgress(body, pending.length);
@@ -321,6 +323,22 @@ export class PlatformReview implements VcsAdapter {
     const bot = await this.bot();
     const threads = await this.threads().catch(() => []);
     return threads.flatMap((thread) => findingOf(thread, bot) ?? []);
+  }
+
+  // Findings still reported whose thread was resolved without saying by
+  // whom: that resolution dismissed nothing, and the summary says why.
+  private async unattributedResolutions(current: ReadonlySet<string>): Promise<number> {
+    const bot = await this.bot();
+    const threads = await this.threads().catch(() => []);
+    return threads.filter((thread) => {
+      const fingerprint = findingOf(thread, bot);
+      return (
+        thread.resolved &&
+        thread.resolvedBy === undefined &&
+        fingerprint !== undefined &&
+        current.has(fingerprint)
+      );
+    }).length;
   }
 
   // Resolving threads is a courtesy: the summary already lists what was
