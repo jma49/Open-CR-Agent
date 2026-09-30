@@ -71,8 +71,13 @@ describe("loadConfig", () => {
 
   it.each([
     [{ baseUrl: "http://llm.example.com/v1" }, "must be an https URL"],
-    [{ apiKeyEnv: "GITHUB_TOKEN" }, "must not name a platform token"],
-    [{ apiKeyEnv: "CI_JOB_TOKEN" }, "must not name a platform token"],
+    [{ apiKeyEnv: "GITHUB_TOKEN" }, "must not name a platform or cloud credential"],
+    [{ apiKeyEnv: "CI_JOB_TOKEN" }, "must not name a platform or cloud credential"],
+    [{ apiKeyEnv: "AWS_SECRET_ACCESS_KEY" }, "must not name a platform or cloud credential"],
+    [{ apiKeyEnv: "AZURE_API_KEY" }, "must not name a platform or cloud credential"],
+    // OpenCode would replace these with a file's content or a variable.
+    [{ baseUrl: "https://llm.example.com/v1?d={file:.git/config}" }, "must not contain { or }"],
+    [{ baseUrl: "https://llm.example.com/{env:GEMINI_API_KEY}/v1" }, "must not contain { or }"],
     [{ models: {} }, "must list at least one model"],
     [{ models: { m: { input: 1 } } }, "output"],
     [{ type: "anthropic" }, "type"],

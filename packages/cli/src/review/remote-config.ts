@@ -54,6 +54,14 @@ export async function fetchRemoteConfig(
   }
   const parsed = remoteConfigSchema.safeParse(JSON.parse(body));
   if (!parsed.success) throw new Error(`${url.href} is invalid: ${z.prettifyError(parsed.error)}`);
+  // A provider decides where the code under review goes: unpinned, whoever
+  // serves the file could send it to an endpoint of their choosing.
+  if (pinned === undefined && Object.keys(parsed.data.providers ?? {}).length > 0) {
+    const digest = createHash("sha256").update(body).digest("hex");
+    throw new Error(
+      `${url.href} declares providers, which a shared configuration may do only when pinned; check its content, then extend "${address}#sha256=${digest}"`,
+    );
+  }
   return parsed.data;
 }
 

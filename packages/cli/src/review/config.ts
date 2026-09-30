@@ -18,18 +18,25 @@ const modelChain = z
   .transform((value) => (typeof value === "string" ? [value] : value));
 
 // Where review code is sent: over https, or plain http only to this machine.
-const endpoint = z.url().refine((value) => {
-  const url = new URL(value);
-  if (url.protocol === "https:") return true;
-  const host = url.hostname.replace(/^\[|\]$/g, "");
-  return (
-    url.protocol === "http:" &&
-    (host === "localhost" || host === "::1" || /^127\.\d+\.\d+\.\d+$/.test(host))
-  );
-}, "must be an https URL, or http on this machine (localhost, 127.0.0.1, ::1)");
+// OpenCode replaces {env:NAME} and {file:path} anywhere in its configuration,
+// so an address with braces could carry a variable or a file (the checkout's
+// .git/config holds its token) to the endpoint.
+const endpoint = z
+  .url()
+  .refine((value) => {
+    const url = new URL(value);
+    if (url.protocol === "https:") return true;
+    const host = url.hostname.replace(/^\[|\]$/g, "");
+    return (
+      url.protocol === "http:" &&
+      (host === "localhost" || host === "::1" || /^127\.\d+\.\d+\.\d+$/.test(host))
+    );
+  }, "must be an https URL, or http on this machine (localhost, 127.0.0.1, ::1)")
+  .refine((value) => !/[{}]/.test(value), "must not contain { or }");
 
-// Tokens of the platforms ocra runs on never go to a model endpoint.
-const PLATFORM_TOKENS = /^(GITHUB_|GH_|GITLAB_|CI_|ACTIONS_|RUNNER_|NPM_|SSH_|OCRA_)/;
+// The platforms' and clouds' credentials never go to a model endpoint; the
+// same prefixes are never passed to the runtime by prefix (server-env.ts).
+const PLATFORM_TOKENS = /^(GITHUB_|GH_|GITLAB_|CI_|ACTIONS_|RUNNER_|AWS_|AZURE_|NPM_|SSH_|OCRA_)/;
 const price = z.number().min(0).max(10_000);
 
 const providerSchema = z
@@ -39,7 +46,7 @@ const providerSchema = z
     apiKeyEnv: z
       .string()
       .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "must be an environment variable name")
-      .refine((name) => !PLATFORM_TOKENS.test(name), "must not name a platform token")
+      .refine((name) => !PLATFORM_TOKENS.test(name), "must not name a platform or cloud credential")
       .optional(),
     // Prices in US dollars per million tokens; 0 means unpriced.
     models: z

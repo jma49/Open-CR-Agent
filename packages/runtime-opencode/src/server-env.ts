@@ -177,7 +177,7 @@ export function serverEnv(
     if (name.trim() !== "") copy(name.trim());
   }
 
-  if (providers.includes("google") && !env[GOOGLE_KEY]) {
+  if (providers.includes("google") && !custom.google && !env[GOOGLE_KEY]) {
     const alias = GOOGLE_KEY_ALIASES.map((name) => base[name]).find((value) => value);
     if (alias) env[GOOGLE_KEY] = alias;
   }

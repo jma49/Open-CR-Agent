@@ -96,9 +96,9 @@ An organization can keep common settings in one place and let repositories exten
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `reviewers`, `github`, `providers` and `rules` (the same shape as `.ocra/rules.json` entries). It cannot list plugins or choose a runtime: it comes from outside the repository and must not run code. The repository's own values win; `include`, `exclude` and `rules` are combined and `models`, `reviewers`, `github` and `providers` are merged key by key.
+The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `reviewers`, `github`, `providers` (only when pinned, see below) and `rules` (the same shape as `.ocra/rules.json` entries). It cannot list plugins or choose a runtime: it comes from outside the repository and must not run code. The repository's own values win; `include`, `exclude` and `rules` are combined and `models`, `reviewers`, `github` and `providers` are merged key by key.
 
-Only `https` URLs are accepted, without redirects, up to 256 KB. The optional `#sha256=` fragment pins the exact content. If the file cannot be loaded or is invalid, ocra warns and continues with the repository's own settings; limits set only in the shared file, such as `maxCostUsd`, then do not apply, so set them in the repository too if they must always hold.
+Only `https` URLs are accepted, without redirects, up to 256 KB. The optional `#sha256=` fragment pins the exact content; a file that declares `providers` must be pinned, since a provider decides where your code goes ([Model providers](./providers#your-own-endpoint)). If the file cannot be loaded or is invalid, ocra warns and continues with the repository's own settings; limits set only in the shared file, such as `maxCostUsd`, then do not apply, so set them in the repository too if they must always hold.
 
 ## Plugins
 

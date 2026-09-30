@@ -50,10 +50,10 @@ A self-hosted server (vLLM, Ollama, LM Studio) or a company gateway that speaks 
 ```
 
 - **The id** (`gateway`) is yours: lowercase letters, digits and hyphens. Pick one OpenCode's catalog does not use, since a declared provider replaces a known one of the same id for the run.
-- **`baseUrl`** must be `https`, or plain `http` on this machine: `localhost`, `127.0.0.1` or `::1`. For Ollama, for example, `http://127.0.0.1:11434/v1`.
-- **`apiKeyEnv`** is the name of the variable that holds the key. The key never goes in the file, and only this variable reaches the runtime. Names that start like a platform token (`GITHUB_`, `GITLAB_`, `CI_` and similar) are refused. Leave it out for a server without keys.
+- **`baseUrl`** must be `https`, or plain `http` on this machine: `localhost`, `127.0.0.1` or `::1`. For Ollama, for example, `http://127.0.0.1:11434/v1`. It may not contain `{` or `}`, which OpenCode would replace with a variable or a file's content.
+- **`apiKeyEnv`** is the name of the variable that holds the key. The key never goes in the file, and only this variable reaches the runtime. Names of platform tokens and cloud credentials (starting with `GITHUB_`, `GITLAB_`, `CI_`, `AWS_`, `AZURE_` and similar) are refused. Leave it out for a server without keys.
 - **Every model has a price** in US dollars per million tokens: `input`, `output`, and optionally `cachedInput`. ocra uses them for the reported cost and for `--max-cost-usd`. A price of 0 is allowed, for a server on your own hardware; the run then warns that the model is unpriced and that the spend limit does not count it.
-- A shared configuration named by `extends` may declare providers too; the repository's declaration of the same id wins. In pull and merge requests, providers come from the base commit, like the rest of the configuration.
+- A shared configuration named by `extends` may declare providers too, but only when it is pinned with `#sha256=`: unpinned, whoever serves the file could send your code to an endpoint of their choosing. ocra ignores an unpinned file that declares providers, with a warning that gives the pin to add once you have checked the file. The repository's declaration of the same id wins. In pull and merge requests, providers come from the base commit, like the rest of the configuration.
 
 This has been tested in CI against a fake OpenAI-compatible server with the real OpenCode binary: the key goes where it should, the price is counted, and nothing else on the network is needed. It has not yet been tested against a live model server.
 

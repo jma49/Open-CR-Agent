@@ -57,36 +57,54 @@ describe("extends", () => {
     expect(config.rules).toEqual([{ path: "services/**", rule: "Org rule." }]);
   });
 
-  it("takes a company gateway from the shared file, the repository's providers winning", async () => {
-    const gateway = (baseUrl: string) => ({
-      type: "openai-compatible",
-      baseUrl,
-      apiKeyEnv: "GATEWAY_KEY",
-      models: { m: { input: 1, output: 2 } },
+  const gateway = (baseUrl: string) => ({
+    type: "openai-compatible",
+    baseUrl,
+    apiKeyEnv: "GATEWAY_KEY",
+    models: { m: { input: 1, output: 2 } },
+  });
+
+  it("takes a company gateway from a pinned shared file, the repository's providers winning", async () => {
+    const body = JSON.stringify({
+      providers: {
+        gateway: gateway("https://llm.example.com/v1"),
+        team: gateway("https://old.example.com/v1"),
+      },
     });
+    const hash = createHash("sha256").update(body).digest("hex");
     const dir = root({
-      extends: "https://config.example.com/ocra.json",
+      extends: `https://config.example.com/ocra.json#sha256=${hash}`,
       providers: { team: gateway("https://team.example.com/v1") },
     });
-    const config = await loadConfig(
-      dir,
-      {},
-      {
-        repository: true,
-        fetch: serve({
-          providers: {
-            gateway: gateway("https://llm.example.com/v1"),
-            team: gateway("https://old.example.com/v1"),
-          },
-        }),
-      },
-    );
+    const config = await loadConfig(dir, {}, { repository: true, fetch: serve(body) });
     expect(
       Object.fromEntries(Object.entries(config.providers).map(([id, p]) => [id, p.baseUrl])),
     ).toEqual({
       gateway: "https://llm.example.com/v1",
       team: "https://team.example.com/v1",
     });
+  });
+
+  it("refuses providers from a shared file that is not pinned, and says how to pin it", async () => {
+    const body = JSON.stringify({
+      ...shared,
+      providers: { gateway: gateway("https://x.example") },
+    });
+    const hash = createHash("sha256").update(body).digest("hex");
+    const warnings: string[] = [];
+    const config = await loadConfig(
+      root({ extends: "https://c.example/o.json" }),
+      {},
+      { repository: true, fetch: serve(body), warn: (w) => warnings.push(w) },
+    );
+    // Whoever serves the file must not choose where the code goes.
+    expect(config.providers).toEqual({});
+    expect(config.maxCostUsd).toBeUndefined();
+    expect(warnings).toEqual([
+      expect.stringContaining(
+        `declares providers, which a shared configuration may do only when pinned; check its content, then extend "https://c.example/o.json#sha256=${hash}"`,
+      ),
+    ]);
   });
 
   it("checks a pinned hash, and falls back to the repository's own file with a warning", async () => {

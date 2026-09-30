@@ -113,6 +113,17 @@ describe("serverEnv", () => {
     expect(missingCredentials({}, ["gateway"], { gateway: keyless })).toEqual([]);
   });
 
+  it("gives a provider declared as google no Gemini key", () => {
+    const google = {
+      baseUrl: "https://llm.example.com/v1",
+      apiKeyEnv: "GATEWAY_KEY",
+      models: { m: { input: 1, output: 2 } },
+    };
+    const env = serverEnv({ GATEWAY_KEY: "k", GEMINI_API_KEY: "g" }, dirs, ["google"], { google });
+    expect(env.GATEWAY_KEY).toBe("k");
+    expect("GOOGLE_GENERATIVE_AI_API_KEY" in env).toBe(false);
+  });
+
   it("passes names listed in OCRA_RUNTIME_ENV", () => {
     const env = serverEnv(
       { OCRA_RUNTIME_ENV: "CUSTOM_BASE_URL, OTHER", CUSTOM_BASE_URL: "u" },
