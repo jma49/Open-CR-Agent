@@ -14,7 +14,7 @@ State of the project as of 2026-09-30, for whoever picks it up next (human or ag
 | Site design system | `DESIGN.md` in the site repository (tokens, type scale, migration plan, how the Visual check works); `AGENTS.md` there keeps the rules for every change |
 | Architecture | `docs/architecture.md`, decisions in `docs/adr/0001`–`0017`, spike reports in `docs/spikes/` (0001 OpenCode runtime, 0002 OpenAI-compatible endpoints) |
 | Security policy | `SECURITY.md`; reports through GitHub's private vulnerability reporting (enabled 2026-09-30). `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, issue forms in `.github/ISSUE_TEMPLATE/` |
-| Container image | `Dockerfile`; `ghcr.io/jma49/ocra:<version>` since 0.2.0 (release workflow, `image` job; 0.2.0 is `sha256:89db7d33ec1225afbe15a53c760cf8b7da76feb5986df653f6642d1277f9552a`, attested). Private until the maintainer makes it public |
+| Container image | `Dockerfile`; `ghcr.io/jma49/ocra:<version>` since 0.2.0 (release workflow, `image` job; 0.2.0 is `sha256:89db7d33ec1225afbe15a53c760cf8b7da76feb5986df653f6642d1277f9552a`, attested). Public: an anonymous pull of `0.2.0` served that digest (2026-09-30) |
 | Audits | `docs/audits/` (latest: `2026-09-30-m9-security.md`) |
 | Pitfalls | `docs/pitfalls.md` |
 | Pending verification | `docs/pending-verification.md` (what still needs a deploy or a model key to check) |
@@ -63,15 +63,14 @@ Merged on 2026-09-30:
 | #287 | SARIF doubles braces in message text (SARIF 3.11.5); a probe upload showed code scanning displays `{{` as `{` |
 
 **Maintainer actions, in order (none needs model credit):**
-1. **Now:** make `ghcr.io/jma49/ocra` public in its package settings on GitHub (Packages → ocra → Package settings → Change visibility). The GitLab page and the installation page tell users to pull it. GitHub's API cannot change a package's visibility.
-2. **For the live GitLab check** (`docs/pending-verification.md`), a scratch group with a project on gitlab.com and a project access token (Developer role, `api` scope), put where the agent can read it (`.local/`). The check can run with a scripted runtime, so it costs no model credit. The same group lets the agent try the separate reviewer project of #290.
-3. For #289, a GitHub App on a scratch repository (creating an app is the maintainer's to approve), or a go-ahead for the agent to create one.
-4. Optional: a contact address for conduct and security reports. Both go through GitHub's private reporting today.
+1. **For the live GitLab check** (`docs/pending-verification.md`), a scratch group with a project on gitlab.com and a project access token (Developer role, `api` scope), put where the agent can read it (`.local/`). The check can run with a scripted runtime, so it costs no model credit. The same group lets the agent try the separate reviewer project of #290.
+2. For #289, a GitHub App on a scratch repository (creating an app is the maintainer's to approve), or a go-ahead for the agent to create one.
+3. Optional: a contact address for conduct and security reports. Both go through GitHub's private reporting today.
 
 Done on 2026-09-30: `vcs-platform` and `vcs-gitlab` were published by hand at 0.1.2 (the agent ran `npm publish` at the maintainer's request, under a pseudo-terminal so the browser confirmation worked; the permission system then left `npm trust` and `npm access` to the maintainer, who ran both).
 
 **Next steps for the agent:**
-1. After action 2: the live GitLab check, then #290 (the separate reviewer project; if it works, it moves from the threat model into the GitLab page).
+1. After action 1: the live GitLab check, then #290 (the separate reviewer project; if it works, it moves from the threat model into the GitLab page).
 2. #289: run the GitHub setup that people with push access cannot change, on a scratch repository (one small review), and drop the page's "not run end to end yet" note.
 3. #288: neutralize posted text without touching code spans.
 4. When credit returns, M5 and M6 as the roadmap says: first one golden smoke run of `main`, about $11.
@@ -79,7 +78,7 @@ Done on 2026-09-30: `vcs-platform` and `vcs-gitlab` were published by hand at 0.
 
 **The 0.2.0 release** (#292, run 36678672079): the dry run and the release published all seven packages with provenance. The image job failed once, because npm served `cli@0.2.0` minutes before `core`, `vcs-platform` and `vcs-gitlab`, and the image refuses to build from source; re-run, it pushed and attested the image. The image job now waits for every package. Checked as a user: `npm install @open-cr-agent/cli@0.2.0`, `ocra --version`, a `--plan` review, and `npm audit signatures`, with all seven packages attested.
 
-The site is in step with `main` as of #287 (deployed 2026-09-30). The post-release changes (examples at v0.2.0) and the landing page's roadmap need one more deploy, after the image is public.
+The site is in step with `main` as of #287 (deployed 2026-09-30). After the release the site was deployed again (site #41 and #293): the manual and the landing page show v0.2.0, checked on the live pages.
 
 **Budget:** $0 of model credit this session. The dogfood reviews on this session's pull requests (#268–#287) were all skipped by the per-day limit, since that day's $2 was spent before the session began; the ledger's last entry is from 01:25 UTC. Left above the $100 floor:
 - evaluation $6.18;
