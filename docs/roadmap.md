@@ -51,7 +51,7 @@ Goal: someone other than the maintainer can install and use ocra in five minutes
 - Dogfood, live since 2026-09-29 for ocra and jmos (keyless Vertex, a $60 budget with a ledger in CI): the Action on real pull requests for a month; every dismissal and confirmed finding there feeds the golden set.
 - Publish the evaluation: done in the manual (#232, the quality page), and live once the site is deployed.
 
-### M8 — Own the untrusted-PR niche (built 2026-09-29, waiting for merge and a first run)
+### M8 — Own the untrusted-PR niche (merged 2026-09-29; a first probe ran)
 
 Goal: turn the security design into something a maintainer of a popular open-source repository can verify.
 
