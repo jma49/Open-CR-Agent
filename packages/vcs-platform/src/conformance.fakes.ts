@@ -198,6 +198,21 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
       });
     });
 
+    it("posts no mention and no link, whatever the model wrote", async () => {
+      const conversation = fixture.conversation({});
+      const text = "Ask @_alice or &#64;all, and see smb://evil.example/s or https://evil.example.";
+      await conversation.review.publish(
+        report([finding(A, { title: text, body: text, suggestion: text })], text),
+      );
+      expect(conversation.inline()).toHaveLength(1);
+      for (const body of [...conversation.inline(), conversation.summary()]) {
+        const shown = body.replace(/<!--[\s\S]*?-->/g, "");
+        expect(shown).not.toMatch(/@[^\u200b]/);
+        expect(shown).not.toContain("&#64;");
+        expect(shown).not.toContain("://");
+      }
+    });
+
     it("posts no line a platform would run as a command", async () => {
       const conversation = fixture.conversation({});
       const text = "Fix it.\n/approve\n  /merge\n/close\n/label ~bug\n/ocra dismiss";

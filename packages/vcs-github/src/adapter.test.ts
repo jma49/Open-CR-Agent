@@ -328,8 +328,8 @@ describe("GitHubAdapter", () => {
     // The path stays one code span, where nothing renders.
     expect(body).toContain("`src/ˋ![x](https://evil.example/p.png)ˋ.ts:3-4`");
     // Model text cannot form a link or an image.
-    expect(body).toContain("See [the fix]\\(https\u200b://evil.example/login)");
-    expect(body).toContain("!\u200b[]\\(https\u200b://evil.example/t.png)");
+    expect(body).toContain("See [the fix]\\(https:\u200b//evil.example/login)");
+    expect(body).toContain("!\u200b[]\\(https:\u200b//evil.example/t.png)");
   });
 
   it.each([
@@ -354,7 +354,7 @@ describe("GitHubAdapter", () => {
       "Cite https://evil.example/fix, HTTP://evil.example, <https://evil.example/b>, www.evil.example and (ftp://evil.example).",
     );
     // What GitHub's autolinking looks for, none of which survives.
-    expect(text).not.toMatch(/(?:https?|ftp):\/\//i);
+    expect(text).not.toContain("://");
     expect(text).not.toMatch(/\bwww\./i);
     // It still reads the same.
     expect(text.replaceAll("\u200b", "")).toContain("https://evil.example/fix");

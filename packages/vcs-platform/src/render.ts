@@ -77,24 +77,31 @@ const VERDICT: Record<ReviewReport["verdict"], string> = {
 // if ocra posted as a person with write access), start a line with a slash
 // (GitLab runs a line such as `/merge` or `/approve` in a comment as a quick
 // action, with the rights of the token that posted it), or become a link at
-// all. A
-// pull request can plant an address for a reviewer to repeat (the adversarial
-// probe saw one), and a bot comment lends it credibility. Inline links lose
-// their `](`, and every `]:` is escaped, so no link reference definition
-// (`[1]: https://…`) can form, at line start or inside a blockquote or list
-// item, and no reference-style link (`[x][1]`, `[x][]`, `[1]`) has anything
-// to resolve to. Web addresses get a zero-width space in their scheme or
-// after `www`, which GitHub's autolinking needs intact, so they read the
-// same and stay text; email addresses already lose theirs at the `@`.
+// all. A pull request can plant an address for a reviewer to repeat (the
+// adversarial probe saw one), and a bot comment lends it credibility.
+// Character references get a zero-width space after their `&` and stay as
+// typed, since both platforms look for mentions after decoding them
+// (`&#64;all`); unlike `&amp;`, it keeps `&lt;` quoted in code readable.
+// Every `@` gets one too, which no mention survives (GitLab usernames may
+// start with `_` or `.`), nor an email address. Inline links lose their `](`,
+// and every `]:` is escaped, so no link reference definition (`[1]: https://…`)
+// can form, at line start or inside a blockquote or list item, and no
+// reference-style link (`[x][1]`, `[x][]`, `[1]`) has anything to resolve to.
+// Addresses of every scheme get a zero-width space after the colon (GitLab
+// links `smb://` and `vscode://` too), and `www.` one before its dot, so they
+// read the same and stay text.
+const CHARACTER_REFERENCE = /&(?=#\d{1,7};|#[xX][\da-fA-F]{1,6};|[A-Za-z][A-Za-z\d]{1,31};)/g;
+
 export function safeMarkdown(text: string): string {
   return text
+    .replace(CHARACTER_REFERENCE, "&\u200b")
     .replaceAll("<!--", "&lt;!--")
     .replace(/<\/?[a-zA-Z][^>]*>/g, (tag) => tag.replaceAll("<", "&lt;"))
-    .replace(/@(?=[A-Za-z0-9-])/g, "@\u200b")
+    .replaceAll("@", "@\u200b")
     .replace(/!\[/g, "!\u200b[")
     .replace(/\/(?=ocra)/gi, "/\u200b")
     .replace(/^([ \t]*)\//gm, "$1\u200b/")
-    .replace(/\b(https?|ftp)(?=:\/\/)/gi, "$1\u200b")
+    .replace(/:(?=\/\/)/g, ":\u200b")
     .replace(/\bwww(?=\.)/gi, "www\u200b")
     .replaceAll("](", "]\\(")
     .replaceAll("]:", "]\\:");

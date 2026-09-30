@@ -38,6 +38,35 @@ describe("safeMarkdown", () => {
   it("leaves slashes inside a line alone", () => {
     expect(safeMarkdown("Read src/a.ts and a/b")).toBe("Read src/a.ts and a/b");
   });
+
+  it("keeps every @ from mentioning anyone", () => {
+    const safe = safeMarkdown("Ask @_alice, @.bob, @all or @here, or mail a@b.example");
+    // A mention needs a name right after the @; none has one.
+    expect(safe).not.toMatch(/@[^\u200b]/);
+    expect(safe.replaceAll("\u200b", "")).toBe(
+      "Ask @_alice, @.bob, @all or @here, or mail a@b.example",
+    );
+  });
+
+  it("shows character references as typed, since mentions are found after decoding", () => {
+    // GitHub rendered each of the first three as a mention of the user.
+    const safe = safeMarkdown("&#64;alice &#x40;all &commat;here &amp; a && b");
+    expect(safe).toBe("&\u200b#64;alice &\u200b#x40;all &\u200bcommat;here &\u200bamp; a && b");
+  });
+
+  it.each([
+    "https://evil.example/fix",
+    "HTTP://evil.example",
+    "ftp://evil.example",
+    "smb://evil.example/share",
+    "vscode://evil.example/open",
+    "ssh://git@evil.example/r",
+  ])("keeps %s from becoming a link on either platform", (address) => {
+    const safe = safeMarkdown(`See ${address} and <${address}>.`);
+    // GitHub and GitLab both autolink at "://", GitLab for any scheme.
+    expect(safe).not.toContain("://");
+    expect(safe.replaceAll("\u200b", "")).toContain(address);
+  });
 });
 
 describe("inlineBody", () => {
