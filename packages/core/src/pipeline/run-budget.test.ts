@@ -169,6 +169,26 @@ describe("runReview with a spend limit", () => {
     expect(report.spendLimit).toEqual({ usd: 1, reached: "total" });
   });
 
+  it("warns when model calls use tokens without a cost, which the spend limit cannot see", async () => {
+    const report = await runReview({
+      vcs: vcs({}, files(2)),
+      runtime: pricedRuntime(0, 0),
+      bundling: perFile,
+      concurrency: 1,
+      maxCostUsd: 1,
+    });
+    expect(report.usage.costUsd).toBe(0);
+    expect(report.warnings[0]).toBe(
+      "5 model call(s) used tokens but reported no cost: their model has no price, so the reported cost and the spend limit do not count them",
+    );
+    const priced = await runReview({
+      vcs: vcs({}, files(2)),
+      runtime: pricedRuntime(0.1),
+      bundling: perFile,
+    });
+    expect(priced.warnings.some((w) => w.includes("reported no cost"))).toBe(false);
+  });
+
   it("does not verify findings that memory or a reviewer's dismissal removes", async () => {
     const first = await runReview({
       vcs: vcs({}, files(2)),

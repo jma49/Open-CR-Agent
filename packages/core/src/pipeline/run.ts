@@ -28,7 +28,7 @@ import {
   summarizeAnchoring,
   type TaskOutcome,
 } from "./report.js";
-import { addUsage, emptyUsage } from "./usage.js";
+import { addUsage, emptyUsage, unpricedCalls } from "./usage.js";
 
 export { GUIDELINES_PATH } from "./plan.js";
 
@@ -243,6 +243,13 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     );
   }
 
+  const calls = [
+    ...plan.usage,
+    ...results.map((r) => r.usage),
+    ...relocationUsage,
+    ...verification.usage,
+    ...judged.usage,
+  ];
   const report: ReviewReport = {
     changeRequest: plan.changeRequest,
     tier: plan.tier,
@@ -260,14 +267,9 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     unverifiedCriticals: countMissedCriticals(verification.kept, verification.missed),
     refuted: verification.refuted,
     remembered: remembered.remembered,
-    usage: sumUsage([
-      ...plan.usage,
-      ...results.map((r) => r.usage),
-      ...relocationUsage,
-      ...verification.usage,
-      ...judged.usage,
-    ]),
+    usage: sumUsage(calls),
     warnings: [
+      ...unpricedWarning(calls),
       ...plan.warnings,
       ...results.flatMap((r) => r.warnings),
       ...verification.warnings,
@@ -415,6 +417,15 @@ function sortFindings(findings: Finding[]): Finding[] {
       a.file.localeCompare(b.file) ||
       (a.lineRange?.start ?? 0) - (b.lineRange?.start ?? 0),
   );
+}
+
+function unpricedWarning(calls: readonly Usage[]): string[] {
+  const unpriced = unpricedCalls(calls);
+  return unpriced > 0
+    ? [
+        `${unpriced} model call(s) used tokens but reported no cost: their model has no price, so the reported cost and the spend limit do not count them`,
+      ]
+    : [];
 }
 
 function sumUsage(usages: readonly Usage[]): Usage {

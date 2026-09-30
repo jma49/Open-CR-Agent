@@ -13,3 +13,10 @@ export function addUsage(total: Usage, next: Usage): Usage {
     costUsd: total.costUsd + next.costUsd,
   };
 }
+
+// Calls that used tokens but cost nothing: their model has no price (a
+// declared model priced at 0, or one missing from the pricing catalog), so
+// reported cost and the spend limit cannot count them.
+export function unpricedCalls(usages: readonly Usage[]): number {
+  return usages.filter((u) => u.inputTokens + u.outputTokens > 0 && u.costUsd === 0).length;
+}
