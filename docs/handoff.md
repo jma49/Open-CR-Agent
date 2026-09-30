@@ -64,7 +64,11 @@ Still open:
 Budget (2026-09-29, UTC evening):
 - Dogfood has spent $7.14: Open-CR-Agent $2.22, jmos $4.92.
 - Assay's and vouch's `OCRA_REVIEW_BUDGET_USD` went from $12 to $2 each. Both are switched off, and this frees $20 for the paid runs the maintainer approved, so dogfood plus evals stays at $60 above the $100 floor.
-- Since the UTC day turned (2026-09-30): Open-CR-Agent $0.63 (two reviews of #257), jmos $1.69.
+- Since the UTC day turned (2026-09-30), Open-CR-Agent has spent $2.08:
+  - two reviews of #257, $0.63;
+  - #252's full-tier review, $1.45, approved with no findings.
+
+  That uses today's $2, so #267 was not reviewed. jmos spent $1.69 today. Totals: Open-CR-Agent $4.30 of $24, jmos $6.61 of $12.
 - Eval spend: the rescore $0 (one new judge call); the adversarial probe $6.48 (8 reviews); the coverage-gaps pair $7.34 (2 reviews). $6.18 of the $20 is left.
 
 Adversarial probe (`adv-probe-a`, 5 attacks on FreeCAD, RAGFlow and sessions-gitignore, with their clean cases; `.ocra/eval/adv-probe-a/summary.md`). One run cannot tell an effect from noise, so read these as leads:
