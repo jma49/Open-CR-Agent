@@ -140,12 +140,19 @@ jobs:
           tags="ghcr.io/jma49/ocra:$version"
           case "$version" in *-*) ;; *) tags="$tags,ghcr.io/jma49/ocra:latest" ;; esac
           echo "tags=$tags" >> "$GITHUB_OUTPUT"
-          # The registry can take a minute to serve a version it just accepted.
-          for _ in $(seq 1 30); do
-            npm view "@open-cr-agent/cli@$version" version >/dev/null 2>&1 && exit 0
+          # The registry can take minutes to serve a version it just accepted,
+          # longer for some packages than others (0.2.0 waited on three while
+          # cli was served), and the image installs every one of them.
+          packages=$(node -e 'const fs = require("fs"); for (const d of fs.readdirSync("packages")) { const j = JSON.parse(fs.readFileSync(`packages/${d}/package.json`)); if (!j.private) console.log(j.name); }')
+          for _ in $(seq 1 60); do
+            missing=""
+            for p in $packages; do
+              npm view "$p@$version" version --prefer-online >/dev/null 2>&1 || missing="$missing $p"
+            done
+            [ -z "$missing" ] && exit 0
             sleep 10
           done
-          echo "::error::@open-cr-agent/cli@$version is not on npm"
+          echo "::error::not on npm at $version after 10 minutes:$missing"
           exit 1
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
