@@ -214,5 +214,17 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
         expect(body).not.toMatch(/\/ocra/);
       }
     });
+
+    it("does not comment twice on a finding its own unedited thread already has", async () => {
+      const conversation = fixture.conversation({
+        threads: [
+          { comments: [{ author: OCRA, body: marker(A) }] },
+          { comments: [{ author: OCRA, body: marker(B), editedBy: MAINTAINER }] },
+        ],
+      });
+      await conversation.review.publish(report([finding(A), finding(B)]));
+      // B's marker was edited, so it proves nothing: B is commented again.
+      expect(conversation.inline()).toEqual([expect.stringContaining(`ocra:finding ${B}`)]);
+    });
   });
 }

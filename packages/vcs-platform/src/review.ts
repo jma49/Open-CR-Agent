@@ -252,6 +252,7 @@ export class PlatformReview implements VcsAdapter {
     const alreadyCommented = new Set([
       ...before.filter((f) => f.commented).map((f) => f.fingerprint),
       ...(trusted?.posted ?? []),
+      ...(await this.ownThreads()),
     ]);
 
     const fresh: InlineFinding[] = report.findings.flatMap((f) => {
@@ -312,6 +313,21 @@ export class PlatformReview implements VcsAdapter {
         ...(await this.resolveFixedThreads(report)),
       ],
     };
+  }
+
+  // Findings ocra already commented on inline, from its own threads, so a
+  // run that stopped between posting them and writing the summary, or a
+  // summary whose state no longer counts, does not post them twice. Only
+  // comments nobody else edited count: an edited marker could hide a finding.
+  private async ownThreads(): Promise<string[]> {
+    const bot = await this.bot();
+    const threads = await this.threads().catch(() => []);
+    return threads.flatMap((thread) => {
+      const first = thread.comments[0];
+      const fingerprint = first && FINDING_MARKER.exec(first.body)?.[1];
+      if (!first || !fingerprint || !bot.is(first.author)) return [];
+      return first.editor === undefined || bot.is(first.editor) ? [fingerprint] : [];
+    });
   }
 
   // Resolving threads is a courtesy: the summary already lists what was
