@@ -1,74 +1,97 @@
 # Roadmap
 
-What comes after M1–M4 (`docs/architecture.md`, all built), as of 2026-09-29. It answers a comparison with open-source peers (Alibaba open-code-review, PR-Agent, Kodus, claude-code-action, Cloudflare's published design) and what ocra's first model runs showed. The order follows one rule: **no feature work that a quality number cannot justify, until ocra has a quality number worth publishing.**
+What comes after M1–M4 (`docs/architecture.md`, all built), as of 2026-09-30. It answers a comparison with open-source peers (Alibaba open-code-review, PR-Agent, Kodus, claude-code-action, Cloudflare's published design), what ocra's first model runs showed, and the maintainer's goal of 2026-09-30: a project a company can adopt, and a company could be built on.
+
+## The rule while model credit is frozen
+
+Model runs are paid from a Google Cloud trial credit, and the maintainer set a floor: nothing is spent below $100 left. What remains above it is the dogfood allotment in CI and $6.18 of evaluation money, which cannot buy a quality number: one golden smoke run costs about $11.
+
+So, until new credit arrives: **ship only what tests prove without a model: reach, trust, cost control and operability. Prompts, rules and reviewers stay frozen, and no `[needs-eval]` change merges.** Labels keep coming from real reviews (dogfood), which cost nothing extra. Every page states what was tested live and what was not; readiness is claimed only where it is shown.
+
+It replaces the earlier rule, "no feature work that a quality number cannot justify", which assumed the credit to buy numbers. Once credit is back, M5 and M6 resume, starting with one golden smoke run of `main` (about $11).
 
 ## Where ocra stands
 
 **What peers have that ocra lacks**, largest gap first:
 
-1. **Published quality numbers.** Alibaba reports SEM-F1 25.1% on AACR-Bench (recall 12–20%); Kodus published how it raised recall from 53% to 62%. ocra has an evaluation harness and, since 2026-09-28, a baseline, but nothing publishable.
-2. **Installation.** Everyone else installs with one command (npm, PyPI, Docker, a marketplace Action). ocra is built from source.
-3. **Platforms.** PR-Agent and Kodus support five or more (GitHub, GitLab, Bitbucket, Azure DevOps, Gitea); ocra supports GitHub.
-4. **Beyond one-shot review.** Chat commands in the pull request (`/ask`, `/describe`), learning from corrections, code graphs, IDE plugins.
-5. **Production mileage.** Cloudflare runs 130k reviews a month at $1.19 each; ocra has no external user.
+1. **Platforms.** PR-Agent and Kodus support five or more (GitHub, GitLab, Bitbucket, Azure DevOps, Gitea); ocra supports GitHub.
+2. **Published quality numbers at scale.** Alibaba reports SEM-F1 25.1% on AACR-Bench (recall 12–20%); Kodus published how it raised recall from 53% to 62%. ocra publishes one run on 16 golden cases (the quality page), too few to decide changes.
+3. **Beyond one-shot review.** Chat commands in the pull request (`/ask`, `/describe`), learning from corrections, code graphs, IDE plugins.
+4. **Production mileage.** Cloudflare runs 130k reviews a month at $1.19 each; ocra reviews its own pull requests and one other repository's, and has no external user.
 
-**What ocra has that none of them publish:** defense in depth for untrusted pull requests. No write, shell or web tools for agents; an environment allowlist; configuration, rules and memory from the base commit; prompt-injection boundaries; neutralized comment output; commands only from verified, unedited comments of people with write access.
+Installation is no longer a gap: v0.1.2 is on npm with provenance, and the Action installs the published CLI.
+
+**What ocra has that none of them publish:** defense in depth for untrusted pull requests. No write, shell or web tools for agents; an environment allowlist; configuration, rules and memory from the base commit; prompt-injection boundaries; neutralized comment output, with no commands and no links from model text; commands only from verified, unedited comments of people with write access; a threat model and a measured adversarial tier.
 
 **What the first runs on Vertex showed** (`docs/handoff.md`):
 
-- **Recall is the gap, and it is lost at the reviewers.** Across 20 baseline reviews the reviewers reported 14 findings in total; Verify refuted none and the judge dropped none. Kodus's lesson (Verify discarding too much) does not apply yet: ocra's reviewers barely report. Their prompts end "If a finding would not survive a skeptical senior engineer, do not report it."
+- **Recall is the gap, and it is lost at the reviewers.** Across 20 baseline reviews the reviewers reported 14 findings in total; Verify refuted none and the judge dropped none.
 - **Ten AACR-Bench PRs cannot decide a change.** Two identical runs gave precision 66.7% and 40.0%: with 5–6 findings a run, one finding moves precision by 20 points.
-- **AACR-Bench's line rule hides real hits.** On electron@6084595 ocra reported the annotated critical use-after-free, anchored ten lines from the reference; matching allows one line, so it counted as a miss and a false positive.
-- **Security findings on trivial or sensitive-path PRs did not appear** when #85 and #103 ran the security reviewer there: the benchmark's security references on those PRs are hardening suggestions, which the reviewer is not asked for.
+- **AACR-Bench's line rule hides real hits**, and by hand 64–86% of ocra's findings there were real, against the 21–43% the benchmark scored.
+- **A spend cap covers only a slice of a large pull request.** On a jmos pull request (14 files, 28 tasks) the $2 limit held ($1.69), but most files went unreviewed, because tasks ran bundle by bundle.
 
 ## Milestones
 
-### M5 — Measure (now)
+### M9 — Reach and trust (now)
 
-Goal: a quality number that is stable enough to decide changes and honest enough to publish.
+Goal: a team on GitHub or GitLab, self-hosted or not, can adopt ocra, audit how it is built, and keep its cost bounded, without asking the maintainer. Each item is one or a few small pull requests, tested without a model.
 
-- Golden set (ADR-0011): review and merge the seed (#186); run the smoke tier twice for its spread; grow it to 10 smoke and 25 full cases, including other languages from adjudicated AACR-Bench findings. #258 reaches 10 smoke cases (16 in all, Java and C among them); full needs 9 more.
-- Evaluation fixes, done: a lenient diagnostic match (same file, same concern, any line) reported next to the official one, so anchoring distance and model quality are told apart; the ceiling heading names the dataset (#250); a golden label applies only to the claim it was recorded for (#251, ADR-0012).
-- Decide the `[needs-eval]` backlog with the cheapest check that answers each: targeted runs on the PRs a change affects (#85, #103 done), the golden smoke tier, or 30+ PRs for prompt changes (#126 first, then #142–#146, #150).
-- Budget: about $60 of the Vertex credit.
+1. **Trust documents.** `SECURITY.md` with private reporting, `CONTRIBUTING.md`, a code of conduct, issue templates, and a manual page on what is a contract (flags, configuration, exit codes, the JSON report, the summary state) and how it may change.
+2. **Release hardening**, from `docs/releasing.md`: the Action requires ocra's own provenance or builds from source; `check:packages` in its own job; OpenCode's binary found without optional dependencies.
+3. **Spend-aware task order** (ADR-0015): under a spend limit, every file gets its first reviewer before any file gets its second, and what the limit left unreviewed is named in every report. No prompt changes.
+4. **SARIF output**, for code scanning dashboards and security tools.
+5. **GitLab merge requests** (ADR-0016): the platform-neutral parts of publishing move out of `vcs-github`, a `vcs-gitlab` adapter, `--mr`, and a GitLab CI template. First release: merge requests from the same project; fork merge requests documented, not automated.
+6. **A container image** on GHCR, built from the published CLI with provenance, for GitLab CI, Jenkins and other runners.
+7. **Model provider guides**: Azure OpenAI, Amazon Bedrock, Vertex, Anthropic, OpenAI and OpenAI-compatible endpoints, each marked with what was tested live (today: Vertex and the Gemini API).
 
-### M6 — Recall (next)
+Then Gitea and Gitee, if GitLab shows the adapter shape holds and someone asks.
 
-Goal: move recall without giving back precision, measured on the golden set and 30+ AACR-Bench PRs.
+### M7 — Ship v0.1 (published 2026-09-29; dogfooding)
 
-- Split the gate: reviewers report every defect they can support with evidence; Verify and the judge, which already exist and drop nothing today, own precision. One prompt change at a time, each measured.
-- Then context: #144's callers of changed symbols, and whether reviewers use their step budget (some stop after 8 steps).
-- Budget: about $80.
-
-### M7 — Ship v0.1 (published 2026-09-29; dogfooding next)
-
-Goal: someone other than the maintainer can install and use ocra in five minutes.
-
-- Done on 2026-09-29.
-  - `@open-cr-agent/cli` and its four library packages are on npm at 0.1.0. The first publish was by hand; later releases publish from GitHub releases through trusted publishing, and token publishing is disallowed.
-  - The GitHub release is v0.1.0.
-  - The README and quickstart install with one line (#234).
-- Dogfood, live since 2026-09-29 for ocra and jmos (keyless Vertex, a $60 budget with a ledger in CI): the Action on real pull requests for a month; every dismissal and confirmed finding there feeds the golden set.
-- Publish the evaluation: done in the manual (#232, the quality page), and live once the site is deployed.
+- v0.1.2 is on npm with provenance (trusted publishing from GitHub releases; token publishing disallowed); the README and quickstart install with one line.
+- Dogfood, live since 2026-09-29 for ocra and jmos (keyless Vertex, a ledger in CI): the Action on real pull requests for a month; every dismissal and confirmed finding there feeds the golden set.
+- The measured-quality page is live.
 
 ### M8 — Own the untrusted-PR niche (merged 2026-09-29; a first probe ran)
 
-Goal: turn the security design into something a maintainer of a popular open-source repository can verify.
+- Built: the adversarial golden tier (#256, ADR-0014), the threat model and a gated `pull_request_target` recipe (#253, ADR-0013), and the hardening they led to (#252, #254, #264).
+- Remaining, none of it paid from the frozen credit: a live check of the fork recipe on a real fork pull request (needs a second account and a trust setup that allows `pull_request_target`; the maintainer's call), and talking to three maintainers who receive outside contributions.
+- Paused with the credit: repeated adversarial runs, and a pull request's own title and body as an attack channel.
 
-- An adversarial golden tier: pull requests whose title, description, comments or code try to suppress findings, forge commands or plant links; the claim "injection does not change the verdict" becomes a measured number. Built: #256 (ADR-0014), six attacks on four smoke cases, through the description and the code. A pull request's own title and replies are not attack channels in it yet. A first probe of all six attacks ($13.82, one run each) lost no expected finding and repeated no forged command. A planted link did reach a finding, and #264 now keeps web addresses in model text from becoming links. One run per pair is noise: repeat runs are next, and so is a pull request's own title and body as a channel.
-- A threat-model page in the manual; guidance for `pull_request_target` and fork pull requests. Written: #253 (ADR-0013), a gated `pull_request_target` workflow. The analysis behind it hardened two places (#252, #254). A live fork check is pending.
-- Talk to three maintainers who receive outside contributions before building more.
+### M5 — Measure (paused until credit returns)
 
-### M9 — Reach (after M7 shows demand)
+Goal: a quality number stable enough to decide changes and honest enough to publish. The golden set has 16 cases (10 smoke) and 26 expected findings; evaluation fixes are done (#250, #251). Resumes with one golden smoke run of `main`, then the `[needs-eval]` backlog with the cheapest check that answers each. Budget when it resumes: about $60.
 
-- GitLab as the second `VcsAdapter` (the largest platform gap), then Gitea/Gitee if the second positioning hypothesis (self-hosted and Chinese platforms, domestic models) finds users.
-- A Docker image alongside npm.
+### M6 — Recall (paused until credit returns)
+
+Goal: move recall without giving back precision. Split the gate (reviewers report every defect they can support; Verify and the judge own precision), one prompt change at a time, each measured; then context (#144's callers). Budget when it resumes: about $80.
+
+## Readiness checklist
+
+What a company checks before adopting a code review tool, and where ocra is. Updated as M9 lands.
+
+| Area | Status |
+|---|---|
+| Install | npm with provenance; the Action; container image planned (M9) |
+| Platforms | GitHub; GitLab planned (M9) |
+| Data stays with the customer | Runs in the customer's CI with the customer's model keys; no ocra service in between |
+| Model providers | Any provider OpenCode supports; tested live: Gemini on Vertex and the Gemini API |
+| Security | Threat model, adversarial tier, private vulnerability reporting planned (M9) |
+| Supply chain | Trusted publishing, SLSA provenance, a pinned install in the Action |
+| Cost control | Per-run spend limit that stops running tasks, task cap, token and dollar reporting |
+| Integrations | Versioned JSON report; SARIF planned (M9) |
+| Quality evidence | 16 golden cases, one run, agent labels spot-checked by a second model |
+| Support and stability | Early 0.x; stability policy planned (M9) |
+| Production use | Dogfood on two repositories; no external user yet |
 
 ## Not now
 
-Chat commands in the pull request, IDE plugins, issue-tracker checks, full-repository scans and a code graph beyond #144. Each is a product of its own; none helps until review quality is proven. ocra already keeps `.ocra/memory.json`, human dismissals and (#145) replies, which cover the "learning" peers advertise at the scale ocra has.
+- **A hosted service or GitHub App.** It needs users and hosting money; the CLI, the Action and the image already let a company run ocra inside its own CI with its own keys, which is what self-hosting customers ask for.
+- **`ocra stats` or OpenTelemetry export.** Session files already record cost, tokens and latency per run; aggregation waits for someone with sessions to aggregate.
+- Chat commands in the pull request, IDE plugins, issue-tracker checks, full-repository scans and a code graph beyond #144. Each is a product of its own; none helps until review quality is proven. ocra already keeps `.ocra/memory.json`, human dismissals and replies, which cover the "learning" peers advertise at the scale ocra has.
+- Any prompt, rule or reviewer change, and #171 (a model-specific failure not reproduced on Vertex).
 
 ## Positioning, to be tested
 
 1. **The reviewer you can run on strangers' pull requests.** Supported by M8; tested by talking to open-source maintainers.
-2. **What large tools do not cover.** Gitee, self-hosted deployments, domestic models. Untested; needs conversations before code.
+2. **What large tools do not cover: GitLab and self-hosted deployments, then Gitee and domestic models.** Now under test: M9 builds the reach, and dogfood alone cannot show demand.
