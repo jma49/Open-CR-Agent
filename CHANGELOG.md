@@ -2,6 +2,10 @@
 
 Changes to the `@open-cr-agent/*` packages and the GitHub Action. The packages are released together at one version. While that version is 0.x, a minor release may change options, configuration and output; each such change is listed here.
 
+## Unreleased
+
+- A run no longer says it reviewed nothing when one reviewer finished its tasks and another failed on the same files (#263). Such a run is still incomplete (exit code `3`), but its verdict, summary and findings now stand.
+
 ## 0.1.2
 
 A run's spend limit now holds, text a model wrote can no longer count as a command or post a link, and OpenCode no longer runs inside the checkout it reviews.

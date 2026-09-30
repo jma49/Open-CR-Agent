@@ -223,7 +223,7 @@ function exitCode(report: ReviewReport, err: Output): number {
   // Incomplete comes first, even over a blocking verdict: the action lets
   // exit 1 pass unless fail-on-concerns is set, and a review that missed
   // files or could not check a critical finding must never pass.
-  const { notReviewed } = coverageGaps(report.coverage);
+  const { notReviewed } = coverageGaps(report);
   if (notReviewed > 0) {
     err.write(
       `[ocra] ${notReviewed} selected file(s) were not reviewed; the review is incomplete.\n`,

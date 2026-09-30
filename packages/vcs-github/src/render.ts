@@ -21,7 +21,7 @@ const VERIFICATION: Record<Verification, string> = {
 // A run that reviewed nothing has no verdict to announce, and one that missed
 // files or could not verify a critical finding says so next to its verdict.
 function headline(report: ReviewReport): string {
-  const { notReviewed, nothingReviewed } = coverageGaps(report.coverage);
+  const { notReviewed, nothingReviewed } = coverageGaps(report);
   if (nothingReviewed) return "⏸️ Not reviewed";
   const incomplete = notReviewed > 0 || report.unverifiedCriticals > 0;
   const overridden =

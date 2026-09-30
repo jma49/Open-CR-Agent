@@ -212,7 +212,10 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   if (judgeWanted && !judgeAffordable) {
     judged.warnings.push(`spend limit of $${options.maxCostUsd} reached: findings were not judged`);
   }
-  const { nothingReviewed } = coverageGaps(fileCoverage);
+  const { nothingReviewed } = coverageGaps({
+    coverage: fileCoverage,
+    tasks: results.map((r) => r.outcome),
+  });
   if (!nothingReviewed) {
     emit(
       judged.decisions

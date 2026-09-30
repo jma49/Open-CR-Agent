@@ -22,16 +22,23 @@ export type CoverageEntry =
 // How much of the selection this run actually reviewed. Every surface (exit
 // code, terminal, pull request summary) reads it from here, so none of them
 // can call a run that reviewed nothing "approved".
-export function coverageGaps(coverage: readonly CoverageEntry[]): {
+export function coverageGaps(run: {
+  coverage: readonly CoverageEntry[];
+  tasks: readonly Pick<TaskOutcome, "status">[];
+}): {
   notReviewed: number;
   nothingReviewed: boolean;
 } {
-  const notReviewed = coverage.filter(
+  const notReviewed = run.coverage.filter(
     (c) => c.status === "failed" || c.status === "unreviewed",
   ).length;
   // Unchanged files were reviewed by an earlier run, and their findings and
   // verdict carry over: a re-review whose new files all failed still has them.
-  const reviewed = coverage.some((c) => c.status === "reviewed" || c.status === "unchanged");
+  // A file stays failed while any of its reviewers failed, so a reviewer that
+  // finished its tasks has still reviewed something (#263).
+  const reviewed =
+    run.coverage.some((c) => c.status === "reviewed" || c.status === "unchanged") ||
+    run.tasks.some((t) => t.status === "completed");
   return { notReviewed, nothingReviewed: notReviewed > 0 && !reviewed };
 }
 

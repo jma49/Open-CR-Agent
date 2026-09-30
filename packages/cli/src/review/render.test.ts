@@ -181,6 +181,7 @@ describe("renderText", () => {
     const skipped: ReviewReport = {
       ...base,
       coverage: [{ path: "src/a.ts", status: "unreviewed" }],
+      tasks: [],
     };
     for (const report of [failed, skipped]) {
       expect(renderText(report)).toContain("Verdict: not reached (nothing was reviewed)");

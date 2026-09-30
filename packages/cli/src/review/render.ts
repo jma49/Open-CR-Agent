@@ -26,7 +26,7 @@ export const safeJson = serializeOutput;
 
 export function renderText(report: ReviewReport, sessionDir?: string): string {
   const incomplete = report.tasks.filter((t) => t.status !== "completed");
-  const { notReviewed, nothingReviewed } = coverageGaps(report.coverage);
+  const { notReviewed, nothingReviewed } = coverageGaps(report);
   const lines: string[] = [
     `Review: ${report.changeRequest.title}`,
     coverageLine(report),

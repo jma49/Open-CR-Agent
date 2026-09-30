@@ -28,6 +28,32 @@ describe("runReview completeness", () => {
     expect(report.coverage.map((c) => c.status)).toEqual(["unreviewed"]);
   });
 
+  it("keeps the verdict and summary when one reviewer finished and another failed (#263)", async () => {
+    const report = await runReview({
+      vcs: vcs({}, patch("src/a.ts", "const a = 1;")),
+      runtime: runtime(async function* (spec) {
+        if (spec.reviewer === "security") {
+          yield { type: "error", taskId: spec.taskId, error: "boom", retryable: false };
+          return;
+        }
+        yield {
+          type: "finding",
+          taskId: spec.taskId,
+          finding: finding("src/a.ts", "const a = 1;"),
+        };
+        yield { type: "done", taskId: spec.taskId };
+      }),
+      reviewers: [reviewer("correctness"), reviewer("security")],
+      verify: false,
+      judge: false,
+    });
+    // The file is not fully reviewed, so the run is incomplete, but the
+    // correctness review happened and its finding stands.
+    expect(report.coverage.map((c) => c.status)).toEqual(["failed"]);
+    expect(report.findings).toHaveLength(1);
+    expect(report.summary).not.toContain("Nothing was reviewed");
+  });
+
   it("counts a critical Verify could not check even when the judge drops it", async () => {
     const dropping: AgentRuntime = {
       ...runtime(async function* (spec) {
