@@ -142,25 +142,44 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     onUsage: spend,
     signal: AbortSignal.any([signal, spendLimit.signal]),
   };
+  // Tasks that never started leave their files unreviewed, not failed.
+  const notStarted = new Set<string>();
+  let unaffordable = 0;
   const results = await mapWithConcurrency(
     matrix.cells,
     options.concurrency ?? DEFAULTS.concurrency,
     async (cell) => {
       // Once the run is cancelled or timed out, remaining cells are not started.
-      if (signal.aborted) return skipCell(cell, "run cancelled before this task started", emit);
+      if (signal.aborted) {
+        notStarted.add(cell.taskId);
+        return skipCell(cell, "run cancelled before this task started", emit);
+      }
       if (budget.reviewExhausted()) {
+        notStarted.add(cell.taskId);
+        unaffordable += 1;
         return skipCell(cell, `spend limit of $${options.maxCostUsd} reached`, emit);
       }
       return runJob(cell, plan, execute);
     },
   );
+  if (unaffordable > 0) {
+    plan.warnings.push(
+      `spend limit of $${options.maxCostUsd} reached: ${unaffordable} review task(s) did not start; their files are reported as not reviewed`,
+    );
+  }
 
   // Memory and the previous review filter first, so Verify and Judge are not
   // paid for findings that will not be reported, and a person's dismissal
   // keeps a finding out of the verdict whatever the models say.
   const concurrency = options.concurrency ?? DEFAULTS.concurrency;
   const found = dedupeFindings(results.flatMap((r) => r.findings));
-  const fileCoverage = coverage(plan.decisions, results, plan.unchanged, matrix.limited ?? []);
+  const fileCoverage = coverage(
+    plan.decisions,
+    results,
+    plan.unchanged,
+    matrix.limited ?? [],
+    notStarted,
+  );
   const remembered = applyMemory(found, plan.memory);
   const reported = new Set(found.map((f) => f.fingerprint));
   const priorReview = withoutRemembered(prior.review, plan.memory);
@@ -256,6 +275,14 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
     ],
   };
   if (judged.decisions) report.judgement = judged.decisions;
+  if (options.maxCostUsd !== undefined) {
+    const reached = budget.exhausted()
+      ? "total"
+      : spendLimit.signal.aborted || unaffordable > 0
+        ? "review"
+        : undefined;
+    report.spendLimit = { usd: options.maxCostUsd, ...(reached ? { reached } : {}) };
+  }
   report.anchoring = summarizeAnchoring(report.findings, relocationUsage.length);
   if (prior.review) {
     report.rereview = {
@@ -338,18 +365,20 @@ function coverage(
   results: readonly JobResult[],
   unchanged: ReadonlySet<string>,
   limited: readonly MatrixCell[],
+  notStarted: ReadonlySet<string>,
 ): CoverageEntry[] {
   // A file is reviewed when every reviewer assigned to it finished at least
   // one of its tasks: under --ultra one completed sample is enough. A
-  // reviewer whose task failed makes the file "failed"; one the task limit
-  // never started makes it "unreviewed".
+  // reviewer whose task failed makes the file "failed"; one whose task never
+  // started (the task or spend limit, a cancelled run) makes it "unreviewed".
   const done = new Map<string, boolean>();
   const ran = new Set<string>();
   const key = (reviewer: string, file: string) => `${reviewer}\0${file}`;
   for (const { outcome } of results) {
+    const started = !notStarted.has(outcome.taskId);
     for (const file of outcome.files) {
       const k = key(outcome.reviewer, file);
-      ran.add(k);
+      if (started) ran.add(k);
       done.set(k, done.get(k) === true || outcome.status === "completed");
     }
   }

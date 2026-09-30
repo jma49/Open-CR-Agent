@@ -129,6 +129,21 @@ describe("renderText", () => {
     );
   });
 
+  it("says when the spend limit was reached and which files never started", () => {
+    const report: ReviewReport = {
+      ...base,
+      coverage: [...base.coverage, { path: "src/b.ts", status: "unreviewed" }],
+      spendLimit: { usd: 2, reached: "review" },
+    };
+    const text = renderText(report);
+    expect(text).toContain("1 reviewed · 0 failed · 1 not started · 1 excluded");
+    expect(text).toContain(
+      "Incomplete: 1 selected file(s) were not reviewed; the spend limit of $2 was reached.",
+    );
+    expect(text).toContain("· $0.0031 of $2 (limit reached)");
+    expect(renderText({ ...base, spendLimit: { usd: 5 } })).toContain("· $0.0031 of $5\n");
+  });
+
   it("cannot be steered into terminal escape sequences by finding text", () => {
     const report: ReviewReport = {
       ...base,

@@ -16,7 +16,7 @@ import {
   type ReviewThread,
 } from "./client.js";
 import { FINDING_MARKER, inlineComment, renderSummary } from "./render.js";
-import { type ReviewState, readState, SUMMARY_MARKER } from "./state.js";
+import { lostProgress, type ReviewState, readState, SUMMARY_MARKER } from "./state.js";
 
 export interface GitHubPullRequest {
   owner: string;
@@ -326,8 +326,10 @@ export class GitHubAdapter implements VcsAdapter {
     });
     if (previous) await this.options.api.updateIssueComment(previous.id, body);
     else await this.options.api.createIssueComment(number, body);
+    const lost = lostProgress(body, pending.length);
     return {
       warnings: [
+        ...(lost ? [lost] : []),
         ...changeRequests.warnings,
         ...(await changeRequests.withdraw()),
         ...(await this.resolveFixedThreads(number, report)),

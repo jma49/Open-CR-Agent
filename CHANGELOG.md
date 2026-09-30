@@ -4,6 +4,7 @@ Changes to the `@open-cr-agent/*` packages and the GitHub Action. The packages a
 
 ## Unreleased
 
+- **What a spend limit leaves is named.** Files whose review tasks the limit never started are reported as not reviewed (`unreviewed`), no longer as failed. The run warns how many tasks did not start. The pull request summary and the terminal say the spend limit was reached, and the JSON report has a new optional `spendLimit` field (`{ usd, reached }`). A pull request's next review already continued with those files; the summary now says so. When the review state is too large for the summary comment, and the next review has to start over, the review warns.
 - The GitHub Action installs ocra's packages from npm only when their provenance shows they were built by this repository's release workflow from the version's tag. Otherwise, for example for a version published from a stolen npm login, it builds its own source and warns. `npm audit signatures` alone passed packages that have no provenance.
 - With `npm install --omit=optional`, ocra now finds the OpenCode binary that `opencode-ai`'s install script downloads, where npm runs that script. It used to stop and ask for `OCRA_OPENCODE_BIN`.
 - A security policy (`SECURITY.md`, with private reporting through GitHub), a contributing guide, a code of conduct and issue templates. The manual's new Stability and support page lists what counts as a contract and how it may change between releases.

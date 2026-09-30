@@ -33,15 +33,43 @@ describe("summary headline", () => {
   it("never announces a verdict for a run that reviewed nothing", () => {
     const nothing = report([], "approved");
     nothing.coverage = [{ path: "src/login.ts", status: "failed" }];
+    nothing.spendLimit = { usd: 2, reached: "review" };
     const body = renderSummary({ report: nothing, commented: new Set(), state: { findings: [] } });
     expect(body).toContain("## ocra review · ⏸️ Not reviewed");
     expect(body).not.toContain("Approved");
+    expect(body).toContain(
+      "1 selected file(s) were not reviewed; the spend limit of $2 was reached",
+    );
 
     const partial = report([], "approved");
     partial.coverage.push({ path: "src/other.ts", status: "unreviewed" });
     expect(
       renderSummary({ report: partial, commented: new Set(), state: { findings: [] } }),
     ).toContain("## ocra review · ✅ Approved · incomplete");
+  });
+
+  it("says what was not reviewed, and that the spend limit was reached", () => {
+    const limited = report([], "approved");
+    limited.coverage.push({ path: "src/other.ts", status: "unreviewed" });
+    limited.spendLimit = { usd: 2, reached: "review" };
+    const body = renderSummary({ report: limited, commented: new Set(), state: { findings: [] } });
+    expect(body).toContain(
+      "**Incomplete:** 1 selected file(s) were not reviewed; the spend limit of $2 was reached. They are listed under Coverage and cost, and the next review of this pull request includes them.",
+    );
+    expect(body).toContain("of a $2 limit, reached");
+    expect(body).toContain("- not reviewed: `src/other.ts`");
+
+    const unlimited = report([], "approved");
+    unlimited.coverage.push({ path: "src/other.ts", status: "failed" });
+    const plain = renderSummary({
+      report: unlimited,
+      commented: new Set(),
+      state: { findings: [] },
+    });
+    expect(plain).toContain(
+      "**Incomplete:** 1 selected file(s) were not reviewed. They are listed",
+    );
+    expect(plain).not.toContain("limit");
   });
 });
 

@@ -125,6 +125,16 @@ export function writeState(state: ReviewState): string {
   return `<!-- ocra:state v1 ${encoded} -->`;
 }
 
+// A state too large for the comment loses its head and unfinished files
+// (writeState), so the next review starts over instead of continuing; the
+// warning for that, or undefined when the state in `body` kept its head.
+export function lostProgress(body: string, pending: number): string | undefined {
+  const kept = readState(body);
+  if (!kept || kept.head !== undefined) return undefined;
+  const files = pending > 0 ? ` with its ${pending} unfinished file(s)` : "";
+  return `the review state did not fit in the summary comment${files}: the next review of this pull request reviews every file again`;
+}
+
 function encode(findings: unknown[], scope: object): string {
   return Buffer.from(JSON.stringify({ findings, ...scope }), "utf8").toString("base64");
 }

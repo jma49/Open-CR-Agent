@@ -84,6 +84,11 @@ export interface ReviewReport {
     dismissed: PriorFinding[];
   };
   anchoring?: AnchoringSummary;
+  // With a spend limit: the limit, and whether the run reached it. "review":
+  // the review share ran out, so review tasks stopped starting (and running
+  // ones stopped); "total": the whole limit, so later verification, judging
+  // or relocation may have been skipped.
+  spendLimit?: { usd: number; reached?: "review" | "total" };
   usage: Usage;
   warnings: string[];
 }

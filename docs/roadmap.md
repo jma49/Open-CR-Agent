@@ -38,7 +38,7 @@ Goal: a team on GitHub or GitLab, self-hosted or not, can adopt ocra, audit how 
 
 1. **Trust documents.** `SECURITY.md` with private reporting, `CONTRIBUTING.md`, a code of conduct, issue templates, and a manual page on what is a contract (flags, configuration, exit codes, the JSON report, the summary state) and how it may change.
 2. **Release hardening**, from `docs/releasing.md`: the Action requires ocra's own provenance or builds from source; `check:packages` in its own job; OpenCode's binary found without optional dependencies.
-3. **Spend-aware task order** (ADR-0015): under a spend limit, every file gets its first reviewer before any file gets its second, and what the limit left unreviewed is named in every report. No prompt changes.
+3. **What a spend limit leaves** (ADR-0015): the report names the files a limit left unreviewed and says the limit was reached, and a pull request's next review continues with them. Tasks keep finishing files in plan order, since the review state tracks unfinished work per file; breadth first would re-spend every push on the same first reviewers. No prompt changes.
 4. **SARIF output**, for code scanning dashboards and security tools.
 5. **GitLab merge requests** (ADR-0016): the platform-neutral parts of publishing move out of `vcs-github`, a `vcs-gitlab` adapter, `--mr`, and a GitLab CI template. First release: merge requests from the same project; fork merge requests documented, not automated.
 6. **A container image** on GHCR, built from the published CLI with provenance, for GitLab CI, Jenkins and other runners.

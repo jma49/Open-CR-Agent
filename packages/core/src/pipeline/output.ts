@@ -77,6 +77,8 @@ export interface ReportOutput {
   bundles: { label: string; files: string[] }[];
   // Added in version 1 without a bump: optional, so older readers ignore it.
   anchoring?: AnchoringSummary;
+  // Added in version 1 without a bump, like `anchoring`.
+  spendLimit?: ReviewReport["spendLimit"];
   usage: Usage;
   warnings: string[];
 }
@@ -102,6 +104,7 @@ export function toReportOutput(report: ReviewReport): ReportOutput {
   if (report.scope) output.scope = report.scope;
   if (report.judgement) output.judgement = report.judgement;
   if (report.anchoring) output.anchoring = report.anchoring;
+  if (report.spendLimit) output.spendLimit = report.spendLimit;
   if (report.rereview) {
     const r = report.rereview;
     output.rereview = {

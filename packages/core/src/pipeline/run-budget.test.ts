@@ -58,12 +58,36 @@ describe("runReview with a spend limit", () => {
       "cancelled",
     ]);
     expect(report.tasks[3]?.error).toBe("spend limit of $1 reached");
+    // Never started, so not reviewed rather than failed.
     expect(report.coverage.map((c) => c.status)).toEqual([
       "reviewed",
       "reviewed",
       "reviewed",
-      "failed",
+      "unreviewed",
     ]);
+    expect(report.warnings).toContain(
+      "spend limit of $1 reached: 1 review task(s) did not start; their files are reported as not reviewed",
+    );
+    // $0.93 after verification and $0.94 after judging: under the whole limit.
+    expect(report.spendLimit).toEqual({ usd: 1, reached: "review" });
+  });
+
+  it("reports the limit, and that it was not reached, when the run stays under it", async () => {
+    const report = await runReview({
+      vcs: vcs({}, files(2)),
+      runtime: pricedRuntime(0.1),
+      bundling: perFile,
+      concurrency: 1,
+      maxCostUsd: 5,
+    });
+    expect(report.spendLimit).toEqual({ usd: 5 });
+    expect(report.warnings).toEqual([]);
+    const unlimited = await runReview({
+      vcs: vcs({}, files(1)),
+      runtime: pricedRuntime(0.1),
+      bundling: perFile,
+    });
+    expect(unlimited.spendLimit).toBeUndefined();
   });
 
   it("stops review tasks still running once the review share is spent", async () => {
@@ -96,7 +120,17 @@ describe("runReview with a spend limit", () => {
     // flight and what it reports while stopping.
     expect(report.usage.costUsd).toBeGreaterThanOrEqual(1.6);
     expect(report.usage.costUsd).toBeLessThanOrEqual(1.6 + 2 * (0.2 + 0.05) + 1e-9);
-    expect(report.coverage.every((c) => c.status === "failed")).toBe(true);
+    // Stopped while running: failed. Never started: not reviewed.
+    expect(report.coverage.map((c) => c.status)).toEqual([
+      "failed",
+      "failed",
+      "unreviewed",
+      "unreviewed",
+    ]);
+    expect(report.warnings).toContain(
+      "spend limit of $2 reached: 2 review task(s) did not start; their files are reported as not reviewed",
+    );
+    expect(["review", "total"]).toContain(report.spendLimit?.reached);
   });
 
   it("verifies and judges with the reserved rest", async () => {
@@ -132,6 +166,7 @@ describe("runReview with a spend limit", () => {
       "spend limit reached: 2 finding(s) were not verified and cannot block",
       "spend limit of $1 reached: findings were not judged",
     ]);
+    expect(report.spendLimit).toEqual({ usd: 1, reached: "total" });
   });
 
   it("does not verify findings that memory or a reviewer's dismissal removes", async () => {

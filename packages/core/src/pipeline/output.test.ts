@@ -81,6 +81,7 @@ describe("output contract", () => {
         ambiguous: 1,
         relocationCalls: 0,
       },
+      spendLimit: { usd: 2, reached: "review" },
     } as ReviewReport;
     const output = toReportOutput(full);
     expect(Object.keys(output).sort()).toEqual(
@@ -96,6 +97,7 @@ describe("output contract", () => {
         "rereview",
         "scope",
         "skipped",
+        "spendLimit",
         "summary",
         "tasks",
         "tier",
@@ -112,6 +114,7 @@ describe("output contract", () => {
     expect(Object.keys(output.anchoring ?? {}).sort()).toEqual(
       ["ambiguous", "byMethod", "relocationCalls"].sort(),
     );
+    expect(output.spendLimit).toEqual({ usd: 2, reached: "review" });
     expect(Object.keys(output.usage).sort()).toEqual(
       ["cachedTokens", "costUsd", "inputTokens", "outputTokens", "reasoningTokens"].sort(),
     );

@@ -47,6 +47,12 @@ function overrideNote(report: ReviewReport): string[] {
   ];
 }
 
+function spendLimitNote(report: ReviewReport): string {
+  const limit = report.spendLimit;
+  if (!limit) return "";
+  return ` of a $${limit.usd} limit${limit.reached ? ", reached" : ""}`;
+}
+
 function verification(f: { verification?: Verification }): string {
   return VERIFICATION[f.verification ?? "unchecked"];
 }
@@ -173,6 +179,16 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
       `**Incomplete:** verification failed or ran out of budget for ${report.unverifiedCriticals} critical finding(s); check them yourself.`,
     );
   }
+  const { notReviewed } = coverageGaps(report);
+  if (notReviewed > 0) {
+    const limit = report.spendLimit?.reached
+      ? `; the spend limit of $${report.spendLimit.usd} was reached`
+      : "";
+    lines.push(
+      "",
+      `**Incomplete:** ${notReviewed} selected file(s) were not reviewed${limit}. They are listed under Coverage and cost, and the next review of this pull request includes them.`,
+    );
+  }
 
   const inSummary = report.findings.filter((f) => !commented.has(f.fingerprint));
   if (inSummary.length > 0) {
@@ -248,7 +264,7 @@ export function renderSummary({ report, commented, state }: SummaryInput): strin
     "",
     "<details><summary>Coverage and cost</summary>",
     "",
-    `${report.coverage.filter((c) => c.status === "reviewed").length} reviewed · ${report.coverage.filter((c) => c.status === "unchanged").length} unchanged since the last review · ${failed.length} not reviewed · ${report.coverage.filter((c) => c.status === "excluded").length} excluded · ${inputTokens} in / ${outputTokens} out tokens · $${costUsd.toFixed(4)}`,
+    `${report.coverage.filter((c) => c.status === "reviewed").length} reviewed · ${report.coverage.filter((c) => c.status === "unchanged").length} unchanged since the last review · ${failed.length} not reviewed · ${report.coverage.filter((c) => c.status === "excluded").length} excluded · ${inputTokens} in / ${outputTokens} out tokens · $${costUsd.toFixed(4)}${spendLimitNote(report)}`,
     ...failed.map((c) => `- not reviewed: ${codeSpan(c.path)}`),
     "",
     "</details>",

@@ -89,17 +89,36 @@ describe("GitHubAdapter", () => {
 
     it("records the reviewed head and unfinished files in the state", async () => {
       const { calls, fetchImpl } = fakeGitHub();
-      await adapter(fetchImpl).publish({
+      const published = await adapter(fetchImpl).publish({
         ...report([]),
         coverage: [
           { path: "src/login.ts", status: "failed" },
           { path: "src/ok.ts", status: "reviewed" },
           { path: "src/same.ts", status: "unchanged" },
+          // A task the spend limit never started.
+          { path: "src/later.ts", status: "unreviewed" },
         ],
+        spendLimit: { usd: 2, reached: "review" },
       });
       const state = readState(postedSummary(calls));
       expect(state?.head).toBe(head);
-      expect(state?.pending).toEqual(["src/login.ts"]);
+      expect(state?.pending).toEqual(["src/login.ts", "src/later.ts"]);
+      expect(published.warnings).toEqual([]);
+    });
+
+    it("warns when the unfinished files do not fit, since the next review starts over", async () => {
+      const { calls, fetchImpl } = fakeGitHub();
+      const published = await adapter(fetchImpl).publish({
+        ...report([]),
+        coverage: Array.from({ length: 1_001 }, (_, i) => ({
+          path: `src/f${i}.ts`,
+          status: "unreviewed" as const,
+        })),
+      });
+      expect(readState(postedSummary(calls))?.head).toBeUndefined();
+      expect(published.warnings).toEqual([
+        "the review state did not fit in the summary comment with its 1001 unfinished file(s): the next review of this pull request reviews every file again",
+      ]);
     });
 
     it("drops the head when the unfinished files do not fit, forcing a full review", () => {

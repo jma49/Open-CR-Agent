@@ -109,7 +109,10 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
     );
   }
   if (notReviewed > 0) {
-    lines.push(`Incomplete: ${notReviewed} selected file(s) were not reviewed.`);
+    const limit = report.spendLimit?.reached
+      ? `; the spend limit of $${report.spendLimit.usd} was reached`
+      : "";
+    lines.push(`Incomplete: ${notReviewed} selected file(s) were not reviewed${limit}.`);
   }
   for (const warning of report.warnings) lines.push(`Warning: ${warning}`);
   if (sessionDir) lines.push(`Session: ${sessionDir}`);
@@ -138,7 +141,7 @@ function coverageLine(report: ReviewReport): string {
     `Risk tier: ${report.tier}`,
     `${count("reviewed")} reviewed`,
     `${count("failed")} failed`,
-    ...(unreviewed > 0 ? [`${unreviewed} not covered by any reviewer`] : []),
+    ...(unreviewed > 0 ? [`${unreviewed} not started`] : []),
     ...(count("unchanged") > 0 ? [`${count("unchanged")} unchanged since the last review`] : []),
     `${count("excluded")} excluded`,
   ].join(" · ");
@@ -179,5 +182,11 @@ function summaryLine(report: ReviewReport): string {
     (s) => `${report.findings.filter((f) => f.severity === s).length} ${s}`,
   );
   const { inputTokens, cachedTokens, outputTokens, reasoningTokens, costUsd } = report.usage;
-  return `${report.findings.length} finding(s) (${counts.join(", ")}) · tokens: ${inputTokens} in (${cachedTokens} cached), ${outputTokens} out, ${reasoningTokens} reasoning · $${costUsd.toFixed(4)}`;
+  return `${report.findings.length} finding(s) (${counts.join(", ")}) · tokens: ${inputTokens} in (${cachedTokens} cached), ${outputTokens} out, ${reasoningTokens} reasoning · $${costUsd.toFixed(4)}${spendLimit(report)}`;
+}
+
+function spendLimit(report: ReviewReport): string {
+  const limit = report.spendLimit;
+  if (!limit) return "";
+  return ` of $${limit.usd}${limit.reached ? " (limit reached)" : ""}`;
 }
