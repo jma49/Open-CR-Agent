@@ -32,17 +32,17 @@ Installation is no longer a gap: v0.1.2 is on npm with provenance, and the Actio
 
 ## Milestones
 
-### M9 — Reach and trust (now)
+### M9 — Reach and trust (merged 2026-09-30; ships in 0.2.0)
 
-Goal: a team on GitHub or GitLab, self-hosted or not, can adopt ocra, audit how it is built, and keep its cost bounded, without asking the maintainer. Each item is one or a few small pull requests, tested without a model.
+Goal: a team on GitHub or GitLab, self-hosted or not, can adopt ocra, audit how it is built, and keep its cost bounded, without asking the maintainer. Each item is one or a few small pull requests, tested without a model. All seven are merged (the PR numbers follow each item); they reach users with the 0.2.0 release, which waits for two first publishes by hand (`docs/handoff.md`).
 
-1. **Trust documents.** `SECURITY.md` with private reporting, `CONTRIBUTING.md`, a code of conduct, issue templates, and a manual page on what is a contract (flags, configuration, exit codes, the JSON report, the summary state) and how it may change.
-2. **Release hardening**, from `docs/releasing.md`: the Action requires ocra's own provenance or builds from source; `check:packages` in its own job; OpenCode's binary found without optional dependencies.
-3. **What a spend limit leaves** (ADR-0015): the report names the files a limit left unreviewed and says the limit was reached, and a pull request's next review continues with them. Tasks keep finishing files in plan order, since the review state tracks unfinished work per file; breadth first would re-spend every push on the same first reviewers. No prompt changes.
-4. **SARIF output**, for code scanning dashboards and security tools.
-5. **GitLab merge requests** (ADR-0016): the platform-neutral parts of publishing move out of `vcs-github`, a `vcs-gitlab` adapter, `--mr`, and a GitLab CI template. First release: merge requests from the same project; fork merge requests documented, not automated.
-6. **A container image** on GHCR, built from the published CLI with provenance, for GitLab CI, Jenkins and other runners.
-7. **Model provider guides**: Azure OpenAI, Amazon Bedrock, Vertex, Anthropic, OpenAI and OpenAI-compatible endpoints, each marked with what was tested live (today: Vertex and the Gemini API).
+1. **Trust documents.** `SECURITY.md` with private reporting, `CONTRIBUTING.md`, a code of conduct, issue templates, and a manual page on what is a contract (flags, configuration, exit codes, the JSON report, the summary state) and how it may change. #269.
+2. **Release hardening**, from `docs/releasing.md`: the Action requires ocra's own provenance or builds from source; `check:packages` in its own job; OpenCode's binary found without optional dependencies. #270.
+3. **What a spend limit leaves** (ADR-0015, #271): the report names the files a limit left unreviewed and says the limit was reached, and a pull request's next review continues with them. Tasks keep finishing files in plan order, since the review state tracks unfinished work per file; breadth first would re-spend every push on the same first reviewers. No prompt changes.
+4. **SARIF output**, for code scanning dashboards and security tools. #272.
+5. **GitLab merge requests** (ADR-0016): the platform-neutral parts of publishing move out of `vcs-github`, a `vcs-gitlab` adapter, `--mr`, and a GitLab CI template. First release: merge requests from the same project; fork merge requests documented, not automated. #273, #274, #275.
+6. **A container image** on GHCR, built from the published CLI with provenance, for GitLab CI, Jenkins and other runners. #276.
+7. **Model providers**: a page for each provider in OpenCode's catalog with what was tested live (Gemini API and Vertex), and endpoints of your own that speak the OpenAI API, declared in configuration with a price per model (ADR-0017, #279).
 
 Then Gitea and Gitee, if GitLab shows the adapter shape holds and someone asks.
 
@@ -72,16 +72,16 @@ What a company checks before adopting a code review tool, and where ocra is. Upd
 
 | Area | Status |
 |---|---|
-| Install | npm with provenance; the Action; container image planned (M9) |
-| Platforms | GitHub; GitLab planned (M9) |
-| Data stays with the customer | Runs in the customer's CI with the customer's model keys; no ocra service in between |
-| Model providers | Any provider OpenCode supports; tested live: Gemini on Vertex and the Gemini API |
-| Security | Threat model, adversarial tier, private vulnerability reporting planned (M9) |
-| Supply chain | Trusted publishing, SLSA provenance, a pinned install in the Action |
-| Cost control | Per-run spend limit that stops running tasks, task cap, token and dollar reporting |
-| Integrations | Versioned JSON report; SARIF planned (M9) |
-| Quality evidence | 16 golden cases, one run, agent labels spot-checked by a second model |
-| Support and stability | Early 0.x; stability policy planned (M9) |
+| Install | npm with provenance; the Action; a container image from 0.2.0 |
+| Platforms | GitHub; GitLab (GitLab.com and self-managed) from 0.2.0, tested against a fake API |
+| Data stays with the customer | Runs in the customer's CI with the customer's model keys; no ocra service in between; your own OpenAI-compatible endpoint from 0.2.0 |
+| Model providers | Any provider in OpenCode's catalog, and declared endpoints; tested live: Gemini on Vertex and the Gemini API |
+| Security | Threat model, adversarial tier, `SECURITY.md` with private reporting, one conformance suite for every platform's trust rules |
+| Supply chain | Trusted publishing, SLSA provenance required by the Action, the package check in its own job, an attested image; OpenCode still fetches its catalog and plugin package at start (spike 0002) |
+| Cost control | Per-run spend limit that stops running tasks and says what it left, task cap, token and dollar reporting, prices required for declared models |
+| Integrations | Versioned JSON report; SARIF 2.1.0 |
+| Quality evidence | 16 golden cases, one run, agent labels spot-checked by a second model; paused with the credit |
+| Support and stability | Early 0.x; the Stability and support page names the contracts |
 | Production use | Dogfood on two repositories; no external user yet |
 
 ## Not now

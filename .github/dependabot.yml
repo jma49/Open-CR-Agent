@@ -24,10 +24,14 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
 
-  # The container image's base, pinned by digest.
+  # The container image's base, pinned by digest. It stays on the Node.js
+  # line CI tests (22); moving to another line is a change of its own.
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 2
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
 
