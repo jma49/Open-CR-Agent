@@ -15,7 +15,7 @@ State of the project as of 2026-09-30, for whoever picks it up next (human or ag
 | Architecture | `docs/architecture.md`, decisions in `docs/adr/0001`–`0017`, spike reports in `docs/spikes/` (0001 OpenCode runtime, 0002 OpenAI-compatible endpoints) |
 | Security policy | `SECURITY.md`; reports through GitHub's private vulnerability reporting (enabled 2026-09-30). `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, issue forms in `.github/ISSUE_TEMPLATE/` |
 | Container image | `Dockerfile`; `ghcr.io/jma49/ocra:<version>` from the first release after 0.1.2 (release workflow, `image` job) |
-| Audits | `docs/audits/` (latest: `2026-09-29-label-spot-check.md`) |
+| Audits | `docs/audits/` (latest: `2026-09-30-m9-security.md`) |
 | Pitfalls | `docs/pitfalls.md` |
 | Pending verification | `docs/pending-verification.md` (what still needs a deploy or a model key to check) |
 | Releasing | `docs/releasing.md` (the runbook: first release by hand, later ones through `.github/workflows/release.yml`); `scripts/release.mjs`; release notes in `CHANGELOG.md` |
@@ -32,7 +32,7 @@ State of the project as of 2026-09-30, for whoever picks it up next (human or ag
 - security and stability documents;
 - release hardening.
 
-`npm run verify` is green (777 tests). No model credit was spent in this session.
+`npm run verify` is green (809 tests). A security audit of the M9 batch found 1 P0, 2 P1, 5 P2 and 4 P3 findings, and the npm hardening added two P2 findings of its own. All are fixed or documented (#281–#287, [audit](audits/2026-09-30-m9-security.md)); three follow-ups are filed (#288–#290). No model credit was spent in this session.
 
 **The maintainer's goal (2026-09-30):** "把我们的这个产品打造成一个合格的能够拿来创业的企业级项目", that is, a project a company can adopt and a startup could be built on. Decisions go to Claude Fable 5.1, the budget is to be saved, and the roadmap may change. Fable 5.1 made the direction call (#268) and each design call below. Two of its calls were reversed on evidence found while implementing, and it agreed both times:
 - ADR-0015's order;
@@ -54,6 +54,13 @@ Merged on 2026-09-30:
 | #276 | The container image: <ul><li>the Action's install path, a digest-pinned base, git, a non-root user;</li><li>CI builds and runs it;</li><li>the release pushes `ghcr.io/jma49/ocra` for amd64 and arm64, with an SBOM and attested provenance.</li></ul> |
 | #278 | Dependabot patches (`@types/node`, `vitest`). #277 (image base Node 22 → 26) was closed: the image stays on the Node.js line CI tests |
 | #279 | ADR-0017: OpenAI-compatible providers in configuration (https or loopback, the key by variable name, a price for every model), spike 0002, and the Model providers page |
+| #281 | No code fetched from npm at review time: OpenCode's plugin install, and the SDK download for the 7 catalog providers it does not bundle, go to the discard port with retries off. Those providers now fail in 0.9 s, not 71 s, and the manual lists them. The real-binary test uses empty caches (it was vacuous with `~/.npm`'s 300 s cache). Also: a warning when model calls report no cost |
+| #282 | Audit P0 and P1: <ul><li>no mention or link through character references (GitHub rendered `&#64;name` as a mention), `@_name`, or any `scheme://` (GitLab's relaxed autolinks);</li><li>a thread counts only while ocra's marker comment is unedited.</li></ul> |
+| #283 | Provider configuration: <ul><li>an unpinned `extends` may not declare providers (the warning gives the pin);</li><li>no `{`/`}` in `baseUrl` (OpenCode would expand `{file:}`/`{env:}`);</li><li>no `AWS_`/`AZURE_` in `apiKeyEnv`;</li><li>no Gemini key for a provider declared as `google`.</li></ul> |
+| #284 | The release publishes only the tarballs `pack` made: sha512 digests travel as a job output, and `upload` refuses a mismatch. Release dry run 36670621166 passed |
+| #285 | GitLab: <ul><li>no resolution counts where a push may have made it (the "resolve outdated threads" setting is read every run);</li><li>thread editors are read after the threads;</li><li>a local `--mr` sends `GITLAB_TOKEN` only to `CI_API_V4_URL`, or to gitlab.com when `origin` is there.</li></ul> |
+| #286 | Docs, "who controls the pipeline": <ul><li>a same-project GitLab merge request's review is advice its author could forge, with the limits and Ultimate's pipeline execution policies (job protected, token not);</li><li>a GitHub setup people with push access cannot change: `pull_request_target`, environment secrets, an App as ocra's account;</li><li>the GitLab job installs the release instead of cloning `main`.</li></ul> |
+| #287 | SARIF doubles braces in message text (SARIF 3.11.5); a probe upload showed code scanning displays `{{` as `{` |
 
 **Maintainer actions, in order (none needs model credit):**
 1. **Before releasing 0.2.0**, publish `@open-cr-agent/vcs-platform` and `@open-cr-agent/vcs-gitlab` once by hand, at 0.1.2:
@@ -61,19 +68,22 @@ Merged on 2026-09-30:
    - npm trusts a workflow only for a package that exists, so until then a release fails at those two packages;
    - meanwhile the Action at `@main` builds from source, which is correct, only slower.
 2. **After the first release with the image**, make `ghcr.io/jma49/ocra` public in its package settings.
-3. **For the live GitLab check** (`docs/pending-verification.md`), a scratch project on gitlab.com and a project access token (Developer role, `api` scope), put where the agent can read it (`.local/`). The check can run with a scripted runtime, so it costs no model credit.
+3. **For the live GitLab check** (`docs/pending-verification.md`), a scratch group with a project on gitlab.com and a project access token (Developer role, `api` scope), put where the agent can read it (`.local/`). The check can run with a scripted runtime, so it costs no model credit. The same group lets the agent try the separate reviewer project of #290.
 4. Optional: a contact address for conduct and security reports. Both go through GitHub's private reporting today.
 
 **Next steps for the agent:**
 1. After action 1, release 0.2.0:
    - `node scripts/release.mjs version 0.2.0`, a CHANGELOG section, a pull request and the GitHub release; the workflow publishes seven packages and the image;
    - then move the Action examples and the GitLab page's install lines to 0.2.0, and remove the "not on npm yet" notes.
-2. Keep the site in step with `main`: the new manual pages (GitLab, Model providers, Stability and support) and the landing page's roadmap.
-3. Decide whether to stop OpenCode's background `npm install @opencode-ai/plugin` at review time (spike 0002). One way: point its registry at an unreachable address, and test it with the recording-proxy method from the spike.
-4. When credit returns, M5 and M6 as the roadmap says: first one golden smoke run of `main`, about $11.
-5. Gitea or Gitee only once GitLab shows the adapter shape holds and someone asks. The conformance suite is where to start.
+2. After action 3: the live GitLab check, then #290 (the separate reviewer project; if it works, it moves from the threat model into the GitLab page).
+3. #289: run the GitHub setup that people with push access cannot change, on a scratch repository (one small review), and drop the page's "not run end to end yet" note.
+4. #288: neutralize posted text without touching code spans.
+5. When credit returns, M5 and M6 as the roadmap says: first one golden smoke run of `main`, about $11.
+6. Gitea or Gitee only once GitLab shows the adapter shape holds and someone asks. The conformance suite is where to start.
 
-**Budget:** $0 of model credit this session. The dogfood reviews on this session's pull requests were skipped by the per-day limit, since that day's $2 was spent before the session began; the ledger's last entry is from 01:25 UTC. Left above the $100 floor:
+The site is in step with `main`: site #40 (the roadmap shows M8 and M9) was merged and the site deployed on 2026-09-30 after #287, and the live pages show this batch's manual changes.
+
+**Budget:** $0 of model credit this session. The dogfood reviews on this session's pull requests (#268–#287) were all skipped by the per-day limit, since that day's $2 was spent before the session began; the ledger's last entry is from 01:25 UTC. Left above the $100 floor:
 - evaluation $6.18;
 - dogfood: ocra $19.70, jmos $5.39, Assay $2 and vouch $2.
 

@@ -75,9 +75,9 @@ What a company checks before adopting a code review tool, and where ocra is. Upd
 | Install | npm with provenance; the Action; a container image from 0.2.0 |
 | Platforms | GitHub; GitLab (GitLab.com and self-managed) from 0.2.0, tested against a fake API |
 | Data stays with the customer | Runs in the customer's CI with the customer's model keys; no ocra service in between; your own OpenAI-compatible endpoint from 0.2.0 |
-| Model providers | Any provider in OpenCode's catalog, and declared endpoints; tested live: Gemini on Vertex and the Gemini API |
-| Security | Threat model, adversarial tier, `SECURITY.md` with private reporting, one conformance suite for every platform's trust rules |
-| Supply chain | Trusted publishing, SLSA provenance required by the Action, the package check in its own job, an attested image; OpenCode still fetches its catalog and plugin package at start (spike 0002) |
+| Model providers | Any provider in OpenCode's catalog whose SDK OpenCode bundles (all but 7 of 225), and declared endpoints; tested live: Gemini on Vertex and the Gemini API |
+| Security | Threat model with who controls the pipeline, adversarial tier, `SECURITY.md` with private reporting, one conformance suite for every platform's trust rules, a security audit of M9 with every finding fixed or documented (2026-09-30). For a same-project GitLab merge request the review is advice its author could forge (#290 tries a fix) |
+| Supply chain | Trusted publishing, SLSA provenance required by the Action, the package check in its own job, tarball digests carried from pack to publish, an attested image; no code is fetched at review time (OpenCode's npm installs go to a refusing local registry), only the pricing catalog |
 | Cost control | Per-run spend limit that stops running tasks and says what it left, task cap, token and dollar reporting, prices required for declared models |
 | Integrations | Versioned JSON report; SARIF 2.1.0 |
 | Quality evidence | 16 golden cases, one run, agent labels spot-checked by a second model; paused with the credit |
