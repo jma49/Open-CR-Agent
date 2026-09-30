@@ -4,7 +4,7 @@ Changes to the `@open-cr-agent/*` packages and the GitHub Action. The packages a
 
 ## 0.1.2
 
-A run's spend limit now holds, and text a model wrote can no longer count as a command.
+A run's spend limit now holds, text a model wrote can no longer count as a command or post a link, and OpenCode no longer runs inside the checkout it reviews.
 
 ### Packages
 
@@ -12,6 +12,8 @@ A run's spend limit now holds, and text a model wrote can no longer count as a c
   - Running tasks now report their spend about every 10 seconds.
   - When the review share (80% of the limit) runs out, every running review task stops. It keeps what it found, its files count as not reviewed, and the run exits `3`.
   - A run can still pass the limit by what each running task spends between two reports, plus its step in progress.
+- **Web addresses in text a model wrote stay text.** A pull request could plant an address, in a code comment for example, and get a reviewer to repeat it; the adversarial probe saw exactly that. Posted, it became a link in a comment from ocra. Addresses in findings and summaries now read the same but are no longer turned into links. ocra's own links are unchanged.
+- **OpenCode runs in an empty directory of its own**, not in the checkout under review. Before, only a setting that turns off OpenCode's project configuration kept plugins and custom tools committed in the reviewed code (`.opencode/`, `opencode.json`) from loading next to the model credentials. A test now plants them and checks each of the two protections on its own.
 - **Commands never come from ocra's own comments.** `/ocra override` in text a model wrote, or anywhere in ocra's summary comment, no longer counts, even when ocra posts with a person's token and `github.botLogin` is left at its default. In that configuration, a judge summary that repeated an override planted in the pull request could let a blocked pull request pass.
 
 ### GitHub Action

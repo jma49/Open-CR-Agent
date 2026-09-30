@@ -60,13 +60,15 @@ const VERDICT: Record<ReviewReport["verdict"], string> = {
 
 // Model text is untrusted: it may not close our markup, mention people,
 // pull in images, spell one of ocra's commands (`/ocra …`, which would count
-// if ocra posted as a person with write access), or render as a link that
-// says one thing and goes elsewhere (a bot comment lends it credibility).
-// Inline links lose their `](`, and
-// every `]:` is escaped, so no link reference definition (`[1]: https://…`)
-// can form, at line start or inside a blockquote or list item, and no
-// reference-style link (`[x][1]`, `[x][]`, `[1]`) has anything to resolve to.
-// Bare URLs still show as text.
+// if ocra posted as a person with write access), or become a link at all. A
+// pull request can plant an address for a reviewer to repeat (the adversarial
+// probe saw one), and a bot comment lends it credibility. Inline links lose
+// their `](`, and every `]:` is escaped, so no link reference definition
+// (`[1]: https://…`) can form, at line start or inside a blockquote or list
+// item, and no reference-style link (`[x][1]`, `[x][]`, `[1]`) has anything
+// to resolve to. Web addresses get a zero-width space in their scheme or
+// after `www`, which GitHub's autolinking needs intact, so they read the
+// same and stay text; email addresses already lose theirs at the `@`.
 export function safeMarkdown(text: string): string {
   return text
     .replaceAll("<!--", "&lt;!--")
@@ -74,6 +76,8 @@ export function safeMarkdown(text: string): string {
     .replace(/@(?=[A-Za-z0-9-])/g, "@\u200b")
     .replace(/!\[/g, "!\u200b[")
     .replace(/\/(?=ocra)/gi, "/\u200b")
+    .replace(/\b(https?|ftp)(?=:\/\/)/gi, "$1\u200b")
+    .replace(/\bwww(?=\.)/gi, "www\u200b")
     .replaceAll("](", "]\\(")
     .replaceAll("]:", "]\\:");
 }

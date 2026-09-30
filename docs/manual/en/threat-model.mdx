@@ -36,7 +36,7 @@ Not promised: a correct verdict. The models read the pull request, so they can b
 | Get a secret into ocra's comments | No secret reaches a prompt, so no model can repeat one. |
 | Hide an issue or argue a finding away (prompt injection) | Pull request text, code, replies and model output reach models as data, and text that could pose as ocra's own sections is rewritten. Only confirmed critical findings can block, and the judge can neither drop nor downgrade them. This limits steering; it does not prevent it (see below). |
 | Forge a command or a dismissal | A command or dismissal counts only when it comes from someone with write access other than the author, and not from a comment someone else has edited. An override names the full head commit id. |
-| Plant markup in ocra's comments | Model text cannot close ocra's markup, embed images or HTML, mention people, or form a link whose text differs from its target. |
+| Plant markup or links in ocra's comments | Model text cannot close ocra's markup, embed images or HTML, mention people, spell one of ocra's commands, or become a link: web addresses in it are shown as text, so a pull request cannot get ocra to post an address of its choosing as a link. |
 | Tamper with the state in ocra's summary comment | State counts only when ocra's account posted the comment and edited it last. It is validated and its size is capped. |
 | Rewrite your terminal (local runs) | Control characters, escape sequences and bidirectional overrides are replaced in everything ocra prints and in its JSON output. |
 | Run up your model bill | 30 steps per task, 60 tasks per run, bounded reads and tool answers, 50 findings per task, and `--max-cost-usd` per run. In CI, also limit who can start a review ([pull requests from forks](./github#pull-requests-from-forks)). |
@@ -46,7 +46,6 @@ The defenses are covered by tests next to the code, in [the repository](https://
 ## What ocra does not protect against
 
 - **Steering.** A pull request can hide an issue from a reviewer or talk the judge out of a finding. A clean verdict proves nothing. Keep human review and security tooling for anything that must not slip through.
-- **Bare web addresses.** A finding can contain a plain URL, which GitHub shows as a link to exactly that address.
 - **The model provider.** It sees the code under review. Choose one whose data policy you accept.
 - **Bugs in ocra or in what it builds on.** ocra, OpenCode, git and Node.js all process the pull request. A flaw in one of them would run with your model key and GitHub token present. Limit what a flaw could reach: a model key used only for reviews, with a spending limit at the provider, and the token permissions in the examples.
 - **Your own workflow.** A step that checks out and installs, builds or tests the pull request in a job that has your secrets undoes everything above.

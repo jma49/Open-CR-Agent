@@ -247,7 +247,7 @@ describe("verdict override", () => {
     const done = renderSummary({ report: blocking, commented: new Set(), state: { findings: [] } });
     expect(done).toContain("## ocra review · 🛑 Significant concerns · overridden");
     expect(done).toContain("**Overridden** by @\u200bmaintainer for `ccccccc`");
-    expect(done).toContain("risk accepted [x]\\(https://evil.example)");
+    expect(done).toContain("risk accepted [x]\\(https\u200b://evil.example)");
   });
 
   it("withdraws its request for changes when the commit is overridden", async () => {
