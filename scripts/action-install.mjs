@@ -8,7 +8,8 @@
 // this checkout instead when that version is not on npm (a version bump not
 // yet released), was published with other dependencies than this checkout
 // declares or without that provenance, or does not install. Writes the CLI's
-// entry point as the step output `main`.
+// entry point as the step output `main`, and why it built from source as
+// `source`.
 //
 // Usage: node scripts/action-install.mjs [--from-source]
 import { spawn, spawnSync } from "node:child_process";
@@ -64,11 +65,15 @@ function parseJson(text) {
   }
 }
 
+function output(name, value) {
+  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
+  else console.log(`${name}=${value}`);
+}
+
 function ready(main, how) {
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
   console.log(`ocra ${how} in ${seconds} s: ${main}`);
-  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `main=${main}\n`);
-  else console.log(`main=${main}`);
+  output("main", main);
 }
 
 function fail(message) {
@@ -96,17 +101,21 @@ function published(name, version) {
     child.stdout.on("data", (chunk) => {
       out += chunk;
     });
-    child.on("error", (error) => done({ reason: `npm view failed: ${error.message}` }));
+    child.on("error", (error) =>
+      done({ reason: `npm view failed: ${error.message}`, kind: "registry" }),
+    );
     child.on("close", (status) => {
       const json = parseJson(out);
       if (status === 0 && json?.version === version) return done({ manifest: json });
       const code = json?.error?.code;
-      done({
-        reason:
-          code === "E404"
-            ? `${name}@${version} is not on npm`
-            : `npm view ${name}@${version} failed${code ? ` (${code})` : ""}`,
-      });
+      done(
+        code === "E404"
+          ? { reason: `${name}@${version} is not on npm`, kind: "unpublished" }
+          : {
+              reason: `npm view ${name}@${version} failed${code ? ` (${code})` : ""}`,
+              kind: "registry",
+            },
+      );
     });
   });
 }
@@ -126,10 +135,13 @@ async function fromRegistry(workspaces, version) {
   const answers = await Promise.all(packages.map((json) => published(json.name, json.version)));
   const dist = new Map();
   for (const [i, json] of packages.entries()) {
-    const { manifest, reason } = answers[i];
-    if (!manifest) return { reason };
+    const { manifest, reason, kind } = answers[i];
+    if (!manifest) return { reason, kind };
     if (!sameDependencies(manifest, json)) {
-      return { reason: `${json.name}@${json.version} on npm declares other dependencies` };
+      return {
+        reason: `${json.name}@${json.version} on npm declares other dependencies`,
+        kind: "dependencies",
+      };
     }
     dist.set(json.name, manifest.dist ?? {});
   }
@@ -146,7 +158,7 @@ async function fromRegistry(workspaces, version) {
       resolved: (name) => dist.get(name)?.tarball,
     });
   } catch (error) {
-    return { reason: `no pinned install: ${error.message}`, warn: true };
+    return { reason: `no pinned install: ${error.message}`, warn: true, kind: "install" };
   }
   const dir = join(temp, "ocra-cli");
   rmSync(dir, { recursive: true, force: true });
@@ -156,7 +168,7 @@ async function fromRegistry(workspaces, version) {
 
   console.log(`Installing ${TARGET}@${version}, dependencies pinned by this ref's lockfile`);
   if (!npm(["ci", ...INSTALL_FLAGS], dir).ok) {
-    return { reason: `npm ci of ${TARGET}@${version} failed`, warn: true };
+    return { reason: `npm ci of ${TARGET}@${version} failed`, warn: true, kind: "install" };
   }
   // Building this checkout instead would skip the check, so a bad signature
   // stops the run. A package without provenance from this repository's
@@ -180,7 +192,7 @@ async function fromRegistry(workspaces, version) {
       : `${TARGET} in this checkout names no repository`;
     if (problem) {
       rmSync(dir, { recursive: true, force: true });
-      return { reason: problem, warn: true };
+      return { reason: problem, warn: true, kind: "provenance" };
     }
   } else {
     console.log(
@@ -204,6 +216,8 @@ async function install() {
   console.log(
     `::${result.warn ? "warning" : "notice"}::Building ocra from source at this ref: ${result.reason}.`,
   );
+  // Why, for the caller: unpublished, dependencies, registry, install or provenance.
+  output("source", result.kind);
   fromSource();
 }
 

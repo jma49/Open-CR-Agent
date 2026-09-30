@@ -76,13 +76,20 @@ jobs:
       - env:
           OCRA_INSTALL: ${{ matrix.install }}
           OCRA_MAIN: ${{ steps.install.outputs.main }}
+          OCRA_SOURCE: ${{ steps.install.outputs.source }}
         run: |
-          # Building is right only while this version is not on npm yet.
-          version=$(node -p 'require("./packages/cli/package.json").version')
-          if [ "$OCRA_INSTALL" = npm ] && [ "${OCRA_MAIN#"$RUNNER_TEMP"}" = "$OCRA_MAIN" ] &&
-            npm view "@open-cr-agent/cli@$version" version >/dev/null 2>&1; then
-            echo "::error::@open-cr-agent/cli@$version is on npm, but the Action built it from source"
-            exit 1
+          # Building from source is right only while a package at this version
+          # is not on npm yet, or when this commit declares other dependencies
+          # than the published version; never because an install or a check
+          # of what npm serves failed.
+          if [ "$OCRA_INSTALL" = npm ] && [ "${OCRA_MAIN#"$RUNNER_TEMP"}" = "$OCRA_MAIN" ]; then
+            case "$OCRA_SOURCE" in
+              unpublished | dependencies) echo "Built from source: $OCRA_SOURCE" ;;
+              *)
+                echo "::error::the Action built from source ($OCRA_SOURCE) instead of installing from npm"
+                exit 1
+                ;;
+            esac
           fi
           # The install used an npm cache of its own, not ~/.npm.
           node -e 'require("fs").statSync(require("path").join(process.env.RUNNER_TEMP, "ocra-npm-cache", "_cacache"))'
