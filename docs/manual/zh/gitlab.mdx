@@ -11,15 +11,15 @@ description: 用 ocra review --mr 审查 GitLab.com 或自建 GitLab 上的 Merg
 
 <Callout type="warn">
 
-GitLab 支持将随 0.2.0 发布，目前还不在 npm 上。在那之前，请在任务里从源码构建 ocra，写法见[配置](#配置)。它已经用模拟的 GitLab API 测试过，还没有在真实实例上运行过。
+GitLab 支持将随 0.2.0 发布，目前还没有发布；下面的任务安装的是 0.2.0，发布之后即可使用。它已经用模拟的 GitLab API 测试过，还没有在真实实例上运行过。
 
 </Callout>
 
 ## 配置
 
 1. **创建项目访问令牌**（Settings → Access tokens），角色选 **Developer**，权限范围选 **`api`**。ocra 要发评论和讨论串、解决自己的讨论串，还要通过 GraphQL 读取评论最后由谁编辑。`CI_JOB_TOKEN` 不能发评论。
-2. **把它加为名为 `GITLAB_TOKEN` 的 CI/CD 变量**，设为 masked。不要设为 protected：来自未受保护分支的 Merge Request 流水线读不到受保护的变量。因此项目的每条流水线都能读到这个令牌，请把它的角色保持在 Developer。
-3. 用同样的方式**加入模型密钥**，比如 `GEMINI_API_KEY`。
+2. **把它加为名为 `GITLAB_TOKEN` 的 CI/CD 变量**，设为 masked。不要设为 protected：来自未受保护分支的 Merge Request 流水线读不到受保护的变量。因此项目的每条流水线都能读到这个令牌：请把它的角色保持在 Developer，并设置过期时间（见[谁掌控流水线](#谁掌控流水线)）。
+3. 用同样的方式**加入模型密钥**，比如 `GEMINI_API_KEY`：只用于这些审查的密钥，并在供应商那里设置花费上限。
 4. 在 `.gitlab-ci.yml` 里**加入任务**：
 
 ```yaml
@@ -36,20 +36,15 @@ ocra-review:
   allow_failure:
     exit_codes: [1]
   script:
-    # 在 0.2.0 发布到 npm 之前，从源码构建：
-    - git clone --depth 1 https://github.com/jma49/Open-CR-Agent.git /tmp/ocra
-    - (cd /tmp/ocra && npm ci --ignore-scripts && npm run build)
-    - node /tmp/ocra/packages/cli/dist/main.js review --mr "$CI_MERGE_REQUEST_IID" --publish
-    # 从 0.2.0 起：
-    # - npm install -g --ignore-scripts @open-cr-agent/cli@0.2.0
-    # - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
+    - npm install -g --ignore-scripts @open-cr-agent/cli@0.2.0
+    - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
 ```
 
-从 0.2.0 起，任务也可以使用[容器镜像](./installation#容器镜像)，不需要安装步骤：
+任务也可以使用[容器镜像](./installation#容器镜像)，不需要安装步骤。请按摘要固定镜像（`docker buildx imagetools inspect ghcr.io/jma49/ocra:0.2.0` 会打印出来），并按[稳定性](./stability#校验发布版本)里的方法校验它的构建来源证明：
 
 ```yaml
 ocra-review:
-  image: ghcr.io/jma49/ocra:0.2.0
+  image: ghcr.io/jma49/ocra:0.2.0@sha256:<digest>
   # （rules、variables、interruptible 和 allow_failure 同上）
   script:
     - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
@@ -83,7 +78,21 @@ Developer 及以上角色、且不是作者的人，可以单独发一条评论�
 
 ## Merge Request 不能改变什么
 
-配置、`.ocra/rules.json` 和 `AGENTS.md` 从 Merge Request 所基于的提交读取。仓库插件从不加载，Merge Request 里的任何东西都不会被执行。ocra 发出的每一行，如果以斜杠开头，前面都会加一个零宽空格，所以问题里的文字无法变成 `/merge`、`/approve` 这样的快捷操作；GitLab 会以令牌的权限执行这类操作。
+ocra 本身不会执行 Merge Request 里的任何东西：配置、`.ocra/rules.json` 和 `AGENTS.md` 从 Merge Request 所基于的提交读取，仓库插件从不加载。运行 ocra 的流水线则是另一回事：来自你项目分支的 Merge Request，流水线是它的作者写的（见下一节）。ocra 发出的每一行，如果以斜杠开头，前面都会加一个零宽空格，所以问题里的文字无法变成 `/merge`、`/approve` 这样的快捷操作；GitLab 会以令牌的权限执行这类操作。
+
+## 谁掌控流水线
+
+Merge Request 流水线运行的是 Merge Request 自己分支上的 `.gitlab-ci.yml`，其中每个任务都能读到项目里未受保护的 CI/CD 变量，包括 `GITLAB_TOKEN` 和你的模型密钥。这意味着什么，取决于 Merge Request 从哪里来：
+
+- **来自 fork：**流水线在 fork 里运行，没有你的变量，也就没有东西可拿（见[来自 fork 的 Merge Request](#来自-fork-的-merge-request)）。本页的规则成立。
+- **来自你项目里的分支：**作者有 Developer 角色，流水线也是他写的。他可以删掉或改掉审查任务，读到令牌和模型密钥，并以 ocra 的身份发言，包括发一条之后的审查会信任的摘要。对这类 Merge Request，审查只是建议，而且作者可以伪造它。请保留由人来审批的审批规则，绝不要让 ocra 的任务成为 Merge Request 和默认分支之间唯一的关卡。
+
+现在能做的：
+
+- **降低令牌和密钥的价值。**令牌保持 Developer 角色，因此除了以 ocra 身份发言之外，它做不了开发者做不了的事；给它设置过期时间。模型密钥只用于这些审查，并在供应商那里设置花费上限。
+- **在 GitLab Ultimate 上，用流水线执行策略（pipeline execution policy）运行这个任务。**项目的流水线就既不能删掉它，也不能改掉它，而且策略的变量优先于项目和流水线的变量。但令牌仍是项目变量，项目自己的任务仍能读到，所以以 ocra 身份发言仍然可能。
+
+一种能让令牌和密钥完全远离开发者的方案（审查在一个单独的项目里运行）写在[威胁模型](./threat-model#谁掌控流水线)里，目前还没有试过。
 
 ## 自建 GitLab
 

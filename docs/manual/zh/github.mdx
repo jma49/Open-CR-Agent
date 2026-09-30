@@ -113,7 +113,7 @@ jobs:
 
 <Callout type="warn">
 
-使用 `on: pull_request` 时，来自同一仓库分支的 PR 会运行它自己那份 workflow 文件，作者因此可以改掉 `fail-on-concerns` 或参数，也可以以 `github-actions[bot]` 的身份发评论。请用 CODEOWNERS 和必需的审查保护 `.github/workflows`；需要更强的身份保证时，用专门的机器人或 GitHub App 的 token 发布，并把 `github.botLogin` 设为它。
+有推送权限的人可以推送自己的 workflow，它会拿到仓库的 secret，也能以 `github-actions[bot]` 的身份发评论；在 `on: pull_request` 下，连审查自己的 workflow 文件都是他们分支上的那份。要让审查既不能被他们修改、也不能被冒充，请用[下面的配置](#自己的开发者也改不了的审查)。
 
 </Callout>
 
@@ -123,7 +123,7 @@ PR 是不可信的输入。ocra 从 **base** 提交读取 `.ocra/config.json`、
 
 ## 来自 fork 的 PR
 
-在 `pull_request` 事件下，来自 fork 的 PR 拿不到仓库的 secret，token 也是只读的。要审查这类 PR，请改在 `pull_request_target` 事件上运行 Action。这个事件运行的是 base 分支上的 workflow 文件，带着你的 secret 和你授予的权限。下面的 workflow 用来替换上面那个，你自己分支上的 PR 也由它审查：
+在 `pull_request` 事件下，来自 fork 的 PR 拿不到仓库的 secret，token 也是只读的。要审查这类 PR，请改在 `pull_request_target` 事件上运行 Action。这个事件运行的是默认分支上的 workflow 文件，带着你的 secret 和你授予的权限。下面的 workflow 用来替换上面那个，你自己分支上的 PR 也由它审查：
 
 ```yaml
 name: ocra
@@ -169,6 +169,57 @@ GitHub 提醒慎用 `pull_request_target`，是因为它把你的 secret 交给�
 - **按提交固定 Action 的版本**，如上所示。
 
 只有组织的公开成员，`author_association` 才是 `MEMBER`；非公开成员也需要标签。私有仓库请去掉 `persist-credentials: false`：ocra 会用检出时的凭据获取 PR 的提交。
+
+## 自己的开发者也改不了的审查
+
+有推送权限的人推送的 workflow 会拿到仓库的 secret，它的 `GITHUB_TOKEN` 以 `github-actions[bot]` 的身份发言，而这正是 ocra 默认信任的账号。要让审查不在他们手里，把三样东西放到只有默认分支才能触及的地方：
+
+1. **放 secret 的环境。**创建一个环境（Settings → Environments），比如叫 `ocra-review`，在 Deployment branches and tags 里只允许默认分支。把模型密钥移到这里，并删掉仓库级的 secret。`pull_request_target` 任务在默认分支上运行，能拿到这个环境的 secret；推送到其他分支的 workflow 拿不到，`on: pull_request` 也拿不到。
+2. **ocra 自己的账号。**创建一个 GitHub App，仓库权限给 Pull requests（读写）和 Contents（只读），并安装到仓库上。把它的私钥存为环境 secret `OCRA_APP_KEY`，client ID 存为环境变量 `OCRA_APP_CLIENT_ID`。在默认分支的 `.ocra/config.json` 里把 `github.botLogin` 设为这个 App 的账号，比如 `{ "github": { "botLogin": "my-ocra[bot]" } }`：之后以 `github-actions[bot]` 身份发的摘要一律不算数。
+3. **workflow 和配置需要审查。**保护默认分支，并要求 `.github/workflows/` 和 `.ocra/` 的改动经过代码负责人审查（CODEOWNERS）。
+
+```yaml
+name: ocra
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ocra-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: >-
+      (github.event.action == 'labeled' && github.event.label.name == 'ocra-review') ||
+      (github.event.action != 'labeled' &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
+    runs-on: ubuntu-latest
+    # 它的 secret 只给在默认分支上运行的任务。
+    environment: ocra-review
+    steps:
+      - id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.OCRA_APP_CLIENT_ID }}
+          private-key: ${{ secrets.OCRA_APP_KEY }}
+      # 默认分支。不检出 PR 里的任何东西。
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jma49/Open-CR-Agent@<commit> # v0.1.2
+        with:
+          github-token: ${{ steps.app.outputs.token }}
+          args: --max-cost-usd 2
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+```
+
+[上面](#来自-fork-的-pr)关于 `pull_request_target` 的规则照样适用。项目还没有把这套配置完整跑过一遍；如果某一步失败，请[提 issue](https://github.com/jma49/Open-CR-Agent/issues/new/choose)。
 
 ## 配置
 

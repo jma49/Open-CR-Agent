@@ -113,7 +113,7 @@ For that commit the run exits `0` instead of `1`, so `fail-on-concerns` passes, 
 
 <Callout type="warn">
 
-With `on: pull_request`, a pull request from a branch of the same repository runs its own copy of the workflow file, so its author can change `fail-on-concerns` or the arguments, and can post as `github-actions[bot]`. Protect `.github/workflows` with CODEOWNERS and required reviews, and for a stronger identity post with a dedicated bot or app token and set `github.botLogin` to it.
+Someone with push access can push a workflow of their own, which gets the repository's secrets and can post as `github-actions[bot]`; with `on: pull_request`, even the review's workflow file is their branch's copy. For a review they can neither change nor impersonate, use [the setup below](#a-review-your-own-developers-cannot-change).
 
 </Callout>
 
@@ -123,7 +123,7 @@ The pull request is untrusted input. ocra reads `.ocra/config.json`, `.ocra/rule
 
 ## Pull requests from forks
 
-On `pull_request`, a pull request from a fork runs without your repository's secrets and with a read-only token. To review such pull requests, run the Action on `pull_request_target` instead. That event runs the workflow file of your base branch, with your secrets and the permissions you grant. This workflow replaces the one above and reviews your own branches too:
+On `pull_request`, a pull request from a fork runs without your repository's secrets and with a read-only token. To review such pull requests, run the Action on `pull_request_target` instead. That event runs the workflow file of your default branch, with your secrets and the permissions you grant. This workflow replaces the one above and reviews your own branches too:
 
 ```yaml
 name: ocra
@@ -169,6 +169,57 @@ GitHub warns against `pull_request_target` because it gives a job your secrets w
 - **Pin the Action by commit**, as above.
 
 `author_association` is `MEMBER` only for public members of an organization; private members need the label too. In a private repository, drop `persist-credentials: false`: ocra fetches the pull request's commits with the checkout's credentials.
+
+## A review your own developers cannot change
+
+A workflow that someone with push access pushes gets the repository's secrets, and its `GITHUB_TOKEN` posts as `github-actions[bot]`, the account ocra trusts by default. To keep the review out of their hands, put three things where only your default branch reaches them:
+
+1. **An environment for the secrets.** Create an environment, say `ocra-review` (Settings → Environments), and under Deployment branches and tags allow only your default branch. Move the model key there and delete the repository secret. A `pull_request_target` job runs on the default branch and gets the environment's secrets; a workflow pushed on another branch does not, and neither does `on: pull_request`.
+2. **An account of ocra's own.** Create a GitHub App with the repository permissions Pull requests (read and write) and Contents (read), and install it on the repository. Store its private key in the environment as the secret `OCRA_APP_KEY` and its client ID as the variable `OCRA_APP_CLIENT_ID`. In `.ocra/config.json` on the default branch, set `github.botLogin` to the app's account, for example `{ "github": { "botLogin": "my-ocra[bot]" } }`: a summary posted as `github-actions[bot]` then counts for nothing.
+3. **Review for the workflow and the configuration.** Protect the default branch, and require a code owner's review for `.github/workflows/` and `.ocra/` (CODEOWNERS).
+
+```yaml
+name: ocra
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ocra-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: >-
+      (github.event.action == 'labeled' && github.event.label.name == 'ocra-review') ||
+      (github.event.action != 'labeled' &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
+    runs-on: ubuntu-latest
+    # Its secrets reach only jobs that run on the default branch.
+    environment: ocra-review
+    steps:
+      - id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.OCRA_APP_CLIENT_ID }}
+          private-key: ${{ secrets.OCRA_APP_KEY }}
+      # The default branch. Nothing from the pull request is checked out.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jma49/Open-CR-Agent@<commit> # v0.1.2
+        with:
+          github-token: ${{ steps.app.outputs.token }}
+          args: --max-cost-usd 2
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+```
+
+The rules for `pull_request_target` [above](#pull-requests-from-forks) apply unchanged. The project has not run this exact setup end to end yet; if a step fails, [open an issue](https://github.com/jma49/Open-CR-Agent/issues/new/choose).
 
 ## Configuration
 

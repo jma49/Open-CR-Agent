@@ -10,7 +10,7 @@ ocra 的设计目标是审查陌生人提交的 PR。本页列出这样的 PR �
 ## 保护什么
 
 - **你的密钥：**模型供应商的 key、GitHub token，以及不在被审查版本里、或看起来像密钥的任何文件。
-- **你的 runner 或机器：**PR 里的任何东西都不会被执行。
+- **你的 runner 或机器：**ocra 不会执行 PR 里的任何东西。
 - **你的仓库：**ocra 只发布审查评论，并在配置了的情况下请求修改或撤回修改请求，不写入其他任何东西。
 - **ocra 发布的内容：**PR 无法让 ocra 的评论隐藏链接的真实目标、显示图片、@ 提及他人、夹带隐藏标记或下达命令。
 - **你的花费：**每个调用模型的循环都有上限。
@@ -23,7 +23,7 @@ ocra 的设计目标是审查陌生人提交的 PR。本页列出这样的 PR �
 |---|---|
 | PR 的作者（来自 fork 或分支） | diff 和 head 上的每个文件（包括 `.ocra/`、`.opencode/` 和 `AGENTS.md`）、文件名、提交信息、标题和描述 |
 | 任何能发表评论的人 | PR 上的回复和评审意见 |
-| 对你的仓库有推送权限的人 | 上面的全部；在 `on: pull_request` 下，还包括他们的分支所运行的那份 workflow 文件 |
+| 对你的仓库有推送权限的人（在 GitLab 上是 Developer 角色） | 上面的全部，以及他们的分支所运行的流水线：GitHub 上他们推送的任何 workflow，GitLab 上 Merge Request 的 `.gitlab-ci.yml`（见[谁掌控流水线](#谁掌控流水线)） |
 | 模型供应商 | ocra 发给它的全部内容（[发送了什么](./security#会发送给模型供应商的内容)） |
 | 被攻破的软件包或 registry 账号 | ocra 安装的代码 |
 
@@ -43,11 +43,21 @@ ocra 的设计目标是审查陌生人提交的 PR。本页列出这样的 PR �
 
 这些防护都有测试，和对应的代码放在一起，见[代码仓库](https://github.com/jma49/Open-CR-Agent)。
 
+## 谁掌控流水线
+
+ocra 针对作者的规则（不能驳回、不能放行、不能伪造之前的审查）只有在作者既改不了运行 ocra 的任务、也读不到它的 secret 时才成立。能不能做到，取决于平台和配置方式。
+
+**GitHub。**来自 fork 的 PR 在 `on: pull_request` 下拿不到 secret；在 `on: pull_request_target` 下，workflow 来自你的默认分支：两种情况下审查都不在作者手里。有推送权限的人则不同。他们推送的 workflow 会带着仓库的 secret 运行，而它的 `GITHUB_TOKEN` 以 `github-actions[bot]` 的身份发言，这正是 ocra 默认信任的账号，所以他们可以读到模型密钥，或者发一条 ocra 会当作自己的摘要。[GitHub Pull Request](./github#自己的开发者也改不了的审查) 给出了让两者都不在他们手里的配置：审查运行在 `pull_request_target` 上，secret 放在只有默认分支能用的环境（environment）里，评论由 ocra 改为信任的 GitHub App 发出，`.github/workflows` 需要代码负责人审查。
+
+**GitLab。**来自 fork 的 Merge Request 在 fork 里运行流水线，拿不到你的变量。来自你项目分支的 Merge Request 运行的是作者写的流水线，其中每个任务都能读到项目未受保护的变量：对这类 Merge Request，审查只是建议，而且作者可以伪造它（见[GitLab Merge Request](./gitlab#谁掌控流水线)）。流水线执行策略（GitLab Ultimate）保护得了任务，保护不了令牌。
+
+还没有试过，所以只是设计：一个只有维护者能改的单独审查项目，由 Merge Request 的 webhook 通过流水线触发器启动，在它受保护的默认分支上运行，令牌和模型密钥是受保护的变量，把 Merge Request 当作数据读取。开发者就既改不了审查，也读不到它的 secret。它的结果不是 Merge Request 流水线的状态，所以合并仍要靠审批规则把关。
+
 ## ocra 不防什么
 
 - **诱导。**PR 可以把问题藏起来不让审查员看到，也可以说服 Judge 丢掉问题。干净的结论什么也证明不了。凡是绝不能漏掉的东西，请保留人工审查和安全工具。
 - **模型供应商。**它能看到被审查的代码。请选择你能接受其数据政策的供应商。
 - **ocra 及其依赖的软件本身的缺陷。**ocra、OpenCode、git 和 Node.js 都会处理 PR 的内容。其中任何一个有漏洞，都会在你的模型 key 和 GitHub token 在场的情况下被利用。请限制漏洞能触及的范围：模型 key 只用于审查，并在供应商那里设置花费上限；token 权限按示例配置。
 - **你自己的 workflow。**如果在拿得到 secret 的 job 里检出并安装、构建或测试 PR 的代码，以上所有防护都会失效。
-- **推送权限。**在 `on: pull_request` 下，你仓库里的分支运行的是它自己那份 workflow 文件。请用 CODEOWNERS 和必需的评审保护 `.github/workflows`（[GitHub Pull Request](./github)）。
+- **推送权限，**除非按[上面](#谁掌控流水线)的方式配置流水线：能推送的人，就能写自己分支所运行的流水线。
 - **供应链。**GitHub Action 安装已发布的 ocra，每个依赖都按它的 lockfile 固定版本，关闭安装脚本，并校验 registry 签名。ocra 的软件包带 provenance 发布；OpenCode 的版本是固定的，它的内置工具由测试核对。被盗的 npm 账号仍可能发布有问题的版本，不过使用安全密钥的双重验证让这件事很难做到。请按提交固定 Action 的版本。

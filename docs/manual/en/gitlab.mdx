@@ -11,15 +11,15 @@ Later pipelines review only what changed since the last review. The rules are th
 
 <Callout type="warn">
 
-GitLab support ships in 0.2.0, which is not on npm yet. Until it is, build ocra from source in the job, as shown under [Set up](#set-up). It has been tested against a fake GitLab API, not yet on a live instance.
+GitLab support ships in 0.2.0, which is not released yet; the jobs below install 0.2.0 and work once it is. It has been tested against a fake GitLab API, not yet on a live instance.
 
 </Callout>
 
 ## Set up
 
 1. **Create a project access token** (Settings → Access tokens) with the **Developer** role and the **`api`** scope. ocra posts notes and threads, resolves its threads, and reads, through GraphQL, who last edited a comment. `CI_JOB_TOKEN` cannot post comments.
-2. **Add it as a CI/CD variable named `GITLAB_TOKEN`**, masked. Leave it unprotected: pipelines for merge requests from unprotected branches cannot read protected variables. So every pipeline of the project can read the token; keep its role at Developer.
-3. **Add your model key** the same way, for example `GEMINI_API_KEY`.
+2. **Add it as a CI/CD variable named `GITLAB_TOKEN`**, masked. Leave it unprotected: pipelines for merge requests from unprotected branches cannot read protected variables. So every pipeline of the project can read the token: keep its role at Developer and give it an expiry date ([who controls the pipeline](#who-controls-the-pipeline)).
+3. **Add your model key** the same way, for example `GEMINI_API_KEY`: a key that serves only these reviews, with a spending limit at the provider.
 4. **Add the job** to `.gitlab-ci.yml`:
 
 ```yaml
@@ -36,20 +36,15 @@ ocra-review:
   allow_failure:
     exit_codes: [1]
   script:
-    # Until 0.2.0 is on npm, build it from source:
-    - git clone --depth 1 https://github.com/jma49/Open-CR-Agent.git /tmp/ocra
-    - (cd /tmp/ocra && npm ci --ignore-scripts && npm run build)
-    - node /tmp/ocra/packages/cli/dist/main.js review --mr "$CI_MERGE_REQUEST_IID" --publish
-    # From 0.2.0:
-    # - npm install -g --ignore-scripts @open-cr-agent/cli@0.2.0
-    # - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
+    - npm install -g --ignore-scripts @open-cr-agent/cli@0.2.0
+    - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
 ```
 
-From 0.2.0 the job can also use the [container image](./installation#container-image), which needs no install step:
+The job can also use the [container image](./installation#container-image), which needs no install step. Pin it by digest, which `docker buildx imagetools inspect ghcr.io/jma49/ocra:0.2.0` prints, and check its build provenance as [Stability](./stability#verifying-a-release) shows:
 
 ```yaml
 ocra-review:
-  image: ghcr.io/jma49/ocra:0.2.0
+  image: ghcr.io/jma49/ocra:0.2.0@sha256:<digest>
   # (rules, variables, interruptible and allow_failure as above)
   script:
     - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
@@ -83,7 +78,21 @@ It works as on [GitHub](./github#overriding-a-blocking-verdict): only for that c
 
 ## What the merge request cannot change
 
-The configuration, `.ocra/rules.json` and `AGENTS.md` are read from the commit the merge request is based on. Repository plugins never load, and nothing from the merge request runs. Every line ocra posts that starts with a slash gets a zero-width space before it, so text in a finding cannot become a quick action such as `/merge` or `/approve`, which GitLab would run with the token's rights.
+ocra itself runs nothing from the merge request: the configuration, `.ocra/rules.json` and `AGENTS.md` are read from the commit the merge request is based on, and repository plugins never load. The pipeline that runs ocra is another matter: for a merge request from a branch of your project, its author wrote it (next section). Every line ocra posts that starts with a slash gets a zero-width space before it, so text in a finding cannot become a quick action such as `/merge` or `/approve`, which GitLab would run with the token's rights.
+
+## Who controls the pipeline
+
+A merge request pipeline runs the `.gitlab-ci.yml` of the merge request's own branch, and every job in it can read the project's CI/CD variables that are not protected, `GITLAB_TOKEN` and your model key among them. What that means depends on where the merge request comes from:
+
+- **From a fork:** the pipeline runs in the fork, without your variables, so there is nothing to take ([merge requests from forks](#merge-requests-from-forks)). The rules on this page hold.
+- **From a branch of your project:** the author has the Developer role and wrote the pipeline. They can remove or change the review job, read the token and the model key, and post as ocra, including a summary that a later review would trust. For such merge requests the review is advice that its author can forge. Keep an approval rule with human approvers, and never make ocra's job the only thing between a merge request and your default branch.
+
+What you can do today:
+
+- **Limit what the token and the key are worth.** The token keeps the Developer role, so it can do nothing a developer cannot, apart from posting as ocra; give it an expiry date. Use a model key that serves only these reviews, with a spending limit at the provider.
+- **On GitLab Ultimate, run the job from a pipeline execution policy.** The project's pipeline can then neither remove nor change it, and the policy's variables win over the project's and the pipeline's. The token is still a project variable that the project's own jobs can read, so posting as ocra remains possible.
+
+A setup that would keep the token and the key away from developers altogether, with the review running in a separate project, is in the [threat model](./threat-model#who-controls-the-pipeline). It has not been tried yet.
 
 ## Self-managed GitLab
 

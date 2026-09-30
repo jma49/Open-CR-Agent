@@ -10,7 +10,7 @@ It covers pull request reviews (the GitHub Action and `ocra review --pr`), GitLa
 ## What is protected
 
 - **Your secrets:** the model provider's key, the GitHub token, and any file that is outside the reviewed revision or looks like a secret.
-- **Your runner or machine:** nothing from the pull request runs.
+- **Your runner or machine:** ocra runs nothing from the pull request.
 - **Your repository:** ocra posts review comments and, when configured, requests or withdraws changes. It writes nothing else.
 - **What ocra posts:** a pull request cannot make ocra's comments hide a link's target, show images, mention people, carry hidden markup or issue commands.
 - **Your spend:** every loop over a model has a cap.
@@ -23,7 +23,7 @@ Not promised: a correct verdict. The models read the pull request, so they can b
 |---|---|
 | The author of a pull request, from a fork or a branch | The diff and every file at its head (including `.ocra/`, `.opencode/` and `AGENTS.md`), file names, commit messages, the title and the description |
 | Anyone who can comment | Replies and review comments on the pull request |
-| Someone with push access to your repository | All of the above and, with `on: pull_request`, the copy of the workflow file their branch runs |
+| Someone with push access to your repository (on GitLab, the Developer role) | All of the above, and the pipelines their branches run: any workflow they push on GitHub, the merge request's `.gitlab-ci.yml` on GitLab ([who controls the pipeline](#who-controls-the-pipeline)) |
 | The model provider | Everything ocra sends it ([what is sent](./security#what-is-sent-to-the-model-provider)) |
 | A compromised package or registry account | Code that ocra installs |
 
@@ -43,11 +43,21 @@ Not promised: a correct verdict. The models read the pull request, so they can b
 
 The defenses are covered by tests next to the code, in [the repository](https://github.com/jma49/Open-CR-Agent).
 
+## Who controls the pipeline
+
+ocra's rules against the author (no dismissal, no override, no forged earlier review) hold only while the author can neither change the job that runs ocra nor read its secrets. Whether they can depends on the platform and the setup.
+
+**GitHub.** A pull request from a fork gets no secrets with `on: pull_request`, and with `on: pull_request_target` the workflow comes from your default branch: either way the review is out of its author's reach. Someone with push access is different. A workflow they push runs with the repository's secrets and with a `GITHUB_TOKEN` that posts as `github-actions[bot]`, the account ocra trusts by default, so they could read the model key or post a summary that ocra takes for its own. [GitHub pull requests](./github#a-review-your-own-developers-cannot-change) shows the setup that keeps both out of their reach: the review on `pull_request_target`, its secrets in an environment that only the default branch may use, comments from a GitHub App whose account ocra trusts instead, and code owner review for `.github/workflows`.
+
+**GitLab.** A merge request from a fork runs its pipeline in the fork, without your variables. A merge request from a branch of your project runs a pipeline its author wrote, and every job in it can read the project's unprotected variables: for such merge requests the review is advice that its author can forge ([GitLab merge requests](./gitlab#who-controls-the-pipeline)). A pipeline execution policy (GitLab Ultimate) protects the job, not the token.
+
+Not tried yet, so only a design: a separate reviewer project that only maintainers can change, started by a merge request webhook through a pipeline trigger, running on its protected default branch with the token and the model key as protected variables, and reading the merge request as data. Developers could then neither change the review nor read its secrets. Its result would not be the merge request pipeline's status, so merging would still be gated by approval rules.
+
 ## What ocra does not protect against
 
 - **Steering.** A pull request can hide an issue from a reviewer or talk the judge out of a finding. A clean verdict proves nothing. Keep human review and security tooling for anything that must not slip through.
 - **The model provider.** It sees the code under review. Choose one whose data policy you accept.
 - **Bugs in ocra or in what it builds on.** ocra, OpenCode, git and Node.js all process the pull request. A flaw in one of them would run with your model key and GitHub token present. Limit what a flaw could reach: a model key used only for reviews, with a spending limit at the provider, and the token permissions in the examples.
 - **Your own workflow.** A step that checks out and installs, builds or tests the pull request in a job that has your secrets undoes everything above.
-- **Push access.** With `on: pull_request`, a branch in your repository runs its own copy of the workflow file. Protect `.github/workflows` with CODEOWNERS and required reviews ([GitHub pull requests](./github)).
+- **Push access,** unless the pipeline is set up as [above](#who-controls-the-pipeline): people who can push write the pipelines their branches run.
 - **The supply chain.** The Action installs the published ocra with every dependency pinned by its lockfile, install scripts off and registry signatures checked. ocra's packages are published with provenance, and OpenCode is pinned, with its built-in tools checked by a test. A stolen npm login could still publish a bad version, which two-factor authentication with a security key makes hard. Pin the Action by commit.
