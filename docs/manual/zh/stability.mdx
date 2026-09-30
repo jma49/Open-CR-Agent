@@ -43,4 +43,6 @@ ocra 遵循 1.0 之前适用的[语义化版本](https://semver.org/lang/zh-CN/)
 npm audit signatures --include-attestations
 ```
 
+容器镜像同样带有构建 provenance：`gh attestation verify oci://ghcr.io/jma49/ocra:<版本> --repo jma49/Open-CR-Agent`。
+
 GitHub Action 安装的是已发布的 CLI，依赖版本与它的 CI 测试过的一致，会校验 npm registry 的签名和 ocra 自己各个包的 provenance；某个版本还不在 npm 上、或者缺少这样的 provenance 时，则从源码构建。见 [GitHub Pull Request](./github)。

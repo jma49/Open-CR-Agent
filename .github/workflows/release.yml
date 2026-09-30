@@ -106,3 +106,58 @@ jobs:
       - name: Dry run
         if: github.event_name == 'workflow_dispatch' && inputs.dry-run
         run: node scripts/release.mjs upload packed
+
+  # The container image of the release, from the packages just published
+  # (never from source: the Dockerfile refuses), for amd64 and arm64, with
+  # build provenance. The first push creates ghcr.io/jma49/ocra as a private
+  # package; make it public once in the package settings.
+  image:
+    needs: publish
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: meta
+        run: |
+          version=$(node -p 'require("./packages/cli/package.json").version')
+          tags="ghcr.io/jma49/ocra:$version"
+          case "$version" in *-*) ;; *) tags="$tags,ghcr.io/jma49/ocra:latest" ;; esac
+          echo "tags=$tags" >> "$GITHUB_OUTPUT"
+          # The registry can take a minute to serve a version it just accepted.
+          for _ in $(seq 1 30); do
+            npm view "@open-cr-agent/cli@$version" version >/dev/null 2>&1 && exit 0
+            sleep 10
+          done
+          echo "::error::@open-cr-agent/cli@$version is not on npm"
+          exit 1
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          build-args: OCRA_INSTALL=npm
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          provenance: mode=max
+          sbom: true
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ghcr.io/jma49/ocra
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+

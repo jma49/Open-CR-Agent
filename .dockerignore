@@ -1,0 +1,10 @@
+# Only package.json, the lockfile, tsconfigs, scripts/ and packages/ are
+# copied; keep build output and local state out of the context.
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+.git
+.local
+.ocra
+evals
+docs

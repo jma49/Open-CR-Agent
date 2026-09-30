@@ -45,6 +45,16 @@ ocra-review:
     # - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
 ```
 
+从 0.2.0 起，任务也可以使用[容器镜像](./installation#容器镜像)，不需要安装步骤：
+
+```yaml
+ocra-review:
+  image: ghcr.io/jma49/ocra:0.2.0
+  # （rules、variables、interruptible 和 allow_failure 同上）
+  script:
+    - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
+```
+
 `GIT_DEPTH: 0` 让 ocra 拿到目标分支和 Merge Request 之间的历史；浅克隆会停下来并给出说明。配合 `interruptible: true` 和项目的 **Auto-cancel redundant pipelines** 设置，新的 push 会取消上一次仍在运行的审查。在发布之前被取消的审查不会发出任何内容。`--ignore-scripts` 不让安装脚本在带有你的变量的环境里运行；ocra 不需要这些脚本也能找到 OpenCode 二进制文件。
 
 模型来自目标分支的 `.ocra/config.json`，或者 `OCRA_MODEL_*` 变量。其他选项直接写在 `ocra review` 那一行，比如 `--max-cost-usd 2` 或 `--reviewers correctness,security`。

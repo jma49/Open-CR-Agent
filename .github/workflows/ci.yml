@@ -106,3 +106,25 @@ jobs:
             const binary = resolveOpencodeBinary({});
             console.log(binary, execFileSync(binary, ["--version"], { encoding: "utf8" }).trim());
           '
+
+  # The container image, built from this commit rather than from npm (its
+  # version may not be published yet), then run as a user would.
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: docker build --build-arg OCRA_INSTALL=source --tag ocra:ci .
+      - run: |
+          docker run --rm ocra:ci ocra --version
+          mkdir repo && cd repo
+          git init -q -b main
+          git -c user.email=ci@example.com -c user.name=CI commit -q --allow-empty -m init
+          printf 'export const retries = -1;\n' > app.ts
+          # As CI runs it: the checkout mounted and owned by another user.
+          plan=$(docker run --rm --user "$(id -u):$(id -g)" --volume "$PWD:/repo" ocra:ci ocra review --plan)
+          echo "$plan"
+          echo "$plan" | grep -q "Review tasks: 1"
+

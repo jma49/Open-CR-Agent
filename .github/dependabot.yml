@@ -23,3 +23,11 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+
+  # The container image's base, pinned by digest.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+

@@ -45,6 +45,16 @@ ocra-review:
     # - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
 ```
 
+From 0.2.0 the job can also use the [container image](./installation#container-image), which needs no install step:
+
+```yaml
+ocra-review:
+  image: ghcr.io/jma49/ocra:0.2.0
+  # (rules, variables, interruptible and allow_failure as above)
+  script:
+    - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
+```
+
 `GIT_DEPTH: 0` gives ocra the history between the target branch and the merge request; a shallow clone stops with a message saying so. With `interruptible: true` and the project's **Auto-cancel redundant pipelines** setting, a new push cancels the review still running for the previous one. A review cancelled before it publishes posts nothing. `--ignore-scripts` keeps install scripts from running with your variables in the environment; ocra finds the OpenCode binary without them.
 
 Models come from the target branch's `.ocra/config.json`, or from `OCRA_MODEL_*` variables. Other options go on the `ocra review` line, such as `--max-cost-usd 2` or `--reviewers correctness,security`.

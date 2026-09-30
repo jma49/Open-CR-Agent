@@ -82,6 +82,10 @@ Done: the organization `open-cr-agent` exists, and the owner account has two-fac
 4. Check the release as a user, in a scratch project outside the repository: `npm install @open-cr-agent/cli@<x.y.z>`, `npx --no-install ocra --version`, and `npm audit signatures --json --include-attestations`. Its `verified` list must name each of ocra's packages (third-party packages with provenance appear there too): the provenance that ties each one to this repository's workflow and tagged commit.
 5. Move the Action examples to the new tag (README, `docs/manual/*/github.mdx`, the site's landing page), with the manual's pinned-commit example if it names one.
 
+### The container image
+
+After `publish`, the release workflow's `image` job waits until npm serves the new version, then builds `Dockerfile` with `OCRA_INSTALL=npm` for amd64 and arm64: `scripts/action-install.mjs` installs the published packages, and the build fails if that script would build from source instead. It pushes `ghcr.io/jma49/ocra:<version>` (and `latest` for a release that is not a prerelease) with an SBOM and build provenance, attested with `actions/attest-build-provenance`. The first push creates the package as private: make it public once, under the package's settings on GitHub. Every pull request's `image` job builds the Dockerfile from the commit itself (`OCRA_INSTALL=source`) and runs `ocra --version` and a `--plan` review in it.
+
 ### Adding a package
 
 npm lets a workflow publish with trusted publishing only to a package that already exists. So before the first release that includes a new package (`vcs-platform` and `vcs-gitlab` for the release after 0.1.2), publish that one package by hand, at the version `main` has before the release's version bump, then trust the workflow for it:

@@ -36,6 +36,17 @@ npx @open-cr-agent/cli review
 
 npm 11.16 及更高版本会提示 `opencode-ai` 有一个不在 `allowScripts` 允许范围内的安装脚本，npm 12 会直接拦下它。ocra 不需要这个脚本：没有它也能在平台包里找到 OpenCode 二进制文件，所以不必放行。
 
+## 容器镜像
+
+从 0.2.0 起，每个发布版本同时提供 amd64 和 arm64 的容器镜像 `ghcr.io/jma49/ocra:<版本>`。它由发布 workflow 用刚发布的包构建，安装方式与 GitHub Action 相同（依赖版本固定，校验签名和 provenance），带有 git，以非特权用户 `node` 运行。0.2.0 还没有发布。
+
+```bash
+docker run --rm --user "$(id -u):$(id -g)" --volume "$PWD:/repo" \
+  --env GEMINI_API_KEY ghcr.io/jma49/ocra:0.2.0 ocra review --from main
+```
+
+像上面这样以你自己的用户运行，它才能在你的代码目录里写 `.ocra/sessions/`。模型密钥和 `OCRA_*` 变量用 `--env` 传入。用 `gh attestation verify oci://ghcr.io/jma49/ocra:<版本> --repo jma49/Open-CR-Agent` 核对镜像的来源。
+
 ## 从源码安装
 
 要参与开发 ocra，或者运行尚未发布的版本：
