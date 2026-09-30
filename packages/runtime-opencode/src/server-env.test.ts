@@ -123,6 +123,24 @@ describe("serverEnv", () => {
     expect("OTHER" in env).toBe(false);
   });
 
+  it("sends OpenCode's npm installs to a registry that refuses at once, whatever is passed", () => {
+    const env = serverEnv(
+      {
+        OCRA_RUNTIME_ENV: "npm_config_registry,NPM_CONFIG_REGISTRY,npm_config_fetch_retries",
+        npm_config_registry: "https://registry.npmjs.org/",
+        NPM_CONFIG_REGISTRY: "https://registry.npmjs.org/",
+        npm_config_fetch_retries: "2",
+      },
+      dirs,
+      [],
+    );
+    expect(env).toMatchObject({
+      npm_config_registry: "http://127.0.0.1:9/",
+      NPM_CONFIG_REGISTRY: "http://127.0.0.1:9/",
+      npm_config_fetch_retries: "0",
+    });
+  });
+
   it("isolates OpenCode from the user's configuration and the repository", () => {
     const env = serverEnv({ XDG_CONFIG_HOME: "/home/u/.config" }, dirs, []);
     expect(env).toMatchObject({

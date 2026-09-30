@@ -107,6 +107,17 @@ export function missingCredentials(
 const GOOGLE_KEY = "GOOGLE_GENERATIVE_AI_API_KEY";
 const GOOGLE_KEY_ALIASES = ["GEMINI_API_KEY", "GOOGLE_API_KEY"];
 export const EXTRA_ENV_VARIABLE = "OCRA_RUNTIME_ENV";
+// OpenCode installs its plugin package from npm into every config directory
+// when it starts, and the SDK of a provider it does not bundle when a model
+// first uses it; no flag turns either off. ocra loads no OpenCode plugins and
+// supports only bundled providers, so both installs get the discard port on
+// this machine as their registry, and no retries: they fail at once, no code
+// is fetched at review time and no .npmrc token is sent (docs/spikes/0002).
+const NPM_SETTINGS = {
+  npm_config_registry: "http://127.0.0.1:9/",
+  NPM_CONFIG_REGISTRY: "http://127.0.0.1:9/",
+  npm_config_fetch_retries: "0",
+};
 
 // A model chain naming a provider such as "github", "gitlab" or "aws" must
 // not carry the CI's or the cloud's credentials across by prefix (GitLab CI
@@ -171,6 +182,7 @@ export function serverEnv(
     if (alias) env[GOOGLE_KEY] = alias;
   }
   for (const flag of ISOLATION_FLAGS) env[flag] = "1";
+  Object.assign(env, NPM_SETTINGS);
   env.OPENCODE_CONFIG_DIR = dirs.config;
   env.XDG_CONFIG_HOME = dirs.config;
   env.XDG_DATA_HOME = dirs.data;

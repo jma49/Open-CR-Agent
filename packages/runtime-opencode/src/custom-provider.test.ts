@@ -1,4 +1,7 @@
+import { mkdtemp, rm } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { OpenCodeRuntime, openCodeConfig } from "./runtime.js";
 
@@ -46,17 +49,21 @@ async function fakeEndpoint() {
   return { ...(await listen(server)), authorizations };
 }
 
-// A proxy that refuses every request, standing in for no network at all.
+// A proxy that refuses every request, standing in for no network at all,
+// and records where each one was going.
 async function refusingProxy() {
+  const seen: string[] = [];
   const server = createServer((req, res) => {
     req.socket.on("error", () => {});
+    seen.push(req.url ?? "");
     res.writeHead(403).end();
   });
-  server.on("connect", (_, socket) => {
+  server.on("connect", (req, socket) => {
     socket.on("error", () => {});
+    seen.push(req.url ?? "");
     socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
   });
-  return listen(server);
+  return { ...(await listen(server)), seen };
 }
 
 async function listen(server: Server) {
@@ -73,9 +80,10 @@ afterEach(() => {
 });
 
 describe("a provider declared in configuration", () => {
-  it("reaches an OpenAI-compatible endpoint with the key from the environment, priced, with no other network", async () => {
+  it("reaches an OpenAI-compatible endpoint with the key from the environment, priced, and nothing but the pricing catalog", async () => {
     const endpoint = await fakeEndpoint();
     const proxy = await refusingProxy();
+    const caches = await mkdtemp(join(tmpdir(), "ocra-caches-"));
     const runtime = new OpenCodeRuntime({
       models: { light: ["local/m1"] },
       tools: [],
@@ -84,6 +92,11 @@ describe("a provider declared in configuration", () => {
         HOME: process.env.HOME,
         TMPDIR: process.env.TMPDIR,
         LOCAL_KEY: "sk-local-secret",
+        // Empty caches, so that OpenCode cannot answer from what an earlier
+        // run left behind: its catalog and any npm package must be asked for.
+        OCRA_RUNTIME_ENV: "XDG_CACHE_HOME,npm_config_cache",
+        XDG_CACHE_HOME: join(caches, "xdg"),
+        npm_config_cache: join(caches, "npm"),
         HTTP_PROXY: proxy.url,
         HTTPS_PROXY: proxy.url,
         http_proxy: proxy.url,
@@ -111,7 +124,13 @@ describe("a provider declared in configuration", () => {
       expect(endpoint.authorizations.every((a) => a === "Bearer sk-local-secret")).toBe(true);
     } finally {
       await runtime.dispose();
+      await rm(caches, { recursive: true, force: true });
     }
+    // The proxy is on OpenCode's path: the pricing catalog went there. Nothing
+    // else did, because npm installs go to a registry that refuses on this
+    // machine (server-env.ts).
+    expect(proxy.seen.some((to) => to.startsWith("models.opencode.ai"))).toBe(true);
+    expect(proxy.seen.filter((to) => !to.startsWith("models.opencode.ai"))).toEqual([]);
   }, 90_000);
 
   it("keeps the key itself out of OpenCode's configuration", () => {

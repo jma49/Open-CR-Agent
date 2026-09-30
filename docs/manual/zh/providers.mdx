@@ -3,7 +3,7 @@ title: 模型供应商
 description: ocra 能用哪些模型供应商、各自需要什么，以及如何接入你自己的端点。
 ---
 
-ocra 通过 OpenCode 运行审查员，所以 OpenCode 目录里的任何供应商都可以用。在模型链里把模型写成 `provider/model`（见[配置](./configuration#模型)）。运行时只会拿到模型链里出现的那些供应商的凭据。
+ocra 通过 OpenCode 运行审查员，所以 OpenCode 目录里的供应商都可以用，只有少数[需要从 npm 下载代码的](#需要从-npm-下载代码的供应商)除外。在模型链里把模型写成 `provider/model`（见[配置](./configuration#模型)）。运行时只会拿到模型链里出现的那些供应商的凭据。
 
 ## OpenCode 目录中的供应商
 
@@ -18,6 +18,10 @@ ocra 通过 OpenCode 运行审查员，所以 OpenCode 目录里的任何供应�
 | DeepSeek、OpenRouter、Groq、Mistral、xAI 以及目录里的其他供应商 | `deepseek/<model>` | 供应商的密钥，比如 `DEEPSEEK_API_KEY`；ocra 不认识的 id 会拿到以它开头的所有变量，比如 `GROQ_` | 否 |
 
 "否"的意思是：ocra 会把变量传给这个供应商，其余由 OpenCode 处理，但还没有任何审查实际经过它运行过。如果出了问题，请[提 issue](https://github.com/jma49/Open-CR-Agent/issues/new/choose)。模型 id 以 OpenCode 的目录 [models.dev](https://models.dev) 为准。
+
+### 需要从 npm 下载代码的供应商
+
+OpenCode 自带了与目录里几乎所有供应商通信的代码。只有少数几个，它会在第一次用到其模型时从 npm 下载这部分代码，而 ocra 不允许在审查过程中下载任何东西。在 2026-09-29 的目录里，它们是 `aihubmix`、`cloudflare-ai-gateway`、`merge-gateway`、`qvac`、`salad-cloud`、`sap-ai-core` 和 `watsonx`。这些供应商的模型会立即失败，报错 "Failed to initialize provider"。如果这类服务提供兼容 OpenAI API 的端点，可以把它声明为[你自己的端点](#你自己的端点)。
 
 ## 你自己的端点
 
@@ -55,4 +59,4 @@ ocra 通过 OpenCode 运行审查员，所以 OpenCode 目录里的任何供应�
 
 ## 还会访问哪些网络地址
 
-OpenCode 启动时会从 `models.opencode.ai` 拉取它的模型目录，并尝试从 npm registry 安装它自己的插件包 `@opencode-ai/plugin`（版本固定为它自身的版本）。这个包里的任何东西都不会在 ocra 里运行。审查并不需要这两者：除声明的端点之外所有地址都被拒绝时，审查依然正常（已测试）。在屏蔽外网的环境里，这两个请求会失败，OpenCode 照常继续。
+除模型供应商之外，OpenCode 启动时还会从 `models.opencode.ai` 拉取价格目录。启动时它还会尝试从 npm 安装它自己的插件包，并在模型需要时安装它没有自带的供应商代码；ocra 把这两种安装都指向本机上一个立即拒绝的 registry。除声明的端点之外所有地址都被拒绝时，审查依然正常（已测试）。在屏蔽外网的环境里，价格目录拉取失败，OpenCode 会使用它自带的目录；不在该目录里的模型没有价格，这时运行会警告它的调用没有计入。

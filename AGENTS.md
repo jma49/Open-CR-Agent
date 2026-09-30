@@ -51,7 +51,7 @@ Concrete rules behind the principles above, from the [2026-09-26 self-audit](doc
 - **Least privilege for child processes.** Spawn with `execFile`/`spawn` and argument arrays, never a shell; pass `--end-of-options` before user refs; give child processes only the environment variables they need.
 - **Bind local servers to `127.0.0.1` with a per-run random port and credential**, compare credentials with `timingSafeEqual`.
 - **Secrets never reach code, logs, prompts, reports or session files.** Tests that touch secret handling assert the secret string is absent from every output.
-- **Pin what can change the attack surface.** OpenCode is pinned and its built-in tool list is asserted; treat any bump as a security review.
+- **Pin what can change the attack surface.** OpenCode is pinned, its built-in tool list is asserted, and `custom-provider.test.ts` shows it reaches no network at review time but the model endpoint and its pricing catalog; treat any bump as a security review, and read that test's result as part of it.
 
 ### Performance and cost
 
