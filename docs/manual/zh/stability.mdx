@@ -21,6 +21,7 @@ ocra 遵循 1.0 之前适用的[语义化版本](https://semver.org/lang/zh-CN/)
 | 命令、选项和退出码 | [CLI 参考](./cli) |
 | `.ocra/config.json`、`.ocra/rules.json`、`.ocra/memory.json` 和 `OCRA_*` 环境变量 | [配置](./configuration)、[审查规则](./rules) |
 | JSON 报告（`--format json`、`report.json`）和 `--plan` 的 JSON | [CLI 参考](./cli#json-输出)。两者都带 `"version": 1`；同一版本只会增加可选字段，其他任何改动都会换一个新版本 |
+| SARIF 输出（`--format sarif`） | [CLI 参考](./cli#sarif-输出)。SARIF 2.1.0；规则 id、`ocra/v1` 指纹键和属性名遵循与其他约定相同的规则 |
 | GitHub Action 的输入 | [GitHub Pull Request](./github) |
 | ocra 保存在 PR 总结评论里的状态 | 内部格式，但之后的版本会继续读取（目前是 `v1`）。万一某个版本读不了，下一次审查会像第一次那样从头开始：审查所有文件，已经评论过的问题可能再评论一次 |
 | 插件接口（`OcraPlugin`） | [插件](./plugins)。在 ocra 还是 0.x 时，它仍可能在次版本中变化，变更日志会说明如何适配 |

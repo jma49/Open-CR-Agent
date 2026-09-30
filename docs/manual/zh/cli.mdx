@@ -17,7 +17,7 @@ ocra review [options]
 | `--from <ref>` | 审查 `--to` 从 `<ref>` 分叉以来的改动（基于 merge base） |
 | `--to <ref>` | 区间终点，默认 `HEAD`，必须配合 `--from` 使用 |
 | `--commit <sha>` | 审查单个 commit 相对其父 commit 的改动 |
-| `--format text\|json` | 输出格式，默认 `text` |
+| `--format text\|json\|sarif` | 输出格式，默认 `text`。`sarif` 输出 [SARIF 2.1.0](#sarif-输出) |
 | `--output <file>` | 把结果写入文件，而不是输出到 stdout |
 | `--pr <number>` | 审查一个 GitHub PR，见 [GitHub Pull Request](./github) |
 | `--repo <owner/name>` | `--pr` 所在的仓库（默认取 `GITHUB_REPOSITORY` 或 `origin`） |
@@ -64,6 +64,22 @@ ocra review [options]
 `--format json` 会输出完整报告：变更信息、风险档位、结论和总结、每个改动文件的覆盖情况（已审查、失败、未审查（没有为它启动任何任务）、自上次评审后未改动，或被排除及原因）、审查 PR 时本次是增量还是全量审查及原因（`scope`）、分组、各任务结果、被 Matrix 跳过的（审查员，分组）组合、被核查丢弃的问题（`refuted`，附原因）、核查没能检查的 critical 数量（`unverifiedCriticals`）、Judge 合并、丢弃或重新定级的记录（`judgement`）、问题列表、与上次审查的对比（`rereview`：已修复、未再报告、未重新检查、未改动和已驳回的旧问题）、被仓库 memory 接受的问题（`remembered`）、维护者的放行（`changeRequest.override`）、token 用量与花费，设置了花费上限时还有上限本身以及本次运行是否达到了它（`spendLimit`：审查任务因此停止时 `reached` 为 `review`，整个上限用完时为 `total`），以及警告信息。会话里的 `report.json` 格式相同。
 
 这个格式带版本号（`"version": 1`），是一份约定：后续版本只会新增可选字段，否则就会改版本号。每条问题包含 `fingerprint`（多次运行间保持稳定；`ocra memory add` 接受它的前缀）、`reviewer`、`category`、`severity`、`verification`（`confirmed`、`uncertain` 或 `unchecked`）、`file`、`lines`（`{ start, end }`，问题没能对应到具体行时不存在）、`inDiff`、`status`（`new`，或者之前的审查也报过时为 `unfixed`）、`title`、`body`、可选的 `suggestion`、`evidence`、`code`（引用的代码），以及 `--ultra` 下的 `lowConfidence`。`--plan` 输出的 JSON 同样带版本号（`"version": 1`）：变更信息、风险档位、选中和排除的文件、分组、各任务及其估算的提示词大小、被跳过的（审查员，分组）组合、是否跳过了模型分组（`groupingSkipped`）、首轮提示词的估算总大小（`promptTokens`），以及警告信息。
+
+### SARIF 输出
+
+`--format sarif` 把审查结果写成 [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html) 日志，代码扫描和安全看板读取的就是这种格式。上传到 GitHub 的方法见[代码扫描](./github#代码扫描)。
+
+- **规则和结果。** 每个审查员类别（`correctness`、`security` 等）一条规则，每个问题一条结果：
+  - 级别来自严重程度：`critical` 为 `error`，`warning` 为 `warning`，`suggestion` 为 `note`；
+  - 消息是标题、正文和修改建议；
+  - 区域是问题所在的行；
+  - `partialFingerprints` 里是它的指纹（`ocra/v1`）；
+  - 审查员、严重程度、核查结果和状态放在属性里。
+- **没有行号的问题。** ocra 没能定位到行的问题作用于整个文件：它没有区域。
+- **沿用的问题。** 审查 PR 时，之前的审查报告过、仍然打开、而且所在文件这次没有重新审查的问题，也会作为结果写出。它们归在规则 `ocra-carried-over` 下，标为 `unchanged`，没有行号：审查状态里没有保存它们的行。
+- **不完整的审查。** 退出码为 `3` 的审查会标为执行不成功。没审到的文件数和警告写成通知。结论、风险档位、没审到的文件和花费写在这次运行的属性里。
+
+来自改动和模型的文字只作为文字：方括号和反斜杠会被转义，因此拼不出内嵌链接；网址会被插入一个零宽空格，和 PR 评论里一样。`--plan` 没有问题可写，所以不能输出 SARIF。
 
 ### 会话记录
 

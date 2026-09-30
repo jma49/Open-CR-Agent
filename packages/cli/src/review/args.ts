@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import type { LocalTarget } from "@open-cr-agent/vcs-local";
 
-export type OutputFormat = "text" | "json";
+export type OutputFormat = "text" | "json" | "sarif";
 
 export interface PullRequestTarget {
   number: number;
@@ -37,7 +37,7 @@ Options:
   --publish          With --pr: post the review to the pull request
   --full             With --pr: review every file, not only what changed since
                      the previous review
-  --format <format>  text (default) or json
+  --format <format>  text (default), json, or sarif (SARIF 2.1.0; not with --plan)
   --output <file>    Write the result to a file instead of stdout
   --reviewers <ids>  Run only these reviewers (comma-separated)
   --max-cost-usd <n> Spend limit: reviews use 80%, verification and judging the rest
@@ -60,8 +60,8 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
   if (positionals.length > 0) throw new UsageError(`Unexpected argument: ${positionals[0]}`);
 
   const format = values.format ?? "text";
-  if (format !== "text" && format !== "json") {
-    throw new UsageError(`--format must be text or json, got ${format}`);
+  if (format !== "text" && format !== "json" && format !== "sarif") {
+    throw new UsageError(`--format must be text, json or sarif, got ${format}`);
   }
 
   const args: ReviewArgs = { target: target(values), format };
@@ -76,6 +76,7 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
   }
   if (values.plan) {
     if (values.publish) throw new UsageError("--plan cannot be combined with --publish");
+    if (format === "sarif") throw new UsageError("--plan has no findings for --format sarif");
     args.plan = true;
   }
   if (values["max-cost-usd"] !== undefined) {

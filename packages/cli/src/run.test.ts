@@ -130,6 +130,34 @@ describe("ocra review", () => {
     });
   });
 
+  it("writes SARIF with the findings, and keeps the exit code", async () => {
+    const cwd = repoWithChange();
+    const out = capture();
+    const code = await run(
+      ["review", "--format", "sarif", "--output", "r.sarif"],
+      out,
+      capture(),
+      deps(cwd, critical, {}, true),
+    );
+    expect(code).toBe(1);
+    const log = JSON.parse(readFileSync(join(cwd, "r.sarif"), "utf8"));
+    expect(log.version).toBe("2.1.0");
+    expect(log.runs[0].results).toEqual([
+      expect.objectContaining({
+        ruleId: "correctness",
+        level: "error",
+        locations: [
+          {
+            physicalLocation: {
+              artifactLocation: { uri: "app.ts", uriBaseId: "%SRCROOT%" },
+              region: { startLine: 2, endLine: 2 },
+            },
+          },
+        ],
+      }),
+    ]);
+  });
+
   it("exits 2 when no review task completes", async () => {
     const cwd = repoWithChange();
     const broken: Script = async function* () {

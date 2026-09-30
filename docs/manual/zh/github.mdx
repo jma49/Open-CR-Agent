@@ -66,6 +66,41 @@ jobs:
 
 由审查者来做主。如果对仓库有写权限（admin、maintain 或 write 权限）且不是 PR 作者的人 resolve 了 ocra 的评论串，或者回复 `/ocra dismiss`，或者回复以明确的拒绝开头（"won't fix"、"will not fix"、"by design"、"false positive"、"not a bug"、"working as intended"、"intended behavior"）且不是问句，这条问题就算被驳回：之后不再报告，也不再影响结论，除非后续运行发现它的严重程度升高。同样的词出现在回复的其他位置（例如 "this is not intended, good catch"、"is this by design?"）不算驳回，回复 "I disagree" 也不算。这类回复如果来自有资格驳回的人，会在这条问题每次再被报告时交给 Judge；回复给出了具体理由说明问题不成立时，Judge 可以丢弃它，但已确认的 critical 不行。PR 作者自己的回复不会交给 Judge。PR 作者也无法驳回自己 PR 上的问题；被他人编辑过的回复不算数（有写权限的人可以编辑任何评论），因此不能靠 resolve 评论串绕过检查。只有带行内评论串的问题能这样驳回，其他问题请用 [`ocra memory`](./cli)。
 
+## 代码扫描
+
+如果还想把问题显示为代码扫描（code scanning）告警，可以输出 SARIF，再用 GitHub 的 `upload-sarif` action 上传。在上面的 workflow 里加一个权限和两处配置：
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: jma49/Open-CR-Agent@v0.1.2
+        with:
+          args: --format sarif --output ocra.sarif
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      - uses: github/codeql-action/upload-sarif@v4
+        # 审查不完整时上一步会失败，这里也照样上传。
+        if: ${{ !cancelled() }}
+        with:
+          sarif_file: ocra.sarif
+          category: ocra
+```
+
+- 审查结果仍会发到 PR 上：`--output` 只改变 ocra 打印内容的去处。
+- 代码扫描只显示带行号的结果。ocra 没能定位到行的问题在文件里，但不会在那里显示。之前的审查在此后没改动过的文件里报告的问题也是如此：PR 第一次审查之后，ocra 只审查有改动的部分。要让代码扫描在每次 push 后都显示全部问题，请在 `args` 里加上 `--full`，代价是每次都要完整审查一遍。
+- 公开仓库可以使用代码扫描；私有仓库需要 GitHub Code Security。
+- 文件里有什么，见 [SARIF 输出](./cli#sarif-输出)。
+
 ## 强制放行阻塞的结论
 
 如果 ocra 拦下了一个你们决定仍要合并的改动，由 PR 作者以外、有写权限的人评论：

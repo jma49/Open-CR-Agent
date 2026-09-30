@@ -17,7 +17,7 @@ ocra review [options]
 | `--from <ref>` | Review `--to` since it diverged from `<ref>` (merge base) |
 | `--to <ref>` | End of the range; defaults to `HEAD`; requires `--from` |
 | `--commit <sha>` | Review a single commit against its parent |
-| `--format text\|json` | Output format; default `text` |
+| `--format text\|json\|sarif` | Output format; default `text`. `sarif` writes [SARIF 2.1.0](#sarif-output) |
 | `--output <file>` | Write the result to a file instead of stdout |
 | `--pr <number>` | Review a GitHub pull request; see [GitHub pull requests](./github) |
 | `--repo <owner/name>` | Repository of `--pr` (default: `GITHUB_REPOSITORY` or `origin`) |
@@ -64,6 +64,22 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...` so a lo
 `--format json` prints the full report: the change request, risk tier, verdict and summary, coverage for every changed file (reviewed, failed, unreviewed when no task for it started, unchanged since the previous review, or excluded with a reason), for pull requests whether the run was incremental or full and why (`scope`), bundles, task outcomes, reviewer/bundle pairs the matrix skipped, findings verification dropped (`refuted`, with the reason), how many critical findings verification failed to check (`unverifiedCriticals`), what the judge merged, dropped or recalibrated (`judgement`), findings, the comparison with the previous review (`rereview`: fixed, not reproduced, not re-checked, unchanged and dismissed earlier findings), findings the repository's memory accepted (`remembered`), a maintainer's override in `changeRequest.override`, token usage and cost, with a spend limit the limit and whether the run reached it (`spendLimit`: `reached` is `review` when review tasks stopped, `total` when the whole limit ran out), and warnings. A session's `report.json` has the same shape.
 
 The format is versioned (`"version": 1`) and is a contract: later releases only add optional fields, or change the version. Each finding has `fingerprint` (stable across runs; `ocra memory add` takes a prefix), `reviewer`, `category`, `severity`, `verification` (`confirmed`, `uncertain` or `unchecked`), `file`, `lines` (`{ start, end }`, absent when the finding is not tied to lines), `inDiff`, `status` (`new`, or `unfixed` when an earlier review reported it), `title`, `body`, optional `suggestion`, `evidence`, `code` (the quoted code) and, under `--ultra`, `lowConfidence`. The JSON of `--plan` is versioned the same way (`"version": 1`): the change request, risk tier, selected and excluded files, bundles, tasks with their estimated prompt size, skipped reviewer/bundle pairs, whether model grouping was skipped (`groupingSkipped`), the total estimated first-prompt size (`promptTokens`) and warnings.
+
+### SARIF output
+
+`--format sarif` writes the review as a [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html) log, the format code scanning and security dashboards read. To upload it to GitHub, see [Code scanning](./github#code-scanning).
+
+- **Rules and results.** There is one rule per reviewer category (`correctness`, `security` and so on) and one result per finding:
+  - its level comes from the severity: `critical` is `error`, `warning` is `warning`, `suggestion` is `note`;
+  - its message is the title, body and suggestion;
+  - its region is the finding's lines;
+  - `partialFingerprints` holds its fingerprint (`ocra/v1`);
+  - the reviewer, severity, verification and status are properties.
+- **Findings without lines.** A finding ocra could not tie to lines applies to the whole file: it has no region.
+- **Carried-over findings.** In a pull request, findings an earlier review reported that are still open, in files this run did not review again, are results too. They sit under the rule `ocra-carried-over`, marked `unchanged` and without lines: the review state keeps no lines for them.
+- **Incomplete reviews.** A review that exits `3` is marked unsuccessful. The number of files not reviewed and the warnings are notifications. The verdict, risk tier, files not reviewed and cost are run properties.
+
+Text from the change and from models stays text. Brackets and backslashes are escaped, so no embedded link can form, and web addresses get a zero-width space, as in pull request comments. `--plan` has no findings, so it cannot write SARIF.
 
 ### Sessions
 

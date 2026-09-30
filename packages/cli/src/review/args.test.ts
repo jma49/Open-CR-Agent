@@ -23,6 +23,13 @@ describe("parseReviewArgs", () => {
     });
   });
 
+  it("accepts sarif as an output format", () => {
+    expect(parseReviewArgs(["--format", "sarif", "--output", "ocra.sarif"])).toMatchObject({
+      format: "sarif",
+      output: "ocra.sarif",
+    });
+  });
+
   it("returns help", () => {
     expect(parseReviewArgs(["-h"])).toBe("help");
     expect(parseReviewArgs(["--no-repo-config"])).toMatchObject({ ignoreRepoConfig: true });
@@ -35,7 +42,8 @@ describe("parseReviewArgs", () => {
   it.each([
     [["--commit", "a", "--from", "b"], "--commit cannot be combined with --from or --to"],
     [["--to", "b"], "--to requires --from"],
-    [["--format", "xml"], "--format must be text or json, got xml"],
+    [["--format", "xml"], "--format must be text, json or sarif, got xml"],
+    [["--plan", "--format", "sarif"], "--plan has no findings for --format sarif"],
     [["extra"], "Unexpected argument: extra"],
     [["--nope"], "Unknown option '--nope'"],
   ])("rejects %j", (argv, message) => {

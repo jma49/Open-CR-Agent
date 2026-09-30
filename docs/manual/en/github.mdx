@@ -66,6 +66,41 @@ ocra then compares findings with the previous review:
 
 Reviewers stay in charge. If someone with write access to the repository (admin, maintain or write permission) other than the pull request's author resolves one of ocra's threads, or replies `/ocra dismiss`, or replies with a message that opens with a clear decline ("won't fix", "will not fix", "by design", "false positive", "not a bug", "working as intended", "intended behavior") and is not a question, the finding counts as dismissed: it is no longer reported and no longer affects the verdict, unless a later run finds it with a higher severity. The same words elsewhere in a reply ("this is not intended, good catch", "is this by design?") do not count, and neither does "I disagree". Such a reply from someone who could dismiss the finding is shown to the judge whenever the finding is reported again; the judge may drop the finding when the reply gives a specific reason it is wrong, never a confirmed critical finding. The author's own replies are not shown. The author cannot dismiss findings on their own pull request, and a reply someone else edited does not count (anyone with write access can edit any comment), so the check cannot be resolved away. Only findings with an inline thread can be dismissed this way; for others use [`ocra memory`](./cli).
 
+## Code scanning
+
+To see the findings as code scanning alerts as well, write SARIF and upload it with GitHub's `upload-sarif` action. Add a permission and two lines to the workflow above:
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: jma49/Open-CR-Agent@v0.1.2
+        with:
+          args: --format sarif --output ocra.sarif
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      - uses: github/codeql-action/upload-sarif@v4
+        # Also after an incomplete review, which fails the step above.
+        if: ${{ !cancelled() }}
+        with:
+          sarif_file: ocra.sarif
+          category: ocra
+```
+
+- The review is still posted to the pull request: `--output` only redirects what ocra prints.
+- Code scanning shows only results with lines. Findings ocra could not tie to lines are in the file but not shown there. So are findings from an earlier review in files not changed since: after the first review of a pull request, ocra reviews only what changed. For code scanning to show every finding on every push, add `--full` to `args`, at the cost of a full review each time.
+- Code scanning is available for public repositories; private ones need GitHub Code Security.
+- What the file holds: [SARIF output](./cli#sarif-output).
+
 ## Overriding a blocking verdict
 
 When ocra blocks a change you have decided to merge anyway, someone with write access other than the pull request's author can comment:

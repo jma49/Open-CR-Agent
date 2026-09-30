@@ -22,11 +22,13 @@ import {
 import { opencodeRuntimePlugin } from "@open-cr-agent/runtime-opencode";
 import { githubPlugin } from "@open-cr-agent/vcs-github";
 import { findRepositoryRoot, localGitPlugin } from "@open-cr-agent/vcs-local";
+import { VERSION } from "../version.js";
 import type { ReviewArgs } from "./args.js";
 import { type CliConfig, ConfigError } from "./config.js";
 import { renderPlan } from "./plan-render.js";
 import { type Output, ProgressPrinter } from "./progress.js";
 import { renderJson, renderText, safeJson } from "./render.js";
+import { renderSarif } from "./sarif.js";
 import { localTarget, pullRequestTarget } from "./target.js";
 import { forTerminal } from "./terminal.js";
 
@@ -152,7 +154,12 @@ export async function reviewCommand(
   }
 
   const sessionDir = relative(deps.cwd, join(session.dir, session.id)) || ".";
-  const rendered = args.format === "json" ? renderJson(report) : renderText(report, sessionDir);
+  const rendered =
+    args.format === "json"
+      ? renderJson(report)
+      : args.format === "sarif"
+        ? renderSarif(report, VERSION)
+        : renderText(report, sessionDir);
   if (args.output === undefined) {
     io.out.write(rendered);
   } else {
