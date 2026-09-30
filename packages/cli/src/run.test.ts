@@ -22,6 +22,7 @@ describe("BUILTIN_PLUGINS", () => {
     expect(BUILTIN_PLUGINS.map((p) => p.name)).toEqual([
       "vcs-local",
       "vcs-github",
+      "vcs-gitlab",
       "runtime-opencode",
       "reviewer-correctness",
       "reviewer-security",

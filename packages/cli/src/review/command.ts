@@ -21,6 +21,7 @@ import {
 } from "@open-cr-agent/core";
 import { opencodeRuntimePlugin } from "@open-cr-agent/runtime-opencode";
 import { githubPlugin } from "@open-cr-agent/vcs-github";
+import { gitlabPlugin } from "@open-cr-agent/vcs-gitlab";
 import { findRepositoryRoot, localGitPlugin } from "@open-cr-agent/vcs-local";
 import { VERSION } from "../version.js";
 import type { ReviewArgs } from "./args.js";
@@ -29,7 +30,7 @@ import { renderPlan } from "./plan-render.js";
 import { type Output, ProgressPrinter } from "./progress.js";
 import { renderJson, renderText, safeJson } from "./render.js";
 import { renderSarif } from "./sarif.js";
-import { localTarget, pullRequestTarget } from "./target.js";
+import { localTarget, mergeRequestTarget, pullRequestTarget } from "./target.js";
 import { forTerminal } from "./terminal.js";
 
 export const SESSIONS_DIR = ".ocra/sessions";
@@ -39,6 +40,7 @@ export const EXIT = { ok: 0, blocking: 1, error: 2, incomplete: 3, interrupted: 
 export const BUILTIN_PLUGINS: readonly OcraPlugin[] = [
   localGitPlugin,
   githubPlugin,
+  gitlabPlugin,
   opencodeRuntimePlugin,
   correctnessReviewerPlugin,
   securityReviewerPlugin,
@@ -55,7 +57,7 @@ export interface ReviewDeps {
   writeFile(path: string, content: string): Promise<void>;
   now(): number;
   heartbeatMs: number;
-  // Only tests replace it, to fake the GitHub API.
+  // Only tests replace it, to fake the GitHub and GitLab APIs.
   fetch?: typeof fetch;
   // Calls the handler on Ctrl-C or SIGTERM; returns a function that stops listening.
   onInterrupt?(handler: () => void): () => void;
@@ -68,6 +70,7 @@ export async function reviewCommand(
 ): Promise<number> {
   const root = await findRepositoryRoot(deps.cwd);
   const warn = (message: string) => io.err.write(`[ocra] Warning: ${forTerminal(message)}\n`);
+  const ignoreRepoConfig = args.ignoreRepoConfig === true;
   const target = args.pullRequest
     ? await pullRequestTarget(
         args.pullRequest,
@@ -76,9 +79,19 @@ export async function reviewCommand(
         deps.env,
         warn,
         deps.fetch,
-        args.ignoreRepoConfig === true,
+        ignoreRepoConfig,
       )
-    : await localTarget(args, deps.cwd, root, deps.env, warn, deps.fetch);
+    : args.mergeRequest
+      ? await mergeRequestTarget(
+          args.mergeRequest,
+          deps.cwd,
+          root,
+          deps.env,
+          warn,
+          deps.fetch,
+          ignoreRepoConfig,
+        )
+      : await localTarget(args, deps.cwd, root, deps.env, warn, deps.fetch);
   const { config } = target;
   const session = { dir: join(root, SESSIONS_DIR), id: newSessionId() };
 
@@ -181,7 +194,7 @@ export async function reviewCommand(
     } finally {
       stopHolding?.();
     }
-    io.err.write("[ocra] Published the review to the pull request\n");
+    io.err.write(`[ocra] Published the review to the ${target.publishesTo ?? "change request"}\n`);
   }
   return exitCode(report, io.err);
 }

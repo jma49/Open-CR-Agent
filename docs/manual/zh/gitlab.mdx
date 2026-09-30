@@ -1,0 +1,94 @@
+---
+title: GitLab Merge Request
+description: 用 ocra review --mr 审查 GitLab.com 或自建 GitLab 上的 Merge Request。
+---
+
+`ocra review --mr <iid>` 审查一个 GitLab Merge Request，GitLab.com 和自建实例都可以。加上 `--publish` 会把审查结果发出去：
+- 一条摘要评论，每次 push 都在原评论上更新；
+- diff 中每个问题各开一个讨论串。
+
+之后的流水线只审查自上次审查以来有改动的部分。规则与 [GitHub Pull Request](./github) 完全一致：谁能强制放行或驳回、之前的哪些状态可信、哪些文字可以发出。两个平台由同一套测试检验。
+
+<Callout type="warn">
+
+GitLab 支持将随 0.2.0 发布，目前还不在 npm 上。在那之前，请在任务里从源码构建 ocra，写法见[配置](#配置)。它已经用模拟的 GitLab API 测试过，还没有在真实实例上运行过。
+
+</Callout>
+
+## 配置
+
+1. **创建项目访问令牌**（Settings → Access tokens），角色选 **Developer**，权限范围选 **`api`**。ocra 要发评论和讨论串、解决自己的讨论串，还要通过 GraphQL 读取评论最后由谁编辑。`CI_JOB_TOKEN` 不能发评论。
+2. **把它加为名为 `GITLAB_TOKEN` 的 CI/CD 变量**，设为 masked。不要设为 protected：来自未受保护分支的 Merge Request 流水线读不到受保护的变量。因此项目的每条流水线都能读到这个令牌，请把它的角色保持在 Developer。
+3. 用同样的方式**加入模型密钥**，比如 `GEMINI_API_KEY`。
+4. 在 `.gitlab-ci.yml` 里**加入任务**：
+
+```yaml
+ocra-review:
+  stage: test
+  image: node:22
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  variables:
+    GIT_DEPTH: 0
+  interruptible: true
+  # 结论只是建议：阻塞性的结论（退出码 1）不会让流水线失败，
+  # 审查不完整（退出码 3）仍然会。
+  allow_failure:
+    exit_codes: [1]
+  script:
+    # 在 0.2.0 发布到 npm 之前，从源码构建：
+    - git clone --depth 1 https://github.com/jma49/Open-CR-Agent.git /tmp/ocra
+    - (cd /tmp/ocra && npm ci --ignore-scripts && npm run build)
+    - node /tmp/ocra/packages/cli/dist/main.js review --mr "$CI_MERGE_REQUEST_IID" --publish
+    # 从 0.2.0 起：
+    # - npm install -g --ignore-scripts @open-cr-agent/cli@0.2.0
+    # - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
+```
+
+`GIT_DEPTH: 0` 让 ocra 拿到目标分支和 Merge Request 之间的历史；浅克隆会停下来并给出说明。配合 `interruptible: true` 和项目的 **Auto-cancel redundant pipelines** 设置，新的 push 会取消上一次仍在运行的审查。在发布之前被取消的审查不会发出任何内容。`--ignore-scripts` 不让安装脚本在带有你的变量的环境里运行；ocra 不需要这些脚本也能找到 OpenCode 二进制文件。
+
+模型来自目标分支的 `.ocra/config.json`，或者 `OCRA_MODEL_*` 变量。其他选项直接写在 `ocra review` 那一行，比如 `--max-cost-usd 2` 或 `--reviewers correctness,security`。
+
+## 会发布什么
+
+- **diff 中每个问题一个讨论串**：放在新增的行上，或者改动旁边未改动的行上。GitLab 不肯放置的问题留在摘要里。
+- **一条摘要评论**，在原处更新：结论、总结、diff 之外的问题、上次审查后已修复的问题，以及覆盖范围和花费。
+- **解决讨论串**：问题引用的代码已经不在时。
+
+审查者说了算。Developer 及以上角色、且不是 Merge Request 作者的人，解决了 ocra 的讨论串，或者用 `/ocra dismiss`、以"won't fix""by design""false positive"开头的回复答复它，这个问题就被驳回。他们的其他回复会在问题再次出现时交给 Judge。被别人编辑过的评论一律不算数。
+
+GitLab 没有"请求修改"。任务的退出码就是门禁：按上面那样设置 `allow_failure`，只有审查不完整会让流水线失败。不设置的话，阻塞性的结论也会让它失败，这时 **Pipelines must succeed** 会阻止合并。
+
+### 强制放行阻塞的结论
+
+Developer 及以上角色、且不是作者的人，可以单独发一条评论放行某一个提交：
+
+```
+/ocra override <完整的 head 提交 id> <原因>
+```
+
+效果与 [GitHub](./github#强制放行阻塞的结论) 相同：只对这个提交有效，只认没被别人编辑过的评论，也从不认 ocra 自己的摘要。
+
+## Merge Request 不能改变什么
+
+配置、`.ocra/rules.json` 和 `AGENTS.md` 从 Merge Request 所基于的提交读取。仓库插件从不加载，Merge Request 里的任何东西都不会被执行。ocra 发出的每一行，如果以斜杠开头，前面都会加一个零宽空格，所以问题里的文字无法变成 `/merge`、`/approve` 这样的快捷操作；GitLab 会以令牌的权限执行这类操作。
+
+## 自建 GitLab
+
+- 在 GitLab CI 里，`CI_API_V4_URL` 和 `CI_PROJECT_ID` 已经设置好。在 CI 之外，请设置 `CI_API_V4_URL`（比如 `https://gitlab.example.com/api/v4`）并传 `--project <id|路径>`，或者让 ocra 从 `origin` 远程仓库读出项目。
+- 如果实例用的是私有证书颁发机构，把 `NODE_EXTRA_CA_CERTS` 指向它的证书。
+- 令牌同样需要 `api` 权限范围：`read_api` 不能发评论。
+
+## 来自 fork 的 Merge Request
+
+来自 fork 的 Merge Request，其流水线在 fork 的项目里运行，拿不到父项目的 CI/CD 变量，审查会停下来并指出缺少 `GITLAB_TOKEN`。在 GitLab Premium 和 Ultimate 上，维护者读过改动之后，可以改为在父项目里运行流水线。这时任务能拿到父项目的变量；之所以可以接受，只是因为 ocra 不会执行 Merge Request 里的任何东西，所以绝不要加入会执行它的步骤。ocra 不会自动做这件事。
+
+## 在命令行里使用
+
+```bash
+export GITLAB_TOKEN=...                                   # 带 api 权限范围的令牌
+ocra review --mr 42 --project group/project               # 审查并打印
+ocra review --mr 42 --project group/project --publish     # 同时发布审查结果
+```
+
+请在项目的克隆里运行；缺少 Merge Request 的提交时，ocra 会去拉取。

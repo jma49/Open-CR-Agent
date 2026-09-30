@@ -1,0 +1,94 @@
+---
+title: GitLab merge requests
+description: Review merge requests on GitLab.com or self-managed GitLab with ocra review --mr.
+---
+
+`ocra review --mr <iid>` reviews a GitLab merge request, on GitLab.com or a self-managed instance. With `--publish` it posts the review:
+- one summary note, updated in place on every push;
+- a thread on each finding in the diff.
+
+Later pipelines review only what changed since the last review. The rules are the ones for [GitHub pull requests](./github): who may override or dismiss, which earlier state counts, and what text may be posted. The same tests check them on both platforms.
+
+<Callout type="warn">
+
+GitLab support ships in 0.2.0, which is not on npm yet. Until it is, build ocra from source in the job, as shown under [Set up](#set-up). It has been tested against a fake GitLab API, not yet on a live instance.
+
+</Callout>
+
+## Set up
+
+1. **Create a project access token** (Settings → Access tokens) with the **Developer** role and the **`api`** scope. ocra posts notes and threads, resolves its threads, and reads, through GraphQL, who last edited a comment. `CI_JOB_TOKEN` cannot post comments.
+2. **Add it as a CI/CD variable named `GITLAB_TOKEN`**, masked. Leave it unprotected: pipelines for merge requests from unprotected branches cannot read protected variables. So every pipeline of the project can read the token; keep its role at Developer.
+3. **Add your model key** the same way, for example `GEMINI_API_KEY`.
+4. **Add the job** to `.gitlab-ci.yml`:
+
+```yaml
+ocra-review:
+  stage: test
+  image: node:22
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  variables:
+    GIT_DEPTH: 0
+  interruptible: true
+  # The verdict is advice: a blocking one (exit code 1) does not fail the
+  # pipeline. An incomplete review (exit code 3) still does.
+  allow_failure:
+    exit_codes: [1]
+  script:
+    # Until 0.2.0 is on npm, build it from source:
+    - git clone --depth 1 https://github.com/jma49/Open-CR-Agent.git /tmp/ocra
+    - (cd /tmp/ocra && npm ci --ignore-scripts && npm run build)
+    - node /tmp/ocra/packages/cli/dist/main.js review --mr "$CI_MERGE_REQUEST_IID" --publish
+    # From 0.2.0:
+    # - npm install -g --ignore-scripts @open-cr-agent/cli@0.2.0
+    # - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
+```
+
+`GIT_DEPTH: 0` gives ocra the history between the target branch and the merge request; a shallow clone stops with a message saying so. With `interruptible: true` and the project's **Auto-cancel redundant pipelines** setting, a new push cancels the review still running for the previous one. A review cancelled before it publishes posts nothing. `--ignore-scripts` keeps install scripts from running with your variables in the environment; ocra finds the OpenCode binary without them.
+
+Models come from the target branch's `.ocra/config.json`, or from `OCRA_MODEL_*` variables. Other options go on the `ocra review` line, such as `--max-cost-usd 2` or `--reviewers correctness,security`.
+
+## What gets posted
+
+- **A thread on each finding** on a line of the diff: on an added line, or on an unchanged line next to the change. A finding GitLab will not place stays in the summary.
+- **One summary note**, updated in place: verdict, summary, findings outside the diff, what was fixed since the last review, and coverage and cost.
+- **Resolved threads** when the code a finding quoted is gone.
+
+Reviewers stay in charge. When someone with the Developer role or higher, other than the merge request's author, resolves one of ocra's threads, or answers it with `/ocra dismiss` or a reply that opens with "won't fix", "by design" or "false positive", the finding is dismissed. Other replies from them reach the judge the next time the finding comes back. A comment someone else edited counts for nothing.
+
+GitLab has no "request changes". The job's exit code is the gate: with `allow_failure` as above, only an incomplete review fails the pipeline. Without it, a blocking verdict fails it too, and **Pipelines must succeed** then blocks merging.
+
+### Overriding a blocking verdict
+
+Someone with the Developer role or higher, other than the author, can let one commit pass with a comment of its own:
+
+```
+/ocra override <full head commit id> <reason>
+```
+
+It works as on [GitHub](./github#overriding-a-blocking-verdict): only for that commit, only from a comment nobody else edited, and never from ocra's own summary.
+
+## What the merge request cannot change
+
+The configuration, `.ocra/rules.json` and `AGENTS.md` are read from the commit the merge request is based on. Repository plugins never load, and nothing from the merge request runs. Every line ocra posts that starts with a slash gets a zero-width space before it, so text in a finding cannot become a quick action such as `/merge` or `/approve`, which GitLab would run with the token's rights.
+
+## Self-managed GitLab
+
+- In GitLab CI, `CI_API_V4_URL` and `CI_PROJECT_ID` are set for you. Outside CI, set `CI_API_V4_URL` (for example `https://gitlab.example.com/api/v4`) and pass `--project <id|path>`, or let ocra read the project from the `origin` remote.
+- For an instance with a private certificate authority, point `NODE_EXTRA_CA_CERTS` at its certificate.
+- The token needs the `api` scope there too: `read_api` cannot post comments.
+
+## Merge requests from forks
+
+A pipeline for a merge request from a fork runs in the fork's project, without the parent's CI/CD variables. The review then stops and names the missing `GITLAB_TOKEN`. On GitLab Premium and Ultimate, a maintainer can run the pipeline in the parent project instead, after reading the change. The job then has the parent's variables, which is acceptable only because ocra runs nothing from the merge request; never add a step that does. ocra does not automate this.
+
+## From the command line
+
+```bash
+export GITLAB_TOKEN=...                                   # a token with the api scope
+ocra review --mr 42 --project group/project               # review and print
+ocra review --mr 42 --project group/project --publish     # also post the review
+```
+
+Run it from a clone of the project; ocra fetches the merge request's commits if they are missing.

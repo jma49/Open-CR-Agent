@@ -5,7 +5,7 @@ description: 恶意 PR 能尝试什么、由什么挡住，以及 ocra 不防什
 
 ocra 的设计目标是审查陌生人提交的 PR。本页列出这样的 PR 能尝试什么、每种尝试由什么挡住、哪些风险仍然由你承担，方便你决定在哪里运行 ocra。各项机制的细节见[安全与隐私](./security)。
 
-本页适用于 PR 审查（GitHub Action 和 `ocra review --pr`），以及带 `--no-repo-config` 的本地审查。普通的本地审查会信任代码目录里的 `.ocra/config.json`，包括其中的插件：审查不信任的代码时请加上 `--no-repo-config`。
+本页适用于 PR 审查（GitHub Action 和 `ocra review --pr`）、GitLab Merge Request 审查（`ocra review --mr`），以及带 `--no-repo-config` 的本地审查。普通的本地审查会信任代码目录里的 `.ocra/config.json`，包括其中的插件：审查不信任的代码时请加上 `--no-repo-config`。
 
 ## 保护什么
 

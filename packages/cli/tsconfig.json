@@ -17,6 +17,9 @@
       "path": "../vcs-github"
     },
     {
+      "path": "../vcs-gitlab"
+    },
+    {
       "path": "../vcs-local"
     }
   ]

@@ -173,9 +173,9 @@ describe("readWorkspaces", () => {
       "@open-cr-agent/runtime-opencode",
       "@open-cr-agent/vcs-platform",
       "@open-cr-agent/vcs-github",
+      "@open-cr-agent/vcs-gitlab",
       "@open-cr-agent/vcs-local",
       "@open-cr-agent/cli",
-      "@open-cr-agent/vcs-gitlab",
     ]);
   });
 });

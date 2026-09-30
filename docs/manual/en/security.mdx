@@ -50,7 +50,7 @@ Provider keys are read from environment variables only and never written to conf
 
 - Store keys as CI secrets.
 - To review pull requests from forks, follow [Pull requests from forks](./github#pull-requests-from-forks). It runs on `pull_request_target`, which gives the job your secrets; that is acceptable only because ocra runs nothing from the pull request, so never add a step that does.
-- `ocra review --pr` and the GitHub Action read `.ocra/config.json`, `.ocra/rules.json` and `AGENTS.md` from the pull request's base commit and never load repository plugins. See [GitHub pull requests](./github).
+- `ocra review --pr` and the GitHub Action read `.ocra/config.json`, `.ocra/rules.json` and `AGENTS.md` from the pull request's base commit and never load repository plugins. See [GitHub pull requests](./github). `ocra review --mr` does the same for GitLab merge requests; see [GitLab merge requests](./gitlab) for the token and for merge requests from forks.
 
 ## Reviewing code you do not trust
 

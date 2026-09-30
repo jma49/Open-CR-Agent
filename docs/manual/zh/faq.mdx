@@ -19,6 +19,10 @@ OpenCode 支持的所有模型，写成 `provider/model`。建议每个层级都
 
 支持。`ocra review --pr <编号>` 可以审查一个 PR；GitHub Action 会发布行内评论和一条摘要评论，之后的 push 只重新审查改动过的部分。见 [GitHub Pull Request](./github)。
 
+## 支持 GitLab 吗？
+
+支持，GitLab.com 和自建 GitLab 都可以：`ocra review --mr <iid>` 审查一个 Merge Request，发布讨论串和一条摘要评论，可以在 GitLab CI 任务里运行，也可以在命令行运行。见 [GitLab Merge Request](./gitlab)。
+
 ## 为什么不让模型直接给行号？
 
 模型经常把行号写错，所以让它引用代码，再由 ocra 解析出行号。详见[工作原理](./how-it-works#行号定位)。

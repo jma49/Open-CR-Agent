@@ -28,9 +28,10 @@ ocra review --from main --to feature  # any range, diffed from the merge base
 ocra review --commit abc123           # a single commit
 ocra review --format json --output review.json
 ocra review --pr 42 --publish         # a GitHub pull request, posted as a review
+ocra review --mr 7 --publish          # a GitLab merge request (GITLAB_TOKEN; GitLab CI sets the rest)
 ```
 
-Pull requests can also be reviewed by the GitHub Action in [`action.yml`](action.yml): inline comments, one summary comment, and re-reviews of only what changed since the last push. See [GitHub pull requests](docs/manual/en/github.mdx).
+Pull requests can also be reviewed by the GitHub Action in [`action.yml`](action.yml): inline comments, one summary comment, and re-reviews of only what changed since the last push. See [GitHub pull requests](docs/manual/en/github.mdx). GitLab merge requests, on GitLab.com or self-managed, are reviewed from a GitLab CI job the same way: see [GitLab merge requests](docs/manual/en/gitlab.mdx).
 
 Exit codes: `0` review finished, `1` a critical finding the verifier confirmed (verdict `significant_concerns`), `2` usage error or no review task completed, `3` review incomplete, `130` interrupted. The verdict is advice from models that read the change, which can be swayed by text in it; do not use it as a security gate. Each run records `events.jsonl` and `report.json` under `.ocra/sessions/`.
 

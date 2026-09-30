@@ -5,7 +5,7 @@ description: What a hostile pull request can try, what stops it, and what ocra d
 
 ocra is built to review pull requests from people you do not know. This page lists what such a pull request can try, what stops each attempt, and what remains your risk, so you can decide where to run ocra. [Security and privacy](./security) describes the mechanisms in more detail.
 
-It covers pull request reviews (the GitHub Action and `ocra review --pr`) and local reviews with `--no-repo-config`. A plain local review trusts the checkout's `.ocra/config.json`, plugins included: pass `--no-repo-config` for code you do not trust.
+It covers pull request reviews (the GitHub Action and `ocra review --pr`), GitLab merge request reviews (`ocra review --mr`) and local reviews with `--no-repo-config`. A plain local review trusts the checkout's `.ocra/config.json`, plugins included: pass `--no-repo-config` for code you do not trust.
 
 ## What is protected
 

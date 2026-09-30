@@ -9,9 +9,17 @@ export interface PullRequestTarget {
   publish: boolean;
 }
 
+export interface MergeRequestTarget {
+  iid: number;
+  // The project's numeric id or full path.
+  project?: string;
+  publish: boolean;
+}
+
 export interface ReviewArgs {
   target: LocalTarget;
   pullRequest?: PullRequestTarget;
+  mergeRequest?: MergeRequestTarget;
   format: OutputFormat;
   output?: string;
   ignoreRepoConfig?: true;
@@ -34,9 +42,11 @@ Options:
   --commit <sha>     Review a single commit
   --pr <number>      Review a GitHub pull request (needs GITHUB_TOKEN)
   --repo <owner/name>  Repository of --pr (default: GITHUB_REPOSITORY or origin)
-  --publish          With --pr: post the review to the pull request
-  --full             With --pr: review every file, not only what changed since
-                     the previous review
+  --mr <iid>         Review a GitLab merge request (needs GITLAB_TOKEN)
+  --project <id|path>  Project of --mr (default: CI_PROJECT_ID or origin)
+  --publish          With --pr or --mr: post the review to it
+  --full             With --pr or --mr: review every file, not only what
+                     changed since the previous review
   --format <format>  text (default), json, or sarif (SARIF 2.1.0; not with --plan)
   --output <file>    Write the result to a file instead of stdout
   --reviewers <ids>  Run only these reviewers (comma-separated)
@@ -66,12 +76,18 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
 
   const args: ReviewArgs = { target: target(values), format };
   const pullRequest = pullRequestTarget(values);
+  const mergeRequest = mergeRequestTarget(values);
+  if (pullRequest && mergeRequest) throw new UsageError("--pr cannot be combined with --mr");
+  if (!pullRequest && !mergeRequest && values.publish) {
+    throw new UsageError("--publish requires --pr or --mr");
+  }
   if (pullRequest) args.pullRequest = pullRequest;
+  if (mergeRequest) args.mergeRequest = mergeRequest;
   if (values.output !== undefined) args.output = values.output;
   if (values["no-repo-config"]) args.ignoreRepoConfig = true;
   if (values.ultra) args.ultra = true;
   if (values.full) {
-    if (!pullRequest) throw new UsageError("--full needs --pr");
+    if (!pullRequest && !mergeRequest) throw new UsageError("--full needs --pr or --mr");
     args.full = true;
   }
   if (values.plan) {
@@ -117,6 +133,8 @@ function parse(argv: string[]) {
       plan: { type: "boolean" },
       pr: { type: "string" },
       repo: { type: "string" },
+      mr: { type: "string" },
+      project: { type: "string" },
       publish: { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
@@ -132,7 +150,6 @@ function pullRequestTarget(values: {
   commit?: string;
 }): PullRequestTarget | undefined {
   if (values.pr === undefined) {
-    if (values.publish) throw new UsageError("--publish requires --pr");
     if (values.repo !== undefined) throw new UsageError("--repo requires --pr");
     return undefined;
   }
@@ -148,6 +165,36 @@ function pullRequestTarget(values: {
   }
   const target: PullRequestTarget = { number, publish: values.publish === true };
   if (values.repo !== undefined) target.repo = values.repo;
+  return target;
+}
+
+// A GitLab project is a numeric id or a full path, "group/sub/project".
+const PROJECT = /^(\d+|[\w.-]+(\/[\w.-]+)+)$/;
+
+function mergeRequestTarget(values: {
+  mr?: string;
+  project?: string;
+  publish?: boolean;
+  from?: string;
+  to?: string;
+  commit?: string;
+}): MergeRequestTarget | undefined {
+  if (values.mr === undefined) {
+    if (values.project !== undefined) throw new UsageError("--project requires --mr");
+    return undefined;
+  }
+  if (values.from !== undefined || values.to !== undefined || values.commit !== undefined) {
+    throw new UsageError("--mr cannot be combined with --from, --to or --commit");
+  }
+  const iid = Number(values.mr);
+  if (!Number.isInteger(iid) || iid <= 0) {
+    throw new UsageError(`--mr must be a merge request number, got ${values.mr}`);
+  }
+  if (values.project !== undefined && !PROJECT.test(values.project)) {
+    throw new UsageError(`--project must be a project id or group/project, got ${values.project}`);
+  }
+  const target: MergeRequestTarget = { iid, publish: values.publish === true };
+  if (values.project !== undefined) target.project = values.project;
   return target;
 }
 

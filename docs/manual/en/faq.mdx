@@ -19,6 +19,10 @@ Any model OpenCode supports, written as `provider/model`. Configure a failback c
 
 Yes. `ocra review --pr <number>` reviews a pull request, and the GitHub Action posts inline comments and one summary comment, re-reviewing only what changed on later pushes. See [GitHub pull requests](./github).
 
+## Does it work with GitLab?
+
+Yes, GitLab.com and self-managed GitLab: `ocra review --mr <iid>` reviews a merge request and posts threads and one summary note, in a GitLab CI job or from the command line. See [GitLab merge requests](./gitlab).
+
 ## Why doesn't the model give line numbers?
 
 Models often get line numbers wrong. They quote the code instead, and ocra resolves the quote to lines. See [How it works](./how-it-works#anchoring).
