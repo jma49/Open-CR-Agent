@@ -19,7 +19,7 @@ It replaces the earlier rule, "no feature work that a quality number cannot just
 3. **Beyond one-shot review.** Chat commands in the pull request (`/ask`, `/describe`), learning from corrections, code graphs, IDE plugins.
 4. **Production mileage.** Cloudflare runs 130k reviews a month at $1.19 each; ocra reviews its own pull requests and one other repository's, and has no external user.
 
-Installation is no longer a gap: v0.1.2 is on npm with provenance, and the Action installs the published CLI.
+Installation is no longer a gap: v0.2.0 is on npm with provenance, and the Action installs the published CLI.
 
 **What ocra has that none of them publish:** defense in depth for untrusted pull requests. No write, shell or web tools for agents; an environment allowlist; configuration, rules and memory from the base commit; prompt-injection boundaries; neutralized comment output, with no commands and no links from model text; commands only from verified, unedited comments of people with write access; a threat model and a measured adversarial tier.
 
@@ -32,9 +32,9 @@ Installation is no longer a gap: v0.1.2 is on npm with provenance, and the Actio
 
 ## Milestones
 
-### M9 — Reach and trust (merged 2026-09-30; ships in 0.2.0)
+### M9 — Reach and trust (released in 0.2.0, 2026-09-30)
 
-Goal: a team on GitHub or GitLab, self-hosted or not, can adopt ocra, audit how it is built, and keep its cost bounded, without asking the maintainer. Each item is one or a few small pull requests, tested without a model. All seven are merged (the PR numbers follow each item); they reach users with the 0.2.0 release, which waits for two first publishes by hand (`docs/handoff.md`).
+Goal: a team on GitHub or GitLab, self-hosted or not, can adopt ocra, audit how it is built, and keep its cost bounded, without asking the maintainer. Each item is one or a few small pull requests, tested without a model. All seven shipped in 0.2.0 on 2026-09-30 (the PR numbers follow each item), after a security audit whose findings were fixed or documented first.
 
 1. **Trust documents.** `SECURITY.md` with private reporting, `CONTRIBUTING.md`, a code of conduct, issue templates, and a manual page on what is a contract (flags, configuration, exit codes, the JSON report, the summary state) and how it may change. #269.
 2. **Release hardening**, from `docs/releasing.md`: the Action requires ocra's own provenance or builds from source; `check:packages` in its own job; OpenCode's binary found without optional dependencies. #270.
@@ -72,9 +72,9 @@ What a company checks before adopting a code review tool, and where ocra is. Upd
 
 | Area | Status |
 |---|---|
-| Install | npm with provenance; the Action; a container image from 0.2.0 |
-| Platforms | GitHub; GitLab (GitLab.com and self-managed) from 0.2.0, tested against a fake API |
-| Data stays with the customer | Runs in the customer's CI with the customer's model keys; no ocra service in between; your own OpenAI-compatible endpoint from 0.2.0 |
+| Install | npm with provenance; the Action; a container image with attested provenance |
+| Platforms | GitHub; GitLab (GitLab.com and self-managed), tested against a fake API |
+| Data stays with the customer | Runs in the customer's CI with the customer's model keys; no ocra service in between; your own OpenAI-compatible endpoint |
 | Model providers | Any provider in OpenCode's catalog whose SDK OpenCode bundles (all but 7 of 225), and declared endpoints; tested live: Gemini on Vertex and the Gemini API |
 | Security | Threat model with who controls the pipeline, adversarial tier, `SECURITY.md` with private reporting, one conformance suite for every platform's trust rules, a security audit of M9 with every finding fixed or documented (2026-09-30). For a same-project GitLab merge request the review is advice its author could forge (#290 tries a fix) |
 | Supply chain | Trusted publishing, SLSA provenance required by the Action, the package check in its own job, tarball digests carried from pack to publish, an attested image; no code is fetched at review time (OpenCode's npm installs go to a refusing local registry), only the pricing catalog |

@@ -38,7 +38,7 @@ npm 11.16 及更高版本会提示 `opencode-ai` 有一个不在 `allowScripts` 
 
 ## 容器镜像
 
-从 0.2.0 起，每个发布版本同时提供 amd64 和 arm64 的容器镜像 `ghcr.io/jma49/ocra:<版本>`。它由发布 workflow 用刚发布的包构建，安装方式与 GitHub Action 相同（依赖版本固定，校验签名和 provenance），带有 git，以非特权用户 `node` 运行。0.2.0 还没有发布。
+从 0.2.0 起，每个发布版本都同时提供 amd64 和 arm64 的容器镜像 `ghcr.io/jma49/ocra:<版本>`。它由发布 workflow 用刚发布的包构建，安装方式与 GitHub Action 相同（依赖版本固定，校验签名和 provenance），带有 git，以非特权用户 `node` 运行。0.2.0 还没有发布。
 
 ```bash
 docker run --rm --user "$(id -u):$(id -g)" --volume "$PWD:/repo" \

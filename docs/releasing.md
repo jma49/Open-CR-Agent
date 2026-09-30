@@ -88,7 +88,7 @@ After `publish`, the release workflow's `image` job waits until npm serves the n
 
 ### Adding a package
 
-npm lets a workflow publish with trusted publishing only to a package that already exists. So before the first release that includes a new package (`vcs-platform` and `vcs-gitlab` for the release after 0.1.2), publish that one package by hand, at the version `main` has before the release's version bump, then trust the workflow for it:
+npm lets a workflow publish with trusted publishing only to a package that already exists. So before the first release that includes a new package (as `vcs-platform` and `vcs-gitlab` were before 0.2.0), publish that one package by hand, at the version `main` has before the release's version bump, then trust the workflow for it:
 
 ```bash
 git switch main && git pull && npm ci && npm run build

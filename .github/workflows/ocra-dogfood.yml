@@ -176,7 +176,7 @@ jobs:
       # Advice only: a failed or incomplete review never fails the pull request.
       - id: review
         if: steps.guard.outputs.allowed == 'true'
-        uses: jma49/Open-CR-Agent@3a327b9787206184acfb48aea25b8cd65d1ea306 # v0.1.2
+        uses: jma49/Open-CR-Agent@121f4ce23ca2b263bd3d24a23c910bd7b8c7530e # v0.2.0
         continue-on-error: true
         env:
           GOOGLE_VERTEX_PROJECT: ${{ secrets.GOOGLE_VERTEX_PROJECT }}
