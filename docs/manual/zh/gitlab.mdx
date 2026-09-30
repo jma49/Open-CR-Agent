@@ -87,7 +87,7 @@ Developer 及以上角色、且不是作者的人，可以单独发一条评论�
 
 ## 自建 GitLab
 
-- 在 GitLab CI 里，`CI_API_V4_URL` 和 `CI_PROJECT_ID` 已经设置好。在 CI 之外，请设置 `CI_API_V4_URL`（比如 `https://gitlab.example.com/api/v4`）并传 `--project <id|路径>`，或者让 ocra 从 `origin` 远程仓库读出项目。
+- 在 GitLab CI 里，`CI_API_V4_URL` 和 `CI_PROJECT_ID` 已经设置好。在 CI 之外，请设置 `CI_API_V4_URL`（比如 `https://gitlab.example.com/api/v4`）并传 `--project <id|路径>`，或者让 ocra 从 `origin` 远程仓库读出项目。没有 `CI_API_V4_URL` 时，ocra 使用 GitLab.com；如果 `origin` 在别的主机上，它会停下来，所以你实例的令牌绝不会发到 GitLab.com。`CI_API_V4_URL` 和 `origin` 不在同一主机时，它会给出警告。
 - 如果实例用的是私有证书颁发机构，把 `NODE_EXTRA_CA_CERTS` 指向它的证书。
 - 令牌同样需要 `api` 权限范围：`read_api` 不能发评论。
 

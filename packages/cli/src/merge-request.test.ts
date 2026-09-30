@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import type { AgentEvent, AgentTaskSpec, OcraPlugin } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
@@ -145,6 +146,59 @@ describe("ocra review --mr", () => {
     );
     expect(code).toBe(0);
     expect(gitlab.calls[0]?.url).toBe(`${api}/projects/42/merge_requests/7`);
+  });
+
+  it("sends the token to gitlab.com only when origin is there, unless told where", async () => {
+    const { clone, base, head } = changeRequestFixture();
+    const origin = (url: string) =>
+      execFileSync("git", ["-C", clone, "remote", "set-url", "origin", url]);
+    const gitlab = fakeGitLab(base, head);
+    const review = (err = capture()) =>
+      run(
+        ["review", "--mr", "7", "--plan"],
+        capture(),
+        err,
+        deps(clone, gitlab.fetchImpl, { GITLAB_TOKEN: "glpat-t" }),
+      );
+
+    origin("git@gitlab.example.com:o/r.git");
+    const err = capture();
+    expect(await review(err)).toBe(2);
+    expect(err.text()).toContain(
+      "origin is on gitlab.example.com, not gitlab.com: set CI_API_V4_URL to its API, such as https://gitlab.example.com/api/v4",
+    );
+    // The token went nowhere.
+    expect(gitlab.calls).toEqual([]);
+
+    // GitLab.com's SSH host is still GitLab.com.
+    origin("ssh://git@altssh.gitlab.com:443/o/r.git");
+    expect(await review()).toBe(0);
+    expect(gitlab.calls[0]?.url).toBe("https://gitlab.com/api/v4/projects/o%2Fr/merge_requests/7");
+  });
+
+  it("warns when the API is on another host than origin", async () => {
+    const { clone, base, head } = changeRequestFixture();
+    execFileSync("git", [
+      "-C",
+      clone,
+      "remote",
+      "set-url",
+      "origin",
+      "https://gitlab.example.com/o/r.git",
+    ]);
+    const api = "https://gitlab.other.example/api/v4";
+    const gitlab = fakeGitLab(base, head, api);
+    const err = capture();
+    const code = await run(
+      ["review", "--mr", "7", "--plan"],
+      capture(),
+      err,
+      deps(clone, gitlab.fetchImpl, { GITLAB_TOKEN: "glpat-t", CI_API_V4_URL: api }),
+    );
+    expect(code).toBe(0);
+    expect(err.text()).toContain(
+      "CI_API_V4_URL is on gitlab.other.example but origin is on gitlab.example.com; GITLAB_TOKEN goes to gitlab.other.example",
+    );
   });
 
   it("explains what is missing", async () => {

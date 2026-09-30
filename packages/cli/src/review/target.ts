@@ -136,8 +136,9 @@ export async function mergeRequestTarget(
       "--mr needs a GitLab token in GITLAB_TOKEN: a project access token with the api scope and the Developer role (CI_JOB_TOKEN cannot post comments)",
     );
   }
-  const project = mr.project ?? env.CI_PROJECT_ID ?? (await gitlabProject(root));
-  const apiUrl = env.CI_API_V4_URL ?? GITLAB_API;
+  const origin = await originUrl(root);
+  const project = mr.project ?? env.CI_PROJECT_ID ?? gitlabProject(origin);
+  const apiUrl = gitlabApi(env.CI_API_V4_URL, remoteHost(origin), warn);
   const api = new GitLabApi(project, {
     token,
     baseUrl: apiUrl,
@@ -189,11 +190,58 @@ export async function mergeRequestTarget(
   };
 }
 
-// The project behind the origin remote: any host, since GitLab runs on many.
-async function gitlabProject(root: string): Promise<string> {
-  const url = await new LocalGitAdapter({ cwd: root, target: { mode: "workspace" } })
+function originUrl(root: string): Promise<string | undefined> {
+  return new LocalGitAdapter({ cwd: root, target: { mode: "workspace" } })
     .remoteUrl("origin")
     .catch(() => undefined);
+}
+
+// Where GITLAB_TOKEN goes: to CI_API_V4_URL, which GitLab CI sets, or else
+// to gitlab.com, but only when origin is there too or is no remote host. A
+// token for a self-managed instance must not travel to gitlab.com because
+// the address was left out.
+function gitlabApi(
+  configured: string | undefined,
+  origin: string | undefined,
+  warn: (message: string) => void,
+): string {
+  if (configured) {
+    const api = remoteHost(configured);
+    if (api && origin && site(api) !== site(origin)) {
+      warn(`CI_API_V4_URL is on ${api} but origin is on ${origin}; GITLAB_TOKEN goes to ${api}`);
+    }
+    return configured;
+  }
+  if (origin && site(origin) !== "gitlab.com") {
+    throw new ConfigError(
+      `origin is on ${origin}, not gitlab.com: set CI_API_V4_URL to its API, such as https://${origin}/api/v4, so that GITLAB_TOKEN goes only there`,
+    );
+  }
+  return GITLAB_API;
+}
+
+// GitLab.com answers on subdomains too, such as altssh.gitlab.com for SSH.
+function site(host: string): string {
+  return host === "gitlab.com" || host.endsWith(".gitlab.com") ? "gitlab.com" : host;
+}
+
+// The host of https://host/…, ssh://user@host:port/… or user@host:path; none
+// for a local path, including C:\ on Windows.
+function remoteHost(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  if (/^[\w+.-]+:\/\//.test(url)) {
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === "file:" ? undefined : parsed.hostname.toLowerCase() || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return /^(?:[^@\s/]+@)?([^:/\s\\]+):(?![\\/])/.exec(url)?.[1]?.toLowerCase();
+}
+
+// The project behind the origin remote: any host, since GitLab runs on many.
+function gitlabProject(url: string | undefined): string {
   const match = url && /^(?:[\w+.-]+:\/\/[^/]+\/|[^@\s]+@[^:]+:)(.+?)(?:\.git)?\/?$/.exec(url);
   if (!match?.[1]) {
     throw new ConfigError("Cannot tell which GitLab project this is; pass --project <id|path>");

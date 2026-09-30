@@ -87,7 +87,7 @@ The configuration, `.ocra/rules.json` and `AGENTS.md` are read from the commit t
 
 ## Self-managed GitLab
 
-- In GitLab CI, `CI_API_V4_URL` and `CI_PROJECT_ID` are set for you. Outside CI, set `CI_API_V4_URL` (for example `https://gitlab.example.com/api/v4`) and pass `--project <id|path>`, or let ocra read the project from the `origin` remote.
+- In GitLab CI, `CI_API_V4_URL` and `CI_PROJECT_ID` are set for you. Outside CI, set `CI_API_V4_URL` (for example `https://gitlab.example.com/api/v4`) and pass `--project <id|path>`, or let ocra read the project from the `origin` remote. Without `CI_API_V4_URL`, ocra uses GitLab.com, and stops when `origin` is on another host, so a token for your instance never goes to GitLab.com. It warns when `CI_API_V4_URL` and `origin` are on different hosts.
 - For an instance with a private certificate authority, point `NODE_EXTRA_CA_CERTS` at its certificate.
 - The token needs the `api` scope there too: `read_api` cannot post comments.
 
