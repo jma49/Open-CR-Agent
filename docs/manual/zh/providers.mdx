@@ -1,0 +1,58 @@
+---
+title: 模型供应商
+description: ocra 能用哪些模型供应商、各自需要什么，以及如何接入你自己的端点。
+---
+
+ocra 通过 OpenCode 运行审查员，所以 OpenCode 目录里的任何供应商都可以用。在模型链里把模型写成 `provider/model`（见[配置](./configuration#模型)）。运行时只会拿到模型链里出现的那些供应商的凭据。
+
+## OpenCode 目录中的供应商
+
+| 供应商 | 模型示例 | 需要设置 | 实测过 |
+|---|---|---|---|
+| Gemini API | `google/gemini-3.5-flash` | `GEMINI_API_KEY`（或 `GOOGLE_API_KEY`、`GOOGLE_GENERATIVE_AI_API_KEY`） | 是 |
+| Vertex AI | `google-vertex/gemini-3.5-flash` | `GOOGLE_VERTEX_PROJECT`、`GOOGLE_VERTEX_LOCATION=global`，以及应用默认凭据或 `GOOGLE_APPLICATION_CREDENTIALS` | 是，也包括在 GitHub Actions 里通过工作负载身份联合免密钥使用 |
+| Anthropic | `anthropic/<model>` | `ANTHROPIC_API_KEY` | 否 |
+| OpenAI | `openai/<model>` | `OPENAI_API_KEY` | 否 |
+| Amazon Bedrock | `amazon-bedrock/<model>` | `AWS_REGION` 和 AWS 凭据：`AWS_ACCESS_KEY_ID` 与 `AWS_SECRET_ACCESS_KEY`（加上 `AWS_SESSION_TOKEN`）、`AWS_PROFILE`，或 `AWS_BEARER_TOKEN_BEDROCK` | 否 |
+| Azure OpenAI | `azure/<deployment>` | `AZURE_API_KEY`、`AZURE_RESOURCE_NAME` | 否 |
+| DeepSeek、OpenRouter、Groq、Mistral、xAI 以及目录里的其他供应商 | `deepseek/<model>` | 供应商的密钥，比如 `DEEPSEEK_API_KEY`；ocra 不认识的 id 会拿到以它开头的所有变量，比如 `GROQ_` | 否 |
+
+"否"的意思是：ocra 会把变量传给这个供应商，其余由 OpenCode 处理，但还没有任何审查实际经过它运行过。如果出了问题，请[提 issue](https://github.com/jma49/Open-CR-Agent/issues/new/choose)。模型 id 以 OpenCode 的目录 [models.dev](https://models.dev) 为准。
+
+## 你自己的端点
+
+自建的服务（vLLM、Ollama、LM Studio）或者兼容 OpenAI API 的公司网关，在 `.ocra/config.json` 里声明：
+
+```json
+{
+  "models": {
+    "standard": "gateway/qwen3-coder",
+    "light": "gateway/qwen3-small",
+    "top": "gateway/qwen3-max"
+  },
+  "providers": {
+    "gateway": {
+      "type": "openai-compatible",
+      "baseUrl": "https://llm.example.com/v1",
+      "apiKeyEnv": "GATEWAY_API_KEY",
+      "models": {
+        "qwen3-coder": { "input": 0.5, "output": 2, "cachedInput": 0.1 },
+        "qwen3-small": { "input": 0.1, "output": 0.4 },
+        "qwen3-max": { "input": 2, "output": 8 }
+      }
+    }
+  }
+}
+```
+
+- **id**（`gateway`）由你自己取：小写字母、数字和连字符。请选一个 OpenCode 目录里没有的 id，因为声明的供应商会在这次运行中替换同名的已知供应商。
+- **`baseUrl`** 必须是 `https`，或者本机上的普通 `http`：`localhost`、`127.0.0.1` 或 `::1`。比如 Ollama 用 `http://127.0.0.1:11434/v1`。
+- **`apiKeyEnv`** 是保存密钥的环境变量的名字。密钥本身从不写进文件，运行时也只拿到这一个变量。看起来像平台令牌的名字（`GITHUB_`、`GITLAB_`、`CI_` 开头等）会被拒绝。不需要密钥的服务可以省略。
+- **每个模型都要有价格**，单位是每百万 token 多少美元：`input`、`output`，以及可选的 `cachedInput`。ocra 用它们计算报告里的花费和 `--max-cost-usd`。价格可以写 0，适合跑在你自己硬件上的服务；这时运行会警告该模型没有定价，花费上限也不会计入它。
+- 通过 `extends` 引用的共享配置也可以声明供应商；仓库里同 id 的声明优先。审查 PR 和 Merge Request 时，供应商和其他配置一样来自 base 提交。
+
+这项功能已经在 CI 里用真实的 OpenCode 二进制文件对一个模拟的 OpenAI 兼容服务测试过：密钥发往该去的地方，价格被计入，而且不需要访问网络上的其他地址。还没有对真实的模型服务测试过。
+
+## 还会访问哪些网络地址
+
+OpenCode 启动时会从 `models.opencode.ai` 拉取它的模型目录，并尝试从 npm registry 安装它自己的插件包 `@opencode-ai/plugin`（版本固定为它自身的版本）。这个包里的任何东西都不会在 ocra 里运行。审查并不需要这两者：除声明的端点之外所有地址都被拒绝时，审查依然正常（已测试）。在屏蔽外网的环境里，这两个请求会失败，OpenCode 照常继续。

@@ -55,6 +55,8 @@ agent 运行时只会从你的环境里拿到它需要的东西：`PATH`、`HOME
 
 对于一定需要 key 的供应商（Google、Anthropic、OpenAI、OpenRouter、Groq、Mistral、DeepSeek、xAI、Azure），ocra 会在启动前检查 key 是否已设置，缺失时会指出该设置哪个变量。
 
+要接入你自己的服务，或兼容 OpenAI API 的公司网关，请在 `providers` 下声明；哪些供应商可用、各自需要什么，见[模型供应商](./providers)。
+
 ## 执行参数
 
 | 字段 | 默认值 | 含义 |
@@ -94,7 +96,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`reviewers`、`github` 和 `rules`（格式与 `.ocra/rules.json` 的条目相同）。它不能列出插件，也不能选择运行时：它来自仓库之外，不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 会合并，`models`、`reviewers` 和 `github` 按键合并。
+共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`reviewers`、`github`、`providers` 和 `rules`（格式与 `.ocra/rules.json` 的条目相同）。它不能列出插件，也不能选择运行时：它来自仓库之外，不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 会合并，`models`、`reviewers`、`github` 和 `providers` 按键合并。
 
 只接受 `https` 地址，不跟随重定向，最大 256 KB。可选的 `#sha256=` 片段会固定文件内容。文件无法加载或内容无效时，ocra 会给出警告，然后继续使用仓库自己的设置；只写在共享文件里的限制（例如 `maxCostUsd`）这时就不生效，必须始终生效的限制请在仓库里也写一份。
 

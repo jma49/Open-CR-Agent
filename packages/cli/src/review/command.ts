@@ -131,7 +131,11 @@ export async function reviewCommand(
     return EXIT.ok;
   }
 
-  const runtime = registry.createRuntime(config.runtime, { models: config.models, env: deps.env });
+  const runtime = registry.createRuntime(config.runtime, {
+    models: config.models,
+    env: deps.env,
+    providers: config.providers,
+  });
 
   const progress = new ProgressPrinter(io.err, { heartbeatMs: deps.heartbeatMs, now: deps.now });
   const interrupt = new AbortController();

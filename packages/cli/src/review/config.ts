@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  type CustomProvider,
   type ModelChains,
   type ModelTier,
   type RepoRule,
@@ -15,6 +16,40 @@ export const CONFIG_PATH = ".ocra/config.json";
 const modelChain = z
   .union([z.string().min(1), z.array(z.string().min(1)).min(1)])
   .transform((value) => (typeof value === "string" ? [value] : value));
+
+// Where review code is sent: over https, or plain http only to this machine.
+const endpoint = z.url().refine((value) => {
+  const url = new URL(value);
+  if (url.protocol === "https:") return true;
+  const host = url.hostname.replace(/^\[|\]$/g, "");
+  return (
+    url.protocol === "http:" &&
+    (host === "localhost" || host === "::1" || /^127\.\d+\.\d+\.\d+$/.test(host))
+  );
+}, "must be an https URL, or http on this machine (localhost, 127.0.0.1, ::1)");
+
+// Tokens of the platforms ocra runs on never go to a model endpoint.
+const PLATFORM_TOKENS = /^(GITHUB_|GH_|GITLAB_|CI_|ACTIONS_|RUNNER_|NPM_|SSH_|OCRA_)/;
+const price = z.number().min(0).max(10_000);
+
+const providerSchema = z
+  .object({
+    type: z.literal("openai-compatible"),
+    baseUrl: endpoint,
+    apiKeyEnv: z
+      .string()
+      .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "must be an environment variable name")
+      .refine((name) => !PLATFORM_TOKENS.test(name), "must not name a platform token")
+      .optional(),
+    // Prices in US dollars per million tokens; 0 means unpriced.
+    models: z
+      .record(
+        z.string().regex(/^[\w./:@-]{1,200}$/),
+        z.object({ input: price, output: price, cachedInput: price.optional() }).strict(),
+      )
+      .refine((models) => Object.keys(models).length > 0, "must list at least one model"),
+  })
+  .strict();
 
 const configSchema = z
   .object({
@@ -52,12 +87,14 @@ const configSchema = z
       )
       .default({}),
     pluginSettings: z.record(z.string(), z.unknown()).default({}),
+    providers: z.record(z.string().regex(/^[a-z][a-z0-9-]{0,39}$/), providerSchema).default({}),
     extends: z.string().min(1).optional(),
   })
   .strict();
 
-export type CliConfig = Omit<z.infer<typeof configSchema>, "models"> & {
+export type CliConfig = Omit<z.infer<typeof configSchema>, "models" | "providers"> & {
   models: ModelChains;
+  providers: Record<string, CustomProvider>;
   // Rules from a shared configuration named by extends.
   rules: RepoRule[];
 };
@@ -102,7 +139,49 @@ export async function loadConfig(
       .filter((m) => m !== "");
     if (chain.length > 0) models[tier] = chain;
   }
-  return { ...parsed, models, rules };
+  for (const model of unpriced(parsed.providers, models)) {
+    options.warn?.(
+      `${model} has a price of 0: reported cost and --max-cost-usd do not count its tokens`,
+    );
+  }
+  return { ...parsed, models, providers: toProviders(parsed.providers), rules };
+}
+
+function toProviders(
+  declared: z.infer<typeof configSchema>["providers"],
+): Record<string, CustomProvider> {
+  return Object.fromEntries(
+    Object.entries(declared).map(([id, p]) => [
+      id,
+      {
+        baseUrl: p.baseUrl,
+        ...(p.apiKeyEnv ? { apiKeyEnv: p.apiKeyEnv } : {}),
+        models: Object.fromEntries(
+          Object.entries(p.models).map(([model, price]) => [
+            model,
+            {
+              input: price.input,
+              output: price.output,
+              ...(price.cachedInput === undefined ? {} : { cachedInput: price.cachedInput }),
+            },
+          ]),
+        ),
+      },
+    ]),
+  );
+}
+
+// Models of declared providers, named in a chain, priced at 0 per token.
+function unpriced(
+  providers: z.infer<typeof configSchema>["providers"],
+  models: ModelChains,
+): string[] {
+  const named = new Set(Object.values(models).flat());
+  return [...named].filter((model) => {
+    const slash = model.indexOf("/");
+    const price = providers[model.slice(0, slash)]?.models[model.slice(slash + 1)];
+    return price !== undefined && price.input === 0 && price.output === 0;
+  });
 }
 
 // The user's own checkout, read like any local file (links followed): unlike

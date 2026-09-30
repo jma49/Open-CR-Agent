@@ -10,6 +10,7 @@ import {
   CompletionError,
   type CompletionRequest,
   type CompletionResult,
+  type CustomProvider,
   emptyUsage,
   type ModelTier,
   REVIEW_TOOLS,
@@ -220,7 +221,8 @@ export class OpenCodeRuntime implements AgentRuntime {
   }
 
   private async launch(): Promise<Infra> {
-    const missing = missingCredentials(this.options.env, providersOf(this.options.models));
+    const custom = this.options.providers ?? {};
+    const missing = missingCredentials(this.options.env, providersOf(this.options.models), custom);
     if (missing.length > 0) throw new Error(missing.join("; "));
     const root = await mkdtemp(join(tmpdir(), "ocra-opencode-"));
     const dirs = {
@@ -242,8 +244,8 @@ export class OpenCodeRuntime implements AgentRuntime {
       const server = await startOpencodeServer({
         binary: this.options.binary ?? resolveOpencodeBinary(this.options.env),
         cwd: workspace,
-        env: serverEnv(this.options.env, dirs, providersOf(this.options.models)),
-        config: openCodeConfig(tools, this.helperTools),
+        env: serverEnv(this.options.env, dirs, providersOf(this.options.models), custom),
+        config: openCodeConfig(tools, this.helperTools, custom),
       });
       started = server;
       const dispatcher = createUntimedDispatcher();
@@ -272,11 +274,13 @@ export class OpenCodeRuntime implements AgentRuntime {
 export function openCodeConfig(
   tools: Pick<ToolServer, "url" | "headers">,
   helperTools: Record<string, boolean>,
+  custom: Readonly<Record<string, CustomProvider>> = {},
 ) {
   const permission = { edit: "deny", bash: "deny", webfetch: "deny", skill: "deny" };
   return {
     share: "disabled",
     autoupdate: false,
+    ...(Object.keys(custom).length > 0 ? { provider: providerConfig(custom) } : {}),
     mcp: {
       [MCP_SERVER]: {
         type: "remote",
@@ -303,6 +307,40 @@ export function openCodeConfig(
       },
     },
   };
+}
+
+// OpenCode's form of a provider declared in configuration. OpenCode bundles
+// the OpenAI-compatible client, so nothing is installed to reach it
+// (docs/spikes/0002). The key stays in the environment: OpenCode reads
+// {env:NAME} itself, and the configuration, which OpenCode may log, never
+// holds it. Prices are per million tokens, as OpenCode's catalog has them.
+function providerConfig(custom: Readonly<Record<string, CustomProvider>>) {
+  return Object.fromEntries(
+    Object.entries(custom).map(([id, provider]) => [
+      id,
+      {
+        npm: "@ai-sdk/openai-compatible",
+        name: id,
+        options: {
+          baseURL: provider.baseUrl,
+          ...(provider.apiKeyEnv ? { apiKey: `{env:${provider.apiKeyEnv}}` } : {}),
+        },
+        models: Object.fromEntries(
+          Object.entries(provider.models).map(([model, price]) => [
+            model,
+            {
+              name: model,
+              cost: {
+                input: price.input,
+                output: price.output,
+                ...(price.cachedInput === undefined ? {} : { cache_read: price.cachedInput }),
+              },
+            },
+          ]),
+        ),
+      },
+    ]),
+  );
 }
 
 function providersOf(models: RuntimeOptions["models"]): string[] {

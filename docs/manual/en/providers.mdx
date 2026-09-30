@@ -1,0 +1,58 @@
+---
+title: Model providers
+description: Which model providers ocra can use, what each needs, and how to use your own endpoint.
+---
+
+ocra runs its reviewers through OpenCode, so any provider in OpenCode's catalog works. Name a model as `provider/model` in the model chains ([Configuration](./configuration#models)). The runtime receives only the credentials of the providers your chains name.
+
+## Providers in OpenCode's catalog
+
+| Provider | Example model | What to set | Tested live |
+|---|---|---|---|
+| Gemini API | `google/gemini-3.5-flash` | `GEMINI_API_KEY` (or `GOOGLE_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`) | Yes |
+| Vertex AI | `google-vertex/gemini-3.5-flash` | `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION=global`, and application default credentials or `GOOGLE_APPLICATION_CREDENTIALS` | Yes, also keyless from GitHub Actions through workload identity federation |
+| Anthropic | `anthropic/<model>` | `ANTHROPIC_API_KEY` | No |
+| OpenAI | `openai/<model>` | `OPENAI_API_KEY` | No |
+| Amazon Bedrock | `amazon-bedrock/<model>` | `AWS_REGION` and AWS credentials: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (with `AWS_SESSION_TOKEN`), `AWS_PROFILE`, or `AWS_BEARER_TOKEN_BEDROCK` | No |
+| Azure OpenAI | `azure/<deployment>` | `AZURE_API_KEY`, `AZURE_RESOURCE_NAME` | No |
+| DeepSeek, OpenRouter, Groq, Mistral, xAI and the rest of the catalog | `deepseek/<model>` | The provider's key, such as `DEEPSEEK_API_KEY`; for an id ocra does not know, every variable starting with it, such as `GROQ_` | No |
+
+"No" means that ocra passes the provider its variables and OpenCode does the rest, but no review has run through that provider yet. If one fails, [open an issue](https://github.com/jma49/Open-CR-Agent/issues/new/choose). Model ids come from OpenCode's catalog, [models.dev](https://models.dev).
+
+## Your own endpoint
+
+A self-hosted server (vLLM, Ollama, LM Studio) or a company gateway that speaks the OpenAI API is declared in `.ocra/config.json`:
+
+```json
+{
+  "models": {
+    "standard": "gateway/qwen3-coder",
+    "light": "gateway/qwen3-small",
+    "top": "gateway/qwen3-max"
+  },
+  "providers": {
+    "gateway": {
+      "type": "openai-compatible",
+      "baseUrl": "https://llm.example.com/v1",
+      "apiKeyEnv": "GATEWAY_API_KEY",
+      "models": {
+        "qwen3-coder": { "input": 0.5, "output": 2, "cachedInput": 0.1 },
+        "qwen3-small": { "input": 0.1, "output": 0.4 },
+        "qwen3-max": { "input": 2, "output": 8 }
+      }
+    }
+  }
+}
+```
+
+- **The id** (`gateway`) is yours: lowercase letters, digits and hyphens. Pick one OpenCode's catalog does not use, since a declared provider replaces a known one of the same id for the run.
+- **`baseUrl`** must be `https`, or plain `http` on this machine: `localhost`, `127.0.0.1` or `::1`. For Ollama, for example, `http://127.0.0.1:11434/v1`.
+- **`apiKeyEnv`** is the name of the variable that holds the key. The key never goes in the file, and only this variable reaches the runtime. Names that start like a platform token (`GITHUB_`, `GITLAB_`, `CI_` and similar) are refused. Leave it out for a server without keys.
+- **Every model has a price** in US dollars per million tokens: `input`, `output`, and optionally `cachedInput`. ocra uses them for the reported cost and for `--max-cost-usd`. A price of 0 is allowed, for a server on your own hardware; the run then warns that the model is unpriced and that the spend limit does not count it.
+- A shared configuration named by `extends` may declare providers too; the repository's declaration of the same id wins. In pull and merge requests, providers come from the base commit, like the rest of the configuration.
+
+This has been tested in CI against a fake OpenAI-compatible server with the real OpenCode binary: the key goes where it should, the price is counted, and nothing else on the network is needed. It has not yet been tested against a live model server.
+
+## What else reaches the network
+
+When it starts, OpenCode fetches its model catalog from `models.opencode.ai` and tries to install its own plugin package, `@opencode-ai/plugin` at its pinned version, from the npm registry. Nothing from that package runs in ocra. A review needs neither: with every address but a declared endpoint refused, it works (tested). Where outside access is blocked, both requests fail and OpenCode carries on.

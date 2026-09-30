@@ -1,4 +1,4 @@
-import type { Env } from "@open-cr-agent/core";
+import type { CustomProvider, Env } from "@open-cr-agent/core";
 
 export interface IsolatedDirs {
   config: string;
@@ -85,8 +85,19 @@ const REQUIRED_KEYS: Record<string, readonly string[]> = {
   azure: ["AZURE_API_KEY"],
 };
 
-export function missingCredentials(base: Env, providers: readonly string[]): string[] {
+type CustomProviders = Readonly<Record<string, CustomProvider>>;
+
+export function missingCredentials(
+  base: Env,
+  providers: readonly string[],
+  custom: CustomProviders = {},
+): string[] {
   return [...new Set(providers)].flatMap((provider) => {
+    const declared = custom[provider];
+    if (declared) {
+      const name = declared.apiKeyEnv;
+      return name && !base[name] ? [`No API key for provider "${provider}": set ${name}`] : [];
+    }
     const names = REQUIRED_KEYS[provider];
     if (!names || names.some((name) => base[name])) return [];
     return [`No API key for provider "${provider}": set ${names.join(" or ")}`];
@@ -116,12 +127,14 @@ const NEVER_BY_PREFIX = [
 ];
 
 // The child sees only what it needs: system basics, the credentials of the
-// providers in the configured model chains, and names listed in
+// providers in the configured model chains (for a provider declared in
+// configuration, only the variable it names), and names listed in
 // OCRA_RUNTIME_ENV. Other secrets in the user's shell never reach it.
 export function serverEnv(
   base: Env,
   dirs: IsolatedDirs,
   providers: readonly string[],
+  custom: CustomProviders = {},
 ): Record<string, string> {
   const env: Record<string, string> = {};
   const copy = (name: string) => {
@@ -132,6 +145,11 @@ export function serverEnv(
   for (const name of SYSTEM_VARIABLES) copy(name);
   for (const name of Object.keys(base)) if (name.startsWith("LC_")) copy(name);
   for (const provider of new Set(providers)) {
+    const declared = custom[provider];
+    if (declared) {
+      if (declared.apiKeyEnv) copy(declared.apiKeyEnv);
+      continue;
+    }
     const known = PROVIDER_VARIABLES[provider];
     if (known) {
       for (const name of known) copy(name);

@@ -57,6 +57,38 @@ describe("extends", () => {
     expect(config.rules).toEqual([{ path: "services/**", rule: "Org rule." }]);
   });
 
+  it("takes a company gateway from the shared file, the repository's providers winning", async () => {
+    const gateway = (baseUrl: string) => ({
+      type: "openai-compatible",
+      baseUrl,
+      apiKeyEnv: "GATEWAY_KEY",
+      models: { m: { input: 1, output: 2 } },
+    });
+    const dir = root({
+      extends: "https://config.example.com/ocra.json",
+      providers: { team: gateway("https://team.example.com/v1") },
+    });
+    const config = await loadConfig(
+      dir,
+      {},
+      {
+        repository: true,
+        fetch: serve({
+          providers: {
+            gateway: gateway("https://llm.example.com/v1"),
+            team: gateway("https://old.example.com/v1"),
+          },
+        }),
+      },
+    );
+    expect(
+      Object.fromEntries(Object.entries(config.providers).map(([id, p]) => [id, p.baseUrl])),
+    ).toEqual({
+      gateway: "https://llm.example.com/v1",
+      team: "https://team.example.com/v1",
+    });
+  });
+
   it("checks a pinned hash, and falls back to the repository's own file with a warning", async () => {
     const body = JSON.stringify(shared);
     const hash = createHash("sha256").update(body).digest("hex");

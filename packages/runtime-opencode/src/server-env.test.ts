@@ -91,6 +91,28 @@ describe("serverEnv", () => {
     }
   });
 
+  it("passes a declared provider only the variable it names", () => {
+    const gateway = {
+      baseUrl: "https://llm.example.com/v1",
+      apiKeyEnv: "COMPANY_LLM_KEY",
+      models: { m: { input: 1, output: 2 } },
+    };
+    const env = serverEnv(
+      { COMPANY_LLM_KEY: "k", GATEWAY_OTHER: "x", GATEWAY_API_KEY: "y" },
+      dirs,
+      ["gateway"],
+      { gateway },
+    );
+    expect(env.COMPANY_LLM_KEY).toBe("k");
+    expect("GATEWAY_OTHER" in env).toBe(false);
+    expect("GATEWAY_API_KEY" in env).toBe(false);
+    expect(missingCredentials({}, ["gateway"], { gateway })).toEqual([
+      'No API key for provider "gateway": set COMPANY_LLM_KEY',
+    ]);
+    const { apiKeyEnv: _, ...keyless } = gateway;
+    expect(missingCredentials({}, ["gateway"], { gateway: keyless })).toEqual([]);
+  });
+
   it("passes names listed in OCRA_RUNTIME_ENV", () => {
     const env = serverEnv(
       { OCRA_RUNTIME_ENV: "CUSTOM_BASE_URL, OTHER", CUSTOM_BASE_URL: "u" },

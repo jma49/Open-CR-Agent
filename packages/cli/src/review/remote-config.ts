@@ -5,8 +5,9 @@ import { z } from "zod";
 const MAX_BYTES = 256 * 1024;
 const TIMEOUT_MS = 10_000;
 
-// What a shared configuration may set: settings and rules, never plugins or
-// a runtime, because it is fetched from outside the repository.
+// What a shared configuration may set: settings, rules and model providers
+// (a company gateway, for example), never plugins or a runtime, because it
+// is fetched from outside the repository.
 export const remoteConfigSchema = z
   .object({
     models: z.record(z.enum(["top", "standard", "light"]), z.unknown()).optional(),
@@ -21,6 +22,7 @@ export const remoteConfigSchema = z
     exclude: z.array(z.string()).optional(),
     reviewers: z.record(z.string(), z.unknown()).optional(),
     github: z.record(z.string(), z.unknown()).optional(),
+    providers: z.record(z.string(), z.unknown()).optional(),
     rules: z.array(repoRuleSchema).max(500).optional(),
   })
   .strict();
@@ -81,7 +83,7 @@ export function mergeConfig(
 ): Record<string, unknown> {
   const { rules: _rules, ...settings } = remote;
   const merged: Record<string, unknown> = { ...settings, ...local };
-  for (const key of ["models", "reviewers", "github"] as const) {
+  for (const key of ["models", "reviewers", "github", "providers"] as const) {
     const a = settings[key];
     const b = local[key];
     if (a !== undefined || b !== undefined)

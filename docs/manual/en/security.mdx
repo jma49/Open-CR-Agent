@@ -13,6 +13,8 @@ What a hostile pull request can try, and what stops it, is on [Threat model](./t
 - Accepted findings from `.ocra/memory.json` for the files under review.
 - For verification, each file's findings with its diff and the lines around them; for judging, the findings with the change request's title and description.
 
+The provider is the one each model chain names; for a provider declared under `providers`, it is the `baseUrl` you configured ([Model providers](./providers)). Apart from the model provider, OpenCode fetches its model catalog from `models.opencode.ai` and tries to install its own plugin package from npm when it starts; a review needs neither.
+
 Nothing else is added: ocra starts its agent runtime with your global OpenCode configuration, installed skills and project instruction files **disabled**, so details of your machine do not end up in prompts.
 
 ## Isolation

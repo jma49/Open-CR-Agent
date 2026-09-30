@@ -31,7 +31,60 @@ describe("loadConfig", () => {
       github: {},
       rules: [],
       pluginSettings: {},
+      providers: {},
     });
+  });
+
+  it("reads a provider reached through an OpenAI-compatible API", async () => {
+    const warnings: string[] = [];
+    const dir = root(
+      JSON.stringify({
+        models: { standard: ["gateway/qwen3-coder"], light: "local/free" },
+        providers: {
+          gateway: {
+            type: "openai-compatible",
+            baseUrl: "https://llm.example.com/v1",
+            apiKeyEnv: "GATEWAY_API_KEY",
+            models: { "qwen3-coder": { input: 0.5, output: 2, cachedInput: 0.1 } },
+          },
+          local: {
+            type: "openai-compatible",
+            baseUrl: "http://127.0.0.1:8000/v1",
+            models: { free: { input: 0, output: 0 } },
+          },
+        },
+      }),
+    );
+    const config = await loadConfig(dir, {}, { repository: true, warn: (m) => warnings.push(m) });
+    expect(config.providers).toEqual({
+      gateway: {
+        baseUrl: "https://llm.example.com/v1",
+        apiKeyEnv: "GATEWAY_API_KEY",
+        models: { "qwen3-coder": { input: 0.5, output: 2, cachedInput: 0.1 } },
+      },
+      local: { baseUrl: "http://127.0.0.1:8000/v1", models: { free: { input: 0, output: 0 } } },
+    });
+    expect(warnings).toEqual([
+      "local/free has a price of 0: reported cost and --max-cost-usd do not count its tokens",
+    ]);
+  });
+
+  it.each([
+    [{ baseUrl: "http://llm.example.com/v1" }, "must be an https URL"],
+    [{ apiKeyEnv: "GITHUB_TOKEN" }, "must not name a platform token"],
+    [{ apiKeyEnv: "CI_JOB_TOKEN" }, "must not name a platform token"],
+    [{ models: {} }, "must list at least one model"],
+    [{ models: { m: { input: 1 } } }, "output"],
+    [{ type: "anthropic" }, "type"],
+  ])("refuses a provider with %j", async (change, message) => {
+    const provider = {
+      type: "openai-compatible",
+      baseUrl: "https://llm.example.com/v1",
+      models: { m: { input: 1, output: 2 } },
+      ...change,
+    };
+    const dir = root(JSON.stringify({ providers: { gateway: provider } }));
+    await expect(loadConfig(dir, {})).rejects.toThrow(message);
   });
 
   it("reads the config file and lets environment variables override models", async () => {

@@ -12,6 +12,26 @@ export interface RuntimeOptions {
   models: ModelChains;
   tools: readonly ToolDefinition[];
   env: Env;
+  // Providers declared in configuration, by id, for model chains to name.
+  providers?: Readonly<Record<string, CustomProvider>>;
+}
+
+// A model provider reached through an OpenAI-compatible API: a self-hosted
+// server or a company gateway.
+export interface CustomProvider {
+  baseUrl: string;
+  // The environment variable that holds the key; the key itself never
+  // appears in configuration.
+  apiKeyEnv?: string;
+  // Prices in US dollars per million tokens, by model id, so reported cost
+  // and the spend limit count its use.
+  models: Readonly<Record<string, ModelPrice>>;
+}
+
+export interface ModelPrice {
+  input: number;
+  output: number;
+  cachedInput?: number;
 }
 
 export type VcsFactory = (options: unknown) => VcsAdapter;

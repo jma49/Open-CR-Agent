@@ -55,6 +55,8 @@ The agent runtime receives only what it needs from your environment: `PATH`, `HO
 
 For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Groq, Mistral, DeepSeek, xAI, Azure), ocra checks before starting that one is set and names the variable if it is missing.
 
+To reach your own server or a company gateway that speaks the OpenAI API, declare it under `providers`; which providers work and what each needs is on [Model providers](./providers).
+
 ## Execution
 
 | Key | Default | Meaning |
@@ -94,7 +96,7 @@ An organization can keep common settings in one place and let repositories exten
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `reviewers`, `github` and `rules` (the same shape as `.ocra/rules.json` entries). It cannot list plugins or choose a runtime: it comes from outside the repository and must not run code. The repository's own values win; `include`, `exclude` and `rules` are combined and `models`, `reviewers` and `github` are merged key by key.
+The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `reviewers`, `github`, `providers` and `rules` (the same shape as `.ocra/rules.json` entries). It cannot list plugins or choose a runtime: it comes from outside the repository and must not run code. The repository's own values win; `include`, `exclude` and `rules` are combined and `models`, `reviewers`, `github` and `providers` are merged key by key.
 
 Only `https` URLs are accepted, without redirects, up to 256 KB. The optional `#sha256=` fragment pins the exact content. If the file cannot be loaded or is invalid, ocra warns and continues with the repository's own settings; limits set only in the shared file, such as `maxCostUsd`, then do not apply, so set them in the repository too if they must always hold.
 
