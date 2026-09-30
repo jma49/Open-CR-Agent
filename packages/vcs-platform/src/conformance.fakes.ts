@@ -198,6 +198,23 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
       });
     });
 
+    it("counts nothing from a thread whose finding marker someone else edited", async () => {
+      // The author points a nit's thread at finding B: a reviewer who then
+      // resolves or answers that thread must not dismiss B, or speak for it.
+      const pointed = { author: OCRA, body: marker(B), editedBy: AUTHOR };
+      const { review } = fixture.conversation({
+        comments: [{ author: OCRA, body: summaryWith([A, B]) }],
+        threads: [
+          { resolvedBy: MAINTAINER, comments: [pointed] },
+          { comments: [pointed, { author: MAINTAINER, body: "won't fix" }] },
+          { comments: [pointed, { author: MAINTAINER, body: "The caller checks this." }] },
+        ],
+      });
+      const prior = await review.getPriorReview();
+      expect(prior?.findings.filter((f) => f.dismissed)).toEqual([]);
+      expect(prior?.replies ?? {}).toEqual({});
+    });
+
     it("posts no mention and no link, whatever the model wrote", async () => {
       const conversation = fixture.conversation({});
       const text = "Ask @_alice or &#64;all, and see smb://evil.example/s or https://evil.example.";

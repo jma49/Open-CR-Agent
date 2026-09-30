@@ -6,6 +6,7 @@ import {
   HEAD,
   MAINTAINER,
   OCRA,
+  report,
   type Scenario,
 } from "./conformance.fakes.js";
 import type { ReviewPlatform } from "./platform.js";
@@ -28,6 +29,7 @@ function inMemory(scenario: Scenario) {
     ...(c.editedBy ? { editedBy: spell(c.editedBy) } : {}),
   }));
   const inline: string[] = [];
+  const resolved: string[] = [];
   let summary = "";
   const platform: ReviewPlatform = {
     text: { changeRequest: "change request", authority: "write access" },
@@ -61,16 +63,52 @@ function inMemory(scenario: Scenario) {
     writeSummary: async (_, body) => {
       summary = body;
     },
-    resolveThread: async () => {},
+    resolveThread: async (id) => {
+      resolved.push(id);
+    },
   };
   return {
     review: new PlatformReview({ name: "memory", platform, code }),
     inline: () => inline,
     summary: () => summary,
+    resolved: () => resolved,
   };
 }
 
 conformance("in memory", { conversation: inMemory });
+
+describe("resolving the threads of fixed findings", () => {
+  it("resolves only ocra's threads whose marker nobody else edited", async () => {
+    const fixed = "b".repeat(16);
+    const marker = `<!-- ocra:finding ${fixed} -->\nA finding`;
+    const conversation = inMemory({
+      threads: [
+        { comments: [{ author: OCRA, body: marker }] },
+        { comments: [{ author: OCRA, body: marker, editedBy: AUTHOR }] },
+        { comments: [{ author: MAINTAINER, body: marker }] },
+      ],
+    });
+    await conversation.review.publish({
+      ...report([]),
+      rereview: {
+        fixed: [
+          {
+            fingerprint: fixed,
+            title: "t",
+            file: "src/a.ts",
+            severity: "warning",
+            commented: true,
+          },
+        ],
+        notReproduced: [],
+        notRechecked: [],
+        unchanged: [],
+        dismissed: [],
+      },
+    });
+    expect(conversation.resolved()).toEqual(["T0"]);
+  });
+});
 
 describe("declinesFinding", () => {
   it("takes a clear decline or the dismiss command, not a question or other words", () => {

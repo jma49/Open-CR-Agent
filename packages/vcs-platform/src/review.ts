@@ -221,12 +221,11 @@ export class PlatformReview implements VcsAdapter {
     const dismissed = new Set<string>();
     const replies: Record<string, string[]> = {};
     for (const thread of threads) {
-      const [first, ...rest] = thread.comments;
-      const fingerprint = first && FINDING_MARKER.exec(first.body)?.[1];
-      if (!first || !fingerprint || !bot.is(first.author)) continue;
+      const fingerprint = findingOf(thread, bot);
+      if (!fingerprint) continue;
       const said: string[] = [];
       let declined = false;
-      for (const r of rest) {
+      for (const r of thread.comments.slice(1)) {
         const own = r.editor === undefined || r.editor === r.author;
         if (!own || !(await reviewer(r.author))) continue;
         if (declinesFinding(r.body)) declined = true;
@@ -317,17 +316,11 @@ export class PlatformReview implements VcsAdapter {
 
   // Findings ocra already commented on inline, from its own threads, so a
   // run that stopped between posting them and writing the summary, or a
-  // summary whose state no longer counts, does not post them twice. Only
-  // comments nobody else edited count: an edited marker could hide a finding.
+  // summary whose state no longer counts, does not post them twice.
   private async ownThreads(): Promise<string[]> {
     const bot = await this.bot();
     const threads = await this.threads().catch(() => []);
-    return threads.flatMap((thread) => {
-      const first = thread.comments[0];
-      const fingerprint = first && FINDING_MARKER.exec(first.body)?.[1];
-      if (!first || !fingerprint || !bot.is(first.author)) return [];
-      return first.editor === undefined || bot.is(first.editor) ? [fingerprint] : [];
-    });
+    return threads.flatMap((thread) => findingOf(thread, bot) ?? []);
   }
 
   // Resolving threads is a courtesy: the summary already lists what was
@@ -340,10 +333,8 @@ export class PlatformReview implements VcsAdapter {
     try {
       const bot = await this.bot();
       for (const thread of await this.threads()) {
-        const first = thread.comments[0];
-        const fingerprint = first && FINDING_MARKER.exec(first.body)?.[1];
+        const fingerprint = findingOf(thread, bot);
         if (thread.resolved || !fingerprint || !fixed.has(fingerprint)) continue;
-        if (!bot.is(first.author)) continue;
         await this.platform.resolveThread(thread.id);
       }
       return [];
@@ -399,4 +390,14 @@ export class PlatformReview implements VcsAdapter {
     }
     return value;
   }
+}
+
+// The finding a thread of ocra's is about: its first comment is ocra's, with
+// a marker, and nobody else edited it. An edited marker could point a
+// reviewer's resolution or reply at another finding, or hide one.
+function findingOf(thread: PlatformThread, bot: Bot): string | undefined {
+  const first = thread.comments[0];
+  const fingerprint = first && FINDING_MARKER.exec(first.body)?.[1];
+  if (!first || !fingerprint || !bot.is(first.author)) return undefined;
+  return first.editor === undefined || bot.is(first.editor) ? fingerprint : undefined;
 }
