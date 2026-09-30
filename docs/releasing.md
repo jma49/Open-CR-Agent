@@ -1,6 +1,6 @@
 # Releasing
 
-How the packages reach npm. Six packages are published: `@open-cr-agent/core`, `runtime-opencode`, `vcs-local`, `vcs-platform`, `vcs-github` and `cli` (the `ocra` command). `@open-cr-agent/eval` is private. All of them share one version and depend on each other at exactly that version, so a published `cli` never pairs with a `core` from another release.
+How the packages reach npm. Seven packages are published: `@open-cr-agent/core`, `runtime-opencode`, `vcs-local`, `vcs-platform`, `vcs-github`, `vcs-gitlab` and `cli` (the `ocra` command). `@open-cr-agent/eval` is private. All of them share one version and depend on each other at exactly that version, so a published `cli` never pairs with a `core` from another release.
 
 Releases go out through [npm trusted publishing](https://docs.npmjs.com/trusted-publishers): publishing a GitHub release starts `.github/workflows/release.yml`, which publishes with a short-lived OIDC token, and npm attaches [provenance](https://docs.npmjs.com/generating-provenance-statements). No npm token is stored anywhere. npm can trust a workflow only for a package that already exists, so the first version is published once by hand.
 
@@ -84,7 +84,7 @@ Done: the organization `open-cr-agent` exists, and the owner account has two-fac
 
 ### Adding a package
 
-npm lets a workflow publish with trusted publishing only to a package that already exists. So before the first release that includes a new package (`vcs-platform`, for example), publish that one package by hand, at the version `main` has before the release's version bump, then trust the workflow for it:
+npm lets a workflow publish with trusted publishing only to a package that already exists. So before the first release that includes a new package (`vcs-platform` and `vcs-gitlab` for the release after 0.1.2), publish that one package by hand, at the version `main` has before the release's version bump, then trust the workflow for it:
 
 ```bash
 git switch main && git pull && npm ci && npm run build
