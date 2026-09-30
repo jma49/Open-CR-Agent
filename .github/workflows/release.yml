@@ -25,8 +25,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Installs the dependencies, runs the tests and packs the tarballs, without
-  # the right to publish.
+  # Installs the dependencies without install scripts, runs the tests and
+  # packs the tarballs, without the right to publish.
   pack:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -53,10 +53,34 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  # Installs the packed tarballs as a user would and runs the installed ocra.
+  # Third-party install scripts run here, so it runs after the tarballs are
+  # uploaded, and neither packs nor publishes anything.
+  check:
+    needs: pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          # The oldest Node.js line the packages support.
+          node-version: 22
+          package-manager-cache: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: packages
+          path: packed
+      - run: node scripts/check-packages.mjs --tarballs packed
+
   # Can mint a publish token, so it installs nothing and runs no code but npm
   # and scripts/release.mjs, which has no dependencies.
   publish:
-    needs: pack
+    needs: [pack, check]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

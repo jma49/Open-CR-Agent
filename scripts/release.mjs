@@ -2,7 +2,8 @@
 // Release tooling for the workspace packages. docs/releasing.md is the
 // runbook. The maintainer runs `publish`; .github/workflows/release.yml
 // splits the same work into `pack`, which runs the build and the tests, and
-// `upload`, which runs nothing but npm where a publish token can be minted.
+// `upload`, which runs nothing but npm where a publish token can be minted;
+// between the two, another job installs the tarballs and runs them.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -26,7 +27,7 @@ const USAGE = `Usage:
   node scripts/release.mjs notes <x.y.z>             print that version's section of CHANGELOG.md
   node scripts/release.mjs publish                   dry run: every check, then npm publish --dry-run
   node scripts/release.mjs publish --publish         check, build and publish what the registry lacks
-  node scripts/release.mjs pack <dir>                (CI) check, build and pack every package into <dir>
+  node scripts/release.mjs pack <dir>                (CI) verify, build and pack every package into <dir>
   node scripts/release.mjs upload <dir> [--publish]  (CI) publish the tarballs in <dir>; a dry run without --publish`;
 
 // npm's trusted publishing (OIDC) needs this npm or newer.
@@ -114,8 +115,13 @@ function checkCi(version, publishing, refuse) {
   }
 }
 
-function build() {
+function verify() {
   if (!step("npm", ["run", "verify"])) stop("release: npm run verify failed");
+}
+
+// Installs the packed packages as a user would: third-party install scripts
+// run, so in CI it runs in a job of its own, after the tarballs are packed.
+function checkPackages() {
   if (!step("npm", ["run", "check:packages"])) stop("release: npm run check:packages failed");
 }
 
@@ -225,7 +231,8 @@ function publishCommand(real) {
       if (user.ok) console.log(`npm user: ${user.out}`);
       else refuse("npm is not logged in (run npm login)");
     }
-    build();
+    verify();
+    checkPackages();
     const dir = mkdtempSync(join(tmpdir(), "ocra-release-"));
     const failure = pack(todo, version, dir) ?? upload(todo, version, dir, real);
     rmSync(dir, { recursive: true, force: true });
@@ -253,7 +260,9 @@ function packCommand(dir) {
   checkSource(version, refuse);
   // Whether this run publishes is for `upload` to check.
   checkCi(version, false, refuse);
-  build();
+  // verify builds dist/ afresh; a stale file left there would be packed.
+  if (!step("npm", ["run", "clean"])) stop("release: npm run clean failed");
+  verify();
   const failure = pack(order, version, resolve(dir));
   if (failure) stop(failure);
 }

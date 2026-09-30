@@ -6,14 +6,27 @@
 // (scripts/pinned-lock.mjs). Catches missing files, undeclared dependencies,
 // broken bin entries and a lockfile the Action cannot pin before anything
 // is published. Needs network access for third-party dependencies.
+//
+// Usage: node scripts/check-packages.mjs [--tarballs <dir>]
+// With --tarballs, checks the tarballs in <dir> (packed by the release
+// workflow's pack job) instead of packing this checkout.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { pinnedLockfile } from "./pinned-lock.mjs";
-import { readWorkspaces } from "./release-lib.mjs";
+import { readWorkspaces, tarballName } from "./release-lib.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const run = (cmd, args, cwd, extra = {}) =>
@@ -25,6 +38,8 @@ const run = (cmd, args, cwd, extra = {}) =>
   });
 
 const packages = readWorkspaces(root).filter((p) => !p.json.private);
+const flag = process.argv.indexOf("--tarballs");
+const given = flag === -1 ? undefined : resolve(process.argv[flag + 1] ?? ".");
 
 // The runtime must find the OpenCode binary in an installed layout, not
 // only inside this monorepo.
@@ -50,11 +65,32 @@ function findsOpencode(dir) {
   console.log(`installed runtime finds OpenCode at ${binary.replace(realpathSync(dir), ".")}`);
 }
 
+// The tarball of a workspace package: packed from this checkout, or the
+// one given for its name and version.
+function tarballFor(p, work) {
+  if (!given) {
+    const [info] = JSON.parse(run("npm", ["pack", "--json", "--pack-destination", work], p.dir));
+    return join(work, info.filename);
+  }
+  const tarball = join(given, tarballName(p.json.name, p.json.version));
+  if (!existsSync(tarball)) {
+    throw new Error(`${given} has no tarball for ${p.json.name}@${p.json.version}`);
+  }
+  return tarball;
+}
+
+// Paths inside a tarball, relative to the package root.
+const filesIn = (tarball, work) =>
+  run("tar", ["-tzf", tarball], work)
+    .split("\n")
+    .filter((f) => f !== "")
+    .map((f) => f.replace(/^package\//, ""));
+
 const work = mkdtempSync(join(tmpdir(), "ocra-pack-"));
 try {
   const tarballs = packages.map((p) => {
-    const [info] = JSON.parse(run("npm", ["pack", "--json", "--pack-destination", work], p.dir));
-    const files = info.files.map((f) => f.path);
+    const tarball = tarballFor(p, work);
+    const files = filesIn(tarball, work);
     if (!files.some((f) => f.startsWith("dist/")))
       throw new Error(`${p.json.name} packs no dist/ files`);
     if (
@@ -68,9 +104,9 @@ try {
       if (!files.includes(required)) throw new Error(`${p.json.name} packs no ${required}`);
     }
     console.log(
-      `packed ${info.filename} (${files.length} files, ${(info.size / 1024).toFixed(0)} kB)`,
+      `${given ? "checking" : "packed"} ${basename(tarball)} (${files.length} files, ${(statSync(tarball).size / 1024).toFixed(0)} kB)`,
     );
-    return join(work, info.filename);
+    return tarball;
   });
 
   const app = join(work, "app");
