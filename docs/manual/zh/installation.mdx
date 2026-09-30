@@ -32,7 +32,7 @@ ocra --version
 npx @open-cr-agent/cli review
 ```
 
-不要用 `--omit=optional` 安装：OpenCode 二进制文件是可选依赖（见 [OpenCode 二进制文件](#opencode-二进制文件)）。
+请连同可选依赖一起安装（npm 默认如此）：OpenCode 二进制文件是可选依赖。用 `--omit=optional` 安装时，ocra 只能使用 `opencode-ai` 的安装脚本下载的二进制文件，所以只有在 npm 运行了这个脚本时才可行（见 [OpenCode 二进制文件](#opencode-二进制文件)）。
 
 npm 11.16 及更高版本会提示 `opencode-ai` 有一个不在 `allowScripts` 允许范围内的安装脚本，npm 12 会直接拦下它。ocra 不需要这个脚本：没有它也能在平台包里找到 OpenCode 二进制文件，所以不必放行。
 
@@ -64,7 +64,7 @@ node /path/to/Open-CR-Agent/packages/cli/dist/main.js review
 
 ## OpenCode 二进制文件
 
-ocra 会从依赖中找到对应平台的 OpenCode 二进制文件。如果你的平台对应的包缺失，可以手动指定：
+ocra 先在 `opencode-ai` 对应平台的包里找 OpenCode 二进制文件，再到 `opencode-ai/bin/` 里找：这个包的安装脚本运行时会把二进制文件放在那里。两处都没有时，可以手动指定：
 
 ```bash
 export OCRA_OPENCODE_BIN=/path/to/opencode

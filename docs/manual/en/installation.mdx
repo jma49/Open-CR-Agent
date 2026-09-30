@@ -32,7 +32,7 @@ To run it without installing, npx downloads it first:
 npx @open-cr-agent/cli review
 ```
 
-Do not install with `--omit=optional`: the OpenCode binary comes as an optional dependency (see [OpenCode binary](#opencode-binary)).
+Install with optional dependencies, as npm does by default: the OpenCode binary comes as an optional dependency. With `--omit=optional`, ocra can only use the binary that `opencode-ai`'s install script downloads, so that works only where npm runs the script (see [OpenCode binary](#opencode-binary)).
 
 npm 11.16 and later warn that `opencode-ai` has an install script not covered by `allowScripts`, and npm 12 blocks it. ocra does not need that script: it finds the OpenCode binary in the platform package without it, so you can leave it blocked.
 
@@ -64,7 +64,7 @@ node /path/to/Open-CR-Agent/packages/cli/dist/main.js review
 
 ## OpenCode binary
 
-ocra locates the OpenCode binary for your platform inside its dependencies. If your platform package is missing, point ocra at an OpenCode binary:
+ocra looks for the OpenCode binary for your platform in `opencode-ai`'s platform package, then in `opencode-ai/bin/`, where that package's install script puts one when it runs. If neither has it, point ocra at an OpenCode binary:
 
 ```bash
 export OCRA_OPENCODE_BIN=/path/to/opencode

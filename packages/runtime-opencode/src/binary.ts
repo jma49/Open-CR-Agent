@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { closeSync, existsSync, openSync, readFileSync, readSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import type { Env } from "@open-cr-agent/core";
@@ -15,8 +15,13 @@ export interface Host {
 }
 
 // Resolved from opencode-ai's platform packages directly, because newer npm
-// versions block the postinstall script that would otherwise place it.
-export function resolveOpencodeBinary(env: Env): string {
+// versions block the postinstall script that would otherwise place it. An
+// install without optional dependencies has no platform package, but where
+// that script ran, it downloaded the binary into opencode-ai's own bin/.
+export function resolveOpencodeBinary(
+  env: Env,
+  opencodePackage = createRequire(import.meta.url).resolve("opencode-ai/package.json"),
+): string {
   const override = env.OCRA_OPENCODE_BIN;
   // OpenCode runs in a directory of its own, where a relative path would
   // not resolve; a bare name is still looked up in PATH.
@@ -24,9 +29,7 @@ export function resolveOpencodeBinary(env: Env): string {
 
   const platform = PLATFORMS[process.platform] ?? process.platform;
   const executable = platform === "windows" ? "opencode.exe" : "opencode";
-  const fromOpencode = createRequire(
-    createRequire(import.meta.url).resolve("opencode-ai/package.json"),
-  );
+  const fromOpencode = createRequire(opencodePackage);
   for (const variant of binaryVariants(currentHost(platform))) {
     try {
       const pkg = fromOpencode.resolve(
@@ -36,7 +39,34 @@ export function resolveOpencodeBinary(env: Env): string {
       if (existsSync(binary)) return binary;
     } catch {}
   }
-  throw new Error(`No OpenCode binary for ${platform}-${process.arch}; set OCRA_OPENCODE_BIN`);
+  // The script names the binary opencode.exe on every platform.
+  const placed = join(dirname(opencodePackage), "bin", "opencode.exe");
+  if (isNativeExecutable(placed)) return placed;
+  throw new Error(
+    `No OpenCode binary for ${platform}-${process.arch}: install without --omit=optional, or set OCRA_OPENCODE_BIN`,
+  );
+}
+
+// Until the install script replaces it, opencode-ai's bin/opencode.exe is a
+// shell script that only prints an error, so the file must be a real
+// executable: ELF, Mach-O (either byte order, or universal) or Windows PE.
+export function isNativeExecutable(path: string): boolean {
+  let fd: number | undefined;
+  try {
+    fd = openSync(path, "r");
+    const head = Buffer.alloc(4);
+    if (readSync(fd, head, 0, 4, 0) < 4) return false;
+    const magic = head.readUInt32BE(0);
+    return (
+      magic === 0x7f454c46 ||
+      [0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe, 0xcafebabe].includes(magic) ||
+      head.subarray(0, 2).toString("latin1") === "MZ"
+    );
+  } catch {
+    return false;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
 }
 
 // The builds to try, best first. npm installs every build whose os and cpu
