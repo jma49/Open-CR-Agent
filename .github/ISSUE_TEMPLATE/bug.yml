@@ -1,0 +1,55 @@
+name: Bug report
+description: ocra crashed, hung, published something wrong, or did not do what the manual says.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Remove secrets and code you cannot share from everything you paste. Security problems go to a [private report](https://github.com/jma49/Open-CR-Agent/security/advisories/new), not here.
+  - type: input
+    id: version
+    attributes:
+      label: ocra version
+      description: The output of `ocra --version`, or the Action's ref.
+      placeholder: 0.1.2
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: How you ran it
+      options:
+        - CLI on local changes
+        - CLI with --pr
+        - GitHub Action
+        - ocra-eval
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Node.js version, and model provider with the model names.
+      placeholder: macOS 26, Node 22.19, google-vertex/gemini-3.5-flash
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened, and what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The command or workflow, and the smallest change or repository that shows the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: The terminal output, and the relevant lines of the session's `events.jsonl` or `report.json` under `.ocra/sessions/`.
+      render: text

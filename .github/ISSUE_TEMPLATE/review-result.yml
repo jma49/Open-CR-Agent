@@ -1,0 +1,45 @@
+name: Wrong or missed finding
+description: ocra reported something that is not a problem, or missed a real one, on code you can share.
+labels: [review-quality]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Results from real use become golden cases, the test set every quality change is measured against. Only report code that is public or that you may share.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What went wrong
+      options:
+        - A finding that is wrong
+        - A real issue ocra missed
+        - A right finding on the wrong lines
+        - A wrong severity or verdict
+    validations:
+      required: true
+  - type: input
+    id: change
+    attributes:
+      label: The change
+      description: A link to the public pull request or commit, or the repository and commit range.
+    validations:
+      required: true
+  - type: textarea
+    id: finding
+    attributes:
+      label: The finding, or the issue that was missed
+      description: Paste the finding as ocra wrote it, or describe the issue with its file and lines.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: The evidence that the finding is wrong, or that the missed issue is real.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: ocra version and models
+      placeholder: 0.1.2, google-vertex/gemini-3.5-flash

@@ -1,0 +1,45 @@
+---
+title: Stability and support
+description: What you can build on, how it may change, and how to verify a release.
+---
+
+ocra is an early 0.x release. This page says which parts are contracts that scripts, CI and plugins can rely on, how those contracts may change, and what support to expect.
+
+## Versions
+
+ocra follows [semantic versioning](https://semver.org) as it applies before 1.0:
+
+- A **patch** release (0.1.x) fixes bugs and never changes a contract, except where a security fix cannot be made otherwise; the release notes then say so.
+- A **minor** release (0.x.0) may change a contract. Every such change is listed in the [changelog](https://github.com/jma49/Open-CR-Agent/blob/main/CHANGELOG.md). Where it can, ocra first keeps the old form working for at least one minor release and warns when it is used; then the old form is removed.
+
+All five packages share one version and are released together.
+
+## Contracts
+
+| Contract | Where it is described |
+|---|---|
+| Commands, options and exit codes | [CLI](./cli) |
+| `.ocra/config.json`, `.ocra/rules.json`, `.ocra/memory.json` and the `OCRA_*` environment variables | [Configuration](./configuration), [Rules](./rules) |
+| The JSON report (`--format json`, `report.json`) and the `--plan` JSON | [CLI](./cli#json-output). Both carry `"version": 1`; a version only gains optional fields, and anything else is a new version |
+| The GitHub Action's inputs | [GitHub pull requests](./github) |
+| The state ocra keeps in its pull request summary comment | An internal format that later releases keep reading (`v1` today). If one ever cannot, the next review starts over as if it were the first: it reviews every file and may comment again on findings it had commented on |
+| The plugin interface (`OcraPlugin`) | [Plugins](./plugins). It may still change in minor releases while ocra is 0.x, with the changelog saying how to adapt |
+
+Not contracts: the wording of the text output, progress lines and pull request comments; the events in a session's `events.jsonl`; the prompts; which findings a model reports; and cost. Parse the JSON report, not the text.
+
+## Support
+
+- Fixes, security fixes included, go into the latest release only; there are no backports. How to report a vulnerability, and what happens next, is in [SECURITY.md](https://github.com/jma49/Open-CR-Agent/blob/main/SECURITY.md).
+- Node.js: 22.19 or newer (`engines`). CI runs the tests on Node.js 22 on Linux, and installs and starts the Action on Linux, macOS and Windows.
+- Git: tested with the versions on GitHub's hosted runners and on the maintainer's machine; there is no minimum version yet.
+- ocra has one maintainer. Issues and pull requests are answered on a best-effort basis; there is no paid support.
+
+## Verifying a release
+
+Releases are published from GitHub releases by a workflow in this repository, through npm trusted publishing. Publishing ocra's packages with an npm token is disabled, and a publish by hand needs the maintainer's second factor. From 0.1.1 on, each package carries [provenance](https://docs.npmjs.com/generating-provenance-statements) that ties it to this repository, the release workflow and the tagged commit. To check what you installed:
+
+```bash
+npm audit signatures --include-attestations
+```
+
+The GitHub Action installs the published CLI with the dependency versions its CI tested, verifies the registry's signatures, and builds from source when a version is not on npm; see [GitHub pull requests](./github).

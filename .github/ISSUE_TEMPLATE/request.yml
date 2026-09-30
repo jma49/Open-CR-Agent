@@ -1,0 +1,33 @@
+name: Feature or platform request
+description: A platform, integration or capability ocra does not have yet.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The [roadmap](https://github.com/jma49/Open-CR-Agent/blob/main/docs/roadmap.md) says what is planned and what is deliberately not being built now.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, and what stops you today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would solve it
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform and deployment
+      description: For example GitLab self-managed 17.x in GitLab CI, or GitHub Enterprise Server.
+  - type: dropdown
+    id: test
+    attributes:
+      label: Could you test a first version?
+      options:
+        - "Yes"
+        - "No"

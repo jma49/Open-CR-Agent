@@ -55,3 +55,7 @@ Provider keys are read from environment variables only and never written to conf
 ## Reviewing code you do not trust
 
 `.ocra/config.json` can list plugins, and plugins run code. `ocra review --no-repo-config` ignores that file entirely and takes models from `OCRA_MODEL_*`. It also stops taking `.ocra/memory.json` (which can silence findings), `.ocra/rules.json` and `AGENTS.md` from the code under review: with `--from`/`--to` they come from the `--from` commit, otherwise they are not used. `ocra-eval` always passes it, because benchmark repositories are third-party code.
+
+## Reporting a vulnerability
+
+Report it privately through GitHub, never in a public issue: [SECURITY.md](https://github.com/jma49/Open-CR-Agent/blob/main/SECURITY.md) says what is in scope and what happens next.

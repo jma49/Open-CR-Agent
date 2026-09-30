@@ -88,7 +88,12 @@ npm run verify                            # Biome, type check and tests
 
 Releases: [docs/releasing.md](docs/releasing.md), [CHANGELOG.md](CHANGELOG.md).
 
-Contribution rules for humans and AI agents live in [AGENTS.md](AGENTS.md).
+## Contributing and security
+
+- [CONTRIBUTING.md](CONTRIBUTING.md): what helps most, setup, and the rules; the full rules for humans and AI agents live in [AGENTS.md](AGENTS.md).
+- [SECURITY.md](SECURITY.md): report vulnerabilities privately, never in a public issue.
+- [Stability and support](docs/manual/en/stability.mdx): what counts as a contract, how it may change, and how to verify a release.
+- [Code of conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
