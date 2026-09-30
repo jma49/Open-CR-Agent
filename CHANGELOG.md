@@ -4,7 +4,7 @@ Changes to the `@open-cr-agent/*` packages and the GitHub Action. The packages a
 
 ## Unreleased
 
-- **New package `@open-cr-agent/vcs-gitlab`**: the adapter for GitLab merge requests, on GitLab.com and self-managed GitLab, over `vcs-platform` (ADR-0016). It follows the same rules as GitHub, checked by the same conformance suite. The CLI does not use it yet.
+- `GITLAB_*` and `CI_*` variables never reach the model runtime by name prefix, like `GITHUB_*`: GitLab CI puts `CI_JOB_TOKEN` in every job.
 - **A line of model text that starts with a slash is posted with a zero-width space before it**, in the summary and in inline comments. GitLab runs a comment line such as `/merge` or `/approve` as a quick action with the rights of the token that posted it. ocra neutralized only its own `/ocra` commands.
 - **ocra recognizes its own inline comments.** A finding whose thread ocra started, with a marker comment nobody else edited, is not commented again, even when the summary's state is missing or cannot be trusted. Before, a summary edited by someone else made ocra post its earlier inline comments again.
 - **New package `@open-cr-agent/vcs-platform`**: the review conversation every platform shares (who may override or dismiss, which state counts, the summary and inline comment text), which `vcs-github` now uses (ADR-0016). `@open-cr-agent/vcs-github` no longer exports the summary rendering and the review state; import them from `@open-cr-agent/vcs-platform`.

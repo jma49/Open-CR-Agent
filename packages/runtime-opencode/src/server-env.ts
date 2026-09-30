@@ -97,14 +97,17 @@ const GOOGLE_KEY = "GOOGLE_GENERATIVE_AI_API_KEY";
 const GOOGLE_KEY_ALIASES = ["GEMINI_API_KEY", "GOOGLE_API_KEY"];
 export const EXTRA_ENV_VARIABLE = "OCRA_RUNTIME_ENV";
 
-// A model chain naming a provider such as "github" or "aws" must not carry
-// the CI's or the cloud's credentials across by prefix; name them in
+// A model chain naming a provider such as "github", "gitlab" or "aws" must
+// not carry the CI's or the cloud's credentials across by prefix (GitLab CI
+// puts CI_JOB_TOKEN and CI_REGISTRY_PASSWORD in every job); name them in
 // OCRA_RUNTIME_ENV when they are really meant for a provider.
 const NEVER_BY_PREFIX = [
   "GITHUB_",
   "GH_",
   "ACTIONS_",
   "RUNNER_",
+  "GITLAB_",
+  "CI_",
   "AWS_",
   "AZURE_",
   "NPM_",

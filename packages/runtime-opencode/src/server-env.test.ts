@@ -75,6 +75,22 @@ describe("serverEnv", () => {
     ).toMatchObject({ GITHUB_API_KEY: "x" });
   });
 
+  it("never passes GitLab or GitLab CI credentials by prefix", () => {
+    const env = serverEnv(
+      {
+        GITLAB_TOKEN: "glpat",
+        GITLAB_API_KEY: "k",
+        CI_JOB_TOKEN: "job",
+        CI_REGISTRY_PASSWORD: "reg",
+      },
+      dirs,
+      ["gitlab", "ci"],
+    );
+    for (const name of ["GITLAB_TOKEN", "GITLAB_API_KEY", "CI_JOB_TOKEN", "CI_REGISTRY_PASSWORD"]) {
+      expect(name in env).toBe(false);
+    }
+  });
+
   it("passes names listed in OCRA_RUNTIME_ENV", () => {
     const env = serverEnv(
       { OCRA_RUNTIME_ENV: "CUSTOM_BASE_URL, OTHER", CUSTOM_BASE_URL: "u" },
