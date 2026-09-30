@@ -42,4 +42,4 @@ Releases are published from GitHub releases by a workflow in this repository, th
 npm audit signatures --include-attestations
 ```
 
-The GitHub Action installs the published CLI with the dependency versions its CI tested, verifies the registry's signatures, and builds from source when a version is not on npm; see [GitHub pull requests](./github).
+The GitHub Action installs the published CLI with the dependency versions its CI tested, verifies the registry's signatures and the provenance of ocra's own packages, and builds from source when a version is not on npm or lacks that provenance; see [GitHub pull requests](./github).

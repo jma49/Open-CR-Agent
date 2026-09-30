@@ -2,11 +2,13 @@
 // Installs the ocra the GitHub Action runs (action.yml): the published
 // @open-cr-agent/cli at this checkout's version, with every dependency at the
 // version this checkout's package-lock.json pins (scripts/pinned-lock.mjs),
-// install scripts off, and the registry's signatures verified. It builds this
-// checkout instead when that version is not on npm (a version bump not yet
-// released), was published with other dependencies than this checkout
-// declares, or does not install. Writes the CLI's entry point as the step
-// output `main`.
+// install scripts off, the registry's signatures verified, and each of ocra's
+// own packages proven by its provenance to come from this repository's
+// release workflow at the version's tag (scripts/provenance.mjs). It builds
+// this checkout instead when that version is not on npm (a version bump not
+// yet released), was published with other dependencies than this checkout
+// declares or without that provenance, or does not install. Writes the CLI's
+// entry point as the step output `main`.
 //
 // Usage: node scripts/action-install.mjs [--from-source]
 import { spawn, spawnSync } from "node:child_process";
@@ -15,6 +17,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pinnedLockfile } from "./pinned-lock.mjs";
+import { provenanceProblems } from "./provenance.mjs";
 import { readWorkspaces } from "./release-lib.mjs";
 
 const TARGET = "@open-cr-agent/cli";
@@ -156,13 +159,33 @@ async function fromRegistry(workspaces, version) {
     return { reason: `npm ci of ${TARGET}@${version} failed`, warn: true };
   }
   // Building this checkout instead would skip the check, so a bad signature
-  // stops the run. Mirrors may not serve npm's keys; the lockfile's
+  // stops the run. A package without provenance from this repository's
+  // release workflow may be genuine (0.1.0 was published by hand) or not;
+  // this checkout is what that version should hold, so it is built instead.
+  // Mirrors may not serve npm's keys or attestations; the lockfile's
   // integrity hashes still hold there.
   const registry = npm(["config", "get", "registry"], dir, true).out;
   if (NPMJS.test(registry)) {
     if (!npm(["audit", "signatures", ...CACHE], dir).ok) fail("npm audit signatures failed");
+    const repository = workspaces.find((w) => w.json.name === TARGET)?.json.repository?.url;
+    const problem = repository
+      ? await provenanceProblems(
+          packages.map((json) => ({
+            name: json.name,
+            version: json.version,
+            dist: dist.get(json.name),
+          })),
+          { repository },
+        )
+      : `${TARGET} in this checkout names no repository`;
+    if (problem) {
+      rmSync(dir, { recursive: true, force: true });
+      return { reason: problem, warn: true };
+    }
   } else {
-    console.log(`::notice::Not verifying signatures: the registry is ${registry}, not npmjs.`);
+    console.log(
+      `::notice::Not verifying signatures or provenance: the registry is ${registry}, not npmjs.`,
+    );
   }
   const cli = JSON.parse(readFileSync(join(dir, "node_modules", TARGET, "package.json"), "utf8"));
   return { main: join(dir, "node_modules", TARGET, cli.bin.ocra) };

@@ -4,6 +4,7 @@ Changes to the `@open-cr-agent/*` packages and the GitHub Action. The packages a
 
 ## Unreleased
 
+- The GitHub Action installs ocra's packages from npm only when their provenance shows they were built by this repository's release workflow from the version's tag. Otherwise, for example for a version published from a stolen npm login, it builds its own source and warns. `npm audit signatures` alone passed packages that have no provenance.
 - With `npm install --omit=optional`, ocra now finds the OpenCode binary that `opencode-ai`'s install script downloads, where npm runs that script. It used to stop and ask for `OCRA_OPENCODE_BIN`.
 - A security policy (`SECURITY.md`, with private reporting through GitHub), a contributing guide, a code of conduct and issue templates. The manual's new Stability and support page lists what counts as a contract and how it may change between releases.
 - A run no longer says it reviewed nothing when one reviewer finished its tasks and another failed on the same files (#263). Such a run is still incomplete (exit code `3`), but its verdict, summary and findings now stand.
