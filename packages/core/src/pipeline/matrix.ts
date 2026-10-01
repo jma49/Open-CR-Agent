@@ -1,4 +1,5 @@
 import picomatch from "picomatch";
+import { z } from "zod";
 import type { Bundle } from "../bundle/bundle.js";
 import type { RiskTier } from "../domain.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
@@ -19,12 +20,14 @@ export interface MatrixCell {
   bundle: Bundle;
 }
 
-export type SkipReason =
-  | "disabled"
-  | "below_tier"
-  | "no_matching_files"
-  | "no_guidelines"
-  | "task_limit";
+export const skipReasonSchema = z.enum([
+  "disabled",
+  "below_tier",
+  "no_matching_files",
+  "no_guidelines",
+  "task_limit",
+]);
+export type SkipReason = z.infer<typeof skipReasonSchema>;
 
 export interface SkippedCell {
   reviewer: string;

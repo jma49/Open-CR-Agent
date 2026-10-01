@@ -1,4 +1,5 @@
 import picomatch from "picomatch";
+import { z } from "zod";
 import type { FileDiff } from "../domain.js";
 import {
   ENV_TEMPLATE_PATTERNS,
@@ -8,14 +9,16 @@ import {
   SECRET_PATTERNS,
 } from "./patterns.js";
 
-export type ExclusionReason =
-  | "binary"
-  | "secret"
-  | "deleted"
-  | "user_exclude"
-  | "extension"
-  | "generated"
-  | "too_large";
+export const exclusionReasonSchema = z.enum([
+  "binary",
+  "secret",
+  "deleted",
+  "user_exclude",
+  "extension",
+  "generated",
+  "too_large",
+]);
+export type ExclusionReason = z.infer<typeof exclusionReasonSchema>;
 
 export type FileDecision =
   | { diff: FileDiff; selected: true }

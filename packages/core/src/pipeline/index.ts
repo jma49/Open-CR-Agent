@@ -2,6 +2,7 @@ export * from "./context.js";
 export * from "./findings.js";
 export * from "./matrix.js";
 export * from "./output.js";
+export * from "./output-schema.js";
 export * from "./preview.js";
 export * from "./report.js";
 export * from "./run.js";
