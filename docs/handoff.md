@@ -1,6 +1,6 @@
 # Handoff
 
-State of the project as of 2026-09-30, for whoever picks it up next (human or agent). Update this file at the end of each working session; keep it about *state and next steps*, not history (git has the history).
+State of the project as of 2026-10-01, for whoever picks it up next (human or agent). Update this file at the end of each working session; keep it about *state and next steps*, not history (git has the history).
 
 ## Where things live
 
@@ -25,6 +25,8 @@ State of the project as of 2026-09-30, for whoever picks it up next (human or ag
 
 ## Status
 
+**Direction set on 2026-10-01** (`docs/roadmap.md`, rewritten): the maintainer wants ocra to be the infrastructure review agents are built on, not another review bot. After an architecture discussion the roadmap now records the position as an engine-shaped product: the reference reviewer stays the product and the engine's first customer, contracts are extracted when a second real implementation needs them, and "infrastructure" means specifications with conformance suites, not a plugin registry. The roadmap lists what stays fixed (`Finding`, the stage order and its guarantees, the access policy, the trust rules), what is pluggable (VCS, runtime, reviewer, analyzers, sinks, context providers, finding processors at insertion points), seven design decisions to become ADRs as they are implemented, and a three-year plan: year one M10 Contracts, M11 Evidence, M12 Operability, M13 Use; year two M14 Control plane, M15 Organization memory and context providers, M16 Reach on demand, governance; year three M17 Certified extensions. M5 and M6 stay paused and fold into M11 once a standing credit line exists. Nothing in the code changed. Still to do for the direction: an ADR for the position once the maintainer confirms it, and the site's landing-page roadmap section (it shows M1–M4, M5, M6, M7) needs the new shape.
+
 **State on 2026-09-30.** M1–M4 are built, and **v0.2.0 is on npm** with provenance for all seven packages, plus the container image. It ships M9, "Reach and trust":
 - GitLab merge requests;
 - SARIF output and a container image;
@@ -32,7 +34,7 @@ State of the project as of 2026-09-30, for whoever picks it up next (human or ag
 - security and stability documents;
 - release hardening.
 
-`npm run verify` is green (809 tests). A security audit of the M9 batch found 1 P0, 2 P1, 5 P2 and 4 P3 findings, and the npm hardening added two P2 findings of its own. All are fixed or documented (#281–#287, [audit](audits/2026-09-30-m9-security.md)); three follow-ups are filed (#288–#290). No model credit was spent in this session.
+`npm run verify` is green (809 tests). One test, `refuses --tier without the golden dataset` in `packages/eval/src/golden.test.ts`, reaches the network: `ocra-eval list` loads the dataset before validating `--tier`, so it passes only where the AACR-Bench download succeeds (it failed with HTTP 403 in a sandbox on 2026-10-01). Fix by validating before loading. A security audit of the M9 batch found 1 P0, 2 P1, 5 P2 and 4 P3 findings, and the npm hardening added two P2 findings of its own. All are fixed or documented (#281–#287, [audit](audits/2026-09-30-m9-security.md)); three follow-ups are filed (#288–#290). No model credit was spent in this session.
 
 **The maintainer's goal (2026-09-30):** "把我们的这个产品打造成一个合格的能够拿来创业的企业级项目", that is, a project a company can adopt and a startup could be built on. Decisions go to Claude Fable 5.1, the budget is to be saved, and the roadmap may change. Fable 5.1 made the direction call (#268) and each design call below. Two of its calls were reversed on evidence found while implementing, and it agreed both times:
 - ADR-0015's order;
@@ -69,12 +71,14 @@ Merged on 2026-09-30:
 
 Done on 2026-09-30: `vcs-platform` and `vcs-gitlab` were published by hand at 0.1.2 (the agent ran `npm publish` at the maintainer's request, under a pseudo-terminal so the browser confirmation worked; the permission system then left `npm trust` and `npm access` to the maintainer, who ran both).
 
-**Next steps for the agent:**
-1. After action 1: the live GitLab check, then #290 (the separate reviewer project; if it works, it moves from the threat model into the GitLab page).
-2. #289: run the GitHub setup that people with push access cannot change, on a scratch repository (one small review), and drop the page's "not run end to end yet" note.
-3. #288: neutralize posted text without touching code spans.
-4. When credit returns, M5 and M6 as the roadmap says: first one golden smoke run of `main`, about $11.
-5. Gitea or Gitee only once GitLab shows the adapter shape holds and someone asks. The conformance suite is where to start.
+**Next steps for the agent** (the order of M10 in `docs/roadmap.md`; none needs credit):
+1. The Finding specification v1 (provenance, lifecycle, anchoring fixed; a JSON Schema; the report and session formats versioned against it), as an ADR plus code.
+2. A public `review()` entry in `core` with a curated export surface, replacing `export *`; the CLI becomes its first caller; a contract page in the manual.
+3. A second `AgentRuntime` (a direct SDK tool loop, no OpenCode) and the runtime conformance suite: no write, no shell, no outbound network but the model endpoint.
+4. SARIF in, with Semgrep as the first analyzer.
+5. Carried over: after maintainer action 1, the live GitLab check and #290; #289 on a scratch repository; #288.
+6. When credit returns, M11: a nightly live smoke test in CI, then one golden smoke run of `main` (about $11), then M5 and M6.
+7. Gitea, Gitee, Bitbucket or Azure DevOps only when someone asks, through the conformance suite.
 
 **The 0.2.0 release** (#292, run 36678672079): the dry run and the release published all seven packages with provenance. The image job failed once, because npm served `cli@0.2.0` minutes before `core`, `vcs-platform` and `vcs-gitlab`, and the image refuses to build from source; re-run, it pushed and attested the image. The image job now waits for every package. Checked as a user: `npm install @open-cr-agent/cli@0.2.0`, `ocra --version`, a `--plan` review, and `npm audit signatures`, with all seven packages attested.
 
