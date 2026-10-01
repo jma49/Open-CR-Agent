@@ -12,11 +12,13 @@ import { reconcile, stillOpen } from "../rereview/reconcile.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import type { RepoRule } from "../rules/repo-rules.js";
+import type { SarifLog } from "../sarif/schema.js";
 import type { FileDecision, SelectionPolicy } from "../select/select.js";
 import { markUnchecked, verifyFindings } from "../verify/verify.js";
 import { SpendLimitReached, spendTracker } from "./budget.js";
 import { type JobResult, runJob } from "./execute.js";
 import { dedupeFindings } from "./findings.js";
+import { importSarif } from "./imports.js";
 import { DEFAULT_MAX_TASKS, type MatrixCell, planTasks, type ReviewerOverrides } from "./matrix.js";
 import { planReview } from "./plan.js";
 import { mapWithConcurrency } from "./pool.js";
@@ -69,6 +71,9 @@ export interface ReviewOptions {
   // Recall over cost: every reviewer at every tier, two samples per cell, and
   // findings the judge would drop kept as low confidence.
   ultra?: boolean;
+  // SARIF logs of external analyzers; their results on the change join the
+  // findings (pipeline/imports.ts).
+  sarif?: readonly SarifLog[];
   signal?: AbortSignal;
   onEvent?: (event: ReviewEvent) => void;
 }
@@ -172,7 +177,11 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
   // paid for findings that will not be reported, and a person's dismissal
   // keeps a finding out of the verdict whatever the models say.
   const concurrency = options.concurrency ?? DEFAULTS.concurrency;
-  const found = dedupeFindings(results.flatMap((r) => r.findings));
+  const imported =
+    options.sarif && options.sarif.length > 0
+      ? await importSarif(options.sarif, plan, emit)
+      : { findings: [], outcomes: [], warnings: [] };
+  const found = dedupeFindings([...results.flatMap((r) => r.findings), ...imported.findings]);
   const fileCoverage = coverage(
     plan.decisions,
     results,
@@ -259,7 +268,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
       : judged.summary,
     coverage: fileCoverage,
     bundles: plan.bundles.map((b) => ({ label: b.label, files: b.files.map((f) => f.newPath) })),
-    tasks: results.map((r) => r.outcome),
+    tasks: [...results.map((r) => r.outcome), ...imported.outcomes],
     skipped: matrix.skipped,
     findings: sortFindings(judged.findings),
     // Counted before the judge: dropping or downgrading a critical nobody
@@ -272,6 +281,7 @@ export async function runReview(options: ReviewOptions): Promise<ReviewReport> {
       ...unpricedWarning(calls),
       ...plan.warnings,
       ...results.flatMap((r) => r.warnings),
+      ...imported.warnings,
       ...verification.warnings,
       ...judged.warnings,
     ],

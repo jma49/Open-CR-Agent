@@ -128,7 +128,7 @@ function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks)
         const warning = `more than ${MAX_FINDINGS_PER_TASK} findings in one task; the rest were dropped`;
         if (!result.warnings.includes(warning)) result.warnings.push(warning);
       } else {
-        const finding: TaskFinding = { reported: bounded(parsed.data) };
+        const finding: TaskFinding = { reported: boundFinding(parsed.data) };
         if (event.model !== undefined) finding.model = event.model;
         result.findings.push(finding);
       }
@@ -156,7 +156,7 @@ const MAX_TITLE = 300;
 const MAX_TEXT = 4_000;
 const MAX_EVIDENCE = 10;
 
-function bounded(f: ReportedFinding): ReportedFinding {
+export function boundFinding(f: ReportedFinding): ReportedFinding {
   const cut = (text: string, max: number) => (text.length > max ? `${text.slice(0, max)}…` : text);
   return {
     ...f,

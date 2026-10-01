@@ -11,6 +11,7 @@ export * from "./plugin/index.js";
 export * from "./rereview/index.js";
 export * from "./review/index.js";
 export * from "./rules/index.js";
+export * from "./sarif/index.js";
 export * from "./select/index.js";
 export * from "./session/index.js";
 export * from "./triage.js";
