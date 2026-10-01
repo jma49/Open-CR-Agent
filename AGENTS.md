@@ -36,7 +36,7 @@ Open-CR-Agent is an open-source multi-agent code review system. Deterministic en
 9. **Verifiable, observable, reversible changes.** Every change keeps behavior testable, runtime state observable and failures diagnosable, with backward compatibility and a rollback path considered. Errors and logs keep diagnostic context without leaking sensitive data.
 10. **Delete rather than keep compatibility.** When refactoring internal paths, delete obsolete implementations directly; do not add compatibility layers, deprecated shims or dual-write logic. Compatibility of external contracts (CLI flags, config file format, plugin interfaces, published package APIs, session file format) is evaluated separately against the contract, as a contractual obligation rather than a reason to keep old code.
 
-> **Change checklist:** run `npm run verify` before every commit (Biome, type check, tests). Prompt, rule or stage changes also need an eval run before merge.
+> **Change checklist:** run `npm run verify` before every commit (Biome, type check, tests). Prompt, rule or stage changes also need an eval run before merge. Larger changes update `README.md` in the same PR (see User manual).
 
 ## Engineering best practices
 
@@ -89,6 +89,7 @@ Concrete rules behind the principles above, from the [2026-09-26 self-audit](doc
 - **Any change to user-facing behavior updates the manual in the same PR, in both languages**: CLI commands, flags, output or exit codes, configuration keys, environment variables, rules, plugin APIs, security properties.
 - The manual describes what exists today. Planned features are marked as planned; never document behavior that is not implemented.
 - `docs/architecture.md` and `docs/adr/` are for contributors; the manual is for users.
+- **`README.md` is the front door and must match the project.** Every larger change updates it in the same PR: a milestone item landing, a new command, flag or exit code, a new platform, runtime or reviewer, a change of direction or roadmap, a release, a changed security property or quality number. Check its pitch, the quickstart, the contract table, the security model, the quality paragraph and the milestone table against what now exists; it describes today, never a plan, except in "Where it is going", which mirrors `docs/roadmap.md`.
 - Merging a manual change to `main` does not redeploy the site: check it on a local build of the site repository, and deploy only when the maintainer asks, with `VERCEL_SCOPE=<team> npm run deploy` in the site repository (deploys its committed HEAD through a logged-in Vercel CLI; one build per run). Vercel's Git deployments and deploy hooks are both off.
 
 ## Git workflow
