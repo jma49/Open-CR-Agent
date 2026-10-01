@@ -137,6 +137,8 @@ function fromFinding(f: Finding, index: ReadonlyMap<string, number>): SarifResul
       verification: f.verification ?? "unchecked",
       status: f.status === "unfixed" ? "unfixed" : "new",
       ...(f.lowConfidence ? { lowConfidence: true } : {}),
+      task: f.provenance.task,
+      ...(f.provenance.model === undefined ? {} : { model: f.provenance.model }),
     },
   };
 }

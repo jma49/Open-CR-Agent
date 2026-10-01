@@ -5,10 +5,15 @@ import { SpendLimitReached } from "./budget.js";
 import type { TaskStatus } from "./report.js";
 import { addUsage, emptyUsage } from "./usage.js";
 
+export interface TaskFinding {
+  reported: ReportedFinding;
+  model?: string;
+}
+
 export interface TaskResult {
   status: TaskStatus;
   error?: string;
-  findings: ReportedFinding[];
+  findings: TaskFinding[];
   usage: Usage;
   warnings: string[];
 }
@@ -123,7 +128,9 @@ function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks)
         const warning = `more than ${MAX_FINDINGS_PER_TASK} findings in one task; the rest were dropped`;
         if (!result.warnings.includes(warning)) result.warnings.push(warning);
       } else {
-        result.findings.push(bounded(parsed.data));
+        const finding: TaskFinding = { reported: bounded(parsed.data) };
+        if (event.model !== undefined) finding.model = event.model;
+        result.findings.push(finding);
       }
       return false;
     }

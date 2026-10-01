@@ -16,6 +16,7 @@ const finding: Finding = {
   body: "Remote code execution.",
   evidence: ["input comes from the query string"],
   lineRange: { start: 3, end: 3 },
+  provenance: { task: "security-1", model: "google/gemini-3.5-flash" },
   anchor: { method: "hunk", inDiff: true },
   status: "new",
   quote: { lines: 1, hash: "fedcba9876543210" },
@@ -56,6 +57,7 @@ describe("toReportOutput", () => {
       body: "Remote code execution.",
       evidence: ["input comes from the query string"],
       code: "eval(input)",
+      provenance: { task: "security-1", model: "google/gemini-3.5-flash" },
     });
     expect(output.findings[1]?.lines).toBeUndefined();
     const json = JSON.stringify(output);

@@ -17,6 +17,7 @@ function finding(file: string, title: string, line = 2): Finding {
     body: "body",
     evidence: [],
     lineRange: { start: line, end: line },
+    provenance: { task: "t1" },
     anchor: { method: "hunk", inDiff: true },
     status: "new",
   };

@@ -50,6 +50,7 @@ describe("ProgressPrinter", () => {
         error: "timed out after 600000ms",
         findings: 0,
         durationMs: 600_000,
+        usage: { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 },
       },
     });
     printer.stop();

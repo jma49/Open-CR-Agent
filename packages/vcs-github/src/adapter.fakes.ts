@@ -118,6 +118,7 @@ export function finding(
     body: "Body",
     evidence: [],
     lineRange: { start: 3, end: 4 },
+    provenance: { task: "t1" },
     anchor: { method: inDiff ? "hunk" : "file", inDiff },
     status: "new",
   };

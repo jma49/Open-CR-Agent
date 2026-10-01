@@ -19,6 +19,7 @@ function finding(title: string, severity: Severity = "warning", reviewer = "corr
     title,
     body: "body",
     evidence: [],
+    provenance: { task: "t1" },
     anchor: { method: "hunk", inDiff: true },
     status: "new",
   };

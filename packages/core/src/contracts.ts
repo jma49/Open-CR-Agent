@@ -40,7 +40,8 @@ export interface ReviewContext {
 
 export type AgentEvent =
   | { type: "progress"; taskId: string; message: string }
-  | { type: "finding"; taskId: string; finding: unknown }
+  // model: the one that reported the finding, when the runtime knows it.
+  | { type: "finding"; taskId: string; finding: unknown; model?: string }
   | ({ type: "usage"; taskId: string } & Usage)
   | { type: "done"; taskId: string }
   | { type: "error"; taskId: string; error: string; retryable: boolean };

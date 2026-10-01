@@ -69,6 +69,7 @@ function finding(text: string, path = "a.ts"): Finding {
     body: text,
     evidence: [text, text],
     lineRange: { start: 2, end: 2 },
+    provenance: { task: "t1" },
     anchor: { method: "hunk", inDiff: true },
     status: "new",
   };

@@ -316,6 +316,7 @@ function skipCell(cell: MatrixCell, reason: string, emit: (event: ReviewEvent) =
     error: reason,
     findings: 0,
     durationMs: 0,
+    usage: emptyUsage(),
   };
   emit({ type: "task_finished", outcome });
   return { outcome, findings: [], usage: emptyUsage(), warnings: [] };

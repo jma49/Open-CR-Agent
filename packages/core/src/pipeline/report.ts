@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { Usage } from "../contracts.js";
 import type {
   AnchorMethod,
@@ -42,7 +43,8 @@ export function coverageGaps(run: {
   return { notReviewed, nothingReviewed: notReviewed > 0 && !reviewed };
 }
 
-export type TaskStatus = "completed" | "failed" | "timed_out" | "cancelled";
+export const taskStatusSchema = z.enum(["completed", "failed", "timed_out", "cancelled"]);
+export type TaskStatus = z.infer<typeof taskStatusSchema>;
 
 export interface TaskOutcome {
   taskId: string;
@@ -53,6 +55,9 @@ export interface TaskOutcome {
   error?: string;
   findings: number;
   durationMs: number;
+  // What the task spent, its share of a plan call included; a finding's
+  // cost is its task's.
+  usage: Usage;
 }
 
 export interface ReviewReport {

@@ -15,6 +15,7 @@ function finding(overrides: Partial<Finding> = {}): Finding {
     title: "Off by one",
     body: "The loop stops early.",
     evidence: [],
+    provenance: { task: "t1" },
     anchor: { method: "hunk", inDiff: true },
     verification: "confirmed",
     status: "new",
@@ -91,6 +92,7 @@ describe("renderSarif", () => {
       severity: "warning",
       verification: "confirmed",
       status: "new",
+      task: "t1",
     });
   });
 

@@ -51,6 +51,20 @@ function stoppingRuntime(): AgentRuntime {
 const callbacks = { onProgress: () => {}, category: "correctness", abortGraceMs: 1_000 };
 
 describe("executeTask", () => {
+  it("keeps the model a finding event names, and nothing when it names none", async () => {
+    const rt: AgentRuntime = {
+      name: "fake",
+      async *runTask(task): AsyncIterable<AgentEvent> {
+        yield { type: "finding", taskId: task.taskId, finding: reported, model: "p/m" };
+        yield { type: "finding", taskId: task.taskId, finding: reported };
+        yield { type: "done", taskId: task.taskId };
+      },
+    };
+    const result = await executeTask(rt, spec(1_000), new AbortController().signal, callbacks);
+    expect(result.findings.map((f) => f.model)).toEqual(["p/m", undefined]);
+    expect(result.findings[1]).not.toHaveProperty("model");
+  });
+
   it("keeps the usage and findings a timed-out task delivers while stopping", async () => {
     const result = await executeTask(
       stoppingRuntime(),
@@ -108,7 +122,7 @@ describe("executeTask", () => {
       callbacks,
     );
     expect(result.findings).toHaveLength(50);
-    expect(result.findings[0]?.title.length).toBe(301);
+    expect(result.findings[0]?.reported.title.length).toBe(301);
     expect(result.warnings).toEqual(["more than 50 findings in one task; the rest were dropped"]);
   });
 });

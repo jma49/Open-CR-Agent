@@ -8,7 +8,12 @@ describe("runReview", () => {
   it("reviews selected files end to end and anchors findings", async () => {
     const rt = runtime(async function* (spec) {
       yield { type: "progress", taskId: spec.taskId, message: "reading" };
-      yield { type: "finding", taskId: spec.taskId, finding: finding("src/b.ts", "const b = 2;") };
+      yield {
+        type: "finding",
+        taskId: spec.taskId,
+        finding: finding("src/b.ts", "const b = 2;"),
+        model: "fake/standard",
+      };
       yield {
         type: "usage",
         taskId: spec.taskId,
@@ -38,7 +43,9 @@ describe("runReview", () => {
       anchor: { method: "hunk", inDiff: true },
       reviewer: "correctness",
       status: "new",
+      provenance: { task: report.tasks[0]?.taskId, model: "fake/standard" },
     });
+    expect(report.tasks[0]?.usage).toEqual(report.usage);
     expect(report.coverage.map((c) => c.status)).toEqual(["reviewed", "reviewed"]);
     expect(report.usage).toEqual({
       inputTokens: 100,

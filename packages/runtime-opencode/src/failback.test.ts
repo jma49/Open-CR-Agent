@@ -74,6 +74,12 @@ describe("withFailback", () => {
       "progress",
       "done",
     ]);
+    expect(run.events[3]).toEqual({
+      type: "finding",
+      taskId: "t",
+      finding: { title: "early" },
+      model: "a",
+    });
   });
 
   it("stops on errors that another model would not fix", async () => {

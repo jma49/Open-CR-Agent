@@ -131,7 +131,7 @@ export async function runJob(
   // happened to read the file.
   const bundleFiles = new Set(files);
   let outside = 0;
-  for (const reported of result.findings) {
+  for (const { reported, model } of result.findings) {
     // Relocating a quote on a file outside the bundle would pay for an
     // answer the next check throws away.
     const context = bundleFiles.has(reported.file)
@@ -146,7 +146,8 @@ export async function runJob(
     const content = anchor.lineRange
       ? await plan.context.readFile(anchor.file).catch(() => undefined)
       : undefined;
-    const finding = toFinding(reported, job.reviewer.id, anchor, content);
+    const provenance = model === undefined ? { task: job.taskId } : { task: job.taskId, model };
+    const finding = toFinding(reported, job.reviewer.id, provenance, anchor, content);
     findings.push(finding);
     emit({ type: "finding", taskId: job.taskId, finding });
   }
@@ -154,6 +155,7 @@ export async function runJob(
     warnings.push(`${job.taskId}: dropped ${outside} finding(s) on files outside its bundle`);
   }
 
+  const usage = extraUsage.reduce(addUsage, result.usage);
   const outcome: TaskOutcome = {
     taskId: job.taskId,
     reviewer: job.reviewer.id,
@@ -162,8 +164,9 @@ export async function runJob(
     status: result.status,
     findings: findings.length,
     durationMs: Date.now() - started,
+    usage,
   };
   if (result.error !== undefined) outcome.error = result.error;
   emit({ type: "task_finished", outcome });
-  return { outcome, findings, usage: extraUsage.reduce(addUsage, result.usage), warnings };
+  return { outcome, findings, usage, warnings };
 }

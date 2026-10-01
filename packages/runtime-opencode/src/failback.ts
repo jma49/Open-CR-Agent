@@ -52,7 +52,7 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
       const outcome = await running;
       yield { type: "usage", taskId, ...live.rest(outcome.usage) };
       yield { type: "progress", taskId, message: attemptSummary(model, outcome) };
-      for (const finding of outcome.findings) yield { type: "finding", taskId, finding };
+      for (const finding of outcome.findings) yield { type: "finding", taskId, finding, model };
 
       if (!outcome.error) {
         health.recordSuccess(model);

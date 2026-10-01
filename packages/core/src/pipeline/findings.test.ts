@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Finding } from "../domain.js";
-import { dedupeFindings, fingerprint } from "./findings.js";
+import { dedupeFindings, fingerprint, toFinding } from "./findings.js";
 import { mapWithConcurrency } from "./pool.js";
 
 describe("fingerprint", () => {
@@ -15,6 +15,30 @@ describe("fingerprint", () => {
     expect(fingerprint("d", "a.ts", "x")).not.toBe(base);
     expect(fingerprint("c", "b.ts", "x")).not.toBe(base);
     expect(fingerprint("c", "a.ts", "y")).not.toBe(base);
+  });
+});
+
+describe("toFinding", () => {
+  const reported = {
+    category: "correctness",
+    severity: "warning" as const,
+    file: "a.ts",
+    existingCode: "x",
+    title: "t",
+    body: "b",
+    evidence: [],
+  };
+  const anchor = { file: "a.ts", method: "hunk" as const, inDiff: true };
+
+  it("records which task and model reported the finding", () => {
+    const f = toFinding(reported, "correctness", { task: "t1", model: "p/m" }, anchor);
+    expect(f.provenance).toEqual({ task: "t1", model: "p/m" });
+    expect(f.reviewer).toBe("correctness");
+  });
+
+  it("records the task alone when the runtime named no model", () => {
+    const f = toFinding(reported, "correctness", { task: "t1" }, anchor);
+    expect(f.provenance).toEqual({ task: "t1" });
   });
 });
 

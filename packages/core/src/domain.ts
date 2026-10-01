@@ -26,7 +26,8 @@ export const reportedFindingSchema = z.object({
 });
 export type ReportedFinding = z.infer<typeof reportedFindingSchema>;
 
-export type AnchorMethod = "hunk" | "file" | "cross_file" | "relocated" | "file_level";
+export const anchorMethodSchema = z.enum(["hunk", "file", "cross_file", "relocated", "file_level"]);
+export type AnchorMethod = z.infer<typeof anchorMethodSchema>;
 
 // Normalized line count and hash of the code a finding is anchored to, so a
 // later review can tell whether that code still exists without storing it.
@@ -40,10 +41,19 @@ export interface QuoteSignature {
 export const verificationSchema = z.enum(["confirmed", "uncertain", "unchecked"]);
 export type Verification = z.infer<typeof verificationSchema>;
 
+// Where a finding came from: the task that reported it (report.tasks names
+// its reviewer, bundle, files and spend) and, when the runtime says, the
+// model. The reviewer is on the finding itself.
+export interface FindingProvenance {
+  task: string;
+  model?: string;
+}
+
 export interface Finding extends ReportedFinding {
   id: string;
   fingerprint: string;
   reviewer: string;
+  provenance: FindingProvenance;
   lineRange?: LineRange;
   // ambiguous: the quote fitted several places, so the finding is file-level.
   anchor: { method: AnchorMethod; inDiff: boolean; ambiguous?: true };
@@ -96,13 +106,16 @@ export interface ChangeRequest {
   override?: { by: string; reason: string };
 }
 
-export type RiskTier = "trivial" | "lite" | "full";
+export const riskTierSchema = z.enum(["trivial", "lite", "full"]);
+export type RiskTier = z.infer<typeof riskTierSchema>;
 
-export type Verdict =
-  | "approved"
-  | "approved_with_comments"
-  | "minor_issues"
-  | "significant_concerns";
+export const verdictSchema = z.enum([
+  "approved",
+  "approved_with_comments",
+  "minor_issues",
+  "significant_concerns",
+]);
+export type Verdict = z.infer<typeof verdictSchema>;
 
 // What a platform remembers of an earlier review of the same change.
 export interface PriorFinding {

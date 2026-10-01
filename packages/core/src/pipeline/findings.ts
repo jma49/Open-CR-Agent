@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Anchor } from "../anchor/anchor.js";
 import { normalizeSnippet } from "../anchor/match.js";
-import type { Finding, ReportedFinding, Severity } from "../domain.js";
+import type { Finding, FindingProvenance, ReportedFinding, Severity } from "../domain.js";
 import { quoteSignature } from "../rereview/quote.js";
 
 const SEVERITY_RANK: Record<Severity, number> = { suggestion: 0, warning: 1, critical: 2 };
@@ -15,6 +15,7 @@ export function fingerprint(category: string, file: string, existingCode: string
 export function toFinding(
   reported: ReportedFinding,
   reviewer: string,
+  provenance: FindingProvenance,
   anchor: Anchor,
   content?: string,
 ): Finding {
@@ -24,6 +25,7 @@ export function toFinding(
     id: randomUUID(),
     fingerprint: fingerprint(reported.category, anchor.file, reported.existingCode),
     reviewer,
+    provenance,
     anchor: {
       method: anchor.method,
       inDiff: anchor.inDiff,

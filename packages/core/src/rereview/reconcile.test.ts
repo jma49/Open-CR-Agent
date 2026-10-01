@@ -15,6 +15,7 @@ function finding(fingerprint: string, file = "a.ts"): Finding {
     title: fingerprint,
     body: "b",
     evidence: [],
+    provenance: { task: "t1" },
     anchor: { method: "hunk", inDiff: true },
     status: "new",
   };

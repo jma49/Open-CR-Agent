@@ -60,6 +60,7 @@ export function finding(fingerprint: string, overrides: Partial<Finding> = {}): 
     body: "Body",
     evidence: [],
     lineRange: { start: 3, end: 3 },
+    provenance: { task: "t1" },
     anchor: { method: "hunk", inDiff: true },
     status: "new",
     ...overrides,

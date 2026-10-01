@@ -45,6 +45,9 @@ export interface OutputFinding {
   code: string;
   // --ultra: shown, not counted in the verdict.
   lowConfidence?: true;
+  // Added in version 1 without a bump: the task in `tasks` that reported
+  // the finding and, when the runtime said, the model.
+  provenance?: { task: string; model?: string };
 }
 
 export interface OutputPriorFinding {
@@ -136,6 +139,10 @@ function outputFinding(f: Finding): OutputFinding {
   if (f.lineRange) output.lines = { start: f.lineRange.start, end: f.lineRange.end };
   if (f.suggestion !== undefined) output.suggestion = f.suggestion;
   if (f.lowConfidence) output.lowConfidence = true;
+  output.provenance =
+    f.provenance.model === undefined
+      ? { task: f.provenance.task }
+      : { task: f.provenance.task, model: f.provenance.model };
   return output;
 }
 
