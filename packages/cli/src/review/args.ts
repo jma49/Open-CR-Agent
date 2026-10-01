@@ -28,6 +28,7 @@ export interface ReviewArgs {
   ultra?: true;
   full?: true;
   plan?: true;
+  importSarif?: string[];
 }
 
 export class UsageError extends Error {}
@@ -51,6 +52,8 @@ Options:
   --output <file>    Write the result to a file instead of stdout
   --reviewers <ids>  Run only these reviewers (comma-separated)
   --max-cost-usd <n> Spend limit: reviews use 80%, verification and judging the rest
+  --import-sarif <file>  Add the results of a SARIF 2.1.0 log (Semgrep, CodeQL, …)
+                     that fall on the change; repeatable; not with --plan
   --plan             Show files, bundles, review tasks and prompt sizes; call no model
   --ultra            Favor recall: all reviewers at every tier, two samples each (about 2x cost)
   --no-repo-config   Ignore .ocra/config.json and its plugins (for untrusted
@@ -103,6 +106,10 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
       );
     args.maxCostUsd = max;
   }
+  if (values["import-sarif"] !== undefined && values["import-sarif"].length > 0) {
+    if (values.plan) throw new UsageError("--import-sarif is not used by --plan");
+    args.importSarif = values["import-sarif"];
+  }
   if (values.reviewers !== undefined) {
     const ids = values.reviewers
       .split(",")
@@ -128,6 +135,7 @@ function parse(argv: string[]) {
       "no-repo-config": { type: "boolean" },
       reviewers: { type: "string" },
       "max-cost-usd": { type: "string" },
+      "import-sarif": { type: "string", multiple: true },
       ultra: { type: "boolean" },
       full: { type: "boolean" },
       plan: { type: "boolean" },

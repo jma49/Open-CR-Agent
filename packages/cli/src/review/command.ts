@@ -30,6 +30,7 @@ import { renderPlan } from "./plan-render.js";
 import { type Output, ProgressPrinter } from "./progress.js";
 import { renderJson, renderText, safeJson } from "./render.js";
 import { renderSarif } from "./sarif.js";
+import { loadSarifLogs } from "./sarif-input.js";
 import { localTarget, mergeRequestTarget, pullRequestTarget } from "./target.js";
 import { forTerminal } from "./terminal.js";
 
@@ -131,6 +132,7 @@ export async function reviewCommand(
     return EXIT.ok;
   }
 
+  const sarif = await loadSarifLogs(args.importSarif ?? [], deps.cwd);
   const runtime = registry.createRuntime(config.runtime, {
     models: config.models,
     env: deps.env,
@@ -154,6 +156,7 @@ export async function reviewCommand(
       ...(args.maxCostUsd !== undefined ? { maxCostUsd: args.maxCostUsd } : {}),
       ...(args.ultra ? { ultra: true } : {}),
       ...(args.full ? { fullReview: true } : {}),
+      ...(sarif.length > 0 ? { sarif } : {}),
       ...(target.readTrusted ? { readTrusted: target.readTrusted } : {}),
       vcs,
       runtime,

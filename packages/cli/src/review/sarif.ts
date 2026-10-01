@@ -68,7 +68,10 @@ export function renderSarif(report: ReviewReport, version: string): string {
               id,
               name: id,
               shortDescription: {
-                text: id === CARRIED ? CARRIED_DESCRIPTION : `Findings of ocra's ${id} reviewer`,
+                text:
+                  id === CARRIED
+                    ? CARRIED_DESCRIPTION
+                    : `Findings of the ${id} reviewer or analyzer`,
               },
               properties: { tags: [id] },
             })),

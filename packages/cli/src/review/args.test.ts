@@ -30,6 +30,18 @@ describe("parseReviewArgs", () => {
     });
   });
 
+  it("collects --import-sarif files, and refuses them with --plan", () => {
+    expect(
+      parseReviewArgs(["--import-sarif", "a.sarif", "--import-sarif", "b.sarif"]),
+    ).toMatchObject({
+      importSarif: ["a.sarif", "b.sarif"],
+    });
+    expect(parseReviewArgs([])).not.toHaveProperty("importSarif");
+    expect(() => parseReviewArgs(["--plan", "--import-sarif", "a.sarif"])).toThrow(
+      "--import-sarif is not used by --plan",
+    );
+  });
+
   it("returns help", () => {
     expect(parseReviewArgs(["-h"])).toBe("help");
     expect(parseReviewArgs(["--no-repo-config"])).toMatchObject({ ignoreRepoConfig: true });
