@@ -38,7 +38,7 @@ npm 11.16 and later warn that `opencode-ai` has an install script not covered by
 
 ## Container image
 
-Since 0.2.0, each release is also a container image for amd64 and arm64, `ghcr.io/jma49/ocra:<version>`. It is built by the release workflow from the packages just published, installed as the GitHub Action installs them (pinned dependencies, signatures and provenance checked), with git, running as the unprivileged `node` user. 0.2.0 is not published yet.
+Since 0.2.0, each release is also a container image for amd64 and arm64, `ghcr.io/jma49/ocra:<version>`. It is built by the release workflow from the packages just published, installed as the GitHub Action installs them (pinned dependencies, signatures and provenance checked), with git, running as the unprivileged `node` user.
 
 ```bash
 docker run --rm --user "$(id -u):$(id -g)" --volume "$PWD:/repo" \
