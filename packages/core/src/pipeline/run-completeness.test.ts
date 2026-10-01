@@ -3,7 +3,7 @@ import type { AgentRuntime } from "../contracts.js";
 import { CompletionError } from "../errors.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { finding, patch, runtime, twoFiles, vcs } from "./run.fakes.js";
-import { runReview } from "./run.js";
+import { review } from "./run.js";
 
 const usage = { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 };
 const reviewer = (id: string): ReviewerDefinition => ({
@@ -16,9 +16,9 @@ const done = runtime(async function* (spec) {
   yield { type: "done", taskId: spec.taskId };
 });
 
-describe("runReview completeness", () => {
+describe("review completeness", () => {
   it("reports files as not reviewed when the task limit cut one of their reviewers", async () => {
-    const report = await runReview({
+    const report = await review({
       vcs: vcs({}, patch("src/a.ts", "const a = 1;")),
       runtime: done,
       reviewers: [reviewer("correctness"), reviewer("security")],
@@ -29,7 +29,7 @@ describe("runReview completeness", () => {
   });
 
   it("keeps the verdict and summary when one reviewer finished and another failed (#263)", async () => {
-    const report = await runReview({
+    const report = await review({
       vcs: vcs({}, patch("src/a.ts", "const a = 1;")),
       runtime: runtime(async function* (spec) {
         if (spec.reviewer === "security") {
@@ -69,7 +69,7 @@ describe("runReview completeness", () => {
         return { text: '{"drop":[{"index":0,"reason":"the author says it is fine"}]}', usage };
       },
     };
-    const report = await runReview({ vcs: vcs({}, twoFiles), runtime: dropping });
+    const report = await review({ vcs: vcs({}, twoFiles), runtime: dropping });
     expect(report.findings).toEqual([]);
     expect(report.unverifiedCriticals).toBe(1);
   });
@@ -81,7 +81,7 @@ describe("runReview completeness", () => {
       controller.abort();
       yield { type: "done", taskId: spec.taskId };
     });
-    const report = await runReview({
+    const report = await review({
       vcs: vcs({}, many.join("\n")),
       runtime: rt,
       signal: controller.signal,
@@ -109,7 +109,7 @@ describe("runReview completeness", () => {
         },
       ],
     });
-    const report = await runReview({ vcs: adapter, runtime: done, verify: false });
+    const report = await review({ vcs: adapter, runtime: done, verify: false });
     expect(report.verdict).toBe("significant_concerns");
     expect(report.summary).toBe("No new issues; 1 earlier finding(s) are still open.");
   });

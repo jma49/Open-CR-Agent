@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { agentsMdReviewer } from "../review/reviewers/agents-md.js";
 import { previewReview } from "./preview.js";
 import { runtime, vcs } from "./run.fakes.js";
-import { runReview } from "./run.js";
+import { review } from "./run.js";
 
 // Twelve added lines: past the trivial tier, where agents-md starts.
 const liteChange = [
@@ -24,7 +24,7 @@ describe("the agents-md reviewer and the repository's guidelines", () => {
     const without = vcs({}, liteChange);
     const tasks = async (adapter: typeof without) =>
       (
-        await runReview({
+        await review({
           vcs: adapter,
           runtime: done,
           reviewers: [agentsMdReviewer],

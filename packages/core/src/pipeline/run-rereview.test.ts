@@ -3,7 +3,7 @@ import type { PriorFinding } from "../domain.js";
 import { quoteSignature } from "../rereview/quote.js";
 import type { ReviewReport } from "./report.js";
 import { finding, patch, runtime, twoFiles, vcs } from "./run.fakes.js";
-import { runReview } from "./run.js";
+import { review } from "./run.js";
 
 const head = { "src/a.ts": "keep\nconst a = 1;\n", "src/b.ts": "keep\nconst b = 2;\n" };
 
@@ -26,23 +26,23 @@ function reporting(...findings: ReturnType<typeof finding>[]) {
   });
 }
 
-async function review(
+async function reviewWith(
   files: Record<string, string>,
   rt: ReturnType<typeof runtime>,
   prior?: PriorFinding[],
 ) {
   const adapter = vcs(files, twoFiles);
   if (prior) adapter.getPriorReview = async () => ({ findings: prior });
-  return runReview({ vcs: adapter, runtime: rt, verify: false, judge: false });
+  return review({ vcs: adapter, runtime: rt, verify: false, judge: false });
 }
 
-describe("runReview against the previous review", () => {
+describe("review against the previous review", () => {
   it("compares with the previous review and survives failing to load it", async () => {
     const rt = runtime(async function* (spec) {
       yield { type: "finding", taskId: spec.taskId, finding: finding("src/a.ts", "const a = 1;") };
       yield { type: "done", taskId: spec.taskId };
     });
-    const first = await runReview({
+    const first = await review({
       vcs: vcs({}, twoFiles),
       runtime: rt,
       verify: false,
@@ -60,7 +60,7 @@ describe("runReview against the previous review", () => {
         { ...old, fingerprint: "gone", file: "src/b.ts", ...(removed ? { quote: removed } : {}) },
       ],
     });
-    const second = await runReview({ vcs: withPrior, runtime: rt, verify: false, judge: false });
+    const second = await review({ vcs: withPrior, runtime: rt, verify: false, judge: false });
     expect(second.findings[0]?.status).toBe("unfixed");
     expect(second.rereview?.fixed.map((f) => f.fingerprint)).toEqual(["gone"]);
 
@@ -68,7 +68,7 @@ describe("runReview against the previous review", () => {
     broken.getPriorReview = async () => {
       throw new Error("HTTP 502");
     };
-    const third = await runReview({ vcs: broken, runtime: rt, verify: false, judge: false });
+    const third = await review({ vcs: broken, runtime: rt, verify: false, judge: false });
     expect(third.findings).toHaveLength(1);
     expect(third.rereview).toBeUndefined();
     expect(third.warnings).toContain("could not load the previous review: HTTP 502");
@@ -79,7 +79,7 @@ describe("runReview against the previous review", () => {
       yield { type: "finding", taskId: spec.taskId, finding: finding("src/a.ts", "const a = 1;") };
       yield { type: "done", taskId: spec.taskId };
     });
-    const first = await runReview({
+    const first = await review({
       vcs: vcs({}, twoFiles),
       runtime: rt,
       verify: false,
@@ -92,7 +92,7 @@ describe("runReview against the previous review", () => {
       reason: "known and accepted",
     };
     const memory = JSON.stringify({ accepted: [entry] });
-    const second = await runReview({
+    const second = await review({
       vcs: vcs({}, twoFiles),
       runtime: rt,
       verify: false,
@@ -106,16 +106,16 @@ describe("runReview against the previous review", () => {
 
   it("keeps the verdict when a finding is not reported again but its code is unchanged", async () => {
     const critical = finding("src/a.ts", "const a = 1;", { severity: "critical" });
-    const first = await review(head, reporting(critical));
+    const first = await reviewWith(head, reporting(critical));
     // Verification is off in these runs: the critical finding is unchecked.
     expect(first.verdict).toBe("minor_issues");
     expect(first.findings[0]?.quote).toMatchObject({ lines: 1 });
-    const unchanged = await review(head, reporting(), asPrior(first));
+    const unchanged = await reviewWith(head, reporting(), asPrior(first));
     expect(unchanged.verdict).toBe("minor_issues");
 
     // An earlier finding keeps the verification it had.
     const verified = asPrior(first).map((f) => ({ ...f, verification: "confirmed" as const }));
-    const second = await review(head, reporting(), verified);
+    const second = await reviewWith(head, reporting(), verified);
     expect(second.findings).toEqual([]);
     expect(second.rereview?.fixed).toEqual([]);
     expect(second.rereview?.notReproduced.map((f) => f.fingerprint)).toEqual([
@@ -125,9 +125,9 @@ describe("runReview against the previous review", () => {
   });
 
   it("does not take another quote or category for a fix", async () => {
-    const first = await review(head, reporting(finding("src/a.ts", "const a = 1;")));
+    const first = await reviewWith(head, reporting(finding("src/a.ts", "const a = 1;")));
     const requoted = finding("src/a.ts", "keep", { category: "style" });
-    const second = await review(head, reporting(requoted), asPrior(first));
+    const second = await reviewWith(head, reporting(requoted), asPrior(first));
     expect(second.findings[0]?.category).toBe("correctness");
     expect(second.findings[0]?.status).toBe("new");
     expect(second.rereview?.fixed).toEqual([]);
@@ -135,15 +135,15 @@ describe("runReview against the previous review", () => {
   });
 
   it("ignores the category a model sends, so the fingerprint stays the same", async () => {
-    const first = await review(head, reporting(finding("src/a.ts", "const a = 1;")));
+    const first = await reviewWith(head, reporting(finding("src/a.ts", "const a = 1;")));
     const relabelled = finding("src/a.ts", "const a = 1;", { category: "bug" });
-    const second = await review(head, reporting(relabelled), asPrior(first));
+    const second = await reviewWith(head, reporting(relabelled), asPrior(first));
     expect(second.findings[0]?.fingerprint).toBe(first.findings[0]?.fingerprint);
     expect(second.findings[0]?.status).toBe("unfixed");
   });
 
   it("judges a finding fixed once its code or its file is gone", async () => {
-    const first = await review(
+    const first = await reviewWith(
       head,
       reporting(
         finding("src/a.ts", "const a = 1;", { severity: "critical" }),
@@ -151,15 +151,15 @@ describe("runReview against the previous review", () => {
       ),
     );
     const changed = { "src/a.ts": "keep\nconst a = 2;\n" };
-    const second = await review(changed, reporting(), asPrior(first));
+    const second = await reviewWith(changed, reporting(), asPrior(first));
     expect(second.rereview?.fixed.map((f) => f.file).sort()).toEqual(["src/a.ts", "src/b.ts"]);
     expect(second.verdict).toBe("approved");
   });
 
   it("never resolves earlier findings stored without a code signature", async () => {
-    const legacy = asPrior(await review(head, reporting(finding("src/a.ts", "const a = 1;"))));
+    const legacy = asPrior(await reviewWith(head, reporting(finding("src/a.ts", "const a = 1;"))));
     const withoutQuote = legacy.map(({ quote: _quote, ...rest }) => rest);
-    const second = await review({ "src/a.ts": "changed\n" }, reporting(), withoutQuote);
+    const second = await reviewWith({ "src/a.ts": "changed\n" }, reporting(), withoutQuote);
     expect(second.rereview?.fixed).toEqual([]);
     expect(second.rereview?.notReproduced).toHaveLength(1);
     expect(second.verdict).toBe("approved_with_comments");
@@ -177,7 +177,7 @@ describe("runReview against the previous review", () => {
         changedSince: { head: "h0", files: ["src/b.ts"] },
         tier,
       });
-      return runReview({ vcs: adapter, runtime: reporting(), verify: false, judge: false });
+      return review({ vcs: adapter, runtime: reporting(), verify: false, judge: false });
     };
     // The auth path makes this change "full"; the earlier review ran at "trivial".
     const risen = await since("trivial");
@@ -205,7 +205,7 @@ describe("runReview against the previous review", () => {
       };
       yield { type: "done", taskId: spec.taskId };
     });
-    const first = await runReview({ vcs: vcs(head, twoFiles), runtime: reporting, verify: false });
+    const first = await review({ vcs: vcs(head, twoFiles), runtime: reporting, verify: false });
     const fingerprint = first.findings[0]?.fingerprint ?? "";
     const judgePrompts: string[] = [];
     const judging = Object.assign(reporting, {
@@ -219,7 +219,7 @@ describe("runReview against the previous review", () => {
       findings: asPrior(first),
       replies: { [fingerprint]: ["Handled by the caller in api.ts."] },
     });
-    await runReview({ vcs: adapter, runtime: judging, verify: false, fullReview: true });
+    await review({ vcs: adapter, runtime: judging, verify: false, fullReview: true });
     expect(judgePrompts).toHaveLength(1);
     expect(judgePrompts[0]).toContain(
       "<ocra_reply>\nHandled by the caller in api.ts.\n</ocra_reply>",

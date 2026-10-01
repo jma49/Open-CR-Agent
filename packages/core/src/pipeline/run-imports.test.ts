@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { parseSarifLog } from "../sarif/schema.js";
 import { runtime, twoFiles, vcs } from "./run.fakes.js";
-import { runReview } from "./run.js";
+import { review } from "./run.js";
 
-describe("runReview with SARIF logs", () => {
+describe("review with SARIF logs", () => {
   it("imports an analyzer's SARIF results on the change as findings of their own task", async () => {
     const rt = runtime(async function* (spec) {
       yield { type: "done", taskId: spec.taskId };
@@ -45,7 +45,7 @@ describe("runReview with SARIF logs", () => {
         ],
       }),
     );
-    const report = await runReview({
+    const report = await review({
       vcs: vcs({ "src/b.ts": "keep\nconst b = 2;\n" }, twoFiles),
       runtime: rt,
       verify: false,

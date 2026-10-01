@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentRuntime } from "../contracts.js";
 import { finding, patch, vcs } from "./run.fakes.js";
-import { runReview } from "./run.js";
+import { review } from "./run.js";
 
 const usage = {
   inputTokens: 5,
@@ -28,9 +28,9 @@ const runtime: AgentRuntime = {
       : { text: "{}", usage: { ...usage, costUsd: 0 } },
 };
 
-describe("runReview relocation", () => {
+describe("review relocation", () => {
   it("anchors a paraphrased quote through the light model and counts its cost", async () => {
-    const report = await runReview({
+    const report = await review({
       vcs: vcs({}, patch("src/a.ts", "const retries = -1;")),
       runtime,
       verify: false,
@@ -47,7 +47,7 @@ describe("runReview relocation", () => {
   });
 
   it("can be turned off", async () => {
-    const report = await runReview({
+    const report = await review({
       vcs: vcs({}, patch("src/a.ts", "const retries = -1;")),
       runtime,
       verify: false,
@@ -78,7 +78,7 @@ describe("runReview relocation", () => {
         >;
       },
     };
-    const report = await runReview({
+    const report = await review({
       vcs: vcs({}, patch("src/a.ts", "const retries = -1;")),
       runtime: paraphrasing,
       verify: false,
@@ -112,7 +112,7 @@ describe("runReview relocation", () => {
         return { text: "{}", usage: { ...usage, costUsd: 0 } };
       },
     };
-    await runReview({
+    await review({
       vcs: vcs(
         {},
         [patch("src/a.ts", "const retries = -1;"), patch("src/b.ts", "const b = 2;")].join("\n"),

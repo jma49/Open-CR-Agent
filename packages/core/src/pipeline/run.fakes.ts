@@ -2,7 +2,7 @@ import type { AgentEvent, AgentRuntime, AgentTaskSpec, VcsAdapter } from "../con
 import { parseUnifiedDiff } from "../diff/parse.js";
 import type { ReportedFinding } from "../domain.js";
 
-// Fakes shared by the runReview tests.
+// Fakes shared by the review tests.
 export function patch(path: string, added: string): string {
   return [
     `diff --git a/${path} b/${path}`,

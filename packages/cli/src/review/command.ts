@@ -13,7 +13,7 @@ import {
   type ReviewerOverrides,
   type ReviewOptions,
   type ReviewReport,
-  runReview,
+  review,
   securityReviewerPlugin,
   sessionJsonlPlugin,
   startPlugins,
@@ -149,7 +149,7 @@ export async function reviewCommand(
   });
   let report: ReviewReport;
   try {
-    report = await runReview({
+    report = await review({
       signal: interrupt.signal,
       ...runOptions(config),
       reviewerOverrides: overrides,
