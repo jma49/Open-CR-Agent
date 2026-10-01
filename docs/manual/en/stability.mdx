@@ -25,6 +25,7 @@ All packages share one version and are released together.
 | The GitHub Action's inputs | [GitHub pull requests](./github) |
 | The state ocra keeps in its pull request summary comment | An internal format that later releases keep reading (`v1` today). If one ever cannot, the next review starts over as if it were the first: it reviews every file and may comment again on findings it had commented on |
 | The plugin interface (`OcraPlugin`) | [Plugins](./plugins). It may still change in minor releases while ocra is 0.x, with the changelog saying how to adapt |
+| The library entry: `review()` and the `ReviewOptions` fields the Embedding page lists, `startPlugins()`, the registry's `createVcs`, `createRuntime`, `reviewers`, `rules` and `emit`, `toReportOutput()`, `coverageGaps()` and `parseSarifLog()` | [Embedding ocra](./embedding). Same rule as the plugin interface while ocra is 0.x. The other exports of `@open-cr-agent/core` are not a contract |
 
 Not contracts: the wording of the text output, progress lines and pull request comments; the events in a session's `events.jsonl`; the prompts; which findings a model reports; and cost. Parse the JSON report, not the text.
 

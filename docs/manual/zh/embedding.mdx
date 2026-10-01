@@ -1,0 +1,112 @@
+---
+title: 嵌入 ocra
+description: 在你自己的程序里用 @open-cr-agent/core 的 review() 运行审查流水线。
+---
+
+ocra 首先是一个库。`ocra` 命令只是 `@open-cr-agent/core` 里 `review()` 的一个调用方；你的程序可以是另一个：一个机器人、你自己的 CI 步骤、一个定时审查的服务。同样的阶段、信任规则、花费上限和报告都适用。
+
+## 一次完整的调用
+
+```ts
+import {
+  correctnessReviewerPlugin,
+  coverageGaps,
+  review,
+  securityReviewerPlugin,
+  sessionJsonlPlugin,
+  startPlugins,
+  toReportOutput,
+} from "@open-cr-agent/core";
+import { opencodeRuntimePlugin } from "@open-cr-agent/runtime-opencode";
+import { localGitPlugin } from "@open-cr-agent/vcs-local";
+
+// 1. 插件注册适配器、运行时、审查员、规则、工具和事件监听。
+const registry = await startPlugins(
+  [localGitPlugin, opencodeRuntimePlugin, correctnessReviewerPlugin, securityReviewerPlugin, sessionJsonlPlugin],
+  {
+    env: process.env,
+    settings: { "session-jsonl": { dir: ".ocra/sessions", id: "my-run" } },
+    warn: (message) => console.warn(message),
+  },
+);
+
+// 2. 改动从哪里来，agent 由什么运行。
+const vcs = registry.createVcs("local", {
+  cwd: process.cwd(),
+  target: { mode: "range", from: "main", to: "HEAD" },
+});
+const runtime = registry.createRuntime("opencode", {
+  models: {
+    top: ["google/gemini-3.1-pro-preview"],
+    standard: ["google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
+    light: ["google/gemini-flash-lite-latest"],
+  },
+  env: process.env,
+});
+
+// 3. 审查。
+try {
+  const report = await review({
+    vcs,
+    runtime,
+    reviewers: registry.reviewers,
+    rules: registry.rules,
+    maxCostUsd: 2,
+    onEvent: (event) => registry.emit(event),
+  });
+  const { notReviewed, nothingReviewed } = coverageGaps(report);
+  console.log(JSON.stringify(toReportOutput(report)));
+  if (nothingReviewed || notReviewed > 0) process.exitCode = 3;
+} finally {
+  await runtime.dispose?.();
+}
+```
+
+`startPlugins` 执行插件的生命周期（[插件](./plugins)）并返回一个冻结的注册表；`createVcs` 和 `createRuntime` 按名字构造插件注册的适配器和运行时；`registry.emit` 把每个事件交给监听者，这里是会话日志。上面的插件和设置就是 CLI 用的那一套；CLI 读取的 `.ocra/config.json` 是命令行的便利功能，不属于库。
+
+## `review()` 接受什么
+
+`ReviewOptions` 按[稳定性页](./stability)的说法，在 ocra 还是 0.x 时是一份约定：次版本可能改变它，变更日志会说明如何适配。下面这些字段属于约定：
+
+| 选项 | 含义 |
+|---|---|
+| `vcs` | 这次改动的 `VcsAdapter`：diff 和文件从哪里来，`publish` 把审查发到哪里 |
+| `runtime` | 每次运行一个隔离审查任务的 `AgentRuntime` |
+| `reviewers` | 要运行的审查员（默认只有 `correctness`）；可以用注册表里的，也可以是你自己的 `ReviewerDefinition` |
+| `reviewerOverrides` | 按审查员设置 `enabled`、`minTier` |
+| `rules` | 按路径生效的审查规则（`RepoRule[]`），注册表里的加上你自己的 |
+| `readTrusted` | 从哪里读取 `AGENTS.md`、`.ocra/rules.json` 和 `.ocra/memory.json`。默认是被审查的版本；审查 PR 时传入一个读取可信 base 的函数，改动就改不了它们 |
+| `selection` | 审查哪些文件：`include`、`exclude`、`maxPatchChars` |
+| `concurrency`、`taskTimeoutMs`、`runTimeoutMs` | 并行任务数（4）、单个任务的超时（10 分钟）和整次运行的超时（25 分钟） |
+| `verify`、`judge` | 对照 diff 核查问题，以及跨审查员合并、过滤和重新定级（默认都开启） |
+| `maxCostUsd`、`maxTasks` | 花费上限（[`--max-cost-usd`](./cli)）和任务数上限 |
+| `fullReview` | 即使平台报告了上次审查以来的改动，也审查所有文件 |
+| `ultra` | 以成本换召回率（[模式](./how-it-works#模式)） |
+| `sarif` | 解析好的 SARIF 日志（`parseSarifLog`），其中落在改动上的结果加入审查（[SARIF 输入](./cli#sarif-输入)） |
+| `signal` | 一个 `AbortSignal`：运行会停下，保留已发现的问题并写出部分报告 |
+| `onEvent` | 在运行过程中接收每个 `ReviewEvent` |
+
+`bundling`、`grouper`、`relocate` 和 `abortGraceMs` 是调优和测试钩子，不属于约定。
+
+## 它返回什么
+
+一个 `ReviewReport`：改动、风险档位、结论和总结、每个文件的覆盖情况、分组、任务、问题、核查否决和 Judge 的决定、与上次审查的对比、用量和警告。读取它时要知道两件事：
+
+- **对外发布的是 `toReportOutput(report)`**，不是报告本身。它是 CLI 写出的带版本号的 JSON，由 `reportOutputSchema` 和公开的 [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json) 描述；内部报告里的字段可能会变。
+- **不完整的审查不算通过。** `coverageGaps(report)` 给出有多少选中的文件没被审查、是否什么都没审到；`report.unverifiedCriticals` 是没人能核查的 critical 数量。CLI 的[退出码](./cli)就是由这些算出来的；用审查结果做门禁的程序应当照做，永远不要只看 `verdict` 就当作通过。
+
+`vcs.publish(report)` 像 `--publish` 一样按平台的信任规则发布审查，没能发出去的部分以警告返回。
+
+事件（`onEvent`）是进度、会话日志和终端输出的来源。它们的形状不是约定：监听者应当容忍新的事件类型和字段。
+
+## PR 与 Merge Request
+
+`githubPlugin`（`@open-cr-agent/vcs-github`）和 `gitlabPlugin`（`@open-cr-agent/vcs-gitlab`）注册 `github` 和 `gitlab` 适配器。它们 `createVcs` 的选项（仓库、编号、令牌的变量名、是否发布）还没有作为库的约定写入文档；仓库里的 `packages/cli/src/review/target.ts` 展示了 CLI 如何构造它们，包括作为 `readTrusted` 传入的可信 base 读取函数。在本页列出它们之前，请把这些形状当作内部实现。
+
+## 信任
+
+嵌入 ocra 的程序就是信任边界。插件会执行代码，所以只加载你信任的插件，绝不加载被审查的代码树指定的插件；模型密钥通过 `env` 传入，运行时只转发配置的供应商需要的变量（[安全](./security)）；审查 PR 时通过 `readTrusted` 从 base 版本读取指南、规则和 memory。无论谁调用，审查本身只给 agent 只读工具，没有 shell。
+
+## 还不是约定的部分
+
+`@open-cr-agent/core` 导出的比本页列出的多：各个阶段、定位、Judge 和核查的内部实现。它们不是约定，收窄后的导出面在计划中（[路线图](https://github.com/jma49/Open-CR-Agent/blob/main/docs/roadmap.md)，M10）。请只依赖本页和[稳定性页](./stability)列出的内容。

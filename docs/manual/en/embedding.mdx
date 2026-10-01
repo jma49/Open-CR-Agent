@@ -1,0 +1,112 @@
+---
+title: Embedding ocra
+description: Run the review pipeline from your own program with review() from @open-cr-agent/core.
+---
+
+ocra is a library first. The `ocra` command is one caller of `review()` in `@open-cr-agent/core`; your program can be another: a bot, a CI step of your own, a service that reviews on a schedule. The same stages, trust rules, cost limits and report apply.
+
+## A complete call
+
+```ts
+import {
+  correctnessReviewerPlugin,
+  coverageGaps,
+  review,
+  securityReviewerPlugin,
+  sessionJsonlPlugin,
+  startPlugins,
+  toReportOutput,
+} from "@open-cr-agent/core";
+import { opencodeRuntimePlugin } from "@open-cr-agent/runtime-opencode";
+import { localGitPlugin } from "@open-cr-agent/vcs-local";
+
+// 1. Plugins register adapters, runtimes, reviewers, rules, tools and listeners.
+const registry = await startPlugins(
+  [localGitPlugin, opencodeRuntimePlugin, correctnessReviewerPlugin, securityReviewerPlugin, sessionJsonlPlugin],
+  {
+    env: process.env,
+    settings: { "session-jsonl": { dir: ".ocra/sessions", id: "my-run" } },
+    warn: (message) => console.warn(message),
+  },
+);
+
+// 2. Where the change comes from, and what runs the agents.
+const vcs = registry.createVcs("local", {
+  cwd: process.cwd(),
+  target: { mode: "range", from: "main", to: "HEAD" },
+});
+const runtime = registry.createRuntime("opencode", {
+  models: {
+    top: ["google/gemini-3.1-pro-preview"],
+    standard: ["google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
+    light: ["google/gemini-flash-lite-latest"],
+  },
+  env: process.env,
+});
+
+// 3. The review.
+try {
+  const report = await review({
+    vcs,
+    runtime,
+    reviewers: registry.reviewers,
+    rules: registry.rules,
+    maxCostUsd: 2,
+    onEvent: (event) => registry.emit(event),
+  });
+  const { notReviewed, nothingReviewed } = coverageGaps(report);
+  console.log(JSON.stringify(toReportOutput(report)));
+  if (nothingReviewed || notReviewed > 0) process.exitCode = 3;
+} finally {
+  await runtime.dispose?.();
+}
+```
+
+`startPlugins` runs the plugins' lifecycle ([Plugins](./plugins)) and returns a frozen registry; `createVcs` and `createRuntime` build the adapter and the runtime the plugins registered, by name; `registry.emit` hands each event to the listeners, here the session log. The plugins and settings above are what the CLI uses; the `.ocra/config.json` it reads is a CLI convenience, not part of the library.
+
+## What `review()` takes
+
+`ReviewOptions`, as the [stability page](./stability) says, is a contract while ocra is 0.x: a minor release may change it, and the changelog says how. These fields are the contract:
+
+| Option | Meaning |
+|---|---|
+| `vcs` | The `VcsAdapter` for the change: where the diff and files come from, and where `publish` sends the review |
+| `runtime` | The `AgentRuntime` that runs one isolated review task at a time |
+| `reviewers` | The reviewers to run (default: `correctness` alone); the registry's, or your own `ReviewerDefinition`s |
+| `reviewerOverrides` | Per reviewer: `enabled`, `minTier` |
+| `rules` | Path-scoped review rules (`RepoRule[]`), the registry's plus your own |
+| `readTrusted` | Where `AGENTS.md`, `.ocra/rules.json` and `.ocra/memory.json` are read from. Default: the revision under review; for a pull request, pass a reader of the trusted base so the change cannot rewrite them |
+| `selection` | Which files are reviewed: `include`, `exclude`, `maxPatchChars` |
+| `concurrency`, `taskTimeoutMs`, `runTimeoutMs` | Parallel tasks (4), the per-task timeout (10 minutes) and the run's (25 minutes) |
+| `verify`, `judge` | Fact-check findings against the diff, and merge, filter and recalibrate them across reviewers (both default on) |
+| `maxCostUsd`, `maxTasks` | The spend limit ([`--max-cost-usd`](./cli)) and the task cap |
+| `fullReview` | Review every file although the platform reports what changed since the previous review |
+| `ultra` | Recall over cost ([Modes](./how-it-works#modes)) |
+| `sarif` | Parsed SARIF logs (`parseSarifLog`) whose results on the change join the review ([SARIF input](./cli#sarif-input)) |
+| `signal` | An `AbortSignal`: the run stops, keeps what it found and writes a partial report |
+| `onEvent` | Receives each `ReviewEvent` as the run progresses |
+
+`bundling`, `grouper`, `relocate` and `abortGraceMs` are tuning and test hooks, not part of the contract.
+
+## What it returns
+
+A `ReviewReport`: the change, risk tier, verdict and summary, coverage per file, bundles, tasks, findings, what verification refuted and the judge decided, the comparison with the previous review, usage and warnings. Two things to know when you read it:
+
+- **Publish `toReportOutput(report)`**, not the report itself. It is the versioned JSON the CLI writes, described by `reportOutputSchema` and the published [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json); the internal report carries fields that may change.
+- **An incomplete review is not a pass.** `coverageGaps(report)` says how many selected files were not reviewed and whether nothing was; `report.unverifiedCriticals` counts critical findings nobody could check. The CLI's [exit codes](./cli) are computed from these; a program that gates on the review should do the same, and never read `verdict` alone as approval.
+
+`vcs.publish(report)` posts the review the way `--publish` does, under the platform's trust rules; it returns the parts it could not post as warnings.
+
+Events (`onEvent`) are how progress, the session log and the terminal output are produced. Their shapes are not a contract: a listener should tolerate new event types and fields.
+
+## Pull requests and merge requests
+
+`githubPlugin` (`@open-cr-agent/vcs-github`) and `gitlabPlugin` (`@open-cr-agent/vcs-gitlab`) register the `github` and `gitlab` adapters. Their `createVcs` options (the repository, the number, the token's variable, whether to publish) are not documented as a library contract yet; `packages/cli/src/review/target.ts` in the repository shows how the CLI builds them, including the trusted-base reader it passes as `readTrusted`. Treat those shapes as internal until this page lists them.
+
+## Trust
+
+The program that embeds ocra is the trust boundary. Plugins run code, so load only plugins you trust, and never ones named by the tree under review; pass model keys through `env`, where the runtime forwards only what the configured providers need ([Security](./security)); for a pull request, read guidelines, rules and memory from the base revision through `readTrusted`. The review itself gives agents read-only tools and no shell, whoever calls it.
+
+## What is not a contract yet
+
+`@open-cr-agent/core` exports more than this page names: the stages, anchoring, the judge and verification internals. They are not a contract, and a curated export surface is planned ([roadmap](https://github.com/jma49/Open-CR-Agent/blob/main/docs/roadmap.md), M10). Build on what this page and the [stability page](./stability) list.

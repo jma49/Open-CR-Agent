@@ -167,6 +167,8 @@ export default {
 
 Plugins run code, so they load only when the reviewed tree is trusted: in local reviews, never on pull requests or under `--no-repo-config`. The platform-neutral rules of the review conversation (who may dismiss, what counts as fixed, how the summary reads) live once in `vcs-platform`, with a conformance suite every platform adapter runs. [Plugins guide](docs/manual/en/plugins.mdx), [plugin contract](docs/adr/0006-plugin-contract.md).
 
+ocra is a library first: `review()` from `@open-cr-agent/core` runs the same pipeline the command runs, from your own program, bot or service, with the plugins you choose. [Embedding ocra](docs/manual/en/embedding.mdx) is the contract page.
+
 ## Security model
 
 Assume the reviewed code is hostile; ocra does.
