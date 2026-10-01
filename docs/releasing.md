@@ -111,6 +111,18 @@ That version has no provenance and no release uses it; the release workflow then
 - **Node versions.** The packages need Node.js 22.19 or newer (`engines`), the minimum of undici 8, which the OpenCode runtime uses. The release workflow runs on Node 24 because trusted publishing needs npm 11.5.1 or newer and Node 22 ships npm 10.
 - **A user-level `allow-scripts` npm setting** used to break `npm run check:packages` (`EALLOWSCRIPTS`, see `docs/pitfalls.md`); the check now removes it for its nested install.
 
+## Renaming the repository
+
+GitHub redirects git, web and API calls after a rename, but **GitHub Actions does not**: `uses:` of an action or a reusable workflow under the old name fails with "repository not found" (tried on 2026-10-01; the dogfood run resolved zero jobs). Everything below names the repository, so a rename is done with a release, all on one day, in this order:
+
+1. Rename the repository on GitHub.
+2. In the release pull request, with the version bump: `repository.url` and `bugs` in every `packages/*/package.json` (the Action compares `repository.url` with the published provenance, so changing it before the version is on npm makes CI's `action (npm)` jobs build from source and fail); the `uses:` paths in `.github/workflows/ocra-review.yml` and `ocra-dogfood.yml` and the test that pins them (`scripts/dogfood-workflow.test.mjs`); `uses: jma49/<repo>@…` in the manual (both languages) and the README; `--repo` in this file and in the `gh attestation verify` lines of the manual; clone URLs; the Dockerfile's `org.opencontainers.image.source` label; the issue templates; a "needs action" entry in the changelog for everyone's `uses:` lines.
+3. Trust the release workflow again for every package, with `--repo jma49/<repo>` (step 4 of the first release), before publishing.
+4. In Google Cloud, the Workload Identity provider's attribute condition names the four repositories: replace the old name (`.local/dogfood-setup.sh` holds the condition).
+5. In jmos, Assay and vouch, the dogfood caller's `uses:` line.
+6. The site: the quickstart's `uses:` line, the links, the manual sync script's default repository; then deploy.
+7. The Claude GitHub App's repository access, and the agent session's repository scope.
+
 ## Follow-ups
 
 - `npm install -g @open-cr-agent/cli` resolves third-party ranges when it runs, unlike the Action. An `npm-shrinkwrap.json` in the cli package would pin them, but npm installs a dependency's shrinkwrap without platform checks: every OpenCode binary for every OS and CPU, 2.1 GB instead of 175 MB (`docs/pitfalls.md`). Worth another look if npm starts checking platforms there, or if the OpenCode binary stops coming as optional platform packages.
