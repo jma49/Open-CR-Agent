@@ -20,7 +20,7 @@ Most review bots are `diff → model → comment`. ocra puts code around the mod
 - **Re-reviews are incremental and evidence-based.** A finding is called fixed only when the code it pointed at is gone; a maintainer's dismissal silences it; the pull request's own author cannot.
 - **Cost is bounded and reported.** A per-run spend limit stops starting tasks, the report names the files it left unreviewed, and the next review continues with them. Tokens and dollars are reported for every model call.
 - **Untrusted pull requests are the design case.** Agents get read-only tools, no shell and no web; configuration, rules and memory are read from the base commit; model text cannot form links, mentions or commands in a comment. See the [threat model](docs/manual/en/threat-model.mdx).
-- **Structured output.** A versioned JSON report with a published [JSON Schema](docs/schema/report.v1.json), every finding saying which task and model produced it, [SARIF 2.1.0](docs/manual/en/github.mdx) for code scanning, and a session log with cost, tokens and latency per run.
+- **Structured output.** A versioned JSON report with a published [JSON Schema](docs/schema/report.v1.json), every finding saying which task and model produced it, [SARIF 2.1.0](docs/manual/en/github.mdx) out for code scanning and in from Semgrep, CodeQL and other analyzers, and a session log with cost, tokens and latency per run.
 
 ## How it works
 
@@ -63,6 +63,7 @@ ocra review --commit abc123                  # a single commit
 ocra review --plan                           # files, bundles, tasks and prompt sizes; no model call
 ocra review --max-cost-usd 2                 # a spend limit; the report says what it left
 ocra review --format sarif --output out.sarif
+ocra review --import-sarif semgrep.sarif        # an analyzer's results on the change join the review
 ocra review --pr 42 --publish                # a GitHub pull request, posted as a review
 ocra review --mr 7 --publish                 # a GitLab merge request
 ```
@@ -151,6 +152,7 @@ ocra is built as an engine with contracts for the parts that vary. The parts tha
 | `AgentRuntime` | How one isolated review task runs | OpenCode |
 | Reviewer | Who reviews what, at which model tier | `correctness`, `security`, `performance`, `docs`, `agents-md` |
 | Rules and tools | Path-scoped instructions; read-only tools an agent may call | `.ocra/rules.json`; `read_file`, `read_diff`, `code_search`, `report_finding` |
+| Analyzers | Findings from tools that are not a model, as the SARIF 2.1.0 log a CI job hands over (`--import-sarif`); ocra runs no tool | tested with Semgrep's output |
 
 A plugin is a module with a name and lifecycle hooks:
 

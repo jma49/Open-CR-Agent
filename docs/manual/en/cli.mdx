@@ -27,6 +27,7 @@ ocra review [options]
 | `--full` | With `--pr` or `--mr`: review every file, not only what changed since the previous review |
 | `--max-cost-usd <n>` | Spend limit for the run. At 80% of it review tasks stop: no new one starts, and those still running are stopped, keeping what they found; their files count as not reviewed, so the run exits `3`. Verification and judging use the rest. If that runs out too, the remaining findings are reported *not verified*, so they cannot block, and the report says so. Running tasks report their spend about every 10 seconds, so a run can pass the limit by what each one spends in that time plus its step in progress. Tasks run bundle by bundle, so a limited run finishes some files rather than starting all of them, and with `--pr` the next review continues with the files it left |
 | `--plan` | Show selected and excluded files, bundles, review tasks and the size of each first prompt, including the one plan call a task makes under `--ultra` or for a bundle of five or more files, without calling a model (free). Grouping by the light model is skipped, so a change set large enough to be grouped is shown one file per bundle (by directory past 20 files). With `--pr` it plans a full review, not only what changed since the last one, and it writes no session log |
+| `--import-sarif <file>` | Add the results of a SARIF 2.1.0 log an analyzer wrote (Semgrep, CodeQL and others) to the review; repeatable. Only results on lines the change touches are kept, and they are verified and judged like a reviewer's findings. See [SARIF input](#sarif-input). Not with `--plan` |
 | `--ultra` | Favor recall over cost; see [Modes](./how-it-works#modes) |
 | `--reviewers <ids>` | Run only these reviewers, comma-separated (for example `security`) |
 | `--no-repo-config` | Ignore `.ocra/config.json` and the plugins it lists (with `--pr`, also the base branch's); models come from `OCRA_MODEL_*`; memory, rules and `AGENTS.md` come from the `--from` commit or are not used. Use it on code you do not trust |
@@ -82,6 +83,17 @@ The format is versioned (`"version": 1`) and is a contract: later releases only 
 - **Incomplete reviews.** A review that exits `3` is marked unsuccessful. The number of files not reviewed and the warnings are notifications. The verdict, risk tier, files not reviewed and cost are run properties.
 
 Text from the change and from models stays text. Brackets and backslashes are escaped, so no embedded link can form, braces are doubled, as SARIF requires, and web addresses get a zero-width space, as in pull request comments. `--plan` has no findings, so it cannot write SARIF.
+
+### SARIF input
+
+ocra runs no analyzer. Run Semgrep, CodeQL or another tool yourself and pass its SARIF 2.1.0 log with `--import-sarif <file>` (repeatable; at most 20 MB each). Each run in the log becomes a task of its own in the report, `sarif-<tool>-<n>`, with the tool's name as the reviewer, no cost, and the files it reported on; its findings name it in `provenance.task`.
+
+- **Only results on the change are kept**: on a reviewed file, on lines inside a hunk of the diff. The rest of a whole-repository scan is left out and counted in a warning, as are results without a file and lines, on paths outside the repository, or without a message. At most 200 results per run are taken.
+- **Severity** comes from the result's level, else the rule's default: `error` is `critical`, `warning` is `warning`, `note` and `none` are `suggestion`, the inverse of [SARIF output](#sarif-output). The title is the rule's short description, name or id; the body is the message, the rule's description and a line naming the tool, its version, the rule and its help link.
+- **The quote decides the lines.** The result's snippet, or the file's lines, is anchored like a reviewer's quote; a quote that no longer matches makes the finding file-level.
+- **From there on it is a finding like any other**: memory and dismissals apply, Verify checks it against the diff, the judge merges it with the reviewers' findings (a tool's duplicate of a reviewer's finding is merged there), and it counts toward the verdict.
+
+Tested with the log Semgrep 1.178.0 writes; other tools' logs follow the same standard.
 
 ### Sessions
 

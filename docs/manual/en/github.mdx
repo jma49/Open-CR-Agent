@@ -101,6 +101,21 @@ jobs:
 - Code scanning is available for public repositories; private ones need GitHub Code Security.
 - What the file holds: [SARIF output](./cli#sarif-output).
 
+### Importing an analyzer's results
+
+The same job can hand ocra the results of Semgrep, CodeQL or another analyzer that writes SARIF: run the tool first and pass its log with `--import-sarif`. Only its results on the change are kept, and they are verified and judged with ocra's own findings ([SARIF input](./cli#sarif-input)). ocra runs no tool itself.
+
+```yaml
+      - run: pipx run semgrep scan --config p/default --metrics=off --sarif --output semgrep.sarif
+      - uses: jma49/Open-CR-Agent@v0.2.0
+        with:
+          args: --import-sarif semgrep.sarif
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+```
+
+The import is tested against a log Semgrep 1.178.0 wrote; this workflow has not been run end to end in CI yet.
+
 ## Overriding a blocking verdict
 
 When ocra blocks a change you have decided to merge anyway, someone with write access other than the pull request's author can comment:

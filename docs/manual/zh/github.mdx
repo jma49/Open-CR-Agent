@@ -101,6 +101,21 @@ jobs:
 - 公开仓库可以使用代码扫描；私有仓库需要 GitHub Code Security。
 - 文件里有什么，见 [SARIF 输出](./cli#sarif-输出)。
 
+### 导入分析工具的结果
+
+同一个 job 也可以把 Semgrep、CodeQL 或其他能写 SARIF 的分析工具的结果交给 ocra：先运行工具，再用 `--import-sarif` 传入它的日志。只保留落在改动上的结果，它们会和 ocra 自己的问题一起核查和裁决（[SARIF 输入](./cli#sarif-输入)）。ocra 自己不运行任何工具。
+
+```yaml
+      - run: pipx run semgrep scan --config p/default --metrics=off --sarif --output semgrep.sarif
+      - uses: jma49/Open-CR-Agent@v0.2.0
+        with:
+          args: --import-sarif semgrep.sarif
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+```
+
+导入功能用 Semgrep 1.178.0 写出的日志测试过；这个 workflow 本身还没有在 CI 里端到端跑过。
+
 ## 强制放行阻塞的结论
 
 如果 ocra 拦下了一个你们决定仍要合并的改动，由 PR 作者以外、有写权限的人评论：

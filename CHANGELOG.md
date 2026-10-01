@@ -7,6 +7,7 @@ Changes to the `@open-cr-agent/*` packages and the GitHub Action. The packages a
 ### New
 
 - **Finding provenance.** Each finding in the JSON report and in `report.json` carries `provenance`: the `task` in `tasks` that reported it and, when the runtime names it, the `model`. Each entry in `tasks` carries its `usage` (tokens and cost). Both are additions to report version 1. SARIF results carry `task` and `model` as properties. The runtime's finding event may name the model (`model`, optional) ([ADR-0018](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0018-finding-specification.md)).
+- **Analyzer results.** `ocra review --import-sarif <file>` (repeatable) adds the results of a SARIF 2.1.0 log an analyzer wrote, Semgrep's or CodeQL's for instance, to the review: only results on lines the change touches, as findings of a task of their own (`sarif-<tool>-<n>`, no cost), verified and judged like a reviewer's. ocra runs no tool itself ([ADR-0019](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0019-sarif-import.md)).
 - **A JSON Schema for the report.** `docs/schema/report.v1.json` (draft 2020-12) is generated from the code and tested against it; `reportJsonSchema()` and `reportOutputSchema` in `@open-cr-agent/core` give the same schema to programs.
 
 ## 0.2.0
