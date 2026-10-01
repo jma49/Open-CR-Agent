@@ -19,5 +19,6 @@
 | [0015](0015-spend-limit-order-and-reporting.md) | Under a spend limit, tasks finish files in plan order so a pull request progresses across pushes; never-started tasks leave files unreviewed, and the report names the limit |
 | [0016](0016-shared-review-conversation.md) | One review conversation for every platform in `vcs-platform` (trust rules, state, summary); GitLab second; line-leading slashes neutralized |
 | [0017](0017-openai-compatible-providers.md) | Model providers declared in configuration: OpenAI-compatible endpoints, https, the key by variable name, a price for every model |
+| [0018](0018-finding-specification.md) | The finding is the specification: one shared model with provenance (task, model, the task's cost), quote-anchored, three-valued verification; the JSON report is its published form, with a generated and tested JSON Schema |
 
 Copy [0000-template.md](0000-template.md) to add a new record.

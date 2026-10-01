@@ -60,6 +60,7 @@ Model tiers are configurable. Defaults: **top** for Judge, **standard** for code
 Finding {
   id, fingerprint,            // fingerprint = hash(category + file + normalized existingCode)
   reviewer, category,         // category is always the reviewer's, never the model's
+  provenance: { task, model? },  // the task in report.tasks (its reviewer, files, outcome, usage); the model when the runtime names it
   severity: 'critical' | 'warning' | 'suggestion',
   file, existingCode, lineRange?,  // lineRange is computed by Anchor, never by the LLM
   title, body, suggestion?, evidence[],
@@ -68,6 +69,8 @@ Finding {
   status: 'new' | 'unfixed'    // fixed and dismissed earlier findings: report.rereview
 }
 ```
+
+The published form is the JSON report (`toReportOutput`, `"version": 1`), described by a Zod schema that generates `docs/schema/report.v1.json` (`npm run schema`); a test keeps the file, the schema and the output together. ADR-0018 is the specification.
 
 ## Verdict rubric
 

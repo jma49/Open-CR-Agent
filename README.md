@@ -20,7 +20,7 @@ Most review bots are `diff → model → comment`. ocra puts code around the mod
 - **Re-reviews are incremental and evidence-based.** A finding is called fixed only when the code it pointed at is gone; a maintainer's dismissal silences it; the pull request's own author cannot.
 - **Cost is bounded and reported.** A per-run spend limit stops starting tasks, the report names the files it left unreviewed, and the next review continues with them. Tokens and dollars are reported for every model call.
 - **Untrusted pull requests are the design case.** Agents get read-only tools, no shell and no web; configuration, rules and memory are read from the base commit; model text cannot form links, mentions or commands in a comment. See the [threat model](docs/manual/en/threat-model.mdx).
-- **Structured output.** A versioned JSON report, [SARIF 2.1.0](docs/manual/en/github.mdx) for code scanning, and a session log with cost, tokens and latency per run.
+- **Structured output.** A versioned JSON report with a published [JSON Schema](docs/schema/report.v1.json), every finding saying which task and model produced it, [SARIF 2.1.0](docs/manual/en/github.mdx) for code scanning, and a session log with cost, tokens and latency per run.
 
 ## How it works
 

@@ -2,6 +2,13 @@
 
 Changes to the `@open-cr-agent/*` packages and the GitHub Action. The packages are released together at one version. While that version is 0.x, a minor release may change options, configuration and output; each such change is listed here.
 
+## Unreleased
+
+### New
+
+- **Finding provenance.** Each finding in the JSON report and in `report.json` carries `provenance`: the `task` in `tasks` that reported it and, when the runtime names it, the `model`. Each entry in `tasks` carries its `usage` (tokens and cost). Both are additions to report version 1. SARIF results carry `task` and `model` as properties. The runtime's finding event may name the model (`model`, optional) ([ADR-0018](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0018-finding-specification.md)).
+- **A JSON Schema for the report.** `docs/schema/report.v1.json` (draft 2020-12) is generated from the code and tested against it; `reportJsonSchema()` and `reportOutputSchema` in `@open-cr-agent/core` give the same schema to programs.
+
 ## 0.2.0
 
 ocra now reviews GitLab merge requests, writes SARIF for code scanning, runs from a container image, and can send reviews to your own OpenAI-compatible model endpoint. A security audit of these changes found that text a model wrote could still mention people or post links, and that an edited comment could redirect a dismissal; both are fixed, with the rest of its findings ([audit](https://github.com/jma49/Open-CR-Agent/blob/main/docs/audits/2026-09-30-m9-security.md)).
