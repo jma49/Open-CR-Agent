@@ -30,6 +30,17 @@ describe("parseReviewArgs", () => {
     });
   });
 
+  it("takes a configuration file of the user's own", () => {
+    expect(parseReviewArgs(["--config", "ci/ocra.json"])).toMatchObject({
+      configFile: "ci/ocra.json",
+    });
+    expect(parseReviewArgs(["--config", "ci/ocra.json", "--no-repo-config"])).toMatchObject({
+      configFile: "ci/ocra.json",
+      ignoreRepoConfig: true,
+    });
+    expect(() => parseReviewArgs(["--config", ""])).toThrow("--config needs a file");
+  });
+
   it("collects --import-sarif files, and refuses them with --plan", () => {
     expect(
       parseReviewArgs(["--import-sarif", "a.sarif", "--import-sarif", "b.sarif"]),

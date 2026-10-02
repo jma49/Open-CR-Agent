@@ -72,6 +72,8 @@ export async function reviewCommand(
   const root = await findRepositoryRoot(deps.cwd);
   const warn = (message: string) => io.err.write(`[ocra] Warning: ${forTerminal(message)}\n`);
   const ignoreRepoConfig = args.ignoreRepoConfig === true;
+  const configFile = args.configFile ? resolve(deps.cwd, args.configFile) : undefined;
+  const localArgs = configFile ? { ...args, configFile } : args;
   const target = args.pullRequest
     ? await pullRequestTarget(
         args.pullRequest,
@@ -81,6 +83,7 @@ export async function reviewCommand(
         warn,
         deps.fetch,
         ignoreRepoConfig,
+        configFile,
       )
     : args.mergeRequest
       ? await mergeRequestTarget(
@@ -91,8 +94,9 @@ export async function reviewCommand(
           warn,
           deps.fetch,
           ignoreRepoConfig,
+          configFile,
         )
-      : await localTarget(args, deps.cwd, root, deps.env, warn, deps.fetch);
+      : await localTarget(localArgs, deps.cwd, root, deps.env, warn, deps.fetch);
   const { config } = target;
   const session = { dir: join(root, SESSIONS_DIR), id: newSessionId() };
 

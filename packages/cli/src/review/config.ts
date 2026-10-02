@@ -109,6 +109,9 @@ export type CliConfig = Omit<z.infer<typeof configSchema>, "models" | "providers
 export interface LoadOptions {
   repository: boolean;
   read?: (path: string) => Promise<string | undefined>;
+  // A file of the user's own (--config), read instead of the repository's;
+  // it is theirs to trust, so it applies with --no-repo-config too.
+  file?: string;
   fetch?: typeof fetch;
   warn?: (message: string) => void;
 }
@@ -129,9 +132,11 @@ export async function loadConfig(
   options: LoadOptions = { repository: true },
 ): Promise<CliConfig> {
   const read = options.read ?? ((path: string) => readConfigFromDisk(root, path));
-  const { config: parsed, rules } = options.repository
-    ? await readConfigFile(read, options)
-    : { config: configSchema.parse({}), rules: [] };
+  const { config: parsed, rules } = options.file
+    ? await readConfigFile(ownFile(options.file), options, options.file)
+    : options.repository
+      ? await readConfigFile(read, options, CONFIG_PATH)
+      : { config: configSchema.parse({}), rules: [] };
   const models: { -readonly [Tier in ModelTier]?: readonly string[] } = {};
   for (const [tier, chain] of Object.entries(parsed.models) as [
     ModelTier,
@@ -194,6 +199,16 @@ function unpriced(
 // The user's own checkout, read like any local file (links followed): unlike
 // the review's reads, which never follow links (vcs-local), this is trusted
 // configuration, and --no-repo-config skips it for code that is not.
+function ownFile(file: string): () => Promise<string> {
+  return async () => {
+    try {
+      return await readFile(file, "utf8");
+    } catch (error) {
+      throw new ConfigError(`cannot read ${file}: ${(error as Error).message}`);
+    }
+  };
+}
+
 async function readConfigFromDisk(root: string, path: string): Promise<string | undefined> {
   try {
     return await readFile(join(root, path), "utf8");
@@ -206,6 +221,7 @@ async function readConfigFromDisk(root: string, path: string): Promise<string | 
 async function readConfigFile(
   read: (path: string) => Promise<string | undefined>,
   options: LoadOptions,
+  label: string,
 ): Promise<{ config: z.infer<typeof configSchema>; rules: RepoRule[] }> {
   const text = await read(CONFIG_PATH);
   if (text === undefined) return { config: configSchema.parse({}), rules: [] };
@@ -213,11 +229,10 @@ async function readConfigFile(
   try {
     data = JSON.parse(text);
   } catch (error) {
-    throw new ConfigError(`${CONFIG_PATH} is not valid JSON: ${(error as Error).message}`);
+    throw new ConfigError(`${label} is not valid JSON: ${(error as Error).message}`);
   }
   const local = configSchema.safeParse(data);
-  if (!local.success)
-    throw new ConfigError(`${CONFIG_PATH} is invalid: ${z.prettifyError(local.error)}`);
+  if (!local.success) throw new ConfigError(`${label} is invalid: ${z.prettifyError(local.error)}`);
   if (!local.data.extends) return { config: local.data, rules: [] };
 
   // A shared configuration that cannot be loaded costs its defaults, not the

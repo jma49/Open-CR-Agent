@@ -120,6 +120,27 @@ describe("loadConfig", () => {
     expect(config.models).toEqual({ standard: ["a/std"] });
   });
 
+  it("reads the user's own file instead of the repository's, with --no-repo-config too", async () => {
+    const dir = root(JSON.stringify({ concurrency: 2, plugins: ["./evil.mjs"] }));
+    const own = join(dir, "..", `ocra-own-${process.pid}.json`);
+    writeFileSync(own, JSON.stringify({ concurrency: 7, exclude: ["vendor/**"] }));
+    try {
+      const config = await loadConfig(dir, {}, { repository: false, file: own });
+      expect(config).toMatchObject({ concurrency: 7, exclude: ["vendor/**"], plugins: [] });
+      const trusted = await loadConfig(dir, {}, { repository: true, file: own });
+      expect(trusted.concurrency).toBe(7);
+      writeFileSync(own, "{");
+      await expect(loadConfig(dir, {}, { repository: true, file: own })).rejects.toThrow(
+        `${own} is not valid JSON`,
+      );
+      await expect(
+        loadConfig(dir, {}, { repository: true, file: join(dir, "missing.json") }),
+      ).rejects.toThrow("cannot read");
+    } finally {
+      rmSync(own, { force: true });
+    }
+  });
+
   it("rejects invalid JSON, unknown keys and bad values", async () => {
     await expect(loadConfig(root("{"), {})).rejects.toThrow(ConfigError);
     await expect(loadConfig(root('{"modles":{}}'), {})).rejects.toThrow(

@@ -62,6 +62,9 @@ Run:
   --timeout-minutes <n>    Per-PR timeout (default 30)
   --retry-failed           Review again PRs that failed in an earlier attempt
   --reviewers <ids>        Passed to ocra review --reviewers
+  --config <file>          Passed to ocra review --config: your own configuration
+                           (declared providers, limits) for reviews that run with
+                           --no-repo-config
   --mock-judge             Offline approximate judge (numbers not comparable)
 
 Models come from OCRA_MODEL_TOP / OCRA_MODEL_STANDARD / OCRA_MODEL_LIGHT.
@@ -108,6 +111,7 @@ const OPTIONS = {
   "mock-judge": { type: "boolean" },
   "retry-failed": { type: "boolean" },
   reviewers: { type: "string" },
+  config: { type: "string" },
   "spread-of": { type: "string" },
 } as const;
 
@@ -224,6 +228,7 @@ async function run(
   const reviewArgs = [
     ...(values.reviewers ? ["--reviewers", values.reviewers] : []),
     ...(prMaxCost !== undefined ? ["--max-cost-usd", String(prMaxCost)] : []),
+    ...(values.config ? ["--config", resolve(values.config)] : []),
   ];
   if (reviewArgs.length > 0) runOptions.reviewArgs = reviewArgs;
 

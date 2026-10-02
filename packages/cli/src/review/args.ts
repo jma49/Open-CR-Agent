@@ -29,6 +29,8 @@ export interface ReviewArgs {
   full?: true;
   plan?: true;
   importSarif?: string[];
+  // Read this file instead of the repository's .ocra/config.json.
+  configFile?: string;
 }
 
 export class UsageError extends Error {}
@@ -56,8 +58,10 @@ Options:
                      that fall on the change; repeatable; not with --plan
   --plan             Show files, bundles, review tasks and prompt sizes; call no model
   --ultra            Favor recall: all reviewers at every tier, two samples each (about 2x cost)
+  --config <file>    Read this configuration file instead of the repository's
+                     .ocra/config.json; it applies with --no-repo-config too
   --no-repo-config   Ignore .ocra/config.json and its plugins (for untrusted
-                     code); models come from OCRA_MODEL_* variables
+                     code); models come from OCRA_MODEL_* variables or --config
   -h, --help         Show help
 `;
 
@@ -106,6 +110,10 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
       );
     args.maxCostUsd = max;
   }
+  if (values.config !== undefined) {
+    if (values.config === "") throw new UsageError("--config needs a file");
+    args.configFile = values.config;
+  }
   if (values["import-sarif"] !== undefined && values["import-sarif"].length > 0) {
     if (values.plan) throw new UsageError("--import-sarif is not used by --plan");
     args.importSarif = values["import-sarif"];
@@ -133,6 +141,7 @@ function parse(argv: string[]) {
       format: { type: "string" },
       output: { type: "string" },
       "no-repo-config": { type: "boolean" },
+      config: { type: "string" },
       reviewers: { type: "string" },
       "max-cost-usd": { type: "string" },
       "import-sarif": { type: "string", multiple: true },

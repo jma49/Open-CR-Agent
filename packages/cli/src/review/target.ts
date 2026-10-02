@@ -1,3 +1,4 @@
+import { dirname } from "node:path";
 import type { OcraPlugin, PluginRegistry, VcsAdapter } from "@open-cr-agent/core";
 import { DEFAULT_BOT_LOGIN, GitHubApi } from "@open-cr-agent/vcs-github";
 import { GitLabApi } from "@open-cr-agent/vcs-gitlab";
@@ -28,12 +29,17 @@ export async function localTarget(
 ): Promise<ReviewTarget> {
   const config = await loadConfig(root, env, {
     repository: !args.ignoreRepoConfig,
+    ...(args.configFile ? { file: args.configFile } : {}),
     warn,
     ...(fetchImpl ? { fetch: fetchImpl } : {}),
   });
   return {
     config,
-    plugins: await loadExternalPlugins(config.plugins, root),
+    // Plugins named by the user's own file are resolved from where it is.
+    plugins: await loadExternalPlugins(
+      config.plugins,
+      args.configFile ? dirname(args.configFile) : root,
+    ),
     createVcs: (registry) => registry.createVcs("local", { cwd, target: args.target }),
     ...(args.ignoreRepoConfig ? { readTrusted: untrustedTreeReader(args, cwd) } : {}),
     publish: false,
@@ -63,6 +69,7 @@ export async function pullRequestTarget(
   warn: (message: string) => void,
   fetchImpl?: typeof fetch,
   ignoreRepoConfig = false,
+  configFile?: string,
 ): Promise<ReviewTarget> {
   const token = env.GITHUB_TOKEN ?? env.GH_TOKEN;
   if (!token) throw new ConfigError("--pr needs a GitHub token in GITHUB_TOKEN or GH_TOKEN");
@@ -80,11 +87,12 @@ export async function pullRequestTarget(
   const config = await loadConfig(root, env, {
     repository: !ignoreRepoConfig,
     read: readTrusted,
+    ...(configFile ? { file: configFile } : {}),
     warn,
     ...(fetchImpl ? { fetch: fetchImpl } : {}),
   });
   if (config.plugins.length > 0) {
-    warn("plugins in .ocra/config.json are not loaded for pull requests");
+    warn("plugins in the configuration are not loaded for pull requests");
   }
   const code = new LocalGitAdapter({
     cwd,
@@ -129,6 +137,7 @@ export async function mergeRequestTarget(
   warn: (message: string) => void,
   fetchImpl?: typeof fetch,
   ignoreRepoConfig = false,
+  configFile?: string,
 ): Promise<ReviewTarget> {
   const token = env.GITLAB_TOKEN;
   if (!token) {
@@ -158,11 +167,12 @@ export async function mergeRequestTarget(
   const config = await loadConfig(root, env, {
     repository: !ignoreRepoConfig,
     read: readTrusted,
+    ...(configFile ? { file: configFile } : {}),
     warn,
     ...(fetchImpl ? { fetch: fetchImpl } : {}),
   });
   if (config.plugins.length > 0) {
-    warn("plugins in .ocra/config.json are not loaded for merge requests");
+    warn("plugins in the configuration are not loaded for merge requests");
   }
   const code = new LocalGitAdapter({
     cwd,
