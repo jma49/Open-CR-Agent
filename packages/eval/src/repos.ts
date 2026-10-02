@@ -52,14 +52,21 @@ export async function prepareRepository(reposDir: string, instance: Instance): P
   for (const commit of [instance.baseCommit, instance.headCommit]) {
     await ensureCommit(dir, commit, instance.prUrl);
   }
-  const checkout = await exec(
-    "git",
-    ["checkout", "--quiet", "--force", "--detach", "--end-of-options", instance.headCommit],
-    { cwd: dir, timeoutMs: HOUR, env: GIT_ENV },
-  );
+  const checkout = await exec("git", checkoutArgs(instance.headCommit), {
+    cwd: dir,
+    timeoutMs: HOUR,
+    env: GIT_ENV,
+  });
   if (checkout.exitCode !== 0)
     throw new Error(`git checkout ${instance.headCommit} failed: ${checkout.stderr.trim()}`);
   return dir;
+}
+
+// No --end-of-options: git 2.43 (Ubuntu 24.04) rejects it after --detach
+// ("--detach does not take a path argument"). The commit is safe as the
+// last argument because the dataset admits only hexadecimal commit ids.
+export function checkoutArgs(commit: string): string[] {
+  return ["checkout", "--quiet", "--force", "--detach", commit];
 }
 
 // Some PR commits in the dataset were force-pushed away and are no longer

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { exec } from "./exec.js";
-import { GIT_ENV } from "./repos.js";
+import { checkoutArgs, GIT_ENV } from "./repos.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -42,5 +42,27 @@ describe("GIT_ENV", () => {
     expect(fixed.exitCode).toBe(0);
     // The raw blob: the file itself, or an LFS pointer where git-lfs is installed.
     expect(existsSync(join(dir, "a.bin"))).toBe(true);
+  });
+});
+
+describe("checkoutArgs", () => {
+  it("detaches at the commit on the installed git", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "ocra-checkout-"));
+    dirs.push(dir);
+    const quiet = { cwd: dir, stdio: "ignore" as const };
+    execFileSync("git", ["init", "-q", "-b", "main"], quiet);
+    execFileSync("git", ["config", "user.email", "t@example.com"], quiet);
+    execFileSync("git", ["config", "user.name", "T"], quiet);
+    writeFileSync(join(dir, "a.txt"), "one\n");
+    execFileSync("git", ["add", "-A"], quiet);
+    execFileSync("git", ["commit", "-q", "-m", "one"], quiet);
+    const first = execFileSync("git", ["rev-parse", "HEAD"], { cwd: dir, encoding: "utf8" }).trim();
+    writeFileSync(join(dir, "a.txt"), "two\n");
+    execFileSync("git", ["commit", "-q", "-am", "two"], quiet);
+
+    const result = await exec("git", checkoutArgs(first), { cwd: dir, env: GIT_ENV });
+    expect(result.exitCode, result.stderr).toBe(0);
+    const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: dir, encoding: "utf8" }).trim();
+    expect(head).toBe(first);
   });
 });
