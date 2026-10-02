@@ -16,6 +16,12 @@ export const MAX_AGENT_STEPS = 30;
 // starting over.
 export const RESUME_MESSAGE = `You stopped before finishing the review. Continue with the files in <ocra_review_files> you have not reviewed yet, report each confirmed issue with ${REVIEW_TOOLS.reportFinding}, and call ${REVIEW_TOOLS.taskDone} when every file is done.`;
 
+// Text with every secret replaced: a provider's error may echo the request's
+// headers, and a progress line or session file must not carry the key.
+export function withoutSecrets(text: string, secrets: readonly string[]): string {
+  return secrets.reduce((shown, secret) => shown.replaceAll(secret, "<key>"), text);
+}
+
 // What one attempt of a task on one model came to, whatever runtime ran it.
 export interface AttemptOutcome {
   findings: unknown[];

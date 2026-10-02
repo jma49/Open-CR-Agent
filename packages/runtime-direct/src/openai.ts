@@ -5,6 +5,7 @@ import {
   type QuotaError,
   type ToolDefinition,
   type Usage,
+  withoutSecrets,
 } from "@open-cr-agent/core";
 import { z } from "zod";
 
@@ -112,7 +113,7 @@ export async function chat(
   const body = await response.text().catch(() => "");
   if (!response.ok) {
     // An endpoint may echo the request's headers in an error page.
-    const shown = endpoint.apiKey ? body.replaceAll(endpoint.apiKey, "<key>") : body;
+    const shown = withoutSecrets(body, endpoint.apiKey ? [endpoint.apiKey] : []);
     const message = `HTTP ${response.status}: ${excerpt(shown)}`;
     const quota = parseQuotaError(body, response.status);
     if (quota && quota.retryAfterMs === undefined) {

@@ -22,11 +22,12 @@ import {
   reviewTools,
   type Usage,
   withFailback,
+  withoutSecrets,
 } from "@open-cr-agent/core";
 import { createOpencodeClient, type OpencodeClient } from "@opencode-ai/sdk/v2";
 import { resolveOpencodeBinary } from "./binary.js";
 import { type OpencodeServer, startOpencodeServer } from "./opencode-server.js";
-import { missingCredentials, serverEnv } from "./server-env.js";
+import { credentialValues, missingCredentials, serverEnv } from "./server-env.js";
 import { type PromptInput, promptSession } from "./session-prompt.js";
 import { startToolServer, type ToolServer } from "./tool-server.js";
 import { createUntimedDispatcher, untimedFetch } from "./transport.js";
@@ -76,6 +77,8 @@ export interface OpenCodeRuntimeOptions extends RuntimeOptions {
 
 interface Infra {
   onExit: () => void;
+  // Redacted from what a provider's error says (ADR-0020).
+  secrets: readonly string[];
   root: string;
   tools: ToolServer;
   server: OpencodeServer;
@@ -189,6 +192,16 @@ export class OpenCodeRuntime implements AgentRuntime {
       `${MCP_SERVER}_${REVIEW_TOOLS.reportFinding}`,
       signal,
       onUsage ? { onUsage } : {},
+    ).then((outcome) =>
+      outcome.error
+        ? {
+            ...outcome,
+            error: {
+              ...outcome.error,
+              message: withoutSecrets(outcome.error.message, infra.secrets),
+            },
+          }
+        : outcome,
     );
   }
 
@@ -239,7 +252,8 @@ export class OpenCodeRuntime implements AgentRuntime {
         rmSync(root, { recursive: true, force: true });
       };
       process.on("exit", onExit);
-      return { root, tools, server, client, dispatcher, onExit };
+      const secrets = credentialValues(this.options.env, providersOf(this.options.models), custom);
+      return { root, tools, server, client, dispatcher, onExit, secrets };
     } catch (error) {
       await Promise.allSettled([tools.close(), started?.close()]);
       await rm(root, { recursive: true, force: true });

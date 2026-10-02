@@ -13,6 +13,10 @@ Changes to the `@open-cr-agent/*` packages and the GitHub Action. The packages a
 - **Analyzer results.** `ocra review --import-sarif <file>` (repeatable) adds the results of a SARIF 2.1.0 log an analyzer wrote, Semgrep's or CodeQL's for instance, to the review: only results on lines the change touches, as findings of a task of their own (`sarif-<tool>-<n>`, no cost), verified and judged like a reviewer's. ocra runs no tool itself ([ADR-0019](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0019-sarif-import.md)).
 - **A JSON Schema for the report.** `docs/schema/report.v1.json` (draft 2020-12) is generated from the code and tested against it; `reportJsonSchema()` and `reportOutputSchema` in `@open-cr-agent/core` give the same schema to programs.
 
+### Fixed
+
+- **Provider errors no longer carry the key.** When a model endpoint echoed the request's `Authorization` header in an error, the OpenCode runtime passed that text on as a progress line and into the session file. Every configured provider credential is now replaced in such errors; the new `direct` runtime does the same.
+
 ## 0.2.0
 
 ocra now reviews GitLab merge requests, writes SARIF for code scanning, runs from a container image, and can send reviews to your own OpenAI-compatible model endpoint. A security audit of these changes found that text a model wrote could still mention people or post links, and that an edited comment could redirect a dismissal; both are fixed, with the rest of its findings ([audit](https://github.com/jma49/Open-CR-Agent/blob/main/docs/audits/2026-09-30-m9-security.md)).

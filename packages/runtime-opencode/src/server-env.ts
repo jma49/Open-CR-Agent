@@ -137,6 +137,51 @@ const NEVER_BY_PREFIX = [
   "OCRA_",
 ];
 
+// The variables that carry the credentials of the configured providers: for
+// a provider declared in configuration only the one it names, for a known
+// catalog provider its variables, for any other every variable with its
+// prefix that is not a platform token.
+export function credentialNames(
+  base: Env,
+  providers: readonly string[],
+  custom: CustomProviders = {},
+): string[] {
+  const names: string[] = [];
+  for (const provider of new Set(providers)) {
+    const declared = custom[provider];
+    if (declared) {
+      if (declared.apiKeyEnv) names.push(declared.apiKeyEnv);
+      continue;
+    }
+    const known = PROVIDER_VARIABLES[provider];
+    if (known) {
+      names.push(...known);
+    } else {
+      const prefix = `${provider.toUpperCase().replaceAll("-", "_")}_`;
+      for (const name of Object.keys(base)) {
+        if (name.startsWith(prefix) && !NEVER_BY_PREFIX.some((p) => name.startsWith(p))) {
+          names.push(name);
+        }
+      }
+    }
+  }
+  return names;
+}
+
+// The credential values themselves, to redact from what a provider says.
+// Values shorter than a key could be ordinary words and are left alone.
+export function credentialValues(
+  base: Env,
+  providers: readonly string[],
+  custom: CustomProviders = {},
+): string[] {
+  const names = credentialNames(base, providers, custom);
+  if (providers.includes("google") && !custom.google) names.push(...GOOGLE_KEY_ALIASES);
+  return names
+    .map((name) => base[name])
+    .filter((value): value is string => value !== undefined && value.length >= 8);
+}
+
 // The child sees only what it needs: system basics, the credentials of the
 // providers in the configured model chains (for a provider declared in
 // configuration, only the variable it names), and names listed in
@@ -155,24 +200,7 @@ export function serverEnv(
 
   for (const name of SYSTEM_VARIABLES) copy(name);
   for (const name of Object.keys(base)) if (name.startsWith("LC_")) copy(name);
-  for (const provider of new Set(providers)) {
-    const declared = custom[provider];
-    if (declared) {
-      if (declared.apiKeyEnv) copy(declared.apiKeyEnv);
-      continue;
-    }
-    const known = PROVIDER_VARIABLES[provider];
-    if (known) {
-      for (const name of known) copy(name);
-    } else {
-      const prefix = `${provider.toUpperCase().replaceAll("-", "_")}_`;
-      for (const name of Object.keys(base)) {
-        if (name.startsWith(prefix) && !NEVER_BY_PREFIX.some((p) => name.startsWith(p))) {
-          copy(name);
-        }
-      }
-    }
-  }
+  for (const name of credentialNames(base, providers, custom)) copy(name);
   for (const name of (base[EXTRA_ENV_VARIABLE] ?? "").split(",")) {
     if (name.trim() !== "") copy(name.trim());
   }

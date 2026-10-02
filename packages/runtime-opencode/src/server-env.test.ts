@@ -1,7 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { missingCredentials, serverEnv } from "./server-env.js";
+import { credentialValues, missingCredentials, serverEnv } from "./server-env.js";
 
 const dirs = { config: "/t/config", data: "/t/data", state: "/t/state" };
+
+describe("credentialValues", () => {
+  it("names the keys of the configured providers, declared or known, and skips short values", () => {
+    const base = {
+      GEMINI_API_KEY: "gemini-secret",
+      LOCAL_KEY: "sk-local-secret",
+      GROQ_API_KEY: "short",
+      OPENAI_API_KEY: "not-in-a-chain",
+    };
+    expect(
+      credentialValues(base, ["google", "local", "groq"], {
+        local: { baseUrl: "https://x.example/v1", apiKeyEnv: "LOCAL_KEY", models: {} },
+      }),
+    ).toEqual(expect.arrayContaining(["gemini-secret", "sk-local-secret"]));
+    expect(
+      credentialValues(base, ["google", "local", "groq"], {
+        local: { baseUrl: "https://x.example/v1", apiKeyEnv: "LOCAL_KEY", models: {} },
+      }),
+    ).toHaveLength(2);
+  });
+});
 
 describe("missingCredentials", () => {
   it("names the variables to set for providers without a key", () => {
