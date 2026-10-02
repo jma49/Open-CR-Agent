@@ -91,7 +91,7 @@ The year's success condition is not a list of interfaces: it is three external t
 
 **M11 — Evidence** (a standing credit line: a few dollars a month for the nightly test, tens for golden runs).
 
-1. A nightly live smoke test in CI on a two-file pull request with the cheapest model, gated by a secret: the first real-model integration test the project has.
+1. A nightly live smoke test in CI on a two-file pull request with the cheapest model, gated by a secret: the first real-model integration test the project has. The workflow exists (`nightly-live.yml`: a fixed seven-file change of this repository on the free OpenRouter model with the `direct` runtime, every task completed, $0, gated by the `OCRA_LIVE_SMOKE` variable and the `OPENROUTER_API_KEY` secret); it runs once the maintainer sets both.
 2. The golden set grown until a five-point change is visible; precision and recall published per reviewer, per model and per language, with cost per change, as a trend across releases.
 3. M5 and M6 as written above, under that evidence.
 4. Only then: prompts, rules and reviewers unfreeze, one change at a time, each measured.
@@ -134,7 +134,7 @@ What a company checks before adopting a code review tool, and where ocra is. Upd
 | Policy | Repository and remote configuration; no organization-level policy the repository cannot override (M12) |
 | Integrations | Versioned JSON report; SARIF 2.1.0 out; no SARIF in (M10) |
 | Observability | Session files with cost, tokens and latency per run, and one run id across the session directory, the report, the progress output, the summary comment and the SARIF log; `ocra metrics` over the session reports; no published event schema (M12) |
-| Quality evidence | 16 golden cases, one run, agent labels spot-checked by a second model; no live-model test in CI; paused with the credit (M11) |
+| Quality evidence | 16 golden cases, one run, agent labels spot-checked by a second model; a nightly live smoke workflow on a free model, waiting for its secret; golden runs paused with the credit (M11) |
 | Support and stability | Early 0.x; the Stability and support page names the contracts; one maintainer |
 | Production use | Dogfood on two repositories; no external user yet (M13) |
 

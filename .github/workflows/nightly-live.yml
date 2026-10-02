@@ -1,0 +1,111 @@
+# The first real-model test of the project (M11 item 1): once a night, the
+# built CLI reviews one small, fixed change of this repository on a free
+# model through OpenRouter with the `direct` runtime, and the job checks that
+# the review completed, every task finished, the model was the declared one
+# and the run cost nothing. It needs the maintainer's key as the repository
+# secret OPENROUTER_API_KEY and the repository variable OCRA_LIVE_SMOKE set to
+# "on"; without the switch it does not run. About 50 model requests a night,
+# of OpenRouter's 1000 free requests a day per account.
+name: nightly live smoke
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: vars.OCRA_LIVE_SMOKE == 'on'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # ocra-steps-clean in evals/golden: seven files, sixteen lines, no known issue.
+      BASE: 2ca6dd360e26a4165703c8d4e114ab2da917b93e
+      HEAD: 696d0c844a0d418364d7ffaba7dc6d9506303b11
+      MODEL: stealth/space-bunny-alpha
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # The configuration lives outside the reviewed tree, as the manual's
+      # recipe says: the review runs with --no-repo-config and nothing from the
+      # commits under review is loaded.
+      - name: Write the configuration
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/ocra-live.json" <<JSON
+          {
+            "runtime": "direct",
+            "models": {
+              "top": "router/$MODEL",
+              "standard": "router/$MODEL",
+              "light": "router/$MODEL"
+            },
+            "providers": {
+              "router": {
+                "type": "openai-compatible",
+                "baseUrl": "https://openrouter.ai/api/v1",
+                "apiKeyEnv": "OPENROUTER_API_KEY",
+                "models": { "$MODEL": { "input": 0, "output": 0 } }
+              }
+            }
+          }
+          JSON
+      - name: Review the fixed change
+        id: review
+        shell: bash
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          set -o pipefail
+          if [ -z "$OPENROUTER_API_KEY" ]; then
+            echo "::error::OPENROUTER_API_KEY is not set; add it as a repository secret or switch OCRA_LIVE_SMOKE off"
+            exit 1
+          fi
+          set +e
+          node packages/cli/dist/main.js review \
+            --from "$BASE" --to "$HEAD" \
+            --no-repo-config --config "$RUNNER_TEMP/ocra-live.json" \
+            --format json --output "$RUNNER_TEMP/report.json"
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+      - name: Check the report
+        shell: bash
+        env:
+          EXIT: ${{ steps.review.outputs.exit }}
+        run: |
+          # 0 and 1 are reviews that finished (1: a confirmed critical, which
+          # a model may report); 2 is an error, 3 an incomplete review.
+          case "$EXIT" in 0|1) ;; *) echo "::error::ocra review exited $EXIT"; exit 1 ;; esac
+          node --input-type=module -e '
+            import { readFile } from "node:fs/promises";
+            const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/report.json", "utf8"));
+            const problems = [];
+            if (report.version !== 1) problems.push(`report version ${report.version}`);
+            const tasks = report.tasks ?? [];
+            if (tasks.length === 0) problems.push("no review task ran");
+            for (const t of tasks) if (t.status !== "completed") problems.push(`task ${t.taskId} ${t.status}: ${t.error ?? ""}`);
+            if (report.usage.costUsd !== 0) problems.push(`cost $${report.usage.costUsd}, expected $0 on the free model`);
+            if (report.usage.inputTokens === 0) problems.push("no tokens reported");
+            const expected = `router/${process.env.MODEL}`;
+            for (const f of report.findings ?? []) {
+              if (f.provenance?.model !== expected) problems.push(`finding ${f.fingerprint} from ${f.provenance?.model}`);
+            }
+            console.log(`${tasks.length} task(s), ${report.findings.length} finding(s), verdict ${report.verdict}, ${report.usage.inputTokens} in / ${report.usage.outputTokens} out tokens, run ${report.runId ?? "n/a"}`);
+            if (problems.length > 0) { console.error(problems.join("\n")); process.exit(1); }
+          '
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: live-smoke-report
+          path: ${{ runner.temp }}/report.json
+          if-no-files-found: ignore
+          retention-days: 14
