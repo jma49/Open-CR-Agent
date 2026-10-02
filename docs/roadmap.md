@@ -98,7 +98,7 @@ The year's success condition is not a list of interfaces: it is three external t
 
 **M12 — Operability** (no credit).
 
-1. **Organization policy**: a central configuration the reviewed repository cannot override (allowed models, spend limits, mandatory reviewers, excluded paths), with a documented precedence over remote and repository configuration.
+1. **Organization policy**: a central configuration the reviewed repository cannot override (allowed models, spend limits, mandatory reviewers, excluded paths), with a documented precedence over remote and repository configuration. Design proposed in ADR-0022 (`OCRA_POLICY`, caps over every layer, fails closed, reported).
 2. **A run id** through logs, comments, the report and the session file; the event schema versioned and published. The run id landed (the session id, in the report as `runId`, in the progress output, the summary comment and the SARIF log); the event schema is still internal.
 3. Minimal metrics an operations team can scrape from session files: runs, cost, findings, dismissals, acceptance rate, per reviewer.
 
