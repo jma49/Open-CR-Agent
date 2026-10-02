@@ -64,16 +64,16 @@ OpenCode 自带了与目录里几乎所有供应商通信的代码。只有少�
 ```json
 {
   "models": {
-    "top": "router/openrouter/space-bunny-alpha",
-    "standard": "router/openrouter/space-bunny-alpha",
-    "light": "router/openrouter/space-bunny-alpha"
+    "top": "router/stealth/space-bunny-alpha",
+    "standard": "router/stealth/space-bunny-alpha",
+    "light": "router/stealth/space-bunny-alpha"
   },
   "providers": {
     "router": {
       "type": "openai-compatible",
       "baseUrl": "https://openrouter.ai/api/v1",
       "apiKeyEnv": "OPENROUTER_API_KEY",
-      "models": { "openrouter/space-bunny-alpha": { "input": 0, "output": 0 } }
+      "models": { "stealth/space-bunny-alpha": { "input": 0, "output": 0 } }
     }
   }
 }
@@ -81,10 +81,10 @@ OpenCode 自带了与目录里几乎所有供应商通信的代码。只有少�
 
 - 价格 0 按字面理解：运行会警告这个模型的 token 不计入 `--max-cost-usd`，报告的花费是 $0，这正是预览期的价格；token 数照常报告。
 - 把这个文件放在被审查仓库之外，审查带着 `--no-repo-config` 运行时用 [`--config`](./cli) 传入，评测工具就是这么用的。
-- 评测的判定模型也可以用同一个端点：`JUDGE_API_KEY`、`JUDGE_BASE_URL=https://openrouter.ai/api/v1`、`JUDGE_MODEL=openrouter/space-bunny-alpha`。
+- 评测的判定模型也可以用同一个端点：`JUDGE_API_KEY`、`JUDGE_BASE_URL=https://openrouter.ai/api/v1`、`JUDGE_MODEL=stealth/space-bunny-alpha`。
 - 预览就是预览：模型、限额和价格随时可能变，匿名模型也不说明它保留什么。拿它做评测，别拿它审查必须保密的代码。
 
-模型 id 以 2026-10-02 列出的为准，请到模型页面核对。声明端点这条路不需要 OpenCode 的价格目录；目录形式的 `openrouter/<模型>` 需要能访问目录且模型在目录里，否则立刻失败。本仓库还没有通过 OpenRouter 真正跑过一次审查。
+模型 id 是 OpenRouter 的 API 示例在 2026-10-02 给出的（`stealth/space-bunny-alpha`）；预览模型可能变动，请到模型页面核对。声明端点这条路不需要 OpenCode 的价格目录；目录形式的 `openrouter/<模型>` 需要能访问目录且模型在目录里，否则立刻失败。本仓库还没有通过 OpenRouter 真正跑过一次审查。
 
 ## 还会访问哪些网络地址
 

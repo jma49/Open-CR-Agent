@@ -64,16 +64,16 @@ A model offered at no charge, such as a stealth preview on [OpenRouter](https://
 ```json
 {
   "models": {
-    "top": "router/openrouter/space-bunny-alpha",
-    "standard": "router/openrouter/space-bunny-alpha",
-    "light": "router/openrouter/space-bunny-alpha"
+    "top": "router/stealth/space-bunny-alpha",
+    "standard": "router/stealth/space-bunny-alpha",
+    "light": "router/stealth/space-bunny-alpha"
   },
   "providers": {
     "router": {
       "type": "openai-compatible",
       "baseUrl": "https://openrouter.ai/api/v1",
       "apiKeyEnv": "OPENROUTER_API_KEY",
-      "models": { "openrouter/space-bunny-alpha": { "input": 0, "output": 0 } }
+      "models": { "stealth/space-bunny-alpha": { "input": 0, "output": 0 } }
     }
   }
 }
@@ -81,10 +81,10 @@ A model offered at no charge, such as a stealth preview on [OpenRouter](https://
 
 - A price of 0 is taken literally: the run warns that the model's tokens are not counted by `--max-cost-usd`, and reports a cost of $0, which is what the preview costs; tokens are still reported.
 - Keep the file outside the reviewed repository and pass it with [`--config`](./cli) when the review runs with `--no-repo-config`, as the evaluation harness does.
-- The evaluation's judge can use the same endpoint: `JUDGE_API_KEY`, `JUDGE_BASE_URL=https://openrouter.ai/api/v1` and `JUDGE_MODEL=openrouter/space-bunny-alpha`.
+- The evaluation's judge can use the same endpoint: `JUDGE_API_KEY`, `JUDGE_BASE_URL=https://openrouter.ai/api/v1` and `JUDGE_MODEL=stealth/space-bunny-alpha`.
 - A preview is a preview: the model, its limits and its price can change without notice, and an anonymous model says nothing about what it keeps. Use it to evaluate, not on code you must keep private.
 
-The model ids are those listed on 2026-10-02; check the model's page. The declared-endpoint path works without OpenCode's pricing catalog; the catalog form, `openrouter/<model>`, needs the catalog reachable and the model in it, and fails at once otherwise. No review has run through OpenRouter from this repository yet.
+The model id is the one OpenRouter's API example showed on 2026-10-02 (`stealth/space-bunny-alpha`); check the model's page, since a preview can move. The declared-endpoint path works without OpenCode's pricing catalog; the catalog form, `openrouter/<model>`, needs the catalog reachable and the model in it, and fails at once otherwise. No review has run through OpenRouter from this repository yet.
 
 ## What else reaches the network
 
