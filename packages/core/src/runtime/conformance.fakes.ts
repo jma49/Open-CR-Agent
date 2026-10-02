@@ -333,7 +333,8 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
     it(
       "moves to the next model on a daily quota, and the key appears in no event",
       async () => {
-        // m1 is out for the day however often a client retries; m2 answers.
+        // m1 is out for the day however often a client retries (a short
+        // Retry-After keeps those retries quick); m2 answers.
         const { endpoint, runtime } = await start(
           Array.from(
             { length: 12 },
@@ -341,6 +342,7 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
               request.model === "m1"
                 ? {
                     status: 429,
+                    retryAfter: 1,
                     body: `{"error":{"message":"Rate limit exceeded: free-models-per-day. ${LOCAL_KEY}"}}`,
                   }
                 : { content: "Reviewed.", toolCalls: [{ name: "task_done", args: {} }] },

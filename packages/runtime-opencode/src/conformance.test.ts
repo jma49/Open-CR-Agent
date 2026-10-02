@@ -9,7 +9,8 @@ import { OpenCodeRuntime } from "./runtime.js";
 // The real OpenCode binary against the scripted endpoint, as
 // custom-provider.test.ts runs it.
 runtimeConformance("OpenCodeRuntime", {
-  timeoutMs: 120_000,
+  // OpenCode retries a rate-limited request itself before ocra hears of it.
+  timeoutMs: 240_000,
   runtime: (baseUrl, chain) =>
     new OpenCodeRuntime({
       models: { standard: chain, light: chain },
