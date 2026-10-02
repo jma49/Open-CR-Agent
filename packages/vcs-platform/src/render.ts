@@ -5,6 +5,7 @@ import {
   type Severity,
   type Verification,
 } from "@open-cr-agent/core";
+import { safeMarkdown } from "./neutralize.js";
 import { type ReviewState, SUMMARY_MARKER, writeState } from "./state.js";
 
 // GitHub rejects comments over 65,536 characters; GitLab takes 1,000,000,
@@ -72,41 +73,6 @@ const VERDICT: Record<ReviewReport["verdict"], string> = {
   significant_concerns: "🛑 Significant concerns",
 };
 
-// Model text is untrusted: it may not close our markup, mention people,
-// pull in images, spell one of ocra's commands (`/ocra …`, which would count
-// if ocra posted as a person with write access), start a line with a slash
-// (GitLab runs a line such as `/merge` or `/approve` in a comment as a quick
-// action, with the rights of the token that posted it), or become a link at
-// all. A pull request can plant an address for a reviewer to repeat (the
-// adversarial probe saw one), and a bot comment lends it credibility.
-// Character references get a zero-width space after their `&` and stay as
-// typed, since both platforms look for mentions after decoding them
-// (`&#64;all`); unlike `&amp;`, it keeps `&lt;` quoted in code readable.
-// Every `@` gets one too, which no mention survives (GitLab usernames may
-// start with `_` or `.`), nor an email address. Inline links lose their `](`,
-// and every `]:` is escaped, so no link reference definition (`[1]: https://…`)
-// can form, at line start or inside a blockquote or list item, and no
-// reference-style link (`[x][1]`, `[x][]`, `[1]`) has anything to resolve to.
-// Addresses of every scheme get a zero-width space after the colon (GitLab
-// links `smb://` and `vscode://` too), and `www.` one before its dot, so they
-// read the same and stay text.
-const CHARACTER_REFERENCE = /&(?=#\d{1,7};|#[xX][\da-fA-F]{1,6};|[A-Za-z][A-Za-z\d]{1,31};)/g;
-
-export function safeMarkdown(text: string): string {
-  return text
-    .replace(CHARACTER_REFERENCE, "&\u200b")
-    .replaceAll("<!--", "&lt;!--")
-    .replace(/<\/?[a-zA-Z][^>]*>/g, (tag) => tag.replaceAll("<", "&lt;"))
-    .replaceAll("@", "@\u200b")
-    .replace(/!\[/g, "!\u200b[")
-    .replace(/\/(?=ocra)/gi, "/\u200b")
-    .replace(/^([ \t]*)\//gm, "$1\u200b/")
-    .replace(/:(?=\/\/)/g, ":\u200b")
-    .replace(/\bwww(?=\.)/gi, "www\u200b")
-    .replaceAll("](", "]\\(")
-    .replaceAll("]:", "]\\:");
-}
-
 // File paths come from the diff, so the author controls them: a backtick or
 // newline must not end the code span and let markup through, and angle
 // brackets must not form ocra's HTML-comment markers in the raw body.
@@ -132,7 +98,7 @@ export function inlineBody(f: Finding): string {
     `<!-- ocra:finding ${f.fingerprint} -->`,
     `${ICON[f.severity]} **${safeMarkdown(f.title)}** · ${f.severity} · ${verification(f)} · ${f.reviewer}${f.lowConfidence ? " · low confidence" : ""}`,
     "",
-    safeMarkdown(f.body),
+    safeMarkdown(f.body, { startsLine: true }),
   ];
   if (f.suggestion) parts.push("", `**Suggestion:** ${safeMarkdown(f.suggestion)}`);
   return parts.join("\n");
@@ -162,7 +128,7 @@ export function renderSummary({
     SUMMARY_MARKER,
     `## ocra review · ${headline(report)}`,
     "",
-    safeMarkdown(report.summary),
+    safeMarkdown(report.summary, { startsLine: true }),
     ...overrideNote(report, text),
     "",
     `**${report.findings.length} finding(s)** (${counts}) · risk tier \`${report.tier}\``,
@@ -215,7 +181,7 @@ export function renderSummary({
     lines.push("", "### Findings outside the diff");
     for (const f of inSummary) {
       lines.push(
-        `- ${ICON[f.severity]} ${location(f)} **${safeMarkdown(f.title)}** _(${verification(f)}${f.lowConfidence ? ", low confidence" : ""})_: ${safeMarkdown(f.body).replaceAll("\n", " ")}`,
+        `- ${ICON[f.severity]} ${location(f)} **${safeMarkdown(f.title)}** _(${verification(f)}${f.lowConfidence ? ", low confidence" : ""})_: ${safeMarkdown(f.body.replaceAll("\n", " "))}`,
       );
     }
   }
