@@ -86,6 +86,17 @@ A model offered at no charge, such as a stealth preview on [OpenRouter](https://
 
 The model id is the one OpenRouter's API example showed on 2026-10-02 (`stealth/space-bunny-alpha`); check the model's page, since a preview can move. The declared-endpoint path works without OpenCode's pricing catalog; the catalog form, `openrouter/<model>`, needs the catalog reachable and the model in it, and fails at once otherwise. No review has run through OpenRouter from this repository yet.
 
+## Choosing the runtime
+
+Two runtimes can run the reviewers; `runtime` in the configuration picks one:
+
+| Runtime | Reaches | Use it when |
+|---|---|---|
+| `opencode` (default) | Every provider in OpenCode's catalog and your declared endpoints, plus the pricing catalog `models.opencode.ai` | Your models are Gemini, Vertex AI, Anthropic, Bedrock or another catalog provider |
+| `direct` | Only the endpoints declared under `providers`; nothing else on the network | Every model in your chains is on a declared endpoint, and you want nothing but that endpoint reached |
+
+Both run the same review: the same tools, the same step cap, the same failback over the chain, the same prices. The `direct` runtime refuses a chain that names a provider you did not declare, and says so before any request. Behind a proxy, it needs `NODE_USE_ENV_PROXY=1` (Node 22.21 or later), since Node's `fetch` does not read `HTTPS_PROXY` by itself. The quality numbers on the [quality page](./quality) were measured through `opencode`; the `direct` runtime passes the same conformance tests but has not been evaluated on the golden set yet.
+
 ## What else reaches the network
 
 Besides the model providers, OpenCode fetches its pricing catalog from `models.opencode.ai` when it starts. It also tries to install its own plugin package from npm then, and the code for a provider it does not ship when a model needs it; ocra sends both installs to a registry on your machine that refuses them at once. With every address but a declared endpoint refused, a review works (tested). Where outside access is blocked, the catalog fetch fails, OpenCode uses the catalog it ships with, and a model missing from that catalog has no price: the run then warns that its calls are not counted.

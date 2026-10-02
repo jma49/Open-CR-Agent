@@ -153,6 +153,7 @@ The pipeline owns orchestration. `AgentRuntime` only executes one isolated agent
 packages/
   core/              domain types, stages, contracts
   runtime-opencode/  AgentRuntime on @opencode-ai/sdk
+  runtime-direct/    AgentRuntime over declared OpenAI-compatible endpoints (ADR-0020)
   vcs-platform/      the review conversation every platform shares (ADR-0016)
   vcs-github/        VcsAdapter for GitHub, over vcs-platform
   vcs-gitlab/        VcsAdapter for GitLab merge requests, over vcs-platform

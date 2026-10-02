@@ -6,7 +6,11 @@ import {
   type ReviewContext,
 } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { type FakeEndpoint, type Reply, scriptedEndpoint } from "./endpoint.fakes.js";
+import {
+  type FakeEndpoint,
+  type Reply,
+  scriptedEndpoint,
+} from "../../core/src/runtime/conformance.fakes.js";
 import { DirectRuntime } from "./runtime.js";
 
 const KEY = "sk-direct-secret";

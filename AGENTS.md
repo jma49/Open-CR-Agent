@@ -14,6 +14,7 @@ Open-CR-Agent is an open-source multi-agent code review system. Deterministic en
 |---|---|
 | `@open-cr-agent/core` | Domain types, pipeline stages, `VcsAdapter` / `AgentRuntime` / plugin contracts |
 | `@open-cr-agent/runtime-opencode` | `AgentRuntime` backed by the OpenCode SDK |
+| `@open-cr-agent/runtime-direct` | `AgentRuntime` that calls declared OpenAI-compatible endpoints itself |
 | `@open-cr-agent/vcs-platform` | What platform adapters share: the review conversation's rules (`PlatformReview` over a `ReviewPlatform` port), the summary and inline comment text, the review state |
 | `@open-cr-agent/vcs-github` | `VcsAdapter` for GitHub pull requests, over `vcs-platform` |
 | `@open-cr-agent/vcs-gitlab` | `VcsAdapter` for GitLab merge requests, over `vcs-platform` |

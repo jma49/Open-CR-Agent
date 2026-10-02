@@ -104,4 +104,4 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 
 ## 插件
 
-`runtime` 指定使用哪个已注册的运行时。`plugins` 按包名或路径列出额外的插件，`pluginSettings.<插件名>` 存放各插件自己的设置。详见[插件](./plugins)。
+`runtime` 指定使用哪个已注册的运行时：`opencode`（默认）通过 OpenCode 运行审查员，能用它目录里的所有供应商；`direct` 自己调用 `providers` 下声明的端点，不访问其他任何地址（见[模型供应商](./providers#选择运行时)）。`plugins` 按包名或路径列出额外的插件，`pluginSettings.<插件名>` 存放各插件自己的设置。详见[插件](./plugins)。

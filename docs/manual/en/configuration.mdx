@@ -104,4 +104,4 @@ Only `https` URLs are accepted, without redirects, up to 256 KB. The optional `#
 
 ## Plugins
 
-`runtime` names the registered runtime to use. `plugins` lists extra plugins by package name or path, and `pluginSettings.<plugin-name>` holds each plugin's settings. See [Plugins](./plugins).
+`runtime` names the registered runtime to use: `opencode` (the default) runs the reviewers through OpenCode and reaches every provider in its catalog; `direct` calls the endpoints declared under `providers` itself and reaches nothing else ([Model providers](./providers#choosing-the-runtime)). `plugins` lists extra plugins by package name or path, and `pluginSettings.<plugin-name>` holds each plugin's settings. See [Plugins](./plugins).

@@ -149,7 +149,7 @@ ocra is built as an engine with contracts for the parts that vary. The parts tha
 | Contract | What it does | Shipped implementations |
 |---|---|---|
 | `VcsAdapter` | Where a change comes from and where the review goes | local git, GitHub, GitLab |
-| `AgentRuntime` | How one isolated review task runs | OpenCode |
+| `AgentRuntime` | How one isolated review task runs | OpenCode; `direct`, a tool loop over your declared endpoints |
 | Reviewer | Who reviews what, at which model tier | `correctness`, `security`, `performance`, `docs`, `agents-md` |
 | Rules and tools | Path-scoped instructions; read-only tools an agent may call | `.ocra/rules.json`; `read_file`, `read_diff`, `code_search`, `report_finding` |
 | Analyzers | Findings from tools that are not a model, as the SARIF 2.1.0 log a CI job hands over (`--import-sarif`); ocra runs no tool | tested with Semgrep's output |
@@ -176,7 +176,7 @@ Assume the reviewed code is hostile; ocra does.
 - Agents have read-only tools, no shell, no web, and an environment allowlist. Secret-looking paths and `.git/` are refused in core, once, for every adapter.
 - On pull requests nothing from the reviewed tree runs: no plugin, no OpenCode configuration, no install script, no diff driver. Configuration, rules and memory come from the base commit.
 - Every untrusted string in a prompt is fenced; model text in a comment cannot form a link, a mention, a quick action or a command. Commands are accepted only from unedited comments by people with write access.
-- Releases use trusted publishing with SLSA provenance; the Action requires it. No code is fetched from a registry at review time. The container image is attested.
+- Releases use trusted publishing with SLSA provenance; the Action requires it. No code is fetched from a registry at review time, and with the `direct` runtime nothing but your model endpoint is reached. The container image is attested.
 - An adversarial golden tier plants instructions, links and commands in reviewed changes and measures what gets through.
 
 [Security](docs/manual/en/security.mdx), [threat model](docs/manual/en/threat-model.mdx), [SECURITY.md](SECURITY.md) for private reporting.
@@ -207,6 +207,7 @@ The plan, the reasoning and what is deliberately not built: [roadmap](docs/roadm
 |---|---|
 | `@open-cr-agent/core` | Domain types, pipeline stages, `VcsAdapter` / `AgentRuntime` / plugin contracts; depends on nothing in the repo |
 | `@open-cr-agent/runtime-opencode` | `AgentRuntime` on the OpenCode SDK |
+| `@open-cr-agent/runtime-direct` | `AgentRuntime` that calls declared OpenAI-compatible endpoints itself; nothing else on the network |
 | `@open-cr-agent/vcs-platform` | The review conversation every platform shares: trust rules, state, summary and comment text |
 | `@open-cr-agent/vcs-github` | `VcsAdapter` for GitHub pull requests |
 | `@open-cr-agent/vcs-gitlab` | `VcsAdapter` for GitLab merge requests |
