@@ -13,6 +13,7 @@ Changes to the `@open-cr-agent/*` packages and the GitHub Action. The packages a
 - **Analyzer results.** `ocra review --import-sarif <file>` (repeatable) adds the results of a SARIF 2.1.0 log an analyzer wrote, Semgrep's or CodeQL's for instance, to the review: only results on lines the change touches, as findings of a task of their own (`sarif-<tool>-<n>`, no cost), verified and judged like a reviewer's. ocra runs no tool itself ([ADR-0019](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0019-sarif-import.md)).
 - **A JSON Schema for the report.** `docs/schema/report.v1.json` (draft 2020-12) is generated from the code and tested against it; `reportJsonSchema()` and `reportOutputSchema` in `@open-cr-agent/core` give the same schema to programs.
 - **A run id.** Every review has one id, the name of its session directory: the first progress line names it, the JSON report carries it as `runId` (an optional addition to version 1), the summary comment shows it under Coverage and cost, and the SARIF log carries it as `automationDetails.id`. `review()` takes `runId`; without it one is generated.
+- **`ocra metrics`.** Counts over the finished reviews in `.ocra/sessions/`: runs by verdict, cost, findings by severity and verification, what became of earlier findings (fixed or dismissed, and their ratio as the acceptance rate), and the same per reviewer; `--since`, `--sessions`, and `--format json` with `"version": 1` for dashboards and scripts.
 
 
 ### Fixed

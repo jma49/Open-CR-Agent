@@ -100,6 +100,19 @@ ocra 不运行任何分析工具。你自己运行 Semgrep、CodeQL 或其他工
 
 每次审查（`--plan` 除外）都会写入 `.ocra/sessions/<id>/events.jsonl`（运行过程中逐行追加事件）和 `report.json`。这个 `<id>` 就是运行 id：第一行进度输出会写出它，JSON 报告以 `runId` 携带它，摘要评论在"覆盖范围和花费"里显示它，SARIF 日志以 `automationDetails.id`（`ocra/<id>`）携带它，因此从任何一处都能找回同一次运行。这个目录自带 `.gitignore`，日志既不会被提交，也不会在下一次审查时被当成改动。
 
+## ocra metrics
+
+对 `.ocra/sessions/` 下已完成的审查做统计，数据来自每个会话的 `report.json`，不调用任何模型：
+
+```bash
+ocra metrics                       # 文本表格
+ocra metrics --format json         # 给看板或脚本用；带 "version": 1
+ocra metrics --since 2026-10-01    # 只统计在该日期及之后开始的运行
+ocra metrics --sessions /srv/ocra  # 另一个会话目录，比如 CI runner 上的
+```
+
+它报告运行次数（按结论分、有多少次留下未审查的文件、有多少个会话没有可读的报告）、花费（总计和每次运行、token 数）、问题数（报告条数、按指纹去重数、按严重程度和核查状态分）、早先报告的问题后来的去向（fixed：后一次审查里代码已不在；dismissed：被审查者驳回；两者之比即接受率），以及每个审查员各自的任务数、失败任务数、花费和同样的去向统计。一条问题归于最先报告该指纹的审查员。只统计版本 1 的报告；JSON 输出和报告一样是契约，同样按版本管理。
+
 ## ocra --version
 
 打印版本号。

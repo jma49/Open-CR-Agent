@@ -100,6 +100,19 @@ Tested with the log Semgrep 1.178.0 writes; other tools' logs follow the same st
 
 Every review (not `--plan`) writes `.ocra/sessions/<id>/events.jsonl` (one event per line, appended as the run progresses) and `report.json`. The `<id>` is the run id: the first progress line names it, the JSON report carries it as `runId`, the summary comment shows it under Coverage and cost, and the SARIF log carries it as `automationDetails.id` (`ocra/<id>`), so one run can be found again from any of them. The directory carries its own `.gitignore`, so logs are never committed and never show up as changes in the next review.
 
+## ocra metrics
+
+Counts over the finished reviews in `.ocra/sessions/`, read from each session's `report.json`; nothing calls a model:
+
+```bash
+ocra metrics                       # a text table
+ocra metrics --format json         # for a dashboard or a script; carries "version": 1
+ocra metrics --since 2026-10-01    # runs started at or after a date
+ocra metrics --sessions /srv/ocra  # another sessions directory, as on a CI runner
+```
+
+It reports runs (by verdict, how many left files unreviewed, how many sessions had no readable report), cost (total and per run, tokens), findings (reported, unique by fingerprint, by severity and verification), what became of findings reported earlier (fixed: the code is gone in a later review; dismissed: a reviewer dismissed them; their ratio as the acceptance rate), and the same per reviewer with its tasks, failed tasks and cost. A finding's reviewer is the one that first reported its fingerprint. Only reports of version 1 are counted; the JSON output is a contract like the report, versioned the same way.
+
 ## ocra --version
 
 Prints the version.

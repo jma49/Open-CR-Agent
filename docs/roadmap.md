@@ -100,7 +100,7 @@ The year's success condition is not a list of interfaces: it is three external t
 
 1. **Organization policy**: a central configuration the reviewed repository cannot override (allowed models, spend limits, mandatory reviewers, excluded paths), with a documented precedence over remote and repository configuration.
 2. **A run id** through logs, comments, the report and the session file; the event schema versioned and published. The run id landed (the session id, in the report as `runId`, in the progress output, the summary comment and the SARIF log); the event schema is still internal.
-3. Minimal metrics an operations team can scrape from session files: runs, cost, findings, dismissals, acceptance rate, per reviewer.
+3. Minimal metrics an operations team can scrape from session files: runs, cost, findings, dismissals, acceptance rate, per reviewer. Landed as `ocra metrics` (text and versioned JSON over the sessions' `report.json`).
 
 **M13 — Use** (people, not code). Three external teams on the Action or the GitLab job for a month, with their dismissals and replies feeding the golden set; the three-maintainer conversations from M8. If no team will run it, year two starts with the product layer, not the control plane.
 
@@ -133,7 +133,7 @@ What a company checks before adopting a code review tool, and where ocra is. Upd
 | Cost control | Per-run spend limit that stops running tasks and says what it left, task cap, token and dollar reporting, prices required for declared models |
 | Policy | Repository and remote configuration; no organization-level policy the repository cannot override (M12) |
 | Integrations | Versioned JSON report; SARIF 2.1.0 out; no SARIF in (M10) |
-| Observability | Session files with cost, tokens and latency per run, and one run id across the session directory, the report, the progress output, the summary comment and the SARIF log; no published event schema, no metrics (M12) |
+| Observability | Session files with cost, tokens and latency per run, and one run id across the session directory, the report, the progress output, the summary comment and the SARIF log; `ocra metrics` over the session reports; no published event schema (M12) |
 | Quality evidence | 16 golden cases, one run, agent labels spot-checked by a second model; no live-model test in CI; paused with the credit (M11) |
 | Support and stability | Early 0.x; the Stability and support page names the contracts; one maintainer |
 | Production use | Dogfood on two repositories; no external user yet (M13) |
