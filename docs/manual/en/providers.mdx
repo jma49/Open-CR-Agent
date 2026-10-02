@@ -95,7 +95,7 @@ Two runtimes can run the reviewers; `runtime` in the configuration picks one:
 | `opencode` (default) | Every provider in OpenCode's catalog and your declared endpoints, plus the pricing catalog `models.opencode.ai` | Your models are Gemini, Vertex AI, Anthropic, Bedrock or another catalog provider |
 | `direct` | Only the endpoints declared under `providers`; nothing else on the network | Every model in your chains is on a declared endpoint, and you want nothing but that endpoint reached |
 
-Both run the same review: the same tools, the same step cap, the same failback over the chain, the same prices. The `direct` runtime refuses a chain that names a provider you did not declare, and says so before any request. Behind a proxy, it needs `NODE_USE_ENV_PROXY=1` (Node 22.21 or later), since Node's `fetch` does not read `HTTPS_PROXY` by itself. The quality numbers on the [quality page](./quality) were measured through `opencode`; the `direct` runtime passes the same conformance tests but has not been evaluated on the golden set yet.
+Both run the same review: the same tools, the same step cap, the same failback over the chain, the same prices. The `direct` runtime refuses a chain that names a provider you did not declare, and says so before any request. Behind a proxy it reads `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` like the rest of ocra. The quality numbers on the [quality page](./quality) were measured through `opencode`; the `direct` runtime passes the same conformance tests but has not been evaluated on the golden set yet.
 
 ## What else reaches the network
 

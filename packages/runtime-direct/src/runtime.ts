@@ -11,6 +11,7 @@ import {
   type ModelPrice,
   type ModelTier,
   parseModel,
+  proxiedFetch,
   RESUME_MESSAGE,
   type RuntimeOptions,
   reviewTools,
@@ -21,7 +22,8 @@ import { runLoop } from "./loop.js";
 import type { Endpoint } from "./openai.js";
 
 export interface DirectRuntimeOptions extends RuntimeOptions {
-  // Tests point this at a server of their own.
+  // Tests point this at a server of their own; otherwise requests honor the
+  // proxy variables of the given environment.
   fetch?: typeof fetch;
 }
 
@@ -39,9 +41,11 @@ export class DirectRuntime implements AgentRuntime {
   readonly name = "direct";
   private readonly health = new ModelHealth();
   private readonly tools: readonly ToolDefinition[];
+  private readonly fetch: typeof fetch;
 
   constructor(private readonly options: DirectRuntimeOptions) {
     this.tools = [...reviewTools, ...options.tools];
+    this.fetch = options.fetch ?? proxiedFetch(options.env);
   }
 
   async *runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent> {
@@ -124,7 +128,7 @@ export class DirectRuntime implements AgentRuntime {
       endpoint: {
         baseUrl: provider.baseUrl,
         ...(key ? { apiKey: key } : {}),
-        ...(this.options.fetch ? { fetch: this.options.fetch } : {}),
+        fetch: this.fetch,
       },
       model: modelID,
       price: provider.models[modelID] as ModelPrice,

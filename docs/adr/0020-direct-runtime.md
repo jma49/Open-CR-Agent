@@ -23,6 +23,6 @@ Decided with Claude Fable 5.1.
 
 - A review on a declared endpoint can run with `"runtime": "direct"` and nothing else on the network. The security page says what each runtime reaches.
 - The direct runtime cannot use OpenCode's catalog providers (Gemini, Vertex, Anthropic, Bedrock, …); that stays the OpenCode runtime's job until a provider SDK is worth its own code.
-- Node's `fetch` ignores `HTTPS_PROXY`; a proxy on the way to the endpoint needs `NODE_USE_ENV_PROXY=1` (Node 22.21 or later). The OpenCode runtime's client honors the variables itself.
+- Node's `fetch` ignores the proxy variables, so the direct runtime and `ocra-eval`'s judge and dataset download go through undici's proxy agent whenever `HTTP_PROXY`, `HTTPS_PROXY` or their lowercase forms are set, honoring `NO_PROXY`; without them Node's fetch is used as it is. The OpenCode runtime's client honors the variables itself.
 - A third runtime starts from the conformance suite, not from a reading of the OpenCode runtime.
 - The quality numbers were measured through OpenCode. The direct runtime has not been evaluated on the golden set yet; the first comparison is a smoke run on the same declared endpoint with both runtimes.

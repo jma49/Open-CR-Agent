@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { errorMessage } from "@open-cr-agent/core";
+import { errorMessage, proxiedFetch } from "@open-cr-agent/core";
 import { applyLabels, LABELS_FILE, labelsFor, readLabels } from "./adjudicate.js";
 import { scoreAttacks } from "./attack-score.js";
 import { measureCeiling } from "./ceiling-run.js";
@@ -151,7 +151,7 @@ function loadInstances(
 ): Promise<Instance[]> {
   return name === "golden"
     ? loadGolden(resolve(values["golden-dir"] ?? "evals/golden"))
-    : loadDataset(join(CACHE_DIR, "dataset.json"));
+    : loadDataset(join(CACHE_DIR, "dataset.json"), proxiedFetch(process.env));
 }
 
 async function list(argv: string[], out: Output): Promise<number> {
@@ -397,7 +397,7 @@ function createJudge(mock: boolean, env: NodeJS.ProcessEnv): JudgeSetup {
       "No judge configured: set JUDGE_API_KEY or GEMINI_API_KEY, or pass --mock-judge",
     );
   return {
-    judge: new OpenAICompatibleJudge(config),
+    judge: new OpenAICompatibleJudge(config, proxiedFetch(env)),
     cacheFile: `judge-cache.${config.model.replace(/[^\w.-]/g, "_")}.json`,
     description: `${config.model} via ${config.baseUrl}`,
   };
