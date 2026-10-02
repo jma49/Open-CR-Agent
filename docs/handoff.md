@@ -304,6 +304,8 @@ What must stay out of git (secrets, generated output, personal agent tooling) is
 
 ## Open questions for the maintainer
 
+- **M10 item 5 (2026-10-02):** ADR-0021 (proposed, #306, stacked on #304) designs the reviewer entity and the finding insertion points. The per-reviewer tool set has a use today and can land alone; processors would land with their first customer (M12 policy, the adversarial canary check), per the roadmap's order rule. Decide whether to build `tools` now or hold item 5 until M12.
+
 0. The maintainer actions under Status: two first publishes before 0.2.0, the image's visibility, a GitLab scratch project for the live check, and a contact address.
 1. Assay's and vouch's dogfood budgets are $2 each now, not $12, to fund evals; raise them again before switching either on.
 2. Done: the golden-label spot-check. The maintainer delegated it to a second model rather than judging by hand. Claude Fable 5.1, blind to the labels, agreed with all 5 of the 5 sampled out of 11 (3 valid, 2 invalid). It also called two valid findings' severities overstated, and found the RAGFlow case's expected issue unprompted ([audit](audits/2026-09-29-label-spot-check.md)). The quality page says so. The private page https://claude.ai/artifact/KBtmds54VF11D9LZCt68cV stays unfilled. Still unchecked: the 6 other labels and the 11 expected issues added from ocra's own findings.
