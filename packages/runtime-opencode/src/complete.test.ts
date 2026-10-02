@@ -1,8 +1,6 @@
-import { usageSpent } from "@open-cr-agent/core";
+import { type AttemptOutcome, parseQuotaError, usageSpent } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
-import { parseQuotaError } from "./quota.js";
 import { HELPER_AGENT_STEPS, OpenCodeRuntime, openCodeConfig } from "./runtime.js";
-import type { SessionOutcome } from "./session-outcome.js";
 
 const usage = {
   inputTokens: 10,
@@ -13,7 +11,7 @@ const usage = {
 };
 const request = { tier: "light" as const, system: "s", user: "u", timeoutMs: 1000 };
 
-function runtimeWith(outcomes: Record<string, SessionOutcome>, models: string[]) {
+function runtimeWith(outcomes: Record<string, AttemptOutcome>, models: string[]) {
   const runtime = new OpenCodeRuntime({ models: { light: models }, tools: [], env: {} });
   const calls: { model: string; agent: string; tools: Record<string, boolean> }[] = [];
   const internals = runtime as unknown as Record<string, unknown>;
@@ -119,7 +117,7 @@ describe("OpenCodeRuntime credentials", () => {
 
 describe("OpenCodeRuntime.complete on rate limits", () => {
   it("waits and retries, then gives up on a model out of quota", async () => {
-    const limited = (message: string): SessionOutcome => ({
+    const limited = (message: string): AttemptOutcome => ({
       findings: [],
       steps: 0,
       toolCalls: [],

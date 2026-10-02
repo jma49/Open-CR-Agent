@@ -1,8 +1,8 @@
-import type { AgentEvent } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
-import { toolSummary, withFailback } from "./failback.js";
+import type { AgentEvent } from "../contracts.js";
+import { type AttemptOutcome, toolSummary } from "./attempt.js";
+import { withFailback } from "./failback.js";
 import { ModelHealth, parseModel } from "./models.js";
-import type { SessionOutcome } from "./session-outcome.js";
 
 const usage = {
   inputTokens: 1,
@@ -11,20 +11,20 @@ const usage = {
   cachedTokens: 0,
   costUsd: 0.001,
 };
-const ok = (findings: unknown[] = []): SessionOutcome => ({
+const ok = (findings: unknown[] = []): AttemptOutcome => ({
   findings,
   steps: 1,
   toolCalls: [],
   text: "",
   usage,
 });
-const fail = (message: string, retryable: boolean): SessionOutcome => ({
+const fail = (message: string, retryable: boolean): AttemptOutcome => ({
   ...ok(),
   error: { message, retryable },
 });
 
 async function collect(
-  results: Record<string, SessionOutcome>,
+  results: Record<string, AttemptOutcome>,
   chain: string[],
   health = new ModelHealth(),
   signal = new AbortController().signal,
@@ -39,7 +39,7 @@ async function collect(
     signal,
     attempt: async (model) => {
       attempted.push(model);
-      return results[model] as SessionOutcome;
+      return results[model] as AttemptOutcome;
     },
   })) {
     events.push(event);
@@ -186,10 +186,10 @@ describe("parseModel", () => {
 
 describe("toolSummary", () => {
   it("counts each tool and says when the review never finished", () => {
-    expect(
-      toolSummary(["ocra_read_file", "ocra_code_search", "ocra_read_file", "ocra_report_finding"]),
-    ).toBe("4 tool call(s) (read_file 2, code_search 1, report_finding 1; no task_done)");
-    expect(toolSummary(["ocra_read_file", "ocra_task_done"])).toBe(
+    expect(toolSummary(["read_file", "code_search", "read_file", "report_finding"])).toBe(
+      "4 tool call(s) (read_file 2, code_search 1, report_finding 1; no task_done)",
+    );
+    expect(toolSummary(["read_file", "task_done"])).toBe(
       "2 tool call(s) (read_file 1, task_done 1)",
     );
     expect(toolSummary([])).toBe("no tool calls");

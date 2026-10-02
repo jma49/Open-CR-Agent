@@ -1,9 +1,9 @@
-import type { AgentEvent } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
+import type { AgentEvent } from "../contracts.js";
+import type { AttemptOutcome } from "./attempt.js";
 import { withFailback } from "./failback.js";
 import { ModelHealth } from "./models.js";
 import { MAX_QUOTA_WAIT_MS, parseQuotaError, QUOTA_RETRIES, sleep } from "./quota.js";
-import type { SessionOutcome } from "./session-outcome.js";
 
 // The message Gemini's free tier returned during the 2026-09-26 smoke run.
 const GEMINI_QUOTA = `You exceeded your current quota, please check your plan and billing details.
@@ -71,14 +71,14 @@ describe("withFailback on rate limits", () => {
     cachedTokens: 0,
     costUsd: 0,
   };
-  const ok: SessionOutcome = { findings: [], steps: 0, toolCalls: [], text: "", usage };
-  const limited = (message: string): SessionOutcome => ({
+  const ok: AttemptOutcome = { findings: [], steps: 0, toolCalls: [], text: "", usage };
+  const limited = (message: string): AttemptOutcome => ({
     ...ok,
     error: { message, retryable: true, quota: parseQuotaError(message) as never },
   });
 
   async function run(
-    outcomes: Record<string, SessionOutcome[]>,
+    outcomes: Record<string, AttemptOutcome[]>,
     chain: string[],
     health: ModelHealth,
   ) {

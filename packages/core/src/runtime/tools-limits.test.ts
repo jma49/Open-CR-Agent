@@ -1,6 +1,6 @@
-import type { ReviewContext } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
-import { MAX_LINE_CHARS, MAX_RESULT_CHARS, reviewTools } from "./review-tools.js";
+import type { ReviewContext } from "../contracts.js";
+import { MAX_LINE_CHARS, MAX_RESULT_CHARS, reviewTools } from "./tools.js";
 
 function run(name: string, args: Record<string, unknown>, context: Partial<ReviewContext>) {
   const tool = reviewTools.find((t) => t.name === name);

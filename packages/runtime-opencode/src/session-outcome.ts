@@ -1,5 +1,4 @@
-import type { Usage } from "@open-cr-agent/core";
-import { parseQuotaError, type QuotaError } from "./quota.js";
+import { type AttemptOutcome, parseQuotaError, type Usage } from "@open-cr-agent/core";
 
 export interface SessionMessage {
   info: {
@@ -19,33 +18,24 @@ export interface SessionMessage {
   }[];
 }
 
-export interface SessionOutcome {
-  findings: unknown[];
-  // Model requests OpenCode started, one per agent step.
-  steps: number;
-  toolCalls: string[];
-  text: string;
-  // The agent stopped early and was told once to finish.
-  resumed?: true;
-  usage: Usage;
-  error?: { message: string; retryable: boolean; quota?: QuotaError };
-}
-
 const AUTH_STATUS = new Set([401, 403]);
 const AUTH_MESSAGE = /api key|unauthori[sz]ed|permission denied|forbidden/i;
 
+// Tool names come back with the MCP server's prefix (MCP_SERVER in
+// runtime.ts), which the shared outcome does without.
 export function summarizeSession(
   messages: readonly SessionMessage[],
   reportTool: string,
-): SessionOutcome {
+  toolPrefix = "",
+): AttemptOutcome {
   const assistant = messages.filter((m) => m.info.role === "assistant");
   const tools = assistant.flatMap((m) => m.parts.filter((p) => p.type === "tool"));
-  const outcome: SessionOutcome = {
+  const outcome: AttemptOutcome = {
     findings: tools
       .filter((p) => p.tool === reportTool && p.state?.status === "completed")
       .map((p) => p.state?.input),
     steps: assistant.reduce((n, m) => n + m.parts.filter((p) => p.type === "step-start").length, 0),
-    toolCalls: tools.map((p) => p.tool ?? "unknown"),
+    toolCalls: tools.map((p) => (p.tool ?? "unknown").replace(toolPrefix, "")),
     text: assistant
       .flatMap((m) => m.parts.filter((p) => p.type === "text").map((p) => p.text ?? ""))
       .join("\n")

@@ -1,10 +1,9 @@
 import { createRequire } from "node:module";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { ReviewContext } from "@open-cr-agent/core";
+import { MAX_READ_LINES, type ReviewContext, reviewTools } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { MAX_READ_LINES, reviewTools } from "./review-tools.js";
 import { startToolServer, type ToolServer } from "./tool-server.js";
 
 const file = Array.from({ length: MAX_READ_LINES + 5 }, (_, i) => `line ${i + 1}`).join("\n");

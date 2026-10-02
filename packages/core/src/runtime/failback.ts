@@ -1,13 +1,9 @@
-import {
-  type AgentEvent,
-  emptyUsage,
-  type ModelTier,
-  REVIEW_TOOLS,
-  type Usage,
-} from "@open-cr-agent/core";
+import type { AgentEvent, CompletionResult, ModelTier, Usage } from "../contracts.js";
+import { CompletionError } from "../errors.js";
+import { addUsage, emptyUsage } from "../pipeline/usage.js";
+import { type AttemptOutcome, attemptSummary } from "./attempt.js";
 import type { ModelHealth } from "./models.js";
 import { sleep } from "./quota.js";
-import type { SessionOutcome } from "./session-outcome.js";
 
 export interface FailbackOptions {
   taskId: string;
@@ -16,7 +12,7 @@ export interface FailbackOptions {
   health: ModelHealth;
   signal: AbortSignal;
   // onUsage receives what the attempt has spent so far, as it grows.
-  attempt(model: string, onUsage: (spent: Usage) => void): Promise<SessionOutcome>;
+  attempt(model: string, onUsage: (spent: Usage) => void): Promise<AttemptOutcome>;
 }
 
 // Findings from a failed attempt are still emitted: the pipeline deduplicates
@@ -145,21 +141,44 @@ function ahead(a: Usage, b: Usage): boolean {
   return FIELDS.some((f) => a[f] > b[f]);
 }
 
-// Which tools an attempt spent its steps on, and whether it finished: a
-// review that never called task_done was cut off, usually by the step cap.
-function attemptSummary(model: string, outcome: SessionOutcome): string {
-  const { inputTokens, outputTokens, reasoningTokens, costUsd } = outcome.usage;
-  const resumed = outcome.resumed ? ", resumed after stopping early" : "";
-  return `${model}: ${outcome.steps} step(s), ${toolSummary(outcome.toolCalls)}${resumed}, ${inputTokens} in / ${outputTokens} out / ${reasoningTokens} reasoning tokens, $${costUsd.toFixed(4)}`;
+export interface CompleteOptions {
+  tier: ModelTier;
+  chain: readonly string[];
+  health: ModelHealth;
+  signal: AbortSignal;
+  attempt(model: string): Promise<AttemptOutcome>;
 }
 
-export function toolSummary(toolCalls: readonly string[]): string {
-  if (toolCalls.length === 0) return "no tool calls";
-  // MCP tools carry the server's name as a prefix (MCP_SERVER in runtime.ts).
-  const names = toolCalls.map((t) => t.replace(/^ocra_/, ""));
-  const counts = new Map<string, number>();
-  for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
-  const byUse = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  const finished = names.includes(REVIEW_TOOLS.taskDone) ? "" : "; no task_done";
-  return `${toolCalls.length} tool call(s) (${byUse.map(([n, c]) => `${n} ${c}`).join(", ")}${finished})`;
+// One answer from the first model of the chain that gives one, with the same
+// quota waits and circuit breaker as a task; throws a CompletionError that
+// carries what the failed attempts spent.
+export async function completeWithFailback(options: CompleteOptions): Promise<CompletionResult> {
+  const { health, signal } = options;
+  let usage = emptyUsage();
+  let lastError = "";
+  for (const model of health.order(options.chain)) {
+    for (;;) {
+      await sleep(health.pausedFor(model), signal);
+      if (signal.aborted) throw new CompletionError("cancelled", usage);
+      const outcome = await options.attempt(model);
+      usage = addUsage(usage, outcome.usage);
+      if (!outcome.error) {
+        health.recordSuccess(model);
+        return { text: outcome.text, usage };
+      }
+      if (!outcome.error.retryable) {
+        throw new CompletionError(`${model}: ${outcome.error.message}`, usage);
+      }
+      if (outcome.error.quota && health.recordQuota(model, outcome.error.quota) === "wait") {
+        continue;
+      }
+      if (!outcome.error.quota) health.recordFailure(model);
+      lastError = `${model}: ${outcome.error.message}`;
+      break;
+    }
+  }
+  if (!lastError) {
+    throw new CompletionError(`every ${options.tier} model is out of quota for this run`, usage);
+  }
+  throw new CompletionError(`every ${options.tier} model failed (${lastError})`, usage);
 }

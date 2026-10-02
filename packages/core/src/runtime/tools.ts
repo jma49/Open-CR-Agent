@@ -1,5 +1,8 @@
-import { promptData, REVIEW_TOOLS, severitySchema, type ToolDefinition } from "@open-cr-agent/core";
 import { z } from "zod";
+import { severitySchema } from "../domain.js";
+import type { ToolDefinition } from "../plugin/types.js";
+import { data as promptData } from "../review/prompt-text.js";
+import { REVIEW_TOOLS } from "../review/tools.js";
 
 export const MAX_READ_LINES = 400;
 export const MAX_SEARCH_RESULTS = 50;

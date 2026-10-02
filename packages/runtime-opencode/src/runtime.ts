@@ -6,27 +6,25 @@ import {
   type AgentEvent,
   type AgentRuntime,
   type AgentTaskSpec,
-  addUsage,
-  CompletionError,
+  type AttemptOutcome,
   type CompletionRequest,
   type CompletionResult,
   type CustomProvider,
-  emptyUsage,
+  completeWithFailback,
+  ModelHealth,
   type ModelTier,
+  parseModel,
   REVIEW_TOOLS,
   type ReviewContext,
   type RuntimeOptions,
+  reviewTools,
   type Usage,
+  withFailback,
 } from "@open-cr-agent/core";
 import { createOpencodeClient, type OpencodeClient } from "@opencode-ai/sdk/v2";
 import { resolveOpencodeBinary } from "./binary.js";
-import { withFailback } from "./failback.js";
-import { ModelHealth, parseModel } from "./models.js";
 import { type OpencodeServer, startOpencodeServer } from "./opencode-server.js";
-import { sleep } from "./quota.js";
-import { reviewTools } from "./review-tools.js";
 import { missingCredentials, serverEnv } from "./server-env.js";
-import type { SessionOutcome } from "./session-outcome.js";
 import { type PromptInput, promptSession } from "./session-prompt.js";
 import { startToolServer, type ToolServer } from "./tool-server.js";
 import { createUntimedDispatcher, untimedFetch } from "./transport.js";
@@ -51,7 +49,7 @@ export const HELPER_AGENT_STEPS = 2;
 
 // Sent once to a review agent that stopped before finishing (session-prompt.ts).
 export const REVIEW_RESUME = {
-  doneTool: `${MCP_SERVER}_${REVIEW_TOOLS.taskDone}`,
+  doneTool: REVIEW_TOOLS.taskDone,
   maxSteps: MAX_AGENT_STEPS,
   message: `You stopped before finishing the review. Continue with the files in <ocra_review_files> you have not reviewed yet, report each confirmed issue with ${REVIEW_TOOLS.reportFinding}, and call ${REVIEW_TOOLS.taskDone} when every file is done.`,
 };
@@ -138,6 +136,7 @@ export class OpenCodeRuntime implements AgentRuntime {
             system: spec.systemPrompt,
             user: spec.userPrompt,
             tools: DISABLED_BUILTINS,
+            toolPrefix: `${MCP_SERVER}_`,
             resume: REVIEW_RESUME,
           },
           signal,
@@ -151,13 +150,13 @@ export class OpenCodeRuntime implements AgentRuntime {
     if (chain.length === 0) throw new Error(noModel(request.tier));
 
     const infra = await this.start();
-    let usage = emptyUsage();
-    let lastError = "";
-    for (const model of this.health.order(chain)) {
-      for (;;) {
-        await sleep(this.health.pausedFor(model), signal);
-        if (signal.aborted) throw new CompletionError("cancelled", usage);
-        const outcome = await this.prompt(
+    return completeWithFailback({
+      tier: request.tier,
+      chain,
+      health: this.health,
+      signal,
+      attempt: (model) =>
+        this.prompt(
           infra,
           {
             title: "ocra helper",
@@ -166,29 +165,11 @@ export class OpenCodeRuntime implements AgentRuntime {
             system: request.system,
             user: request.user,
             tools: this.helperTools,
+            toolPrefix: `${MCP_SERVER}_`,
           },
           signal,
-        );
-        usage = addUsage(usage, outcome.usage);
-        if (!outcome.error) {
-          this.health.recordSuccess(model);
-          return { text: outcome.text, usage };
-        }
-        if (!outcome.error.retryable) {
-          throw new CompletionError(`${model}: ${outcome.error.message}`, usage);
-        }
-        if (outcome.error.quota && this.health.recordQuota(model, outcome.error.quota) === "wait") {
-          continue;
-        }
-        if (!outcome.error.quota) this.health.recordFailure(model);
-        lastError = `${model}: ${outcome.error.message}`;
-        break;
-      }
-    }
-    if (!lastError) {
-      throw new CompletionError(`every ${request.tier} model is out of quota for this run`, usage);
-    }
-    throw new CompletionError(`every ${request.tier} model failed (${lastError})`, usage);
+        ),
+    });
   }
 
   async dispose(): Promise<void> {
@@ -205,7 +186,7 @@ export class OpenCodeRuntime implements AgentRuntime {
     input: PromptInput,
     signal: AbortSignal,
     onUsage?: (spent: Usage) => void,
-  ): Promise<SessionOutcome> {
+  ): Promise<AttemptOutcome> {
     return promptSession(
       infra.client.session,
       input,

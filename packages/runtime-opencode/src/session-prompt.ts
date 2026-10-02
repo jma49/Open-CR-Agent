@@ -1,12 +1,12 @@
-import { emptyUsage, errorMessage, type Usage } from "@open-cr-agent/core";
-import type { OpencodeClient } from "@opencode-ai/sdk/v2";
-import { parseModel } from "./models.js";
 import {
-  type SessionMessage,
-  type SessionOutcome,
-  sessionUsage,
-  summarizeSession,
-} from "./session-outcome.js";
+  type AttemptOutcome,
+  emptyUsage,
+  errorMessage,
+  parseModel,
+  type Usage,
+} from "@open-cr-agent/core";
+import type { OpencodeClient } from "@opencode-ai/sdk/v2";
+import { type SessionMessage, sessionUsage, summarizeSession } from "./session-outcome.js";
 
 // A session that was cut off has still spent tokens and may have reported
 // findings; this bounds the one extra request that collects them.
@@ -37,6 +37,8 @@ export interface PromptInput {
   system: string;
   user: string;
   tools: Record<string, boolean>;
+  // What OpenCode prefixes the review tools' names with (the MCP server).
+  toolPrefix?: string;
   // Review agents only: when the agent stops early (no done tool, no answer,
   // steps left), the same session is told once to finish.
   resume?: ResumeOptions;
@@ -52,7 +54,7 @@ export interface ResumeOptions {
 // with no text, no done tool and steps to spare (2026-09-28), and the task
 // counted as completed with its files unread. Continuing the same session
 // keeps what it read and is cheaper than starting over.
-export function stoppedEarly(outcome: SessionOutcome, resume: ResumeOptions): boolean {
+export function stoppedEarly(outcome: AttemptOutcome, resume: ResumeOptions): boolean {
   return (
     !outcome.toolCalls.includes(resume.doneTool) &&
     outcome.steps < resume.maxSteps &&
@@ -68,7 +70,7 @@ export async function promptSession(
   reportTool: string,
   signal: AbortSignal,
   activity: ActivityOptions = {},
-): Promise<SessionOutcome> {
+): Promise<AttemptOutcome> {
   const created = await session.create({ title: input.title }, { signal });
   if (!created.data) {
     throw new Error(`OpenCode could not create a session: ${JSON.stringify(created.error)}`);
@@ -94,19 +96,23 @@ export async function promptSession(
     // spent tokens and reported findings: keep them.
     if (response.error) {
       return {
-        ...(await harvest(session, sessionID, reportTool)),
+        ...(await harvest(session, sessionID, reportTool, input.toolPrefix)),
         error: { message: JSON.stringify(response.error), retryable: false },
       };
     }
-    let outcome: SessionOutcome;
+    let outcome: AttemptOutcome;
     try {
       const messages = await session.messages({ sessionID }, { signal: attempt });
-      outcome = summarizeSession((messages.data ?? []) as SessionMessage[], reportTool);
+      outcome = summarizeSession(
+        (messages.data ?? []) as SessionMessage[],
+        reportTool,
+        input.toolPrefix,
+      );
     } catch (error) {
       // The session finished; running it again on the next model would pay
       // twice. Keep what one more read gets, and do not retry.
       return {
-        ...(await harvest(session, sessionID, reportTool)),
+        ...(await harvest(session, sessionID, reportTool, input.toolPrefix)),
         error: {
           message: `could not read the finished session: ${errorMessage(error)}`,
           retryable: false,
@@ -126,8 +132,8 @@ export async function promptSession(
       { signal: attempt },
     );
     // Both turns are in the session: their findings and their spend.
-    const resumed: SessionOutcome = {
-      ...(await harvest(session, sessionID, reportTool)),
+    const resumed: AttemptOutcome = {
+      ...(await harvest(session, sessionID, reportTool, input.toolPrefix)),
       resumed: true,
     };
     if (again.error) resumed.error = { message: JSON.stringify(again.error), retryable: false };
@@ -136,7 +142,7 @@ export async function promptSession(
     // Aborted or cut off by the transport: OpenCode may still be running the
     // session, spending tokens, so stop it and keep what it already did.
     stop();
-    const partial = await harvest(session, sessionID, reportTool);
+    const partial = await harvest(session, sessionID, reportTool, input.toolPrefix);
     const seconds = Math.round((activity.inactivityMs ?? INACTIVITY_MS) / 1000);
     return {
       ...partial,
@@ -211,18 +217,19 @@ async function harvest(
   session: SessionApi,
   sessionID: string,
   reportTool: string,
-): Promise<SessionOutcome> {
+  toolPrefix?: string,
+): Promise<AttemptOutcome> {
   try {
     const messages = await session.messages(
       { sessionID },
       { signal: AbortSignal.timeout(HARVEST_TIMEOUT_MS) },
     );
-    return summarizeSession((messages.data ?? []) as SessionMessage[], reportTool);
+    return summarizeSession((messages.data ?? []) as SessionMessage[], reportTool, toolPrefix);
   } catch {
     return emptyOutcome();
   }
 }
 
-export function emptyOutcome(): SessionOutcome {
+export function emptyOutcome(): AttemptOutcome {
   return { findings: [], steps: 0, toolCalls: [], text: "", usage: emptyUsage() };
 }
