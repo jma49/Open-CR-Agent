@@ -22,6 +22,7 @@ function finding(overrides: Partial<Finding>): Finding {
 }
 
 const base: ReviewReport = {
+  runId: "20261002T070000Z-abcdef",
   changeRequest: {
     id: "1",
     title: "Working tree changes",
@@ -111,7 +112,7 @@ describe("renderText", () => {
         "",
         "3 finding(s) (1 critical, 2 warning, 0 suggestion) · tokens: 1200 in (900 cached), 80 out, 40 reasoning · $0.0031",
         "Warning: grouping failed",
-        "Session: .ocra/sessions/s1",
+        "Run: 20261002T070000Z-abcdef (.ocra/sessions/s1)",
         "",
       ].join("\n"),
     );

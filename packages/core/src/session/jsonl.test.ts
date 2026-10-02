@@ -11,7 +11,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ReviewReport } from "../pipeline/report.js";
-import { EVENTS_FILE, JsonlSessionWriter, newSessionId, REPORT_FILE } from "./jsonl.js";
+import { newRunId } from "../pipeline/run-id.js";
+import { EVENTS_FILE, JsonlSessionWriter, REPORT_FILE } from "./jsonl.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -24,7 +25,7 @@ describe("JsonlSessionWriter", () => {
     dirs.push(root);
     const writer = new JsonlSessionWriter(root, "s1");
     const changeRequest = { id: "1", title: "t", description: "", baseSha: "b", headSha: "h" };
-    writer.write({ type: "run_started", changeRequest });
+    writer.write({ type: "run_started", runId: "20261002T070000Z-abcdef", changeRequest });
     const report = { changeRequest, findings: [] } as unknown as ReviewReport;
     writer.write({ type: "run_finished", report });
 
@@ -90,7 +91,7 @@ describe("JsonlSessionWriter", () => {
       baseSha: "b",
       headSha: "h",
     };
-    writer.write({ type: "run_started", changeRequest });
+    writer.write({ type: "run_started", runId: "20261002T070000Z-abcdef", changeRequest });
     writer.write({
       type: "run_finished",
       report: { changeRequest, findings: [] } as unknown as ReviewReport,
@@ -105,8 +106,8 @@ describe("JsonlSessionWriter", () => {
   });
 
   it("creates sortable, unique session ids", () => {
-    const id = newSessionId(new Date("2026-09-24T21:40:55.123Z"));
+    const id = newRunId(new Date("2026-09-24T21:40:55.123Z"));
     expect(id).toMatch(/^20260924T214055Z-[0-9a-f]{6}$/);
-    expect(newSessionId()).not.toBe(newSessionId());
+    expect(newRunId()).not.toBe(newRunId());
   });
 });

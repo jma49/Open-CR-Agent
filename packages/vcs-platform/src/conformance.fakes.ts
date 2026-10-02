@@ -69,6 +69,7 @@ export function finding(fingerprint: string, overrides: Partial<Finding> = {}): 
 
 export function report(findings: Finding[], summary = "Summary."): ReviewReport {
   return {
+    runId: "20261002T070000Z-abcdef",
     changeRequest: { id: "7", title: "t", description: "", baseSha: BASE, headSha: HEAD },
     tier: "lite",
     verdict: findings.length > 0 ? "approved_with_comments" : "approved",

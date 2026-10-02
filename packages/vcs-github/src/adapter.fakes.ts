@@ -129,6 +129,7 @@ export function report(
   verdict: ReviewReport["verdict"] = "approved_with_comments",
 ): ReviewReport {
   return {
+    runId: "20261002T070000Z-abcdef",
     changeRequest: {
       id: "o/r#7",
       title: "t",

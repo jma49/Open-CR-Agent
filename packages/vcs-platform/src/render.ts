@@ -284,7 +284,7 @@ export function renderSummary({
     "",
     "<details><summary>Coverage and cost</summary>",
     "",
-    `${report.coverage.filter((c) => c.status === "reviewed").length} reviewed · ${report.coverage.filter((c) => c.status === "unchanged").length} unchanged since the last review · ${failed.length} not reviewed · ${report.coverage.filter((c) => c.status === "excluded").length} excluded · ${inputTokens} in / ${outputTokens} out tokens · $${costUsd.toFixed(4)}${spendLimitNote(report)}`,
+    `${report.coverage.filter((c) => c.status === "reviewed").length} reviewed · ${report.coverage.filter((c) => c.status === "unchanged").length} unchanged since the last review · ${failed.length} not reviewed · ${report.coverage.filter((c) => c.status === "excluded").length} excluded · ${inputTokens} in / ${outputTokens} out tokens · $${costUsd.toFixed(4)}${spendLimitNote(report)} · run ${codeSpan(report.runId)}`,
     ...failed.map((c) => `- not reviewed: ${codeSpan(c.path)}`),
     "",
     "</details>",

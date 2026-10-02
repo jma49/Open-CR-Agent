@@ -97,6 +97,7 @@ describe("output contract", () => {
         "refuted",
         "remembered",
         "rereview",
+        "runId",
         "scope",
         "skipped",
         "spendLimit",

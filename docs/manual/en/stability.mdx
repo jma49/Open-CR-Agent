@@ -20,7 +20,7 @@ All packages share one version and are released together.
 |---|---|
 | Commands, options and exit codes | [CLI](./cli) |
 | `.ocra/config.json`, `.ocra/rules.json`, `.ocra/memory.json` and the `OCRA_*` environment variables | [Configuration](./configuration), [Rules](./rules) |
-| The JSON report (`--format json`, `report.json`) and the `--plan` JSON | [CLI](./cli#json-output). Both carry `"version": 1`; a version only gains optional fields, and anything else is a new version. The report's [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json) is generated from the code and tested against it |
+| The JSON report (`--format json`, `report.json`) and the `--plan` JSON | [CLI](./cli#json-output). Both carry `"version": 1`; a version only gains optional fields (`runId` and `provenance` were added that way), and anything else is a new version. The report's [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json) is generated from the code and tested against it |
 | The SARIF output (`--format sarif`) | [CLI](./cli#sarif-output). SARIF 2.1.0; the rule ids, the `ocra/v1` fingerprint key and the property names follow the rules for other contracts |
 | The GitHub Action's inputs | [GitHub pull requests](./github) |
 | The state ocra keeps in its pull request summary comment | An internal format that later releases keep reading (`v1` today). If one ever cannot, the next review starts over as if it were the first: it reviews every file and may comment again on findings it had commented on |

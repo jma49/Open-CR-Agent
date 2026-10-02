@@ -10,6 +10,7 @@ import { runtimeGrouper } from "./helpers.js";
 import { rank } from "./matrix.js";
 import type { ReviewEvent } from "./report.js";
 import type { ReviewOptions } from "./run.js";
+import { newRunId } from "./run-id.js";
 
 export const GUIDELINES_PATH = "AGENTS.md";
 
@@ -37,6 +38,8 @@ export type PlanOptions = Pick<
   ReviewOptions,
   "vcs" | "rules" | "readTrusted" | "selection" | "bundling" | "grouper"
 > & {
+  // Absent for a plan preview, which nobody looks up again.
+  runId?: string;
   runtime?: AgentRuntime;
   // Review only these selected files (incremental re-review); the rest of the
   // change still sets the risk tier.
@@ -53,7 +56,7 @@ export async function planReview(
   const { vcs } = options;
   const readTrusted = options.readTrusted ?? ((path: string) => vcs.readFile(path));
   const changeRequest = await vcs.getChangeRequest();
-  emit({ type: "run_started", changeRequest });
+  emit({ type: "run_started", runId: options.runId ?? newRunId(), changeRequest });
 
   const diffs = await vcs.getDiff();
   const decisions = selectFiles(diffs, options.selection ?? defaultSelectionPolicy);

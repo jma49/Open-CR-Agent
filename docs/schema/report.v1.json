@@ -9,6 +9,9 @@
       "type": "number",
       "const": 1
     },
+    "runId": {
+      "type": "string"
+    },
     "changeRequest": {
       "type": "object",
       "properties": {

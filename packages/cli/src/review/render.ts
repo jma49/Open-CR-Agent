@@ -115,7 +115,7 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
     lines.push(`Incomplete: ${notReviewed} selected file(s) were not reviewed${limit}.`);
   }
   for (const warning of report.warnings) lines.push(`Warning: ${warning}`);
-  if (sessionDir) lines.push(`Session: ${sessionDir}`);
+  lines.push(`Run: ${report.runId}${sessionDir ? ` (${sessionDir})` : ""}`);
   return forTerminal(`${lines.join("\n")}\n`);
 }
 

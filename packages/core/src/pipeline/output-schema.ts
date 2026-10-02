@@ -135,6 +135,7 @@ const priorList = z.array(outputPriorFindingSchema);
 
 export const reportOutputSchema = z.strictObject({
   version: z.literal(REPORT_VERSION),
+  runId: z.string().optional(),
   changeRequest: changeRequestSchema,
   tier: riskTierSchema,
   verdict: verdictSchema,

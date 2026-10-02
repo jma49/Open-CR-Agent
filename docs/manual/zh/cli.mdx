@@ -98,7 +98,7 @@ ocra 不运行任何分析工具。你自己运行 Semgrep、CodeQL 或其他工
 
 ### 会话记录
 
-每次审查（`--plan` 除外）都会写入 `.ocra/sessions/<id>/events.jsonl`（运行过程中逐行追加事件）和 `report.json`。这个目录自带 `.gitignore`，日志既不会被提交，也不会在下一次审查时被当成改动。
+每次审查（`--plan` 除外）都会写入 `.ocra/sessions/<id>/events.jsonl`（运行过程中逐行追加事件）和 `report.json`。这个 `<id>` 就是运行 id：第一行进度输出会写出它，JSON 报告以 `runId` 携带它，摘要评论在"覆盖范围和花费"里显示它，SARIF 日志以 `automationDetails.id`（`ocra/<id>`）携带它，因此从任何一处都能找回同一次运行。这个目录自带 `.gitignore`，日志既不会被提交，也不会在下一次审查时被当成改动。
 
 ## ocra --version
 

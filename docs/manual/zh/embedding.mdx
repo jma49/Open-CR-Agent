@@ -85,6 +85,7 @@ try {
 | `sarif` | 解析好的 SARIF 日志（`parseSarifLog`），其中落在改动上的结果加入审查（[SARIF 输入](./cli#sarif-输入)） |
 | `signal` | 一个 `AbortSignal`：运行会停下，保留已发现的问题并写出部分报告 |
 | `onEvent` | 在运行过程中接收每个 `ReviewEvent` |
+| `runId` | 在报告、事件和发布的内容里标识这次运行；不传则自动生成。CLI 传入它的会话 id |
 
 `bundling`、`grouper`、`relocate` 和 `abortGraceMs` 是调优和测试钩子，不属于约定。
 

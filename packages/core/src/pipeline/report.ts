@@ -61,6 +61,8 @@ export interface TaskOutcome {
 }
 
 export interface ReviewReport {
+  // The run id: the session directory's name, in every output of the run.
+  runId: string;
   changeRequest: ChangeRequest;
   tier: RiskTier;
   verdict: Verdict;
@@ -99,7 +101,7 @@ export interface ReviewReport {
 }
 
 export type ReviewEvent =
-  | { type: "run_started"; changeRequest: ChangeRequest }
+  | { type: "run_started"; runId: string; changeRequest: ChangeRequest }
   | { type: "files_selected"; selected: number; excluded: number; tier: RiskTier }
   | { type: "files_bundled"; strategy: string; bundles: number; warnings: string[] }
   | { type: "matrix_planned"; tasks: number; skipped: SkippedCell[] }

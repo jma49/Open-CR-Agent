@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import {
   appendFileSync,
   closeSync,
@@ -12,17 +11,10 @@ import {
 import { dirname, join } from "node:path";
 import { serializeOutput, toReportOutput } from "../pipeline/output.js";
 import type { ReviewEvent } from "../pipeline/report.js";
+import { newRunId } from "../pipeline/run-id.js";
 
 export const EVENTS_FILE = "events.jsonl";
 export const REPORT_FILE = "report.json";
-
-export function newSessionId(now = new Date()): string {
-  const stamp = now
-    .toISOString()
-    .replace(/[-:]/g, "")
-    .replace(/\.\d+Z$/, "Z");
-  return `${stamp}-${randomBytes(3).toString("hex")}`;
-}
 
 // Events are appended synchronously, one JSON object per line, so the log
 // stays valid and ordered even if the process dies mid-run.
@@ -31,7 +23,7 @@ export class JsonlSessionWriter {
 
   constructor(
     sessionsDir: string,
-    readonly id: string = newSessionId(),
+    readonly id: string = newRunId(),
   ) {
     // The sessions directory lives in the reviewed tree, which may carry
     // links planted to send the logs, or the .gitignore write, elsewhere.

@@ -45,6 +45,7 @@ const prior = {
 
 // Every optional field set, so the strict schema sees the whole output.
 const full: ReviewReport = {
+  runId: "20261002T070000Z-abcdef",
   changeRequest: {
     id: "1",
     title: "t",

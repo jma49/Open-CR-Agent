@@ -58,6 +58,7 @@ export function renderSarif(report: ReviewReport, version: string): string {
     version: "2.1.0",
     runs: [
       {
+        automationDetails: { id: `ocra/${report.runId}` },
         tool: {
           driver: {
             name: "ocra",

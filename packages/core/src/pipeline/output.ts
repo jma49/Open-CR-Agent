@@ -60,6 +60,9 @@ export interface OutputPriorFinding {
 
 export interface ReportOutput {
   version: typeof REPORT_VERSION;
+  // Added in version 1 without a bump: the run id, the session directory's
+  // name, also in the progress output, the summary comment and the SARIF log.
+  runId?: string;
   changeRequest: ChangeRequest;
   tier: RiskTier;
   verdict: Verdict;
@@ -89,6 +92,7 @@ export interface ReportOutput {
 export function toReportOutput(report: ReviewReport): ReportOutput {
   const output: ReportOutput = {
     version: REPORT_VERSION,
+    runId: report.runId,
     changeRequest: report.changeRequest,
     tier: report.tier,
     verdict: report.verdict,

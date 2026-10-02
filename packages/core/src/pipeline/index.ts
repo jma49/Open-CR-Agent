@@ -7,4 +7,5 @@ export * from "./output-schema.js";
 export * from "./preview.js";
 export * from "./report.js";
 export * from "./run.js";
+export * from "./run-id.js";
 export * from "./usage.js";

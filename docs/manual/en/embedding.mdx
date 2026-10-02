@@ -85,6 +85,7 @@ try {
 | `sarif` | Parsed SARIF logs (`parseSarifLog`) whose results on the change join the review ([SARIF input](./cli#sarif-input)) |
 | `signal` | An `AbortSignal`: the run stops, keeps what it found and writes a partial report |
 | `onEvent` | Receives each `ReviewEvent` as the run progresses |
+| `runId` | Names the run in the report, the events and what is posted; generated when absent. The CLI passes its session id |
 
 `bundling`, `grouper`, `relocate` and `abortGraceMs` are tuning and test hooks, not part of the contract.
 

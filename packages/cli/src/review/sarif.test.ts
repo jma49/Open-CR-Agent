@@ -24,6 +24,7 @@ function finding(overrides: Partial<Finding> = {}): Finding {
 }
 
 const report: ReviewReport = {
+  runId: "20261002T070000Z-abcdef",
   changeRequest: { id: "1", title: "t", description: "", baseSha: "b", headSha: "h" },
   tier: "full",
   verdict: "approved_with_comments",

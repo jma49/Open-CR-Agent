@@ -30,6 +30,7 @@ import {
   summarizeAnchoring,
   type TaskOutcome,
 } from "./report.js";
+import { newRunId } from "./run-id.js";
 import { addUsage, emptyUsage, unpricedCalls } from "./usage.js";
 
 export { GUIDELINES_PATH } from "./plan.js";
@@ -74,6 +75,9 @@ export interface ReviewOptions {
   // SARIF logs of external analyzers; their results on the change join the
   // findings (pipeline/imports.ts).
   sarif?: readonly SarifLog[];
+  // Names the run in every output; the CLI passes its session id. Generated
+  // when absent.
+  runId?: string;
   signal?: AbortSignal;
   onEvent?: (event: ReviewEvent) => void;
 }
@@ -90,6 +94,7 @@ export async function review(options: ReviewOptions): Promise<ReviewReport> {
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
   const reviewers = options.reviewers ?? [correctnessReviewer];
   if (reviewers.length === 0) throw new Error("No reviewer is registered");
+  const runId = options.runId ?? newRunId();
 
   const prior = await loadPriorReview(options.vcs);
   const scope = reviewScope(prior.review, options.fullReview === true);
@@ -97,10 +102,11 @@ export async function review(options: ReviewOptions): Promise<ReviewReport> {
     scope.only
       ? {
           ...options,
+          runId,
           reviewOnly: scope.only,
           ...(prior.review?.tier ? { priorTier: prior.review.tier } : {}),
         }
-      : options,
+      : { ...options, runId },
     emit,
     signal,
   );
@@ -263,6 +269,7 @@ export async function review(options: ReviewOptions): Promise<ReviewReport> {
     ...judged.usage,
   ];
   const report: ReviewReport = {
+    runId,
     changeRequest: plan.changeRequest,
     tier: plan.tier,
     verdict: judged.verdict,

@@ -5,6 +5,24 @@ import { finding, patch, runtime, twoFiles, vcs } from "./run.fakes.js";
 import { review } from "./run.js";
 
 describe("review", () => {
+  it("names the run by the given id in the first event and the report, or by one of its own", async () => {
+    const rt = runtime(async function* (spec) {
+      yield { type: "done", taskId: spec.taskId };
+    });
+    const events: ReviewEvent[] = [];
+    const given = await review({
+      vcs: vcs({}, twoFiles),
+      runtime: rt,
+      runId: "20261002T070000Z-abcdef",
+      onEvent: (e) => events.push(e),
+    });
+    expect(given.runId).toBe("20261002T070000Z-abcdef");
+    expect(events[0]).toMatchObject({ type: "run_started", runId: "20261002T070000Z-abcdef" });
+
+    const own = await review({ vcs: vcs({}, twoFiles), runtime: rt });
+    expect(own.runId).toMatch(/^\d{8}T\d{6}Z-[0-9a-f]{6}$/);
+  });
+
   it("reviews selected files end to end and anchors findings", async () => {
     const rt = runtime(async function* (spec) {
       yield { type: "progress", taskId: spec.taskId, message: "reading" };

@@ -48,7 +48,7 @@ export class ProgressPrinter {
 function describe(event: ReviewEvent): string | undefined {
   switch (event.type) {
     case "run_started":
-      return `Reviewing: ${event.changeRequest.title}`;
+      return `Reviewing: ${event.changeRequest.title} · run ${event.runId}`;
     case "files_selected":
       return `${event.selected} file(s) selected, ${event.excluded} excluded · risk tier: ${event.tier}`;
     case "files_bundled":
