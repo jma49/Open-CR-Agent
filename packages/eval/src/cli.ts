@@ -154,10 +154,8 @@ function loadInstances(
 
 async function list(argv: string[], out: Output): Promise<number> {
   const { values } = parse(argv);
-  const instances = selectInstances(
-    await loadInstances(dataset(values), values),
-    selection(values),
-  );
+  const select = selection(values);
+  const instances = selectInstances(await loadInstances(dataset(values), values), select);
   for (const i of instances) {
     const attack = i.golden?.attack;
     const size = !i.golden
@@ -179,8 +177,9 @@ async function list(argv: string[], out: Output): Promise<number> {
 
 async function ceiling(argv: string[], out: Output, err: Output): Promise<number> {
   const { values } = parse(argv);
+  const select = selection(values);
   const name = dataset(values);
-  const instances = selectInstances(await loadInstances(name, values), selection(values));
+  const instances = selectInstances(await loadInstances(name, values), select);
   const outDir = resolve(values.out ?? ".ocra/eval", values.label ?? "ceiling");
   const markdown = await measureCeiling(instances, {
     dataset: name,
