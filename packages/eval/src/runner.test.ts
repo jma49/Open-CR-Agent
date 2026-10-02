@@ -195,6 +195,19 @@ describe("runInstances", () => {
     expect(markdown).toContain(
       "3 reviewed, 1 failed, 0 unavailable in the dataset, 0 skipped for budget, 0 skipped for spent quota (of 4)",
     );
+    expect(markdown).not.toContain("Review flags");
+    const flagged = renderMarkdown(
+      {
+        runId: "r",
+        createdAt: "now",
+        selection: { seed: 1 },
+        models: { standard: "m" },
+        judge: "test",
+        review: ["--ultra", "--reviewers", "correctness"],
+      },
+      summary,
+    );
+    expect(flagged).toContain("- Review flags: --ultra --reviewers correctness");
   });
 
   it("marks PRs whose commits can no longer be fetched as unavailable, not failed", async () => {

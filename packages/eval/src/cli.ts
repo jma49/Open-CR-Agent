@@ -62,6 +62,7 @@ Run:
   --timeout-minutes <n>    Per-PR timeout (default 30)
   --retry-failed           Review again PRs that failed in an earlier attempt
   --reviewers <ids>        Passed to ocra review --reviewers
+  --ultra                  Passed to ocra review --ultra (recall mode; about twice the cost)
   --config <file>          Passed to ocra review --config: your own configuration
                            (declared providers, limits) for reviews that run with
                            --no-repo-config
@@ -111,6 +112,7 @@ const OPTIONS = {
   "mock-judge": { type: "boolean" },
   "retry-failed": { type: "boolean" },
   reviewers: { type: "string" },
+  ultra: { type: "boolean" },
   config: { type: "string" },
   "spread-of": { type: "string" },
 } as const;
@@ -227,6 +229,7 @@ async function run(
   const prMaxCost = number(values["pr-max-cost-usd"], "--pr-max-cost-usd");
   const reviewArgs = [
     ...(values.reviewers ? ["--reviewers", values.reviewers] : []),
+    ...(values.ultra ? ["--ultra"] : []),
     ...(prMaxCost !== undefined ? ["--max-cost-usd", String(prMaxCost)] : []),
     ...(values.config ? ["--config", resolve(values.config)] : []),
   ];
@@ -247,6 +250,7 @@ async function run(
       light: env.OCRA_MODEL_LIGHT,
     },
     judge: judge.description,
+    ...(reviewArgs.length > 0 ? { review: reviewArgs } : {}),
   };
   await writeFile(
     join(runDir, "run.json"),

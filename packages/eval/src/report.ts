@@ -10,6 +10,8 @@ export interface RunInfo {
   selection: Record<string, unknown>;
   models: Record<string, string | undefined>;
   judge: string;
+  // What every review was passed besides the range and the format.
+  review?: string[];
 }
 
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
@@ -23,6 +25,7 @@ export function renderMarkdown(info: RunInfo, summary: RunSummary): string {
     `- Selection: ${JSON.stringify(info.selection)}`,
     `- Models: ${JSON.stringify(info.models)}`,
     `- Judge: ${info.judge}`,
+    ...(info.review ? [`- Review flags: ${info.review.join(" ")}`] : []),
     `- Instances: ${summary.instances.reviewed} reviewed, ${summary.instances.failed} failed, ${summary.instances.unavailable} unavailable in the dataset, ${summary.instances.skippedBudget} skipped for budget, ${summary.instances.skippedQuota} skipped for spent quota (of ${summary.instances.selected})`,
     "",
     summary.golden ? "## Quality, benchmark matching (ignores labels)" : "## Quality",
