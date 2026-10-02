@@ -5,6 +5,8 @@ description: The .ocra/config.json file and environment variables.
 
 ocra reads `.ocra/config.json` from the root of the repository being reviewed. Every key is optional; unknown keys are rejected so typos fail loudly.
 
+`ocra review --config <file>` reads a file of your own instead, wherever it is: a CI checkout, your home directory. It is yours to trust, so it applies with `--no-repo-config` too, which is how reviews of code you do not trust (the evaluation harness, for example) get declared [model endpoints](./providers#your-own-endpoint) and limits. Plugins it names are resolved from its own directory. With `--pr` and `--mr` it replaces the base branch's file; plugins are still not loaded there.
+
 ```json
 {
   "models": {

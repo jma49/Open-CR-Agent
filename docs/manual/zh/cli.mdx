@@ -30,7 +30,8 @@ ocra review [options]
 | `--import-sarif <文件>` | 把分析工具（Semgrep、CodeQL 等）写出的 SARIF 2.1.0 日志里的结果加入审查，可以重复使用。只保留落在改动行上的结果，它们和审查员的问题一样经过核查和裁决。见 [SARIF 输入](#sarif-输入)。不能和 `--plan` 一起用 |
 | `--ultra` | 以成本换召回率，见[模式](./how-it-works#模式) |
 | `--reviewers <ids>` | 只运行这些审查员，用逗号分隔（例如 `security`） |
-| `--no-repo-config` | 忽略 `.ocra/config.json` 及其中列出的插件（与 `--pr` 一起用时，base 分支的也忽略），模型改从 `OCRA_MODEL_*` 读取；memory、rules 和 `AGENTS.md` 从 `--from` 所在的提交读取，否则不使用。审查不信任的代码时使用 |
+| `--config <文件>` | 读取这个配置文件，而不是仓库的 `.ocra/config.json`（与 `--pr` 或 `--mr` 一起用时，代替 base 分支的那份）。文件是你自己的，所以和 `--no-repo-config` 一起用也生效；它列出的插件从文件所在目录解析，审查 PR 和 Merge Request 时照样不加载。见[配置](./configuration) |
+| `--no-repo-config` | 忽略 `.ocra/config.json` 及其中列出的插件（与 `--pr` 一起用时，base 分支的也忽略），模型改从 `OCRA_MODEL_*` 或 `--config` 读取；memory、rules 和 `AGENTS.md` 从 `--from` 所在的提交读取，否则不使用。审查不信任的代码时使用 |
 | `-h, --help` | 显示帮助 |
 
 `--commit` 不能和 `--from`、`--to` 同时使用。

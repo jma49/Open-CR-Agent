@@ -25,12 +25,13 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--max-cost-usd` | 审查花费达到上限后，不再开始新的 PR |
 | `--retry-failed` | 重新审查同一次运行里之前失败的 PR |
 | `--reviewers` | 透传给 `ocra review --reviewers`，用来比较不同的审查员组合 |
+| `--config` | 透传给 `ocra review --config`：你自己的配置文件（声明的供应商、各种上限），给带着 `--no-repo-config` 运行的审查用 |
 | `--pr-max-cost-usd` | 每个 PR 的花费上限，透传给 `ocra review --max-cost-usd`。`--max-cost-usd` 只会阻止开始新的 PR，两者一起用才能卡住一次运行的总花费 |
 | `--mock-judge` | 离线的词重叠判定，只用来检查流程是否跑通（结果不可比） |
 
 如果某个 PR 因为模型额度用尽而失败（比如免费档的每日上限），这次运行就不再开始新的 PR，把剩下的标为 `skipped_quota`；之后重新运行同一条命令即可接着跑。
 
-评测总是带着 `--no-repo-config` 运行，基准仓库无法加载插件；模型从 `OCRA_MODEL_*` 读取。仓库以 blobless clone 的方式缓存在 `~/.cache/ocra/aacr-bench/repos`。commit 已经拉取不到的 PR 会被标记为不可用，不计入评分。
+评测总是带着 `--no-repo-config` 运行，基准仓库无法加载插件；模型从 `OCRA_MODEL_*` 读取，或者来自用 `--config` 传入的文件，[声明的端点](./providers#你自己的端点)就是这样在评测里使用的。仓库以 blobless clone 的方式缓存在 `~/.cache/ocra/aacr-bench/repos`。commit 已经拉取不到的 PR 会被标记为不可用，不计入评分。
 
 ## 黄金用例
 

@@ -140,7 +140,7 @@ Repository guidelines come from `AGENTS.md`; path-scoped review rules from `.ocr
 { "rules": [{ "path": "api/**", "rule": "Handlers must check tenant ownership." }] }
 ```
 
-A team can also share configuration over https (`extends`), and `ocra memory` records the findings a team accepts so they are not reported again. Every key: [Configuration](docs/manual/en/configuration.mdx), [Rules](docs/manual/en/rules.mdx).
+A team can also share configuration over https (`extends`), `ocra review --config <file>` reads a file of your own instead of the repository's (also under `--no-repo-config`), and `ocra memory` records the findings a team accepts so they are not reported again. Every key: [Configuration](docs/manual/en/configuration.mdx), [Rules](docs/manual/en/rules.mdx).
 
 ## Extending ocra
 

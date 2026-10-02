@@ -30,7 +30,8 @@ ocra review [options]
 | `--import-sarif <file>` | Add the results of a SARIF 2.1.0 log an analyzer wrote (Semgrep, CodeQL and others) to the review; repeatable. Only results on lines the change touches are kept, and they are verified and judged like a reviewer's findings. See [SARIF input](#sarif-input). Not with `--plan` |
 | `--ultra` | Favor recall over cost; see [Modes](./how-it-works#modes) |
 | `--reviewers <ids>` | Run only these reviewers, comma-separated (for example `security`) |
-| `--no-repo-config` | Ignore `.ocra/config.json` and the plugins it lists (with `--pr`, also the base branch's); models come from `OCRA_MODEL_*`; memory, rules and `AGENTS.md` come from the `--from` commit or are not used. Use it on code you do not trust |
+| `--config <file>` | Read this configuration file instead of the repository's `.ocra/config.json` (with `--pr` or `--mr`, instead of the base branch's). The file is yours, so it applies with `--no-repo-config` too; plugins it names are resolved from its own directory, and are still not loaded for pull and merge requests. See [Configuration](./configuration) |
+| `--no-repo-config` | Ignore `.ocra/config.json` and the plugins it lists (with `--pr`, also the base branch's); models come from `OCRA_MODEL_*` or from `--config`; memory, rules and `AGENTS.md` come from the `--from` commit or are not used. Use it on code you do not trust |
 | `-h, --help` | Show help |
 
 `--commit` cannot be combined with `--from` or `--to`.

@@ -57,6 +57,35 @@ OpenCode 自带了与目录里几乎所有供应商通信的代码。只有少�
 
 这项功能已经在 CI 里用真实的 OpenCode 二进制文件对一个模拟的 OpenAI 兼容服务测试过：密钥发往该去的地方，价格被计入，而且不需要访问网络上的其他地址。还没有对真实的模型服务测试过。
 
+## OpenRouter 上的免费模型
+
+免费提供的模型，比如 [OpenRouter](https://openrouter.ai) 上的匿名预览模型，用法和任何 OpenAI 兼容端点一样：声明端点，把该模型的价格写成 0（模型 id 按 OpenRouter 列出的写），然后以 `<端点 id>/<模型 id>` 的形式引用：
+
+```json
+{
+  "models": {
+    "top": "router/openrouter/space-bunny-alpha",
+    "standard": "router/openrouter/space-bunny-alpha",
+    "light": "router/openrouter/space-bunny-alpha"
+  },
+  "providers": {
+    "router": {
+      "type": "openai-compatible",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "apiKeyEnv": "OPENROUTER_API_KEY",
+      "models": { "openrouter/space-bunny-alpha": { "input": 0, "output": 0 } }
+    }
+  }
+}
+```
+
+- 价格 0 按字面理解：运行会警告这个模型的 token 不计入 `--max-cost-usd`，报告的花费是 $0，这正是预览期的价格；token 数照常报告。
+- 把这个文件放在被审查仓库之外，审查带着 `--no-repo-config` 运行时用 [`--config`](./cli) 传入，评测工具就是这么用的。
+- 评测的判定模型也可以用同一个端点：`JUDGE_API_KEY`、`JUDGE_BASE_URL=https://openrouter.ai/api/v1`、`JUDGE_MODEL=openrouter/space-bunny-alpha`。
+- 预览就是预览：模型、限额和价格随时可能变，匿名模型也不说明它保留什么。拿它做评测，别拿它审查必须保密的代码。
+
+模型 id 以 2026-10-02 列出的为准，请到模型页面核对。声明端点这条路不需要 OpenCode 的价格目录；目录形式的 `openrouter/<模型>` 需要能访问目录且模型在目录里，否则立刻失败。本仓库还没有通过 OpenRouter 真正跑过一次审查。
+
 ## 还会访问哪些网络地址
 
 除模型供应商之外，OpenCode 启动时还会从 `models.opencode.ai` 拉取价格目录。启动时它还会尝试从 npm 安装它自己的插件包，并在模型需要时安装它没有自带的供应商代码；ocra 把这两种安装都指向本机上一个立即拒绝的 registry。除声明的端点之外所有地址都被拒绝时，审查依然正常（已测试）。在屏蔽外网的环境里，价格目录拉取失败，OpenCode 会使用它自带的目录；不在该目录里的模型没有价格，这时运行会警告它的调用没有计入。
