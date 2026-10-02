@@ -91,7 +91,7 @@ Done on 2026-09-30: `vcs-platform` and `vcs-gitlab` were published by hand at 0.
 3. Done in #304 (waiting in the queue): the second `AgentRuntime` (`direct`) and the runtime conformance suite. Next: evaluate it on one smoke run, then M10 item 5, the reviewer as an entity with its insertion points.
 4. Done: SARIF in (ADR-0019); a live run of the manual's Semgrep job is still open.
 5. Carried over: after maintainer action 1, the live GitLab check and #290; #289 on a scratch repository; #288.
-6. When credit returns, M11: a nightly live smoke test in CI, then one golden smoke run of `main` (about $11), then M5 and M6.
+6. M11 without credit, on the free model: the nightly live smoke workflow is #310 (needs the secret and the switch); the golden smoke runs of `main` are in progress under the daily quota (above); M5 and M6 follow the numbers. Also from #306, #309 and the eval runs: the pending-verification rows A3 (verification per severity), A4 (Verify and Judge share of spend) and B3 (anchoring methods) can be read from the collected reports once the smoke tier is complete.
 7. Gitea, Gitee, Bitbucket or Azure DevOps only when someone asks, through the conformance suite.
 
 **The 0.2.0 release** (#292, run 36678672079): the dry run and the release published all seven packages with provenance. The image job failed once, because npm served `cli@0.2.0` minutes before `core`, `vcs-platform` and `vcs-gitlab`, and the image refuses to build from source; re-run, it pushed and attested the image. The image job now waits for every package. Checked as a user: `npm install @open-cr-agent/cli@0.2.0`, `ocra --version`, a `--plan` review, and `npm audit signatures`, with all seven packages attested.
