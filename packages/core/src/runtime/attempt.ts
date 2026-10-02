@@ -2,6 +2,20 @@ import type { Usage } from "../contracts.js";
 import { REVIEW_TOOLS } from "../review/tools.js";
 import type { QuotaError } from "./quota.js";
 
+// Each step resends the whole conversation, so an unbounded loop is the
+// largest cost risk. At 20 steps a quarter of the review tasks on Vertex
+// ended at the cap and one golden bug was never found; at 30 it was found in
+// both runs, for about a third more cost on average (2026-09-28). Most tasks
+// finish in about 15 steps and never reach it.
+export const MAX_AGENT_STEPS = 30;
+
+// About one review attempt in twelve on Gemini ended after a step or two
+// with no text, no done tool and steps to spare (2026-09-28), and the task
+// counted as completed with its files unread. Sent once to such an agent, in
+// the same conversation, which keeps what it read and is cheaper than
+// starting over.
+export const RESUME_MESSAGE = `You stopped before finishing the review. Continue with the files in <ocra_review_files> you have not reviewed yet, report each confirmed issue with ${REVIEW_TOOLS.reportFinding}, and call ${REVIEW_TOOLS.taskDone} when every file is done.`;
+
 // What one attempt of a task on one model came to, whatever runtime ran it.
 export interface AttemptOutcome {
   findings: unknown[];

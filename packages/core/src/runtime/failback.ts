@@ -50,6 +50,8 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
       yield { type: "progress", taskId, message: attemptSummary(model, outcome) };
       for (const finding of outcome.findings) yield { type: "finding", taskId, finding, model };
 
+      // A cancelled attempt is neither finished nor the model's fault.
+      if (signal.aborted) return;
       if (!outcome.error) {
         health.recordSuccess(model);
         yield { type: "done", taskId };

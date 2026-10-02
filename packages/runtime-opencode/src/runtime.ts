@@ -11,9 +11,11 @@ import {
   type CompletionResult,
   type CustomProvider,
   completeWithFailback,
+  MAX_AGENT_STEPS,
   ModelHealth,
   type ModelTier,
   parseModel,
+  RESUME_MESSAGE,
   REVIEW_TOOLS,
   type ReviewContext,
   type RuntimeOptions,
@@ -36,12 +38,6 @@ const HELPER_AGENT = "ocra-helper";
 const REVIEW_AGENT_PROMPT =
   "You are a code review agent run by ocra. Follow the review instructions below.";
 const HELPER_AGENT_PROMPT = "You answer exactly as the instructions below ask, with no tools.";
-// Each step resends the whole conversation, so an unbounded loop is the
-// largest cost risk. At 20 steps a quarter of the review tasks on Vertex
-// ended at the cap and one golden bug was never found; at 30 it was found in
-// both runs, for about a third more cost on average (2026-09-28). Most tasks
-// finish in about 15 steps and never reach it.
-export const MAX_AGENT_STEPS = 30;
 // The helper answers in one step and has no tools. It still needs two:
 // OpenCode appends an assistant message on an agent's last allowed step, and
 // Gemini rejects a request that ends with a model turn (#66).
@@ -51,7 +47,7 @@ export const HELPER_AGENT_STEPS = 2;
 export const REVIEW_RESUME = {
   doneTool: REVIEW_TOOLS.taskDone,
   maxSteps: MAX_AGENT_STEPS,
-  message: `You stopped before finishing the review. Continue with the files in <ocra_review_files> you have not reviewed yet, report each confirmed issue with ${REVIEW_TOOLS.reportFinding}, and call ${REVIEW_TOOLS.taskDone} when every file is done.`,
+  message: RESUME_MESSAGE,
 };
 
 // Every OpenCode built-in tool of the pinned version; a test fails when an

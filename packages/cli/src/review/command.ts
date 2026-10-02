@@ -19,6 +19,7 @@ import {
   startPlugins,
   toPlanOutput,
 } from "@open-cr-agent/core";
+import { directRuntimePlugin } from "@open-cr-agent/runtime-direct";
 import { opencodeRuntimePlugin } from "@open-cr-agent/runtime-opencode";
 import { githubPlugin } from "@open-cr-agent/vcs-github";
 import { gitlabPlugin } from "@open-cr-agent/vcs-gitlab";
@@ -43,6 +44,7 @@ export const BUILTIN_PLUGINS: readonly OcraPlugin[] = [
   githubPlugin,
   gitlabPlugin,
   opencodeRuntimePlugin,
+  directRuntimePlugin,
   correctnessReviewerPlugin,
   securityReviewerPlugin,
   performanceReviewerPlugin,

@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "packages/core" },
+    { "path": "packages/runtime-direct" },
     { "path": "packages/runtime-opencode" },
     { "path": "packages/vcs-platform" },
     { "path": "packages/vcs-github" },

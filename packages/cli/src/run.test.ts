@@ -24,6 +24,7 @@ describe("BUILTIN_PLUGINS", () => {
       "vcs-github",
       "vcs-gitlab",
       "runtime-opencode",
+      "runtime-direct",
       "reviewer-correctness",
       "reviewer-security",
       "reviewer-performance",

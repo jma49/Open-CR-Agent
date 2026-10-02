@@ -11,6 +11,9 @@
       "path": "../core"
     },
     {
+      "path": "../runtime-direct"
+    },
+    {
       "path": "../runtime-opencode"
     },
     {

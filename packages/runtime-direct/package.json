@@ -1,20 +1,18 @@
 {
-  "name": "@open-cr-agent/cli",
+  "name": "@open-cr-agent/runtime-direct",
   "version": "0.2.0",
-  "description": "ocra: open-source multi-agent code review for local changes and GitHub pull requests",
+  "description": "Agent runtime for Open-CR-Agent that calls OpenAI-compatible endpoints directly",
   "keywords": [
     "code-review",
-    "cli",
-    "llm",
-    "agents",
-    "github-action"
+    "openai-compatible",
+    "agents"
   ],
   "license": "Apache-2.0",
   "homepage": "https://ocra.majincheng.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jma49/Open-CR-Agent.git",
-    "directory": "packages/cli"
+    "directory": "packages/runtime-direct"
   },
   "bugs": "https://github.com/jma49/Open-CR-Agent/issues",
   "engines": {
@@ -27,20 +25,12 @@
       "default": "./dist/index.js"
     }
   },
-  "bin": {
-    "ocra": "./dist/main.js"
-  },
   "files": [
     "dist",
     "!dist/**/*.map"
   ],
   "dependencies": {
     "@open-cr-agent/core": "0.2.0",
-    "@open-cr-agent/runtime-direct": "0.2.0",
-    "@open-cr-agent/runtime-opencode": "0.2.0",
-    "@open-cr-agent/vcs-github": "0.2.0",
-    "@open-cr-agent/vcs-gitlab": "0.2.0",
-    "@open-cr-agent/vcs-local": "0.2.0",
     "zod": "^4.6.5"
   },
   "publishConfig": {

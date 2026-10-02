@@ -57,6 +57,32 @@ describe("withFailback", () => {
     });
   });
 
+  it("ends quietly after an attempt the signal cancelled, whatever it says", async () => {
+    const controller = new AbortController();
+    const health = new ModelHealth();
+    const cancelled: AttemptOutcome = { ...fail("cancelled", true), findings: [{ title: "x" }] };
+    const attempted: string[] = [];
+    const events: AgentEvent[] = [];
+    for await (const event of withFailback({
+      taskId: "t",
+      tier: "standard",
+      chain: ["a", "b"],
+      health,
+      signal: controller.signal,
+      attempt: async (model) => {
+        attempted.push(model);
+        controller.abort();
+        return cancelled;
+      },
+    })) {
+      events.push(event);
+    }
+    expect(attempted).toEqual(["a"]);
+    expect(events.map((e) => e.type)).toEqual(["progress", "usage", "progress", "finding"]);
+    // Not a failure of the model: its circuit stays closed.
+    expect(health.state("a")).toBe("closed");
+  });
+
   it("moves to the next model on retryable errors and keeps partial findings", async () => {
     const run = await collect(
       { a: { ...fail("503 high demand", true), findings: [{ title: "early" }] }, b: ok() },
