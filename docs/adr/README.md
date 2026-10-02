@@ -22,5 +22,6 @@
 | [0018](0018-finding-specification.md) | The finding is the specification: one shared model with provenance (task, model, the task's cost), quote-anchored, three-valued verification; the JSON report is its published form, with a generated and tested JSON Schema |
 | [0019](0019-sarif-import.md) | External findings enter as SARIF logs the CI job hands over; ocra runs no analyzer; only results on the change, as a synthetic task, verified and judged like a reviewer's |
 | [0020](0020-direct-runtime.md) | A second runtime, `direct`: a tool loop over declared OpenAI-compatible endpoints, nothing else on the network; the runtime logic both share lives in core; a conformance suite every runtime passes |
+| [0021](0021-reviewer-entity.md) | Proposed: the reviewer declares its tools; finding processors at two insertion points (after Execute, after Verify) that can keep, drop or downgrade with a recorded reason, never raise or add; `tools` can land now, processors with their first customer |
 
 Copy [0000-template.md](0000-template.md) to add a new record.
