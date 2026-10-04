@@ -18,7 +18,12 @@
   },
   "linter": {
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "style": {
+        "noDefaultExport": "error",
+        "noParameterProperties": "error",
+        "noNonNullAssertion": "error"
+      }
     }
   },
   "vcs": {
@@ -26,5 +31,17 @@
     "clientKind": "git",
     "useIgnoreFile": true
   },
-  "plugins": ["./biome-plugins/error-casts.grit"]
+  "plugins": ["./biome-plugins/error-casts.grit"],
+  "overrides": [
+    {
+      "includes": ["vitest.config.ts", "commitlint.config.mjs"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
+        }
+      }
+    }
+  ]
 }
