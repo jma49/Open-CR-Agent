@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { ReviewReport } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import type { CloudDeps } from "../cloud.js";
-import { defaultModels, repoHash, uploadOf, uploadReview } from "./cloud-upload.js";
+import { repoHash, uploadOf, uploadReview } from "./cloud-upload.js";
 
 const NOW = 1_000_000_000;
 
@@ -114,16 +114,5 @@ describe("the review upload", () => {
     expect(await uploadReview(up, offline.deps, (m) => warnings.push(m))).toBe(false);
     expect(warnings).toHaveLength(2);
     expect(warnings.join(" ")).not.toContain("ocra_cli_t");
-  });
-});
-
-describe("default models", () => {
-  it("takes only ocra- chains from the server", async () => {
-    const t = cloud(() =>
-      Response.json({
-        models: { standard: ["ocra-openrouter/m"], light: ["google/gemini"], top: "x" },
-      }),
-    );
-    expect(await defaultModels(t.deps)).toEqual({ standard: ["ocra-openrouter/m"] });
   });
 });

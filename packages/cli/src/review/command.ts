@@ -29,7 +29,8 @@ import type { CloudDeps } from "../cloud.js";
 import { VERSION } from "../version.js";
 import type { ReviewArgs } from "./args.js";
 import { withCloudProviders } from "./cloud-providers.js";
-import { cloudEnabled, defaultModels, repoHash, uploadOf, uploadReview } from "./cloud-upload.js";
+import { fetchAccountSettings, layerAccountSettings } from "./cloud-settings.js";
+import { cloudEnabled, repoHash, uploadOf, uploadReview } from "./cloud-upload.js";
 import { agentChains, type CliConfig, ConfigError } from "./config.js";
 import { renderPlan } from "./plan-render.js";
 import { type Output, ProgressPrinter } from "./progress.js";
@@ -107,7 +108,21 @@ export async function reviewCommand(
           configFile,
         )
       : await localTarget(localArgs, deps.cwd, root, deps.env, warn, deps.fetch);
-  const { config } = target;
+  // The account's settings fill what the repository leaves out; a plan makes
+  // no network call, so it shows the repository's alone.
+  const cloudDeps = deps.cloud;
+  const signedIn = cloudDeps !== undefined && (await cloudEnabled(cloudDeps));
+  let config = target.config;
+  if (cloudDeps && signedIn && !args.plan) {
+    const account = await fetchAccountSettings(cloudDeps, warn);
+    if (account) {
+      const layered = layerAccountSettings(config, account);
+      config = layered.config;
+      if (layered.filled.length > 0) {
+        io.err.write(`[ocra] From your ocra Cloud settings: ${layered.filled.join(", ")}\n`);
+      }
+    }
+  }
   const session = { dir: join(root, SESSIONS_DIR), id: newRunId() };
 
   // A plan calls no model, writes no session log and imports no runtime: it
@@ -152,15 +167,7 @@ export async function reviewCommand(
 
   const sarif = await loadSarifLogs(args.importSarif ?? [], deps.cwd);
   const sampling = requestedSampling(config, args);
-  const cloudDeps = deps.cloud;
-  const signedIn = cloudDeps !== undefined && (await cloudEnabled(cloudDeps));
-  let models = config.models;
-  if (cloudDeps && signedIn && Object.values(models).every((chain) => !chain?.length)) {
-    models = await defaultModels(cloudDeps);
-    if (Object.keys(models).length > 0) {
-      io.err.write("[ocra] No models configured: using your default models from ocra Cloud\n");
-    }
-  }
+  const models = config.models;
   const agentModels = agentChains({ reviewers: overrides, roles: config.roles });
   const cloud = await withCloudProviders(
     [...Object.values(models), ...Object.values(agentModels)],

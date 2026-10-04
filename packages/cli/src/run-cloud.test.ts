@@ -30,9 +30,11 @@ function signedIn(env: Record<string, string> = {}) {
     fetch: (async (input: string | URL | Request, init?: RequestInit) => {
       const path = new URL(String(input)).pathname;
       calls.push({ path, ...(init?.body ? { body: JSON.parse(String(init.body)) } : {}) });
-      if (path === "/api/preferences/models") {
+      if (path === "/api/preferences") {
         return Response.json({
+          runtime: null,
           models: { standard: ["ocra-openrouter/m"], light: ["ocra-openrouter/m"] },
+          agents: { reviewers: { security: { effort: "high" } } },
         });
       }
       if (path === "/api/providers")
@@ -58,18 +60,20 @@ describe("a review while signed in to ocra Cloud", () => {
     const err = capture();
     await run(["review"], capture(), err, deps(cwd, critical, { cloud }, true));
     expect(calls.map((c) => c.path)).toEqual([
-      "/api/preferences/models",
+      "/api/preferences",
       "/api/providers",
       "/api/reviews",
     ]);
-    expect(err.text()).toContain("using your default models from ocra Cloud");
+    expect(err.text()).toContain(
+      "From your ocra Cloud settings: models.standard, models.light, reviewers.security",
+    );
     expect(err.text()).toContain("Sent this review's counts to ocra Cloud");
     const sent = calls.at(-1)?.body as Record<string, unknown>;
     expect(sent).toMatchObject({ source: "local", findings: { critical: 1 } });
     expect(JSON.stringify(sent)).not.toMatch(/app\.ts|retries|Negative retry/);
   });
 
-  it("sends nothing with --no-upload, and keeps configured models", async () => {
+  it("uploads nothing with --no-upload, and keeps configured models", async () => {
     const cwd = repoWithChange();
     const { cloud, calls } = signedIn();
     const d = deps(
@@ -78,8 +82,12 @@ describe("a review while signed in to ocra Cloud", () => {
       { cloud, env: { OCRA_MODEL_STANDARD: "google/x", OCRA_MODEL_LIGHT: "google/x" } },
       true,
     );
-    await run(["review", "--no-upload"], capture(), capture(), d);
-    expect(calls).toEqual([]);
+    const err = capture();
+    await run(["review", "--no-upload"], capture(), err, d);
+    // The settings are still read; the repository's models win over the account's.
+    expect(calls.map((c) => c.path)).toEqual(["/api/preferences"]);
+    expect(err.text()).toContain("From your ocra Cloud settings: reviewers.security");
+    expect(err.text()).not.toContain("models.standard");
   });
 
   it("never contacts ocra Cloud with OCRA_CLOUD=off or without the dependency", async () => {

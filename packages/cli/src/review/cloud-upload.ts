@@ -3,7 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
-import { coverageGaps, type ModelChains, type ReviewReport } from "@open-cr-agent/core";
+import { coverageGaps, type ReviewReport } from "@open-cr-agent/core";
 import { type CloudDeps, cloudSession, readCredentials } from "../cloud.js";
 import { VERSION } from "../version.js";
 
@@ -142,24 +142,4 @@ export async function uploadReview(
     );
     return false;
   }
-}
-
-/** The default models chosen on the web, for a review that configures none. */
-export async function defaultModels(deps: CloudDeps): Promise<ModelChains> {
-  const session = await cloudSession(deps);
-  if (!session) return {};
-  const res = await deps.fetch(`${session.server}/api/preferences/models`, {
-    headers: { authorization: `Bearer ${session.access_token}`, "user-agent": `ocra/${VERSION}` },
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!res.ok) return {};
-  const body = (await res.json()) as { models?: Record<string, unknown> };
-  const chains: { -readonly [K in keyof ModelChains]: string[] } = {};
-  for (const tier of ["top", "standard", "light"] as const) {
-    const list = body.models?.[tier];
-    if (Array.isArray(list) && list.every((m) => typeof m === "string" && m.startsWith("ocra-"))) {
-      if (list.length > 0) chains[tier] = list as string[];
-    }
-  }
-  return chains;
 }

@@ -73,6 +73,7 @@ const providerSchema = z
 // The runtimes ocra ships; a plugin may register another name, so the
 // schema lists these for editors and still accepts any other string.
 const BUILTIN_RUNTIMES = ["opencode", "direct"] as const;
+export const DEFAULT_RUNTIME = "opencode";
 
 const configSchema = z
   .object({
@@ -115,7 +116,9 @@ const configSchema = z
       .default({}),
     include: z.array(z.string().min(1)).default([]),
     exclude: z.array(z.string().min(1)).default([]),
-    runtime: z.enum(BUILTIN_RUNTIMES).or(z.string().min(1)).default("opencode"),
+    // Unset means "opencode"; loadConfig fills it in and records whether the
+    // file chose, so account defaults (ADR-0025) apply only where it did not.
+    runtime: z.enum(BUILTIN_RUNTIMES).or(z.string().min(1)).optional(),
     plugins: z.array(z.string().min(1)).default([]),
     reviewers: z
       .record(
@@ -161,7 +164,13 @@ export function configJsonSchema(): Record<string, unknown> {
   };
 }
 
-export type CliConfig = Omit<z.infer<typeof configSchema>, "models" | "effort" | "providers"> & {
+export type CliConfig = Omit<
+  z.infer<typeof configSchema>,
+  "models" | "effort" | "providers" | "runtime"
+> & {
+  runtime: string;
+  // Whether the configuration chose the runtime (else it is the default).
+  runtimeSet: boolean;
   models: ModelChains;
   // The file's, with OCRA_EFFORT_<TIER> on top.
   effort: TierEfforts;
@@ -248,6 +257,8 @@ export async function loadConfig(
   }
   return {
     ...parsed,
+    runtime: parsed.runtime ?? DEFAULT_RUNTIME,
+    runtimeSet: parsed.runtime !== undefined,
     models,
     effort: efforts,
     providers: toProviders(parsed.providers),
@@ -375,3 +386,23 @@ async function readConfigFile(
   }
   return { config: merged.data, rules: remote.rules ?? [] };
 }
+
+/**
+ * ocra Cloud's account settings (ADR-0025), checked with the same rules as a
+ * configuration file; undefined when the server sends anything else.
+ */
+export function parseAccountSettings(data: unknown) {
+  const b = (data ?? {}) as Record<string, unknown>;
+  const parsed = configSchema
+    .pick({ models: true, effort: true, reviewers: true, roles: true, runtime: true })
+    .safeParse({
+      models: b.models ?? {},
+      effort: (b.agents as Record<string, unknown> | undefined)?.effort ?? {},
+      reviewers: (b.agents as Record<string, unknown> | undefined)?.reviewers ?? {},
+      roles: (b.agents as Record<string, unknown> | undefined)?.roles ?? {},
+      ...(b.runtime === "direct" || b.runtime === "opencode" ? { runtime: b.runtime } : {}),
+    });
+  return parsed.success ? parsed.data : undefined;
+}
+
+export type AccountSettings = NonNullable<ReturnType<typeof parseAccountSettings>>;

@@ -20,7 +20,16 @@ export function requestedSampling(config: CliConfig, args: ReviewArgs): Sampling
 // URL is dropped. Sampling is recorded on its own. Effort is covered; left
 // unset it adds nothing, so configurations that set none keep their hash.
 export function configHash(config: CliConfig, args: ReviewArgs): string {
-  const { sampling: _, providers, extends: shared, effort, roles, ...rest } = config;
+  // runtimeSet says where the runtime came from, not what ran: the runtime is hashed.
+  const {
+    sampling: _,
+    runtimeSet: _set,
+    providers,
+    extends: shared,
+    effort,
+    roles,
+    ...rest
+  } = config;
   return stableHash({
     ...rest,
     ...(Object.keys(effort).length > 0 ? { effort } : {}),
