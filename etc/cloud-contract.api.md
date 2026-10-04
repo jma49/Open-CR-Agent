@@ -182,7 +182,7 @@ export const effortSchema: z.ZodEnum<{
 export type EffortStyle = (typeof EFFORT_STYLES)[number];
 
 // @public (undocumented)
-export const ERROR_CODES: readonly ["invalid_body", "body_too_large", "unauthenticated", "bad_origin", "forbidden_for_session", "not_found", "daily_limit", "stale", "version_no_longer_valid", "memory_full", "unknown_provider", "no_key", "path_not_allowed", "upstream_unreachable", "confirm_with_login", "bad_state", "github_exchange", "github_user", "unknown_or_expired", "already_decided", "internal", "invalid_request", "invalid_grant", "expired_token", "authorization_pending", "slow_down", "access_denied"];
+export const ERROR_CODES: readonly ["invalid_body", "body_too_large", "unauthenticated", "bad_origin", "forbidden_for_session", "not_found", "daily_limit", "stale", "version_no_longer_valid", "memory_full", "unknown_provider", "no_key", "path_not_allowed", "upstream_unreachable", "upstream_redirect", "confirm_with_login", "bad_state", "github_exchange", "github_user", "unknown_or_expired", "already_decided", "internal", "invalid_request", "invalid_grant", "expired_token", "authorization_pending", "slow_down", "access_denied"];
 
 // @public
 export const ERROR_STATUS: {
@@ -200,6 +200,7 @@ export const ERROR_STATUS: {
     readonly no_key: 404;
     readonly path_not_allowed: 404;
     readonly upstream_unreachable: 502;
+    readonly upstream_redirect: 502;
     readonly confirm_with_login: 400;
     readonly bad_state: 400;
     readonly github_exchange: 502;
@@ -251,6 +252,7 @@ export const errorCodeSchema: z.ZodEnum<{
     unauthenticated: "unauthenticated";
     unknown_or_expired: "unknown_or_expired";
     unknown_provider: "unknown_provider";
+    upstream_redirect: "upstream_redirect";
     upstream_unreachable: "upstream_unreachable";
     version_no_longer_valid: "version_no_longer_valid";
 }>;

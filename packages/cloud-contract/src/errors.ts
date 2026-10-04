@@ -3,7 +3,7 @@ import { DEVICE_ERRORS, type DeviceError } from "./device.js";
 
 // ocra Cloud's refusals: a JSON body `{ "error": <code>, ... }`. Some carry more: `issues`
 // (invalid_body), `limit` (daily_limit, memory_full), `version` (stale),
-// `interval` (slow_down).
+// `interval` (slow_down), `status` (upstream_redirect).
 
 export const ERROR_CODES = [
   // The body does not fit the route's schema; `issues` names the fields.
@@ -22,6 +22,9 @@ export const ERROR_CODES = [
   "no_key",
   "path_not_allowed",
   "upstream_unreachable",
+  // The provider answered with a redirect, which the gateway never follows:
+  // it would resend the key to another address.
+  "upstream_redirect",
   "confirm_with_login",
   // Sign-in on the web with GitHub.
   "bad_state",
@@ -56,6 +59,7 @@ export const ERROR_STATUS = {
   no_key: 404,
   path_not_allowed: 404,
   upstream_unreachable: 502,
+  upstream_redirect: 502,
   confirm_with_login: 400,
   bad_state: 400,
   github_exchange: 502,
