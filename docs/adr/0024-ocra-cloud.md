@@ -35,11 +35,18 @@ What must not change: the open engine is the product's foundation and its credib
 
 **Data policy, stated on a public page before Phase 1 ships.** What is stored (account, encrypted keys, review metadata, opted-in content), what is not (code, unless shared; request bodies), retention (review data 90 days by default), export, deletion per review and per account within a stated time that also destroys the account's data keys, that nothing is used to train models, the hosting region, and the subprocessors (the hosting platform, the database provider, and the model providers the user chose). A minimal incident process (who rotates the master key, revokes tokens and tells users) exists before the first external user. The threat model gains a cloud section: a breach of the service exposes encrypted keys and metadata; the master key lives apart from the database; users are told to set a spending limit at their provider; key use is in an audit log the user can read.
 
-**Stack for Phase 1** (one maintainer, little money): Next.js on Vercel, which the project already uses; Postgres from a managed provider; Auth.js with the GitHub provider; AES-256-GCM envelope encryption with the master key in the platform's encrypted environment, moving to a key management service before paid plans, and master-key rotation (re-wrapping every data key) designed in Phase 1 even if run by hand. Conditions:
-- **Isolation:** every query goes through one data-access layer that filters by account, with a test per table that one account cannot read another's rows.
-- **Long streams:** a review task can stream for ten minutes or more; the gateway runs where that is allowed (checked against the platform's function limits before Phase 1 is committed), or reviews fail mid-task.
+**Stack for Phase 1** (one maintainer, little money): Cloudflare, whose free plan allows commercial use.
+- **Gateway:** a Cloudflare Worker. Proxying a stream is waiting, and Workers bill CPU time, not waiting. The free plan allows 10 ms of CPU per request and 100,000 requests a day; Workers Paid ($5 a month) lifts the CPU limit to seconds. A spike measures the gateway's CPU per request (passthrough, usage counting, audit write) on real reviews before Phase 1 is committed, and decides the plan.
+- **Web:** on Workers as well (Next.js through OpenNext, or a lighter framework if that proves simpler), sign-in with GitHub.
+- **Database:** D1 to start, through an ORM that also targets Postgres (Hyperdrive), so moving is a migration, not a rewrite.
+- **Keys:** AES-256-GCM envelope encryption with the master key as a Worker secret, moving to a key management service before paid plans, and master-key rotation (re-wrapping every data key) designed in Phase 1 even if run by hand.
+- **Portability:** the gateway and the API use a portable framework (Hono or similar) and standard Web APIs, so they can move to another runtime (Cloud Run, Fly.io) without a rewrite. The marketing site stays where it is.
 
-Expected cost: tens of dollars a month.
+Conditions:
+- **Isolation:** every query goes through one data-access layer that filters by account, with a test per table that one account cannot read another's rows.
+- **Long streams:** each gateway request is one model call; the agent loop runs in the CLI. A call streams for seconds to a few minutes, which Workers allow while the client stays connected; the spike confirms it.
+
+Expected cost: $0 to $5 a month for Phase 1. Phase 2's workers (cloning, running ocra, isolated per job) do not fit Workers; their platform (Cloudflare Containers, Cloud Run, Fly.io) and budget are Phase 2's own ADR.
 
 **What the open repository gets in Phase 1:** `ocra login`, `ocra logout`, `ocra whoami`; the gateway as a built-in provider when logged in; the upload after a review, off by default unless logged in, with `--no-upload`; the manual's pages on what ocra Cloud receives. Nothing the cloud needs becomes a hidden dependency: a self-hosted user never sees a login prompt.
 
