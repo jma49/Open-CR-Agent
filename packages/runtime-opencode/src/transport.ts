@@ -10,6 +10,10 @@ export function createUntimedDispatcher(): Agent {
   return new Agent({ headersTimeout: 0, bodyTimeout: 0 });
 }
 
+// The adapter from undici's fetch to Node's is a deliberate copy of the one in
+// core's proxiedFetch: a runtime builds on core's public API only (ADR-0006),
+// and sharing it there would put undici's Dispatcher type in core's contract
+// and pass a dispatcher from this package's undici to core's copy.
 export function untimedFetch(dispatcher: Dispatcher): typeof fetch {
   return async (input, init) => {
     const request = new Request(input, init);

@@ -15,7 +15,8 @@ export interface ProxyEnv {
 // EnvHttpProxyAgent, reading the given environment rather than the
 // process's; without one, Node's fetch is used as it is. undici's fetch and
 // agent are used together so that no object crosses between it and Node's
-// bundled copy (as runtime-opencode's transport does).
+// bundled copy (runtime-opencode's transport keeps its own copy of the
+// adapter on purpose; see there).
 export function proxiedFetch(env: ProxyEnv): typeof fetch {
   const httpProxy = env.HTTP_PROXY ?? env.http_proxy;
   const httpsProxy = env.HTTPS_PROXY ?? env.https_proxy;
