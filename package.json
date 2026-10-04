@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "build": "tsc -b && node scripts/mark-bins.mjs",
-    "typecheck": "tsc -b && tsc -p tsconfig.test.json",
+    "typecheck": "tsc -b && tsc -p tsconfig.test.json && tsc -p scripts/tsconfig.json",
     "test": "vitest run",
     "check": "biome check --error-on-warnings .",
     "format": "biome check --write .",
