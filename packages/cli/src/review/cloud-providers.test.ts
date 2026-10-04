@@ -111,6 +111,40 @@ describe("models through ocra Cloud", () => {
     expect(t.calls).toEqual(["GET /api/providers"]);
   });
 
+  it("drops model ids and gateway paths ocra Cloud may not name, with a warning", async () => {
+    const t = setup({});
+    const odd = {
+      providers: [
+        { name: "openrouter", paths: ["/v1{x}/chat/completions", "/v1/chat/completions"] },
+        { name: "deepseek", paths: ["/a b/chat/completions"] },
+      ],
+    };
+    const fetchListing = t.deps.fetch;
+    t.deps.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
+      new URL(String(input)).pathname === "/api/providers"
+        ? Response.json(odd)
+        : fetchListing(input, init)) as typeof fetch;
+    const out = await withCloudProviders(
+      [["ocra-openrouter/m{1}", "ocra-openrouter/m1", "ocra-g{w}/m", "ocra-Gw/m"]],
+      {},
+      {},
+      t.deps,
+      t.warn,
+    );
+    const config = JSON.stringify(out.providers);
+    for (const odd of ["m{1}", "g{w}", "Gw", "v1{x}"]) expect(config).not.toContain(odd);
+    expect(Object.keys(out.providers)).toEqual(["ocra-openrouter"]);
+    expect(out.providers["ocra-openrouter"]).toMatchObject({
+      baseUrl: `${SERVER}/api/gateway/openrouter/v1`,
+      models: { m1: { input: 0, output: 0 } },
+    });
+    expect(t.warnings.join("\n")).toContain('"ocra-openrouter/m{1}"');
+    expect(t.warnings.join("\n")).toContain("not plain paths");
+
+    const e = await failure(withCloudProviders([["ocra-deepseek/m"]], {}, {}, t.deps, t.warn));
+    expect(isOcraError(e) && e.code).toBe("CONFIG_INVALID");
+  });
+
   it("refreshes a token that would expire during the review", async () => {
     const t = setup({ expires_at: NOW + 10 * 60_000 });
     const out = await withCloudProviders([["ocra-openrouter/m"]], {}, {}, t.deps, t.warn);

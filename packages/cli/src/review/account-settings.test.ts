@@ -46,6 +46,31 @@ describe("parseAccountSettings", () => {
     }
   });
 
+  it("refuses an account model whose provider or model id ocra Cloud may not name", () => {
+    for (const model of [
+      "ocra-gw/m{1}",
+      "ocra-g{w}/m",
+      "ocra-Gw/m",
+      "ocra-gw/m 1",
+      "ocra-gw/m\u001b[2J",
+      `ocra-gw/${"m".repeat(201)}`,
+      `ocra-${"g".repeat(41)}/m`,
+    ]) {
+      for (const body of [
+        { models: { top: [model] } },
+        { agents: { reviewers: { security: { models: [model] } } } },
+        { agents: { roles: { judge: { models: model } } } },
+      ]) {
+        const { settings, warnings } = parseAccountSettings(body);
+        expect(settings).toEqual({ version: null });
+        expect(warnings[0]).toContain("ocra-<provider>/<model>");
+      }
+    }
+    expect(
+      parseAccountSettings({ models: { top: ["ocra-open-router/qwen/q3.8:free@v1"] } }).settings,
+    ).toEqual({ version: null, models: { top: ["ocra-open-router/qwen/q3.8:free@v1"] } });
+  });
+
   it("refuses an account model that does not go through ocra Cloud", () => {
     for (const body of [
       { models: { top: ["openai/gpt-5"] } },

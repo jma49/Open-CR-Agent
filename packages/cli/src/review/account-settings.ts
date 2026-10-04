@@ -1,6 +1,6 @@
 import { repoRuleSchema } from "@open-cr-agent/core/internal";
 import { z } from "zod";
-import { CLOUD_PREFIX } from "./cloud-providers.js";
+import { CLOUD_PREFIX, isCloudModel } from "./cloud-providers.js";
 import { configSchema } from "./config.js";
 
 // What ocra Cloud's GET /api/preferences may set (ADR-0025, ADR-0027),
@@ -19,9 +19,9 @@ const accountRules = z
 
 // Account models go through the gateway with the account's stored keys
 // (ADR-0027): a chain naming any other provider could send the code where
-// this machine's own keys reach.
-const cloudModel = (chain: readonly string[]) =>
-  chain.every((model) => model.startsWith(CLOUD_PREFIX) && model.indexOf("/") > 0);
+// this machine's own keys reach. Provider names and model ids are checked
+// against what ocra Cloud may name before they reach the runtime.
+const cloudModel = (chain: readonly string[]) => chain.every(isCloudModel);
 
 const shape = configSchema.shape;
 const SETTINGS = {

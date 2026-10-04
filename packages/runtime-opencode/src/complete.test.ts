@@ -152,6 +152,19 @@ describe("openCodeConfig", () => {
     for (const agent of Object.values(config.agent)) expect(agent.steps).toBeGreaterThan(1);
     expect(config.agent["ocra-helper"].steps).toBe(HELPER_AGENT_STEPS);
   });
+
+  it.each([
+    { id: "gw", baseUrl: "https://llm.example.com/{x}/v1", model: "m1" },
+    { id: "gw", baseUrl: "https://llm.example.com/v1", model: "m{1}" },
+    { id: "g{w}", baseUrl: "https://llm.example.com/v1", model: "m1" },
+  ])("refuses braces in a declared provider's identifiers and address (%o)", (p) => {
+    const custom = {
+      [p.id]: { baseUrl: p.baseUrl, models: { [p.model]: { input: 0, output: 0 } } },
+    };
+    expect(() =>
+      openCodeConfig({ url: "http://127.0.0.1:1/mcp", headers: {} }, {}, custom),
+    ).toThrow(/must not contain \{ or \}/);
+  });
 });
 
 describe("sampling on OpenCode", () => {

@@ -1,4 +1,9 @@
-import type { AppliedSampling, CustomProvider, Sampling } from "@open-cr-agent/core";
+import {
+  type AppliedSampling,
+  type CustomProvider,
+  OcraError,
+  type Sampling,
+} from "@open-cr-agent/core";
 import { MAX_AGENT_STEPS } from "@open-cr-agent/core/internal";
 import type { ToolServer } from "./tool-server.js";
 
@@ -107,6 +112,7 @@ export function openCodeConfig(
 // OpenCode assumes a declared model takes no temperature and drops one;
 // with a temperature configured, the models are marked as taking it.
 function providerConfig(custom: Readonly<Record<string, CustomProvider>>, temperature: boolean) {
+  for (const [id, provider] of Object.entries(custom)) checkProvider(id, provider);
   return Object.fromEntries(
     Object.entries(custom).map(([id, provider]) => [
       id,
@@ -134,4 +140,25 @@ function providerConfig(custom: Readonly<Record<string, CustomProvider>>, temper
       },
     ]),
   );
+}
+
+// Checked here once, whatever declared the provider: a configuration file,
+// ocra Cloud or another caller of this package.
+function checkProvider(id: string, provider: CustomProvider): void {
+  const fields: [string, string][] = [
+    ["id", id],
+    ["baseUrl", provider.baseUrl],
+    ...Object.keys(provider.models).map((model): [string, string] => ["model", model]),
+  ];
+  for (const [field, value] of fields) {
+    if (/[{}]/.test(value)) {
+      throw new OcraError("CONFIG_INVALID", `Provider "${id}": ${field} must not contain { or }`);
+    }
+  }
+  if (provider.apiKeyEnv !== undefined && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(provider.apiKeyEnv)) {
+    throw new OcraError(
+      "CONFIG_INVALID",
+      `Provider "${id}": apiKeyEnv must be an environment variable name`,
+    );
+  }
 }

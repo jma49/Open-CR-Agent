@@ -12,6 +12,23 @@ import { type CloudDeps, cloudSession, sessionLostReason } from "../cloud.js";
 export const CLOUD_PREFIX = "ocra-";
 /** Where the access token travels to the runtime; never a user's variable (OCRA_ is refused in config). */
 export const CLOUD_TOKEN_ENV = "OCRA_CLOUD_ACCESS_TOKEN";
+// What ocra Cloud may name. Anything else is dropped before it reaches the
+// runtime's configuration.
+const PROVIDER_NAME = /^[a-z][a-z0-9-]{0,39}$/;
+const MODEL_ID = /^[\w./:@-]{1,200}$/;
+const GATEWAY_PATH = /^\/[\w./-]+$/;
+
+/** Whether `model` is ocra-<provider>/<model> with a provider name and model id ocra Cloud may use. */
+export function isCloudModel(model: string): boolean {
+  const slash = model.indexOf("/");
+  return (
+    slash > 0 &&
+    model.startsWith(CLOUD_PREFIX) &&
+    PROVIDER_NAME.test(model.slice(CLOUD_PREFIX.length, slash)) &&
+    MODEL_ID.test(model.slice(slash + 1))
+  );
+}
+
 // A review may run for half an hour; start it with a token that outlives it.
 const MIN_TOKEN_MS = 35 * 60_000;
 
@@ -26,13 +43,23 @@ export async function withCloudProviders(
   warn: (message: string) => void,
 ): Promise<{ providers: Record<string, CustomProvider>; env: Env }> {
   const wanted = new Map<string, Set<string>>();
+  const dropped: string[] = [];
   for (const model of chains.flatMap((chain) => chain ?? [])) {
     const slash = model.indexOf("/");
     const id = model.slice(0, slash);
     if (slash < 0 || !id.startsWith(CLOUD_PREFIX) || providers[id]) continue;
+    if (!isCloudModel(model)) {
+      dropped.push(JSON.stringify(model));
+      continue;
+    }
     const set = wanted.get(id) ?? new Set();
     set.add(model.slice(slash + 1));
     wanted.set(id, set);
+  }
+  if (dropped.length > 0) {
+    warn(
+      `ignoring ${dropped.join(", ")}: an ocra Cloud model is ${CLOUD_PREFIX}<provider>/<model>, with a provider of lowercase letters, digits and - and a model of letters, digits and ./:@_-`,
+    );
   }
   if (wanted.size === 0) return { providers: { ...providers }, env };
 
@@ -81,9 +108,14 @@ export async function withCloudProviders(
   const declared: Record<string, CustomProvider> = { ...providers };
   for (const [id, modelIds] of wanted) {
     const name = id.slice(CLOUD_PREFIX.length);
-    const chat = listed
-      .find((p) => p.name === name)
-      ?.paths.find((path) => path.endsWith("/chat/completions"));
+    const paths = listed.find((p) => p.name === name)?.paths ?? [];
+    const valid = paths.filter((path) => typeof path === "string" && GATEWAY_PATH.test(path));
+    if (valid.length < paths.length) {
+      warn(
+        `ignoring ${paths.length - valid.length} gateway path(s) ocra Cloud listed for "${name}" that are not plain paths`,
+      );
+    }
+    const chat = valid.find((path) => path.endsWith("/chat/completions"));
     if (!chat) {
       throw new OcraError(
         "CONFIG_INVALID",
