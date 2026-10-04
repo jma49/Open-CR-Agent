@@ -2,7 +2,7 @@
 
 The current state of the project, for whoever picks it up next (human or agent). **Rewrite this file, do not append to it:** replace what changed, delete what is done, keep one list of next steps. History lives in git, `CHANGELOG.md` and `docs/audits/`. Keep it under about 150 lines.
 
-Last rewritten: 2026-10-03.
+Last rewritten: 2026-10-03. Since then: the retro fixes (#314, #316–#318, site #42); the site deployed on 2026-10-03.
 
 ## Where things live
 
@@ -46,7 +46,7 @@ Last rewritten: 2026-10-03.
 
 In order; none needs paid credit.
 
-1. **The nightly live smoke fails at the model.** The scheduled run of 2026-10-03 failed with "the endpoint's answer is not a chat completion" for `stealth/space-bunny-alpha`: the free preview may have changed or ended. Check the model on OpenRouter, switch `nightly-live.yml` to a free model that answers, and record the change.
+1. **Confirm the nightly live smoke passes.** The scheduled run of 2026-10-03 failed with "not a chat completion": OpenRouter reports some upstream failures as status 200 with an error body. `5a37ed4` (a cloud session, 2026-10-04) reads those errors and retries transient failures in `runtime-direct`. Check the next scheduled run; if the free model itself is gone, switch `nightly-live.yml` to one that answers.
 2. **Release 0.3.0** once maintainer action 1 is done: the unreleased M10–M12 work above (`docs/releasing.md`, Later releases).
 3. **External use (M13):** get three teams on the Action or the GitLab job. Make the first run easy: a short "try it in five minutes" path in the README and the manual, and a free-model recipe that needs no paid key.
 4. **The free-model evaluation** (M11): the golden smoke tier twice on the free model, one lane at a time (OpenRouter's free quota is 1000 requests a day, about one smoke tier), then the quality page with its numbers, marked as not comparable with the Vertex runs (different judge). The run directories from 2026-10-02 lived in a cloud session and are not on this machine.
