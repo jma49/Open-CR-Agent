@@ -21,11 +21,13 @@
     "schema": "npm run build && node scripts/report-schema.mjs",
     "test:coverage": "vitest run --coverage",
     "api": "npm run build && node scripts/api-report.mjs",
-    "check:api": "node scripts/api-report.mjs --check"
+    "check:api": "node scripts/api-report.mjs --check",
+    "version-packages": "node scripts/changelog.mjs version"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@biomejs/biome": "^2.5.14",
+    "@changesets/cli": "^3.0.3",
     "@microsoft/api-extractor": "^7.59.3",
     "@types/node": "^26.6.3",
     "@types/picomatch": "^4.0.3",

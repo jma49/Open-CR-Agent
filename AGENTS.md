@@ -102,6 +102,7 @@ Concrete rules behind the principles above, from the [2026-09-26 self-audit](doc
 - The author may merge their own PR once CI is green and they have self-reviewed the full diff; the maintainer spot-checks merged PRs afterwards. Link the issue with `Closes #N` so it closes on merge.
 - Merge with rebase so each Conventional Commit lands on `main` unchanged.
 - Keep PRs small and focused on one increment; split work that grows beyond a reviewable size.
+- **A changeset per user-visible PR.** A PR that changes what users of the packages or the Action see adds one with `npx changeset`: the bump, and the `CHANGELOG.md` entry as short lines under Keep a Changelog sections (`### Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`), details left to the PR or the manual. Never edit `CHANGELOG.md`'s sections by hand outside a release PR; `npm run version-packages` writes them ([docs/releasing.md](docs/releasing.md)). CI's `changeset` job fails a PR that changes a published package's `src/` without one; `npx changeset --empty` answers for a change users do not see.
 - Work in a worktree made with `scripts/worktree.sh <branch>`: it installs and builds. Tests and the test type check need no build: they resolve workspace packages to their `src/` through the `@open-cr-agent/source` export condition (`vitest.config.ts`, `tsconfig.test.json`); only tests that run the real CLI build it themselves. Remove agent worktrees (`git worktree remove`) and their local branches when the work is done.
 
 ## Repository hygiene

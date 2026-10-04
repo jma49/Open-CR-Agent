@@ -1,41 +1,33 @@
 #!/usr/bin/env node
-// Release tooling for the workspace packages. docs/releasing.md is the
-// runbook. The maintainer runs `publish`; .github/workflows/release.yml
-// splits the same work into `pack`, which runs the build and the tests, and
-// `upload`, which runs nothing but npm where a publish token can be minted;
-// between the two, another job installs the tarballs and runs them.
+// Publishing the workspace packages. docs/releasing.md is the runbook.
+// Changesets sets the version (npm run version-packages); this script, not
+// `changeset publish`, publishes, because the release workflow must publish
+// exactly the tarballs it tested, checked by digest. The maintainer runs
+// `publish`; .github/workflows/release.yml splits the same work into `pack`,
+// which runs the build and the tests, and `upload`, which runs nothing but
+// npm where a publish token can be minted; between the two, another job
+// installs the tarballs and runs them. It imports only node: modules and
+// the two dependency-free libraries next to it.
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { releaseNotes } from "./changelog-lib.mjs";
 import {
   atLeast,
-  changelogSection,
   digestProblem,
   distTag,
-  isVersion,
   lockstep,
   parseDigests,
   publishOrder,
   readWorkspaces,
   refProblem,
   tarballName,
-  withVersion,
 } from "./release-lib.mjs";
 
 const USAGE = `Usage:
-  node scripts/release.mjs version <x.y.z>           set one version on every package and the lockfile
-  node scripts/release.mjs notes <x.y.z>             print that version's section of CHANGELOG.md
   node scripts/release.mjs publish                   dry run: every check, then npm publish --dry-run
   node scripts/release.mjs publish --publish         check, build and publish what the registry lacks
   node scripts/release.mjs pack <dir>                (CI) verify, build and pack every package into <dir>
@@ -82,7 +74,7 @@ function packages() {
   if (problems.length > 0) {
     stop(
       `release: the packages are not at one version:\n  ${problems.join("\n  ")}\n` +
-        "Run node scripts/release.mjs version <x.y.z>.",
+        "Version them with npm run version-packages.",
     );
   }
   return { version, order: publishOrder(workspaces) };
@@ -102,8 +94,8 @@ function refusals(strict) {
 
 // The release commit has notes, is committed, and is on main.
 function checkSource(version, refuse) {
-  if (!changelogSection(readChangelog(), version)) {
-    refuse(`CHANGELOG.md has no "## ${version}" section`);
+  if (!releaseNotes(readChangelog(), version)) {
+    refuse(`CHANGELOG.md has no "## [${version}] - <date>" section`);
   }
   const status = capture("git", ["status", "--porcelain", "--untracked-files=all"]);
   if (!status.ok || status.out !== "")
@@ -223,27 +215,6 @@ function upload(todo, version, dir, real) {
   return undefined;
 }
 
-function setVersion(version) {
-  if (!isVersion(version)) stop(USAGE, 2);
-  for (const { dir, json } of withVersion(readWorkspaces(root), version)) {
-    writeFileSync(join(dir, "package.json"), `${JSON.stringify(json, null, 2)}\n`);
-  }
-  if (!step("npm", ["install", "--package-lock-only", "--no-audit", "--no-fund"])) {
-    stop("release: updating package-lock.json failed");
-  }
-  console.log(`\nEvery workspace package is now ${version}.`);
-  if (!changelogSection(readChangelog(), version)) {
-    console.log(`Add a "## ${version}" section to CHANGELOG.md before releasing.`);
-  }
-}
-
-function printNotes(version) {
-  if (!isVersion(version)) stop(USAGE, 2);
-  const notes = changelogSection(readChangelog(), version);
-  if (!notes) stop(`release: CHANGELOG.md has no "## ${version}" section`);
-  process.stdout.write(`${notes}\n`);
-}
-
 function publishCommand(real) {
   const { version, order } = packages();
   const { reasons, refuse } = refusals(real);
@@ -274,7 +245,7 @@ function publishCommand(real) {
   if (!ci) {
     console.log(
       "Next, per docs/releasing.md: trusted publishing after the first release, then the GitHub release:\n" +
-        `  node scripts/release.mjs notes ${version} | gh release create v${version} --target ${head} --title v${version} --notes-file -`,
+        `  node scripts/changelog.mjs notes ${version} | gh release create v${version} --target ${head} --title v${version} --notes-file -`,
     );
   }
 }
@@ -324,10 +295,7 @@ function uploadCommand(dir, real) {
 
 const [command, ...args] = process.argv.slice(2);
 const publishFlag = args.at(-1) === "--publish";
-if (command === "version" && args.length === 1) setVersion(args[0]);
-else if (command === "notes" && args.length === 1) printNotes(args[0]);
-else if (command === "publish" && args.length === (publishFlag ? 1 : 0))
-  publishCommand(publishFlag);
+if (command === "publish" && args.length === (publishFlag ? 1 : 0)) publishCommand(publishFlag);
 else if (command === "pack" && args.length === 1 && !publishFlag) packCommand(args[0]);
 else if (command === "upload" && args.length === (publishFlag ? 2 : 1) && args[0] !== "--publish") {
   uploadCommand(args[0], publishFlag);

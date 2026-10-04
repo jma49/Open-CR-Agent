@@ -85,7 +85,7 @@ jobs:
       - run: node scripts/check-packages.mjs --tarballs packed
 
   # Can mint a publish token, so it installs nothing and runs no code but npm
-  # and scripts/release.mjs, which has no dependencies.
+  # and scripts/release.mjs, which needs no installed package.
   publish:
     needs: [pack, check]
     runs-on: ubuntu-latest

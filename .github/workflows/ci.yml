@@ -80,6 +80,28 @@ jobs:
       - name: zizmor
         run: pipx run zizmor==1.30.1 --offline --format github .
 
+  # A pull request that changes a published package's source carries a
+  # changeset, the entry for CHANGELOG.md (docs/releasing.md). Tests,
+  # fixtures and files outside src/ need none (changedFilePatterns in
+  # .changeset/config.json); for a source change users do not see,
+  # `npx changeset --empty` answers.
+  changeset:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - env:
+          BASE_REF: ${{ github.base_ref }}
+        run: npx --no-install changeset status --since="origin/$BASE_REF"
+
   # Installs the packed packages like a user would and runs the installed CLI.
   packages:
     runs-on: ubuntu-latest

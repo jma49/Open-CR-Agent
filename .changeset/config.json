@@ -1,0 +1,29 @@
+{
+  "$schema": "../node_modules/@changesets/config/schema.json",
+  "baseBranch": "main",
+  "access": "public",
+  "changelog": false,
+  "commit": false,
+  "format": false,
+  "fixed": [
+    [
+      "@open-cr-agent/core",
+      "@open-cr-agent/runtime-opencode",
+      "@open-cr-agent/runtime-direct",
+      "@open-cr-agent/vcs-platform",
+      "@open-cr-agent/vcs-github",
+      "@open-cr-agent/vcs-gitlab",
+      "@open-cr-agent/vcs-local",
+      "@open-cr-agent/cli"
+    ]
+  ],
+  "ignore": ["@open-cr-agent/eval"],
+  "updateInternalDependencies": "patch",
+  "changedFilePatterns": [
+    "src/**",
+    "!src/**/*.test.ts",
+    "!src/**/*.fakes.ts",
+    "!src/**/__fixtures__/**",
+    "!src/**/__snapshots__/**"
+  ]
+}

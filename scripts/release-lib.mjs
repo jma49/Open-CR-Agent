@@ -10,10 +10,6 @@ const DEPENDENCY_FIELDS = [
   "optionalDependencies",
 ];
 
-export function isVersion(text) {
-  return /^\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/.test(text ?? "");
-}
-
 // Every packages/* directory with a package.json, sorted by directory name.
 export function readWorkspaces(root) {
   const base = join(root, "packages");
@@ -27,15 +23,19 @@ export function readWorkspaces(root) {
     });
 }
 
-// The workspace packages are released together at one version and depend on
-// each other at exactly that version, so a published cli never pairs with a
-// core from another release.
+// The published packages are released together at one version (the `fixed`
+// group in .changeset/config.json) and every workspace package depends on
+// them at exactly that version, so a published cli never pairs with a core
+// from another release. Private packages keep a version of their own.
 export function lockstep(workspaces) {
-  const version = workspaces[0]?.json.version;
-  const names = new Set(workspaces.map((w) => w.json.name));
+  const published = workspaces.filter((w) => !w.json.private);
+  const version = published[0]?.json.version;
+  const names = new Set(published.map((w) => w.json.name));
   const problems = [];
-  for (const { json } of workspaces) {
+  for (const { json } of published) {
     if (json.version !== version) problems.push(`${json.name} is ${json.version}, not ${version}`);
+  }
+  for (const { json } of workspaces) {
     for (const field of DEPENDENCY_FIELDS) {
       for (const [name, range] of Object.entries(json[field] ?? {})) {
         if (names.has(name) && range !== version) {
@@ -45,24 +45,6 @@ export function lockstep(workspaces) {
     }
   }
   return { version, problems };
-}
-
-// A copy of the manifests at one version, internal dependencies included.
-export function withVersion(workspaces, version) {
-  const names = new Set(workspaces.map((w) => w.json.name));
-  return workspaces.map(({ dir, json }) => {
-    const next = { ...json, version };
-    for (const field of DEPENDENCY_FIELDS) {
-      if (!json[field]) continue;
-      next[field] = Object.fromEntries(
-        Object.entries(json[field]).map(([name, range]) => [
-          name,
-          names.has(name) ? version : range,
-        ]),
-      );
-    }
-    return { dir, json: next };
-  });
 }
 
 // The packages to publish, each after the workspace packages it needs at
@@ -123,19 +105,6 @@ export function refProblem(version, ref, publish) {
   return publish
     ? `publishing runs on a release tag, not on the ${ref.type} ${ref.name}`
     : undefined;
-}
-
-// The body of CHANGELOG.md's "## <version>" section, or undefined.
-export function changelogSection(changelog, version) {
-  const lines = changelog.split("\n");
-  const start = lines.findIndex((line) => line.trim() === `## ${version}`);
-  if (start === -1) return undefined;
-  const next = lines.findIndex((line, i) => i > start && line.startsWith("## "));
-  const body = lines
-    .slice(start + 1, next === -1 ? undefined : next)
-    .join("\n")
-    .trim();
-  return body === "" ? undefined : body;
 }
 
 // The digests `pack` reported, as a map from file name to "sha512-<base64>",

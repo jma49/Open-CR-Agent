@@ -1,21 +1,18 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   atLeast,
-  changelogSection,
   digestProblem,
   distTag,
-  isVersion,
   lockstep,
   parseDigests,
   publishOrder,
   readWorkspaces,
   refProblem,
   tarballName,
-  withVersion,
 } from "./release-lib.mjs";
 
 const workspace = (name, json = {}) => ({
@@ -44,21 +41,13 @@ describe("lockstep", () => {
       "@x/cli depends on @x/core@^1.0.0, not 1.0.0",
     ]);
   });
-});
 
-describe("withVersion", () => {
-  it("sets the version and every internal dependency, and nothing else", () => {
-    const before = [
-      workspace("core", { dependencies: { zod: "^4.0.0" } }),
-      workspace("cli", { dependencies: { "@x/core": "1.0.0", zod: "^4.0.0" } }),
-    ];
-    const after = withVersion(before, "1.1.0");
-    expect(after.map((w) => w.json)).toEqual([
-      { name: "@x/core", version: "1.1.0", dependencies: { zod: "^4.0.0" } },
-      { name: "@x/cli", version: "1.1.0", dependencies: { "@x/core": "1.1.0", zod: "^4.0.0" } },
+  it("lets a private package keep its own version, not its internal dependencies", () => {
+    const { problems } = lockstep([
+      workspace("core", { version: "1.1.0" }),
+      workspace("eval", { private: true, dependencies: { "@x/core": "1.0.0" } }),
     ]);
-    expect(lockstep(after).problems).toEqual([]);
-    expect(before[1]?.json.dependencies["@x/core"]).toBe("1.0.0");
+    expect(problems).toEqual(["@x/eval depends on @x/core@1.0.0, not 1.1.0"]);
   });
 });
 
@@ -103,32 +92,7 @@ describe("refProblem", () => {
   });
 });
 
-describe("changelogSection", () => {
-  const changelog =
-    "# Changelog\n\n## 0.2.0\n\n- two\n\n## 0.1.0\n\nFirst.\n\n### Added\n\n- one\n";
-
-  it("returns one version's section without its heading", () => {
-    expect(changelogSection(changelog, "0.2.0")).toBe("- two");
-    expect(changelogSection(changelog, "0.1.0")).toBe("First.\n\n### Added\n\n- one");
-  });
-
-  it("finds no section for another version, a prefix of one, or an empty one", () => {
-    expect(changelogSection(changelog, "0.3.0")).toBeUndefined();
-    expect(changelogSection(changelog, "0.1")).toBeUndefined();
-    expect(changelogSection("## 0.4.0\n\n## 0.3.0\n- x\n", "0.4.0")).toBeUndefined();
-  });
-});
-
 describe("versions", () => {
-  it("accepts x.y.z with an optional prerelease and nothing else", () => {
-    for (const ok of ["0.1.0", "10.20.30", "1.0.0-rc.1", "1.0.0-beta-2"]) {
-      expect(isVersion(ok)).toBe(true);
-    }
-    for (const bad of [undefined, "", "v0.1.0", "0.1", "0.1.0+build", "0.1.0-", "0.1.0\n"]) {
-      expect(isVersion(bad)).toBe(false);
-    }
-  });
-
   it("compares the x.y.z part numerically", () => {
     expect(atLeast("11.19.0", "11.5.1")).toBe(true);
     expect(atLeast("11.5.1", "11.5.1")).toBe(true);
@@ -203,5 +167,15 @@ describe("readWorkspaces", () => {
       "@open-cr-agent/runtime-opencode",
       "@open-cr-agent/cli",
     ]);
+  });
+
+  it("releases every published package in one changesets group and ignores the private ones", () => {
+    const root = fileURLToPath(new URL("..", import.meta.url));
+    const workspaces = readWorkspaces(root);
+    const config = JSON.parse(readFileSync(join(root, ".changeset", "config.json"), "utf8"));
+    const of = (list) => names(list).sort();
+    expect([...config.fixed[0]].sort()).toEqual(of(workspaces.filter((w) => !w.json.private)));
+    expect(config.fixed).toHaveLength(1);
+    expect([...config.ignore].sort()).toEqual(of(workspaces.filter((w) => w.json.private)));
   });
 });
