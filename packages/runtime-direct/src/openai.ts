@@ -3,6 +3,7 @@ import {
   type ModelPrice,
   parseQuotaError,
   type QuotaError,
+  sleep,
   type ToolDefinition,
   type Usage,
   withoutSecrets,
@@ -36,6 +37,10 @@ const completionSchema = z.object({
     })
     .optional(),
 });
+// OpenRouter answers some upstream failures with status 200 and this body.
+const errorBodySchema = z.object({
+  error: z.object({ message: z.string(), code: z.number().optional() }),
+});
 
 export type ToolCall = z.infer<typeof toolCallSchema>;
 
@@ -65,6 +70,9 @@ export interface ChatError {
   message: string;
   retryable: boolean;
   quota?: QuotaError;
+  // A failure the next request may not repeat: a dropped connection, a 5xx,
+  // an answer that is not a completion.
+  transient?: boolean;
 }
 
 export type ChatResponse =
@@ -75,6 +83,9 @@ const AUTH_STATUS = new Set([401, 403]);
 // How much of an error body an error message keeps: enough to diagnose, not
 // a page of HTML.
 const BODY_EXCERPT = 300;
+// A transient failure is sent once more after this pause; a second failure
+// goes to the failback, which decides what it means for the model.
+export const TRANSIENT_RETRY_MS = 1_000;
 
 export function toolSpec(tool: ToolDefinition): ToolSpec {
   const { $schema: _, ...parameters } = z.toJSONSchema(tool.inputSchema) as Record<string, unknown>;
@@ -84,10 +95,23 @@ export function toolSpec(tool: ToolDefinition): ToolSpec {
   };
 }
 
-// One request to the endpoint. Only the key named for this provider goes
-// out, and only to its base URL; nothing is retried here, the failback
-// decides what a failure means.
+// One request to the endpoint, sent a second time when the first failed in
+// a way a moment may cure. Only the key named for this provider goes out,
+// and only to its base URL.
 export async function chat(
+  endpoint: Endpoint,
+  request: ChatRequest,
+  price: ModelPrice,
+  signal: AbortSignal,
+): Promise<ChatResponse> {
+  const first = await send(endpoint, request, price, signal);
+  if (first.ok || !first.error.transient) return first;
+  await sleep(TRANSIENT_RETRY_MS, signal);
+  if (signal.aborted) return first;
+  return send(endpoint, request, price, signal);
+}
+
+async function send(
   endpoint: Endpoint,
   request: ChatRequest,
   price: ModelPrice,
@@ -95,6 +119,7 @@ export async function chat(
 ): Promise<ChatResponse> {
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (endpoint.apiKey) headers.authorization = `Bearer ${endpoint.apiKey}`;
+  const secrets = endpoint.apiKey ? [endpoint.apiKey] : [];
   let response: Response;
   try {
     response = await (endpoint.fetch ?? fetch)(
@@ -107,38 +132,24 @@ export async function chat(
       },
     );
   } catch (error) {
-    const message = signal.aborted ? "cancelled" : errorMessage(error);
-    return { ok: false, error: { message, retryable: !signal.aborted } };
+    if (signal.aborted) return { ok: false, error: { message: "cancelled", retryable: false } };
+    return { ok: false, error: { message: errorMessage(error), retryable: true, transient: true } };
   }
   const body = await response.text().catch(() => "");
-  if (!response.ok) {
-    // An endpoint may echo the request's headers in an error page.
-    const shown = withoutSecrets(body, endpoint.apiKey ? [endpoint.apiKey] : []);
-    const message = `HTTP ${response.status}: ${excerpt(shown)}`;
-    const quota = parseQuotaError(body, response.status);
-    if (quota && quota.retryAfterMs === undefined) {
-      const retryAfter = Number(response.headers.get("retry-after"));
-      if (Number.isFinite(retryAfter) && retryAfter > 0) quota.retryAfterMs = retryAfter * 1000;
-    }
-    return {
-      ok: false,
-      error: { message, retryable: !AUTH_STATUS.has(response.status), ...(quota ? { quota } : {}) },
-    };
-  }
-  let parsed: ReturnType<typeof completionSchema.safeParse>;
+  if (!response.ok) return { ok: false, error: failure(response, body, secrets) };
+  let json: unknown;
   try {
-    parsed = completionSchema.safeParse(JSON.parse(body));
+    json = JSON.parse(body);
   } catch {
-    return {
-      ok: false,
-      error: { message: "the endpoint did not answer with JSON", retryable: true },
-    };
+    return { ok: false, error: malformed("did not answer with JSON", body, secrets) };
   }
+  const reported = errorBodySchema.safeParse(json);
+  if (reported.success) {
+    return { ok: false, error: failure(response, body, secrets, reported.data.error.code) };
+  }
+  const parsed = completionSchema.safeParse(json);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: { message: "the endpoint's answer is not a chat completion", retryable: true },
-    };
+    return { ok: false, error: malformed("answered without a chat completion", body, secrets) };
   }
   const choice = parsed.data.choices[0] as NonNullable<(typeof parsed.data.choices)[0]>;
   return {
@@ -146,6 +157,44 @@ export async function chat(
     content: choice.message.content ?? "",
     toolCalls: choice.message.tool_calls ?? [],
     usage: usageOf(parsed.data.usage, price),
+  };
+}
+
+// An error status, or an error the endpoint reported inside an OK answer;
+// the reported code counts as the status when it is one.
+function failure(
+  response: Response,
+  body: string,
+  secrets: readonly string[],
+  reportedCode?: number,
+): ChatError {
+  const inBody = response.ok;
+  const status = inBody
+    ? reportedCode && reportedCode >= 400
+      ? reportedCode
+      : 502
+    : response.status;
+  // An endpoint may echo the request's headers in an error page.
+  const shown = excerpt(withoutSecrets(body, secrets));
+  const message = inBody ? `error ${status} in an OK answer: ${shown}` : `HTTP ${status}: ${shown}`;
+  const quota = parseQuotaError(body, status);
+  if (quota && quota.retryAfterMs === undefined) {
+    const retryAfter = Number(response.headers.get("retry-after"));
+    if (Number.isFinite(retryAfter) && retryAfter > 0) quota.retryAfterMs = retryAfter * 1000;
+  }
+  return {
+    message,
+    retryable: !AUTH_STATUS.has(status),
+    ...(quota ? { quota } : {}),
+    ...(!quota && (status >= 500 || status === 408) ? { transient: true } : {}),
+  };
+}
+
+function malformed(what: string, body: string, secrets: readonly string[]): ChatError {
+  return {
+    message: `the endpoint ${what}: ${excerpt(withoutSecrets(body, secrets))}`,
+    retryable: true,
+    transient: true,
   };
 }
 
@@ -172,5 +221,6 @@ function usageOf(usage: z.infer<typeof completionSchema>["usage"], price: ModelP
 
 function excerpt(body: string): string {
   const text = body.replace(/\s+/g, " ").trim();
+  if (text.length === 0) return "(empty body)";
   return text.length > BODY_EXCERPT ? `${text.slice(0, BODY_EXCERPT)}…` : text;
 }

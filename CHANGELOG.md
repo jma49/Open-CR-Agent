@@ -18,6 +18,7 @@ Changes to the `@open-cr-agent/*` packages and the GitHub Action. The packages a
 
 ### Fixed
 
+- **The direct runtime survives a transient endpoint failure.** A dropped connection, a 5xx, or an answer that is not a chat completion is sent again once, a second later, before the failback moves to the next model; an error OpenRouter reports inside a 200 answer counts by its code (a 429 as quota, a 502 as transient); and such errors quote the answer, with the key removed, instead of saying only "not a chat completion".
 - **Provider errors no longer carry the key.** When a model endpoint echoed the request's `Authorization` header in an error, the OpenCode runtime passed that text on as a progress line and into the session file. Every configured provider credential is now replaced in such errors; the new `direct` runtime does the same.
 
 ## 0.2.0

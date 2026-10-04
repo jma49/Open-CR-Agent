@@ -222,6 +222,59 @@ describe("DirectRuntime.runTask", () => {
     expect(text).not.toContain(KEY);
   });
 
+  it("sends a request again after a transient failure, once, to the same model", async () => {
+    const server = await endpoint([
+      { status: 502, body: "<html>Bad Gateway</html>" },
+      { toolCalls: [{ name: "task_done", args: {} }] },
+    ]);
+    const events = await collect(
+      runtime(server.url).runTask(spec(context()), new AbortController().signal),
+    );
+    expect(events.at(-1)).toEqual({ type: "done", taskId: "t1" });
+    expect(server.seen.map((r) => r.model)).toEqual(["m1", "m1"]);
+    expect(JSON.stringify(events)).not.toContain("trying the next model");
+  });
+
+  it("reads an error the endpoint reports inside an OK answer", async () => {
+    const server = await endpoint([
+      {
+        status: 200,
+        body: '{"error":{"message":"Rate limit exceeded: free-models-per-day","code":429}}',
+      },
+      { toolCalls: [{ name: "task_done", args: {} }] },
+    ]);
+    const events = await collect(
+      runtime(server.url, ["local/m1", "local/m2"]).runTask(
+        spec(context()),
+        new AbortController().signal,
+      ),
+    );
+    expect(events.at(-1)?.type).toBe("done");
+    // A daily quota is not sent again; the next model answers.
+    expect(server.seen.map((r) => r.model)).toEqual(["m1", "m2"]);
+    expect(JSON.stringify(events)).toContain("error 429 in an OK answer");
+  });
+
+  it("says what an answer that is no completion was, without the key", async () => {
+    const malformed = { status: 200, body: `{"choices":[],"debug":"Bearer ${KEY}"}` };
+    const server = await endpoint([
+      malformed,
+      malformed,
+      { toolCalls: [{ name: "task_done", args: {} }] },
+    ]);
+    const events = await collect(
+      runtime(server.url, ["local/m1", "local/m2"]).runTask(
+        spec(context()),
+        new AbortController().signal,
+      ),
+    );
+    expect(events.at(-1)?.type).toBe("done");
+    expect(server.seen.map((r) => r.model)).toEqual(["m1", "m1", "m2"]);
+    const text = JSON.stringify(events);
+    expect(text).toContain('answered without a chat completion: {\\"choices\\":[]');
+    expect(text).not.toContain(KEY);
+  });
+
   it("gives up at once on a credential error", async () => {
     const server = await endpoint([{ status: 401, body: '{"error":"bad key"}' }]);
     const events = await collect(
@@ -322,13 +375,14 @@ describe("DirectRuntime.complete", () => {
     ]);
   });
 
-  it("throws with what the failed attempts spent", async () => {
-    const server = await endpoint([{ status: 500 }, { status: 500 }]);
+  it("throws once every model failed twice", async () => {
+    const server = await endpoint(Array.from({ length: 4 }, () => ({ status: 500 })));
     await expect(
       runtime(server.url, ["local/m1", "local/m2"]).complete(
         { tier: "light", system: "s", user: "u", timeoutMs: 5_000 },
         new AbortController().signal,
       ),
     ).rejects.toThrow(/every light model failed/);
+    expect(server.seen.map((r) => r.model)).toEqual(["m1", "m1", "m2", "m2"]);
   });
 });
