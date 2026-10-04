@@ -11,7 +11,7 @@ description: 用 ocra review --mr 审查 GitLab.com 或自建 GitLab 上的 Merg
 
 <Callout type="warn">
 
-GitLab 支持是 0.2.0 新增的。它已经用模拟的 GitLab API 测试过，还没有在真实实例上运行过。
+GitLab 支持是 0.2.0 新增的。除了针对模拟 GitLab API 的测试，它于 2026-10-04 在 GitLab.com 免费版上做过实机检查（0.3.0，专用账号的个人访问令牌，模型按脚本回答）：新增行和未改动行上的讨论串、原地更新的摘要、不重复发评论的增量第二次运行、模型文字里没有生效的提及、链接或快捷操作，以及作者解决讨论串、放行和编辑 ocra 摘要都不算数。其他成员的驳回还没有实机试过。
 
 </Callout>
 

@@ -85,7 +85,7 @@ This phase's success condition is not a list of interfaces: it is three external
 4. **A second `AgentRuntime`**, a direct SDK tool loop that does not go through OpenCode, and with it the runtime conformance suite: no write, no shell, no outbound network but the model endpoint. It also removes OpenCode's catalog fetch and npm plugin install from review time. Landed as ADR-0020 (`runtime-direct`, declared endpoints only; the shared loop logic in core; the suite runs against both runtimes).
 5. **Reviewer as an entity**: scope, tool set and output schema declared, not only a prompt and a tier; finding processors at the two insertion points. Design proposed in ADR-0021: the per-reviewer tool set can land now; processors land with their first customer (M12 policy, the adversarial canary check); one output schema until a second shape exists.
 6. **Sinks**: SARIF and the platform behind one contract, so a report can go to more than one place in a run.
-7. Carried over from 0.2.0: #289 (the GitHub setup people with push access cannot change, end to end), #290 (the separate GitLab reviewer project), and the live GitLab check. #288 landed in #302.
+7. Carried over from 0.2.0: #289 (the GitHub setup people with push access cannot change, end to end), #290 (the separate GitLab reviewer project); the live GitLab check ran on GitLab.com Free on 2026-10-04. #288 landed in #302.
 
 **M11 — Evidence** (a standing credit line: cents a run for the nightly test, tens of dollars for golden runs; the free OpenRouter model covers what it can).
 
@@ -122,7 +122,7 @@ What a company checks before adopting a code review tool, and where ocra is. Upd
 | Area | Status |
 |---|---|
 | Install | npm with provenance; the Action; a container image with attested provenance |
-| Platforms | GitHub; GitLab (GitLab.com and self-managed), tested against a fake API |
+| Platforms | GitHub; GitLab (GitLab.com and self-managed), tested against a fake API and checked live on GitLab.com Free |
 | Embedding | The CLI, and the `review()` entry with its Embedding page (a contract under the 0.x rule); a curated public API in every package, recorded in API reports checked in CI |
 | Data stays with the customer | Runs in the customer's CI with the customer's model keys; no ocra service in between; your own OpenAI-compatible endpoint; corporate proxies and CA bundles pass through |
 | Model providers | Any provider in OpenCode's catalog whose SDK OpenCode bundles (all but 7 of 225), and declared endpoints, through OpenCode or the `direct` runtime; tested live: Gemini on Vertex, the Gemini API, and a free model through OpenRouter |
