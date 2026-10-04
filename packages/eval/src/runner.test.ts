@@ -36,6 +36,14 @@ if (args[args.indexOf("--from") + 1] === "quota") {
     usage: { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 } }));
   process.exit(2);
 }
+if (args[args.indexOf("--from") + 1] === "cut") {
+  writeFileSync(out, JSON.stringify({ version: 1, findings: [], tasks: [
+    { taskId: "performance-1", status: "completed" },
+    { taskId: "correctness-1", status: "failed",
+      error: "every standard model failed (router/m: Rate limit exceeded: free-models-per-day-stealth.)" }],
+    usage: { inputTokens: 50, outputTokens: 5, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 } }));
+  process.exit(3);
+}
 const finding = { fingerprint: "f", reviewer: "correctness", category: "correctness", severity: "warning",
   verification: "unchecked", file: "src/a.ts", code: "x", title: "Null dereference", body: "user may be missing",
   evidence: [], lines: { start: 10, end: 10 }, inDiff: true, status: "new" };
@@ -148,6 +156,31 @@ describe("runInstances", () => {
 
     const later = await runInstances(instances, options);
     expect(later.map((r) => r.status)).toEqual(["reviewed", "failed", "reviewed", "reviewed"]);
+  });
+
+  it("treats a review that lost tasks to the quota as spent quota, and reviews it again only on --retry-failed", async () => {
+    const dir = temp();
+    const options = {
+      runDir: join(dir, "run"),
+      reposDir: join(dir, "repos"),
+      command: [process.execPath, fakeOcra(dir)],
+      timeoutMs: 30_000,
+      prepare: async () => dir,
+      log: () => {},
+    };
+    const instances = [instance("a"), instance("b", "cut"), instance("c")];
+    const first = await runInstances(instances, options);
+    expect(first.map((r) => r.status)).toEqual(["reviewed", "reviewed", "skipped_quota"]);
+    expect(first[1]).toMatchObject({ exitCode: 3 });
+
+    const resumed = await runInstances(instances, options);
+    expect(resumed.map((r) => r.status)).toEqual(["reviewed", "reviewed", "reviewed"]);
+    const calls = () => readFileSync(join(dir, "calls.log"), "utf8").trim().split("\n");
+    // The cut review is kept as it is; c is reviewed.
+    expect(calls()).toEqual(["base", "cut", "base"]);
+
+    await runInstances(instances, { ...options, retryFailed: true });
+    expect(calls()).toEqual(["base", "cut", "base", "cut"]);
   });
 
   it("reviews, records failures, stops at the budget and resumes without repeating work", async () => {

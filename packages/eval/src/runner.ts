@@ -25,7 +25,7 @@ export type InstanceStatus =
 // wait out the provider's retry hint, so the run stops instead. Kept as text:
 // eval sees ocra's report, not the runtime's types.
 const QUOTA_ERROR =
-  /out of quota for this run|exceeded your current quota|quota exceeded|resource[_ ]exhausted/i;
+  /out of quota for this run|exceeded your current quota|quota exceeded|resource[_ ]exhausted|rate limit[^)]*per[- ]day/i;
 
 export interface InstanceResult {
   id: string;
@@ -54,7 +54,8 @@ export interface RunOptions {
   reviewArgs?: readonly string[];
   timeoutMs: number;
   maxCostUsd?: number;
-  // Run PRs again whose previous attempt failed instead of reusing the failure.
+  // Run PRs again whose previous attempt failed, or lost tasks to a spent
+  // quota, instead of reusing that result.
   retryFailed?: boolean;
   prepare?: (reposDir: string, instance: Instance) => Promise<string>;
   log(message: string): void;
@@ -86,7 +87,9 @@ export async function runInstances(
     const retry =
       previous?.status === "skipped_budget" ||
       previous?.status === "skipped_quota" ||
-      (options.retryFailed === true && previous?.status === "failed");
+      (options.retryFailed === true &&
+        previous !== undefined &&
+        (previous.status === "failed" || cutByQuota(previous)));
     if (previous && !retry) {
       results.push(previous);
       spent += previous.usage.costUsd;
@@ -116,7 +119,7 @@ export async function runInstances(
     );
     await writeFile(path, `${JSON.stringify(result, null, 2)}\n`);
     results.push(result);
-    if (failedOnQuota(result)) {
+    if (failedOnQuota(result) || cutByQuota(result)) {
       quotaSpent = true;
       options.log(
         "the model quota is spent; the remaining PRs are skipped (rerun later to resume)",
@@ -189,6 +192,16 @@ async function readResult(path: string): Promise<InstanceResult | undefined> {
 
 function skipped(id: string, status: "skipped_budget" | "skipped_quota"): InstanceResult {
   return { id, status, durationMs: 0, findings: [], usage: NO_USAGE, tasks: [] };
+}
+
+// A review that finished (an incomplete report, exit 3) after the quota
+// refused some of its tasks: not a measurement of the configuration, and the
+// PRs after it would be refused too.
+function cutByQuota(result: InstanceResult): boolean {
+  return (
+    result.status === "reviewed" &&
+    result.tasks.some((t) => t.status === "failed" && QUOTA_ERROR.test(t.error ?? ""))
+  );
 }
 
 function failedOnQuota(result: InstanceResult): boolean {
