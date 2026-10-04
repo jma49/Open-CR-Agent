@@ -102,9 +102,14 @@ This phase's success condition is not a list of interfaces: it is three external
 
 **M13 — Use** (people, not code; starts now). Three external teams on the Action or the GitLab job, reviewing their real pull requests, with their dismissals and replies feeding the golden set; the three-maintainer conversations from M8. If no team will run it, the next phase starts with the product layer, not the control plane.
 
-### Next: the control plane, driven by the numbers of the phase before
+**M14 — ocra Cloud** (moved to Now on 2026-10-04, [ADR-0024](adr/0024-ocra-cloud.md); the main line). Open core plus an optional hosted service on the published packages, in its own private repository.
 
-- **M14 — Control plane.** A service that receives webhooks, queues jobs, holds keys and budgets per organization and writes an audit log; each job is one call of the `review()` entry. Event-driven here, not inside the engine.
+1. **Phase 1, the MVP:** sign-in with GitHub and `ocra login` (device flow); the user's own key stored encrypted in the cloud and used only by an allowlisted model gateway that logs no bodies; zero configuration when logged in; metadata-only upload after a review, content opt-in; a web view of reviews, statistics, keys and sessions; a public data policy.
+2. **Phase 2:** a hosted GitHub App (install, nothing to configure), with organizations.
+3. **Phase 3:** models ocra provides, a free allowance and paid plans, once there is a model budget.
+
+### Next: driven by the numbers of the phase before
+
 - **M15 — Organization memory and context providers.** Organization-scoped memory with owners and expiry; `callers` and `ownership` as the first providers, each measured for recall before the next; a code graph only if they move the number.
 - **M16 — Reach on demand.** Bitbucket or Azure DevOps, whichever is asked for first, through the conformance suite; ocra as an MCP server for agent IDEs; OpenTelemetry export once there are sessions to aggregate.
 - **Governance.** A second maintainer, an issue-response commitment and a version-support policy, since a buyer asks who is accountable before asking what the contracts are.
@@ -113,7 +118,6 @@ This phase's success condition is not a list of interfaces: it is three external
 
 - **M17 — Certified extensions.** Third-party reviewers, analyzers, runtimes and adapters registered and certified against the conformance suites, the way CSI drivers are.
 - The Finding specification and the Reviewer and Runtime contracts published as documents of their own, open to implementations outside this repository.
-- A hosted offering, if the business case holds, built on the same engine entry and not a fork of it.
 
 ## Readiness checklist
 
@@ -138,7 +142,6 @@ What a company checks before adopting a code review tool, and where ocra is. Upd
 
 ## Not now
 
-- **A hosted service or GitHub App before the control-plane phase.** It needs users and hosting money; the CLI, the Action and the image already let a company run ocra inside its own CI with its own keys, which is what self-hosting customers ask for. The `review()` entry is what the service is built on.
 - **Replaceable pipeline stages.** Insertion points, not replacement (see Direction).
 - **A code graph, AST or call-graph context** before one provider is shown to raise recall.
 - **An embedding store for memory** before fingerprint matching is shown to be the limit.
