@@ -40,6 +40,8 @@ The two split work along different axes: Cloudflare by **review domain**, OCR by
 | 10 | Judge | top-tier LLM | Coordinator deduplicates across reviewers, recalibrates severity, filters speculation and nitpicks, and writes the summary. The verdict itself is code (`judge/verdict.ts`) over the judged findings. |
 | 11 | Publish | code | Post one summary comment plus inline comments, apply the verdict, update threads from the previous review. |
 
+In core, `reviewWithHooks` (`pipeline/run.ts`) only sequences them: `planReview` (stages 1–4), `executeStage` (5–7, `pipeline/execute-stage.ts`, one `runJob` per cell), `filterStage` (8), `checkStage` (9–10), then `assembleReport`. Each stage returns its own warnings and usage, and the report lists them in stage order; the spend tracker and the run's signal are the only state they share.
+
 ## Reviewers
 
 | Reviewer | Scope | Default model tier |

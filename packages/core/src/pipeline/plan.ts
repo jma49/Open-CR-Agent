@@ -14,8 +14,8 @@ import { roleCall } from "./agents.js";
 import { reviewContext } from "./context.js";
 import { runtimeGrouper } from "./helpers.js";
 import { rank } from "./matrix.js";
+import type { ReviewHooks, ReviewOptions } from "./options.js";
 import type { ReviewEvent } from "./report.js";
-import type { ReviewHooks, ReviewOptions } from "./run.js";
 import { newRunId } from "./run-id.js";
 
 export const GUIDELINES_PATH = "AGENTS.md";

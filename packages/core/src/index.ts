@@ -67,6 +67,7 @@ export type {
   SkippedCell,
   SkipReason,
 } from "./pipeline/matrix.js";
+export type { ReviewOptions } from "./pipeline/options.js";
 export {
   type OutputFinding,
   type OutputPriorFinding,
@@ -90,7 +91,7 @@ export {
   type TaskOutcome,
   type TaskStatus,
 } from "./pipeline/report.js";
-export { type ReviewOptions, review } from "./pipeline/run.js";
+export { review } from "./pipeline/run.js";
 export { addUsage, emptyUsage } from "./pipeline/usage.js";
 export {
   agentsMdReviewerPlugin,
