@@ -9,6 +9,7 @@ ocra 从被审查仓库根目录的 `.ocra/config.json` 读取配置。所有字
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/jma49/Open-CR-Agent/main/docs/schema/config.v1.json",
   "models": {
     "top": "google/gemini-3.1-pro-preview",
     "standard": ["google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
@@ -28,6 +29,8 @@ ocra 从被审查仓库根目录的 `.ocra/config.json` 读取配置。所有字
   "pluginSettings": {}
 }
 ```
+
+可选的 `$schema` 字段让编辑器使用这个文件的 [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/config.v1.json)（draft 2020-12，由代码生成并经测试核对），输入时就能补全字段、标出未知字段和错误的值；ocra 本身忽略这个字段。
 
 ## 模型
 

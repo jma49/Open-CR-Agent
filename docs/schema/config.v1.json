@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ocra.majincheng.com/schema/config.v1.json",
+  "title": "ocra configuration",
+  "description": "The .ocra/config.json file of a repository, or a file passed with --config. Unknown keys are rejected.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "models": {
+      "type": "object",
+      "properties": {
+        "top": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          ]
+        },
+        "standard": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          ]
+        },
+        "light": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "concurrency": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 32
+    },
+    "taskTimeoutMinutes": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "runTimeoutMinutes": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "verify": {
+      "type": "boolean"
+    },
+    "judge": {
+      "type": "boolean"
+    },
+    "maxCostUsd": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "maxTasks": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "sampling": {
+      "type": "object",
+      "properties": {
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      },
+      "additionalProperties": false
+    },
+    "github": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "requestChanges": {
+          "type": "boolean"
+        },
+        "botLogin": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "include": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "exclude": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "runtime": {
+      "default": "opencode",
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "opencode",
+            "direct"
+          ]
+        },
+        {
+          "type": "string",
+          "minLength": 1
+        }
+      ]
+    },
+    "plugins": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "reviewers": {
+      "default": {},
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "minTier": {
+            "type": "string",
+            "enum": [
+              "trivial",
+              "lite",
+              "full"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "pluginSettings": {
+      "default": {},
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {}
+    },
+    "providers": {
+      "default": {},
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,39}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "openai-compatible"
+          },
+          "baseUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "apiKeyEnv": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+          },
+          "models": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[\\w./:@-]{1,200}$"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "input": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 10000
+                },
+                "output": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 10000
+                },
+                "cachedInput": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 10000
+                }
+              },
+              "required": [
+                "input",
+                "output"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "type",
+          "baseUrl",
+          "models"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "extends": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}

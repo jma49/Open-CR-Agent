@@ -9,6 +9,7 @@ ocra reads `.ocra/config.json` from the root of the repository being reviewed. E
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/jma49/Open-CR-Agent/main/docs/schema/config.v1.json",
   "models": {
     "top": "google/gemini-3.1-pro-preview",
     "standard": ["google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
@@ -28,6 +29,8 @@ ocra reads `.ocra/config.json` from the root of the repository being reviewed. E
   "pluginSettings": {}
 }
 ```
+
+The optional `$schema` key points editors at the file's [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/config.v1.json) (draft 2020-12, generated from the code and tested against it), so they complete keys and flag unknown ones and bad values as you type; ocra itself ignores the key.
 
 ## Models
 

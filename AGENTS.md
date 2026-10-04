@@ -37,7 +37,7 @@ Open-CR-Agent is an open-source multi-agent code review system. Deterministic en
 9. **Verifiable, observable, reversible changes.** Every change keeps behavior testable, runtime state observable and failures diagnosable, with backward compatibility and a rollback path considered. Errors and logs keep diagnostic context without leaking sensitive data.
 10. **Delete rather than keep compatibility.** When refactoring internal paths, delete obsolete implementations directly; do not add compatibility layers, deprecated shims or dual-write logic. Compatibility of external contracts (CLI flags, config file format, plugin interfaces, published package APIs, session file format) is evaluated separately against the contract, as a contractual obligation rather than a reason to keep old code.
 
-> **Change checklist:** run `npm run verify` before every commit (Biome, type check, tests). Prompt, rule or stage changes also need an eval run before merge. Larger changes update `README.md` in the same PR (see User manual). A change to the JSON report updates its schema (`npm run schema`); the test says when they differ.
+> **Change checklist:** run `npm run verify` before every commit (Biome, type check, tests). Prompt, rule or stage changes also need an eval run before merge. Larger changes update `README.md` in the same PR (see User manual). A change to the JSON report or to `.ocra/config.json` updates its schema (`npm run schema`); the tests say when they differ.
 
 ## Engineering best practices
 

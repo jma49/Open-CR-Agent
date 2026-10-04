@@ -11,6 +11,7 @@ const TIMEOUT_MS = 10_000;
 // is fetched from outside the repository.
 export const remoteConfigSchema = z
   .object({
+    $schema: z.string().optional(),
     models: z.record(z.enum(["top", "standard", "light"]), z.unknown()).optional(),
     concurrency: z.unknown().optional(),
     taskTimeoutMinutes: z.unknown().optional(),

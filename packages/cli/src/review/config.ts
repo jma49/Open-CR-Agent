@@ -59,8 +59,13 @@ const providerSchema = z
   })
   .strict();
 
+// The runtimes ocra ships; a plugin may register another name, so the
+// schema lists these for editors and still accepts any other string.
+const BUILTIN_RUNTIMES = ["opencode", "direct"] as const;
+
 const configSchema = z
   .object({
+    $schema: z.string().optional(),
     models: z
       .object({ top: modelChain, standard: modelChain, light: modelChain })
       .partial()
@@ -94,7 +99,7 @@ const configSchema = z
       .default({}),
     include: z.array(z.string().min(1)).default([]),
     exclude: z.array(z.string().min(1)).default([]),
-    runtime: z.string().min(1).default("opencode"),
+    runtime: z.enum(BUILTIN_RUNTIMES).or(z.string().min(1)).default("opencode"),
     plugins: z.array(z.string().min(1)).default([]),
     reviewers: z
       .record(
@@ -113,6 +118,23 @@ const configSchema = z
     extends: z.string().min(1).optional(),
   })
   .strict();
+
+export const CONFIG_SCHEMA_ID = "https://ocra.majincheng.com/schema/config.v1.json";
+
+// JSON Schema (draft 2020-12) of .ocra/config.json, for editors: what a
+// file may say, so defaults are optional and model chains take either form.
+export function configJsonSchema(): Record<string, unknown> {
+  const generated = z.toJSONSchema(configSchema, { target: "draft-2020-12", io: "input" });
+  const { $schema, ...rest } = generated;
+  return {
+    $schema,
+    $id: CONFIG_SCHEMA_ID,
+    title: "ocra configuration",
+    description:
+      "The .ocra/config.json file of a repository, or a file passed with --config. Unknown keys are rejected.",
+    ...rest,
+  };
+}
 
 export type CliConfig = Omit<z.infer<typeof configSchema>, "models" | "providers"> & {
   models: ModelChains;

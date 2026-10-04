@@ -1,8 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { ConfigError, loadConfig } from "./config.js";
+import { CONFIG_SCHEMA_ID, ConfigError, configJsonSchema, loadConfig } from "./config.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -148,6 +148,34 @@ describe("loadConfig", () => {
     );
     await expect(loadConfig(root('{"concurrency":0}'), {})).rejects.toThrow(
       ".ocra/config.json is invalid",
+    );
+  });
+});
+
+describe("configJsonSchema", () => {
+  it("is what docs/schema/config.v1.json holds (npm run schema regenerates it)", () => {
+    const published = JSON.parse(
+      readFileSync(new URL("../../../../docs/schema/config.v1.json", import.meta.url), "utf8"),
+    );
+    expect(published).toEqual(configJsonSchema());
+  });
+
+  it("is a closed draft 2020-12 schema that lists the built-in runtimes", () => {
+    const schema = configJsonSchema();
+    expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
+    expect(schema.$id).toBe(CONFIG_SCHEMA_ID);
+    expect(schema.additionalProperties).toBe(false);
+    expect(JSON.stringify(schema)).toContain('"enum":["opencode","direct"]');
+  });
+
+  it("lets a file name its schema and a runtime, built-in or registered by a plugin", async () => {
+    const schema = "https://example.com/config.v1.json";
+    for (const runtime of ["direct", "my-runtime"]) {
+      const config = await loadConfig(root(JSON.stringify({ $schema: schema, runtime })), {});
+      expect(config.runtime).toBe(runtime);
+    }
+    await expect(loadConfig(root(JSON.stringify({ runtime: "" })), {})).rejects.toThrow(
+      ConfigError,
     );
   });
 });
