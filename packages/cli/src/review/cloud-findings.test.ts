@@ -8,6 +8,7 @@ import {
   redact,
   sharedFindings,
 } from "./cloud-findings.js";
+import vectors from "./redaction-vectors.json" with { type: "json" };
 
 const CODE = "const q = 'SELECT * FROM t WHERE id = ' + id;";
 
@@ -67,17 +68,33 @@ describe("redact", () => {
     });
   }
 
-  it("leaves ordinary code, hex digests, paths and identifiers alone", () => {
+  it("leaves ordinary code, paths and identifiers alone", () => {
     const code = [
       "export async function fetchAccountMemoryForRepository(repoHash: string) {}",
-      "const sha = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';",
-      "const commit = '94fb2160c3a9d1e2f3a4b5c6d7e8f9a0b1c2d3e4';",
       "import { x } from '../../packages/core/src/pipeline/output-schema.ts';",
       "const SOME_VERY_LONG_CONSTANT_NAME_WITHOUT_DIGITS = 1;",
       "const task = 'sk-short';",
       "// https://github.com/jma49/open-cr-agent/blob/main/docs/adr/0028-findings.md",
     ].join("\n");
     expect(redact(code)).toEqual({ text: code, redacted: false });
+  });
+});
+
+describe("the vectors shared with ocra Cloud", () => {
+  // ocra Cloud's server pass runs the same file (test/redaction-vectors.json there).
+  it("redacts every secret line and keeps every plain one", () => {
+    for (const v of vectors.redact) {
+      const r = redact(v.line);
+      expect(r.redacted, v.line).toBe(true);
+      expect(r.text, v.line).not.toContain(v.secret);
+    }
+    for (const line of vectors.keep)
+      expect(redact(line), line).toEqual({ text: line, redacted: false });
+  });
+
+  it("redacts a hex run of 32 or more, which may be a key as well as a digest", () => {
+    const sha = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    expect(redact(`const sha = '${sha}';`).text).toBe(`const sha = '${REDACTED}';`);
   });
 });
 

@@ -1,0 +1,68 @@
+{
+  "about": "Shared by ocra Cloud (test/redaction-vectors.json) and the ocra CLI (packages/cli/src/review/redaction-vectors.json): both redaction passes must agree. Each `redact` entry is a line whose `secret` must not survive; each `keep` line must come back unchanged. Change both copies together.",
+  "redact": [
+    { "line": "const key = \"AKIAABCDEFGHIJKLMNOP\";", "secret": "AKIAABCDEFGHIJKLMNOP" },
+    { "line": "token: ghp_abcdefghijklmnopqrstuvwxyz0123", "secret": "ghp_abcdefghijklmnop" },
+    {
+      "line": "ANTHROPIC=sk-ant-api03-abcdefghijklmnopqrstuvwxyz",
+      "secret": "sk-ant-api03-abcdef"
+    },
+    { "line": "or = 'sk-or-v1-0123456789abcdef0123456789abcdef'", "secret": "sk-or-v1-0123456789" },
+    { "line": "maps = AIzaSyA-1234567890abcdefghijklmnopqrstu", "secret": "AIzaSyA-1234567890" },
+    {
+      "line": "-----BEGIN RSA PRIVATE KEY-----\nMIIEow\n-----END RSA PRIVATE KEY-----",
+      "secret": "MIIEow"
+    },
+    {
+      "line": "const k = \"Zq3Xk9LmP2vR7tYb4NcW8sJh1Df6Ga5Ue0Oi\";",
+      "secret": "Zq3Xk9LmP2vR7tYb4NcW8sJh1Df6Ga5Ue0Oi"
+    },
+    {
+      "line": "aws_secret = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+      "secret": "wJalrXUtnFEMI/K7MDENG"
+    },
+    {
+      "line": "AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+      "secret": "bPxRfiCYEXAMPLEKEY"
+    },
+    {
+      "line": "api_key = \"4f2a9c1e7b3d8a6f0e5c2b9d7a1f3e8c6b0d4a2f9e7c5b3a1d8f6e4c2a0b9d7e\"",
+      "secret": "4f2a9c1e7b3d8a6f0e5c2b9d"
+    },
+    {
+      "line": "key 9b8f7e6d5c4b3a291807f6e5d4c3b2a1",
+      "secret": "9b8f7e6d5c4b3a291807f6e5d4c3b2a1"
+    },
+    {
+      "line": "DATABASE_URL=postgres://admin:S3cr3tPass@db.internal:5432/app",
+      "secret": "S3cr3tPass"
+    },
+    { "line": "redis://:hunter2hunter2@cache:6379", "secret": "hunter2hunter2" },
+    {
+      "line": "fetch(\"https://hooks.slack.com/services/T0AAAA/B0BBBB/XXXXXXXXXXXXXXXX\")",
+      "secret": "T0AAAA/B0BBBB"
+    },
+    {
+      "line": "url: https://discord.com/api/webhooks/123456789012345678/abcDEF_ghi-JKL",
+      "secret": "abcDEF_ghi-JKL"
+    },
+    { "line": "password = \"hunter2hunter2\"", "secret": "hunter2hunter2" },
+    { "line": "\"apiKey\": \"live_51HxYz\",", "secret": "live_51HxYz" },
+    { "line": "DB_PASSWORD: 'correct horse battery'", "secret": "correct horse battery" },
+    { "line": "client_secret='abc123def'", "secret": "abc123def" }
+  ],
+  "keep": [
+    "const total = items.reduce((n, i) => n + i.price, 0);",
+    "import { ReviewSettings } from \"./components/settings/ReviewSettingsPage\";",
+    "packages/cli/src/review/cloud-findings.ts",
+    "function getElementByIdAndQuerySelectorAllNodes() {}",
+    "useEffectWithDependencyArrayAndCleanup2(x);",
+    "const password = readPasswordFromEnv();",
+    "if (token === undefined) return;",
+    "see https://github.com/jma49/Open-CR-Agent/blob/main/docs/manual/en/cli.mdx",
+    "const ALPHABET = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef\";",
+    "// https://github.com/jma49/open-cr-agent/blob/main/docs/adr/0028-findings.md",
+    "import { x } from '../../packages/core/src/pipeline/output-schema.ts';",
+    "export async function fetchAccountMemoryForRepository(repoHash: string) {}"
+  ]
+}

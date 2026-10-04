@@ -1,4 +1,7 @@
 import type { Finding, ReviewReport, Severity, Verification } from "@open-cr-agent/core";
+import { redact } from "./redact.js";
+
+export { REDACTED, redact } from "./redact.js";
 
 // The findings a review sends ocra Cloud when the account shares them
 // (ADR-0028, 2): what the web needs to show the review, after a redaction
@@ -26,35 +29,6 @@ export type SharedFinding = {
 export const MAX_FINDINGS = 200;
 export const MAX_FIELD = 4_096;
 export const MAX_TOTAL_BYTES = 262_144;
-
-// The same patterns as the server's (ocra-cloud src/redact.ts); the two
-// evolve together so the web never shows what this pass would have hidden.
-const PATTERNS: readonly RegExp[] = [
-  /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?(-----END [A-Z0-9 ]*PRIVATE KEY-----|$)/g,
-  /\b(AKIA|ASIA)[0-9A-Z]{16}\b/g,
-  /\b(ghp|gho|ghs|ghu|ghr)_[A-Za-z0-9]{20,}\b/g,
-  /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g,
-  /\bglpat-[A-Za-z0-9_-]{20,}\b/g,
-  /\bsk-(ant-|or-|proj-)?[A-Za-z0-9_-]{20,}\b/g,
-  /\bxox[abprs]-[A-Za-z0-9-]{10,}\b/g,
-  /\bAIza[0-9A-Za-z_-]{35}\b/g,
-  /\bnpm_[A-Za-z0-9]{36}\b/g,
-];
-
-// A long run mixing lower and upper case and digits: a likely key. A hex
-// digest (one case) and a path (has a slash) are left alone.
-const LONG_RUN = /\b[A-Za-z0-9+/_-]{32,}={0,2}/g;
-const looksRandom = (s: string) =>
-  /[a-z]/.test(s) && /[A-Z]/.test(s) && /\d/.test(s) && !s.includes("/");
-
-export const REDACTED = "[redacted]";
-
-export function redact(text: string): { text: string; redacted: boolean } {
-  let out = text;
-  for (const pattern of PATTERNS) out = out.replace(pattern, REDACTED);
-  out = out.replace(LONG_RUN, (m) => (looksRandom(m) ? REDACTED : m));
-  return { text: out, redacted: out !== text };
-}
 
 /** The report's findings as uploaded, redacted and bounded; `left` counts those not sent. */
 export function sharedFindings(report: Pick<ReviewReport, "findings">): {
@@ -89,9 +63,9 @@ function share(f: Finding): SharedFinding {
     fingerprint: f.fingerprint,
     reviewer: f.reviewer,
     severity: f.severity,
-    category: f.category,
+    category: text(f.category),
     verification: f.verification ?? "unchecked",
-    file: f.file,
+    file: text(f.file),
     lineStart: f.lineRange?.start ?? null,
     lineEnd: f.lineRange?.end ?? null,
     title: text(f.title),
