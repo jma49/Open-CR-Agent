@@ -3,9 +3,9 @@ import { GitHubApiError } from "@open-cr-agent/vcs-github";
 import { GitLabApiError } from "@open-cr-agent/vcs-gitlab";
 import { GitError } from "@open-cr-agent/vcs-local";
 import { describe, expect, it } from "vitest";
+import { ConfigError } from "./config/cli-config.js";
+import { fetchRemoteConfig } from "./config/remote.js";
 import { UsageError } from "./io/usage-error.js";
-import { ConfigError } from "./review/config.js";
-import { fetchRemoteConfig } from "./review/remote-config.js";
 
 describe("errors across the packages", () => {
   it.each([

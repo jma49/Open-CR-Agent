@@ -1,8 +1,8 @@
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
+import { ConfigError } from "../config/cli-config.js";
 import { ocraConfigDir } from "../config/user-dir.js";
-import { ConfigError } from "../review/config.js";
 
 // The plugins this machine allows its ocra Cloud account to name (ADR-0027):
 // installed by `ocra plugins allow` into a directory of the user's own, never

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type CliConfig, loadConfig } from "../review/config.js";
+import { type CliConfig, loadConfig } from "../config/cli-config.js";
 import { type AccountSettings, parseAccountSettings } from "./account-settings.js";
 import { layerAccountSettings } from "./settings.js";
 

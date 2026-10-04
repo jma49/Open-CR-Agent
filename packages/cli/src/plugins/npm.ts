@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { dirname, join } from "node:path";
+import { ConfigError } from "../config/cli-config.js";
 import { forTerminal } from "../io/terminal.js";
-import { ConfigError } from "../review/config.js";
 
 /**
  * Runs npm with these arguments in `cwd`, never through a shell; resolves

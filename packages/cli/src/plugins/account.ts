@@ -1,5 +1,5 @@
 import type { OcraPlugin } from "@open-cr-agent/core";
-import { loadAccountPlugins } from "./load.js";
+import { loadAllowedPlugins } from "./load.js";
 import { isPackageName } from "./store.js";
 
 // The plugins an ocra Cloud account names, and their settings (ADR-0027):
@@ -43,7 +43,7 @@ export function parseAccountPlugins(
  * never with --no-repo-config); a package the configuration already lists
  * loads as the configuration's, and a plugin whose name is taken is skipped.
  */
-export async function accountPlugins(
+export async function loadAccountPlugins(
   account: AccountPlugins,
   options: {
     allowed: boolean;
@@ -64,7 +64,7 @@ export async function accountPlugins(
   const taken = new Set(options.taken.map((p) => p.name));
   const plugins: OcraPlugin[] = [];
   const settings: Record<string, unknown> = {};
-  for (const { name, plugin } of await loadAccountPlugins(names, options.dir, options.warn)) {
+  for (const { name, plugin } of await loadAllowedPlugins(names, options.dir, options.warn)) {
     if (taken.has(plugin.name)) {
       options.warn(
         `skipping plugin ${name} from your ocra Cloud settings: a plugin named "${plugin.name}" is already loaded`,

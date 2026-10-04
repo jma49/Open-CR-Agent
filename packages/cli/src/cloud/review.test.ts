@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { originRepository } from "../review/repository-id.js";
+import { originRepository } from "../repository-id.js";
 import { accountSaltPath } from "./account-salt.js";
 import type { CloudDeps } from "./deps.js";
 import { parseAccountMemory } from "./memory.js";

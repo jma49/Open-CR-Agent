@@ -1,6 +1,6 @@
 import type { MemoryEntry, ReviewReport } from "@open-cr-agent/core";
 import type { Output } from "../io/output.js";
-import { originRepository } from "../review/repository-id.js";
+import { originRepository } from "../repository-id.js";
 import { accountSaltOf, readAccountSalt, saveAccountSalt } from "./account-salt.js";
 import type { CloudDeps } from "./deps.js";
 import { sharedFindings } from "./findings.js";

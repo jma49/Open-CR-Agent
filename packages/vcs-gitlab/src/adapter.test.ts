@@ -10,8 +10,8 @@ import {
   OUTSIDER,
   report,
 } from "../../vcs-platform/src/conformance.fakes.js";
+import { adapter, bodies, diff, fakeGitLab, START } from "./adapter.fakes.js";
 import { positionOf } from "./adapter.js";
-import { adapter, bodies, diff, fakeGitLab, START } from "./gitlab.fakes.js";
 
 const refs = { base_sha: BASE, start_sha: START, head_sha: HEAD };
 const A = "a".repeat(16);

@@ -6,7 +6,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { REPORT_VERSION, reportJsonSchema } from "@open-cr-agent/core";
-import { configJsonSchema } from "../packages/cli/dist/review/config.js";
+import { configJsonSchema } from "../packages/cli/dist/config/cli-config.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 for (const [name, schema] of [

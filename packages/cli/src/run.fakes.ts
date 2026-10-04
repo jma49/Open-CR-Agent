@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentEvent, AgentTaskSpec, OcraPlugin } from "@open-cr-agent/core";
-import { BUILTIN_PLUGINS, type ReviewDeps } from "./review/command.js";
+import { BUILTIN_PLUGINS, type ReviewDeps } from "./commands/review.js";
 
 // Fakes shared by the CLI's end-to-end tests: a scratch repository with one
 // change, captured output, and dependencies with a scripted runtime.

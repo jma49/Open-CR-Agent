@@ -1,7 +1,7 @@
 import type { ModelTier, SourcedRule } from "@open-cr-agent/core";
 import { errorMessage } from "@open-cr-agent/core/internal";
+import type { CliConfig } from "../config/cli-config.js";
 import { type AccountPlugins, parseAccountPlugins } from "../plugins/account.js";
-import type { CliConfig } from "../review/config.js";
 import { type AccountSettings, parseAccountSettings } from "./account-settings.js";
 import type { CloudDeps } from "./deps.js";
 import { type CloudSessionLost, cloudFetch } from "./session.js";

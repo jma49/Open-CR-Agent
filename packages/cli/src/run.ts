@@ -3,19 +3,19 @@ import { parseArgs } from "node:util";
 import { isOcraError } from "@open-cr-agent/core";
 import { errorMessage } from "@open-cr-agent/core/internal";
 import { defaultCloudDeps } from "./cloud/deps.js";
-import { cloudCommand, LOGIN_USAGE } from "./cloud.js";
+import { LOGIN_USAGE, loginCommand } from "./commands/login.js";
+import { memoryCommand } from "./commands/memory.js";
+import { metricsCommand } from "./commands/metrics.js";
+import { PLUGINS_USAGE, pluginsCommand } from "./commands/plugins.js";
+import { parseReviewArgs, REVIEW_USAGE } from "./commands/review/args.js";
+import { BUILTIN_RUNTIMES } from "./commands/review/runtimes.js";
+import { BUILTIN_PLUGINS, type ReviewDeps, reviewCommand } from "./commands/review.js";
 import { EXIT } from "./io/exit.js";
 import type { Output } from "./io/output.js";
 import { forTerminal } from "./io/terminal.js";
 import { UsageError } from "./io/usage-error.js";
-import { memoryCommand } from "./memory.js";
-import { metricsCommand } from "./metrics.js";
 import { defaultNpm } from "./plugins/npm.js";
 import { pluginsDir } from "./plugins/store.js";
-import { PLUGINS_USAGE, pluginsCommand } from "./plugins-command.js";
-import { parseReviewArgs, REVIEW_USAGE } from "./review/args.js";
-import { BUILTIN_PLUGINS, type ReviewDeps, reviewCommand } from "./review/command.js";
-import { BUILTIN_RUNTIMES } from "./review/runtimes.js";
 import { VERSION } from "./version.js";
 
 const USAGE = `Usage: ocra <command> [options]
@@ -94,7 +94,7 @@ export async function run(
   }
   if (command === "login" || command === "logout" || command === "whoami") {
     try {
-      return await cloudCommand(command, rest, out, err, defaultCloudDeps(deps.env));
+      return await loginCommand(command, rest, out, err, defaultCloudDeps(deps.env));
     } catch (error) {
       if (error instanceof UsageError) err.write(`${error.message}\n\n${LOGIN_USAGE}`);
       else err.write(failure(error));

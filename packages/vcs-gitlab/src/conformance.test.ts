@@ -1,5 +1,5 @@
 import { conformance, type Scenario } from "../../vcs-platform/src/conformance.fakes.js";
-import { adapter, bodies, fakeGitLab } from "./gitlab.fakes.js";
+import { adapter, bodies, fakeGitLab } from "./adapter.fakes.js";
 
 // The scenario behind GitLab's REST and GraphQL APIs.
 function onGitLab(scenario: Scenario) {

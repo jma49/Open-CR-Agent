@@ -134,7 +134,7 @@ The codes are a contract under the [0.x rule](./stability): a minor release may 
 
 ## Pull requests and merge requests
 
-`githubPlugin` (`@open-cr-agent/vcs-github`) and `gitlabPlugin` (`@open-cr-agent/vcs-gitlab`) register the `github` and `gitlab` adapters. Their `createVcs` options (the repository, the number, the token's variable, whether to publish) are not documented as a library contract yet; `packages/cli/src/review/target.ts` in the repository shows how the CLI builds them, including the trusted-base reader it passes as `readTrusted`. Treat those shapes as internal until this page lists them.
+`githubPlugin` (`@open-cr-agent/vcs-github`) and `gitlabPlugin` (`@open-cr-agent/vcs-gitlab`) register the `github` and `gitlab` adapters. Their `createVcs` options (the repository, the number, the token's variable, whether to publish) are not documented as a library contract yet; `packages/cli/src/commands/review/target.ts` in the repository shows how the CLI builds them, including the trusted-base reader it passes as `readTrusted`. Treat those shapes as internal until this page lists them.
 
 ## Trust
 
