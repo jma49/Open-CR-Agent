@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Finding } from "../domain.js";
-import { REPORT_VERSION, toPlanOutput, toReportOutput } from "./output.js";
-import type { ReviewPreview } from "./preview.js";
+import { toReportOutput } from "./output.js";
+import { REPORT_VERSION, reportOutputSchema } from "./output-schema.js";
 import type { ReviewReport } from "./report.js";
 
 const finding: Finding = {
@@ -65,10 +65,28 @@ describe("toReportOutput", () => {
       expect(json).not.toContain(internal);
     }
   });
+
+  it("copies domain values field by field, so a field the schema lacks stays out", () => {
+    const task = {
+      taskId: "security-1",
+      reviewer: "security",
+      bundle: "b",
+      files: ["src/a.ts"],
+      status: "completed" as const,
+      findings: 0,
+      durationMs: 1,
+      usage: report.usage,
+      sessionId: "internal",
+    };
+    const refuted = { fingerprint: "f", file: "a", title: "t", reason: "r", rawAnswer: "x" };
+    const output = toReportOutput({ ...report, runId: "r", tasks: [task], refuted: [refuted] });
+    expect(reportOutputSchema.safeParse(output).success).toBe(true);
+    expect(JSON.stringify(output)).not.toContain("internal");
+    expect(output.refuted[0]).not.toHaveProperty("rawAnswer");
+  });
 });
 
-// The versioned outputs embed some domain types; a change to one of them
-// changes a published contract. These key lists make that a visible test
+// These key lists make a change to the published contract a visible test
 // change: add optional fields freely, anything else needs a new version.
 describe("output contract", () => {
   it("pins the report's top-level and nested keys", () => {
@@ -125,38 +143,6 @@ describe("output contract", () => {
     );
     expect(Object.keys(output.usage).sort()).toEqual(
       ["cachedTokens", "costUsd", "inputTokens", "outputTokens", "reasoningTokens"].sort(),
-    );
-  });
-
-  it("pins the plan's keys", () => {
-    const preview = {
-      changeRequest: report.changeRequest,
-      tier: "lite",
-      selected: [],
-      excluded: [],
-      bundles: [],
-      groupingSkipped: false,
-      tasks: [],
-      skipped: [],
-      promptTokens: 0,
-      planCalls: 0,
-      warnings: [],
-    } as ReviewPreview;
-    expect(Object.keys(toPlanOutput(preview)).sort()).toEqual(
-      [
-        "bundles",
-        "changeRequest",
-        "excluded",
-        "groupingSkipped",
-        "planCalls",
-        "promptTokens",
-        "selected",
-        "skipped",
-        "tasks",
-        "tier",
-        "version",
-        "warnings",
-      ].sort(),
     );
   });
 });

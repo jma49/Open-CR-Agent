@@ -1,6 +1,6 @@
 import type { CodeMatch } from "./contracts.js";
 import type { ChangeRequest, FileDiff, PriorReview } from "./domain.js";
-import type { ReviewReport } from "./pipeline/report.js";
+import type { ReviewReport } from "./report/report.js";
 
 export interface VcsAdapter {
   readonly name: string;

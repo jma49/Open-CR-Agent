@@ -583,68 +583,10 @@ export interface OcraPlugin<Settings = unknown> {
 }
 
 // @public (undocumented)
-export interface OutputFinding {
-    // (undocumented)
-    body: string;
-    // (undocumented)
-    category: string;
-    // (undocumented)
-    code: string;
-    // (undocumented)
-    evidence: string[];
-    // (undocumented)
-    file: string;
-    // (undocumented)
-    fingerprint: string;
-    // (undocumented)
-    fix?: {
-        startLine: number;
-        endLine: number;
-        replacement: string;
-    };
-    // (undocumented)
-    inDiff: boolean;
-    // (undocumented)
-    lines?: {
-        start: number;
-        end: number;
-    };
-    // (undocumented)
-    lowConfidence?: true;
-    // (undocumented)
-    provenance?: {
-        task: string;
-        model?: string;
-    };
-    // (undocumented)
-    reviewer: string;
-    // (undocumented)
-    severity: Severity;
-    // (undocumented)
-    status: "new" | "unfixed";
-    // (undocumented)
-    suggestion?: string;
-    // (undocumented)
-    title: string;
-    // (undocumented)
-    verification: Verification;
-}
+export type OutputFinding = ReportOutput["findings"][number];
 
 // @public (undocumented)
-export interface OutputPriorFinding {
-    // (undocumented)
-    file: string;
-    // (undocumented)
-    fingerprint: string;
-    // (undocumented)
-    reviewer?: string;
-    // (undocumented)
-    severity: Severity;
-    // (undocumented)
-    title: string;
-    // (undocumented)
-    verification: Verification;
-}
+export type OutputPriorFinding = NonNullable<ReportOutput["rereview"]>["fixed"][number];
 
 // @public (undocumented)
 export function parseModel(model: string): ModelRef;
@@ -859,69 +801,19 @@ const reportedFindingSchema: z.ZodObject<{
 export function reportJsonSchema(): Record<string, unknown>;
 
 // @public (undocumented)
-export interface ReportOutput {
-    // (undocumented)
-    anchoring?: AnchoringSummary;
-    // (undocumented)
-    bundles: {
-        label: string;
-        files: string[];
-    }[];
-    // (undocumented)
-    changeRequest: ChangeRequest;
-    // (undocumented)
-    coverage: CoverageEntry[];
-    // (undocumented)
-    findings: OutputFinding[];
-    // (undocumented)
-    judgement?: JudgeDecisions;
-    // (undocumented)
-    provenance?: RunProvenance;
-    // (undocumented)
-    refuted: RefutedFinding[];
-    // (undocumented)
-    remembered: (MemoryEntry & {
-        source?: MemorySource;
-    })[];
-    // (undocumented)
-    rereview?: Record<"fixed" | "notReproduced" | "notRechecked" | "unchanged" | "dismissed", OutputPriorFinding[]>;
-    // (undocumented)
-    runId?: string;
-    // (undocumented)
-    scope?: ReviewReport["scope"];
-    // (undocumented)
-    skipped: SkippedCell[];
-    // (undocumented)
-    spendLimit?: ReviewReport["spendLimit"];
-    // (undocumented)
-    summary: string;
-    // (undocumented)
-    tasks: TaskOutcome[];
-    // (undocumented)
-    tier: RiskTier;
-    // (undocumented)
-    unverifiedCriticals: number;
-    // (undocumented)
-    usage: Usage;
-    // (undocumented)
-    verdict: Verdict;
-    // (undocumented)
-    version: typeof REPORT_VERSION;
-    // (undocumented)
-    warnings: string[];
-}
+export type ReportOutput = z.output<typeof reportOutputSchema>;
 
 // @public (undocumented)
 export const reportOutputSchema: z.ZodObject<{
     version: z.ZodLiteral<1>;
-    runId: z.ZodOptional<z.ZodString>;
+    runId: z.ZodExactOptional<z.ZodString>;
     changeRequest: z.ZodObject<{
         id: z.ZodString;
         title: z.ZodString;
         description: z.ZodString;
         baseSha: z.ZodString;
         headSha: z.ZodString;
-        override: z.ZodOptional<z.ZodObject<{
+        override: z.ZodExactOptional<z.ZodObject<{
             by: z.ZodString;
             reason: z.ZodString;
         }, z.core.$strict>>;
@@ -938,7 +830,7 @@ export const reportOutputSchema: z.ZodObject<{
         significant_concerns: "significant_concerns";
     }>;
     summary: z.ZodString;
-    scope: z.ZodOptional<z.ZodDiscriminatedUnion<[z.ZodObject<{
+    scope: z.ZodExactOptional<z.ZodDiscriminatedUnion<[z.ZodObject<{
         mode: z.ZodLiteral<"incremental">;
         since: z.ZodString;
     }, z.core.$strict>, z.ZodObject<{
@@ -981,7 +873,7 @@ export const reportOutputSchema: z.ZodObject<{
             unchecked: "unchecked";
         }>;
         file: z.ZodString;
-        lines: z.ZodOptional<z.ZodObject<{
+        lines: z.ZodExactOptional<z.ZodObject<{
             start: z.ZodInt;
             end: z.ZodInt;
         }, z.core.$strict>>;
@@ -992,18 +884,18 @@ export const reportOutputSchema: z.ZodObject<{
         }>;
         title: z.ZodString;
         body: z.ZodString;
-        suggestion: z.ZodOptional<z.ZodString>;
-        fix: z.ZodOptional<z.ZodObject<{
+        suggestion: z.ZodExactOptional<z.ZodString>;
+        fix: z.ZodExactOptional<z.ZodObject<{
             startLine: z.ZodInt;
             endLine: z.ZodInt;
             replacement: z.ZodString;
         }, z.core.$strict>>;
         evidence: z.ZodArray<z.ZodString>;
         code: z.ZodString;
-        lowConfidence: z.ZodOptional<z.ZodLiteral<true>>;
-        provenance: z.ZodOptional<z.ZodObject<{
+        lowConfidence: z.ZodExactOptional<z.ZodLiteral<true>>;
+        provenance: z.ZodExactOptional<z.ZodObject<{
             task: z.ZodString;
-            model: z.ZodOptional<z.ZodString>;
+            model: z.ZodExactOptional<z.ZodString>;
         }, z.core.$strict>>;
     }, z.core.$strict>>;
     unverifiedCriticals: z.ZodInt;
@@ -1019,12 +911,12 @@ export const reportOutputSchema: z.ZodObject<{
         title: z.ZodString;
         reason: z.ZodString;
         added: z.ZodOptional<z.ZodString>;
-        source: z.ZodOptional<z.ZodEnum<{
+        source: z.ZodExactOptional<z.ZodEnum<{
             account: "account";
             repository: "repository";
         }>>;
     }, z.core.$strip>>;
-    judgement: z.ZodOptional<z.ZodObject<{
+    judgement: z.ZodExactOptional<z.ZodObject<{
         merged: z.ZodArray<z.ZodObject<{
             kept: z.ZodString;
             merged: z.ZodArray<z.ZodString>;
@@ -1050,7 +942,7 @@ export const reportOutputSchema: z.ZodObject<{
             reason: z.ZodString;
         }, z.core.$strict>>;
     }, z.core.$strict>>;
-    rereview: z.ZodOptional<z.ZodObject<{
+    rereview: z.ZodExactOptional<z.ZodObject<{
         fixed: z.ZodArray<z.ZodObject<{
             fingerprint: z.ZodString;
             title: z.ZodString;
@@ -1065,7 +957,7 @@ export const reportOutputSchema: z.ZodObject<{
                 uncertain: "uncertain";
                 unchecked: "unchecked";
             }>;
-            reviewer: z.ZodOptional<z.ZodString>;
+            reviewer: z.ZodExactOptional<z.ZodString>;
         }, z.core.$strict>>;
         notReproduced: z.ZodArray<z.ZodObject<{
             fingerprint: z.ZodString;
@@ -1081,7 +973,7 @@ export const reportOutputSchema: z.ZodObject<{
                 uncertain: "uncertain";
                 unchecked: "unchecked";
             }>;
-            reviewer: z.ZodOptional<z.ZodString>;
+            reviewer: z.ZodExactOptional<z.ZodString>;
         }, z.core.$strict>>;
         notRechecked: z.ZodArray<z.ZodObject<{
             fingerprint: z.ZodString;
@@ -1097,7 +989,7 @@ export const reportOutputSchema: z.ZodObject<{
                 uncertain: "uncertain";
                 unchecked: "unchecked";
             }>;
-            reviewer: z.ZodOptional<z.ZodString>;
+            reviewer: z.ZodExactOptional<z.ZodString>;
         }, z.core.$strict>>;
         unchanged: z.ZodArray<z.ZodObject<{
             fingerprint: z.ZodString;
@@ -1113,7 +1005,7 @@ export const reportOutputSchema: z.ZodObject<{
                 uncertain: "uncertain";
                 unchecked: "unchecked";
             }>;
-            reviewer: z.ZodOptional<z.ZodString>;
+            reviewer: z.ZodExactOptional<z.ZodString>;
         }, z.core.$strict>>;
         dismissed: z.ZodArray<z.ZodObject<{
             fingerprint: z.ZodString;
@@ -1129,7 +1021,7 @@ export const reportOutputSchema: z.ZodObject<{
                 uncertain: "uncertain";
                 unchecked: "unchecked";
             }>;
-            reviewer: z.ZodOptional<z.ZodString>;
+            reviewer: z.ZodExactOptional<z.ZodString>;
         }, z.core.$strict>>;
     }, z.core.$strict>>;
     tasks: z.ZodArray<z.ZodObject<{
@@ -1143,7 +1035,7 @@ export const reportOutputSchema: z.ZodObject<{
             failed: "failed";
             timed_out: "timed_out";
         }>;
-        error: z.ZodOptional<z.ZodString>;
+        error: z.ZodExactOptional<z.ZodString>;
         findings: z.ZodInt;
         durationMs: z.ZodNumber;
         usage: z.ZodObject<{
@@ -1169,7 +1061,7 @@ export const reportOutputSchema: z.ZodObject<{
         label: z.ZodString;
         files: z.ZodArray<z.ZodString>;
     }, z.core.$strict>>;
-    anchoring: z.ZodOptional<z.ZodObject<{
+    anchoring: z.ZodExactOptional<z.ZodObject<{
         byMethod: z.ZodRecord<z.ZodEnum<{
             cross_file: "cross_file";
             file: "file";
@@ -1180,56 +1072,56 @@ export const reportOutputSchema: z.ZodObject<{
         ambiguous: z.ZodInt;
         relocationCalls: z.ZodInt;
     }, z.core.$strict>>;
-    spendLimit: z.ZodOptional<z.ZodObject<{
+    spendLimit: z.ZodExactOptional<z.ZodObject<{
         usd: z.ZodNumber;
-        reached: z.ZodOptional<z.ZodEnum<{
+        reached: z.ZodExactOptional<z.ZodEnum<{
             review: "review";
             total: "total";
         }>>;
     }, z.core.$strict>>;
-    provenance: z.ZodOptional<z.ZodObject<{
+    provenance: z.ZodExactOptional<z.ZodObject<{
         ocraVersion: z.ZodString;
         promptHash: z.ZodString;
         configHash: z.ZodString;
         sampling: z.ZodObject<{
-            temperature: z.ZodOptional<z.ZodNumber>;
-            seed: z.ZodOptional<z.ZodInt>;
-            notApplied: z.ZodOptional<z.ZodArray<z.ZodEnum<{
+            temperature: z.ZodExactOptional<z.ZodNumber>;
+            seed: z.ZodExactOptional<z.ZodInt>;
+            notApplied: z.ZodExactOptional<z.ZodArray<z.ZodEnum<{
                 seed: "seed";
                 temperature: "temperature";
             }>>>;
         }, z.core.$strict>;
-        agents: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        agents: z.ZodExactOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
             tier: z.ZodEnum<{
                 light: "light";
                 standard: "standard";
                 top: "top";
             }>;
-            models: z.ZodOptional<z.ZodArray<z.ZodString>>;
-            effort: z.ZodOptional<z.ZodEnum<{
+            models: z.ZodExactOptional<z.ZodArray<z.ZodString>>;
+            effort: z.ZodExactOptional<z.ZodEnum<{
                 high: "high";
                 low: "low";
                 medium: "medium";
                 minimal: "minimal";
                 none: "none";
             }>>;
-            applied: z.ZodOptional<z.ZodBoolean>;
-            notApplied: z.ZodOptional<z.ZodArray<z.ZodEnum<{
+            applied: z.ZodExactOptional<z.ZodBoolean>;
+            notApplied: z.ZodExactOptional<z.ZodArray<z.ZodEnum<{
                 seed: "seed";
                 temperature: "temperature";
             }>>>;
         }, z.core.$strict>>>;
-        rules: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        rules: z.ZodExactOptional<z.ZodArray<z.ZodObject<{
             path: z.ZodArray<z.ZodString>;
             rule: z.ZodString;
-            source: z.ZodOptional<z.ZodEnum<{
+            source: z.ZodExactOptional<z.ZodEnum<{
                 account: "account";
                 plugin: "plugin";
                 repository: "repository";
                 shared: "shared";
             }>>;
         }, z.core.$strict>>>;
-        accountSettings: z.ZodOptional<z.ZodObject<{
+        accountSettings: z.ZodExactOptional<z.ZodObject<{
             version: z.ZodNullable<z.ZodString>;
         }, z.core.$strict>>;
     }, z.core.$strict>>;

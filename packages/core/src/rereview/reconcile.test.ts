@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Finding, PriorFinding, PriorReview } from "../domain.js";
-import type { CoverageEntry } from "../pipeline/report.js";
+import type { CoverageEntry } from "../report/report.js";
 import { type ReconcileInput, reconcile, stillOpen } from "./reconcile.js";
 
 function finding(fingerprint: string, file = "a.ts"): Finding {

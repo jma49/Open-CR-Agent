@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import type { AgentRuntime, ModelChains, ReviewContext, Sampling } from "../contracts.js";
-import type { ReviewEvent } from "../pipeline/report.js";
+import type { ReviewEvent } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { RepoRule } from "../rules/repo-rules.js";
 import type { VcsAdapter } from "../vcs.js";

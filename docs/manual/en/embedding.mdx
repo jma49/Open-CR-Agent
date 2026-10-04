@@ -97,7 +97,7 @@ Up to 0.2, `ReviewOptions` also carried `bundling`, `grouper`, `relocate` and `a
 
 A `ReviewReport`: the change, risk tier, verdict and summary, coverage per file, bundles, tasks, findings, what verification refuted and the judge decided, the comparison with the previous review, usage and warnings. Two things to know when you read it:
 
-- **Publish `toReportOutput(report)`**, not the report itself. It is the versioned JSON the CLI writes, described by `reportOutputSchema` and the published [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json); the internal report carries fields that may change.
+- **Publish `toReportOutput(report)`**, not the report itself. It is the versioned JSON the CLI writes, described by `reportOutputSchema` and the published [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json). Its type, `ReportOutput`, is derived from `reportOutputSchema`, so the type and the validator cannot disagree. The internal report carries fields that may change.
 - **An incomplete review is not a pass.** `coverageGaps(report)` says how many selected files were not reviewed and whether nothing was; `report.unverifiedCriticals` counts critical findings nobody could check. The CLI's [exit codes](./cli) are computed from these; a program that gates on the review should do the same, and never read `verdict` alone as approval.
 
 `vcs.publish(report)` posts the review the way `--publish` does, under the platform's trust rules; it returns the parts it could not post as warnings.

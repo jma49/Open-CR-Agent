@@ -1,11 +1,11 @@
 import { emptyUsage } from "../agent/usage.js";
 import { anchorFinding } from "../anchor/anchor.js";
 import type { FileDiff, Finding, LineRange } from "../domain.js";
+import type { ReviewEvent, TaskOutcome } from "../report/report.js";
 import { type SarifCandidate, sarifCandidates } from "../sarif/candidates.js";
 import type { SarifLog } from "../sarif/schema.js";
 import { toFinding } from "./findings.js";
 import type { ReviewPlan } from "./plan.js";
-import type { ReviewEvent, TaskOutcome } from "./report.js";
 import { boundFinding } from "./task.js";
 
 // Findings an external analyzer wrote as SARIF, brought into the review as

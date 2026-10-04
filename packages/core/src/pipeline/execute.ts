@@ -4,6 +4,7 @@ import { type AnchorContext, anchorFinding } from "../anchor/anchor.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
 import type { Finding } from "../domain.js";
 import { memoryFor } from "../memory/memory.js";
+import type { ReviewEvent, TaskOutcome } from "../report/report.js";
 import { findCallers } from "../review/impact.js";
 import { planBundle } from "../review/plan-phase.js";
 import { buildReviewPrompt, type ReviewPrompt } from "../review/prompt.js";
@@ -11,7 +12,6 @@ import { resolveRules } from "../rules/resolve.js";
 import { toFinding } from "./findings.js";
 import type { MatrixCell } from "./matrix.js";
 import type { ReviewPlan } from "./plan.js";
-import type { ReviewEvent, TaskOutcome } from "./report.js";
 import { executeTask, type TaskFinding } from "./task.js";
 
 export interface JobResult {

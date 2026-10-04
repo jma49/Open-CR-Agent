@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { parseUnifiedDiff } from "../diff/parse.js";
+import type { ReviewEvent } from "../report/report.js";
 import { parseSarifLog } from "../sarif/schema.js";
 import { importSarif, MAX_IMPORTED_PER_RUN } from "./imports.js";
-import type { ReviewEvent } from "./report.js";
 import { patch } from "./run.fakes.js";
 
 // patch() changes line 2 of the file; the hunk covers lines 1 and 2.

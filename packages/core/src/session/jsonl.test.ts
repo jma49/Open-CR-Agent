@@ -10,8 +10,10 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { ReviewReport } from "../pipeline/report.js";
+import { emptyUsage } from "../agent/usage.js";
+import type { ChangeRequest } from "../domain.js";
 import { newRunId } from "../pipeline/run-id.js";
+import type { ReviewReport } from "../report/report.js";
 import { EVENTS_FILE, JsonlSessionWriter, REPORT_FILE } from "./jsonl.js";
 
 const dirs: string[] = [];
@@ -26,7 +28,7 @@ describe("JsonlSessionWriter", () => {
     const writer = new JsonlSessionWriter(root, "s1");
     const changeRequest = { id: "1", title: "t", description: "", baseSha: "b", headSha: "h" };
     writer.write({ type: "run_started", runId: "20261002T070000Z-abcdef", changeRequest });
-    const report = { changeRequest, findings: [] } as unknown as ReviewReport;
+    const report = runReport(changeRequest);
     writer.write({ type: "run_finished", report });
 
     const lines = readFileSync(join(root, "s1", EVENTS_FILE), "utf8")
@@ -94,7 +96,7 @@ describe("JsonlSessionWriter", () => {
     writer.write({ type: "run_started", runId: "20261002T070000Z-abcdef", changeRequest });
     writer.write({
       type: "run_finished",
-      report: { changeRequest, findings: [] } as unknown as ReviewReport,
+      report: runReport(changeRequest),
     });
     for (const file of [EVENTS_FILE, REPORT_FILE]) {
       const text = readFileSync(join(root, "s1", file), "utf8");
@@ -111,3 +113,23 @@ describe("JsonlSessionWriter", () => {
     expect(newRunId()).not.toBe(newRunId());
   });
 });
+
+function runReport(changeRequest: ChangeRequest): ReviewReport {
+  return {
+    runId: "20261002T070000Z-abcdef",
+    changeRequest,
+    tier: "lite",
+    verdict: "approved",
+    summary: "",
+    coverage: [],
+    bundles: [],
+    tasks: [],
+    skipped: [],
+    findings: [],
+    unverifiedCriticals: 0,
+    refuted: [],
+    remembered: [],
+    usage: emptyUsage(),
+    warnings: [],
+  };
+}

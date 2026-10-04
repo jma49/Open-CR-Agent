@@ -1,5 +1,5 @@
 import type { Finding, PriorFinding, PriorReview, Severity } from "../domain.js";
-import type { CoverageEntry } from "../pipeline/report.js";
+import type { CoverageEntry } from "../report/report.js";
 
 export interface ReconcileInput {
   // Findings this run keeps.

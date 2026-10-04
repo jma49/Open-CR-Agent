@@ -1,12 +1,12 @@
 import type { PriorReview } from "../domain.js";
 import { applyMemory, type MemoryEntry, type RememberedEntry } from "../memory/memory.js";
+import { type CoverageEntry, coverageGaps } from "../report/report.js";
 import { priorCodePresence } from "../rereview/presence.js";
 import { type Reconciled, reconcile } from "../rereview/reconcile.js";
 import { coverageOf } from "./coverage.js";
 import type { ExecuteStage, StageContext } from "./execute-stage.js";
 import { dedupeFindings } from "./findings.js";
 import { importSarif, type SarifImport } from "./imports.js";
-import { type CoverageEntry, coverageGaps } from "./report.js";
 
 export interface FilterStage {
   imported: SarifImport;

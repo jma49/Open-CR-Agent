@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PriorFinding } from "../domain.js";
+import type { ReviewReport } from "../report/report.js";
 import { quoteSignature } from "../rereview/quote.js";
-import type { ReviewReport } from "./report.js";
 import { finding, patch, runtime, twoFiles, vcs } from "./run.fakes.js";
 import { review } from "./run.js";
 

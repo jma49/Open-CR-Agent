@@ -4,13 +4,13 @@ import type { BundlePolicy } from "../bundle/bundle.js";
 import type { FileGrouper } from "../bundle/grouping.js";
 import type { AgentRuntime, ModelChains } from "../contracts.js";
 import type { MemoryEntry } from "../memory/memory.js";
+import type { ReviewEvent } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { SourcedRule } from "../rules/repo-rules.js";
 import type { SarifLog } from "../sarif/schema.js";
 import type { SelectionPolicy } from "../select/select.js";
 import type { VcsAdapter } from "../vcs.js";
 import type { ProvenanceInput } from "./provenance.js";
-import type { ReviewEvent } from "./report.js";
 
 export interface ReviewOptions {
   vcs: VcsAdapter;

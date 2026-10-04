@@ -1,7 +1,7 @@
+import type { CoverageEntry } from "../report/report.js";
 import type { FileDecision } from "../select/select.js";
 import type { JobResult } from "./execute.js";
 import type { MatrixCell } from "./matrix.js";
-import type { CoverageEntry } from "./report.js";
 
 export function coverageOf(
   decisions: readonly FileDecision[],

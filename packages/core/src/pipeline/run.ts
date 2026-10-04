@@ -1,6 +1,7 @@
 import { spendTracker } from "../agent/budget.js";
 import type { PriorReview } from "../domain.js";
 import { errorMessage, OcraError } from "../errors.js";
+import type { ReviewReport } from "../report/report.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import type { VcsAdapter } from "../vcs.js";
 import { assembleReport } from "./assemble-report.js";
@@ -9,7 +10,6 @@ import { executeStage, type StageContext } from "./execute-stage.js";
 import { filterStage } from "./filter-stage.js";
 import { MAX_TIMER_MS, REVIEW_DEFAULTS, type ReviewHooks, type ReviewOptions } from "./options.js";
 import { planReview } from "./plan.js";
-import type { ReviewReport } from "./report.js";
 import { newRunId } from "./run-id.js";
 
 export { GUIDELINES_PATH } from "./plan.js";

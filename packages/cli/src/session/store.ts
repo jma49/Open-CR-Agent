@@ -38,5 +38,5 @@ export async function readReport(sessionDir: string): Promise<ReportOutput | und
     return undefined;
   }
   const parsed = reportOutputSchema.safeParse(data);
-  return parsed.success ? (parsed.data as ReportOutput) : undefined;
+  return parsed.success ? parsed.data : undefined;
 }

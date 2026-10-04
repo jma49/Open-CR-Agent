@@ -10,9 +10,10 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { OcraError } from "../errors.js";
-import { serializeOutput, toReportOutput } from "../pipeline/output.js";
-import type { ReviewEvent } from "../pipeline/report.js";
 import { newRunId } from "../pipeline/run-id.js";
+import { toReportOutput } from "../report/output.js";
+import type { ReviewEvent } from "../report/report.js";
+import { serializeOutput } from "../report/serialize.js";
 
 export const EVENTS_FILE = "events.jsonl";
 export const REPORT_FILE = "report.json";

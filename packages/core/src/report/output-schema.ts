@@ -9,15 +9,22 @@ import {
   verificationSchema,
 } from "../domain.js";
 import { memoryEntrySchema } from "../memory/memory.js";
+import { skipReasonSchema } from "../pipeline/matrix.js";
 import { exclusionReasonSchema } from "../select/select.js";
-import { skipReasonSchema } from "./matrix.js";
-import { REPORT_VERSION, type ReportOutput } from "./output.js";
 import { taskStatusSchema } from "./report.js";
 
-// The JSON report as a schema: what `toReportOutput` writes, no more. Every
-// object is strict, so a field added to the output without a schema change
-// fails the tests, and the published JSON Schema (docs/schema/report.v1.json)
-// is generated from here, never written by hand.
+// The published shape of a review: `--format json` and a session's
+// report.json. It is a contract with scripts and CI, so it carries a version
+// and only what a reader can rely on; internal fields (per-run ids, how each
+// finding was anchored, code signatures, platform state) stay out, though the
+// anchoring counts of the whole run are in. Change it only by adding optional
+// fields, or by a new version.
+export const REPORT_VERSION = 1;
+
+// The JSON report as a schema, the one definition of its shape: the
+// `ReportOutput` type is derived from it, and the published JSON Schema
+// (docs/schema/report.v1.json) is generated from it. Every object is strict,
+// so a field `toReportOutput` writes without a schema change fails the tests.
 
 const usageSchema = z.strictObject({
   inputTokens: z.number(),
@@ -33,7 +40,7 @@ const changeRequestSchema = z.strictObject({
   description: z.string(),
   baseSha: z.string(),
   headSha: z.string(),
-  override: z.strictObject({ by: z.string(), reason: z.string() }).optional(),
+  override: z.strictObject({ by: z.string(), reason: z.string() }).exactOptional(),
 });
 
 const coverageEntrySchema = z.discriminatedUnion("status", [
@@ -58,24 +65,26 @@ const fixSchema = z
   })
   .refine((f) => f.endLine >= f.startLine, { message: "endLine is before startLine" });
 
-export const outputFindingSchema = z.strictObject({
+const outputFindingSchema = z.strictObject({
   fingerprint: z.string(),
   reviewer: z.string(),
   category: z.string(),
   severity: severitySchema,
   verification: verificationSchema,
   file: z.string(),
-  lines: linesSchema.optional(),
+  lines: linesSchema.exactOptional(),
   inDiff: z.boolean(),
   status: z.enum(["new", "unfixed"]),
   title: z.string(),
   body: z.string(),
-  suggestion: z.string().optional(),
-  fix: fixSchema.optional(),
+  suggestion: z.string().exactOptional(),
+  fix: fixSchema.exactOptional(),
   evidence: z.array(z.string()),
   code: z.string(),
-  lowConfidence: z.literal(true).optional(),
-  provenance: z.strictObject({ task: z.string(), model: z.string().optional() }).optional(),
+  lowConfidence: z.literal(true).exactOptional(),
+  provenance: z
+    .strictObject({ task: z.string(), model: z.string().exactOptional() })
+    .exactOptional(),
 });
 
 const outputPriorFindingSchema = z.strictObject({
@@ -84,7 +93,7 @@ const outputPriorFindingSchema = z.strictObject({
   file: z.string(),
   severity: severitySchema,
   verification: verificationSchema,
-  reviewer: z.string().optional(),
+  reviewer: z.string().exactOptional(),
 });
 
 const refutedFindingSchema = z.strictObject({
@@ -120,7 +129,7 @@ const taskOutcomeSchema = z.strictObject({
   bundle: z.string(),
   files: z.array(z.string()),
   status: taskStatusSchema,
-  error: z.string().optional(),
+  error: z.string().exactOptional(),
   findings: z.int().nonnegative(),
   durationMs: z.number(),
   usage: usageSchema,
@@ -146,17 +155,17 @@ const scopeSchema = z.discriminatedUnion("mode", [
 const priorList = z.array(outputPriorFindingSchema);
 
 const samplingSchema = z.strictObject({
-  temperature: z.number().optional(),
-  seed: z.int().optional(),
-  notApplied: z.array(z.enum(["temperature", "seed"])).optional(),
+  temperature: z.number().exactOptional(),
+  seed: z.int().exactOptional(),
+  notApplied: z.array(z.enum(["temperature", "seed"])).exactOptional(),
 });
 
 const agentProvenanceSchema = z.strictObject({
   tier: z.enum(MODEL_TIERS),
-  models: z.array(z.string()).optional(),
-  effort: z.enum(EFFORT_LEVELS).optional(),
-  applied: z.boolean().optional(),
-  notApplied: z.array(z.enum(["temperature", "seed"])).optional(),
+  models: z.array(z.string()).exactOptional(),
+  effort: z.enum(EFFORT_LEVELS).exactOptional(),
+  applied: z.boolean().exactOptional(),
+  notApplied: z.array(z.enum(["temperature", "seed"])).exactOptional(),
 });
 
 const provenanceSchema = z.strictObject({
@@ -164,35 +173,35 @@ const provenanceSchema = z.strictObject({
   promptHash: z.string(),
   configHash: z.string(),
   sampling: samplingSchema,
-  agents: z.record(z.string(), agentProvenanceSchema).optional(),
+  agents: z.record(z.string(), agentProvenanceSchema).exactOptional(),
   rules: z
     .array(
       z.strictObject({
         path: z.array(z.string()),
         rule: z.string(),
-        source: z.enum(["repository", "shared", "account", "plugin"]).optional(),
+        source: z.enum(["repository", "shared", "account", "plugin"]).exactOptional(),
       }),
     )
-    .optional(),
-  accountSettings: z.strictObject({ version: z.string().nullable() }).optional(),
+    .exactOptional(),
+  accountSettings: z.strictObject({ version: z.string().nullable() }).exactOptional(),
 });
 
 export const reportOutputSchema = z.strictObject({
   version: z.literal(REPORT_VERSION),
-  runId: z.string().optional(),
+  runId: z.string().exactOptional(),
   changeRequest: changeRequestSchema,
   tier: riskTierSchema,
   verdict: verdictSchema,
   summary: z.string(),
-  scope: scopeSchema.optional(),
+  scope: scopeSchema.exactOptional(),
   coverage: z.array(coverageEntrySchema),
   findings: z.array(outputFindingSchema),
   unverifiedCriticals: z.int().nonnegative(),
   refuted: z.array(refutedFindingSchema),
   remembered: z.array(
-    memoryEntrySchema.extend({ source: z.enum(["repository", "account"]).optional() }),
+    memoryEntrySchema.extend({ source: z.enum(["repository", "account"]).exactOptional() }),
   ),
-  judgement: judgeDecisionsSchema.optional(),
+  judgement: judgeDecisionsSchema.exactOptional(),
   rereview: z
     .strictObject({
       fixed: priorList,
@@ -201,26 +210,18 @@ export const reportOutputSchema = z.strictObject({
       unchanged: priorList,
       dismissed: priorList,
     })
-    .optional(),
+    .exactOptional(),
   tasks: z.array(taskOutcomeSchema),
   skipped: z.array(skippedCellSchema),
   bundles: z.array(z.strictObject({ label: z.string(), files: z.array(z.string()) })),
-  anchoring: anchoringSummarySchema.optional(),
+  anchoring: anchoringSummarySchema.exactOptional(),
   spendLimit: z
-    .strictObject({ usd: z.number(), reached: z.enum(["review", "total"]).optional() })
-    .optional(),
-  provenance: provenanceSchema.optional(),
+    .strictObject({ usd: z.number(), reached: z.enum(["review", "total"]).exactOptional() })
+    .exactOptional(),
+  provenance: provenanceSchema.exactOptional(),
   usage: usageSchema,
   warnings: z.array(z.string()),
 });
-
-// Every field the output type has must be in the schema with a compatible
-// type (the strict parse of a full report in the tests covers the other
-// direction: nothing in the schema the output does not write).
-type OutputFromSchema = z.output<typeof reportOutputSchema>;
-export function asSchemaOutput(output: ReportOutput): OutputFromSchema {
-  return output;
-}
 
 export const REPORT_SCHEMA_ID = "https://ocra.majincheng.com/schema/report.v1.json";
 

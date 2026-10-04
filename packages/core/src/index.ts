@@ -65,29 +65,7 @@ export { type ProxyEnv, proxiedFetch } from "./net/proxied-fetch.js";
 export { AccessDeniedError } from "./pipeline/context.js";
 export type { SkippedCell, SkipReason } from "./pipeline/matrix.js";
 export type { ReviewOptions } from "./pipeline/options.js";
-export {
-  type OutputFinding,
-  type OutputPriorFinding,
-  REPORT_VERSION,
-  type ReportOutput,
-  toReportOutput,
-} from "./pipeline/output.js";
-export { reportJsonSchema, reportOutputSchema } from "./pipeline/output-schema.js";
-export type {
-  AgentProvenance,
-  ProvenanceInput,
-  RuleProvenance,
-  RunProvenance,
-} from "./pipeline/provenance.js";
-export {
-  type AnchoringSummary,
-  type CoverageEntry,
-  coverageGaps,
-  type ReviewEvent,
-  type ReviewReport,
-  type TaskOutcome,
-  type TaskStatus,
-} from "./pipeline/report.js";
+export type { ProvenanceInput } from "./pipeline/provenance.js";
 export { review } from "./pipeline/run.js";
 export {
   agentsMdReviewerPlugin,
@@ -113,6 +91,23 @@ export type {
   ToolDefinition,
   VcsFactory,
 } from "./plugin/types.js";
+export {
+  type OutputFinding,
+  type OutputPriorFinding,
+  type ReportOutput,
+  toReportOutput,
+} from "./report/output.js";
+export { REPORT_VERSION, reportJsonSchema, reportOutputSchema } from "./report/output-schema.js";
+export type { AgentProvenance, RuleProvenance, RunProvenance } from "./report/provenance.js";
+export {
+  type AnchoringSummary,
+  type CoverageEntry,
+  coverageGaps,
+  type ReviewEvent,
+  type ReviewReport,
+  type TaskOutcome,
+  type TaskStatus,
+} from "./report/report.js";
 export type { ReviewerDefinition, ReviewerScope } from "./review/reviewer.js";
 export { REVIEW_TOOLS, type ReviewToolName } from "./review/tools.js";
 export type { Language } from "./rules/languages.js";

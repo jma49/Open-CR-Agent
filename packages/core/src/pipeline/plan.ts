@@ -4,6 +4,7 @@ import { runtimeGrouper } from "../bundle/runtime-grouper.js";
 import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
 import type { ChangeRequest, FileDiff, RiskTier } from "../domain.js";
 import { MEMORY_PATH, mergeMemory, parseMemory, type RememberedEntry } from "../memory/memory.js";
+import type { ReviewEvent } from "../report/report.js";
 import {
   parseRepoRules,
   REPO_RULES_PATH,
@@ -15,7 +16,6 @@ import { triage } from "../triage.js";
 import { reviewContext } from "./context.js";
 import { rank } from "./matrix.js";
 import type { ReviewHooks, ReviewOptions } from "./options.js";
-import type { ReviewEvent } from "./report.js";
 import { newRunId } from "./run-id.js";
 
 export const GUIDELINES_PATH = "AGENTS.md";

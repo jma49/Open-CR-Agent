@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CompletionRequest } from "../contracts.js";
-import type { ReviewEvent } from "./report.js";
+import type { ReviewEvent } from "../report/report.js";
 import { finding, patch, runtime, twoFiles, vcs } from "./run.fakes.js";
 import { review, reviewWithHooks } from "./run.js";
 

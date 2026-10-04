@@ -2,12 +2,12 @@ import { effortWarnings, resolveAgents } from "../agent/settings.js";
 import { addUsage, emptyUsage, unpricedCalls } from "../agent/usage.js";
 import type { Usage } from "../contracts.js";
 import type { Finding, PriorReview, Severity } from "../domain.js";
+import { type ReviewReport, summarizeAnchoring } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { CheckStage } from "./check-stage.js";
 import type { ExecuteStage, StageContext } from "./execute-stage.js";
 import type { FilterStage } from "./filter-stage.js";
 import { runProvenance } from "./provenance.js";
-import { type ReviewReport, summarizeAnchoring } from "./report.js";
 
 export interface RunFacts {
   runId: string;
