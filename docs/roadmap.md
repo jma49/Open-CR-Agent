@@ -109,6 +109,14 @@ This phase's success condition is not a list of interfaces: it is three external
 2. **Phase 2:** a hosted GitHub App (install, nothing to configure), with organizations.
 3. **Phase 3:** models ocra provides, a free allowance and paid plans, once there is a model budget.
 
+**Review experience** (from the comparison with CodeRabbit, 2026-10-04; each behind M11's numbers where it touches quality).
+
+1. A public benchmark run (the Martian Code Review Bench) on cheap or free models, published with precision first: low noise is the claim to prove. Folds into M11.
+2. Committable suggestions: a finding whose fix is a local edit carries it in GitHub's suggestion format (GitLab's too), so a reviewer applies it in one click.
+3. Minimal pull request commands: a maintainer's reply that asks for a re-review or dismisses a finding is acted on, within the trust rules of `vcs-platform` (the author cannot dismiss).
+4. Semgrep bundled as the first analyzer behind SARIF in, off unless configured.
+5. A pull request summary in the summary comment, from the judged findings and the change, not a second free-text pass.
+
 ### Next: driven by the numbers of the phase before
 
 - **M15 — Organization memory and context providers.** Organization-scoped memory with owners and expiry; `callers` and `ownership` as the first providers, each measured for recall before the next; a code graph only if they move the number.
