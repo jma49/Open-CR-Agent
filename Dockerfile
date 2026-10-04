@@ -8,7 +8,10 @@
 
 ARG OCRA_INSTALL=npm
 
-FROM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS sources
+# Every stage's base, named once: a literal FROM line Dependabot can update.
+FROM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS base
+
+FROM base AS sources
 WORKDIR /src
 COPY package.json package-lock.json tsconfig.json tsconfig.base.json tsconfig.package.json ./
 COPY scripts ./scripts
@@ -19,7 +22,7 @@ COPY packages ./packages
 FROM sources AS manifests
 RUN find packages -mindepth 2 -maxdepth 2 ! -name package.json -exec rm -rf {} +
 
-FROM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS install-npm
+FROM base AS install-npm
 COPY --from=manifests /src /src
 WORKDIR /src
 ENV RUNNER_TEMP=/build GITHUB_OUTPUT=/build/output
@@ -32,7 +35,7 @@ RUN set -eu; \
     mv /build/ocra-cli /opt/ocra/app; \
     echo node_modules/@open-cr-agent/cli/dist/main.js > /opt/ocra/main
 
-FROM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS install-source
+FROM base AS install-source
 COPY --from=sources /src /src
 WORKDIR /src
 ENV RUNNER_TEMP=/build GITHUB_OUTPUT=/build/output
@@ -46,13 +49,15 @@ FROM install-${OCRA_INSTALL} AS install
 WORKDIR /opt/ocra
 # Images up to 0.2.0 had no entrypoint and documented `docker run <image>
 # ocra review`; a leading "ocra" is dropped so those command lines still work.
+# Kept on purpose, with no planned removal: existing `docker run <image> ocra
+# …` commands must keep working.
 RUN set -eu; \
     mkdir -p /opt/ocra/bin; \
     printf '#!/bin/sh\n[ "${1-}" = ocra ] && shift\nexec node /opt/ocra/app/%s "$@"\n' "$(cat /opt/ocra/main)" > /opt/ocra/bin/ocra; \
     chmod 755 /opt/ocra/bin/ocra; \
     /opt/ocra/bin/ocra --version
 
-FROM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c
+FROM base
 LABEL org.opencontainers.image.source="https://github.com/jma49/Open-CR-Agent" \
       org.opencontainers.image.description="ocra, the multi-agent code reviewer" \
       org.opencontainers.image.licenses="Apache-2.0"
