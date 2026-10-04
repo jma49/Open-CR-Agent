@@ -22,6 +22,10 @@ Researched 2026-10-04 (the private notes keep the sources): Cloudflare Container
 5. **Cost limits.** Containers bill wall time while a review waits on models, so a review has a hard 30-minute limit, the account has a global `max_instances`, and a kill switch (a flag in D1 the consumer reads) stops new reviews at once. Start at 1 vCPU and 3 GiB, measure, then size: about $0.01 to $0.02 per review after the plan's included usage. Workers Paid ($5 a month) is required; the first month's spend ceiling is $20 beyond it.
 6. **Fallback: Google Cloud Run Jobs.** The image is a plain OCI image and the starter is the only Cloudflare-specific code, behind one small interface, so moving is a week, not a rewrite.
 
+## Note (2026-10-04): GitHub Actions is not an option for other people's repositories
+
+A $0 starter that runs reviews in a private ocra-owned repository's GitHub Actions was considered and rejected: GitHub's Additional Product Terms forbid using GitHub-hosted runners for activity unrelated to the software project of the repository they run in, as part of a serverless application, or as a service offered for commercial purposes, and the penalty (suspension of the account that also carries the open repository, npm trusted publishing and the sign-in App) is not worth the saving. The compliant options are this record's Containers, Cloud Run Jobs' free tier (about 190 reviews a month, a billing account), or the customer's own CI. The maintainer deferred hosted reviews on 2026-10-04: the GitHub Action in the user's own CI stays the way to review pull requests.
+
 ## Consequences
 
 - Phase 2 needs Workers Paid: the maintainer approves the $5 before it ships.
@@ -37,4 +41,4 @@ Researched 2026-10-04 (the private notes keep the sources): Cloudflare Container
 - **The customer's GitHub Actions:** no compute for us, but setup friction defeats the App's purpose.
 - **Lambda:** the 15-minute limit cuts long reviews.
 
-Reviewed with Claude Fable 5.1: accepted with conditions on fork gating and the payer, proxy-scoped credentials with the CLI still publishing, bounded retries, and wall-time cost limits, written into the Decision. Status stays proposed until the maintainer approves Workers Paid.
+Reviewed with Claude Fable 5.1: accepted with conditions on fork gating and the payer, proxy-scoped credentials with the CLI still publishing, bounded retries, and wall-time cost limits, written into the Decision. Proposed: deferred by the maintainer on 2026-10-04 (see the note above).
