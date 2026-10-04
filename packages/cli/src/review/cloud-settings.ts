@@ -1,6 +1,6 @@
 import type { ModelTier, SourcedRule } from "@open-cr-agent/core";
-import { type CloudDeps, cloudSession } from "../cloud.js";
-import { VERSION } from "../version.js";
+import { errorMessage } from "@open-cr-agent/core/internal";
+import { type CloudDeps, type CloudSessionLost, cloudFetch } from "../cloud.js";
 import { type AccountPlugins, parseAccountPlugins } from "./account-plugins.js";
 import { type AccountSettings, parseAccountSettings } from "./account-settings.js";
 import type { CliConfig } from "./config.js";
@@ -25,39 +25,52 @@ export const ACCOUNT_SCALARS = [
   "sampling",
 ] as const;
 
-/** The account's settings; undefined when signed out or unreachable (a warning says which). */
+export type AccountRead =
+  | { kind: "read"; settings?: AccountSettings; plugins: AccountPlugins }
+  | CloudSessionLost;
+
+const NO_PLUGINS: AccountPlugins = { plugins: [], pluginSettings: {} };
+
+/**
+ * The account's settings. A server that cannot be reached, or a session
+ * that ended, is answered for the caller to say once what the run loses;
+ * an answer that cannot be used is a warning here and no settings.
+ */
 export async function fetchAccountSettings(
   deps: CloudDeps,
   warn: (message: string) => void,
-): Promise<{ settings?: AccountSettings; plugins: AccountPlugins } | undefined> {
+): Promise<AccountRead> {
   let body: unknown;
   try {
-    const session = await cloudSession(deps);
-    if (!session) return undefined;
-    const res = await deps.fetch(`${session.server}/api/preferences`, {
-      headers: { authorization: `Bearer ${session.access_token}`, "user-agent": `ocra/${VERSION}` },
-      signal: AbortSignal.timeout(15_000),
-    });
+    const answer = await cloudFetch(deps, "/api/preferences");
+    if (answer.kind !== "answered") return answer;
+    const { res } = answer;
+    // A server without account settings has none to apply.
+    if (res.status === 404) return { kind: "read", plugins: NO_PLUGINS };
+    if (res.status >= 500 || res.status === 429) {
+      return { kind: "unreachable", reason: `HTTP ${res.status}` };
+    }
     if (!res.ok) {
       warn(
         `could not read your ocra Cloud settings (HTTP ${res.status}); the review uses the repository's`,
       );
-      return undefined;
+      return { kind: "read", plugins: NO_PLUGINS };
     }
     body = await res.json();
   } catch (error) {
-    warn(
-      `could not read your ocra Cloud settings (${(error as Error).message}); the review uses the repository's`,
-    );
-    return undefined;
+    return { kind: "unreachable", reason: errorMessage(error) };
   }
   if (typeof body !== "object" || body === null) {
     warn("ignoring your ocra Cloud settings: the server's answer is not an object");
-    return undefined;
+    return { kind: "read", plugins: NO_PLUGINS };
   }
   const { settings, warnings } = parseAccountSettings(body);
   for (const warning of warnings) warn(warning);
-  return { ...(settings ? { settings } : {}), plugins: parseAccountPlugins(body, warn) };
+  return {
+    kind: "read",
+    ...(settings ? { settings } : {}),
+    plugins: parseAccountPlugins(body, warn),
+  };
 }
 
 /** The configuration with the account's settings under it, and what they filled in. */

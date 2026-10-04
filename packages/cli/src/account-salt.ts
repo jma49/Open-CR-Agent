@@ -1,8 +1,6 @@
 import { rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import type { CloudDeps } from "./cloud.js";
 import { writePrivateFile } from "./private-file.js";
-import { VERSION } from "./version.js";
 
 // The account's repository-hash salt (ADR-0028, 4). The server answers one
 // only while the account shares findings, so that a repository hashes alike
@@ -16,16 +14,8 @@ export function accountSaltPath(credentialsPath: string): string {
   return join(dirname(credentialsPath), "account-salt");
 }
 
-/** The account's salt, or null; throws when the server cannot be asked. */
-export async function fetchAccountSalt(
-  deps: Pick<CloudDeps, "fetch">,
-  server: string,
-  token: string,
-): Promise<string | null> {
-  const res = await deps.fetch(`${server}/api/account/salt`, {
-    headers: { authorization: `Bearer ${token}`, "user-agent": `ocra/${VERSION}` },
-    signal: AbortSignal.timeout(15_000),
-  });
+/** The account's salt in ocra Cloud's answer, or null; throws when it holds none. */
+export async function accountSaltOf(res: Response): Promise<string | null> {
   // A server without account salts shares no findings.
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

@@ -10,7 +10,7 @@ import {
   type Verification,
 } from "@open-cr-agent/core";
 import { verificationSchema } from "@open-cr-agent/core/internal";
-import { type CloudDeps, cloudSession, readCredentials } from "../cloud.js";
+import { type CloudDeps, cloudFetch, readCredentials, sessionLostReason } from "../cloud.js";
 import { createPrivateFile, writePrivateFile } from "../private-file.js";
 import { VERSION } from "../version.js";
 import type { SharedFinding } from "./cloud-findings.js";
@@ -232,25 +232,23 @@ export async function uploadReview(
   findings?: readonly SharedFinding[],
 ): Promise<{ findings: number } | undefined> {
   try {
-    const session = await cloudSession(deps);
-    if (!session) return undefined;
-    const res = await deps.fetch(`${session.server}/api/reviews`, {
+    const answer = await cloudFetch(deps, "/api/reviews", {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${session.access_token}`,
-        "user-agent": `ocra/${VERSION}`,
-      },
       // The counts stay in `findings`; the shared list goes in `findingList`.
       body: JSON.stringify(findings ? { ...upload, findingList: findings } : upload),
-      signal: AbortSignal.timeout(15_000),
     });
+    if (answer.kind === "signed-out") return undefined;
+    if (answer.kind !== "answered") {
+      warn(`could not send the review's counts to ocra Cloud: ${sessionLostReason(answer)}`);
+      return undefined;
+    }
+    const { res } = answer;
     if (!res.ok) {
       warn(`ocra Cloud did not take the review's counts (HTTP ${res.status})`);
       return undefined;
     }
-    const answer = (await res.json().catch(() => ({}))) as { findings?: unknown };
-    const kept = answer.findings;
+    const taken = (await res.json().catch(() => ({}))) as { findings?: unknown };
+    const kept = taken.findings;
     return { findings: typeof kept === "number" && Number.isInteger(kept) && kept > 0 ? kept : 0 };
   } catch (error) {
     warn(

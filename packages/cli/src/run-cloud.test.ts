@@ -132,7 +132,9 @@ describe("account data settings (ADR-0027)", () => {
     const err = capture();
     const code = await run(["review", "--plan"], out, err, deps(cwd, critical, { cloud }));
     expect(code).toBe(0);
-    expect(err.text()).toContain("could not read your ocra Cloud settings (fetch failed)");
+    expect(err.text()).toContain(
+      "could not reach ocra Cloud (fetch failed); this review runs without your account's rules, limits (maxCostUsd included), models and memory, and uploads nothing",
+    );
     expect(out.text()).toContain("Settings:\n");
     expect(out.text()).not.toContain("(account)");
   });

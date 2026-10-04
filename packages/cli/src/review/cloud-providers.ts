@@ -1,6 +1,7 @@
 import type { CustomProvider } from "@open-cr-agent/core";
 import { OcraError } from "@open-cr-agent/core";
-import { type CloudDeps, cloudSession } from "../cloud.js";
+import { errorMessage } from "@open-cr-agent/core/internal";
+import { type CloudDeps, cloudSession, sessionLostReason } from "../cloud.js";
 
 // Models named ocra-<provider>/<model> go through the ocra Cloud gateway with
 // the key stored there for <provider> (ADR-0024). Each such provider becomes
@@ -39,16 +40,35 @@ export async function withCloudProviders(
   if (env.OCRA_CLOUD === "off") {
     throw new OcraError("CONFIG_INVALID", `Models name ocra Cloud (${names}) but OCRA_CLOUD=off`);
   }
-  const session = deps && (await cloudSession(deps, MIN_TOKEN_MS));
-  if (!session) {
+  const state = deps ? await cloudSession(deps, MIN_TOKEN_MS) : ({ kind: "signed-out" } as const);
+  if (state.kind === "signed-out") {
     throw new OcraError(
       "CONFIG_CREDENTIALS_MISSING",
       `Models name ocra Cloud (${names}): sign in with ocra login`,
     );
   }
-  const res = await (deps as CloudDeps).fetch(`${session.server}/api/providers`, {
-    signal: AbortSignal.timeout(30_000),
-  });
+  if (state.kind === "revoked") {
+    throw new OcraError(
+      "CONFIG_CREDENTIALS_MISSING",
+      `Models name ocra Cloud (${names}): ${sessionLostReason(state)}`,
+    );
+  }
+  const unreachable = (reason: string) =>
+    new OcraError(
+      "RUNTIME_START_FAILED",
+      `Models name ocra Cloud (${names}) but ocra Cloud could not be reached (${reason})`,
+    );
+  if (state.kind === "unreachable") throw unreachable(state.reason);
+  const session = state.credentials;
+  let res: Response;
+  try {
+    res = await (deps as CloudDeps).fetch(`${session.server}/api/providers`, {
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch (error) {
+    throw unreachable(errorMessage(error));
+  }
+  if (res.status >= 500 || res.status === 429) throw unreachable(`HTTP ${res.status}`);
   if (!res.ok) {
     throw new OcraError(
       "RUNTIME_START_FAILED",

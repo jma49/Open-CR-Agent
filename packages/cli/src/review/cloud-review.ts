@@ -1,6 +1,6 @@
 import type { MemoryEntry, ReviewReport } from "@open-cr-agent/core";
-import { fetchAccountSalt, saveAccountSalt } from "../account-salt.js";
-import { type CloudDeps, type Credentials, cloudSession } from "../cloud.js";
+import { accountSaltOf, saveAccountSalt } from "../account-salt.js";
+import { type CloudDeps, type CloudSessionLost, cloudFetch, sessionLostReason } from "../cloud.js";
 import { sharedFindings } from "./cloud-findings.js";
 import { fetchAccountMemory } from "./cloud-memory.js";
 import { type ReviewSource, repoHash, uploadOf, uploadReview } from "./cloud-upload.js";
@@ -17,18 +17,29 @@ export type CloudReview = {
   memory: MemoryEntry[];
 };
 
+/** What a review loses when ocra Cloud cannot be used for it, said once. */
+export function sessionLostWarning(
+  lost: Exclude<CloudSessionLost, { kind: "signed-out" }>,
+): string {
+  const cause =
+    lost.kind === "revoked"
+      ? sessionLostReason(lost)
+      : `could not reach ocra Cloud (${lost.reason})`;
+  return `${cause}; this review runs without your account's rules, limits (maxCostUsd included), models and memory, and uploads nothing`;
+}
+
 /** Undefined when the saved session is gone; a failure to reach ocra Cloud is one warning. */
 export async function prepareCloudReview(
   root: string,
   deps: CloudDeps,
   warn: (message: string) => void,
 ): Promise<CloudReview | undefined> {
-  let session: Credentials | undefined;
   let salt: string | null;
   try {
-    session = await cloudSession(deps);
-    if (!session) return undefined;
-    salt = await fetchAccountSalt(deps, session.server, session.access_token);
+    const answer = await cloudFetch(deps, "/api/account/salt");
+    if (answer.kind === "signed-out") return undefined;
+    if (answer.kind !== "answered") throw new Error(sessionLostReason(answer));
+    salt = await accountSaltOf(answer.res);
   } catch (error) {
     // This machine's salt still groups the counts. Findings and the
     // account's memory are keyed by the account's hash when it shares
@@ -48,7 +59,7 @@ export async function prepareCloudReview(
   return {
     repoHash: hash,
     shareFindings: salt !== null,
-    memory: await fetchAccountMemory(deps, session, hash, warn),
+    memory: await fetchAccountMemory(deps, hash, warn),
   };
 }
 

@@ -1,7 +1,6 @@
 import type { MemoryEntry } from "@open-cr-agent/core";
 import { memoryEntrySchema } from "@open-cr-agent/core/internal";
-import type { CloudDeps, Credentials } from "../cloud.js";
-import { VERSION } from "../version.js";
+import { type CloudDeps, cloudFetch, sessionLostReason } from "../cloud.js";
 
 // The findings the account remembers for one repository (ADR-0028, 4), set
 // from the web. A review applies them with .ocra/memory.json's.
@@ -11,23 +10,16 @@ const MAX_ENTRIES = 500;
 
 /** The account's entries for the repository; [] and a warning when they cannot be read. */
 export async function fetchAccountMemory(
-  deps: Pick<CloudDeps, "fetch">,
-  session: Pick<Credentials, "server" | "access_token">,
+  deps: CloudDeps,
   repoHash: string,
   warn: (message: string) => void,
 ): Promise<MemoryEntry[]> {
   let body: unknown;
   try {
-    const res = await deps.fetch(
-      `${session.server}/api/memory?repo=${encodeURIComponent(repoHash)}`,
-      {
-        headers: {
-          authorization: `Bearer ${session.access_token}`,
-          "user-agent": `ocra/${VERSION}`,
-        },
-        signal: AbortSignal.timeout(15_000),
-      },
-    );
+    const answer = await cloudFetch(deps, `/api/memory?repo=${encodeURIComponent(repoHash)}`);
+    if (answer.kind === "signed-out") return [];
+    if (answer.kind !== "answered") throw new Error(sessionLostReason(answer));
+    const { res } = answer;
     // A server without account memory has none to apply.
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

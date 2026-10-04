@@ -222,19 +222,19 @@ describe("sessions", () => {
     const cloud = fakeCloud({ "POST /api/device/refresh": ok(fresh) });
     t.deps.fetch = cloud.fetch;
     const session = await cloudSession(t.deps);
-    expect(session?.access_token).toBe("ocra_cli_a2");
+    expect(session.kind === "ok" && session.credentials.access_token).toBe("ocra_cli_a2");
     expect(cloud.calls[0]?.body).toEqual({ refresh_token: "ocra_ref_r1" });
     const saved = JSON.parse(readFileSync(t.deps.credentialsPath, "utf8")) as Credentials;
     expect(saved.refresh_token).toBe("ocra_ref_r2");
   });
 
-  it("treats a revoked session as signed out", async () => {
+  it("says a revoked session ended", async () => {
     const t = setup({});
     await signedIn(t);
     t.tick(3_600_000);
     t.deps.fetch = fakeCloud({ "POST /api/device/refresh": err("invalid_grant") }).fetch;
     expect(await cloudCommand("whoami", [], t.io.out, t.io.err, t.deps)).toBe(1);
-    expect(t.err.at(-1)).toContain("Not signed in");
+    expect(t.err.at(-1)).toBe("Your ocra Cloud session ended. Run ocra login.\n");
   });
 
   it("logout ends the session on the server and removes the file", async () => {
@@ -261,7 +261,8 @@ describe("the credentials file", () => {
     t.tick(3_600_000);
     const fresh = { access_token: "ocra_cli_a2", refresh_token: "ocra_ref_r2", expires_in: 3600 };
     t.deps.fetch = fakeCloud({ "POST /api/device/refresh": ok(fresh) }).fetch;
-    expect((await cloudSession(t.deps))?.access_token).toBe("ocra_cli_a2");
+    const session = await cloudSession(t.deps);
+    expect(session.kind === "ok" && session.credentials.access_token).toBe("ocra_cli_a2");
     expect(JSON.parse(readFileSync(before, "utf8")).access_token).toBe("ocra_cli_a1");
     expect(JSON.parse(readFileSync(t.deps.credentialsPath, "utf8")).access_token).toBe(
       "ocra_cli_a2",
@@ -284,7 +285,7 @@ describe("the credentials file", () => {
       ).toBeUndefined();
       expect(warnings).toHaveLength(1);
       expect(warnings[0]).toContain(t.deps.credentialsPath);
-      expect(await cloudSession(t.deps)).toBeUndefined();
+      expect(await cloudSession(t.deps)).toEqual({ kind: "signed-out" });
     }
   });
 

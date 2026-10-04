@@ -33,7 +33,7 @@ import { VERSION } from "../version.js";
 import { type AccountPlugins, accountPlugins } from "./account-plugins.js";
 import type { ReviewArgs } from "./args.js";
 import { withCloudProviders } from "./cloud-providers.js";
-import { prepareCloudReview, sendToCloud } from "./cloud-review.js";
+import { prepareCloudReview, sendToCloud, sessionLostWarning } from "./cloud-review.js";
 import { fetchAccountSettings, layerAccountSettings } from "./cloud-settings.js";
 import { cloudEnabled } from "./cloud-upload.js";
 import { agentChains, type CliConfig, ConfigError } from "./config.js";
@@ -120,13 +120,17 @@ export async function reviewCommand(
   // The account's settings fill what the repository leaves out (ADR-0027);
   // unreachable, they cost a warning, so a plan still works offline.
   const cloudDeps = deps.cloud;
-  const signedIn = cloudDeps !== undefined && (await cloudEnabled(cloudDeps, warn));
+  let signedIn = cloudDeps !== undefined && (await cloudEnabled(cloudDeps, warn));
   let config = target.config;
   let filled: string[] = [];
   let fromAccount: AccountPlugins = { plugins: [], pluginSettings: {} };
   if (cloudDeps && signedIn) {
     const account = await fetchAccountSettings(cloudDeps, warn);
-    if (account?.settings) {
+    if (account.kind !== "read") {
+      // Said once here; the rest of the run leaves ocra Cloud alone.
+      signedIn = false;
+      if (account.kind !== "signed-out") warn(sessionLostWarning(account));
+    } else if (account.settings) {
       ({ config, filled } = layerAccountSettings(config, account.settings));
       // The account's default for --ultra; there is no --no-ultra to refuse it.
       if (account.settings.ultra === true && !args.ultra) filled.push("ultra");
@@ -134,7 +138,7 @@ export async function reviewCommand(
         io.err.write(`[ocra] From your ocra Cloud settings: ${filled.join(", ")}\n`);
       }
     }
-    if (account) fromAccount = account.plugins;
+    if (account.kind === "read") fromAccount = account.plugins;
   }
   const ultra = args.ultra === true || filled.includes("ultra");
   const session = { dir: join(root, SESSIONS_DIR), id: newRunId() };
