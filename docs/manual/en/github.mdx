@@ -32,7 +32,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-The Action is pinned to the commit of the v0.3.0 release, with the version as a comment. A tag can be moved, and a commit fixes the exact code that runs with your model key; `git ls-remote --tags https://github.com/jma49/Open-CR-Agent v0.2.0` prints a release's commit, and Dependabot updates such pins and their comment.
+The Action is pinned to the commit of the v0.3.0 release, with the version as a comment. A tag can be moved, and a commit fixes the exact code that runs with your model key; `git ls-remote --tags https://github.com/jma49/Open-CR-Agent v0.3.0` prints a release's commit, and Dependabot updates such pins and their comment.
 
 From v0.1.1, the Action installs ocra from npm: the `@open-cr-agent/cli` published at the Action's own version, with every dependency at the version the Action's `package-lock.json` pins, install scripts off and, on the npm registry, the registry's signatures checked. It uses them only when each of ocra's own packages has [provenance](./stability#verifying-a-release) showing it was built by this repository's release workflow from the version's tag; otherwise it builds its own source, with a warning. npm never changes a published version. While a version is not on npm yet, in a release's first minutes, the Action builds its own source instead; v0.1.0 always does. So `@main` runs the Action code on `main` with the release `main` names, not unreleased package code, unless `main` has changed the packages' dependencies since that release: then it builds `main`.
 
