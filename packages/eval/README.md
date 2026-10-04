@@ -8,7 +8,8 @@ Run it from a build: `node packages/eval/dist/main.js <command>` (`npm run build
 
 | Module | What it does |
 |---|---|
-| `cli.ts`, `main.ts` | Commands and flags: `run`, `list`, `ceiling`, `compare`, `adjudicate` |
+| `cli.ts`, `main.ts` | The usage text and which command runs |
+| `commands/*.ts` | One file per command (`list`, `ceiling`, `run`, `score`, `adjudicate`, `compare`); `options.ts` holds the flags and selection they share, `summary.ts` writes a run's summary |
 | `repeat.ts`, `interval.ts` | `run --repeat k`: the repetitions, their 95% Student t intervals, and reading a run directory of either kind |
 | `provenance.ts` | What the reviews of a run were made with (version, prompt and config hashes, sampling), and the warnings `compare` gives when runs differ in it |
 | `instance.ts` | The case model every module shares: `Instance`, its reference comments, golden expectations and attack |
