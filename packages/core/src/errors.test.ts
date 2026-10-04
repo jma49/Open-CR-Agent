@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { SpendLimitReached } from "./agent/budget.js";
+import { emptyUsage } from "./agent/usage.js";
 import { CompletionError, isOcraError, OCRA_ERROR_CODES, OcraError } from "./errors.js";
 import { parseMemory } from "./memory/memory.js";
-import { SpendLimitReached } from "./pipeline/budget.js";
 import { AccessDeniedError } from "./pipeline/context.js";
 import { review } from "./pipeline/run.js";
-import { emptyUsage } from "./pipeline/usage.js";
 import { PluginError } from "./plugin/registry.js";
 import { parseRepoRules } from "./rules/repo-rules.js";
 import { parseModel } from "./runtime/models.js";

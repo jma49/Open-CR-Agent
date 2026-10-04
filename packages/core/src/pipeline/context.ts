@@ -1,8 +1,9 @@
 import { posix } from "node:path";
-import type { CodeMatch, ReviewContext, VcsAdapter } from "../contracts.js";
+import type { CodeMatch, ReviewContext } from "../contracts.js";
 import type { FileDiff } from "../domain.js";
 import { OcraError } from "../errors.js";
 import { isSecretPath } from "../select/select.js";
+import type { VcsAdapter } from "../vcs.js";
 
 export class AccessDeniedError extends OcraError {
   constructor(message: string) {

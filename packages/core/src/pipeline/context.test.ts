@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { VcsAdapter } from "../contracts.js";
 import type { FileDiff } from "../domain.js";
+import type { VcsAdapter } from "../vcs.js";
 import { AccessDeniedError, reviewContext } from "./context.js";
 
 function fakeVcs(): VcsAdapter {

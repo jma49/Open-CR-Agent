@@ -1,28 +1,15 @@
-import type { ChangeRequest, FileDiff, PriorReview } from "./domain.js";
-import type { ReviewReport } from "./pipeline/report.js";
-
 export interface CodeMatch {
   path: string;
   line: number;
   text: string;
 }
 
-export interface VcsAdapter {
-  readonly name: string;
-  getChangeRequest(): Promise<ChangeRequest>;
-  getDiff(): Promise<FileDiff[]>;
-  // Content as git stores it: never follows a symbolic link, which reads as
-  // its target path, so the access policy on the requested name holds.
-  readFile(path: string): Promise<string | undefined>;
-  searchCode(literal: string): Promise<CodeMatch[]>;
-  getPriorReview(): Promise<PriorReview | undefined>;
-  // Warnings describe parts that could not be published; the rest was.
-  publish(report: ReviewReport): Promise<{ warnings: string[] }>;
-}
-
 // The model tiers, strongest first.
 export const MODEL_TIERS = ["top", "standard", "light"] as const;
 export type ModelTier = (typeof MODEL_TIERS)[number];
+
+// Each tier's failback chain of models, strongest first.
+export type ModelChains = { [Tier in ModelTier]?: readonly string[] };
 
 // How much a model reasons before it answers (ADR-0025). Unset leaves the
 // provider's default; "none" asks for no reasoning where a provider can say so.

@@ -1,49 +1,12 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Severity } from "@open-cr-agent/core";
 import { severitySchema } from "@open-cr-agent/core/internal";
 import { z } from "zod";
-import { ATTACK_CHANNELS, ATTACK_GOALS, type Attack, attackInstance } from "./attack.js";
-import type { Instance, ReferenceComment } from "./dataset.js";
+import { attackInstance } from "./attack.js";
+import { ATTACK_CHANNELS, ATTACK_GOALS, type Instance, type ReferenceComment } from "./instance.js";
 
 // ADR-0011: cases ocra owns, one JSON file each, with the findings a review
 // must report and the ranges where a finding is wrong.
-
-export type GoldenTier = "smoke" | "full" | "adversarial";
-
-export interface ForbiddenRange {
-  path: string;
-  fromLine: number;
-  toLine: number;
-  reason: string;
-}
-
-export interface Adjudication {
-  fingerprint: string;
-  label: "valid" | "invalid";
-  reason: string;
-  title: string;
-}
-
-export interface Location {
-  path: string;
-  fromLine: number;
-  toLine: number;
-}
-
-export interface GoldenInfo {
-  tier: GoldenTier;
-  clean: boolean;
-  forbid: ForbiddenRange[];
-  adjudicated: Adjudication[];
-  // The lowest severity that counts, one per reference, in their order.
-  minSeverity: Severity[];
-  // Other places the same issue can rightly be reported (the docs that
-  // promise a behavior, the test that misses it), one list per reference.
-  alternates: Location[][];
-  // Set on an adversarial case: the hostile text planted in the case it names.
-  attack?: Attack;
-}
 
 // Golden cases name ocra's reviewers; scoring and the ceiling speak
 // AACR-Bench's category names.

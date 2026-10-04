@@ -1,16 +1,15 @@
+import { type ReviewerOverrides, reviewerCall } from "../agent/settings.js";
 import { defaultBundlePolicy } from "../bundle/bundle.js";
-import type { Effort } from "../contracts.js";
+import type { Effort, ModelChains } from "../contracts.js";
 import type { ChangeRequest, RiskTier } from "../domain.js";
 import { memoryFor } from "../memory/memory.js";
-import type { ModelChains } from "../plugin/types.js";
 import { buildReviewPrompt } from "../review/prompt.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import { resolveRules } from "../rules/resolve.js";
 import type { FileDecision } from "../select/select.js";
-import { reviewerCall } from "./agents.js";
 import { isLargeBundle } from "./execute.js";
-import { planTasks, type ReviewerOverrides, type SkippedCell } from "./matrix.js";
+import { planTasks, type SkippedCell } from "./matrix.js";
 import { type PlanOptions, planReview } from "./plan.js";
 
 export interface PreviewTask {

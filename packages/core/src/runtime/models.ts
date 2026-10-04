@@ -1,6 +1,5 @@
-import type { ModelTier } from "../contracts.js";
+import type { ModelChains, ModelTier } from "../contracts.js";
 import { OcraError } from "../errors.js";
-import type { ModelChains } from "../plugin/types.js";
 import { MAX_QUOTA_WAIT_MS, QUOTA_RETRIES, type QuotaError } from "./quota.js";
 
 export interface ModelRef {

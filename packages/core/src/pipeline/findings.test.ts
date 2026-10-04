@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { mapWithConcurrency } from "../agent/pool.js";
 import type { Finding } from "../domain.js";
 import { dedupeFindings, fingerprint, toFinding } from "./findings.js";
-import { mapWithConcurrency } from "./pool.js";
 
 describe("fingerprint", () => {
   it("ignores whitespace differences in the quoted code", () => {

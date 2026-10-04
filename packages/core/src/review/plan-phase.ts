@@ -1,6 +1,6 @@
+import { type AgentCallSettings, agentCall } from "../agent/settings.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
 import { errorMessage, usageSpent } from "../errors.js";
-import { type AgentCallSettings, agentCall } from "../pipeline/agents.js";
 import type { ReviewPrompt } from "./prompt.js";
 import type { ReviewerDefinition } from "./reviewer.js";
 

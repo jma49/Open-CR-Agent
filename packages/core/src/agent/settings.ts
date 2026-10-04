@@ -1,7 +1,6 @@
-import type { AgentRuntime, Effort, ModelTier } from "../contracts.js";
-import type { ModelChains } from "../plugin/types.js";
+import type { AgentRuntime, Effort, ModelChains, ModelTier } from "../contracts.js";
+import type { RiskTier } from "../domain.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
-import type { ReviewerOverrides } from "./matrix.js";
 
 export const EFFORT_LEVELS = [
   "none",
@@ -21,6 +20,17 @@ export const ROLE_TIERS: Readonly<Record<AgentRole, ModelTier>> = {
   judge: "top",
   helper: "light",
 };
+
+export interface ReviewerOverride {
+  enabled?: boolean | undefined;
+  minTier?: RiskTier | undefined;
+  // Both cover the reviewer's review tasks and its plan call; models is its
+  // own failback chain, absent: its tier's.
+  effort?: Effort | undefined;
+  models?: readonly string[] | undefined;
+}
+
+export type ReviewerOverrides = Readonly<Record<string, ReviewerOverride>>;
 
 export type TierEfforts = { readonly [Tier in ModelTier]?: Effort | undefined };
 

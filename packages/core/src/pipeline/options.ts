@@ -1,15 +1,14 @@
+import type { ReviewerOverrides, RoleSettings, TierEfforts } from "../agent/settings.js";
 import type { AnchorContext } from "../anchor/anchor.js";
 import type { BundlePolicy } from "../bundle/bundle.js";
 import type { FileGrouper } from "../bundle/grouping.js";
-import type { AgentRuntime, VcsAdapter } from "../contracts.js";
+import type { AgentRuntime, ModelChains } from "../contracts.js";
 import type { MemoryEntry } from "../memory/memory.js";
-import type { ModelChains } from "../plugin/types.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { SourcedRule } from "../rules/repo-rules.js";
 import type { SarifLog } from "../sarif/schema.js";
 import type { SelectionPolicy } from "../select/select.js";
-import type { RoleSettings, TierEfforts } from "./agents.js";
-import type { ReviewerOverrides } from "./matrix.js";
+import type { VcsAdapter } from "../vcs.js";
 import type { ProvenanceInput } from "./provenance.js";
 import type { ReviewEvent } from "./report.js";
 

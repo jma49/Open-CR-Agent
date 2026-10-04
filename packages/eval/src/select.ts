@@ -1,4 +1,4 @@
-import type { Instance } from "./dataset.js";
+import type { Instance } from "./instance.js";
 
 export interface SelectionOptions {
   limit?: number;

@@ -1,6 +1,6 @@
 import type { FileDiff, RiskTier } from "@open-cr-agent/core";
 import { type ReviewPreview, RISK_TIERS } from "@open-cr-agent/core/internal";
-import type { Dataset, Instance, ReferenceComment } from "./dataset.js";
+import type { Dataset, Instance, ReferenceComment } from "./instance.js";
 
 // Why an annotated issue can or cannot be found, decided by the deterministic
 // stages alone. It bounds recall before any model is involved.

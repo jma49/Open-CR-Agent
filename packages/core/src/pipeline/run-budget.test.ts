@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { REVIEW_BUDGET_SHARE } from "../agent/budget.js";
 import type { AgentRuntime, CompletionRequest, Usage } from "../contracts.js";
-import { REVIEW_BUDGET_SHARE } from "./budget.js";
 import { finding, patch, runtime, vcs } from "./run.fakes.js";
 import { reviewWithHooks } from "./run.js";
 

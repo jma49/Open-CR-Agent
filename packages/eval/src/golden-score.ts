@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import type { OutputFinding, Severity } from "@open-cr-agent/core";
-import type { Instance } from "./dataset.js";
-import type { Adjudication, ForbiddenRange } from "./golden.js";
+import type { Adjudication, ForbiddenRange, Instance } from "./instance.js";
 import { matchComments, type SemanticJudge } from "./match.js";
 import type { InstanceResult } from "./runner.js";
 import { toGeneratedComment } from "./score.js";

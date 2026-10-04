@@ -1,10 +1,11 @@
 import type { Verdict } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
-import { type Attack, attackInstance } from "./attack.js";
+import { attackInstance } from "./attack.js";
 import { scoreAttacks } from "./attack-score.js";
 import { base, expectLogin, finding, reviewed } from "./golden.fakes.js";
 import { parseCase, toInstance } from "./golden.js";
 import { scoreGolden } from "./golden-score.js";
+import type { Attack } from "./instance.js";
 import { renderMarkdown } from "./report.js";
 import type { InstanceResult } from "./runner.js";
 import { score } from "./score.js";

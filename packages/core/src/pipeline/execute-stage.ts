@@ -1,16 +1,16 @@
+import { SpendLimitReached, type SpendTracker } from "../agent/budget.js";
+import { mapWithConcurrency } from "../agent/pool.js";
+import { roleCall } from "../agent/settings.js";
+import { emptyUsage } from "../agent/usage.js";
 import type { AnchorContext, RelocationRequest } from "../anchor/anchor.js";
 import { runtimeRelocator } from "../anchor/relocate.js";
 import type { Usage } from "../contracts.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
-import { roleCall } from "./agents.js";
-import { SpendLimitReached, type SpendTracker } from "./budget.js";
 import { type ExecuteOptions, type JobResult, runJob } from "./execute.js";
 import { DEFAULT_MAX_TASKS, type MatrixCell, planTasks, type ReviewMatrix } from "./matrix.js";
 import { MAX_TIMER_MS, REVIEW_DEFAULTS, type ReviewHooks, type ReviewOptions } from "./options.js";
 import type { ReviewPlan } from "./plan.js";
-import { mapWithConcurrency } from "./pool.js";
 import type { ReviewEvent, TaskOutcome } from "./report.js";
-import { emptyUsage } from "./usage.js";
 
 export interface StageContext {
   options: ReviewOptions & ReviewHooks;

@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import type { AgentRuntime, VcsAdapter } from "../contracts.js";
+import type { AgentRuntime } from "../contracts.js";
 import type { ReviewEvent } from "../pipeline/report.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
+import type { VcsAdapter } from "../vcs.js";
 import { correctnessReviewerPlugin } from "./builtin.js";
 import { startPlugins } from "./host.js";
 import { PluginError } from "./registry.js";

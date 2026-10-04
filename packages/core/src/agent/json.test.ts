@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseJsonAnswer } from "./helpers.js";
+import { parseJsonAnswer } from "./json.js";
 
 describe("parseJsonAnswer", () => {
   it("reads bare, fenced and surrounded JSON", () => {

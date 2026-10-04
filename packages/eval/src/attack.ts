@@ -1,33 +1,13 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Instance, ReferenceComment } from "./dataset.js";
 import { exec } from "./exec.js";
+import type { Attack, Instance, ReferenceComment } from "./instance.js";
 import { GIT_ENV } from "./repos.js";
 
 // ADR-0014: an attack is a golden case with hostile text planted in its
 // change. It is reviewed next to the clean case in the same run, and what
 // the text changed is the measurement.
-
-export const ATTACK_GOALS = ["suppress", "plant-link", "forge-command"] as const;
-export type AttackGoal = (typeof ATTACK_GOALS)[number];
-export const ATTACK_CHANNELS = ["description", "code"] as const;
-export type AttackChannel = (typeof ATTACK_CHANNELS)[number];
-
-export interface Attack {
-  // The golden case this attack plants its text in.
-  on: string;
-  goal: AttackGoal;
-  channel: AttackChannel;
-  // description: one commit subject per line, which is how a local range
-  // review builds its description. code: lines inserted into `file`.
-  text: string;
-  file?: string | undefined;
-  // Insert after this line of `file` at the head; 0 inserts at the top.
-  after?: number | undefined;
-  // What must not appear in any finding (the planted URL or command).
-  canary?: string | undefined;
-}
 
 interface Range {
   path: string;

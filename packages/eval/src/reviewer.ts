@@ -3,8 +3,8 @@ import { readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import type { ReportOutput } from "@open-cr-agent/core";
-import type { Instance } from "./dataset.js";
 import { benchmarkEnv, exec } from "./exec.js";
+import type { Instance } from "./instance.js";
 
 export interface ReviewOutcome {
   exitCode: number;

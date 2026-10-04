@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { resolveAgents, reviewerCall, roleCall } from "../agent/settings.js";
 import type { AgentRuntime, AgentTaskSpec, CompletionRequest } from "../contracts.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import { docsReviewer } from "../review/reviewers/docs.js";
 import { securityReviewer } from "../review/reviewers/security.js";
-import { resolveAgents, reviewerCall, roleCall } from "./agents.js";
 import { previewReview } from "./preview.js";
 import { agentProvenance } from "./provenance.js";
 import { finding, patch, vcs } from "./run.fakes.js";

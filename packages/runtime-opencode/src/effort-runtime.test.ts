@@ -1,6 +1,6 @@
 import type { AgentTaskSpec, AttemptOutcome, Effort } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
-import { effortWarnings } from "../../core/src/pipeline/agents.js";
+import { effortWarnings } from "../../core/src/agent/settings.js";
 import { collect, fakeContext } from "../../core/src/runtime/conformance.fakes.js";
 import { EffortRoutes } from "./effort.js";
 import { openCodeConfig } from "./opencode-config.js";

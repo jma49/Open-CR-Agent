@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Instance } from "./dataset.js";
+import type { Instance } from "./instance.js";
 import type { InstanceResult } from "./runner.js";
 import { score } from "./score.js";
 

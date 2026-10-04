@@ -1,5 +1,5 @@
 import type { AnchoringSummary, OutputFinding, Usage } from "@open-cr-agent/core";
-import type { Instance } from "./dataset.js";
+import type { Instance } from "./instance.js";
 import {
   type GeneratedComment,
   matchComments,

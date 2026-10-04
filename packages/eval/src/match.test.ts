@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ReferenceComment } from "./dataset.js";
+import type { ReferenceComment } from "./instance.js";
 import { MockJudge, parseJudgeAnswer } from "./judges.js";
 import { type GeneratedComment, matchComments, type SemanticJudge } from "./match.js";
 import { countMatches, qualityMetrics } from "./metrics.js";

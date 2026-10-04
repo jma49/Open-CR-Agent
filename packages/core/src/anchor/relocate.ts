@@ -1,6 +1,6 @@
+import { type AgentCallSettings, agentCall } from "../agent/settings.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
 import { usageSpent } from "../errors.js";
-import { type AgentCallSettings, agentCall } from "../pipeline/agents.js";
 import { data, join, labelled, section } from "../review/prompt-text.js";
 import type { RelocationRequest } from "./anchor.js";
 

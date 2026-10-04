@@ -5,7 +5,7 @@ import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { measureCeiling } from "./ceiling-run.js";
-import type { Instance } from "./dataset.js";
+import type { Instance } from "./instance.js";
 import { defaultOcraCommand } from "./reviewer.js";
 
 // This test runs the real CLI as a black box, so it needs the build; tsc -b

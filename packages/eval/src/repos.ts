@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import type { Instance } from "./dataset.js";
 import { exec } from "./exec.js";
+import type { Instance } from "./instance.js";
 
 const HOUR = 60 * 60_000;
 

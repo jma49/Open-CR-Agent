@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { ResolvedAgent, ReviewerOverrides } from "../agent/settings.js";
 import { RELOCATE_SYSTEM_PROMPT } from "../anchor/relocate.js";
 import { GROUPING_SYSTEM_PROMPT } from "../bundle/grouping.js";
 import type { AgentRuntime, AppliedSampling, Effort, ModelTier, Sampling } from "../contracts.js";
@@ -8,8 +9,6 @@ import { buildReviewPrompt } from "../review/prompt.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { RuleSource, SourcedRule } from "../rules/repo-rules.js";
 import { VERIFY_SYSTEM_PROMPT } from "../verify/prompt.js";
-import type { ResolvedAgent } from "./agents.js";
-import type { ReviewerOverrides } from "./matrix.js";
 
 // What a run was made with, so two runs can be told apart before their
 // numbers are compared: the ocra build, the instructions the models were

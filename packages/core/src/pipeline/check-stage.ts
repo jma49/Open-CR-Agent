@@ -1,8 +1,8 @@
+import { roleCall } from "../agent/settings.js";
 import type { Usage } from "../contracts.js";
 import { type JudgeResult, judgeFindings } from "../judge/judge.js";
 import { stillOpen } from "../rereview/reconcile.js";
 import { markUnchecked, type VerificationResult, verifyFindings } from "../verify/verify.js";
-import { roleCall } from "./agents.js";
 import type { StageContext } from "./execute-stage.js";
 import type { FilterStage } from "./filter-stage.js";
 import { REVIEW_DEFAULTS } from "./options.js";

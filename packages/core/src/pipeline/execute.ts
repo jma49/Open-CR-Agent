@@ -1,3 +1,5 @@
+import { type AgentCallSettings, type AgentSettings, reviewerCall } from "../agent/settings.js";
+import { addUsage } from "../agent/usage.js";
 import { type AnchorContext, anchorFinding } from "../anchor/anchor.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
 import type { Finding } from "../domain.js";
@@ -6,13 +8,11 @@ import { findCallers } from "../review/impact.js";
 import { planBundle } from "../review/plan-phase.js";
 import { buildReviewPrompt, type ReviewPrompt } from "../review/prompt.js";
 import { resolveRules } from "../rules/resolve.js";
-import { type AgentCallSettings, type AgentSettings, reviewerCall } from "./agents.js";
 import { toFinding } from "./findings.js";
 import type { MatrixCell } from "./matrix.js";
 import type { ReviewPlan } from "./plan.js";
 import type { ReviewEvent, TaskOutcome } from "./report.js";
 import { executeTask, type TaskFinding } from "./task.js";
-import { addUsage } from "./usage.js";
 
 export interface JobResult {
   outcome: TaskOutcome;

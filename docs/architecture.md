@@ -42,6 +42,8 @@ The two split work along different axes: Cloudflare by **review domain**, OCR by
 
 In core, `reviewWithHooks` (`pipeline/run.ts`) only sequences them: `planReview` (stages 1–4), `executeStage` (5–7, `pipeline/execute-stage.ts`, one `runJob` per cell), `filterStage` (8), `checkStage` (9–10), then `assembleReport`. Each stage returns its own warnings and usage, and the report lists them in stage order; the spend tracker and the run's signal are the only state they share.
 
+Core's modules form layers with no import cycle, type imports included: `contracts.ts` (the runtime contract) and `domain.ts` at the bottom; `agent/` above them (what every model call shares: an agent's settings, JSON answers, the spend tracker, bounded concurrency, usage sums); the stages (`select/`, `bundle/`, `review/`, `verify/`, `judge/`, `anchor/`, …) above that, depending only downwards; and `pipeline/` on top, orchestrating them. `vcs.ts` holds `VcsAdapter`, which publishes the report and so sits above it.
+
 ## Reviewers
 
 | Reviewer | Scope | Default model tier |

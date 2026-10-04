@@ -1,3 +1,4 @@
+import { emptyUsage } from "../agent/usage.js";
 import { anchorFinding } from "../anchor/anchor.js";
 import type { FileDiff, Finding, LineRange } from "../domain.js";
 import { type SarifCandidate, sarifCandidates } from "../sarif/candidates.js";
@@ -6,7 +7,6 @@ import { toFinding } from "./findings.js";
 import type { ReviewPlan } from "./plan.js";
 import type { ReviewEvent, TaskOutcome } from "./report.js";
 import { boundFinding } from "./task.js";
-import { emptyUsage } from "./usage.js";
 
 // Findings an external analyzer wrote as SARIF, brought into the review as
 // one synthetic task per run of the log: no model, no spend, the tool as the

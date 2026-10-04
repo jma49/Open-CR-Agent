@@ -2,6 +2,7 @@
 // public API (index.ts). Not a contract: any release may change or remove
 // any of it, and nothing outside this repository should import it.
 
+export { AGENT_ROLES } from "./agent/settings.js";
 export { parseUnifiedDiff } from "./diff/parse.js";
 export { severitySchema, verificationSchema } from "./domain.js";
 export { errorMessage, usageSpent } from "./errors.js";
@@ -11,7 +12,6 @@ export {
   parseMemory,
   serializeMemory,
 } from "./memory/memory.js";
-export { AGENT_ROLES } from "./pipeline/agents.js";
 export { reviewContext } from "./pipeline/context.js";
 export { RISK_TIERS } from "./pipeline/matrix.js";
 export { MAX_TIMER_MS, REVIEW_DEFAULTS } from "./pipeline/options.js";

@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import type { Instance } from "./dataset.js";
 import { exec } from "./exec.js";
+import type { Instance } from "./instance.js";
 import { defaultOcraCommand, reviewInstance } from "./reviewer.js";
 
 const dirs: string[] = [];

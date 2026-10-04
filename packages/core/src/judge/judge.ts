@@ -1,3 +1,5 @@
+import { parseJsonAnswer } from "../agent/json.js";
+import { type AgentCallSettings, agentCall } from "../agent/settings.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
 import type {
   ChangeRequest,
@@ -8,8 +10,6 @@ import type {
   Verdict,
 } from "../domain.js";
 import { errorMessage, OcraError, usageSpent } from "../errors.js";
-import { type AgentCallSettings, agentCall } from "../pipeline/agents.js";
-import { parseJsonAnswer } from "../pipeline/helpers.js";
 import { buildJudgePrompt, type JudgeResponse, judgeResponseSchema } from "./prompt.js";
 import { decideVerdict, defaultSummary } from "./verdict.js";
 

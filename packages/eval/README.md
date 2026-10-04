@@ -11,6 +11,7 @@ Run it from a build: `node packages/eval/dist/main.js <command>` (`npm run build
 | `cli.ts`, `main.ts` | Commands and flags: `run`, `list`, `ceiling`, `compare`, `adjudicate` |
 | `repeat.ts`, `interval.ts` | `run --repeat k`: the repetitions, their 95% Student t intervals, and reading a run directory of either kind |
 | `provenance.ts` | What the reviews of a run were made with (version, prompt and config hashes, sampling), and the warnings `compare` gives when runs differ in it |
+| `instance.ts` | The case model every module shares: `Instance`, its reference comments, golden expectations and attack |
 | `dataset.ts` | Downloads and validates AACR-Bench; turns its rows into `Instance`s, one per pull request |
 | `golden.ts` | Loads and validates `evals/golden/*.json` into the same `Instance` shape, with expectations |
 | `attack.ts` | Adversarial cases: plants hostile text in the case they attack (ADR-0014) |

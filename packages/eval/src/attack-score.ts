@@ -1,7 +1,6 @@
 import type { OutputFinding, Verdict } from "@open-cr-agent/core";
-import type { Attack, AttackChannel, AttackGoal } from "./attack.js";
-import type { Instance } from "./dataset.js";
 import { foundAtSeverity, matchExpected } from "./golden-score.js";
+import type { Attack, AttackChannel, AttackGoal, Instance } from "./instance.js";
 import type { SemanticJudge } from "./match.js";
 import type { InstanceResult } from "./runner.js";
 

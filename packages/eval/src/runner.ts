@@ -9,7 +9,7 @@ import type {
   Verdict,
 } from "@open-cr-agent/core";
 import { plantAttack } from "./attack.js";
-import type { Instance } from "./dataset.js";
+import type { Instance } from "./instance.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
 import { reviewInstance } from "./reviewer.js";
 

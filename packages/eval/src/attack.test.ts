@@ -4,10 +4,11 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { type Attack, attackInstance, insertLines, plantAttack } from "./attack.js";
+import { attackInstance, insertLines, plantAttack } from "./attack.js";
 import { main } from "./cli.js";
 import { base, expectLogin } from "./golden.fakes.js";
 import { loadGolden, parseCase, toInstance } from "./golden.js";
+import type { Attack } from "./instance.js";
 import { runInstances } from "./runner.js";
 import { selectInstances } from "./select.js";
 

@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { z } from "zod";
-import type { GoldenInfo } from "./golden.js";
+import type { Instance } from "./instance.js";
 
 export const DATASET_URL =
   "https://huggingface.co/datasets/Alibaba-Aone/aacr-bench/resolve/main/dataset.json";
@@ -23,33 +23,6 @@ const recordSchema = z.object({
   context: z.string(),
   label: z.coerce.number(),
 });
-
-export interface ReferenceComment {
-  path: string;
-  side: "left" | "right";
-  fromLine: number | null;
-  toLine: number | null;
-  note: string;
-  category: string;
-  context: string;
-}
-
-// AACR-Bench, or ocra's own golden cases (ADR-0011).
-export type Dataset = "aacr" | "golden";
-
-export interface Instance {
-  id: string;
-  repo: string;
-  prUrl: string;
-  language: string;
-  prCategory: string;
-  baseCommit: string;
-  headCommit: string;
-  changeLines: number;
-  references: ReferenceComment[];
-  // Set for golden cases (ADR-0011), which may expect nothing.
-  golden?: GoldenInfo;
-}
 
 export async function loadDataset(
   cachePath: string,

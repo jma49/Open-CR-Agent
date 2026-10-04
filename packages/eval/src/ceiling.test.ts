@@ -2,7 +2,7 @@ import type { FileDiff } from "@open-cr-agent/core";
 import type { ReviewPreview } from "@open-cr-agent/core/internal";
 import { describe, expect, it } from "vitest";
 import { classifyReferences, renderCeiling, summarizeCeiling } from "./ceiling.js";
-import type { Instance, ReferenceComment } from "./dataset.js";
+import type { Instance, ReferenceComment } from "./instance.js";
 
 function ref(path: string, category: string, fromLine: number | null = 10): ReferenceComment {
   return {

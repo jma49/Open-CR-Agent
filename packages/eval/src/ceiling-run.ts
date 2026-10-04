@@ -8,9 +8,9 @@ import {
   renderCeiling,
   summarizeCeiling,
 } from "./ceiling.js";
-import type { Dataset, Instance } from "./dataset.js";
 import { benchmarkEnv, exec } from "./exec.js";
 import { untouchedPaths } from "./golden.js";
+import type { Dataset, Instance } from "./instance.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
 
 export interface CeilingOptions {

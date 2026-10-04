@@ -1,9 +1,10 @@
-import type { AgentRuntime, VcsAdapter } from "../contracts.js";
+import { AGENT_ROLES } from "../agent/settings.js";
+import type { AgentRuntime } from "../contracts.js";
 import { errorMessage, OcraError } from "../errors.js";
-import { AGENT_ROLES } from "../pipeline/agents.js";
 import type { ReviewEvent } from "../pipeline/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { RepoRule } from "../rules/repo-rules.js";
+import type { VcsAdapter } from "../vcs.js";
 import type {
   PluginSummary,
   RuntimeFactory,

@@ -2,7 +2,7 @@ import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { Instance } from "./dataset.js";
+import type { Instance } from "./instance.js";
 import { renderMarkdown } from "./report.js";
 import { UnavailableCommitError } from "./repos.js";
 import { runInstances } from "./runner.js";

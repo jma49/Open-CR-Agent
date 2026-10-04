@@ -1,4 +1,4 @@
-import type { ReferenceComment } from "./dataset.js";
+import type { ReferenceComment } from "./instance.js";
 
 export interface GeneratedComment {
   path: string;

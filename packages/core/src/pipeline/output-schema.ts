@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EFFORT_LEVELS } from "../agent/settings.js";
 import { MODEL_TIERS } from "../contracts.js";
 import {
   anchorMethodSchema,
@@ -9,7 +10,6 @@ import {
 } from "../domain.js";
 import { memoryEntrySchema } from "../memory/memory.js";
 import { exclusionReasonSchema } from "../select/select.js";
-import { EFFORT_LEVELS } from "./agents.js";
 import { skipReasonSchema } from "./matrix.js";
 import { REPORT_VERSION, type ReportOutput } from "./output.js";
 import { taskStatusSchema } from "./report.js";

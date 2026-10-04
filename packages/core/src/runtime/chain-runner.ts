@@ -3,11 +3,11 @@ import type {
   AgentTaskSpec,
   CompletionRequest,
   CompletionResult,
+  ModelChains,
   ModelTier,
   Usage,
 } from "../contracts.js";
 import { OcraError } from "../errors.js";
-import type { ModelChains } from "../plugin/types.js";
 import type { AttemptOutcome } from "./attempt.js";
 import { completeWithFailback, withFailback } from "./failback.js";
 import { callChain, ModelHealth } from "./models.js";

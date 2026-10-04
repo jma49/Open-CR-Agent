@@ -4,6 +4,16 @@
 // (`npm run api`). What the other workspace packages need beyond this comes
 // from "@open-cr-agent/core/internal", which is not a contract.
 
+export { SpendLimitReached } from "./agent/budget.js";
+export type { ReviewerOverride, ReviewerOverrides } from "./agent/settings.js";
+export {
+  type AgentRole,
+  EFFORT_LEVELS,
+  type RoleSetting,
+  type RoleSettings,
+  type TierEfforts,
+} from "./agent/settings.js";
+export { addUsage, emptyUsage } from "./agent/usage.js";
 export type {
   AgentEvent,
   AgentRuntime,
@@ -14,11 +24,11 @@ export type {
   CompletionRequest,
   CompletionResult,
   Effort,
+  ModelChains,
   ModelTier,
   ReviewContext,
   Sampling,
   Usage,
-  VcsAdapter,
 } from "./contracts.js";
 export { MODEL_TIERS } from "./contracts.js";
 export type {
@@ -52,21 +62,8 @@ export {
 export type { JudgeDecisions } from "./judge/judge.js";
 export type { MemoryEntry, MemorySource, RememberedEntry } from "./memory/memory.js";
 export { type ProxyEnv, proxiedFetch } from "./net/proxied-fetch.js";
-export {
-  type AgentRole,
-  EFFORT_LEVELS,
-  type RoleSetting,
-  type RoleSettings,
-  type TierEfforts,
-} from "./pipeline/agents.js";
-export { SpendLimitReached } from "./pipeline/budget.js";
 export { AccessDeniedError } from "./pipeline/context.js";
-export type {
-  ReviewerOverride,
-  ReviewerOverrides,
-  SkippedCell,
-  SkipReason,
-} from "./pipeline/matrix.js";
+export type { SkippedCell, SkipReason } from "./pipeline/matrix.js";
 export type { ReviewOptions } from "./pipeline/options.js";
 export {
   type OutputFinding,
@@ -92,7 +89,6 @@ export {
   type TaskStatus,
 } from "./pipeline/report.js";
 export { review } from "./pipeline/run.js";
-export { addUsage, emptyUsage } from "./pipeline/usage.js";
 export {
   agentsMdReviewerPlugin,
   correctnessReviewerPlugin,
@@ -108,7 +104,6 @@ export type {
   ConfigureContext,
   CustomProvider,
   Env,
-  ModelChains,
   ModelPrice,
   OcraPlugin,
   PluginSummary,
@@ -142,4 +137,5 @@ export { parseQuotaError, type QuotaError } from "./runtime/quota.js";
 export { reviewTools } from "./runtime/tools.js";
 export { parseSarifLog, SarifError, type SarifLog } from "./sarif/schema.js";
 export type { ExclusionReason, SelectionPolicy } from "./select/select.js";
+export type { VcsAdapter } from "./vcs.js";
 export type { RefutedFinding } from "./verify/verify.js";

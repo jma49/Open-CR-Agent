@@ -1,4 +1,6 @@
+import { roleCall } from "../agent/settings.js";
 import { type Bundle, bundleFiles, defaultBundlePolicy } from "../bundle/bundle.js";
+import { runtimeGrouper } from "../bundle/runtime-grouper.js";
 import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
 import type { ChangeRequest, FileDiff, RiskTier } from "../domain.js";
 import { MEMORY_PATH, mergeMemory, parseMemory, type RememberedEntry } from "../memory/memory.js";
@@ -10,9 +12,7 @@ import {
 } from "../rules/repo-rules.js";
 import { defaultSelectionPolicy, type FileDecision, selectFiles } from "../select/select.js";
 import { triage } from "../triage.js";
-import { roleCall } from "./agents.js";
 import { reviewContext } from "./context.js";
-import { runtimeGrouper } from "./helpers.js";
 import { rank } from "./matrix.js";
 import type { ReviewHooks, ReviewOptions } from "./options.js";
 import type { ReviewEvent } from "./report.js";

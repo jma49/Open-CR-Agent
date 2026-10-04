@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { VcsAdapter } from "../contracts.js";
 import { parseUnifiedDiff } from "../diff/parse.js";
+import type { VcsAdapter } from "../vcs.js";
 import { previewReview } from "./preview.js";
 
 function patch(path: string): string {

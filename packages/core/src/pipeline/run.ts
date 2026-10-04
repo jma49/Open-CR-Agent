@@ -1,9 +1,9 @@
-import type { VcsAdapter } from "../contracts.js";
+import { spendTracker } from "../agent/budget.js";
 import type { PriorReview } from "../domain.js";
 import { errorMessage, OcraError } from "../errors.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
+import type { VcsAdapter } from "../vcs.js";
 import { assembleReport } from "./assemble-report.js";
-import { spendTracker } from "./budget.js";
 import { checkStage } from "./check-stage.js";
 import { executeStage, type StageContext } from "./execute-stage.js";
 import { filterStage } from "./filter-stage.js";

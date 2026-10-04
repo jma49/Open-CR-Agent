@@ -13,9 +13,10 @@ import {
   renderComparison,
   type SavedSummary,
 } from "./compare.js";
-import { type Dataset, type Instance, loadDataset } from "./dataset.js";
+import { loadDataset } from "./dataset.js";
 import { loadGolden } from "./golden.js";
 import { scoreGolden } from "./golden-score.js";
+import type { Dataset, Instance } from "./instance.js";
 import { CachedJudge, createJudge, type JudgeSetup } from "./judges.js";
 import { summarizeProvenance } from "./provenance.js";
 import {

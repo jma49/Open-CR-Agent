@@ -1,6 +1,6 @@
+import { addUsage, emptyUsage } from "../agent/usage.js";
 import type { AgentEvent, CompletionResult, ModelTier, Usage } from "../contracts.js";
 import { CompletionError } from "../errors.js";
-import { addUsage, emptyUsage } from "../pipeline/usage.js";
 import { type AttemptOutcome, attemptSummary } from "./attempt.js";
 import type { ModelHealth } from "./models.js";
 import { sleep } from "./quota.js";
