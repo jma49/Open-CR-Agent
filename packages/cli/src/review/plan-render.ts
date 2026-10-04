@@ -1,5 +1,5 @@
 import type { ReviewPreview } from "@open-cr-agent/core/internal";
-import { forTerminal } from "./terminal.js";
+import { forTerminal } from "../io/terminal.js";
 
 const number = new Intl.NumberFormat("en-US");
 

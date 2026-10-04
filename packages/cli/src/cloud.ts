@@ -6,10 +6,11 @@ import { errorMessage } from "@open-cr-agent/core/internal";
 import { accountSaltOf, saveAccountSalt } from "./account-salt.js";
 import { openBrowser, signInPage } from "./browser.js";
 import { withFileLock } from "./file-lock.js";
+import { EXIT } from "./io/exit.js";
+import type { Output } from "./io/output.js";
+import { forTerminal } from "./io/terminal.js";
+import { UsageError } from "./io/usage-error.js";
 import { writePrivateFile } from "./private-file.js";
-import { UsageError } from "./review/args.js";
-import type { Output } from "./review/progress.js";
-import { forTerminal } from "./review/terminal.js";
 import { VERSION } from "./version.js";
 
 // ocra Cloud sign-in (ADR-0024): `ocra login` runs the OAuth device flow
@@ -300,11 +301,11 @@ export async function cloudCommand(
   });
   if (values.help) {
     out.write(LOGIN_USAGE);
-    return 0;
+    return EXIT.ok;
   }
   if (deps.env.OCRA_CLOUD === "off") {
     err.write("ocra Cloud is off (OCRA_CLOUD=off).\n");
-    return 2;
+    return EXIT.error;
   }
   if (command === "whoami") return whoami(out, err, deps);
   if (command === "logout") return logout(out, deps);
@@ -315,11 +316,11 @@ async function whoami(out: Output, err: Output, deps: CloudDeps): Promise<number
   const session = await cloudSession(deps);
   if (session.kind === "signed-out") {
     err.write("Not signed in. Run ocra login.\n");
-    return 1;
+    return EXIT.notSignedIn;
   }
   if (session.kind === "unreachable") {
     err.write(forTerminal(`ocra Cloud could not be reached (${session.reason}).\n`));
-    return 2;
+    return EXIT.error;
   }
   const me =
     session.kind === "ok"
@@ -327,10 +328,10 @@ async function whoami(out: Output, err: Output, deps: CloudDeps): Promise<number
       : undefined;
   if (session.kind !== "ok" || !me) {
     err.write("Your ocra Cloud session ended. Run ocra login.\n");
-    return 1;
+    return EXIT.notSignedIn;
   }
   out.write(forTerminal(`${me.login} on ${session.credentials.server}\n`));
-  return 0;
+  return EXIT.ok;
 }
 
 async function logout(out: Output, deps: CloudDeps): Promise<number> {
@@ -352,7 +353,7 @@ async function logout(out: Output, deps: CloudDeps): Promise<number> {
         ? "Signed out.\n"
         : "Not signed in.\n",
   );
-  return 0;
+  return EXIT.ok;
 }
 
 async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean): Promise<number> {
@@ -373,7 +374,7 @@ async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean
     !code.verification_uri_complete
   ) {
     err.write(`ocra Cloud did not start a login (HTTP ${start.status}). Try again in a minute.\n`);
-    return 2;
+    return EXIT.error;
   }
   out.write(
     forTerminal(
@@ -436,7 +437,7 @@ async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean
             : `Signed in; the login is unknown${unknown ? ` (${unknown})` : ""}: ocra whoami asks again.\n`,
         ),
       );
-      return 0;
+      return EXIT.ok;
     }
     if (t.error === "authorization_pending") continue;
     if (t.error === "slow_down") {
@@ -445,12 +446,12 @@ async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean
     }
     if (t.error === "access_denied") {
       err.write("Login denied in the browser.\n");
-      return 1;
+      return EXIT.notSignedIn;
     }
     if (t.error === "expired_token") break;
     err.write(forTerminal(`Login failed: ${t.error ?? `HTTP ${answer.status}`}\n`));
-    return 2;
+    return EXIT.error;
   }
   err.write("The code expired before it was confirmed. Run ocra login again.\n");
-  return 1;
+  return EXIT.notSignedIn;
 }

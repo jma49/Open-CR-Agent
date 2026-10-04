@@ -1,9 +1,6 @@
 import type { ReviewEvent } from "@open-cr-agent/core";
-import { forTerminal } from "./terminal.js";
-
-export interface Output {
-  write(chunk: string): unknown;
-}
+import type { Output } from "../io/output.js";
+import { forTerminal } from "../io/terminal.js";
 
 export interface ProgressOptions {
   heartbeatMs: number;

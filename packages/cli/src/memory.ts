@@ -5,10 +5,11 @@ import { parseArgs } from "node:util";
 import type { MemoryEntry, OutputFinding } from "@open-cr-agent/core";
 import { MEMORY_PATH, parseMemory, serializeMemory } from "@open-cr-agent/core/internal";
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
-import { UsageError } from "./review/args.js";
+import { EXIT } from "./io/exit.js";
+import type { Output } from "./io/output.js";
+import { forTerminal } from "./io/terminal.js";
+import { UsageError } from "./io/usage-error.js";
 import { SESSIONS_DIR } from "./review/command.js";
-import type { Output } from "./review/progress.js";
-import { forTerminal } from "./review/terminal.js";
 
 export const MEMORY_USAGE = `Usage: ocra memory <command>
 
@@ -40,7 +41,7 @@ export async function memoryCommand(
   const [command, id] = positionals;
   if (values.help || command === undefined) {
     out.write(MEMORY_USAGE);
-    return 0;
+    return EXIT.ok;
   }
   const root = await findRepositoryRoot(cwd);
   const memory = await readMemory(root);
@@ -52,7 +53,7 @@ export async function memoryCommand(
         forTerminal(`${e.fingerprint.slice(0, 8)}  ${e.file}  ${e.title}\n    ${e.reason}\n`),
       );
     }
-    return 0;
+    return EXIT.ok;
   }
   if (command !== "add") throw new UsageError(`Unknown memory command: ${command}`);
   if (!id || id.length < 6)
@@ -63,7 +64,7 @@ export async function memoryCommand(
   const finding = await findFinding(join(report, "report.json"), id);
   if (memory.some((e) => e.fingerprint === finding.fingerprint)) {
     out.write(`Already remembered: ${forTerminal(finding.title)}\n`);
-    return 0;
+    return EXIT.ok;
   }
   const entry: MemoryEntry = {
     fingerprint: finding.fingerprint,
@@ -78,7 +79,7 @@ export async function memoryCommand(
       `Remembered ${finding.fingerprint.slice(0, 8)}: ${finding.title}\nCommit ${MEMORY_PATH} to share it.\n`,
     ),
   );
-  return 0;
+  return EXIT.ok;
 }
 
 // The repository may be someone else's clone: a planted symlink at

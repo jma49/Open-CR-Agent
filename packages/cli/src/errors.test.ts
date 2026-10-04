@@ -3,7 +3,7 @@ import { GitHubApiError } from "@open-cr-agent/vcs-github";
 import { GitLabApiError } from "@open-cr-agent/vcs-gitlab";
 import { GitError } from "@open-cr-agent/vcs-local";
 import { describe, expect, it } from "vitest";
-import { UsageError } from "./review/args.js";
+import { UsageError } from "./io/usage-error.js";
 import { ConfigError } from "./review/config.js";
 import { fetchRemoteConfig } from "./review/remote-config.js";
 

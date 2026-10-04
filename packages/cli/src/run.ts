@@ -3,15 +3,17 @@ import { parseArgs } from "node:util";
 import { isOcraError } from "@open-cr-agent/core";
 import { errorMessage } from "@open-cr-agent/core/internal";
 import { cloudCommand, defaultCloudDeps, LOGIN_USAGE } from "./cloud.js";
+import { EXIT } from "./io/exit.js";
+import type { Output } from "./io/output.js";
+import { forTerminal } from "./io/terminal.js";
+import { UsageError } from "./io/usage-error.js";
 import { memoryCommand } from "./memory.js";
 import { metricsCommand } from "./metrics.js";
 import { pluginsDir } from "./plugin-store.js";
 import { defaultNpm, PLUGINS_USAGE, pluginsCommand } from "./plugins-command.js";
-import { parseReviewArgs, REVIEW_USAGE, UsageError } from "./review/args.js";
-import { BUILTIN_PLUGINS, EXIT, type ReviewDeps, reviewCommand } from "./review/command.js";
-import type { Output } from "./review/progress.js";
+import { parseReviewArgs, REVIEW_USAGE } from "./review/args.js";
+import { BUILTIN_PLUGINS, type ReviewDeps, reviewCommand } from "./review/command.js";
 import { BUILTIN_RUNTIMES } from "./review/runtimes.js";
-import { forTerminal } from "./review/terminal.js";
 import { VERSION } from "./version.js";
 
 const USAGE = `Usage: ocra <command> [options]

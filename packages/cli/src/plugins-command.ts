@@ -1,6 +1,10 @@
 import { execFile } from "node:child_process";
 import { access, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { EXIT } from "./io/exit.js";
+import type { Output } from "./io/output.js";
+import { forTerminal } from "./io/terminal.js";
+import { UsageError } from "./io/usage-error.js";
 import {
   type AllowedPlugin,
   ensureDir,
@@ -10,10 +14,7 @@ import {
   readAllowed,
   writeAllowed,
 } from "./plugin-store.js";
-import { UsageError } from "./review/args.js";
 import { ConfigError } from "./review/config.js";
-import type { Output } from "./review/progress.js";
-import { forTerminal } from "./review/terminal.js";
 
 // `ocra plugins` (ADR-0027): the user's own decision, on each machine, to
 // let their ocra Cloud account load a third-party plugin, like adding a
@@ -49,7 +50,7 @@ export async function pluginsCommand(
   const [action, target, ...extra] = argv;
   if (action === "--help" || action === "-h" || action === "help") {
     out.write(PLUGINS_USAGE);
-    return 0;
+    return EXIT.ok;
   }
   if (extra.length > 0) throw new UsageError(`Unexpected argument: ${extra[0]}`);
   if (action === "list" && target === undefined) return list(out, deps.dir);
@@ -62,11 +63,11 @@ async function list(out: Output, dir: string): Promise<number> {
   const allowed = await readAllowed(dir);
   if (allowed.length === 0) {
     out.write("No plugins allowed. Allow one with: ocra plugins allow <name>@<version>\n");
-    return 0;
+    return EXIT.ok;
   }
   for (const p of allowed) out.write(`${p.name}@${p.version}  ${p.integrity}\n`);
   out.write(`(installed in ${dir})\n`);
-  return 0;
+  return EXIT.ok;
 }
 
 export function parseSpec(spec: string): { name: string; version: string } {
@@ -136,7 +137,7 @@ async function allow(spec: string, out: Output, deps: PluginsDeps): Promise<numb
   const allowed = (await readAllowed(deps.dir)).filter((p) => p.name !== name);
   await writeAllowed(deps.dir, [...allowed, entry]);
   out.write(`Allowed ${name}@${version}: your ocra Cloud settings can now load it here.\n`);
-  return 0;
+  return EXIT.ok;
 }
 
 async function deny(name: string, out: Output, deps: PluginsDeps): Promise<number> {
@@ -145,7 +146,7 @@ async function deny(name: string, out: Output, deps: PluginsDeps): Promise<numbe
   const kept = allowed.filter((p) => p.name !== name);
   if (kept.length === allowed.length) {
     out.write(`${name} was not allowed.\n`);
-    return 0;
+    return EXIT.ok;
   }
   // The record is what loading checks; removing the files is housekeeping.
   await writeAllowed(deps.dir, kept);
@@ -158,7 +159,7 @@ async function deny(name: string, out: Output, deps: PluginsDeps): Promise<numbe
     await rm(join(deps.dir, "node_modules", name), { recursive: true, force: true });
   }
   out.write(`Denied ${name}: it no longer loads.\n`);
-  return 0;
+  return EXIT.ok;
 }
 
 interface View {

@@ -27,6 +27,9 @@ import { gitlabPlugin } from "@open-cr-agent/vcs-gitlab";
 import { localGitPlugin } from "@open-cr-agent/vcs-local";
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
 import type { CloudDeps } from "../cloud.js";
+import { EXIT } from "../io/exit.js";
+import type { Output } from "../io/output.js";
+import { forTerminal } from "../io/terminal.js";
 import { pluginsDir } from "../plugin-store.js";
 import type { NpmRunner } from "../plugins-command.js";
 import { VERSION } from "../version.js";
@@ -39,7 +42,7 @@ import { cloudEnabled } from "./cloud-upload.js";
 import { agentChains, type CliConfig, ConfigError } from "./config.js";
 import { inputPriceOf } from "./plan-prices.js";
 import { renderPlan } from "./plan-render.js";
-import { type Output, ProgressPrinter } from "./progress.js";
+import { ProgressPrinter } from "./progress.js";
 import { configHash, requestedSampling } from "./provenance.js";
 import { renderJson, renderText, safeJson } from "./render.js";
 import type { RuntimeLoaders } from "./runtimes.js";
@@ -47,11 +50,8 @@ import { renderSarif } from "./sarif.js";
 import { loadSarifLogs } from "./sarif-input.js";
 import { effectiveSettings, renderSettings } from "./settings-sources.js";
 import { localTarget, mergeRequestTarget, pullRequestTarget } from "./target.js";
-import { forTerminal } from "./terminal.js";
 
 export const SESSIONS_DIR = ".ocra/sessions";
-
-export const EXIT = { ok: 0, blocking: 1, error: 2, incomplete: 3, interrupted: 130 } as const;
 
 export const BUILTIN_PLUGINS: readonly OcraPlugin[] = [
   localGitPlugin,

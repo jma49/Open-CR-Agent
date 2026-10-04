@@ -8,10 +8,11 @@ import {
   type Verification,
 } from "@open-cr-agent/core";
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
-import { UsageError } from "./review/args.js";
+import { EXIT } from "./io/exit.js";
+import type { Output } from "./io/output.js";
+import { forTerminal } from "./io/terminal.js";
+import { UsageError } from "./io/usage-error.js";
 import { SESSIONS_DIR } from "./review/command.js";
-import type { Output } from "./review/progress.js";
-import { forTerminal } from "./review/terminal.js";
 
 export const METRICS_VERSION = 1;
 
@@ -78,7 +79,7 @@ export async function metricsCommand(argv: string[], out: Output, cwd: string): 
   });
   if (values.help) {
     out.write(METRICS_USAGE);
-    return 0;
+    return EXIT.ok;
   }
   const format = values.format ?? "text";
   if (format !== "text" && format !== "json") throw new UsageError("--format must be text or json");
@@ -89,7 +90,7 @@ export async function metricsCommand(argv: string[], out: Output, cwd: string): 
 
   const metrics = await collectMetrics(sessionsDir, since);
   out.write(format === "json" ? `${JSON.stringify(metrics, null, 2)}\n` : renderMetrics(metrics));
-  return 0;
+  return EXIT.ok;
 }
 
 function parseSince(text: string): Date {

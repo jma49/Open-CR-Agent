@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
-import { OcraError } from "@open-cr-agent/core";
 import type { LocalTarget } from "@open-cr-agent/vcs-local";
+import { UsageError } from "../io/usage-error.js";
 
 export type OutputFormat = "text" | "json" | "sarif";
 
@@ -37,13 +37,6 @@ export interface ReviewArgs {
   // Override the configuration's sampling.
   temperature?: number;
   seed?: number;
-}
-
-export class UsageError extends OcraError {
-  constructor(message: string) {
-    super("INPUT_USAGE", message);
-    this.name = "UsageError";
-  }
 }
 
 export const REVIEW_USAGE = `Usage: ocra review [options]

@@ -7,7 +7,7 @@ import {
   type Verification,
 } from "@open-cr-agent/core";
 import { serializeOutput } from "@open-cr-agent/core/internal";
-import { forTerminal } from "./terminal.js";
+import { forTerminal } from "../io/terminal.js";
 
 const SEVERITIES: Severity[] = ["critical", "warning", "suggestion"];
 const VERIFICATION: Record<Verification, string> = {

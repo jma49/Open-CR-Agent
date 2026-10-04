@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseReviewArgs, UsageError } from "./args.js";
+import { UsageError } from "../io/usage-error.js";
+import { parseReviewArgs } from "./args.js";
 
 describe("parseReviewArgs", () => {
   it("defaults to workspace mode with text output", () => {
