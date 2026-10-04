@@ -17,7 +17,11 @@ GitLab support is new in 0.2.0. It has been tested against a fake GitLab API, no
 
 ## Set up
 
-1. **Create a project access token** (Settings → Access tokens) with the **Developer** role and the **`api`** scope. ocra posts notes and threads, resolves its threads, and reads, through GraphQL, who last edited a comment. `CI_JOB_TOKEN` cannot post comments.
+1. **Create a token for ocra** with the **`api`** scope and the **Developer** role:
+   - on GitLab Premium or Ultimate, and on self-managed GitLab, a **project access token** (Settings → Access tokens), which gets a bot user of its own;
+   - on GitLab.com Free, where project access tokens are not available, a **personal access token** of a dedicated account (for example `ocra-review-bot`, invited to the project as Developer). Do not use your own account's token: ocra would then post as you, and since it never takes a merge request's author for a reviewer, your own merge requests would lose your dismissals and overrides.
+
+   ocra posts notes and threads, resolves its threads, and reads, through GraphQL, who last edited a comment. `CI_JOB_TOKEN` cannot post comments.
 2. **Add it as a CI/CD variable named `GITLAB_TOKEN`**, masked. Leave it unprotected: pipelines for merge requests from unprotected branches cannot read protected variables. So every pipeline of the project can read the token: keep its role at Developer and give it an expiry date ([who controls the pipeline](#who-controls-the-pipeline)).
 3. **Add your model key** the same way, for example `GEMINI_API_KEY`: a key that serves only these reviews, with a spending limit at the provider.
 4. **Add the job** to `.gitlab-ci.yml`:

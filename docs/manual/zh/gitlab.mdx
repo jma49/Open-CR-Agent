@@ -17,7 +17,11 @@ GitLab 支持是 0.2.0 新增的。它已经用模拟的 GitLab API 测试过，
 
 ## 配置
 
-1. **创建项目访问令牌**（Settings → Access tokens），角色选 **Developer**，权限范围选 **`api`**。ocra 要发评论和讨论串、解决自己的讨论串，还要通过 GraphQL 读取评论最后由谁编辑。`CI_JOB_TOKEN` 不能发评论。
+1. **为 ocra 创建令牌**，权限范围选 **`api`**，角色为 **Developer**：
+   - GitLab Premium、Ultimate 以及自建 GitLab：用**项目访问令牌**（Settings → Access tokens），它自带一个 bot 用户；
+   - GitLab.com 免费版没有项目访问令牌：用一个专用账号（比如 `ocra-review-bot`，以 Developer 身份邀请进项目）的**个人访问令牌**。不要用你自己账号的令牌：那样 ocra 会以你的身份发言，而 ocra 从不把 Merge Request 的作者当作审查者，你自己的 Merge Request 上你的驳回和放行就都不算数了。
+
+   ocra 要发评论和讨论串、解决自己的讨论串，还要通过 GraphQL 读取评论最后由谁编辑。`CI_JOB_TOKEN` 不能发评论。
 2. **把它加为名为 `GITLAB_TOKEN` 的 CI/CD 变量**，设为 masked。不要设为 protected：来自未受保护分支的 Merge Request 流水线读不到受保护的变量。因此项目的每条流水线都能读到这个令牌：请把它的角色保持在 Developer，并设置过期时间（见[谁掌控流水线](#谁掌控流水线)）。
 3. 用同样的方式**加入模型密钥**，比如 `GEMINI_API_KEY`：只用于这些审查的密钥，并在供应商那里设置花费上限。
 4. 在 `.gitlab-ci.yml` 里**加入任务**：

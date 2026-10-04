@@ -157,7 +157,7 @@ export async function mergeRequestTarget(
   if (!token) {
     throw new OcraError(
       "CONFIG_CREDENTIALS_MISSING",
-      "--mr needs a GitLab token in GITLAB_TOKEN: a project access token with the api scope and the Developer role (CI_JOB_TOKEN cannot post comments)",
+      "--mr needs a GitLab token in GITLAB_TOKEN with the api scope and the Developer role: a project access token, or on GitLab.com Free a personal access token of a dedicated account (CI_JOB_TOKEN cannot post comments)",
     );
   }
   const origin = await originUrl(root);
