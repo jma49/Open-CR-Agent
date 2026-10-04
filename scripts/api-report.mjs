@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import apiExtractor from "@microsoft/api-extractor";
-import { readWorkspaces } from "./release-lib.mjs";
+import { readWorkspaces } from "./lib/release.mjs";
 
 const { Extractor, ExtractorConfig, ExtractorLogLevel } = apiExtractor;
 const root = fileURLToPath(new URL("..", import.meta.url));

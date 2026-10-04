@@ -3,7 +3,7 @@
 // project as a user would, and runs the installed ocra: --version, and a
 // free --plan review of a scratch repository. Then installs them as the
 // GitHub Action does, with the dependency versions this lockfile pins
-// (scripts/pinned-lock.mjs). Catches missing files, undeclared dependencies,
+// (scripts/lib/pinned-lock.mjs). Catches missing files, undeclared dependencies,
 // broken bin entries and a lockfile the Action cannot pin before anything
 // is published. Each tarball is also linted as published: publint (the
 // package.json against the files) and attw (the types resolve under Node's
@@ -34,9 +34,9 @@ import {
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { errorMessage } from "./error-message.mjs";
-import { pinnedLockfile } from "./pinned-lock.mjs";
-import { readWorkspaces, tarballName } from "./release-lib.mjs";
+import { errorMessage } from "./lib/error-message.mjs";
+import { pinnedLockfile } from "./lib/pinned-lock.mjs";
+import { readWorkspaces, tarballName } from "./lib/release.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 /** @type {(cmd: string, args: string[], cwd: string, extra?: { env?: NodeJS.ProcessEnv }) => string} */
@@ -84,7 +84,7 @@ const megabytes = (/** @type {string} */ dir) =>
 // The tarball of a workspace package: packed from this checkout, or the
 // one given for its name and version.
 /**
- * @param {import("./pinned-lock.mjs").Workspace} p
+ * @param {import("./lib/pinned-lock.mjs").Workspace} p
  * @param {string} work
  */
 function tarballFor(p, work) {

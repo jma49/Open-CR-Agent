@@ -8,15 +8,15 @@
 // `version` first asks changesets for the plan and moves the entries of the
 // pending changesets into CHANGELOG.md, then has changesets apply the plan,
 // which deletes them, then updates package-lock.json and moves the
-// manual's version pins (manual-pins.mjs).
+// manual's version pins (lib/manual-pins.mjs).
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { cutRelease, parseFragment, releaseNotes } from "./changelog-lib.mjs";
-import { errorMessage } from "./error-message.mjs";
-import { bumpPins, manualPages } from "./manual-pins.mjs";
+import { cutRelease, parseFragment, releaseNotes } from "./lib/changelog.mjs";
+import { errorMessage } from "./lib/error-message.mjs";
+import { bumpPins, manualPages } from "./lib/manual-pins.mjs";
 
 const USAGE = `Usage:
   node scripts/changelog.mjs version          (npm run version-packages) version the packages from the

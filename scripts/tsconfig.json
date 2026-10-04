@@ -10,5 +10,5 @@
     "checkJs": true,
     "customConditions": ["@open-cr-agent/source"]
   },
-  "include": ["*.mjs"]
+  "include": ["*.mjs", "lib/*.mjs"]
 }

@@ -2,7 +2,7 @@
 // fragments that become its entries. Pure, so scripts/changelog.mjs and
 // scripts/release.mjs share it and the tests need no git or npm.
 
-export const CATEGORIES = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"];
+const CATEGORIES = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"];
 
 const VERSION = String.raw`\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?`;
 const RELEASE_HEADING = new RegExp(String.raw`^## \[(${VERSION})\] - (\d{4}-\d{2}-\d{2})$`);
@@ -89,7 +89,7 @@ function mergeEntries(fragments) {
  * @param {string} text
  * @returns {{ head: string, sections: Section[], links: string[] }}
  */
-export function splitChangelog(text) {
+function splitChangelog(text) {
   const lines = text.trimEnd().split("\n");
   let end = lines.length;
   for (; end > 0; end--) {

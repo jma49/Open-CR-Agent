@@ -3,9 +3,9 @@ import { relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { bumpPins, manualPages, pinsIn } from "./manual-pins.mjs";
-import { lockstep, readWorkspaces } from "./release-lib.mjs";
+import { lockstep, readWorkspaces } from "./release.mjs";
 
-const root = fileURLToPath(new URL("..", import.meta.url));
+const root = fileURLToPath(new URL("../..", import.meta.url));
 
 const PAGE = `\`\`\`bash
 npm install -g --ignore-scripts @open-cr-agent/cli@0.5.0

@@ -8,9 +8,9 @@ import {
   parseFragment,
   releaseNotes,
   renderEntries,
-} from "./changelog-lib.mjs";
+} from "./changelog.mjs";
 
-const root = fileURLToPath(new URL("..", import.meta.url));
+const root = fileURLToPath(new URL("../..", import.meta.url));
 const repo = "https://github.com/o/r";
 
 const changelog = `# Changelog

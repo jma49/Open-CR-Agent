@@ -13,9 +13,9 @@ import {
   readWorkspaces,
   refProblem,
   tarballName,
-} from "./release-lib.mjs";
+} from "./release.mjs";
 
-/** @typedef {import("./release-lib.mjs").Workspace} Workspace */
+/** @typedef {import("./release.mjs").Workspace} Workspace */
 
 /**
  * @param {string} name
@@ -163,7 +163,7 @@ describe("readWorkspaces", () => {
   });
 
   it("finds this repository's packages in lockstep, publishable in dependency order", () => {
-    const workspaces = readWorkspaces(fileURLToPath(new URL("..", import.meta.url)));
+    const workspaces = readWorkspaces(fileURLToPath(new URL("../..", import.meta.url)));
     expect(lockstep(workspaces).problems).toEqual([]);
     expect(names(publishOrder(workspaces))).toEqual([
       "@open-cr-agent/cloud-contract",
@@ -180,7 +180,7 @@ describe("readWorkspaces", () => {
   });
 
   it("releases every published package in one changesets group and ignores the private ones", () => {
-    const root = fileURLToPath(new URL("..", import.meta.url));
+    const root = fileURLToPath(new URL("../..", import.meta.url));
     const workspaces = readWorkspaces(root);
     const config = JSON.parse(readFileSync(join(root, ".changeset", "config.json"), "utf8"));
     /** @param {Workspace[]} list */

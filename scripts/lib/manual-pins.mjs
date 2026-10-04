@@ -1,6 +1,6 @@
 // The version pins users copy from the manual: the CLI package and the
 // container image. The release PR moves them to the new version
-// (changelog.mjs version), and manual-pins.test.mjs fails when one drifts.
+// (scripts/changelog.mjs version), and manual-pins.test.mjs fails when one drifts.
 // The Action's pin is a commit SHA, known only once the release is tagged,
 // and is not one of them.
 import { readdirSync } from "node:fs";

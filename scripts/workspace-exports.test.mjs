@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { readWorkspaces } from "./release-lib.mjs";
+import { readWorkspaces } from "./lib/release.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 

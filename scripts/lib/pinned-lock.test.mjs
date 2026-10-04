@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { lookupPaths, pinnedLockfile, registryUrl } from "./pinned-lock.mjs";
-import { readWorkspaces } from "./release-lib.mjs";
+import { readWorkspaces } from "./release.mjs";
 
 /** @typedef {import("./pinned-lock.mjs").Manifest} Manifest */
 
@@ -221,8 +221,10 @@ describe("pinnedLockfile", () => {
   });
 
   it("pins the published CLI from this repository's lockfile", () => {
-    const root = fileURLToPath(new URL("..", import.meta.url));
-    const lock = JSON.parse(readFileSync(new URL("../package-lock.json", import.meta.url), "utf8"));
+    const root = fileURLToPath(new URL("../..", import.meta.url));
+    const lock = JSON.parse(
+      readFileSync(new URL("../../package-lock.json", import.meta.url), "utf8"),
+    );
     const { lockfile } = pinnedLockfile({
       lock,
       root,

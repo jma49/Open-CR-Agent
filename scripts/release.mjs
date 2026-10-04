@@ -14,7 +14,7 @@ import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSyn
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { releaseNotes } from "./changelog-lib.mjs";
+import { releaseNotes } from "./lib/changelog.mjs";
 import {
   atLeast,
   digestProblem,
@@ -25,9 +25,9 @@ import {
   readWorkspaces,
   refProblem,
   tarballName,
-} from "./release-lib.mjs";
+} from "./lib/release.mjs";
 
-/** @typedef {import("./release-lib.mjs").Workspace} Workspace */
+/** @typedef {import("./lib/release.mjs").Workspace} Workspace */
 /** @typedef {(reason: string) => void} Refuse */
 
 const USAGE = `Usage:

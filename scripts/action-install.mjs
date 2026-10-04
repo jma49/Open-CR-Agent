@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Installs the ocra the GitHub Action runs (action.yml): the published
 // @open-cr-agent/cli at this checkout's version, with every dependency at the
-// version this checkout's package-lock.json pins (scripts/pinned-lock.mjs),
+// version this checkout's package-lock.json pins (scripts/lib/pinned-lock.mjs),
 // install scripts off, the registry's signatures verified, and each of ocra's
 // own packages proven by its provenance to come from this repository's
-// release workflow at the version's tag (scripts/provenance.mjs). It builds
+// release workflow at the version's tag (scripts/lib/provenance.mjs). It builds
 // this checkout instead when that version is not on npm (a version bump not
 // yet released), was published with other dependencies than this checkout
 // declares or without that provenance, or does not install. Writes the CLI's
@@ -18,21 +18,15 @@
 //
 // Usage: node scripts/action-install.mjs [--from-source]
 import { spawn, spawnSync } from "node:child_process";
-import {
-  appendFileSync,
-  mkdirSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { errorMessage } from "./error-message.mjs";
-import { pinnedLockfile } from "./pinned-lock.mjs";
-import { provenanceProblems } from "./provenance.mjs";
-import { readWorkspaces } from "./release-lib.mjs";
+import { opencodeFlags } from "./lib/action-install.mjs";
+import { errorMessage } from "./lib/error-message.mjs";
+import { pinnedLockfile } from "./lib/pinned-lock.mjs";
+import { provenanceProblems } from "./lib/provenance.mjs";
+import { readWorkspaces } from "./lib/release.mjs";
 
 const TARGET = "@open-cr-agent/cli";
 const NPMJS = /^https:\/\/registry\.npmjs\.org\/?$/;
@@ -43,9 +37,9 @@ const DEPENDENCY_FIELDS = /** @type {const} */ ([
 ]);
 
 /**
- * @typedef {import("./pinned-lock.mjs").Manifest} Manifest
- * @typedef {import("./pinned-lock.mjs").Workspace} Workspace
- * @typedef {import("./provenance.mjs").Dist & { tarball?: string }} Dist
+ * @typedef {import("./lib/pinned-lock.mjs").Manifest} Manifest
+ * @typedef {import("./lib/pinned-lock.mjs").Workspace} Workspace
+ * @typedef {import("./lib/provenance.mjs").Dist & { tarball?: string }} Dist
  * @typedef {"unpublished" | "registry" | "dependencies" | "install" | "provenance"} SourceKind
  * @typedef {{ reason: string, kind: SourceKind, warn?: boolean, main?: undefined }} Fallback
  * @typedef {{ manifest: Manifest & { dist?: Dist }, reason?: undefined, kind?: undefined }
@@ -62,15 +56,6 @@ const CACHE = ["--cache", join(temp, "ocra-npm-cache")];
 // environment. The OpenCode binary is resolved without one.
 const INSTALL_FLAGS = [...CACHE, "--ignore-scripts", "--no-audit", "--no-fund", "--loglevel=error"];
 const started = Date.now();
-
-// The npm ci flags that say whether OpenCode is installed, from the Action's
-// opencode input.
-/** @param {string | undefined} input */
-export function opencodeFlags(input) {
-  if (input === undefined || input === "" || input === "true") return [];
-  if (input === "false") return ["--omit=optional"];
-  throw new Error(`the opencode input must be true or false, not ${JSON.stringify(input)}`);
-}
 
 // How to start npm: a .cmd shim on Windows, which Node starts only through a
 // shell and then as one command line, with an argument holding a space (a
@@ -304,7 +289,4 @@ async function install() {
   fromSource();
 }
 
-// Run, not imported by its test.
-if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  await install();
-}
+await install();
