@@ -6,6 +6,36 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-04
+
+ocra Cloud configures everything the CLI reads: models and effort per agent, limits, checking, file selection, path rules, plugins (allowed per machine) and the recall mode, all under the repository's own configuration, with `--plan` showing where each setting came from. Signed-in reviews also send per-reviewer counts, and, only when the account turns it on, their findings, so the web can show a review in full and remember findings across machines. The Action's tag for this release is `jma49/Open-CR-Agent@v0.5.0`.
+
+### Added
+
+- While signed in, a review also takes the limits, `verify`, `judge`, `sampling`, `include`, `exclude` and path rules from your ocra Cloud account, under the configuration: what the configuration sets wins, and `include`, `exclude` and rules combine (ADR-0027).
+- `ocra review --plan` reads the account settings too and lists every setting with its source (`file`, `account`, `file+account` or `default`), in text and in the JSON plan's `settings`; offline, it warns and shows the configuration alone.
+- The JSON report's `provenance.rules` lists the rules a review was given with their `source`, and `provenance.accountSettings.version` the account settings used; the configuration hash covers them. `ReviewOptions.rules` takes an optional `source` per rule (`SourcedRule`).
+- `ocra plugins allow <name>@<version>`, `ocra plugins deny <name>` and `ocra plugins list`: allow on this machine a plugin your ocra Cloud settings name. `allow` shows the package and its publisher, installs that exact version with install scripts off into `~/.config/ocra/plugins/`, and records its integrity (ADR-0027).
+- A signed-in local review loads the plugins your ocra Cloud settings name that this machine allowed, from that directory only, with the account's `pluginSettings` for them; never for `--pr`, `--mr` or with `--no-repo-config`. A plugin not allowed is skipped with one warning.
+- A model or failback chain per reviewer (`reviewers.<id>.models`) and per role (`roles.<verifier|judge|helper>.models`); an agent without one keeps its tier's chain (ADR-0025).
+- Task specs and completion requests carry an agent's own chain as `models`, and runtime factories receive every agent chain in `agentModels`; both built-in runtimes run those calls on it, with failback and a circuit breaker shared per model.
+- The JSON report's `provenance.agents.<id>.models` records each agent's chain, and `--plan` shows each task's chain.
+- While signed in, a review takes the runtime, tier models and effort, and each reviewer's and role's model and effort from your ocra Cloud Agents page wherever the repository's configuration leaves them out, and prints what it took.
+- A signed-in review applies the findings your ocra Cloud account remembers for the repository together with `.ocra/memory.json` (a finding both list counts as the repository's), and prints how many the account's memory hid (ADR-0028).
+- The JSON report's `remembered` entries carry their `source` (`repository` or `account`); `ReviewOptions.accountMemory` takes the account's entries, and `MemorySource` and `RememberedEntry` are exported.
+- When the account shares findings, the upload carries each finding (fingerprint, reviewer, severity, category, verification, file, lines, title, body, suggestion, quoted code), with secret-looking tokens redacted first and bounded to 200 findings, 4 KB per field and 256 KB in all.
+- While the account shares findings, the repository hash uses the account's salt, kept in `account-salt` beside the credentials, so it matches on all of the account's machines.
+- The counts sent to ocra Cloud after a review now include, per reviewer, its tasks, failed tasks, findings by severity, cost, and fixed and dismissed findings, plus the findings by verification and the run's fixed and dismissed totals. Still numbers only (ADR-0028).
+- Your ocra Cloud account can turn on `ultra`: a signed-in review then runs as if `--ultra` were given, prints it among the settings it took from the account, and `--plan` lists it with its source.
+
+### Changed
+
+- An account setting that does not match the configuration's schema is now ignored alone, with a warning naming it, instead of all of them; unknown keys are ignored with one warning, and `providers`, `extends` and `github` from the account are always ignored. Account models must be `ocra-<provider>/<model>`.
+- A failure to reach ocra Cloud for the settings is a warning, not an error.
+- The account's default models fill each tier the configuration leaves empty, not only a configuration with no models at all.
+- The pull request summary says how many findings the reviewing account's ocra Cloud memory hid, apart from those `.ocra/memory.json` hid.
+- `ReviewReport.remembered` is now `RememberedEntry[]`: code that builds a `ReviewReport` itself sets each entry's `source`.
+
 ## [0.4.0] - 2026-10-04
 
 ocra Cloud's first phase on the CLI side: sign in from the terminal, use the model keys stored in your account through its gateway, and see your reviews' counts on the web; nothing changes for a review that does not sign in. Also reasoning effort per tier, reviewer and role (ADR-0025). The Action's tag for this release is `jma49/Open-CR-Agent@v0.4.0`.
@@ -199,7 +229,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.1.2...v0.2.0
