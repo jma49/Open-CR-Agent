@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { CONFIG_SCHEMA_ID, ConfigError, configJsonSchema, loadConfig } from "./cli-config.js";
+import { ConfigError, loadConfig } from "./cli-config.js";
+import { CONFIG_SCHEMA_ID, configJsonSchema } from "./schema.js";
 
 const dirs: string[] = [];
 afterEach(() => {

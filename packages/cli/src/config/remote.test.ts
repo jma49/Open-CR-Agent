@@ -154,4 +154,20 @@ describe("extends", () => {
       expect(config.rules).toEqual([]);
     }
   });
+
+  it("ignores a shared configuration with an invalid value, even one the file overrides", async () => {
+    const warnings: string[] = [];
+    const config = await loadConfig(
+      root({ extends: "https://c.example/o.json", concurrency: 3 }),
+      {},
+      {
+        repository: true,
+        fetch: serve({ concurrency: 0, maxTasks: 9 }),
+        warn: (m) => warnings.push(m),
+      },
+    );
+    expect(warnings).toEqual([expect.stringContaining("its settings are invalid")]);
+    expect(config.concurrency).toBe(3);
+    expect(config.maxTasks).toBeUndefined();
+  });
 });

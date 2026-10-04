@@ -1,6 +1,6 @@
 import { repoRuleSchema } from "@open-cr-agent/core/internal";
 import { z } from "zod";
-import { configSchema } from "../config/cli-config.js";
+import { configSchema } from "../config/schema.js";
 import { CLOUD_PREFIX, isCloudModel } from "./providers.js";
 
 // What ocra Cloud's GET /api/preferences may set (ADR-0025, ADR-0027),

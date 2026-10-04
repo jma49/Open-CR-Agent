@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { AgentTaskSpec } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { type CliConfig, loadConfig } from "../../config/cli-config.js";
-import { mergeConfig, remoteConfigSchema } from "../../config/remote.js";
+import { layerSchema, resolveSettings } from "../../config/settings.js";
 import { capture, deps, removeRepos, repoWithChange } from "../../run.fakes.js";
 import { run } from "../../run.js";
 import { parseReviewArgs, type ReviewArgs } from "./args.js";
@@ -72,14 +72,18 @@ describe("effort configuration", () => {
   });
 
   it("merges a shared configuration's effort and roles under the repository's", () => {
-    const shared = remoteConfigSchema.parse({
+    const shared = layerSchema.parse({
       effort: { top: "high", light: "low" },
       roles: { judge: { effort: "high" } },
     });
-    const merged = mergeConfig(shared, {
+    const file = layerSchema.parse({
       effort: { light: "none" },
       roles: { helper: { effort: "minimal" } },
     });
+    const { settings: merged } = resolveSettings([
+      { source: "shared", settings: shared },
+      { source: "file", settings: file },
+    ]);
     expect(merged.effort).toEqual({ top: "high", light: "none" });
     expect(merged.roles).toEqual({ judge: { effort: "high" }, helper: { effort: "minimal" } });
   });

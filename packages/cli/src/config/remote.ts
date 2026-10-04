@@ -94,24 +94,3 @@ async function readLimited(response: Response, limit: number, name: string): Pro
   }
   return Buffer.concat(chunks).toString("utf8");
 }
-
-// The repository's own values win; lists and maps are combined.
-export function mergeConfig(
-  remote: RemoteConfig,
-  local: Record<string, unknown>,
-): Record<string, unknown> {
-  const { rules: _rules, ...settings } = remote;
-  const merged: Record<string, unknown> = { ...settings, ...local };
-  for (const key of ["models", "effort", "reviewers", "roles", "github", "providers"] as const) {
-    const a = settings[key];
-    const b = local[key];
-    if (a !== undefined || b !== undefined)
-      merged[key] = { ...(a ?? {}), ...((b as object) ?? {}) };
-  }
-  for (const key of ["include", "exclude"] as const) {
-    const a = settings[key] ?? [];
-    const b = (local[key] as string[] | undefined) ?? [];
-    if (a.length + b.length > 0) merged[key] = [...a, ...b];
-  }
-  return merged;
-}

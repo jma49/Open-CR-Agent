@@ -5,7 +5,7 @@ import type { AgentTaskSpec, OcraPlugin, RuntimeOptions } from "@open-cr-agent/c
 import { afterEach, describe, expect, it } from "vitest";
 import type { CloudDeps } from "../../cloud/deps.js";
 import { agentChains, type CliConfig, loadConfig } from "../../config/cli-config.js";
-import { mergeConfig, remoteConfigSchema } from "../../config/remote.js";
+import { layerSchema, resolveSettings } from "../../config/settings.js";
 import { capture, deps, removeRepos, repoWithChange } from "../../run.fakes.js";
 import { run } from "../../run.js";
 import { parseReviewArgs, type ReviewArgs } from "./args.js";
@@ -67,19 +67,26 @@ describe("per-agent model configuration", () => {
   });
 
   it("merges a shared configuration's chains under the repository's, per agent", () => {
-    const shared = remoteConfigSchema.parse({
+    const shared = layerSchema.parse({
       reviewers: { security: { models: "a/sec" }, docs: { models: "a/docs" } },
       roles: { judge: { models: "a/judge" } },
     });
-    const merged = mergeConfig(shared, {
+    const file = layerSchema.parse({
       reviewers: { security: { models: "b/sec" } },
       roles: { helper: { models: "b/small" } },
     });
+    const { settings: merged } = resolveSettings([
+      { source: "shared", settings: shared },
+      { source: "file", settings: file },
+    ]);
     expect(merged.reviewers).toEqual({
-      security: { models: "b/sec" },
-      docs: { models: "a/docs" },
+      security: { models: ["b/sec"] },
+      docs: { models: ["a/docs"] },
     });
-    expect(merged.roles).toEqual({ judge: { models: "a/judge" }, helper: { models: "b/small" } });
+    expect(merged.roles).toEqual({
+      judge: { models: ["a/judge"] },
+      helper: { models: ["b/small"] },
+    });
   });
 
   it("lists the chains of enabled reviewers and of the roles, by agent id", () => {
