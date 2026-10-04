@@ -4,7 +4,7 @@ ocra reviews code that may be hostile, so its security model is part of the prod
 
 ## Reporting a vulnerability
 
-Report it privately, through GitHub: [Security → Report a vulnerability](https://github.com/jma49/Open-CR-Agent/security/advisories/new). Only the maintainers and you can see the report. Do not open a public issue or pull request for it.
+Report it privately, through GitHub: [Security → Report a vulnerability](https://github.com/jma49/Open-CR-Agent/security/advisories/new). Only the maintainers and you can see the report. If you cannot use GitHub, email [meetjincheng@yahoo.com](mailto:meetjincheng@yahoo.com) with "ocra security" in the subject. Do not open a public issue or pull request for it.
 
 Please include:
 
