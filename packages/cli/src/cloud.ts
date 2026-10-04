@@ -168,10 +168,13 @@ async function fetchMe(deps: CloudDeps, server: string, token: string) {
  * it has expired or is about to; undefined when not signed in or the
  * session was revoked.
  */
-export async function cloudSession(deps: CloudDeps): Promise<Credentials | undefined> {
+export async function cloudSession(
+  deps: CloudDeps,
+  minValidityMs = 60_000,
+): Promise<Credentials | undefined> {
   const saved = await readCredentials(deps.credentialsPath);
   if (!saved) return undefined;
-  if (saved.expires_at - deps.now() > 60_000) return saved;
+  if (saved.expires_at - deps.now() > minValidityMs) return saved;
   const { status, body } = await postJson(deps, `${saved.server}/api/device/refresh`, {
     refresh_token: saved.refresh_token,
   });

@@ -25,8 +25,10 @@ import { githubPlugin } from "@open-cr-agent/vcs-github";
 import { gitlabPlugin } from "@open-cr-agent/vcs-gitlab";
 import { localGitPlugin } from "@open-cr-agent/vcs-local";
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
+import { defaultCloudDeps } from "../cloud.js";
 import { VERSION } from "../version.js";
 import type { ReviewArgs } from "./args.js";
+import { withCloudProviders } from "./cloud-providers.js";
 import { type CliConfig, ConfigError } from "./config.js";
 import { renderPlan } from "./plan-render.js";
 import { type Output, ProgressPrinter } from "./progress.js";
@@ -143,10 +145,17 @@ export async function reviewCommand(
 
   const sarif = await loadSarifLogs(args.importSarif ?? [], deps.cwd);
   const sampling = requestedSampling(config, args);
+  const cloud = await withCloudProviders(
+    config.models,
+    config.providers,
+    deps.env,
+    { ...defaultCloudDeps(deps.env), ...(deps.fetch ? { fetch: deps.fetch } : {}) },
+    warn,
+  );
   const runtime = registry.createRuntime(config.runtime, {
     models: config.models,
-    env: deps.env,
-    providers: config.providers,
+    env: cloud.env,
+    providers: cloud.providers,
     ...(Object.keys(sampling).length > 0 ? { sampling } : {}),
   });
 

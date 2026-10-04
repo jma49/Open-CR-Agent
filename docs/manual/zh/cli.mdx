@@ -143,4 +143,10 @@ ocra logout                                   # 在服务器上结束会话，�
 
 `ocra login` 使用 OAuth 设备授权流程（RFC 8628）：它打印一个验证码（如 `BCDF-GHJK`），打开服务器上的确认页（加 `--no-browser` 则只打印链接），然后等待你在已用 GitHub 登录的浏览器里批准。只批准你自己刚刚发起的验证码。之后这个终端持有一个会话：可以用服务器上保存的 key 调用模型、上传审查结果，但不能读取这些 key，也不能修改账号；它会显示在服务器的会话页面上，可以在那里撤销。
 
-会话保存在 `~/.config/ocra/credentials.json`（或 `$XDG_CONFIG_HOME/ocra/`，Windows 上为 `%APPDATA%\ocra\`），只有你本人可读。访问令牌有效期一小时，用刷新令牌续期，刷新令牌每次使用后都会更换。目前登录还不会改变 `ocra review` 选择模型的方式，这要等网关 provider 完成。
+会话保存在 `~/.config/ocra/credentials.json`（或 `$XDG_CONFIG_HOME/ocra/`，Windows 上为 `%APPDATA%\ocra\`），只有你本人可读。访问令牌有效期一小时，用刷新令牌续期，刷新令牌每次使用后都会更换。登录后，名为 `ocra-<provider>/<model>` 的模型会经由 ocra Cloud、使用服务器上为 `<provider>` 保存的 key 调用（走服务器列出的 OpenAI 兼容对话接口），例如：
+
+```json
+{ "runtime": "direct", "models": { "standard": "ocra-openrouter/qwen/qwen3.8-27b:free" } }
+```
+
+这类模型没有价格：报告中的费用和 `--max-cost-usd` 不计入它们，ocra 会给出警告。此时提示词及其中引用的代码会经过 ocra Cloud 再到达模型服务商；ocra Cloud 只记录每次调用的模型、状态码、token 数和耗时，从不记录请求和回答内容。没有使用 `ocra-` 模型的审查不会读取会话，也不会连接 ocra Cloud；配置中自己以 `ocra-` 名称声明的 provider 保持原有声明。
