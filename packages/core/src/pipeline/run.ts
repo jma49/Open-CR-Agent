@@ -12,7 +12,7 @@ import { priorCodePresence } from "../rereview/presence.js";
 import { reconcile, stillOpen } from "../rereview/reconcile.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
-import type { RepoRule } from "../rules/repo-rules.js";
+import type { SourcedRule } from "../rules/repo-rules.js";
 import type { SarifLog } from "../sarif/schema.js";
 import type { SelectionPolicy } from "../select/select.js";
 import { markUnchecked, verifyFindings } from "../verify/verify.js";
@@ -57,7 +57,8 @@ export interface ReviewOptions {
   // per agent in the provenance; a reviewer's or role's own chain is in
   // reviewerOverrides or roles and goes with its calls.
   models?: ModelChains;
-  rules?: readonly RepoRule[];
+  // Each with where it came from, when the caller knows, for the report.
+  rules?: readonly SourcedRule[];
   // Where AGENTS.md and .ocra/rules.json are read from. Defaults to the
   // revision under review; pull request reviews pass the trusted base.
   readTrusted?: (path: string) => Promise<string | undefined>;
@@ -351,6 +352,7 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
       reviewers,
       agents,
       reviewerOverrides,
+      plan.repoRules,
     );
   }
   if (prior.review) {

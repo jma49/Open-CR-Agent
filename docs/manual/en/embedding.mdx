@@ -77,7 +77,7 @@ try {
 | `roles` | Per role (`verifier`, `judge`, `helper`): its own `effort` and `models` chain |
 | `effort` | Reasoning effort per model tier ([Effort](./configuration#effort)) |
 | `models` | The tier chains the runtime was given, so the report's `provenance.agents` can record each agent's chain; the runtime itself takes them in `RuntimeOptions.models` |
-| `rules` | Path-scoped review rules (`RepoRule[]`), the registry's plus your own |
+| `rules` | Path-scoped review rules (`SourcedRule[]`: a `RepoRule` with an optional `source`, `repository`, `shared`, `account` or `plugin`), the registry's plus your own; the report's `provenance.rules` lists them with `.ocra/rules.json`'s as `repository` |
 | `readTrusted` | Where `AGENTS.md`, `.ocra/rules.json` and `.ocra/memory.json` are read from. Default: the revision under review; for a pull request, pass a reader of the trusted base so the change cannot rewrite them |
 | `selection` | Which files are reviewed: `include`, `exclude`, `maxPatchChars` |
 | `concurrency`, `taskTimeoutMs`, `runTimeoutMs` | Parallel tasks (4), the per-task timeout (10 minutes) and the run's (25 minutes) |
@@ -89,7 +89,7 @@ try {
 | `signal` | An `AbortSignal`: the run stops, keeps what it found and writes a partial report |
 | `onEvent` | Receives each `ReviewEvent` as the run progresses |
 | `runId` | Names the run in the report, the events and what is posted; generated when absent. The CLI passes its session id |
-| `provenance` | `{ ocraVersion, configHash, sampling? }`: with it, the report's `provenance` adds the hash of the system prompts the enabled reviewers and helper stages send and the sampling the runtime applied (`sampling` is what you asked the runtime for; `stableHash()` hashes a configuration of yours) |
+| `provenance` | `{ ocraVersion, configHash, sampling?, accountSettings? }`: with it, the report's `provenance` adds the hash of the system prompts the enabled reviewers and helper stages send and the sampling the runtime applied (`sampling` is what you asked the runtime for; `stableHash()` hashes a configuration of yours) |
 
 Up to 0.2, `ReviewOptions` also carried `bundling`, `grouper`, `relocate` and `abortGraceMs`; they were tuning and test hooks, never a contract, and are no longer part of it.
 

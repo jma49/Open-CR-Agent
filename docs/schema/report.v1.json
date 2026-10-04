@@ -958,6 +958,52 @@
             ],
             "additionalProperties": false
           }
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "rule": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "repository",
+                  "shared",
+                  "account",
+                  "plugin"
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "rule"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "accountSettings": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "version"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [

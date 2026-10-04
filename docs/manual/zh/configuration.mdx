@@ -138,6 +138,21 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 
 只接受 `https` 地址，不跟随重定向，最大 256 KB。可选的 `#sha256=` 片段会固定文件内容；声明了 `providers` 的文件必须固定，因为供应商决定了你的代码发往哪里（见[模型供应商](./providers#你自己的端点)）。文件无法加载或内容无效时，ocra 会给出警告，然后继续使用仓库自己的设置；只写在共享文件里的限制（例如 `maxCostUsd`）这时就不生效，必须始终生效的限制请在仓库里也写一份。
 
+## 账户设置
+
+登录 [ocra Cloud](./cli#ocra-login-ocra-logout-ocra-whoami) 后，`ocra review` 会读取你账户中的设置，放在配置之下。优先级从高到低：命令行参数、配置（仓库的文件或 `--config`、它 `extends` 的共享配置、`OCRA_*` 环境变量）、账户设置、ocra 的默认值。
+
+| 账户中的键 | 如何生效 |
+|---|---|
+| `runtime`（`opencode` 或 `direct`）、`models.<tier>`、`effort.<tier>`、`reviewers.<id>`、`roles.<role>` | 只补充配置没有写的部分；配置中某个审查员或角色的条目整体优先 |
+| `concurrency`、`taskTimeoutMinutes`、`runTimeoutMinutes`、`maxCostUsd`、`maxTasks`、`verify`、`judge`、`sampling` | 只在配置没有设置时生效；`sampling` 算作一个整体。因此账户可以为仓库未设上限的审查加上限，但不能放宽仓库已设的限制 |
+| `include`、`exclude` | 合并：先是配置中的模式，再是账户的 |
+| `rules` | 追加在仓库规则和共享规则之后：最多 50 条，格式与 [`.ocra/rules.json`](./rules) 的条目相同，每条规则最多 2,000 个字符，以同样的方式嵌入提示词 |
+
+每个键都按本文件自己的 schema 校验：不符合的键会被忽略，并给出点名该键的警告，其余键照常生效。当前版本 ocra 不认识的键会被忽略，并用一条警告列出。账户设置中的模型必须是 `ocra-<provider>/<model>`，经由 ocra Cloud 使用其中保存的 key。账户永远不能在这里设置 `providers`、`extends`、`github`（`botLogin` 决定信任谁的评论）或插件：无论服务器发送什么，ocra 都会忽略并给出警告。
+
+账户设置同样适用于 `--pr` 和 `--mr`，位于基准提交的配置之下：它们不来自被审查的代码。补充了哪些会打印出来（`From your ocra Cloud settings: …`），`--plan` 会列出每项设置及其来源，JSON 报告的 `provenance.accountSettings.version` 记录所用设置的保存版本；配置哈希覆盖该版本和账户规则，因此未登录时哈希不变。无法连接 ocra Cloud 时会给出警告，审查只使用配置。
+
 ## 插件
 
 `runtime` 指定使用哪个已注册的运行时：`opencode`（默认）通过 OpenCode 运行审查员，能用它目录里的所有供应商；`direct` 自己调用 `providers` 下声明的端点，不访问其他任何地址（见[模型供应商](./providers#选择运行时)）。`plugins` 按包名或路径列出额外的插件，`pluginSettings.<插件名>` 存放各插件自己的设置。详见[插件](./plugins)。

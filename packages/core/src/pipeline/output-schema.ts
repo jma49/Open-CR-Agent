@@ -154,6 +154,16 @@ const provenanceSchema = z.strictObject({
   configHash: z.string(),
   sampling: samplingSchema,
   agents: z.record(z.string(), agentProvenanceSchema).optional(),
+  rules: z
+    .array(
+      z.strictObject({
+        path: z.array(z.string()),
+        rule: z.string(),
+        source: z.enum(["repository", "shared", "account", "plugin"]).optional(),
+      }),
+    )
+    .optional(),
+  accountSettings: z.strictObject({ version: z.string().nullable() }).optional(),
 });
 
 export const reportOutputSchema = z.strictObject({

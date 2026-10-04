@@ -19,6 +19,8 @@ export function requestedSampling(config: CliConfig, args: ReviewArgs): Sampling
 // environment variables, never their values; a password written into a
 // URL is dropped. Sampling is recorded on its own. Effort is covered; left
 // unset it adds nothing, so configurations that set none keep their hash.
+// The ocra Cloud account settings (ADR-0027) add their version and rules
+// only when they were layered in, so a signed-out run keeps its hash.
 export function configHash(config: CliConfig, args: ReviewArgs): string {
   // runtimeSet says where the runtime came from, not what ran: the runtime is hashed.
   const {
@@ -28,10 +30,20 @@ export function configHash(config: CliConfig, args: ReviewArgs): string {
     extends: shared,
     effort,
     roles,
+    rules,
+    accountSettings,
     ...rest
   } = config;
+  const bare = (account: boolean) =>
+    rules
+      .filter((rule) => (rule.source === "account") === account)
+      .map(({ path, rule }) => ({ path, rule }));
   return stableHash({
     ...rest,
+    rules: bare(false),
+    ...(accountSettings
+      ? { account: { version: accountSettings.version, rules: bare(true) } }
+      : {}),
     ...(Object.keys(effort).length > 0 ? { effort } : {}),
     ...(Object.keys(roles).length > 0 ? { roles } : {}),
     ...(shared === undefined ? {} : { extends: withoutCredentials(shared) }),

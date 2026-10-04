@@ -10,6 +10,7 @@ import {
   type ReviewerOverrides,
   type RiskTier,
   type RoleSettings,
+  type SourcedRule,
   type TierEfforts,
 } from "@open-cr-agent/core";
 import { AGENT_ROLES, EFFORT_LEVELS, RISK_TIERS } from "@open-cr-agent/core/internal";
@@ -75,7 +76,7 @@ const providerSchema = z
 const BUILTIN_RUNTIMES = ["opencode", "direct"] as const;
 export const DEFAULT_RUNTIME = "opencode";
 
-const configSchema = z
+export const configSchema = z
   .object({
     $schema: z.string().optional(),
     models: z
@@ -175,8 +176,11 @@ export type CliConfig = Omit<
   // The file's, with OCRA_EFFORT_<TIER> on top.
   effort: TierEfforts;
   providers: Record<string, CustomProvider>;
-  // Rules from a shared configuration named by extends.
-  rules: RepoRule[];
+  // Rules from a shared configuration named by extends, then the account's.
+  rules: SourcedRule[];
+  // The ocra Cloud account settings layered under this configuration
+  // (ADR-0027), by version; absent when none were.
+  accountSettings?: { version: string | null };
 };
 
 export interface LoadOptions {
@@ -262,7 +266,7 @@ export async function loadConfig(
     models,
     effort: efforts,
     providers: toProviders(parsed.providers),
-    rules,
+    rules: rules.map((rule): SourcedRule => ({ ...rule, source: "shared" })),
   };
 }
 
@@ -386,23 +390,3 @@ async function readConfigFile(
   }
   return { config: merged.data, rules: remote.rules ?? [] };
 }
-
-/**
- * ocra Cloud's account settings (ADR-0025), checked with the same rules as a
- * configuration file; undefined when the server sends anything else.
- */
-export function parseAccountSettings(data: unknown) {
-  const b = (data ?? {}) as Record<string, unknown>;
-  const parsed = configSchema
-    .pick({ models: true, effort: true, reviewers: true, roles: true, runtime: true })
-    .safeParse({
-      models: b.models ?? {},
-      effort: (b.agents as Record<string, unknown> | undefined)?.effort ?? {},
-      reviewers: (b.agents as Record<string, unknown> | undefined)?.reviewers ?? {},
-      roles: (b.agents as Record<string, unknown> | undefined)?.roles ?? {},
-      ...(b.runtime === "direct" || b.runtime === "opencode" ? { runtime: b.runtime } : {}),
-    });
-  return parsed.success ? parsed.data : undefined;
-}
-
-export type AccountSettings = NonNullable<ReturnType<typeof parseAccountSettings>>;

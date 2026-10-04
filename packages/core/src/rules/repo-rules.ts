@@ -7,6 +7,12 @@ export const repoRuleSchema = z.object({
 });
 export type RepoRule = z.infer<typeof repoRuleSchema>;
 
+// Where a rule came from, recorded in the report: the reviewed repository's
+// .ocra/rules.json, a shared configuration (extends), the user's ocra Cloud
+// account (ADR-0027) or a plugin.
+export type RuleSource = "repository" | "shared" | "account" | "plugin";
+export type SourcedRule = RepoRule & { source?: RuleSource };
+
 export const repoRulesFileSchema = z.object({ rules: z.array(repoRuleSchema) });
 
 export const REPO_RULES_PATH = ".ocra/rules.json";

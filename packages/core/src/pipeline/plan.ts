@@ -2,7 +2,12 @@ import { type Bundle, bundleFiles, defaultBundlePolicy } from "../bundle/bundle.
 import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
 import type { ChangeRequest, FileDiff, RiskTier } from "../domain.js";
 import { MEMORY_PATH, type MemoryEntry, parseMemory } from "../memory/memory.js";
-import { parseRepoRules, REPO_RULES_PATH, type RepoRule } from "../rules/repo-rules.js";
+import {
+  parseRepoRules,
+  REPO_RULES_PATH,
+  type RepoRule,
+  type SourcedRule,
+} from "../rules/repo-rules.js";
 import { defaultSelectionPolicy, type FileDecision, selectFiles } from "../select/select.js";
 import { triage } from "../triage.js";
 import { roleCall } from "./agents.js";
@@ -28,7 +33,7 @@ export interface ReviewPlan {
   widened?: { from: RiskTier; to: RiskTier };
   context: ReviewContext;
   guidelines: string | undefined;
-  repoRules: RepoRule[];
+  repoRules: SourcedRule[];
   memory: MemoryEntry[];
   usage: Usage[];
   warnings: string[];
@@ -108,7 +113,10 @@ export async function planReview(
     ...(widened ? { widened } : {}),
     context: reviewContext(vcs, diffs),
     guidelines,
-    repoRules: [...(options.rules ?? []), ...fileRules],
+    repoRules: [
+      ...(options.rules ?? []),
+      ...fileRules.map((rule): SourcedRule => ({ ...rule, source: "repository" })),
+    ],
     memory: memoryText === undefined ? [] : parseMemory(memoryText),
     usage,
     warnings: bundled.warnings,

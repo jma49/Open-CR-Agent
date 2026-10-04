@@ -11,6 +11,7 @@ import {
   type ReviewOptions,
   type ReviewReport,
   review,
+  type SourcedRule,
   securityReviewerPlugin,
   sessionJsonlPlugin,
   startPlugins,
@@ -39,6 +40,7 @@ import { renderJson, renderText, safeJson } from "./render.js";
 import type { RuntimeLoaders } from "./runtimes.js";
 import { renderSarif } from "./sarif.js";
 import { loadSarifLogs } from "./sarif-input.js";
+import { effectiveSettings, renderSettings } from "./settings-sources.js";
 import { localTarget, mergeRequestTarget, pullRequestTarget } from "./target.js";
 import { forTerminal } from "./terminal.js";
 
@@ -108,18 +110,18 @@ export async function reviewCommand(
           configFile,
         )
       : await localTarget(localArgs, deps.cwd, root, deps.env, warn, deps.fetch);
-  // The account's settings fill what the repository leaves out; a plan makes
-  // no network call, so it shows the repository's alone.
+  // The account's settings fill what the repository leaves out (ADR-0027);
+  // unreachable, they cost a warning, so a plan still works offline.
   const cloudDeps = deps.cloud;
   const signedIn = cloudDeps !== undefined && (await cloudEnabled(cloudDeps));
   let config = target.config;
-  if (cloudDeps && signedIn && !args.plan) {
+  let filled: string[] = [];
+  if (cloudDeps && signedIn) {
     const account = await fetchAccountSettings(cloudDeps, warn);
     if (account) {
-      const layered = layerAccountSettings(config, account);
-      config = layered.config;
-      if (layered.filled.length > 0) {
-        io.err.write(`[ocra] From your ocra Cloud settings: ${layered.filled.join(", ")}\n`);
+      ({ config, filled } = layerAccountSettings(config, account));
+      if (filled.length > 0) {
+        io.err.write(`[ocra] From your ocra Cloud settings: ${filled.join(", ")}\n`);
       }
     }
   }
@@ -138,6 +140,10 @@ export async function reviewCommand(
     warn,
   });
   const vcs = target.createVcs(registry);
+  const rules: SourcedRule[] = [
+    ...registry.rules.map((rule): SourcedRule => ({ ...rule, source: "plugin" })),
+    ...config.rules,
+  ];
   const overrides = reviewerOverrides(
     config,
     args,
@@ -152,14 +158,17 @@ export async function reviewCommand(
       effort: config.effort,
       roles: config.roles,
       models: config.models,
-      rules: [...registry.rules, ...config.rules],
+      rules,
       selection: { ...defaultSelectionPolicy, include: config.include, exclude: config.exclude },
       ...(target.readTrusted ? { readTrusted: target.readTrusted } : {}),
       ...(args.ultra ? { ultra: true } : {}),
       ...(config.maxTasks !== undefined ? { maxTasks: config.maxTasks } : {}),
     });
+    const settings = effectiveSettings(target.config, config, filled);
     const rendered =
-      args.format === "json" ? `${safeJson(toPlanOutput(preview))}\n` : renderPlan(preview);
+      args.format === "json"
+        ? `${safeJson({ ...toPlanOutput(preview), settings, ...accountOf(config) })}\n`
+        : renderPlan(preview) + renderSettings(settings, config.accountSettings);
     if (args.output === undefined) io.out.write(rendered);
     else await deps.writeFile(resolve(deps.cwd, args.output), rendered);
     return EXIT.ok;
@@ -201,7 +210,12 @@ export async function reviewCommand(
       ...runOptions(config),
       models,
       reviewerOverrides: overrides,
-      provenance: { ocraVersion: VERSION, configHash: configHash(config, args), sampling },
+      provenance: {
+        ocraVersion: VERSION,
+        configHash: configHash(config, args),
+        sampling,
+        ...accountOf(config),
+      },
       ...(args.maxCostUsd !== undefined ? { maxCostUsd: args.maxCostUsd } : {}),
       ...(args.ultra ? { ultra: true } : {}),
       ...(args.full ? { fullReview: true } : {}),
@@ -210,7 +224,7 @@ export async function reviewCommand(
       vcs,
       runtime,
       reviewers: registry.reviewers,
-      rules: [...registry.rules, ...config.rules],
+      rules,
       onEvent: (event) => {
         registry.emit(event);
         progress.onEvent(event);
@@ -265,6 +279,10 @@ export async function reviewCommand(
     }
   }
   return exitCode(report, io.err);
+}
+
+function accountOf(config: CliConfig): { accountSettings?: { version: string | null } } {
+  return config.accountSettings ? { accountSettings: config.accountSettings } : {};
 }
 
 // A runtime not built in comes from a plugin of the configuration.

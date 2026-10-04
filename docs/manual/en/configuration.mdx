@@ -138,6 +138,21 @@ The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`
 
 Only `https` URLs are accepted, without redirects, up to 256 KB. The optional `#sha256=` fragment pins the exact content; a file that declares `providers` must be pinned, since a provider decides where your code goes ([Model providers](./providers#your-own-endpoint)). If the file cannot be loaded or is invalid, ocra warns and continues with the repository's own settings; limits set only in the shared file, such as `maxCostUsd`, then do not apply, so set them in the repository too if they must always hold.
 
+## Account settings
+
+When you are signed in to [ocra Cloud](./cli#ocra-login-ocra-logout-ocra-whoami), `ocra review` reads your account's settings and layers them under the configuration. Highest first: command-line flags, the configuration (the repository's file or `--config`, what it `extends`, and `OCRA_*` variables), your account's settings, ocra's defaults.
+
+| Account key | How it applies |
+|---|---|
+| `runtime` (`opencode` or `direct`), `models.<tier>`, `effort.<tier>`, `reviewers.<id>`, `roles.<role>` | Only where the configuration leaves it out; a reviewer's or role's entry in the configuration wins whole |
+| `concurrency`, `taskTimeoutMinutes`, `runTimeoutMinutes`, `maxCostUsd`, `maxTasks`, `verify`, `judge`, `sampling` | Only when the configuration does not set it; `sampling` counts as one setting. So the account can bound a run the repository left unbounded, never loosen a limit it set |
+| `include`, `exclude` | Combined: the configuration's patterns, then the account's |
+| `rules` | Added after the repository's and the shared ones: at most 50, each like an [`.ocra/rules.json`](./rules) entry with a rule of at most 2,000 characters, embedded in the prompt the same way |
+
+Each key is checked with this file's own schema: a key that does not match is ignored with a warning naming it, and the others still apply. Keys this version of ocra does not know are ignored with one warning naming them. Models in account settings must be `ocra-<provider>/<model>`, which go through ocra Cloud with the keys stored there. Your account can never set `providers`, `extends`, `github` (`botLogin` decides whose comments are trusted) or plugins here: ocra ignores them, with a warning, whatever the server sends.
+
+Account settings apply to `--pr` and `--mr` runs too, under the base commit's configuration: they do not come from the reviewed tree. What they filled in is printed (`From your ocra Cloud settings: …`), `--plan` lists every setting with its source, and the JSON report's `provenance.accountSettings.version` names the saved version used; the configuration hash covers it and the account's rules, so a signed-out run keeps its hash. If ocra Cloud cannot be reached, a warning says so and the review uses the configuration alone.
+
 ## Plugins
 
 `runtime` names the registered runtime to use: `opencode` (the default) runs the reviewers through OpenCode and reaches every provider in its catalog; `direct` calls the endpoints declared under `providers` itself and reaches nothing else ([Model providers](./providers#choosing-the-runtime)). `plugins` lists extra plugins by package name or path, and `pluginSettings.<plugin-name>` holds each plugin's settings. See [Plugins](./plugins).

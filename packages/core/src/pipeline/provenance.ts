@@ -6,6 +6,7 @@ import { JUDGE_SYSTEM_PROMPT } from "../judge/prompt.js";
 import { PLAN_SYSTEM_PROMPT } from "../review/plan-phase.js";
 import { buildReviewPrompt } from "../review/prompt.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
+import type { RuleSource, SourcedRule } from "../rules/repo-rules.js";
 import { VERIFY_SYSTEM_PROMPT } from "../verify/prompt.js";
 import type { ResolvedAgent } from "./agents.js";
 import type { ReviewerOverrides } from "./matrix.js";
@@ -23,6 +24,19 @@ export interface RunProvenance {
   // roles): its model tier, the effort it asked for, and what was applied.
   // Absent from reports made before agents were recorded.
   agents?: Record<string, AgentProvenance>;
+  // The path rules the review was given, each with where it came from when
+  // the caller said. Absent when there were none.
+  rules?: RuleProvenance[];
+  // The version of the ocra Cloud account settings layered under the
+  // configuration (ADR-0027); null when the account has never saved any.
+  // Absent when none were applied.
+  accountSettings?: { version: string | null };
+}
+
+export interface RuleProvenance {
+  path: string[];
+  rule: string;
+  source?: RuleSource;
 }
 
 export interface AgentProvenance {
@@ -46,6 +60,7 @@ export interface ProvenanceInput {
   // What was asked for; a runtime that does not say what it applied is
   // reported as applying none of it.
   sampling?: Sampling;
+  accountSettings?: { version: string | null };
 }
 
 // A short digest of a JSON value, the same whatever order its keys were
@@ -140,6 +155,7 @@ export function runProvenance(
   reviewers: readonly ReviewerDefinition[],
   agents: readonly ResolvedAgent[],
   overrides?: ReviewerOverrides,
+  rules: readonly SourcedRule[] = [],
 ): RunProvenance {
   return {
     ocraVersion: input.ocraVersion,
@@ -147,5 +163,17 @@ export function runProvenance(
     configHash: input.configHash,
     sampling: appliedSampling(runtime, input.sampling),
     agents: agentProvenance(agents, runtime),
+    ...(rules.length > 0 ? { rules: rules.map(ruleProvenance) } : {}),
+    ...(input.accountSettings
+      ? { accountSettings: { version: input.accountSettings.version } }
+      : {}),
+  };
+}
+
+function ruleProvenance({ path, rule, source }: SourcedRule): RuleProvenance {
+  return {
+    path: typeof path === "string" ? [path] : [...path],
+    rule,
+    ...(source ? { source } : {}),
   };
 }

@@ -75,4 +75,28 @@ describe("review provenance", () => {
       },
     });
   });
+
+  it("lists the rules with their source, and the account settings' version", async () => {
+    const report = await review({
+      vcs: vcs(
+        { ".ocra/rules.json": JSON.stringify({ rules: [{ path: "src/**", rule: "File rule." }] }) },
+        patch("src/a.ts", "const a = 1;"),
+      ),
+      runtime: done,
+      reviewers: [correctnessReviewer],
+      verify: false,
+      judge: false,
+      rules: [
+        { path: ["lib/**", "src/**"], rule: "Account rule.", source: "account" },
+        { path: "**", rule: "Unsourced rule." },
+      ],
+      provenance: { ocraVersion: "1", configHash: "c", accountSettings: { version: null } },
+    });
+    expect(report.provenance?.rules).toEqual([
+      { path: ["lib/**", "src/**"], rule: "Account rule.", source: "account" },
+      { path: ["**"], rule: "Unsourced rule." },
+      { path: ["src/**"], rule: "File rule.", source: "repository" },
+    ]);
+    expect(report.provenance?.accountSettings).toEqual({ version: null });
+  });
 });

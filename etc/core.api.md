@@ -646,6 +646,10 @@ export interface PriorReview {
 // @public (undocumented)
 export interface ProvenanceInput {
     // (undocumented)
+    accountSettings?: {
+        version: string | null;
+    };
+    // (undocumented)
     configHash: string;
     // (undocumented)
     ocraVersion: string;
@@ -1043,6 +1047,19 @@ export const reportOutputSchema: z.ZodObject<{
                 temperature: "temperature";
             }>>>;
         }, z.core.$strict>>>;
+        rules: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            path: z.ZodArray<z.ZodString>;
+            rule: z.ZodString;
+            source: z.ZodOptional<z.ZodEnum<{
+                account: "account";
+                plugin: "plugin";
+                repository: "repository";
+                shared: "shared";
+            }>>;
+        }, z.core.$strict>>>;
+        accountSettings: z.ZodOptional<z.ZodObject<{
+            version: z.ZodNullable<z.ZodString>;
+        }, z.core.$strict>>;
     }, z.core.$strict>>;
     usage: z.ZodObject<{
         inputTokens: z.ZodNumber;
@@ -1195,7 +1212,7 @@ export interface ReviewOptions {
     // (undocumented)
     roles?: RoleSettings;
     // (undocumented)
-    rules?: readonly RepoRule[];
+    rules?: readonly SourcedRule[];
     // (undocumented)
     runId?: string;
     // (undocumented)
@@ -1306,6 +1323,16 @@ export type RoleSettings = {
 };
 
 // @public (undocumented)
+export interface RuleProvenance {
+    // (undocumented)
+    path: string[];
+    // (undocumented)
+    rule: string;
+    // (undocumented)
+    source?: RuleSource;
+}
+
+// @public (undocumented)
 export interface RuleSet {
     // (undocumented)
     general?: string;
@@ -1314,7 +1341,14 @@ export interface RuleSet {
 }
 
 // @public (undocumented)
+export type RuleSource = "repository" | "shared" | "account" | "plugin";
+
+// @public (undocumented)
 export interface RunProvenance {
+    // (undocumented)
+    accountSettings?: {
+        version: string | null;
+    };
     // (undocumented)
     agents?: Record<string, AgentProvenance>;
     // (undocumented)
@@ -1323,6 +1357,8 @@ export interface RunProvenance {
     ocraVersion: string;
     // (undocumented)
     promptHash: string;
+    // (undocumented)
+    rules?: RuleProvenance[];
     // (undocumented)
     sampling: AppliedSampling;
 }
@@ -1466,6 +1502,11 @@ const skipReasonSchema: z.ZodEnum<{
     no_matching_files: "no_matching_files";
     task_limit: "task_limit";
 }>;
+
+// @public (undocumented)
+export type SourcedRule = RepoRule & {
+    source?: RuleSource;
+};
 
 // @public (undocumented)
 export class SpendLimitReached extends OcraError {

@@ -54,7 +54,7 @@ describe("extends", () => {
       security: { minTier: "full" },
     });
     expect(config.maxCostUsd).toBe(2);
-    expect(config.rules).toEqual([{ path: "services/**", rule: "Org rule." }]);
+    expect(config.rules).toEqual([{ path: "services/**", rule: "Org rule.", source: "shared" }]);
   });
 
   const gateway = (baseUrl: string) => ({
