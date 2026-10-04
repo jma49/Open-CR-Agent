@@ -33,8 +33,7 @@ describe("review relocation", () => {
     const report = await review({
       vcs: vcs({}, patch("src/a.ts", "const retries = -1;")),
       runtime,
-      verify: false,
-      judge: false,
+      stages: { verify: false, judge: false },
     });
     expect(report.findings[0]?.anchor.method).toBe("relocated");
     expect(report.findings[0]?.lineRange).toEqual({ start: 2, end: 2 });
@@ -50,9 +49,8 @@ describe("review relocation", () => {
     const report = await reviewWithHooks({
       vcs: vcs({}, patch("src/a.ts", "const retries = -1;")),
       runtime,
-      verify: false,
-      judge: false,
       relocate: false,
+      stages: { verify: false, judge: false },
     });
     expect(report.findings[0]?.anchor.method).toBe("file_level");
   });
@@ -81,9 +79,8 @@ describe("review relocation", () => {
     const report = await review({
       vcs: vcs({}, patch("src/a.ts", "const retries = -1;")),
       runtime: paraphrasing,
-      verify: false,
-      judge: false,
-      maxCostUsd: 0.6,
+      limits: { maxCostUsd: 0.6 },
+      stages: { verify: false, judge: false },
     });
     expect(calls).toBe(2);
     expect(report.findings.map((f) => f.anchor.method).sort()).toEqual([
@@ -118,9 +115,8 @@ describe("review relocation", () => {
         [patch("src/a.ts", "const retries = -1;"), patch("src/b.ts", "const b = 2;")].join("\n"),
       ),
       runtime: elsewhere,
-      verify: false,
-      judge: false,
       bundling: { groupingMinFiles: 100, maxFilesPerBundle: 1, maxBundleChars: 100_000 },
+      stages: { verify: false, judge: false },
     });
     expect(calls).toBe(0);
   });

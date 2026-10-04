@@ -60,7 +60,9 @@ describe("review provenance", () => {
     expect((await review(options)).provenance).toBeUndefined();
     const report = await review({
       ...options,
-      provenance: { ocraVersion: "1.2.3", configHash: "c0ffee", sampling: { temperature: 0 } },
+      identity: {
+        provenance: { ocraVersion: "1.2.3", configHash: "c0ffee", sampling: { temperature: 0 } },
+      },
     });
     expect(report.provenance).toEqual({
       ocraVersion: "1.2.3",
@@ -84,13 +86,14 @@ describe("review provenance", () => {
       ),
       runtime: done,
       reviewers: [correctnessReviewer],
-      verify: false,
-      judge: false,
       rules: [
         { path: ["lib/**", "src/**"], rule: "Account rule.", source: "account" },
         { path: "**", rule: "Unsourced rule." },
       ],
-      provenance: { ocraVersion: "1", configHash: "c", accountSettings: { version: null } },
+      stages: { verify: false, judge: false },
+      identity: {
+        provenance: { ocraVersion: "1", configHash: "c", accountSettings: { version: null } },
+      },
     });
     expect(report.provenance?.rules).toEqual([
       { path: ["lib/**", "src/**"], rule: "Account rule.", source: "account" },

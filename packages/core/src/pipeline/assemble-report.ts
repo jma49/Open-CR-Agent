@@ -27,21 +27,21 @@ export function assembleReport(run: RunFacts, stages: Stages, context: StageCont
   const { options, plan, budget } = context;
   const { executed, filtered, checked } = stages;
   if (checked.judged.decisions) report.judgement = checked.judged.decisions;
-  if (options.maxCostUsd !== undefined) {
+  if (options.limits?.maxCostUsd !== undefined) {
     const reached = budget.exhausted()
       ? "total"
       : executed.reviewLimitReached()
         ? "review"
         : undefined;
-    report.spendLimit = { usd: options.maxCostUsd, ...(reached ? { reached } : {}) };
+    report.spendLimit = { usd: options.limits?.maxCostUsd, ...(reached ? { reached } : {}) };
   }
   report.anchoring = summarizeAnchoring(report.findings, executed.relocations.length);
   const agents = resolveAgents(run.reviewers, options);
   report.warnings.push(...effortWarnings(agents, options.runtime));
-  if (options.provenance) {
+  if (options.identity?.provenance) {
     const { runtime, reviewerOverrides } = options;
     report.provenance = runProvenance(
-      options.provenance,
+      options.identity?.provenance,
       runtime,
       run.reviewers,
       agents,

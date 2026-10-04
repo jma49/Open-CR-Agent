@@ -33,6 +33,23 @@ function vcs(paths: string[]): VcsAdapter {
 }
 
 describe("previewReview", () => {
+  it("keeps the default for each selection field left out", async () => {
+    const huge = patch("src/huge.ts").replace("+b", `+${"x".repeat(200_001)}`);
+    const preview = await previewReview({
+      vcs: {
+        ...vcs([]),
+        getDiff: async () =>
+          parseUnifiedDiff([patch("src/a.ts"), patch("src/b.ts"), huge].join("\n")),
+      },
+      selection: { exclude: ["src/b.ts"] },
+    });
+    expect(preview.selected).toEqual(["src/a.ts"]);
+    expect(preview.excluded).toEqual([
+      { path: "src/b.ts", reason: "user_exclude" },
+      { path: "src/huge.ts", reason: "too_large" },
+    ]);
+  });
+
   it("plans files, bundles and tasks with prompt sizes and no model", async () => {
     const preview = await previewReview({
       vcs: vcs(["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts", "package-lock.json"]),
@@ -51,7 +68,7 @@ describe("previewReview", () => {
   });
 
   it("doubles the tasks in ultra mode", async () => {
-    const preview = await previewReview({ vcs: vcs(["src/a.ts"]), ultra: true });
+    const preview = await previewReview({ vcs: vcs(["src/a.ts"]), mode: { ultra: true } });
     expect(preview.tasks.map((t) => t.taskId)).toEqual(["correctness-1", "correctness-1b"]);
     expect(preview.groupingSkipped).toBe(false);
   });

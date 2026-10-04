@@ -1260,27 +1260,43 @@ export type ReviewEvent = {
 };
 
 // @public (undocumented)
-export interface ReviewOptions {
-    // (undocumented)
-    accountMemory?: readonly MemoryEntry[];
+export interface ReviewLimits {
     // (undocumented)
     concurrency?: number;
-    // (undocumented)
-    effort?: TierEfforts;
-    // (undocumented)
-    fullReview?: boolean;
-    // (undocumented)
-    judge?: boolean;
     // (undocumented)
     maxCostUsd?: number;
     // (undocumented)
     maxTasks?: number;
     // (undocumented)
+    runTimeoutMs?: number;
+    // (undocumented)
+    taskTimeoutMs?: number;
+}
+
+// @public (undocumented)
+export interface ReviewMode {
+    // (undocumented)
+    full?: boolean;
+    // (undocumented)
+    ultra?: boolean;
+}
+
+// @public (undocumented)
+export interface ReviewOptions {
+    // (undocumented)
+    accountMemory?: readonly MemoryEntry[];
+    // (undocumented)
+    effort?: TierEfforts;
+    // (undocumented)
+    identity?: RunIdentity;
+    // (undocumented)
+    limits?: ReviewLimits;
+    // (undocumented)
+    mode?: ReviewMode;
+    // (undocumented)
     models?: ModelChains;
     // (undocumented)
     onEvent?: (event: ReviewEvent) => void;
-    // (undocumented)
-    provenance?: ProvenanceInput;
     // (undocumented)
     readTrusted?: (path: string) => Promise<string | undefined>;
     // (undocumented)
@@ -1292,25 +1308,17 @@ export interface ReviewOptions {
     // (undocumented)
     rules?: readonly SourcedRule[];
     // (undocumented)
-    runId?: string;
-    // (undocumented)
     runtime: AgentRuntime;
-    // (undocumented)
-    runTimeoutMs?: number;
     // (undocumented)
     sarif?: readonly SarifLog[];
     // (undocumented)
-    selection?: SelectionPolicy;
+    selection?: Partial<SelectionPolicy>;
     // (undocumented)
     signal?: AbortSignal;
     // (undocumented)
-    taskTimeoutMs?: number;
-    // (undocumented)
-    ultra?: boolean;
+    stages?: ReviewStages;
     // (undocumented)
     vcs: VcsAdapter;
-    // (undocumented)
-    verify?: boolean;
 }
 
 // @public (undocumented)
@@ -1378,6 +1386,14 @@ export interface ReviewReport {
 }
 
 // @public (undocumented)
+export interface ReviewStages {
+    // (undocumented)
+    judge?: boolean;
+    // (undocumented)
+    verify?: boolean;
+}
+
+// @public (undocumented)
 export type ReviewToolName = (typeof REVIEW_TOOLS)[keyof typeof REVIEW_TOOLS];
 
 // @public (undocumented)
@@ -1426,6 +1442,14 @@ export interface RuleSet {
 
 // @public (undocumented)
 export type RuleSource = "repository" | "shared" | "account" | "plugin";
+
+// @public (undocumented)
+export interface RunIdentity {
+    // (undocumented)
+    provenance?: ProvenanceInput;
+    // (undocumented)
+    runId?: string;
+}
 
 // @public (undocumented)
 export interface RunProvenance {

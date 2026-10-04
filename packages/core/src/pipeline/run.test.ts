@@ -13,8 +13,8 @@ describe("review", () => {
     const given = await review({
       vcs: vcs({}, twoFiles),
       runtime: rt,
-      runId: "20261002T070000Z-abcdef",
       onEvent: (e) => events.push(e),
+      identity: { runId: "20261002T070000Z-abcdef" },
     });
     expect(given.runId).toBe("20261002T070000Z-abcdef");
     expect(events[0]).toMatchObject({ type: "run_started", runId: "20261002T070000Z-abcdef" });
@@ -140,7 +140,7 @@ describe("review", () => {
           scope: { minTier: "full" },
         },
       ],
-      ultra: true,
+      mode: { ultra: true },
     });
     expect(rt.specs.map((s) => s.taskId)).toEqual(["risky-1", "risky-1b"]);
     expect(report.findings).toHaveLength(1);
@@ -154,7 +154,7 @@ describe("review", () => {
       }
       yield { type: "done", taskId: spec.taskId };
     });
-    const report = await review({ vcs: vcs({}, twoFiles), runtime: rt, ultra: true });
+    const report = await review({ vcs: vcs({}, twoFiles), runtime: rt, mode: { ultra: true } });
     expect(report.coverage.map((c) => c.status)).toEqual(["reviewed", "reviewed"]);
   });
 
@@ -264,8 +264,8 @@ describe("review", () => {
     const report = await reviewWithHooks({
       vcs: vcs({}, twoFiles),
       runtime: rt,
-      taskTimeoutMs: 20,
       abortGraceMs: 20,
+      limits: { taskTimeoutMs: 20 },
     });
     expect(report.tasks[0]).toMatchObject({ status: "timed_out", error: "timed out after 20ms" });
   });
@@ -280,8 +280,7 @@ describe("review", () => {
     const report = await review({
       vcs: vcs({}, twoFiles),
       runtime: rt,
-      taskTimeoutMs: forever,
-      runTimeoutMs: forever,
+      limits: { taskTimeoutMs: forever, runTimeoutMs: forever },
     });
     expect(report.tasks.map((t) => t.status)).toEqual(["completed"]);
   });
@@ -382,7 +381,7 @@ describe("review", () => {
       vcs: vcs({}, twoFiles),
       runtime: rt,
       onEvent: (e) => events.push(e),
-      judge: false,
+      stages: { judge: false },
     });
     expect(report.findings.map((f) => f.title)).toEqual(["real"]);
     expect(report.refuted).toMatchObject([
@@ -391,7 +390,11 @@ describe("review", () => {
     expect(report.usage.inputTokens).toBe(2);
     expect(events.find((e) => e.type === "verification_finished")).toMatchObject({ checked: 2 });
 
-    const unverified = await review({ vcs: vcs({}, twoFiles), runtime: rt, verify: false });
+    const unverified = await review({
+      vcs: vcs({}, twoFiles),
+      runtime: rt,
+      stages: { verify: false },
+    });
     expect(unverified.findings).toHaveLength(2);
     expect(unverified.refuted).toEqual([]);
   });

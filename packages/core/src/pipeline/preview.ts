@@ -1,15 +1,15 @@
-import { type ReviewerOverrides, reviewerCall } from "../agent/settings.js";
+import { reviewerCall } from "../agent/settings.js";
 import { defaultBundlePolicy } from "../bundle/bundle.js";
-import type { Effort, ModelChains } from "../contracts.js";
+import type { Effort } from "../contracts.js";
 import type { ChangeRequest, RiskTier } from "../domain.js";
 import { memoryFor } from "../memory/memory.js";
 import { buildReviewPrompt } from "../review/prompt.js";
-import type { ReviewerDefinition } from "../review/reviewer.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import { resolveRules } from "../rules/resolve.js";
 import type { FileDecision } from "../select/select.js";
 import { isLargeBundle } from "./execute.js";
 import { planTasks, type SkippedCell } from "./matrix.js";
+import type { ReviewOptions } from "./options.js";
 import { type PlanOptions, planReview } from "./plan.js";
 
 export interface PreviewTask {
@@ -62,17 +62,14 @@ export interface ReviewPreview {
   warnings: string[];
 }
 
-export type PreviewOptions = Omit<PlanOptions, "runtime"> & {
-  reviewers?: readonly ReviewerDefinition[];
-  reviewerOverrides?: ReviewerOverrides;
-  ultra?: boolean;
-  maxTasks?: number;
-  // The tier chains, to show each task's resolved chain.
-  models?: ModelChains;
-  // A model's input price in US dollars per million tokens: 0 when it is
-  // unpriced, undefined when only the runtime's catalog knows it.
-  inputPrice?: (model: string) => number | undefined;
-};
+// A review's options without the runtime; the preview reads what decides
+// the files and the tasks.
+export type PreviewOptions = Omit<PlanOptions, "runtime"> &
+  Omit<ReviewOptions, "vcs" | "runtime"> & {
+    // A model's input price in US dollars per million tokens: 0 when it is
+    // unpriced, undefined when only the runtime's catalog knows it.
+    inputPrice?: (model: string) => number | undefined;
+  };
 
 // Everything a review would do before its first model call, for free: which
 // files, which tasks, and how large each first prompt is.
@@ -80,8 +77,8 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
   const plan = await planReview(options, () => {}, new AbortController().signal);
   const reviewers = options.reviewers ?? [correctnessReviewer];
   const planned = planTasks(plan.bundles, reviewers, plan.tier, options.reviewerOverrides, {
-    ultra: options.ultra === true,
-    ...(options.maxTasks !== undefined ? { maxTasks: options.maxTasks } : {}),
+    ultra: options.mode?.ultra === true,
+    ...(options.limits?.maxTasks !== undefined ? { maxTasks: options.limits?.maxTasks } : {}),
     hasGuidelines: Boolean(plan.guidelines?.trim()),
   });
   const { cells } = planned;
@@ -111,7 +108,7 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
     const models = call.models ?? options.models?.[cell.reviewer.modelTier];
     if (models?.length) task.models = [...models];
     const key = `${cell.reviewer.id}\0${cell.bundle.label}`;
-    if ((options.ultra || isLargeBundle(cell.bundle.files)) && !plannedBundles.has(key)) {
+    if ((options.mode?.ultra || isLargeBundle(cell.bundle.files)) && !plannedBundles.has(key)) {
       plannedBundles.add(key);
       task.planPromptTokens = tokens(buildReviewPrompt({ ...input, forPlanning: true }));
     }

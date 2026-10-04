@@ -51,7 +51,7 @@ try {
     runtime,
     reviewers: registry.reviewers,
     rules: registry.rules,
-    maxCostUsd: 2,
+    limits: { maxCostUsd: 2 },
     onEvent: (event) => registry.emit(event),
   });
   const { notReviewed, nothingReviewed } = coverageGaps(report);
@@ -79,19 +79,19 @@ try {
 | `models` | 运行时拿到的层级模型链，让报告的 `provenance.agents` 能记录每个 agent 的模型链；运行时本身通过 `RuntimeOptions.models` 接收它们 |
 | `rules` | 按路径生效的审查规则（`SourcedRule[]`：带可选来源 `source` 的 `RepoRule`，取值 `repository`、`shared`、`account` 或 `plugin`），注册表里的加上你自己的；报告的 `provenance.rules` 会列出它们，`.ocra/rules.json` 中的规则记为 `repository` |
 | `readTrusted` | 从哪里读取 `AGENTS.md`、`.ocra/rules.json` 和 `.ocra/memory.json`。默认是被审查的版本；审查 PR 时传入一个读取可信 base 的函数，改动就改不了它们 |
-| `selection` | 审查哪些文件：`include`、`exclude`、`maxPatchChars` |
-| `concurrency`、`taskTimeoutMs`、`runTimeoutMs` | 并行任务数（4）、单个任务的超时（10 分钟）和整次运行的超时（25 分钟）；超过 2^31 - 1 毫秒（约 24.8 天）的超时会被截到这个值 |
-| `verify`、`judge` | 对照 diff 核查问题，以及跨审查员合并、过滤和重新定级（默认都开启） |
-| `maxCostUsd`、`maxTasks` | 花费上限（[`--max-cost-usd`](./cli)）和任务数上限 |
-| `fullReview` | 即使平台报告了上次审查以来的改动，也审查所有文件 |
-| `ultra` | 以成本换召回率（[模式](./how-it-works#模式)） |
+| `selection` | 审查哪些文件：`include`、`exclude`、`maxPatchChars`（200,000）；没给的字段保持默认值 |
+| `limits.concurrency`、`limits.taskTimeoutMs`、`limits.runTimeoutMs` | 并行任务数（4）、单个任务的超时（10 分钟）和整次运行的超时（25 分钟）；超过 2^31 - 1 毫秒（约 24.8 天）的超时会被截到这个值 |
+| `stages.verify`、`stages.judge` | 对照 diff 核查问题，以及跨审查员合并、过滤和重新定级（默认都开启） |
+| `limits.maxCostUsd`、`limits.maxTasks` | 花费上限（[`--max-cost-usd`](./cli)）和任务数上限 |
+| `mode.full` | 即使平台报告了上次审查以来的改动，也审查所有文件 |
+| `mode.ultra` | 以成本换召回率（[模式](./how-it-works#模式)） |
 | `sarif` | 解析好的 SARIF 日志（`parseSarifLog`），其中落在改动上的结果加入审查（[SARIF 输入](./cli#sarif-输入)） |
 | `signal` | 一个 `AbortSignal`：运行会停下，保留已发现的问题并写出部分报告 |
 | `onEvent` | 在运行过程中接收每个 `ReviewEvent` |
-| `runId` | 在报告、事件和发布的内容里标识这次运行；不传则自动生成。CLI 传入它的会话 id |
-| `provenance` | `{ ocraVersion, configHash, sampling?, accountSettings? }`：传入后，报告的 `provenance` 会加上启用的审查员和辅助阶段所发系统提示词的哈希，以及运行时实际应用的采样设置（`sampling` 是你向运行时要求的设置；`stableHash()` 可以给你自己的配置算哈希） |
+| `identity.runId` | 在报告、事件和发布的内容里标识这次运行；不传则自动生成。CLI 传入它的会话 id |
+| `identity.provenance` | `{ ocraVersion, configHash, sampling?, accountSettings? }`：传入后，报告的 `provenance` 会加上启用的审查员和辅助阶段所发系统提示词的哈希，以及运行时实际应用的采样设置（`sampling` 是你向运行时要求的设置；`stableHash()` 可以给你自己的配置算哈希） |
 
-0.2 及以前，`ReviewOptions` 还带有 `bundling`、`grouper`、`relocate` 和 `abortGraceMs`；它们是调优和测试钩子，从来不是约定，现在已不在其中。
+0.5 及以前，限额、阶段、模式和标识这几类字段都是顶层选项（`maxCostUsd`、`verify`、`fullReview`、`runId` 等），`selection` 也必须给全三个字段。0.2 及以前，`ReviewOptions` 还带有 `bundling`、`grouper`、`relocate` 和 `abortGraceMs`；它们是调优和测试钩子，从来不是约定，现在已不在其中。
 
 ## 它返回什么
 

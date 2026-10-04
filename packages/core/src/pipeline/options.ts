@@ -34,14 +34,24 @@ export interface ReviewOptions {
   // (ADR-0028), applied with .ocra/memory.json's; a fingerprint both list is
   // reported as the repository's.
   accountMemory?: readonly MemoryEntry[];
-  selection?: SelectionPolicy;
+  // Which files are reviewed; what is left out is defaultSelectionPolicy's.
+  selection?: Partial<SelectionPolicy>;
+  limits?: ReviewLimits;
+  stages?: ReviewStages;
+  mode?: ReviewMode;
+  identity?: RunIdentity;
+  // SARIF logs of external analyzers; their results on the change join the
+  // findings (pipeline/imports.ts).
+  sarif?: readonly SarifLog[];
+  signal?: AbortSignal;
+  onEvent?: (event: ReviewEvent) => void;
+}
+
+// What a run may spend: time, money, parallel tasks and review tasks.
+export interface ReviewLimits {
   concurrency?: number;
   taskTimeoutMs?: number;
   runTimeoutMs?: number;
-  // Fact-check findings before reporting them (default true).
-  verify?: boolean;
-  // Merge, filter and recalibrate findings across reviewers on the top tier (default true).
-  judge?: boolean;
   // Review tasks stop starting at REVIEW_BUDGET_SHARE of this; Verify and
   // Judge use the rest, and are skipped (findings left unchecked) once it is
   // gone. Calls already running finish, so a run can end slightly above it.
@@ -49,22 +59,32 @@ export interface ReviewOptions {
   // At most this many review tasks (DEFAULT_MAX_TASKS); the rest are skipped
   // and their files reported as not reviewed.
   maxTasks?: number;
+}
+
+// The checking stages after the review tasks, both on by default.
+export interface ReviewStages {
+  // Fact-check findings before reporting them.
+  verify?: boolean;
+  // Merge, filter and recalibrate findings across reviewers on the top tier.
+  judge?: boolean;
+}
+
+export interface ReviewMode {
   // Review every file even when the platform reports what changed since the
   // previous review.
-  fullReview?: boolean;
+  full?: boolean;
   // Recall over cost: every reviewer at every tier, two samples per cell, and
   // findings the judge would drop kept as low confidence.
   ultra?: boolean;
-  // SARIF logs of external analyzers; their results on the change join the
-  // findings (pipeline/imports.ts).
-  sarif?: readonly SarifLog[];
+}
+
+// How the run is named and what it records it was made with.
+export interface RunIdentity {
   // Names the run in every output; the CLI passes its session id. Generated
   // when absent.
   runId?: string;
   // Recorded in the report with the prompt hash and the sampling applied.
   provenance?: ProvenanceInput;
-  signal?: AbortSignal;
-  onEvent?: (event: ReviewEvent) => void;
 }
 
 // Tuning and test hooks, outside the contract: review() does not take them,

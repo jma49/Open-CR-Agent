@@ -48,9 +48,8 @@ describe("review with SARIF logs", () => {
     const report = await review({
       vcs: vcs({ "src/b.ts": "keep\nconst b = 2;\n" }, twoFiles),
       runtime: rt,
-      verify: false,
-      judge: false,
       sarif: [log],
+      stages: { verify: false, judge: false },
     });
     expect(report.findings).toHaveLength(1);
     expect(report.findings[0]).toMatchObject({

@@ -25,15 +25,15 @@ export function review(options: ReviewOptions): Promise<ReviewReport> {
 export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Promise<ReviewReport> {
   const emit = options.onEvent ?? (() => {});
   const timeout = AbortSignal.timeout(
-    Math.min(options.runTimeoutMs ?? REVIEW_DEFAULTS.runTimeoutMs, MAX_TIMER_MS),
+    Math.min(options.limits?.runTimeoutMs ?? REVIEW_DEFAULTS.runTimeoutMs, MAX_TIMER_MS),
   );
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
   const reviewers = options.reviewers ?? [correctnessReviewer];
   if (reviewers.length === 0) throw new OcraError("CONFIG_INVALID", "No reviewer is registered");
-  const runId = options.runId ?? newRunId();
+  const runId = options.identity?.runId ?? newRunId();
 
   const prior = await loadPriorReview(options.vcs);
-  const scope = reviewScope(prior.review, options.fullReview === true);
+  const scope = reviewScope(prior.review, options.mode?.full === true);
   const plan = await planReview(
     scope.only
       ? {
@@ -46,7 +46,7 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
     emit,
     signal,
   );
-  const budget = spendTracker(options.maxCostUsd, plan.usage);
+  const budget = spendTracker(options.limits?.maxCostUsd, plan.usage);
   const context: StageContext = { options, plan, budget, signal, emit };
   const executed = await executeStage(reviewers, context);
   const filtered = await filterStage(executed, prior.review, context);

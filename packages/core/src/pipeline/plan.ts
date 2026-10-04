@@ -73,7 +73,7 @@ export async function planReview(
   emit({ type: "run_started", runId: options.runId ?? newRunId(), changeRequest });
 
   const diffs = await vcs.getDiff();
-  const decisions = selectFiles(diffs, options.selection ?? defaultSelectionPolicy);
+  const decisions = selectFiles(diffs, { ...defaultSelectionPolicy, ...options.selection });
   const selected = decisions.filter((d) => d.selected).map((d) => d.diff);
   const tier = triage(selected);
   emit({

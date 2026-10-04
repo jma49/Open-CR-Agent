@@ -28,7 +28,7 @@ describe("the agents-md reviewer and the repository's guidelines", () => {
           vcs: adapter,
           runtime: done,
           reviewers: [agentsMdReviewer],
-          verify: false,
+          stages: { verify: false },
         })
       ).tasks.length;
     const planned = async (adapter: typeof without) =>

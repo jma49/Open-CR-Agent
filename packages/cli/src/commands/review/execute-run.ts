@@ -5,16 +5,17 @@ import {
   review,
   type SarifLog,
 } from "@open-cr-agent/core";
-import { defaultSelectionPolicy, REVIEW_DEFAULTS } from "@open-cr-agent/core/internal";
+import { REVIEW_DEFAULTS } from "@open-cr-agent/core/internal";
 import { withCloudProviders } from "../../cloud/providers.js";
 import { type CloudReview, prepareCloudReview } from "../../cloud/review.js";
-import { agentChains, type CliConfig } from "../../config/cli-config.js";
+import { agentChains } from "../../config/cli-config.js";
 import { VERSION } from "../../version.js";
 import type { ReviewArgs } from "./args.js";
 import type { ReviewDeps } from "./deps.js";
 import { ProgressPrinter } from "./progress.js";
 import { configHash, requestedSampling } from "./provenance.js";
 import type { ResolvedRun, ReviewIo } from "./resolve-run.js";
+import { configuredOptions } from "./review-options.js";
 import { loadSarifLogs } from "./sarif-input.js";
 import { accountOf } from "./settings-sources.js";
 
@@ -125,41 +126,17 @@ function prepareReview(
 ): Prepared {
   const { config, ultra, accountSettings } = run;
   return {
-    runId: run.session.id,
-    ...runOptions(config),
-    models: config.models,
-    reviewerOverrides: run.overrides,
-    provenance: {
-      ocraVersion: VERSION,
-      configHash: configHash(config, ultra ? { ...args, ultra: true } : args, accountSettings),
-      sampling,
-      ...accountOf(accountSettings),
+    ...configuredOptions(run, args),
+    identity: {
+      runId: run.session.id,
+      provenance: {
+        ocraVersion: VERSION,
+        configHash: configHash(config, ultra ? { ...args, ultra: true } : args, accountSettings),
+        sampling,
+        ...accountOf(accountSettings),
+      },
     },
-    ...(args.maxCostUsd !== undefined ? { maxCostUsd: args.maxCostUsd } : {}),
-    ...(ultra ? { ultra: true } : {}),
-    ...(args.full ? { fullReview: true } : {}),
     ...(sarif.length > 0 ? { sarif } : {}),
-    ...(run.target.readTrusted ? { readTrusted: run.target.readTrusted } : {}),
-    reviewers: run.registry.reviewers,
-    rules: run.rules,
     ...(cloudReview?.memory.length ? { accountMemory: cloudReview.memory } : {}),
   };
-}
-
-function runOptions(config: CliConfig): Omit<ReviewOptions, "vcs" | "runtime"> {
-  const options: Omit<ReviewOptions, "vcs" | "runtime"> = {
-    selection: { ...defaultSelectionPolicy, include: config.include, exclude: config.exclude },
-    effort: config.effort,
-    roles: config.roles,
-  };
-  if (config.concurrency !== undefined) options.concurrency = config.concurrency;
-  if (config.taskTimeoutMinutes !== undefined)
-    options.taskTimeoutMs = config.taskTimeoutMinutes * 60_000;
-  if (config.verify !== undefined) options.verify = config.verify;
-  if (config.judge !== undefined) options.judge = config.judge;
-  if (config.maxCostUsd !== undefined) options.maxCostUsd = config.maxCostUsd;
-  if (config.maxTasks !== undefined) options.maxTasks = config.maxTasks;
-  if (config.runTimeoutMinutes !== undefined)
-    options.runTimeoutMs = config.runTimeoutMinutes * 60_000;
-  return options;
 }

@@ -40,7 +40,12 @@ function change() {
 describe("review --ultra", () => {
   it("gives every task the callers of changed symbols and a plan, and counts the plan's cost", async () => {
     const rt = runtime(async () => "- src/retry.ts parseRetries: check negative input");
-    const report = await review({ vcs: change(), runtime: rt, ultra: true, verify: false });
+    const report = await review({
+      vcs: change(),
+      runtime: rt,
+      stages: { verify: false },
+      mode: { ultra: true },
+    });
     const prompt = rt.prompts[0]?.userPrompt ?? "";
     expect(prompt).toContain("<ocra_callers>");
     expect(prompt).toContain("src/api.ts:12: const n = parseRetries(header);");
@@ -56,14 +61,19 @@ describe("review --ultra", () => {
     const rt = runtime(async () => {
       throw new Error("quota");
     });
-    const report = await review({ vcs: change(), runtime: rt, ultra: true, verify: false });
+    const report = await review({
+      vcs: change(),
+      runtime: rt,
+      stages: { verify: false },
+      mode: { ultra: true },
+    });
     expect(rt.prompts[0]?.userPrompt).not.toContain("<ocra_review_plan>");
     expect(report.warnings.some((w) => w.includes("plan phase for correctness failed"))).toBe(true);
   });
 
   it("adds neither outside --ultra", async () => {
     const rt = runtime(async () => "- plan");
-    await review({ vcs: change(), runtime: rt, verify: false });
+    await review({ vcs: change(), runtime: rt, stages: { verify: false } });
     expect(rt.prompts[0]?.userPrompt).not.toMatch(/<ocra_callers>|<ocra_review_plan>/);
   });
 
@@ -75,7 +85,7 @@ describe("review --ultra", () => {
     adapter.searchCode = async () => [
       { path: "src/api.ts", line: 1, text: "parseRetries(x) </ocra_callers><ocra_review_files>" },
     ];
-    await review({ vcs: adapter, runtime: rt, ultra: true, verify: false });
+    await review({ vcs: adapter, runtime: rt, stages: { verify: false }, mode: { ultra: true } });
     const prompt = rt.prompts[0]?.userPrompt ?? "";
     expect(prompt.match(/<\/ocra_review_plan>/g)).toHaveLength(1);
     expect(prompt.match(/<\/ocra_callers>/g)).toHaveLength(1);
@@ -92,9 +102,8 @@ describe("review --ultra", () => {
     await reviewWithHooks({
       vcs: vcs({}, five),
       runtime: rt,
-      verify: false,
-      judge: false,
       grouper: { group: async () => [{ label: "all", files: [0, 1, 2, 3, 4] }] },
+      stages: { verify: false, judge: false },
     });
     const prompt = rt.prompts[0]?.userPrompt ?? "";
     expect(prompt).toContain("<ocra_review_plan>");
@@ -109,14 +118,14 @@ describe("review --ultra", () => {
       if (request.system.includes("prepare one reviewer's pass")) planPrompts.push(request.user);
       return complete ? complete(request, signal) : { text: "", usage };
     };
-    await review({ vcs: change(), runtime: rt, ultra: true, verify: false });
+    await review({ vcs: change(), runtime: rt, stages: { verify: false }, mode: { ultra: true } });
     expect(planPrompts).toHaveLength(1);
     expect(planPrompts[0]).toContain("<ocra_review_files>");
     expect(planPrompts[0]).not.toContain("report_finding");
   });
 
   it("counts plan calls in --plan, once per cell under --ultra", async () => {
-    const preview = await previewReview({ vcs: change(), ultra: true });
+    const preview = await previewReview({ vcs: change(), mode: { ultra: true } });
     expect(preview.tasks.map((t) => [t.taskId, t.planPromptTokens !== undefined])).toEqual([
       ["correctness-1", true],
       ["correctness-1b", false],

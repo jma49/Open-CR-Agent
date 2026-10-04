@@ -47,8 +47,7 @@ describe("review with a spend limit", () => {
       vcs: vcs({}, files(4)),
       runtime: pricedRuntime(0.3),
       bundling: perFile,
-      concurrency: 1,
-      maxCostUsd: 1,
+      limits: { concurrency: 1, maxCostUsd: 1 },
     });
     // $0.9 after three tasks: past $0.8, so the fourth never starts.
     expect(report.tasks.map((t) => t.status)).toEqual([
@@ -77,8 +76,7 @@ describe("review with a spend limit", () => {
       vcs: vcs({}, files(2)),
       runtime: pricedRuntime(0.1),
       bundling: perFile,
-      concurrency: 1,
-      maxCostUsd: 5,
+      limits: { concurrency: 1, maxCostUsd: 5 },
     });
     expect(report.spendLimit).toEqual({ usd: 5 });
     expect(report.warnings).toEqual([]);
@@ -105,10 +103,8 @@ describe("review with a spend limit", () => {
       vcs: vcs({}, files(4)),
       runtime: rt,
       bundling: perFile,
-      concurrency: 2,
-      maxCostUsd: 2,
-      verify: false,
-      judge: false,
+      limits: { concurrency: 2, maxCostUsd: 2 },
+      stages: { verify: false, judge: false },
     });
     expect(report.tasks.map((t) => [t.status, t.error])).toEqual([
       ["cancelled", "stopped at the spend limit of $2"],
@@ -139,8 +135,7 @@ describe("review with a spend limit", () => {
       vcs: vcs({}, files(3)),
       runtime: rt,
       bundling: perFile,
-      concurrency: 1,
-      maxCostUsd: 1,
+      limits: { concurrency: 1, maxCostUsd: 1 },
     });
     expect(report.findings.map((f) => f.verification)).toEqual([
       "confirmed",
@@ -157,8 +152,7 @@ describe("review with a spend limit", () => {
       vcs: vcs({}, files(2)),
       runtime: rt,
       bundling: perFile,
-      concurrency: 1,
-      maxCostUsd: 1,
+      limits: { concurrency: 1, maxCostUsd: 1 },
     });
     expect(rt.requests).toEqual([]);
     expect(report.findings.map((f) => f.verification)).toEqual(["unchecked", "unchecked"]);
@@ -174,8 +168,7 @@ describe("review with a spend limit", () => {
       vcs: vcs({}, files(2)),
       runtime: pricedRuntime(0, 0),
       bundling: perFile,
-      concurrency: 1,
-      maxCostUsd: 1,
+      limits: { concurrency: 1, maxCostUsd: 1 },
     });
     expect(report.usage.costUsd).toBe(0);
     expect(report.warnings[0]).toBe(
@@ -194,8 +187,7 @@ describe("review with a spend limit", () => {
       vcs: vcs({}, files(2)),
       runtime: pricedRuntime(0),
       bundling: perFile,
-      verify: false,
-      judge: false,
+      stages: { verify: false, judge: false },
     });
     const [remembered, dismissed] = first.findings;
     const memory = JSON.stringify({

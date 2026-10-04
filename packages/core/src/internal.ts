@@ -22,5 +22,4 @@ export { newRunId } from "./pipeline/run-id.js";
 export { isUnsafeCodePoint, serializeOutput } from "./report/serialize.js";
 export { repoRuleSchema } from "./rules/repo-rules.js";
 export { sleep } from "./runtime/quota.js";
-export { defaultSelectionPolicy } from "./select/select.js";
 export { REPORT_FILE } from "./session/jsonl.js";

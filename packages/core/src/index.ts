@@ -64,7 +64,13 @@ export type { MemoryEntry, MemorySource, RememberedEntry } from "./memory/memory
 export { type ProxyEnv, proxiedFetch } from "./net/proxied-fetch.js";
 export { AccessDeniedError } from "./pipeline/context.js";
 export type { SkippedCell, SkipReason } from "./pipeline/matrix.js";
-export type { ReviewOptions } from "./pipeline/options.js";
+export type {
+  ReviewLimits,
+  ReviewMode,
+  ReviewOptions,
+  ReviewStages,
+  RunIdentity,
+} from "./pipeline/options.js";
 export type { ProvenanceInput } from "./pipeline/provenance.js";
 export { review } from "./pipeline/run.js";
 export {

@@ -41,15 +41,15 @@ export async function executeStage(
 ): Promise<ExecuteStage> {
   const { options, plan, emit } = context;
   const matrix = planTasks(plan.bundles, reviewers, plan.tier, options.reviewerOverrides, {
-    ultra: options.ultra === true,
-    ...(options.maxTasks !== undefined ? { maxTasks: options.maxTasks } : {}),
+    ultra: options.mode?.ultra === true,
+    ...(options.limits?.maxTasks !== undefined ? { maxTasks: options.limits?.maxTasks } : {}),
     hasGuidelines: Boolean(plan.guidelines?.trim()),
   });
   const warnings: string[] = [];
   const limited = matrix.skipped.filter((s) => s.reason === "task_limit").length;
   if (limited > 0) {
     warnings.push(
-      `task limit of ${options.maxTasks ?? DEFAULT_MAX_TASKS} reached: ${limited} review task(s) skipped; their files are reported as not reviewed`,
+      `task limit of ${options.limits?.maxTasks ?? DEFAULT_MAX_TASKS} reached: ${limited} review task(s) skipped; their files are reported as not reviewed`,
     );
   }
   emit({ type: "matrix_planned", tasks: matrix.cells.length, skipped: matrix.skipped });
@@ -60,7 +60,7 @@ export async function executeStage(
   let unaffordable = 0;
   const results = await mapWithConcurrency(
     matrix.cells,
-    options.concurrency ?? REVIEW_DEFAULTS.concurrency,
+    options.limits?.concurrency ?? REVIEW_DEFAULTS.concurrency,
     async (cell) => {
       // Once the run is cancelled or timed out, remaining cells are not started.
       if (context.signal.aborted) {
@@ -70,14 +70,14 @@ export async function executeStage(
       if (context.budget.reviewExhausted()) {
         notStarted.add(cell.taskId);
         unaffordable += 1;
-        return skipCell(cell, `spend limit of $${options.maxCostUsd} reached`, emit);
+        return skipCell(cell, `spend limit of $${options.limits?.maxCostUsd} reached`, emit);
       }
       return runJob(cell, plan, execute);
     },
   );
   if (unaffordable > 0) {
     warnings.push(
-      `spend limit of $${options.maxCostUsd} reached: ${unaffordable} review task(s) did not start; their files are reported as not reviewed`,
+      `spend limit of $${options.limits?.maxCostUsd} reached: ${unaffordable} review task(s) did not start; their files are reported as not reviewed`,
     );
   }
   warnings.push(...results.flatMap((r) => r.warnings));
@@ -103,13 +103,16 @@ function executeOptions(
   });
   return {
     runtime: options.runtime,
-    taskTimeoutMs: Math.min(options.taskTimeoutMs ?? REVIEW_DEFAULTS.taskTimeoutMs, MAX_TIMER_MS),
+    taskTimeoutMs: Math.min(
+      options.limits?.taskTimeoutMs ?? REVIEW_DEFAULTS.taskTimeoutMs,
+      MAX_TIMER_MS,
+    ),
     abortGraceMs: options.abortGraceMs,
     // Past the spend limit a quote that does not match stays file-level.
     relocate:
       relocator &&
       (async (request: RelocationRequest) => (budget.exhausted() ? undefined : relocator(request))),
-    ultra: options.ultra === true,
+    ultra: options.mode?.ultra === true,
     plans: new Map(),
     agents: options,
     emit,
@@ -118,7 +121,7 @@ function executeOptions(
     onUsage: (usage: Usage) => {
       budget.add(usage);
       if (budget.reviewExhausted() && !spendLimit.signal.aborted) {
-        spendLimit.abort(new SpendLimitReached(options.maxCostUsd ?? 0));
+        spendLimit.abort(new SpendLimitReached(options.limits?.maxCostUsd ?? 0));
       }
     },
     signal: AbortSignal.any([signal, spendLimit.signal]),

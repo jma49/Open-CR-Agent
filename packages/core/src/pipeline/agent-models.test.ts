@@ -102,11 +102,11 @@ describe("review with per-agent models", () => {
       vcs: change(),
       runtime,
       reviewers: [correctnessReviewer, securityReviewer],
-      ultra: true,
       models: tiers,
       reviewerOverrides: { correctness: { models: ["a/c1", "a/c2"] } },
       roles: { helper: { models: ["a/small"] }, judge: { models: ["a/judge"] } },
-      provenance: { ocraVersion: "1", configHash: "c" },
+      mode: { ultra: true },
+      identity: { provenance: { ocraVersion: "1", configHash: "c" } },
     });
     const taskChains = new Set(runtime.tasks.map((t) => `${t.reviewer}:${t.models ?? "tier"}`));
     expect(taskChains).toEqual(new Set(["correctness:a/c1,a/c2", "security:tier"]));
@@ -133,8 +133,8 @@ describe("review with per-agent models", () => {
       vcs: change(),
       runtime,
       reviewers: [correctnessReviewer],
-      ultra: true,
-      provenance: { ocraVersion: "1", configHash: "c" },
+      mode: { ultra: true },
+      identity: { provenance: { ocraVersion: "1", configHash: "c" } },
     });
     expect(runtime.tasks.every((t) => !("models" in t))).toBe(true);
     expect(runtime.calls.length).toBeGreaterThan(0);
@@ -150,7 +150,7 @@ describe("previewReview with per-agent models", () => {
       reviewers: [correctnessReviewer, securityReviewer],
       models: { standard: ["t/std", "t/std2"] },
       reviewerOverrides: { security: { models: ["a/sec"] } },
-      ultra: true,
+      mode: { ultra: true },
     });
     expect(Object.fromEntries(preview.tasks.map((t) => [t.reviewer, t.models]))).toEqual({
       correctness: ["t/std", "t/std2"],

@@ -51,7 +51,7 @@ try {
     runtime,
     reviewers: registry.reviewers,
     rules: registry.rules,
-    maxCostUsd: 2,
+    limits: { maxCostUsd: 2 },
     onEvent: (event) => registry.emit(event),
   });
   const { notReviewed, nothingReviewed } = coverageGaps(report);
@@ -79,19 +79,19 @@ try {
 | `models` | The tier chains the runtime was given, so the report's `provenance.agents` can record each agent's chain; the runtime itself takes them in `RuntimeOptions.models` |
 | `rules` | Path-scoped review rules (`SourcedRule[]`: a `RepoRule` with an optional `source`, `repository`, `shared`, `account` or `plugin`), the registry's plus your own; the report's `provenance.rules` lists them with `.ocra/rules.json`'s as `repository` |
 | `readTrusted` | Where `AGENTS.md`, `.ocra/rules.json` and `.ocra/memory.json` are read from. Default: the revision under review; for a pull request, pass a reader of the trusted base so the change cannot rewrite them |
-| `selection` | Which files are reviewed: `include`, `exclude`, `maxPatchChars` |
-| `concurrency`, `taskTimeoutMs`, `runTimeoutMs` | Parallel tasks (4), the per-task timeout (10 minutes) and the run's (25 minutes); a timeout past 2^31 - 1 ms (about 24.8 days) is cut to that |
-| `verify`, `judge` | Fact-check findings against the diff, and merge, filter and recalibrate them across reviewers (both default on) |
-| `maxCostUsd`, `maxTasks` | The spend limit ([`--max-cost-usd`](./cli)) and the task cap |
-| `fullReview` | Review every file although the platform reports what changed since the previous review |
-| `ultra` | Recall over cost ([Modes](./how-it-works#modes)) |
+| `selection` | Which files are reviewed: `include`, `exclude`, `maxPatchChars` (200,000); each one left out keeps its default |
+| `limits.concurrency`, `limits.taskTimeoutMs`, `limits.runTimeoutMs` | Parallel tasks (4), the per-task timeout (10 minutes) and the run's (25 minutes); a timeout past 2^31 - 1 ms (about 24.8 days) is cut to that |
+| `stages.verify`, `stages.judge` | Fact-check findings against the diff, and merge, filter and recalibrate them across reviewers (both default on) |
+| `limits.maxCostUsd`, `limits.maxTasks` | The spend limit ([`--max-cost-usd`](./cli)) and the task cap |
+| `mode.full` | Review every file although the platform reports what changed since the previous review |
+| `mode.ultra` | Recall over cost ([Modes](./how-it-works#modes)) |
 | `sarif` | Parsed SARIF logs (`parseSarifLog`) whose results on the change join the review ([SARIF input](./cli#sarif-input)) |
 | `signal` | An `AbortSignal`: the run stops, keeps what it found and writes a partial report |
 | `onEvent` | Receives each `ReviewEvent` as the run progresses |
-| `runId` | Names the run in the report, the events and what is posted; generated when absent. The CLI passes its session id |
-| `provenance` | `{ ocraVersion, configHash, sampling?, accountSettings? }`: with it, the report's `provenance` adds the hash of the system prompts the enabled reviewers and helper stages send and the sampling the runtime applied (`sampling` is what you asked the runtime for; `stableHash()` hashes a configuration of yours) |
+| `identity.runId` | Names the run in the report, the events and what is posted; generated when absent. The CLI passes its session id |
+| `identity.provenance` | `{ ocraVersion, configHash, sampling?, accountSettings? }`: with it, the report's `provenance` adds the hash of the system prompts the enabled reviewers and helper stages send and the sampling the runtime applied (`sampling` is what you asked the runtime for; `stableHash()` hashes a configuration of yours) |
 
-Up to 0.2, `ReviewOptions` also carried `bundling`, `grouper`, `relocate` and `abortGraceMs`; they were tuning and test hooks, never a contract, and are no longer part of it.
+Up to 0.5, the limits, stages, mode and identity fields were top-level options (`maxCostUsd`, `verify`, `fullReview`, `runId`, …) and `selection` needed all three of its fields. Up to 0.2, `ReviewOptions` also carried `bundling`, `grouper`, `relocate` and `abortGraceMs`; they were tuning and test hooks, never a contract, and are no longer part of it.
 
 ## What it returns
 

@@ -161,10 +161,10 @@ describe("review with effort", () => {
       vcs: change(),
       runtime,
       reviewers: [correctnessReviewer, securityReviewer],
-      ultra: true,
       effort: { standard: "medium", top: "high" },
       reviewerOverrides: { security: { effort: "low" } },
       roles: { helper: { effort: "minimal" }, verifier: { effort: "none" } },
+      mode: { ultra: true },
     });
     const taskEfforts = new Set(runtime.tasks.map((t) => `${t.reviewer}:${t.effort}`));
     expect(taskEfforts).toEqual(new Set(["correctness:medium", "security:low"]));
@@ -185,7 +185,12 @@ describe("review with effort", () => {
 
   it("sends no effort when none is configured", async () => {
     const runtime = recording();
-    await review({ vcs: change(), runtime, reviewers: [correctnessReviewer], ultra: true });
+    await review({
+      vcs: change(),
+      runtime,
+      reviewers: [correctnessReviewer],
+      mode: { ultra: true },
+    });
     expect(runtime.tasks.every((t) => !("effort" in t))).toBe(true);
     expect(runtime.calls.length).toBeGreaterThan(0);
     expect(runtime.calls.every((c) => !("effort" in c))).toBe(true);
@@ -197,10 +202,9 @@ describe("review with effort", () => {
       vcs: change(),
       runtime,
       reviewers: [correctnessReviewer],
-      verify: false,
-      judge: false,
       effort: { standard: "high" },
-      provenance: { ocraVersion: "1", configHash: "c" },
+      stages: { verify: false, judge: false },
+      identity: { provenance: { ocraVersion: "1", configHash: "c" } },
     });
     expect(report.warnings.filter((w) => w.includes("reasoning effort"))).toEqual([
       "the fake runtime does not apply reasoning effort; the effort configured for correctness, verifier was not sent",
@@ -220,7 +224,7 @@ describe("previewReview with effort", () => {
       reviewers: [correctnessReviewer, securityReviewer],
       effort: { standard: "medium" },
       reviewerOverrides: { security: { effort: "high" } },
-      ultra: true,
+      mode: { ultra: true },
     });
     expect(new Set(preview.tasks.map((t) => `${t.reviewer}:${t.effort}`))).toEqual(
       new Set(["correctness:medium", "security:high"]),

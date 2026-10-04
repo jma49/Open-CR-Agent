@@ -34,7 +34,7 @@ async function verify(
   { reconciled }: FilterStage,
   { options, plan, budget, signal, emit }: StageContext,
 ): Promise<VerificationResult> {
-  if (options.verify === false) {
+  if (options.stages?.verify === false) {
     return {
       checked: 0,
       kept: markUnchecked(reconciled.findings),
@@ -49,7 +49,7 @@ async function verify(
     diffs: plan.selected,
     context: plan.context,
     signal,
-    concurrency: options.concurrency ?? REVIEW_DEFAULTS.concurrency,
+    concurrency: options.limits?.concurrency ?? REVIEW_DEFAULTS.concurrency,
     budget,
     call: roleCall("verifier", options),
   });
@@ -68,7 +68,7 @@ async function judge(
   { reconciled, nothingReviewed }: FilterStage,
   { options, plan, budget, signal, emit }: StageContext,
 ): Promise<JudgeResult> {
-  const wanted = options.judge !== false && verification.kept.length > 0;
+  const wanted = options.stages?.judge !== false && verification.kept.length > 0;
   const affordable = !budget.exhausted();
   const judged = await judgeFindings(verification.kept, {
     runtime: options.runtime,
@@ -77,11 +77,13 @@ async function judge(
     signal,
     call: roleCall("judge", options),
     enabled: wanted && affordable,
-    keepDropped: options.ultra === true,
+    keepDropped: options.mode?.ultra === true,
     carried: stillOpen(reconciled),
   });
   if (wanted && !affordable) {
-    judged.warnings.push(`spend limit of $${options.maxCostUsd} reached: findings were not judged`);
+    judged.warnings.push(
+      `spend limit of $${options.limits?.maxCostUsd} reached: findings were not judged`,
+    );
   }
   if (!nothingReviewed) {
     emit(
