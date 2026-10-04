@@ -17,6 +17,9 @@ type CloudDeps = {
     clientName: string;
 };
 
+// @public
+type NpmRunner = (args: readonly string[]) => Promise<string>;
+
 // @public (undocumented)
 interface Output {
     // (undocumented)
@@ -39,6 +42,8 @@ interface ReviewDeps {
     heartbeatMs: number;
     // (undocumented)
     now(): number;
+    // (undocumented)
+    npm?: NpmRunner;
     // (undocumented)
     onInterrupt?(handler: () => void): () => void;
     // (undocumented)

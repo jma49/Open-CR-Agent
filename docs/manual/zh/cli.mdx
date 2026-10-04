@@ -154,3 +154,15 @@ ocra logout                                   # 在服务器上结束会话，�
 已登录时，`ocra review` 会读取你账户中的设置：运行时、各档位以及各审查员与角色的模型和思考强度、各项限制（`concurrency`、超时、`maxCostUsd`、`maxTasks`）、`verify`、`judge`、`sampling`、`include`、`exclude` 和路径规则。它们位于配置之下：配置写了的优先，`include`、`exclude` 和规则会合并，账户永远不能设置 providers、`extends` 或 `github`（见[账户设置](./configuration#账户设置)）。补充了哪些会打印出来（`From your ocra Cloud settings: …`）。每个键都按配置文件自己的规则校验，不符合的键会被忽略，并给出点名该键的警告。`--plan` 也会读取这些设置，并在末尾列出 Settings，标明每项设置的来源：`file`（配置）、`account`、合并键的 `file+account`，或 `default`；无法连接 ocra Cloud 时会给出警告，计划只显示配置本身。
 
 每次审查结束后，已登录的 CLI 会把审查的统计数据发送给 ocra Cloud：结论、是否审完所有文件、各级别问题数、文件和任务数、token、费用和耗时、来源（本地、GitHub、GitLab）以及 ocra 版本。它从不发送路径、标题、问题描述或代码。仓库以其 origin 地址（去掉其中的凭据）的 SHA-256 发送，并加入一个只保存在本机的随机盐（位于凭据旁的 `upload-salt`），因此服务器可以把同一仓库的审查归在一起，却无法知道是哪个仓库；同一仓库在另一台机器上会得到不同的哈希。`--no-upload` 跳过单次上传，`OCRA_CLOUD=off` 关闭全部上传；上传失败只会给出警告。
+
+## ocra plugins
+
+在这台机器上允许你的 ocra Cloud 设置所列出的插件（见[来自 ocra Cloud 账户的插件](./plugins#来自-ocra-cloud-账户的插件)）。这些命令不会连接 ocra Cloud；`allow` 和 `deny` 会运行 npm。
+
+```bash
+ocra plugins allow <name>@<version>   # 精确版本：先显示这个包，再安装
+ocra plugins deny <name>              # 移除它：之后不再加载
+ocra plugins list                     # 已允许的插件及其 integrity
+```
+
+`allow` 会运行 `npm view <name>@<version> --json`，显示包的名称、版本、发布者、维护者和 integrity，然后运行 `npm install --ignore-scripts --no-audit --no-fund --save-exact --prefix <dir> <name>@<version>`，安装到 `~/.config/ocra/plugins/`（`$XDG_CONFIG_HOME/ocra/plugins/`，Windows 上为 `%APPDATA%\ocra\plugins\`）。只有当 npm 安装的正是这个版本、且 integrity 与 registry 所列一致时，才会把插件记录到该目录的 `plugins.json`。npm 以参数列表的方式作为子进程运行，从不经过 shell，并使用你自己的 npm 配置中的 registry 和凭据。不是 npm 包名的名称、或者是范围或标签的版本，会在运行 npm 之前被拒绝（退出码 2）。

@@ -1,7 +1,11 @@
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { AgentEvent, AgentTaskSpec, OcraPlugin } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { capture, changeRequestFixture, removeFixtures } from "./change-request.fakes.js";
+import { pluginsDir } from "./plugin-store.js";
+import { allowInstalled, signedInCloud } from "./plugins.fakes.js";
 import { BUILTIN_PLUGINS, type ReviewDeps } from "./review/command.js";
 import { BUILTIN_RUNTIMES } from "./review/runtimes.js";
 import { run } from "./run.js";
@@ -236,5 +240,45 @@ describe("ocra review --pr", () => {
     const usage = capture();
     expect(await run(["review", "--publish"], capture(), usage, deps)).toBe(2);
     expect(usage.text()).toContain("--publish requires --pr");
+  });
+
+  it("never loads plugins named by the ocra Cloud account, even ones this machine allowed", async () => {
+    const { clone, base, head } = changeRequestFixture();
+    const github = fakeGitHub(base, head);
+    const home = mkdtempSync(join(tmpdir(), "ocra-pr-acct-"));
+    const env = { GITHUB_TOKEN: "t", XDG_CONFIG_HOME: home };
+    await allowInstalled(pluginsDir(env), "ocra-plugin-x");
+    const prompts: string[] = [];
+    const fakeRuntime: OcraPlugin = {
+      name: "runtime-opencode",
+      configure(ctx) {
+        ctx.registerRuntime("opencode", () => ({
+          name: "fake",
+          async *runTask(spec) {
+            prompts.push(spec.userPrompt);
+            yield { type: "done", taskId: spec.taskId };
+          },
+        }));
+      },
+    };
+    const err = capture();
+    try {
+      await run(["review", "--pr", "7", "--repo", "o/r", "--no-upload"], capture(), err, {
+        cwd: clone,
+        env,
+        builtinPlugins: BUILTIN_PLUGINS,
+        runtimes: { opencode: async () => fakeRuntime },
+        writeFile: async () => {},
+        now: Date.now,
+        heartbeatMs: 60_000,
+        fetch: github.fetchImpl,
+        cloud: signedInCloud(home, { settings: { plugins: ["ocra-plugin-x"] } }),
+      });
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+    expect(prompts.length).toBeGreaterThan(0);
+    expect(prompts.join("\n")).not.toContain("ACCOUNT PLUGIN RULE");
+    expect(err.text()).toContain("do not load for pull or merge requests");
   });
 });

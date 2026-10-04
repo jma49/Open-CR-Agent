@@ -68,11 +68,16 @@ function credentialsHint(): string {
 }
 
 export function credentialsPath(env: CloudDeps["env"]): string {
+  return join(ocraConfigDir(env), "credentials.json");
+}
+
+/** ~/.config/ocra ($XDG_CONFIG_HOME/ocra), or %APPDATA%\ocra on Windows: this machine's own. */
+export function ocraConfigDir(env: CloudDeps["env"]): string {
   const base =
     process.platform === "win32"
       ? (env.APPDATA ?? join(homedir(), "AppData", "Roaming"))
       : (env.XDG_CONFIG_HOME ?? join(homedir(), ".config"));
-  return join(base, "ocra", "credentials.json");
+  return join(base, "ocra");
 }
 
 function cloudUrl(env: CloudDeps["env"]): string {

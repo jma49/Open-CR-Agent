@@ -19,6 +19,9 @@ import { loadExternalPlugins } from "./plugins.js";
 export interface ReviewTarget {
   config: CliConfig;
   plugins: OcraPlugin[];
+  // Whether plugins the ocra Cloud account names may load (ADR-0027): only
+  // where the repository's could.
+  accountPlugins: boolean;
   createVcs(registry: PluginRegistry): VcsAdapter;
   readTrusted?: (path: string) => Promise<string | undefined>;
   publish: boolean;
@@ -49,6 +52,7 @@ export async function localTarget(
       config.plugins,
       args.configFile ? dirname(args.configFile) : root,
     ),
+    accountPlugins: !args.ignoreRepoConfig,
     createVcs: (registry) => registry.createVcs("local", { cwd, target: args.target }),
     ...(args.ignoreRepoConfig ? { readTrusted: untrustedTreeReader(args, cwd) } : {}),
     publish: false,
@@ -115,6 +119,7 @@ export async function pullRequestTarget(
   return {
     config,
     plugins: [],
+    accountPlugins: false,
     createVcs: (registry) =>
       registry.createVcs("github", {
         owner,
@@ -201,6 +206,7 @@ export async function mergeRequestTarget(
   return {
     config,
     plugins: [],
+    accountPlugins: false,
     createVcs: (registry) =>
       registry.createVcs("gitlab", {
         project: /^\d+$/.test(project) ? Number(project) : project,

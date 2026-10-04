@@ -35,6 +35,27 @@ Register it in `.ocra/config.json`:
 
 Plugins are resolved from the repository's own dependencies (package names) or from file paths, resolved from the repository root (they may point outside it: the configuration is yours to trust). Plugins run code, so they load only from a repository's own config in local reviews, never for pull requests or with `--no-repo-config`.
 
+## Plugins from your ocra Cloud account
+
+When you are [signed in](./cli#ocra-login-ocra-logout-ocra-whoami), your ocra Cloud settings may name plugins by npm package name, with `pluginSettings` for them. A plugin runs code on your machine, so the account only names it: it loads on a machine only after you allow it there with [`ocra plugins allow`](./cli#ocra-plugins).
+
+```bash
+ocra plugins allow ocra-plugin-team-rules@1.4.0   # shows the package and its publisher, then installs it
+ocra plugins list
+ocra plugins deny ocra-plugin-team-rules
+```
+
+`allow` needs an exact version, never a range or tag. It shows the package's name, version, publisher, maintainers and integrity as the registry lists them, installs that exact version with install scripts off into `~/.config/ocra/plugins/` (`$XDG_CONFIG_HOME/ocra/plugins/`, or `%APPDATA%\ocra\plugins\` on Windows), and records its name, version and integrity in `plugins.json` there (readable only by you). Allowing a plugin is your own supply-chain decision, like adding a dependency.
+
+A review loads a plugin your account names only:
+
+- if this machine allowed it, from that directory alone, never from the reviewed checkout's `node_modules`, and only while the installed package still has the version and integrity recorded when you allowed it;
+- where a repository's plugins could load: local reviews, never `--pr` or `--mr`, never with `--no-repo-config`.
+
+A plugin your account names that this machine has not allowed is skipped with one warning naming it and `ocra plugins allow <name>@<version>`. A plugin the repository's configuration already lists loads as the repository's, and one whose plugin name is already taken is skipped. A plugin from the account that fails to load is skipped with a warning; it never fails the review.
+
+The account's `pluginSettings` apply only to the plugins it lists and this machine loads, keyed by plugin name as in the configuration; the configuration's own `pluginSettings` win, and a repository plugin's settings come from the repository alone.
+
 ## Lifecycle
 
 | Hook | Runs | On failure |
@@ -62,4 +83,4 @@ Plugins receive only their own settings (`ctx.settings`), validated by an option
 
 ## Security
 
-A plugin runs code. Load plugins only from repositories you trust; to review someone else's branch, run `ocra review --no-repo-config`, which ignores the repository's config and plugins. In CI, read configuration from the protected base branch, never from the pull request under review.
+A plugin runs code. Load plugins only from repositories you trust, and allow a plugin your account names only after checking who publishes it; to review someone else's branch, run `ocra review --no-repo-config`, which ignores the repository's config and plugins. In CI, read configuration from the protected base branch, never from the pull request under review.

@@ -35,6 +35,27 @@ export default {
 
 插件从仓库自己的依赖（按包名）或文件路径加载，路径相对仓库根目录解析（也可以指向仓库之外：配置由你自己信任）。插件会执行代码，所以只在本地审查时从仓库自己的配置加载；审查 PR 时或使用 `--no-repo-config` 时都不会加载。
 
+## 来自 ocra Cloud 账户的插件
+
+[登录](./cli#ocra-loginocra-logoutocra-whoami)后，你的 ocra Cloud 设置可以按 npm 包名列出插件，并为它们提供 `pluginSettings`。插件会在你的机器上执行代码，所以账户只能列出它的名字：只有你在某台机器上用 [`ocra plugins allow`](./cli#ocra-plugins) 允许之后，它才会在这台机器上加载。
+
+```bash
+ocra plugins allow ocra-plugin-team-rules@1.4.0   # 显示这个包及其发布者，然后安装
+ocra plugins list
+ocra plugins deny ocra-plugin-team-rules
+```
+
+`allow` 要求精确版本，不接受范围或标签。它会显示 registry 中该包的名称、版本、发布者、维护者和 integrity，然后在关闭安装脚本的情况下把这个精确版本安装到 `~/.config/ocra/plugins/`（`$XDG_CONFIG_HOME/ocra/plugins/`，Windows 上为 `%APPDATA%\ocra\plugins\`），并把名称、版本和 integrity 记录在该目录的 `plugins.json` 中（只有你可读）。允许一个插件是你自己的供应链决定，就像添加一个依赖。
+
+审查只在以下条件下加载账户列出的插件：
+
+- 这台机器允许了它：只从上述目录加载，从不从被审查代码的 `node_modules` 加载，并且已安装的包仍然是允许时记录的版本和 integrity；
+- 仓库的插件也能加载的场合：本地审查；`--pr`、`--mr` 和 `--no-repo-config` 时从不加载。
+
+账户列出、但这台机器没有允许的插件会被跳过，并给出一条警告，列出它的名字和 `ocra plugins allow <name>@<version>`。仓库配置已经列出的包按仓库的插件加载；插件名已被占用的会被跳过。来自账户的插件加载失败时会被跳过并给出警告，不会让审查失败。
+
+账户的 `pluginSettings` 只作用于账户自己列出、并且这台机器加载了的插件，和配置中一样按插件名对应；配置自己的 `pluginSettings` 优先，仓库插件的设置只来自仓库。
+
 ## 生命周期
 
 | 阶段 | 执行方式 | 失败时 |
@@ -62,4 +83,4 @@ export default {
 
 ## 安全
 
-插件会执行代码，只从你信任的仓库加载插件；审查别人的分支时，请使用 `ocra review --no-repo-config`，它会忽略仓库的配置和插件。在 CI 中，配置应当从受保护的 base 分支读取，绝不能从被审查的 PR 里读取。
+插件会执行代码，只从你信任的仓库加载插件，并且只在确认发布者之后才允许账户列出的插件；审查别人的分支时，请使用 `ocra review --no-repo-config`，它会忽略仓库的配置和插件。在 CI 中，配置应当从受保护的 base 分支读取，绝不能从被审查的 PR 里读取。

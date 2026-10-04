@@ -1,6 +1,7 @@
 import type { ModelTier, SourcedRule } from "@open-cr-agent/core";
 import { type CloudDeps, cloudSession } from "../cloud.js";
 import { VERSION } from "../version.js";
+import { type AccountPlugins, parseAccountPlugins } from "./account-plugins.js";
 import { type AccountSettings, parseAccountSettings } from "./account-settings.js";
 import type { CliConfig } from "./config.js";
 
@@ -28,7 +29,7 @@ export const ACCOUNT_SCALARS = [
 export async function fetchAccountSettings(
   deps: CloudDeps,
   warn: (message: string) => void,
-): Promise<AccountSettings | undefined> {
+): Promise<{ settings?: AccountSettings; plugins: AccountPlugins } | undefined> {
   let body: unknown;
   try {
     const session = await cloudSession(deps);
@@ -56,7 +57,7 @@ export async function fetchAccountSettings(
   }
   const { settings, warnings } = parseAccountSettings(body);
   for (const warning of warnings) warn(warning);
-  return settings;
+  return { ...(settings ? { settings } : {}), plugins: parseAccountPlugins(body, warn) };
 }
 
 /** The configuration with the account's settings under it, and what they filled in. */

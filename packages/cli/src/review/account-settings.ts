@@ -106,7 +106,8 @@ export function parseAccountSettings(data: unknown): {
   };
   pick(body, TOP, "", IGNORED_TOP);
   pick(record(body.agents), AGENTS, "agents.");
-  pick(record(body.settings), SETTINGS, "settings.");
+  // Plugins and their settings are read by account-plugins.ts (ADR-0027, 3).
+  pick(record(body.settings), SETTINGS, "settings.", new Set(["plugins", "pluginSettings"]));
 
   const warnings: string[] = [];
   if (refused.length > 0) {

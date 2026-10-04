@@ -27,7 +27,10 @@ import { gitlabPlugin } from "@open-cr-agent/vcs-gitlab";
 import { localGitPlugin } from "@open-cr-agent/vcs-local";
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
 import type { CloudDeps } from "../cloud.js";
+import { pluginsDir } from "../plugin-store.js";
+import type { NpmRunner } from "../plugins-command.js";
 import { VERSION } from "../version.js";
+import { type AccountPlugins, accountPlugins } from "./account-plugins.js";
 import type { ReviewArgs } from "./args.js";
 import { withCloudProviders } from "./cloud-providers.js";
 import { fetchAccountSettings, layerAccountSettings } from "./cloud-settings.js";
@@ -73,6 +76,8 @@ export interface ReviewDeps {
   // ocra Cloud: the signed-in session, default models and the upload. Absent,
   // a review never reads a session or contacts ocra Cloud.
   cloud?: CloudDeps;
+  // Runs npm for `ocra plugins`; only tests replace it.
+  npm?: NpmRunner;
   // Calls the handler on Ctrl-C or SIGTERM; returns a function that stops listening.
   onInterrupt?(handler: () => void): () => void;
 }
@@ -116,14 +121,16 @@ export async function reviewCommand(
   const signedIn = cloudDeps !== undefined && (await cloudEnabled(cloudDeps));
   let config = target.config;
   let filled: string[] = [];
+  let fromAccount: AccountPlugins = { plugins: [], pluginSettings: {} };
   if (cloudDeps && signedIn) {
     const account = await fetchAccountSettings(cloudDeps, warn);
-    if (account) {
-      ({ config, filled } = layerAccountSettings(config, account));
+    if (account?.settings) {
+      ({ config, filled } = layerAccountSettings(config, account.settings));
       if (filled.length > 0) {
         io.err.write(`[ocra] From your ocra Cloud settings: ${filled.join(", ")}\n`);
       }
     }
+    if (account) fromAccount = account.plugins;
   }
   const session = { dir: join(root, SESSIONS_DIR), id: newRunId() };
 
@@ -132,10 +139,19 @@ export async function reviewCommand(
   const builtins = args.plan
     ? deps.builtinPlugins.filter((p) => p.name !== sessionJsonlPlugin.name)
     : [...deps.builtinPlugins, ...(await builtinRuntime(deps.runtimes, config.runtime))];
-  const registry = await startPlugins([...builtins, ...target.plugins], {
+  const account = await accountPlugins(fromAccount, {
+    allowed: target.accountPlugins,
+    configured: config.plugins,
+    taken: [...builtins, ...target.plugins],
+    dir: pluginsDir(deps.env),
+    warn,
+  });
+  // The repository's own settings win; a repository plugin's come from it alone.
+  const pluginSettings = { ...account.settings, ...config.pluginSettings };
+  const registry = await startPlugins([...builtins, ...target.plugins, ...account.plugins], {
     settings: args.plan
-      ? config.pluginSettings
-      : { ...config.pluginSettings, [sessionJsonlPlugin.name]: session },
+      ? pluginSettings
+      : { ...pluginSettings, [sessionJsonlPlugin.name]: session },
     env: deps.env,
     warn,
   });

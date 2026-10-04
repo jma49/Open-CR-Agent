@@ -154,3 +154,15 @@ Such models are unpriced: the reported cost and `--max-cost-usd` do not count th
 When signed in, `ocra review` reads your account's settings: the runtime, each tier's and each reviewer's and role's model and effort, the limits (`concurrency`, the timeouts, `maxCostUsd`, `maxTasks`), `verify`, `judge`, `sampling`, `include`, `exclude` and path rules. They apply under the configuration: what it sets wins, `include`, `exclude` and rules combine, and the account can never set providers, `extends` or `github` ([Account settings](./configuration#account-settings)). What they filled in is printed (`From your ocra Cloud settings: …`). Each key is checked with the configuration file's own rules; one that does not match is ignored with a warning naming it. `--plan` reads them too and ends with a Settings list naming each setting's source: `file` (the configuration), `account`, `file+account` for combined keys, or `default`; if ocra Cloud cannot be reached, a warning says so and the plan shows the configuration alone.
 
 After each review, a signed-in CLI sends ocra Cloud the review's counts: the verdict, whether every file was reviewed, how many findings of each severity, files and tasks, tokens, cost and time, the source (local, GitHub, GitLab) and the ocra version. It never sends a path, a title, a finding's text or code. The repository is sent as a SHA-256 of its origin URL (credentials removed) salted with a random value kept in `upload-salt` next to the credentials, so the server can group reviews of one repository without learning which it is; the same repository on another machine gets another hash. `--no-upload` skips this for one review, `OCRA_CLOUD=off` for all, and a failed upload is only a warning.
+
+## ocra plugins
+
+Allows, on this machine, the plugins your ocra Cloud settings name ([Plugins from your ocra Cloud account](./plugins#plugins-from-your-ocra-cloud-account)). Nothing here contacts ocra Cloud; `allow` and `deny` run npm.
+
+```bash
+ocra plugins allow <name>@<version>   # an exact version: shows the package, then installs it
+ocra plugins deny <name>              # removes it: it no longer loads
+ocra plugins list                     # the allowed plugins, with their integrity
+```
+
+`allow` runs `npm view <name>@<version> --json` and prints the package's name, version, publisher, maintainers and integrity, then `npm install --ignore-scripts --no-audit --no-fund --save-exact --prefix <dir> <name>@<version>` into `~/.config/ocra/plugins/` (`$XDG_CONFIG_HOME/ocra/plugins/`, or `%APPDATA%\ocra\plugins\` on Windows). It records the plugin in `plugins.json` there only if npm installed exactly that version with the integrity the registry lists. npm runs as a child process with an argument list, never through a shell, and takes its registry and credentials from your own npm configuration. A name that is not an npm package name, or a version that is a range or a tag, is refused before npm runs (exit code 2).

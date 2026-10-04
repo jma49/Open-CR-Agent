@@ -88,3 +88,15 @@ describe("parseAccountSettings", () => {
     expect(parseAccountSettings("x").settings).toEqual({ version: null });
   });
 });
+
+describe("plugin keys", () => {
+  it("are left to account-plugins.ts, not reported as unknown", () => {
+    const { warnings } = parseAccountSettings({
+      settings: {
+        plugins: ["@acme/ocra-rules"],
+        pluginSettings: { "acme-rules": { strict: true } },
+      },
+    });
+    expect(warnings).toEqual([]);
+  });
+});

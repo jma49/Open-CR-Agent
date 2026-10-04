@@ -5,6 +5,8 @@ import { errorMessage } from "@open-cr-agent/core/internal";
 import { cloudCommand, defaultCloudDeps, LOGIN_USAGE } from "./cloud.js";
 import { memoryCommand } from "./memory.js";
 import { metricsCommand } from "./metrics.js";
+import { pluginsDir } from "./plugin-store.js";
+import { defaultNpm, PLUGINS_USAGE, pluginsCommand } from "./plugins-command.js";
 import { parseReviewArgs, REVIEW_USAGE, UsageError } from "./review/args.js";
 import { BUILTIN_PLUGINS, EXIT, type ReviewDeps, reviewCommand } from "./review/command.js";
 import type { Output } from "./review/progress.js";
@@ -18,6 +20,7 @@ Commands:
   review      Review code changes (run "ocra review --help" for options)
   memory      Remember findings the team accepts (run "ocra memory --help")
   metrics     Counts over past reviews: runs, cost, findings, per reviewer (run "ocra metrics --help")
+  plugins     Allow plugins your ocra Cloud settings name on this machine (run "ocra plugins --help")
   login       Sign in to ocra Cloud (in development; run "ocra login --help")
   logout      Sign out of ocra Cloud
   whoami      Show the ocra Cloud account
@@ -69,6 +72,19 @@ export async function run(
         : await metricsCommand(rest, out, deps.cwd);
     } catch (error) {
       err.write(failure(error));
+      return EXIT.error;
+    }
+  }
+  if (command === "plugins") {
+    try {
+      return await pluginsCommand(rest, out, {
+        dir: pluginsDir(deps.env),
+        npm: deps.npm ?? defaultNpm(),
+      });
+    } catch (error) {
+      if (error instanceof UsageError) {
+        err.write(`${error.message ? `${error.message}\n\n` : ""}${PLUGINS_USAGE}`);
+      } else err.write(failure(error));
       return EXIT.error;
     }
   }
