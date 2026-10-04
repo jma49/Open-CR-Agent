@@ -1,0 +1,60 @@
+name: Ceiling
+
+# The recall ceiling of ocra's deterministic stages on the golden cases
+# (`ocra-eval ceiling`): no model call, so free and deterministic. It clones
+# the cases' public repositories, which takes minutes cold, so it runs only
+# when what it measures changes, and keeps the clones in the Actions cache.
+# Runs on main save that cache where pull requests can restore it.
+on:
+  pull_request:
+    paths: &paths
+      - packages/core/src/**
+      - packages/vcs-local/src/**
+      - packages/cli/src/**
+      - packages/eval/src/**
+      - evals/**
+      - scripts/ceiling-gate.mjs
+      - .github/workflows/ceiling.yml
+      - "!**/*.test.ts"
+  push:
+    branches: [main]
+    paths: *paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  ceiling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      # A new or edited case restores the previous clones and fetches only
+      # the commits they lack.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ocra/aacr-bench/repos
+          key: golden-repos-${{ hashFiles('evals/golden/*.json') }}
+          restore-keys: golden-repos-
+      - run: npm ci
+      - run: npm run build
+      - run: node packages/eval/dist/main.js ceiling --dataset golden --out "$RUNNER_TEMP" --label ceiling
+      - name: Compare with evals/ceiling-baseline.json
+        run: |
+          cat "$RUNNER_TEMP/ceiling/ceiling.md" >> "$GITHUB_STEP_SUMMARY"
+          status=0
+          node scripts/ceiling-gate.mjs "$RUNNER_TEMP/ceiling/ceiling.json" > "$RUNNER_TEMP/gate.md" || status=$?
+          cat "$RUNNER_TEMP/gate.md"
+          { echo; echo "## Against the baseline"; echo; cat "$RUNNER_TEMP/gate.md"; } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"

@@ -10,6 +10,7 @@ From AACR-Bench (the dataset's fields are in `packages/eval/README.md`; note tha
 2. In the clone (`~/.cache/ocra/aacr-bench/repos/<owner>__<repo>`), set `head` to `pr_target_commit` and `base` to `git merge-base <pr_source_commit> <head>`, as full commit ids. The source commit can be ahead of the merge base, and a case's diff is `base..head`.
 3. Write `evals/golden/aacr-<repo>-<short-topic>.json`: `source.kind` `aacr` with the pull request's URL and licence in `ref`, a `rationale`, and `expect`, `forbid` or `clean` checked against the code at `head`, not against the reference comment alone.
 4. `node packages/eval/dist/main.js ceiling --dataset golden --ids <case id>` checks that every path is in the change and every expectation is reachable; `list --dataset golden` validates the file.
+5. Record the new ceiling: `node packages/eval/dist/main.js ceiling --dataset golden --label ceiling`, then `node scripts/ceiling-gate.mjs .ocra/eval/ceiling/ceiling.json --write` rewrites `evals/ceiling-baseline.json`. CI's `Ceiling` workflow runs the same measurement on every pull request that touches the cases or the deterministic stages and fails when a finding the baseline reaches is no longer reachable.
 
 From ocra's own history or dogfood: the same, with `source.kind` `ocra-history` or `dogfood`, `repo` this repository or the dogfooded one, and the commits of the change in which the issue appeared.
 
