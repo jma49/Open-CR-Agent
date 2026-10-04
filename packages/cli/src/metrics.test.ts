@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { collectMetrics, metricsCommand, sessionStart } from "./metrics.js";
+import { collectMetrics, metricsCommand } from "./metrics.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -252,8 +252,6 @@ describe("ocra metrics", () => {
       since: "2026-10-02T00:00:00.000Z",
       runs: { total: 1 },
     });
-    expect(sessionStart("20261002T100000Z-000002")?.toISOString()).toBe("2026-10-02T10:00:00.000Z");
-    expect(sessionStart("not-a-session")).toBeUndefined();
   });
 
   it("reports an empty directory as no runs, and refuses a bad date or format", async () => {

@@ -32,6 +32,7 @@ import type { Output } from "../io/output.js";
 import { forTerminal } from "../io/terminal.js";
 import { pluginsDir } from "../plugin-store.js";
 import type { NpmRunner } from "../plugins-command.js";
+import { sessionsDir } from "../session/store.js";
 import { VERSION } from "../version.js";
 import { type AccountPlugins, accountPlugins } from "./account-plugins.js";
 import type { ReviewArgs } from "./args.js";
@@ -50,8 +51,6 @@ import { renderSarif } from "./sarif.js";
 import { loadSarifLogs } from "./sarif-input.js";
 import { effectiveSettings, renderSettings } from "./settings-sources.js";
 import { localTarget, mergeRequestTarget, pullRequestTarget } from "./target.js";
-
-export const SESSIONS_DIR = ".ocra/sessions";
 
 export const BUILTIN_PLUGINS: readonly OcraPlugin[] = [
   localGitPlugin,
@@ -141,7 +140,7 @@ export async function reviewCommand(
     if (account.kind === "read") fromAccount = account.plugins;
   }
   const ultra = args.ultra === true || filled.includes("ultra");
-  const session = { dir: join(root, SESSIONS_DIR), id: newRunId() };
+  const session = { dir: sessionsDir(root), id: newRunId() };
 
   // A plan calls no model, writes no session log and imports no runtime: it
   // works without the optional runtime-opencode.

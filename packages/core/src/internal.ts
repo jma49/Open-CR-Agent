@@ -39,3 +39,4 @@ export { callChain, ModelHealth, parseModel } from "./runtime/models.js";
 export { parseQuotaError, type QuotaError, sleep } from "./runtime/quota.js";
 export { MAX_READ_LINES, reviewTools } from "./runtime/tools.js";
 export { defaultSelectionPolicy } from "./select/select.js";
+export { REPORT_FILE } from "./session/jsonl.js";

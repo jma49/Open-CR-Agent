@@ -1,18 +1,18 @@
-import { readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import {
-  type ReportOutput,
-  reportOutputSchema,
-  type Severity,
-  type Verification,
-} from "@open-cr-agent/core";
+import type { ReportOutput, Severity, Verification } from "@open-cr-agent/core";
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
 import { EXIT } from "./io/exit.js";
 import type { Output } from "./io/output.js";
 import { forTerminal } from "./io/terminal.js";
 import { UsageError } from "./io/usage-error.js";
-import { SESSIONS_DIR } from "./review/command.js";
+import {
+  listSessions,
+  readReport,
+  SESSIONS_DIR,
+  sessionStart,
+  sessionsDir,
+} from "./session/store.js";
 
 export const METRICS_VERSION = 1;
 
@@ -84,11 +84,11 @@ export async function metricsCommand(argv: string[], out: Output, cwd: string): 
   const format = values.format ?? "text";
   if (format !== "text" && format !== "json") throw new UsageError("--format must be text or json");
   const since = values.since === undefined ? undefined : parseSince(values.since);
-  const sessionsDir = values.sessions
+  const dir = values.sessions
     ? resolve(cwd, values.sessions)
-    : join(await findRepositoryRoot(cwd), SESSIONS_DIR);
+    : sessionsDir(await findRepositoryRoot(cwd));
 
-  const metrics = await collectMetrics(sessionsDir, since);
+  const metrics = await collectMetrics(dir, since);
   out.write(format === "json" ? `${JSON.stringify(metrics, null, 2)}\n` : renderMetrics(metrics));
   return EXIT.ok;
 }
@@ -100,46 +100,24 @@ function parseSince(text: string): Date {
   return date;
 }
 
-// A session directory is named by its run id, whose first part is the start
-// time (newRunId in core); that is what --since compares against.
-export function sessionStart(id: string): Date | undefined {
-  const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/.exec(id);
-  if (!m) return undefined;
-  const [, y, mo, d, h, mi, s] = m;
-  return new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}Z`);
-}
-
-export async function collectMetrics(sessionsDir: string, since?: Date): Promise<Metrics> {
-  const names = (await readdir(sessionsDir).catch(() => []))
-    .filter((n) => !n.startsWith("."))
-    .filter((n) => {
-      const start = sessionStart(n);
-      return since === undefined || (start !== undefined && start >= since);
-    })
-    .sort();
+export async function collectMetrics(dir: string, since?: Date): Promise<Metrics> {
+  // --since compares the start time in each session's id.
+  const names = (await listSessions(dir)).filter((n) => {
+    const start = sessionStart(n);
+    return since === undefined || (start !== undefined && start >= since);
+  });
   const reports: ReportOutput[] = [];
   let unreadable = 0;
   for (const name of names) {
-    const report = await readReport(join(sessionsDir, name, "report.json"));
+    const report = await readReport(join(dir, name));
     if (report) reports.push(report);
     else unreadable += 1;
   }
   return aggregate(reports, {
-    sessionsDir,
+    sessionsDir: dir,
     unreadable,
     ...(since ? { since: since.toISOString() } : {}),
   });
-}
-
-async function readReport(path: string): Promise<ReportOutput | undefined> {
-  let data: unknown;
-  try {
-    data = JSON.parse(await readFile(path, "utf8"));
-  } catch {
-    return undefined;
-  }
-  const parsed = reportOutputSchema.safeParse(data);
-  return parsed.success ? (parsed.data as ReportOutput) : undefined;
 }
 
 function aggregate(

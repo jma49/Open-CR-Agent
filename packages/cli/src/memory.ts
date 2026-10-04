@@ -1,5 +1,5 @@
 import { constants, existsSync } from "node:fs";
-import { lstat, mkdir, open, readdir, readFile } from "node:fs/promises";
+import { lstat, mkdir, open, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import type { MemoryEntry, OutputFinding } from "@open-cr-agent/core";
@@ -9,7 +9,7 @@ import { EXIT } from "./io/exit.js";
 import type { Output } from "./io/output.js";
 import { forTerminal } from "./io/terminal.js";
 import { UsageError } from "./io/usage-error.js";
-import { SESSIONS_DIR } from "./review/command.js";
+import { listSessions, reportPath, SESSIONS_DIR, sessionsDir } from "./session/store.js";
 
 export const MEMORY_USAGE = `Usage: ocra memory <command>
 
@@ -61,7 +61,7 @@ export async function memoryCommand(
   if (!values.reason?.trim()) throw new UsageError("ocra memory add needs --reason");
 
   const report = values.session ? resolve(cwd, values.session) : await newestSession(root);
-  const finding = await findFinding(join(report, "report.json"), id);
+  const finding = await findFinding(reportPath(report), id);
   if (memory.some((e) => e.fingerprint === finding.fingerprint)) {
     out.write(`Already remembered: ${forTerminal(finding.title)}\n`);
     return EXIT.ok;
@@ -113,11 +113,10 @@ async function readMemory(root: string): Promise<MemoryEntry[]> {
 }
 
 async function newestSession(root: string): Promise<string> {
-  const dir = join(root, SESSIONS_DIR);
-  const sessions = (await readdir(dir).catch(() => [])).filter((n) => !n.startsWith(".")).sort();
+  const dir = sessionsDir(root);
   // An interrupted run leaves a session without a report.
-  for (const name of sessions.reverse()) {
-    if (existsSync(join(dir, name, "report.json"))) return join(dir, name);
+  for (const name of (await listSessions(dir)).reverse()) {
+    if (existsSync(reportPath(join(dir, name)))) return join(dir, name);
   }
   throw new UsageError(`No finished review in ${SESSIONS_DIR}; run ocra review first`);
 }
