@@ -38,6 +38,22 @@ describe("reviewInstance", () => {
     expect(argv.slice(0, 1)).toEqual(["review"]);
     expect(argv).toContain("--no-repo-config");
   });
+
+  it("runs with ocra Cloud off, so a signed-in account never shapes or receives a benchmark run", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "ocra-eval-env-"));
+    dirs.push(dir);
+    const script = join(dir, "record.mjs");
+    writeFileSync(
+      script,
+      'import { writeFileSync } from "node:fs"; writeFileSync("env.json", JSON.stringify({ cloud: process.env.OCRA_CLOUD ?? null }));\n',
+    );
+    const instance = { baseCommit: "a".repeat(40), headCommit: "b".repeat(40) } as Instance;
+    await reviewInstance(dir, instance, join(dir, "out.json"), {
+      command: [process.execPath, script],
+      timeoutMs: 30_000,
+    });
+    expect(JSON.parse(readFileSync(join(dir, "env.json"), "utf8"))).toEqual({ cloud: "off" });
+  });
 });
 
 describe("exec", () => {

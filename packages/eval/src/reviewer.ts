@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import type { ReportOutput } from "@open-cr-agent/core";
 import type { Instance } from "./dataset.js";
-import { exec } from "./exec.js";
+import { benchmarkEnv, exec } from "./exec.js";
 
 export interface ReviewOutcome {
   exitCode: number;
@@ -55,7 +55,7 @@ export async function reviewInstance(
       "--no-repo-config",
       ...(options.reviewArgs ?? []),
     ],
-    { cwd: repoDir, timeoutMs: options.timeoutMs },
+    { cwd: repoDir, timeoutMs: options.timeoutMs, env: benchmarkEnv() },
   );
   const durationMs = Date.now() - started;
 

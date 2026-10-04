@@ -9,7 +9,7 @@ import {
   summarizeCeiling,
 } from "./ceiling.js";
 import type { Dataset, Instance } from "./dataset.js";
-import { exec } from "./exec.js";
+import { benchmarkEnv, exec } from "./exec.js";
 import { untouchedPaths } from "./golden.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
 
@@ -104,7 +104,7 @@ async function plan(
       "--to",
       instance.headCommit,
     ],
-    { cwd: dir, timeoutMs: 5 * 60_000 },
+    { cwd: dir, timeoutMs: 5 * 60_000, env: benchmarkEnv() },
   );
   if (result.exitCode !== 0) throw new Error(result.stderr.trim() || `exit ${result.exitCode}`);
   return JSON.parse(result.stdout) as PlanOutput;
