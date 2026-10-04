@@ -13,6 +13,22 @@ describe("parseAccountSettings", () => {
     expect(warnings[0]).toMatch(/agents\.effort .*settings\.concurrency/);
   });
 
+  it("takes ultra as a boolean, and refuses anything else alone", () => {
+    expect(parseAccountSettings({ settings: { ultra: true } })).toEqual({
+      settings: { version: null, ultra: true },
+      warnings: [],
+    });
+    expect(parseAccountSettings({ settings: { ultra: false } }).settings).toEqual({
+      version: null,
+      ultra: false,
+    });
+    const { settings, warnings } = parseAccountSettings({
+      settings: { ultra: "yes", maxTasks: 2 },
+    });
+    expect(settings).toEqual({ version: null, maxTasks: 2 });
+    expect(warnings.join("\n")).toContain("settings.ultra");
+  });
+
   it("refuses what a configuration could not hold", () => {
     const cases: [unknown, string][] = [
       [{ agents: { reviewers: { security: { plugins: ["x"] } } } }, "agents.reviewers"],

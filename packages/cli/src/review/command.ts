@@ -126,12 +126,15 @@ export async function reviewCommand(
     const account = await fetchAccountSettings(cloudDeps, warn);
     if (account?.settings) {
       ({ config, filled } = layerAccountSettings(config, account.settings));
+      // The account's default for --ultra; there is no --no-ultra to refuse it.
+      if (account.settings.ultra === true && !args.ultra) filled.push("ultra");
       if (filled.length > 0) {
         io.err.write(`[ocra] From your ocra Cloud settings: ${filled.join(", ")}\n`);
       }
     }
     if (account) fromAccount = account.plugins;
   }
+  const ultra = args.ultra === true || filled.includes("ultra");
   const session = { dir: join(root, SESSIONS_DIR), id: newRunId() };
 
   // A plan calls no model, writes no session log and imports no runtime: it
@@ -177,7 +180,7 @@ export async function reviewCommand(
       rules,
       selection: { ...defaultSelectionPolicy, include: config.include, exclude: config.exclude },
       ...(target.readTrusted ? { readTrusted: target.readTrusted } : {}),
-      ...(args.ultra ? { ultra: true } : {}),
+      ...(ultra ? { ultra: true } : {}),
       ...(config.maxTasks !== undefined ? { maxTasks: config.maxTasks } : {}),
     });
     const settings = effectiveSettings(target.config, config, filled);
@@ -228,12 +231,12 @@ export async function reviewCommand(
       reviewerOverrides: overrides,
       provenance: {
         ocraVersion: VERSION,
-        configHash: configHash(config, args),
+        configHash: configHash(config, ultra ? { ...args, ultra: true } : args),
         sampling,
         ...accountOf(config),
       },
       ...(args.maxCostUsd !== undefined ? { maxCostUsd: args.maxCostUsd } : {}),
-      ...(args.ultra ? { ultra: true } : {}),
+      ...(ultra ? { ultra: true } : {}),
       ...(args.full ? { fullReview: true } : {}),
       ...(sarif.length > 0 ? { sarif } : {}),
       ...(target.readTrusted ? { readTrusted: target.readTrusted } : {}),

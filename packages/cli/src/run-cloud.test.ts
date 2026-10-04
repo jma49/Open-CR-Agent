@@ -204,3 +204,58 @@ describe("account data settings (ADR-0027)", () => {
     expect(prompt).not.toContain("</ocra_review_rules>ACCOUNT INJECTION");
   });
 });
+
+describe("ultra as an account default", () => {
+  const ULTRA = { ...PREFERENCES, settings: { ultra: true } };
+
+  it("runs as if --ultra were given, says so, and --plan names the account", async () => {
+    const cwd = repoWithChange();
+    const { cloud } = signedIn({}, ULTRA);
+    const err = capture();
+    await run(["review", "--no-upload"], capture(), err, deps(cwd, critical, { cloud }, true));
+    expect(err.text()).toMatch(/From your ocra Cloud settings: .*\bultra\b/);
+
+    const out = capture();
+    await run(["review", "--plan"], out, capture(), deps(cwd, critical, { cloud }));
+    expect(out.text()).toMatch(/ultra +true +\(account\)/);
+    const plans = await Promise.all(
+      [ULTRA, PREFERENCES].map(async (preferences) => {
+        const json = capture();
+        const { cloud: c } = signedIn({}, preferences);
+        await run(
+          ["review", "--plan", "--format", "json"],
+          json,
+          capture(),
+          deps(cwd, critical, { cloud: c }),
+        );
+        return JSON.parse(json.text());
+      }),
+    );
+    // Ultra runs every reviewer at every tier, twice.
+    expect(plans[0].tasks.length).toBeGreaterThan(2 * plans[1].tasks.length);
+    expect(plans[0].settings).toContainEqual({ key: "ultra", value: true, source: "account" });
+    expect(plans[1].settings.map((s: { key: string }) => s.key)).not.toContain("ultra");
+  });
+
+  it("leaves a command-line --ultra its own, and hashes the ultra that ran", async () => {
+    const hash = async (preferences: unknown, argv: string[]) => {
+      const cwd = repoWithChange();
+      const { cloud } = signedIn({}, preferences);
+      const out = capture();
+      const err = capture();
+      await run(
+        ["review", "--format", "json", "--no-upload", ...argv],
+        out,
+        err,
+        deps(cwd, critical, { cloud }, true),
+      );
+      return { hash: JSON.parse(out.text()).provenance.configHash, err: err.text() };
+    };
+    const fromAccount = await hash(ULTRA, []);
+    const fromFlag = await hash(ULTRA, ["--ultra"]);
+    const off = await hash(PREFERENCES, []);
+    expect(fromFlag.err).not.toMatch(/From your ocra Cloud settings: .*\bultra\b/);
+    expect(fromAccount.hash).toBe(fromFlag.hash);
+    expect(fromAccount.hash).not.toBe(off.hash);
+  });
+});

@@ -58,6 +58,8 @@ export function effectiveSettings(
     effective.rules.map(({ path, source }) => ({ path, source })),
     file.rules.length > 0,
   );
+  // A flag rather than a key: listed only when the account turned it on.
+  if (filled.includes("ultra")) settings.push({ key: "ultra", value: true, source: "account" });
   return settings;
 }
 

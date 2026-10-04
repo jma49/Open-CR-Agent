@@ -151,9 +151,9 @@ ocra logout                                   # 在服务器上结束会话，�
 
 这类模型没有价格：报告中的费用和 `--max-cost-usd` 不计入它们，ocra 会给出警告。此时提示词及其中引用的代码会经过 ocra Cloud 再到达模型服务商；ocra Cloud 只记录每次调用的模型、状态码、token 数和耗时，从不记录请求和回答内容。没有使用 `ocra-` 模型的审查不会读取会话，也不会连接 ocra Cloud；配置中自己以 `ocra-` 名称声明的 provider 保持原有声明。
 
-已登录时，`ocra review` 会读取你账户中的设置：运行时、各档位以及各审查员与角色的模型和思考强度、各项限制（`concurrency`、超时、`maxCostUsd`、`maxTasks`）、`verify`、`judge`、`sampling`、`include`、`exclude` 和路径规则。它们位于配置之下：配置写了的优先，`include`、`exclude` 和规则会合并，账户永远不能设置 providers、`extends` 或 `github`（见[账户设置](./configuration#账户设置)）。补充了哪些会打印出来（`From your ocra Cloud settings: …`）。每个键都按配置文件自己的规则校验，不符合的键会被忽略，并给出点名该键的警告。`--plan` 也会读取这些设置，并在末尾列出 Settings，标明每项设置的来源：`file`（配置）、`account`、合并键的 `file+account`，或 `default`；无法连接 ocra Cloud 时会给出警告，计划只显示配置本身。
+已登录时，`ocra review` 会读取你账户中的设置：运行时、各档位以及各审查员与角色的模型和思考强度、各项限制（`concurrency`、超时、`maxCostUsd`、`maxTasks`）、`verify`、`judge`、`sampling`、`include`、`exclude` 和路径规则。它们位于配置之下：配置写了的优先，`include`、`exclude` 和规则会合并，账户永远不能设置 providers、`extends` 或 `github`（见[账户设置](./configuration#账户设置)）。账户还可以开启 `ultra`：审查会像传了 `--ultra` 一样运行，`ultra` 会和其他项一起打印出来；命令行上的 `--ultra` 始终生效，没有办法在单次运行中关闭它。补充了哪些会打印出来（`From your ocra Cloud settings: …`）。每个键都按配置文件自己的规则校验，不符合的键会被忽略，并给出点名该键的警告。`--plan` 也会读取这些设置，并在末尾列出 Settings，标明每项设置的来源：`file`（配置）、`account`、合并键的 `file+account`，或 `default`，账户开启的 `ultra` 会列为 `account`；无法连接 ocra Cloud 时会给出警告，计划只显示配置本身。
 
-每次审查结束后，已登录的 CLI 会把审查的统计数据发送给 ocra Cloud：结论、是否审完所有文件、各级别问题数、文件和任务数、token、费用和耗时、来源（本地、GitHub、GitLab）以及 ocra 版本。它从不发送路径、标题、问题描述或代码。仓库以其 origin 地址（去掉其中的凭据）的 SHA-256 发送，并加入一个只保存在本机的随机盐（位于凭据旁的 `upload-salt`），因此服务器可以把同一仓库的审查归在一起，却无法知道是哪个仓库；同一仓库在另一台机器上会得到不同的哈希。`--no-upload` 跳过单次上传，`OCRA_CLOUD=off` 关闭全部上传；上传失败只会给出警告。
+每次审查结束后，已登录的 CLI 会把审查的统计数据发送给 ocra Cloud：结论、是否审完所有文件、各级别问题数、文件和任务数、token、费用和耗时、来源（本地、GitHub、GitLab）以及 ocra 版本；每个审查员的任务数和失败任务数、各级别问题数、费用，以及本次审查看到它早先的问题有多少已修复或被驳回；已确认、不确定和未检查的问题各有多少；以及早先的问题一共有多少已修复或被驳回（只有本次审查仍有同一指纹的问题时，已修复或被驳回的问题才会计入某个审查员）。它从不发送路径、标题、指纹、问题描述或代码。仓库以其 origin 地址（去掉其中的凭据）的 SHA-256 发送，并加入一个只保存在本机的随机盐（位于凭据旁的 `upload-salt`），因此服务器可以把同一仓库的审查归在一起，却无法知道是哪个仓库；同一仓库在另一台机器上会得到不同的哈希。`--no-upload` 跳过单次上传，`OCRA_CLOUD=off` 关闭全部上传；上传失败只会给出警告。
 
 ## ocra plugins
 

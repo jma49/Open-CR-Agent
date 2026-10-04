@@ -3,7 +3,13 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
-import { coverageGaps, type ReviewReport } from "@open-cr-agent/core";
+import {
+  coverageGaps,
+  type ReviewReport,
+  type Severity,
+  type Verification,
+} from "@open-cr-agent/core";
+import { verificationSchema } from "@open-cr-agent/core/internal";
 import { type CloudDeps, cloudSession, readCredentials } from "../cloud.js";
 import { VERSION } from "../version.js";
 
@@ -16,6 +22,15 @@ import { VERSION } from "../version.js";
 const run = promisify(execFile);
 
 export type ReviewSource = "local" | "github" | "gitlab";
+
+export type ReviewerCounts = {
+  tasks: number;
+  failedTasks: number;
+  findings: Record<Severity, number>;
+  costUsd: number;
+  fixed: number;
+  dismissed: number;
+};
 
 export type ReviewUpload = {
   runId: string;
@@ -30,6 +45,10 @@ export type ReviewUpload = {
   usage: { inputTokens: number; outputTokens: number; costUsd: number };
   durationMs: number;
   ocraVersion: string;
+  // Added by ADR-0028; optional so a server reading older uploads still can.
+  reviewers?: Record<string, ReviewerCounts>;
+  verification?: Record<Verification, number>;
+  outcomes?: { fixed: number; dismissed: number };
 };
 
 export function uploadOf(
@@ -67,6 +86,65 @@ export function uploadOf(
     },
     durationMs: Math.round(durationMs),
     ocraVersion: VERSION,
+    ...perReviewer(report),
+  };
+}
+
+// Counted as `ocra metrics` counts one report: a failed or timed-out task is
+// failed, a finding without a verification is unchecked, a dismissal outranks
+// a fix, and a fixed or dismissed finding is attributed to the reviewer of a
+// finding with its fingerprint in this report, or to none.
+function perReviewer(
+  report: ReviewReport,
+): Required<Pick<ReviewUpload, "reviewers" | "verification" | "outcomes">> {
+  const reviewers = new Map<string, ReviewerCounts>();
+  const of = (id: string): ReviewerCounts => {
+    let r = reviewers.get(id);
+    if (!r) {
+      r = {
+        tasks: 0,
+        failedTasks: 0,
+        findings: { critical: 0, warning: 0, suggestion: 0 },
+        costUsd: 0,
+        fixed: 0,
+        dismissed: 0,
+      };
+      reviewers.set(id, r);
+    }
+    return r;
+  };
+  for (const task of report.tasks) {
+    const r = of(task.reviewer);
+    r.tasks += 1;
+    if (task.status === "failed" || task.status === "timed_out") r.failedTasks += 1;
+    r.costUsd += task.usage.costUsd;
+  }
+  const verification = Object.fromEntries(verificationSchema.options.map((v) => [v, 0])) as Record<
+    Verification,
+    number
+  >;
+  const reviewerOf = new Map<string, string>();
+  for (const finding of report.findings) {
+    of(finding.reviewer).findings[finding.severity] += 1;
+    verification[finding.verification ?? "unchecked"] += 1;
+    if (!reviewerOf.has(finding.fingerprint)) reviewerOf.set(finding.fingerprint, finding.reviewer);
+  }
+  const dismissed = new Set((report.rereview?.dismissed ?? []).map((f) => f.fingerprint));
+  const fixed = new Set(
+    (report.rereview?.fixed ?? []).map((f) => f.fingerprint).filter((fp) => !dismissed.has(fp)),
+  );
+  for (const fp of fixed) {
+    const reviewer = reviewerOf.get(fp);
+    if (reviewer) of(reviewer).fixed += 1;
+  }
+  for (const fp of dismissed) {
+    const reviewer = reviewerOf.get(fp);
+    if (reviewer) of(reviewer).dismissed += 1;
+  }
+  return {
+    reviewers: Object.fromEntries([...reviewers].sort(([a], [b]) => a.localeCompare(b))),
+    verification,
+    outcomes: { fixed: fixed.size, dismissed: dismissed.size },
   };
 }
 

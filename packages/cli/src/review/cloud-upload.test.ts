@@ -52,16 +52,55 @@ const report = {
   tier: "lite",
   verdict: "changes_requested",
   findings: [
-    { severity: "critical", title: "SECRET TITLE", file: "src/secret.ts", body: "const key = 1" },
-    { severity: "warning", title: "t", file: "a", body: "b" },
-    { severity: "warning", title: "t", file: "a", body: "b" },
+    {
+      severity: "critical",
+      title: "SECRET TITLE",
+      file: "src/secret.ts",
+      body: "const key = 1",
+      reviewer: "security",
+      fingerprint: "fp-secret-critical",
+      verification: "confirmed",
+    },
+    {
+      severity: "warning",
+      title: "t",
+      file: "a",
+      body: "b",
+      reviewer: "security",
+      fingerprint: "fp-dismissed",
+      verification: "uncertain",
+    },
+    {
+      severity: "warning",
+      title: "t",
+      file: "a",
+      body: "b",
+      reviewer: "logic",
+      fingerprint: "fp-3",
+    },
   ],
   coverage: [
     { path: "src/secret.ts", status: "reviewed" },
     { path: "b.ts", status: "unreviewed" },
     { path: "c.ts", status: "excluded", reason: "generated" },
   ],
-  tasks: [{ status: "completed" }, { status: "failed" }],
+  tasks: [
+    { reviewer: "security", status: "completed", usage: { costUsd: 0.25 } },
+    { reviewer: "logic", status: "failed", usage: { costUsd: 0.1 } },
+    { reviewer: "logic", status: "timed_out", usage: { costUsd: 0.05 } },
+    { reviewer: "style", status: "cancelled", usage: { costUsd: 0 } },
+  ],
+  rereview: {
+    fixed: [
+      { fingerprint: "fp-gone-unknown", title: "FIXED TITLE", file: "src/fixed-path.ts" },
+      { fingerprint: "fp-3", title: "t", file: "a" },
+      { fingerprint: "fp-dismissed", title: "t", file: "a" },
+    ],
+    dismissed: [{ fingerprint: "fp-dismissed", title: "DISMISSED TITLE", file: "src/d.ts" }],
+    notReproduced: [],
+    notRechecked: [],
+    unchanged: [],
+  },
   usage: { inputTokens: 100, outputTokens: 20, reasoningTokens: 0, cachedTokens: 0, costUsd: 0.5 },
 } as unknown as ReviewReport;
 
@@ -80,6 +119,57 @@ describe("the review upload", () => {
       durationMs: 1235,
     });
     expect(JSON.stringify(up)).not.toMatch(/SECRET|secret\.ts|const key/);
+  });
+
+  it("counts per reviewer, by verification and by outcome", () => {
+    const up = uploadOf(report, "local", "f".repeat(64), 1);
+    expect(up.reviewers).toEqual({
+      logic: {
+        tasks: 2,
+        failedTasks: 2,
+        findings: { critical: 0, warning: 1, suggestion: 0 },
+        costUsd: expect.closeTo(0.15, 10),
+        fixed: 1,
+        dismissed: 0,
+      },
+      security: {
+        tasks: 1,
+        failedTasks: 0,
+        findings: { critical: 1, warning: 1, suggestion: 0 },
+        costUsd: 0.25,
+        fixed: 0,
+        dismissed: 1,
+      },
+      style: {
+        tasks: 1,
+        failedTasks: 0,
+        findings: { critical: 0, warning: 0, suggestion: 0 },
+        costUsd: 0,
+        fixed: 0,
+        dismissed: 0,
+      },
+    });
+    expect(up.verification).toEqual({ confirmed: 1, uncertain: 1, unchecked: 1 });
+    // The unattributed fix still counts; the dismissed one is not also fixed.
+    expect(up.outcomes).toEqual({ fixed: 2, dismissed: 1 });
+  });
+
+  it("never sends a fingerprint, a path or a title from findings or the re-review", () => {
+    const up = uploadOf(report, "local", "f".repeat(64), 1);
+    // Not vacuous: the re-review's entries are counted, so they were read.
+    expect(up.outcomes).toEqual({ fixed: 2, dismissed: 1 });
+    const sent = JSON.stringify(up);
+    for (const leak of [
+      "fp-",
+      "TITLE",
+      "secret.ts",
+      "fixed-path",
+      "src/d.ts",
+      "const key",
+      '"t"',
+      '"a"',
+    ])
+      expect(sent).not.toContain(leak);
   });
 
   it("hashes the repository with a salt kept on this machine, without credentials in the URL", async () => {
