@@ -55,10 +55,10 @@ Since 0.2.0, each release is also a container image for amd64 and arm64, `ghcr.i
 
 ```bash
 docker run --rm --user "$(id -u):$(id -g)" --volume "$PWD:/repo" \
-  --env GEMINI_API_KEY ghcr.io/jma49/ocra:0.5.0 ocra review --from main
+  --env GEMINI_API_KEY ghcr.io/jma49/ocra:0.5.0 review --from main
 ```
 
-Images after 0.2.0 have `ocra` as their entrypoint, so `docker run <image> review --from main` is enough; a leading `ocra`, as above, works with every image. Run it as your own user, as above, so it can write `.ocra/sessions/` in your checkout. Pass the model key and any `OCRA_*` variables with `--env`. Check where an image came from with `gh attestation verify oci://ghcr.io/jma49/ocra:<version> --repo jma49/Open-CR-Agent`.
+The image's entrypoint is `ocra`, so what follows the image is ocra's arguments. Images up to 0.2.0 had no entrypoint and need `ocra` in front (`docker run <image> ocra review`); images from 0.2.1 to 0.5.0 accept both forms, and later ones only the one above. Run it as your own user, as above, so it can write `.ocra/sessions/` in your checkout. Pass the model key and any `OCRA_*` variables with `--env`. Check where an image came from with `gh attestation verify oci://ghcr.io/jma49/ocra:<version> --repo jma49/Open-CR-Agent`.
 
 ## From source
 

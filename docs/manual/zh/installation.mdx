@@ -55,10 +55,10 @@ npm install --prefix ~/.ocra --omit=optional @open-cr-agent/cli
 
 ```bash
 docker run --rm --user "$(id -u):$(id -g)" --volume "$PWD:/repo" \
-  --env GEMINI_API_KEY ghcr.io/jma49/ocra:0.5.0 ocra review --from main
+  --env GEMINI_API_KEY ghcr.io/jma49/ocra:0.5.0 review --from main
 ```
 
-0.2.0 之后的镜像以 `ocra` 为入口点（entrypoint），所以写 `docker run <镜像> review --from main` 就够了；像上面那样在前面多写一个 `ocra`，对每个版本的镜像都有效。像上面这样以你自己的用户运行，它才能在你的代码目录里写 `.ocra/sessions/`。模型密钥和 `OCRA_*` 变量用 `--env` 传入。用 `gh attestation verify oci://ghcr.io/jma49/ocra:<版本> --repo jma49/Open-CR-Agent` 核对镜像的来源。
+镜像的入口点（entrypoint）是 `ocra`，所以镜像名后面跟的就是 ocra 的参数。0.2.0 及更早的镜像没有入口点，需要在前面写 `ocra`（`docker run <镜像> ocra review`）；0.2.1 到 0.5.0 的镜像两种写法都接受，之后的镜像只接受上面这种。像上面这样以你自己的用户运行，它才能在你的代码目录里写 `.ocra/sessions/`。模型密钥和 `OCRA_*` 变量用 `--env` 传入。用 `gh attestation verify oci://ghcr.io/jma49/ocra:<版本> --repo jma49/Open-CR-Agent` 核对镜像的来源。
 
 ## 从源码安装
 

@@ -44,11 +44,9 @@ RUN set -eu; \
 
 FROM install-${OCRA_INSTALL} AS install
 WORKDIR /opt/ocra
-# Images up to 0.2.0 had no entrypoint and documented `docker run <image>
-# ocra review`; a leading "ocra" is dropped so those command lines still work.
 RUN set -eu; \
     mkdir -p /opt/ocra/bin; \
-    printf '#!/bin/sh\n[ "${1-}" = ocra ] && shift\nexec node /opt/ocra/app/%s "$@"\n' "$(cat /opt/ocra/main)" > /opt/ocra/bin/ocra; \
+    printf '#!/bin/sh\nexec node /opt/ocra/app/%s "$@"\n' "$(cat /opt/ocra/main)" > /opt/ocra/bin/ocra; \
     chmod 755 /opt/ocra/bin/ocra; \
     /opt/ocra/bin/ocra --version
 

@@ -244,8 +244,7 @@ jobs:
       - run: docker build --build-arg OCRA_INSTALL=source --tag ocra:ci .
       - run: |
           docker run --rm ocra:ci --version
-          # The command lines of images up to 0.2.0, and GitLab's shell.
-          docker run --rm ocra:ci ocra --version
+          # GitLab's shell, which bypasses the entrypoint.
           docker run --rm --entrypoint "" ocra:ci sh -c 'ocra --version'
           mkdir repo && cd repo
           git init -q -b main
