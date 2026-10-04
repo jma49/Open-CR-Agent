@@ -1,10 +1,5 @@
-import {
-  type AgentEvent,
-  type AgentTaskSpec,
-  MAX_AGENT_STEPS,
-  RESUME_MESSAGE,
-  type ReviewContext,
-} from "@open-cr-agent/core";
+import type { AgentEvent, AgentTaskSpec, ReviewContext } from "@open-cr-agent/core";
+import { MAX_AGENT_STEPS, RESUME_MESSAGE } from "@open-cr-agent/core/internal";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   type FakeEndpoint,

@@ -1,4 +1,5 @@
-import { type Sampling, stableHash } from "@open-cr-agent/core";
+import type { Sampling } from "@open-cr-agent/core";
+import { stableHash } from "@open-cr-agent/core/internal";
 import type { ReviewArgs } from "./args.js";
 import type { CliConfig } from "./config.js";
 

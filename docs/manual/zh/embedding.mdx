@@ -88,7 +88,7 @@ try {
 | `runId` | 在报告、事件和发布的内容里标识这次运行；不传则自动生成。CLI 传入它的会话 id |
 | `provenance` | `{ ocraVersion, configHash, sampling? }`：传入后，报告的 `provenance` 会加上启用的审查员和辅助阶段所发系统提示词的哈希，以及运行时实际应用的采样设置（`sampling` 是你向运行时要求的设置；`stableHash()` 可以给你自己的配置算哈希） |
 
-`bundling`、`grouper`、`relocate` 和 `abortGraceMs` 是调优和测试钩子，不属于约定。
+0.2 及以前，`ReviewOptions` 还带有 `bundling`、`grouper`、`relocate` 和 `abortGraceMs`；它们是调优和测试钩子，从来不是约定，现在已不在其中。
 
 ## 它返回什么
 
@@ -137,6 +137,14 @@ ocra 的各个包抛出的都是 `OcraError`（或它的子类），带有 `code
 
 嵌入 ocra 的程序就是信任边界。插件会执行代码，所以只加载你信任的插件，绝不加载被审查的代码树指定的插件；模型密钥通过 `env` 传入，运行时只转发配置的供应商需要的变量（[安全](./security)）；审查 PR 时通过 `readTrusted` 从 base 版本读取指南、规则和 memory。无论谁调用，审查本身只给 agent 只读工具，没有 shell。
 
-## 还不是约定的部分
+## 公开 API
 
-`@open-cr-agent/core` 导出的比本页列出的多：各个阶段、定位、Judge 和核查的内部实现。它们不是约定，收窄后的导出面在计划中（[路线图](https://github.com/jma49/Open-CR-Agent/blob/main/docs/roadmap.md)，M10）。请只依赖本页和[稳定性页](./stability)列出的内容。
+每个包的主入口就是它的公开 API，是一份遵循 [0.x 规则](./stability)的约定：
+
+- **`@open-cr-agent/core`**：`review()` 和 `ReviewOptions`；它返回的内容（`ReviewReport`、`Finding` 以及组成它们的类型）、`coverageGaps()`、`toReportOutput()` 及 `ReportOutput`、`reportOutputSchema`、`reportJsonSchema()` 和 `REPORT_VERSION`；`parseSarifLog()`；插件接口（`OcraPlugin` 及其上下文、`startPlugins()`、`PluginRegistry`、内置的审查者插件和 `sessionJsonlPlugin`）；插件实现的约定（`VcsAdapter`、`AgentRuntime` 及它们用到的类型、`ToolDefinition`、`ReviewerDefinition`、`RepoRule`）；以及[错误模型](#错误)。
+- **`@open-cr-agent/vcs-local`**：`localGitPlugin`、`LocalTarget`、`LocalGitOptions` 和 `GitError`。**`vcs-github`** 和 **`vcs-gitlab`**：`githubPlugin` 和 `gitlabPlugin`，以及它们的 API 错误。**`runtime-opencode`** 和 **`runtime-direct`**：`opencodeRuntimePlugin` 和 `directRuntimePlugin`。
+- **`@open-cr-agent/vcs-platform`** 是 ocra 各平台适配器共用的部分，还不是约定。
+
+每个名字和每个类型的形状都记录在该包的 API 报告里，位于仓库的 [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc) 目录；入口变了而报告没变时，CI 会失败。
+
+`@open-cr-agent/core/internal`，以及另外几个包的 `/internal` 入口，是 ocra 各个包之间共用的部分。它不是约定：任何版本（包括补丁版本）都可能修改或删除它导出的内容。请只依赖主入口。

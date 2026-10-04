@@ -1,4 +1,5 @@
-import { type FileDiff, type ReviewPreview, RISK_TIERS, type RiskTier } from "@open-cr-agent/core";
+import type { FileDiff, RiskTier } from "@open-cr-agent/core";
+import { type ReviewPreview, RISK_TIERS } from "@open-cr-agent/core/internal";
 import type { Dataset, Instance, ReferenceComment } from "./dataset.js";
 
 // Why an annotated issue can or cannot be found, decided by the deterministic

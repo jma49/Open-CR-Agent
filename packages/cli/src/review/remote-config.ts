@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { OcraError, repoRuleSchema } from "@open-cr-agent/core";
+import { OcraError } from "@open-cr-agent/core";
+import { repoRuleSchema } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 
 const MAX_BYTES = 256 * 1024;

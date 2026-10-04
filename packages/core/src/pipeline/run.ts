@@ -46,16 +46,9 @@ export interface ReviewOptions {
   // revision under review; pull request reviews pass the trusted base.
   readTrusted?: (path: string) => Promise<string | undefined>;
   selection?: SelectionPolicy;
-  bundling?: BundlePolicy;
-  grouper?: FileGrouper;
-  // Replaces the runtime's light-model relocation (tests); `false` turns
-  // relocation off.
-  relocate?: AnchorContext["relocate"] | false;
   concurrency?: number;
   taskTimeoutMs?: number;
   runTimeoutMs?: number;
-  // How long a cut-off task may still deliver its usage and findings.
-  abortGraceMs?: number;
   // Fact-check findings before reporting them (default true).
   verify?: boolean;
   // Merge, filter and recalibrate findings across reviewers on the top tier (default true).
@@ -85,13 +78,28 @@ export interface ReviewOptions {
   onEvent?: (event: ReviewEvent) => void;
 }
 
+// Tuning and test hooks, outside the contract: review() does not take them,
+// reviewWithHooks(), which core's tests call, does.
+export interface ReviewHooks {
+  bundling?: BundlePolicy;
+  grouper?: FileGrouper;
+  // Replaces the runtime's light-model relocation (tests); `false` turns
+  // relocation off.
+  relocate?: AnchorContext["relocate"] | false;
+  // How long a cut-off task may still deliver its usage and findings.
+  abortGraceMs?: number;
+}
+
 const DEFAULTS = { concurrency: 4, taskTimeoutMs: 10 * 60_000, runTimeoutMs: 25 * 60_000 };
 
 // The library entry: plan (deterministic stages) → execute (one agent task
 // per cell) → verify → judge → report. The `ocra` command is one caller.
-// Which options are a contract is on the manual's Embedding page; bundling,
-// grouper, relocate and abortGraceMs are tuning and test hooks.
-export async function review(options: ReviewOptions): Promise<ReviewReport> {
+// The manual's Embedding page says which options are a contract.
+export function review(options: ReviewOptions): Promise<ReviewReport> {
+  return reviewWithHooks(options);
+}
+
+export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Promise<ReviewReport> {
   const emit = options.onEvent ?? (() => {});
   const timeout = AbortSignal.timeout(options.runTimeoutMs ?? DEFAULTS.runTimeoutMs);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;

@@ -1,4 +1,4 @@
-import { SUMMARY_MARKER, writeState } from "@open-cr-agent/vcs-platform";
+import { SUMMARY_MARKER, writeState } from "@open-cr-agent/vcs-platform/internal";
 import { describe, expect, it } from "vitest";
 import {
   AUTHOR,

@@ -1,13 +1,11 @@
+import type { ModelPrice, ToolDefinition, Usage } from "@open-cr-agent/core";
 import {
   errorMessage,
-  type ModelPrice,
   parseQuotaError,
   type QuotaError,
   sleep,
-  type ToolDefinition,
-  type Usage,
   withoutSecrets,
-} from "@open-cr-agent/core";
+} from "@open-cr-agent/core/internal";
 import { z } from "zod";
 
 // The subset of the OpenAI chat completions protocol the loop needs: one

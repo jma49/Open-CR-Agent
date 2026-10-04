@@ -5,7 +5,7 @@ import {
   SUMMARY_MARKER,
   safeMarkdown,
   writeState,
-} from "@open-cr-agent/vcs-platform";
+} from "@open-cr-agent/vcs-platform/internal";
 import { describe, expect, it } from "vitest";
 import {
   A,

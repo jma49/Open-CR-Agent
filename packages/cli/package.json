@@ -26,7 +26,8 @@
       "@open-cr-agent/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "bin": {
     "ocra": "./dist/main.js"

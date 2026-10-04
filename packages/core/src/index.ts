@@ -1,20 +1,108 @@
-export * from "./anchor/index.js";
-export * from "./bundle/index.js";
-export * from "./contracts.js";
-export * from "./diff/index.js";
-export * from "./domain.js";
-export * from "./errors.js";
-export * from "./judge/index.js";
-export * from "./memory/index.js";
-export * from "./net/index.js";
-export * from "./pipeline/index.js";
-export * from "./plugin/index.js";
-export * from "./rereview/index.js";
-export * from "./review/index.js";
-export * from "./rules/index.js";
-export * from "./runtime/index.js";
-export * from "./sarif/index.js";
-export * from "./select/index.js";
-export * from "./session/index.js";
-export * from "./triage.js";
-export * from "./verify/index.js";
+// The public API of @open-cr-agent/core: what the manual's Embedding and
+// Plugins pages build on, a contract under the 0.x rule (Stability page).
+// etc/core.api.md records it; a change here updates that report
+// (`npm run api`). What the other workspace packages need beyond this comes
+// from "@open-cr-agent/core/internal", which is not a contract.
+
+export type {
+  AgentEvent,
+  AgentRuntime,
+  AgentTaskSpec,
+  AppliedSampling,
+  CodeMatch,
+  CompletionRequest,
+  CompletionResult,
+  ModelTier,
+  ReviewContext,
+  Sampling,
+  Usage,
+  VcsAdapter,
+} from "./contracts.js";
+export type {
+  AnchorMethod,
+  ChangeRequest,
+  DiffLine,
+  FileChangeKind,
+  FileDiff,
+  Finding,
+  FindingProvenance,
+  FindingStatus,
+  Hunk,
+  LineRange,
+  PriorFinding,
+  PriorReview,
+  QuoteSignature,
+  ReportedFinding,
+  RiskTier,
+  Severity,
+  Verdict,
+  Verification,
+} from "./domain.js";
+export {
+  CompletionError,
+  isOcraError,
+  OCRA_ERROR_CODES,
+  OcraError,
+  type OcraErrorCode,
+} from "./errors.js";
+export type { JudgeDecisions } from "./judge/judge.js";
+export type { MemoryEntry } from "./memory/memory.js";
+export { SpendLimitReached } from "./pipeline/budget.js";
+export { AccessDeniedError } from "./pipeline/context.js";
+export type {
+  ReviewerOverride,
+  ReviewerOverrides,
+  SkippedCell,
+  SkipReason,
+} from "./pipeline/matrix.js";
+export {
+  type OutputFinding,
+  type OutputPriorFinding,
+  REPORT_VERSION,
+  type ReportOutput,
+  toReportOutput,
+} from "./pipeline/output.js";
+export { reportJsonSchema, reportOutputSchema } from "./pipeline/output-schema.js";
+export type { ProvenanceInput, RunProvenance } from "./pipeline/provenance.js";
+export {
+  type AnchoringSummary,
+  type CoverageEntry,
+  coverageGaps,
+  type ReviewEvent,
+  type ReviewReport,
+  type TaskOutcome,
+  type TaskStatus,
+} from "./pipeline/report.js";
+export { type ReviewOptions, review } from "./pipeline/run.js";
+export {
+  agentsMdReviewerPlugin,
+  correctnessReviewerPlugin,
+  docsReviewerPlugin,
+  performanceReviewerPlugin,
+  securityReviewerPlugin,
+  sessionJsonlPlugin,
+} from "./plugin/builtin.js";
+export { type PluginHostOptions, startPlugins } from "./plugin/host.js";
+export { PluginError, PluginRegistry } from "./plugin/registry.js";
+export type {
+  BootstrapContext,
+  ConfigureContext,
+  CustomProvider,
+  Env,
+  ModelChains,
+  ModelPrice,
+  OcraPlugin,
+  PluginSummary,
+  PostConfigureContext,
+  RuntimeFactory,
+  RuntimeOptions,
+  ToolDefinition,
+  VcsFactory,
+} from "./plugin/types.js";
+export type { ReviewerDefinition, ReviewerScope } from "./review/reviewer.js";
+export type { Language } from "./rules/languages.js";
+export type { RepoRule } from "./rules/repo-rules.js";
+export type { RuleSet } from "./rules/rule-set.js";
+export { parseSarifLog, SarifError, type SarifLog } from "./sarif/schema.js";
+export type { ExclusionReason, SelectionPolicy } from "./select/select.js";
+export type { RefutedFinding } from "./verify/verify.js";

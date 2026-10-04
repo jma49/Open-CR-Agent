@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentRuntime } from "../contracts.js";
 import { finding, patch, vcs } from "./run.fakes.js";
-import { review } from "./run.js";
+import { review, reviewWithHooks } from "./run.js";
 
 const usage = {
   inputTokens: 5,
@@ -47,7 +47,7 @@ describe("review relocation", () => {
   });
 
   it("can be turned off", async () => {
-    const report = await review({
+    const report = await reviewWithHooks({
       vcs: vcs({}, patch("src/a.ts", "const retries = -1;")),
       runtime,
       verify: false,
@@ -112,7 +112,7 @@ describe("review relocation", () => {
         return { text: "{}", usage: { ...usage, costUsd: 0 } };
       },
     };
-    await review({
+    await reviewWithHooks({
       vcs: vcs(
         {},
         [patch("src/a.ts", "const retries = -1;"), patch("src/b.ts", "const b = 2;")].join("\n"),

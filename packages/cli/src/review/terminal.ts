@@ -1,4 +1,4 @@
-import { isUnsafeCodePoint } from "@open-cr-agent/core";
+import { isUnsafeCodePoint } from "@open-cr-agent/core/internal";
 
 // Findings, commit messages and errors can carry text a diff planted; none of
 // it may drive the user's terminal. C0 and C1 controls (ANSI and OSC escapes

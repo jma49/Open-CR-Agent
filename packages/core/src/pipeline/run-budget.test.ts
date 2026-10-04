@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { AgentRuntime, CompletionRequest, Usage } from "../contracts.js";
 import { REVIEW_BUDGET_SHARE } from "./budget.js";
 import { finding, patch, runtime, vcs } from "./run.fakes.js";
-import { review } from "./run.js";
+import { reviewWithHooks } from "./run.js";
 
 const usage = (costUsd: number): Usage => ({
   inputTokens: 1,
@@ -43,7 +43,7 @@ const perFile = { groupingMinFiles: 10, maxFilesPerBundle: 1, maxBundleChars: 1_
 describe("review with a spend limit", () => {
   it("stops starting review tasks at the review share of the limit", async () => {
     expect(REVIEW_BUDGET_SHARE).toBe(0.8);
-    const report = await review({
+    const report = await reviewWithHooks({
       vcs: vcs({}, files(4)),
       runtime: pricedRuntime(0.3),
       bundling: perFile,
@@ -73,7 +73,7 @@ describe("review with a spend limit", () => {
   });
 
   it("reports the limit, and that it was not reached, when the run stays under it", async () => {
-    const report = await review({
+    const report = await reviewWithHooks({
       vcs: vcs({}, files(2)),
       runtime: pricedRuntime(0.1),
       bundling: perFile,
@@ -82,7 +82,7 @@ describe("review with a spend limit", () => {
     });
     expect(report.spendLimit).toEqual({ usd: 5 });
     expect(report.warnings).toEqual([]);
-    const unlimited = await review({
+    const unlimited = await reviewWithHooks({
       vcs: vcs({}, files(1)),
       runtime: pricedRuntime(0.1),
       bundling: perFile,
@@ -101,7 +101,7 @@ describe("review with a spend limit", () => {
       yield { type: "usage", taskId: spec.taskId, ...usage(0.05) };
       yield { type: "error", taskId: spec.taskId, error: "cancelled", retryable: false };
     });
-    const report = await review({
+    const report = await reviewWithHooks({
       vcs: vcs({}, files(4)),
       runtime: rt,
       bundling: perFile,
@@ -135,7 +135,7 @@ describe("review with a spend limit", () => {
 
   it("verifies and judges with the reserved rest", async () => {
     const rt = pricedRuntime(0.3);
-    const report = await review({
+    const report = await reviewWithHooks({
       vcs: vcs({}, files(3)),
       runtime: rt,
       bundling: perFile,
@@ -153,7 +153,7 @@ describe("review with a spend limit", () => {
 
   it("leaves findings unchecked, and says so, when nothing is left", async () => {
     const rt = pricedRuntime(0.6);
-    const report = await review({
+    const report = await reviewWithHooks({
       vcs: vcs({}, files(2)),
       runtime: rt,
       bundling: perFile,
@@ -170,7 +170,7 @@ describe("review with a spend limit", () => {
   });
 
   it("warns when model calls use tokens without a cost, which the spend limit cannot see", async () => {
-    const report = await review({
+    const report = await reviewWithHooks({
       vcs: vcs({}, files(2)),
       runtime: pricedRuntime(0, 0),
       bundling: perFile,
@@ -181,7 +181,7 @@ describe("review with a spend limit", () => {
     expect(report.warnings[0]).toBe(
       "5 model call(s) used tokens but reported no cost: their model has no price, so the reported cost and the spend limit do not count them",
     );
-    const priced = await review({
+    const priced = await reviewWithHooks({
       vcs: vcs({}, files(2)),
       runtime: pricedRuntime(0.1),
       bundling: perFile,
@@ -190,7 +190,7 @@ describe("review with a spend limit", () => {
   });
 
   it("does not verify findings that memory or a reviewer's dismissal removes", async () => {
-    const first = await review({
+    const first = await reviewWithHooks({
       vcs: vcs({}, files(2)),
       runtime: pricedRuntime(0),
       bundling: perFile,
@@ -217,7 +217,7 @@ describe("review with a spend limit", () => {
       ],
     });
     const rt = pricedRuntime(0);
-    const report = await review({
+    const report = await reviewWithHooks({
       vcs: adapter,
       runtime: rt,
       bundling: perFile,

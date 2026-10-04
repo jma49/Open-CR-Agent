@@ -1,2 +1,1 @@
-export * from "./plugin.js";
-export * from "./runtime.js";
+export { opencodeRuntimePlugin } from "./plugin.js";

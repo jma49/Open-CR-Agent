@@ -1,7 +1,8 @@
 import { createRequire } from "node:module";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { MAX_READ_LINES, type ReviewContext, reviewTools } from "@open-cr-agent/core";
+import type { ReviewContext } from "@open-cr-agent/core";
+import { MAX_READ_LINES, reviewTools } from "@open-cr-agent/core/internal";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { startToolServer, type ToolServer } from "./tool-server.js";

@@ -3,12 +3,9 @@ import {
   agentsMdReviewerPlugin,
   correctnessReviewerPlugin,
   coverageGaps,
-  defaultSelectionPolicy,
   docsReviewerPlugin,
-  newRunId,
   type OcraPlugin,
   performanceReviewerPlugin,
-  previewReview,
   type ReviewerOverride,
   type ReviewerOverrides,
   type ReviewOptions,
@@ -17,11 +14,17 @@ import {
   securityReviewerPlugin,
   sessionJsonlPlugin,
   startPlugins,
-  toPlanOutput,
 } from "@open-cr-agent/core";
+import {
+  defaultSelectionPolicy,
+  newRunId,
+  previewReview,
+  toPlanOutput,
+} from "@open-cr-agent/core/internal";
 import { githubPlugin } from "@open-cr-agent/vcs-github";
 import { gitlabPlugin } from "@open-cr-agent/vcs-gitlab";
-import { findRepositoryRoot, localGitPlugin } from "@open-cr-agent/vcs-local";
+import { localGitPlugin } from "@open-cr-agent/vcs-local";
+import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
 import { VERSION } from "../version.js";
 import type { ReviewArgs } from "./args.js";
 import { type CliConfig, ConfigError } from "./config.js";

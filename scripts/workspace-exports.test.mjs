@@ -11,11 +11,19 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 // first, or the dist/ entries would win; consumers never set it.
 describe("workspace exports", () => {
   for (const { dir, json } of readWorkspaces(root)) {
-    it(`${json.name} exports its source under @open-cr-agent/source`, () => {
-      const entry = json.exports["."];
-      expect(Object.keys(entry)[0]).toBe("@open-cr-agent/source");
-      expect(existsSync(join(dir, entry["@open-cr-agent/source"]))).toBe(true);
-      expect(entry.default).toMatch(/^\.\/dist\//);
+    const entries = Object.entries(json.exports).filter(([, entry]) => typeof entry === "object");
+
+    it(`${json.name} has a main entry`, () => {
+      expect(json.exports["."]).toBeTypeOf("object");
     });
+
+    for (const [path, entry] of entries) {
+      it(`${json.name} exports the source of ${path} under @open-cr-agent/source`, () => {
+        expect(Object.keys(entry)[0]).toBe("@open-cr-agent/source");
+        expect(existsSync(join(dir, entry["@open-cr-agent/source"]))).toBe(true);
+        expect(entry.types).toMatch(/^\.\/dist\/.*\.d\.ts$/);
+        expect(entry.default).toMatch(/^\.\/dist\//);
+      });
+    }
   }
 });

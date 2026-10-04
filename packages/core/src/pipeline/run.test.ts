@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CompletionRequest } from "../contracts.js";
 import type { ReviewEvent } from "./report.js";
 import { finding, patch, runtime, twoFiles, vcs } from "./run.fakes.js";
-import { review } from "./run.js";
+import { review, reviewWithHooks } from "./run.js";
 
 describe("review", () => {
   it("names the run by the given id in the first event and the report, or by one of its own", async () => {
@@ -261,7 +261,7 @@ describe("review", () => {
     const rt = runtime(async function* () {
       await new Promise(() => {});
     });
-    const report = await review({
+    const report = await reviewWithHooks({
       vcs: vcs({}, twoFiles),
       runtime: rt,
       taskTimeoutMs: 20,
@@ -276,7 +276,7 @@ describe("review", () => {
       controller.abort();
       await new Promise(() => {});
     });
-    const report = await review({
+    const report = await reviewWithHooks({
       vcs: vcs({}, twoFiles),
       runtime: rt,
       signal: controller.signal,

@@ -1,13 +1,13 @@
-import {
-  type ChangeRequest,
-  type CodeMatch,
-  errorMessage,
-  type FileDiff,
-  type PriorFinding,
-  type PriorReview,
-  type ReviewReport,
-  type VcsAdapter,
+import type {
+  ChangeRequest,
+  CodeMatch,
+  FileDiff,
+  PriorFinding,
+  PriorReview,
+  ReviewReport,
+  VcsAdapter,
 } from "@open-cr-agent/core";
+import { errorMessage } from "@open-cr-agent/core/internal";
 import type {
   Bot,
   InlineFinding,

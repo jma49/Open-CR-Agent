@@ -4,8 +4,8 @@ import {
   type PriorFinding,
   type ReviewReport,
   type Severity,
-  serializeOutput,
 } from "@open-cr-agent/core";
+import { serializeOutput } from "@open-cr-agent/core/internal";
 
 // `--format sarif`: the review as a SARIF 2.1.0 log, for code scanning and
 // security dashboards. One rule per reviewer category, one result per

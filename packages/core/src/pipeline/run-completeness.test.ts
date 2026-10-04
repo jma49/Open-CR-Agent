@@ -3,7 +3,7 @@ import type { AgentRuntime } from "../contracts.js";
 import { CompletionError } from "../errors.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { finding, patch, runtime, twoFiles, vcs } from "./run.fakes.js";
-import { review } from "./run.js";
+import { review, reviewWithHooks } from "./run.js";
 
 const usage = { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 };
 const reviewer = (id: string): ReviewerDefinition => ({
@@ -81,7 +81,7 @@ describe("review completeness", () => {
       controller.abort();
       yield { type: "done", taskId: spec.taskId };
     });
-    const report = await review({
+    const report = await reviewWithHooks({
       vcs: vcs({}, many.join("\n")),
       runtime: rt,
       signal: controller.signal,

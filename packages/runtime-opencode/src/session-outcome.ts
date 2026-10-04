@@ -1,4 +1,5 @@
-import { type AttemptOutcome, parseQuotaError, type Usage } from "@open-cr-agent/core";
+import type { Usage } from "@open-cr-agent/core";
+import { type AttemptOutcome, parseQuotaError } from "@open-cr-agent/core/internal";
 
 export interface SessionMessage {
   info: {

@@ -7,9 +7,9 @@ import {
   type FileDiff,
   OcraError,
   type PriorReview,
-  parseUnifiedDiff,
   type VcsAdapter,
 } from "@open-cr-agent/core";
+import { parseUnifiedDiff } from "@open-cr-agent/core/internal";
 import { GitError, git, isShallow, SHALLOW_HINT } from "./git.js";
 
 export type LocalTarget =

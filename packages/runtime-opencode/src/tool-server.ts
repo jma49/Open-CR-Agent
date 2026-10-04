@@ -3,7 +3,8 @@ import { createServer, type IncomingMessage } from "node:http";
 import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { errorMessage, type ReviewContext, type ToolDefinition } from "@open-cr-agent/core";
+import type { ReviewContext, ToolDefinition } from "@open-cr-agent/core";
+import { errorMessage } from "@open-cr-agent/core/internal";
 
 // src/ and dist/ both sit one level below the package root.
 const VERSION: string = createRequire(import.meta.url)("../package.json").version;

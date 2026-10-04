@@ -7,7 +7,7 @@ import {
   type Severity,
   type Verification,
 } from "@open-cr-agent/core";
-import { findRepositoryRoot } from "@open-cr-agent/vcs-local";
+import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
 import { UsageError } from "./review/args.js";
 import { SESSIONS_DIR } from "./review/command.js";
 import type { Output } from "./review/progress.js";

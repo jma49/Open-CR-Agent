@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { type PlanOutput, parseUnifiedDiff, type RiskTier } from "@open-cr-agent/core";
+import type { RiskTier } from "@open-cr-agent/core";
+import { type PlanOutput, parseUnifiedDiff } from "@open-cr-agent/core/internal";
 import {
   classifyReferences,
   type ReferenceReach,

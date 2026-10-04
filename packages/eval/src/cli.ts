@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { errorMessage, proxiedFetch } from "@open-cr-agent/core";
+import { errorMessage, proxiedFetch } from "@open-cr-agent/core/internal";
 import { applyLabels, LABELS_FILE, labelsFor, readLabels } from "./adjudicate.js";
 import { scoreAttacks } from "./attack-score.js";
 import { measureCeiling } from "./ceiling-run.js";

@@ -1,5 +1,5 @@
-import type { PriorFinding } from "@open-cr-agent/core";
-import { RISK_TIERS, type RiskTier, severitySchema, verificationSchema } from "@open-cr-agent/core";
+import type { PriorFinding, RiskTier } from "@open-cr-agent/core";
+import { RISK_TIERS, severitySchema, verificationSchema } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 
 export const SUMMARY_MARKER = "<!-- ocra:review -->";

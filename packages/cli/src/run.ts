@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
-import { errorMessage, isOcraError } from "@open-cr-agent/core";
+import { isOcraError } from "@open-cr-agent/core";
+import { errorMessage } from "@open-cr-agent/core/internal";
 import { memoryCommand } from "./memory.js";
 import { metricsCommand } from "./metrics.js";
 import { parseReviewArgs, REVIEW_USAGE, UsageError } from "./review/args.js";

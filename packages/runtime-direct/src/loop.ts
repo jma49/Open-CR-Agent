@@ -1,15 +1,17 @@
+import type {
+  ModelPrice,
+  ReviewContext,
+  Sampling,
+  ToolDefinition,
+  Usage,
+} from "@open-cr-agent/core";
 import {
   type AttemptOutcome,
   addUsage,
   emptyUsage,
   errorMessage,
-  type ModelPrice,
   REVIEW_TOOLS,
-  type ReviewContext,
-  type Sampling,
-  type ToolDefinition,
-  type Usage,
-} from "@open-cr-agent/core";
+} from "@open-cr-agent/core/internal";
 import { type ChatMessage, chat, type Endpoint, type ToolCall, toolSpec } from "./openai.js";
 
 export interface LoopInput {

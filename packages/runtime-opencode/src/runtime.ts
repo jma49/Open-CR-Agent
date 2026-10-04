@@ -7,26 +7,28 @@ import {
   type AgentRuntime,
   type AgentTaskSpec,
   type AppliedSampling,
-  type AttemptOutcome,
   type CompletionRequest,
   type CompletionResult,
   type CustomProvider,
+  type ModelTier,
+  OcraError,
+  type ReviewContext,
+  type RuntimeOptions,
+  type Sampling,
+  type Usage,
+} from "@open-cr-agent/core";
+import {
+  type AttemptOutcome,
   completeWithFailback,
   MAX_AGENT_STEPS,
   ModelHealth,
-  type ModelTier,
-  OcraError,
   parseModel,
   RESUME_MESSAGE,
   REVIEW_TOOLS,
-  type ReviewContext,
-  type RuntimeOptions,
   reviewTools,
-  type Sampling,
-  type Usage,
   withFailback,
   withoutSecrets,
-} from "@open-cr-agent/core";
+} from "@open-cr-agent/core/internal";
 import { createOpencodeClient, type OpencodeClient } from "@opencode-ai/sdk/v2";
 import { resolveOpencodeBinary } from "./binary.js";
 import { type OpencodeServer, startOpencodeServer } from "./opencode-server.js";

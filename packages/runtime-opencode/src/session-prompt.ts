@@ -1,11 +1,10 @@
+import { OcraError, type Usage } from "@open-cr-agent/core";
 import {
   type AttemptOutcome,
   emptyUsage,
   errorMessage,
-  OcraError,
   parseModel,
-  type Usage,
-} from "@open-cr-agent/core";
+} from "@open-cr-agent/core/internal";
 import type { OpencodeClient } from "@opencode-ai/sdk/v2";
 import { type SessionMessage, sessionUsage, summarizeSession } from "./session-outcome.js";
 

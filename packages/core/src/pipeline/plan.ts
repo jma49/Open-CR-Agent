@@ -9,7 +9,7 @@ import { reviewContext } from "./context.js";
 import { runtimeGrouper } from "./helpers.js";
 import { rank } from "./matrix.js";
 import type { ReviewEvent } from "./report.js";
-import type { ReviewOptions } from "./run.js";
+import type { ReviewHooks, ReviewOptions } from "./run.js";
 import { newRunId } from "./run-id.js";
 
 export const GUIDELINES_PATH = "AGENTS.md";
@@ -35,7 +35,7 @@ export interface ReviewPlan {
 
 // Planning needs no model except for grouping, which is skipped without a runtime.
 export type PlanOptions = Pick<
-  ReviewOptions,
+  ReviewOptions & ReviewHooks,
   "vcs" | "rules" | "readTrusted" | "selection" | "bundling" | "grouper"
 > & {
   // Absent for a plan preview, which nobody looks up again.

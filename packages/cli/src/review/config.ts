@@ -6,9 +6,9 @@ import {
   type ModelTier,
   OcraError,
   type RepoRule,
-  RISK_TIERS,
   type RiskTier,
 } from "@open-cr-agent/core";
+import { RISK_TIERS } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 import { fetchRemoteConfig, mergeConfig, type RemoteConfig } from "./remote-config.js";
 

@@ -1,4 +1,4 @@
-import { readState, SUMMARY_MARKER, writeState } from "@open-cr-agent/vcs-platform";
+import { readState, SUMMARY_MARKER, writeState } from "@open-cr-agent/vcs-platform/internal";
 import { describe, expect, it } from "vitest";
 import { adapter, code, fakeGitHub, postedSummary, report } from "./adapter.fakes.js";
 import { GitHubAdapter } from "./adapter.js";

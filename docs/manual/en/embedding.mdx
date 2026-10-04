@@ -88,7 +88,7 @@ try {
 | `runId` | Names the run in the report, the events and what is posted; generated when absent. The CLI passes its session id |
 | `provenance` | `{ ocraVersion, configHash, sampling? }`: with it, the report's `provenance` adds the hash of the system prompts the enabled reviewers and helper stages send and the sampling the runtime applied (`sampling` is what you asked the runtime for; `stableHash()` hashes a configuration of yours) |
 
-`bundling`, `grouper`, `relocate` and `abortGraceMs` are tuning and test hooks, not part of the contract.
+Up to 0.2, `ReviewOptions` also carried `bundling`, `grouper`, `relocate` and `abortGraceMs`; they were tuning and test hooks, never a contract, and are no longer part of it.
 
 ## What it returns
 
@@ -137,6 +137,14 @@ The codes are a contract under the [0.x rule](./stability): a minor release may 
 
 The program that embeds ocra is the trust boundary. Plugins run code, so load only plugins you trust, and never ones named by the tree under review; pass model keys through `env`, where the runtime forwards only what the configured providers need ([Security](./security)); for a pull request, read guidelines, rules and memory from the base revision through `readTrusted`. The review itself gives agents read-only tools and no shell, whoever calls it.
 
-## What is not a contract yet
+## The public API
 
-`@open-cr-agent/core` exports more than this page names: the stages, anchoring, the judge and verification internals. They are not a contract, and a curated export surface is planned ([roadmap](https://github.com/jma49/Open-CR-Agent/blob/main/docs/roadmap.md), M10). Build on what this page and the [stability page](./stability) list.
+The main entry of each package is its public API, a contract under the [0.x rule](./stability):
+
+- **`@open-cr-agent/core`**: `review()` and `ReviewOptions`; what it returns (`ReviewReport`, `Finding` and the types they are made of), `coverageGaps()`, `toReportOutput()` with `ReportOutput`, `reportOutputSchema`, `reportJsonSchema()` and `REPORT_VERSION`; `parseSarifLog()`; the plugin interface (`OcraPlugin` and its contexts, `startPlugins()`, `PluginRegistry`, the built-in reviewer plugins and `sessionJsonlPlugin`); the contracts a plugin implements (`VcsAdapter`, `AgentRuntime` and the types they use, `ToolDefinition`, `ReviewerDefinition`, `RepoRule`); and the [error model](#errors).
+- **`@open-cr-agent/vcs-local`**: `localGitPlugin`, `LocalTarget`, `LocalGitOptions` and `GitError`. **`vcs-github`** and **`vcs-gitlab`**: `githubPlugin` and `gitlabPlugin`, and their API errors. **`runtime-opencode`** and **`runtime-direct`**: `opencodeRuntimePlugin` and `directRuntimePlugin`.
+- **`@open-cr-agent/vcs-platform`** is what ocra's platform adapters share; it is not a contract yet.
+
+Every name and the shape of every type is in the package's API report, in the repository's [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc) directory; CI fails when an entry changes and its report does not.
+
+`@open-cr-agent/core/internal`, and the `/internal` entry of some other packages, is what ocra's packages share with each other. It is not a contract: any release, a patch included, may change or remove what it exports. Build on the main entries only.

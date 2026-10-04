@@ -5,9 +5,13 @@ import {
   type PluginRegistry,
   type VcsAdapter,
 } from "@open-cr-agent/core";
-import { DEFAULT_BOT_LOGIN, GitHubApi } from "@open-cr-agent/vcs-github";
-import { GitLabApi } from "@open-cr-agent/vcs-gitlab";
-import { ensureCommits, filesChangedSince, LocalGitAdapter } from "@open-cr-agent/vcs-local";
+import { DEFAULT_BOT_LOGIN, GitHubApi } from "@open-cr-agent/vcs-github/internal";
+import { GitLabApi } from "@open-cr-agent/vcs-gitlab/internal";
+import {
+  ensureCommits,
+  filesChangedSince,
+  LocalGitAdapter,
+} from "@open-cr-agent/vcs-local/internal";
 import type { MergeRequestTarget, PullRequestTarget, ReviewArgs } from "./args.js";
 import { type CliConfig, ConfigError, loadConfig } from "./config.js";
 import { loadExternalPlugins } from "./plugins.js";

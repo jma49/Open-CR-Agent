@@ -1,4 +1,5 @@
-import { errorMessage, OcraError, type ReviewReport } from "@open-cr-agent/core";
+import { OcraError, type ReviewReport } from "@open-cr-agent/core";
+import { errorMessage } from "@open-cr-agent/core/internal";
 import {
   type Bot,
   type CodeSource,

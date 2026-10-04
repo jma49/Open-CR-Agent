@@ -10,7 +10,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { reviewContext } from "@open-cr-agent/core";
+import { reviewContext } from "@open-cr-agent/core/internal";
 import { afterEach, describe, expect, it } from "vitest";
 import { ensureCommits } from "./commits.js";
 import { LocalGitAdapter, type LocalTarget } from "./local-adapter.js";

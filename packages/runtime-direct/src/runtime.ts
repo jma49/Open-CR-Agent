@@ -6,20 +6,22 @@ import {
   type CompletionRequest,
   type CompletionResult,
   type CustomProvider,
-  completeWithFailback,
-  MAX_AGENT_STEPS,
-  ModelHealth,
   type ModelPrice,
   type ModelTier,
   OcraError,
+  type RuntimeOptions,
+  type ToolDefinition,
+} from "@open-cr-agent/core";
+import {
+  completeWithFailback,
+  MAX_AGENT_STEPS,
+  ModelHealth,
   parseModel,
   proxiedFetch,
   RESUME_MESSAGE,
-  type RuntimeOptions,
   reviewTools,
-  type ToolDefinition,
   withFailback,
-} from "@open-cr-agent/core";
+} from "@open-cr-agent/core/internal";
 import { runLoop } from "./loop.js";
 import type { Endpoint } from "./openai.js";
 

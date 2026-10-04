@@ -2,14 +2,9 @@ import { constants, existsSync } from "node:fs";
 import { lstat, mkdir, open, readdir, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import {
-  MEMORY_PATH,
-  type MemoryEntry,
-  type OutputFinding,
-  parseMemory,
-  serializeMemory,
-} from "@open-cr-agent/core";
-import { findRepositoryRoot } from "@open-cr-agent/vcs-local";
+import type { MemoryEntry, OutputFinding } from "@open-cr-agent/core";
+import { MEMORY_PATH, parseMemory, serializeMemory } from "@open-cr-agent/core/internal";
+import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
 import { UsageError } from "./review/args.js";
 import { SESSIONS_DIR } from "./review/command.js";
 import type { Output } from "./review/progress.js";

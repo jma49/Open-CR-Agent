@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { type Severity, severitySchema } from "@open-cr-agent/core";
+import type { Severity } from "@open-cr-agent/core";
+import { severitySchema } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 import { ATTACK_CHANNELS, ATTACK_GOALS, type Attack, attackInstance } from "./attack.js";
 import type { Instance, ReferenceComment } from "./dataset.js";

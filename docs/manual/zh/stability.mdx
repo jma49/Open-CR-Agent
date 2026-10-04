@@ -25,7 +25,8 @@ ocra 遵循 1.0 之前适用的[语义化版本](https://semver.org/lang/zh-CN/)
 | GitHub Action 的输入 | [GitHub Pull Request](./github) |
 | ocra 保存在 PR 总结评论里的状态 | 内部格式，但之后的版本会继续读取（目前是 `v1`）。万一某个版本读不了，下一次审查会像第一次那样从头开始：审查所有文件，已经评论过的问题可能再评论一次 |
 | 插件接口（`OcraPlugin`） | [插件](./plugins)。在 ocra 还是 0.x 时，它仍可能在次版本中变化，变更日志会说明如何适配 |
-| 库的入口：`review()` 和嵌入页列出的 `ReviewOptions` 字段、`startPlugins()`、注册表的 `createVcs`、`createRuntime`、`reviewers`、`rules` 和 `emit`、`toReportOutput()`、`coverageGaps()` 和 `parseSarifLog()` | [嵌入 ocra](./embedding)。在 ocra 还是 0.x 时和插件接口同一规则。`@open-cr-agent/core` 的其他导出不是约定 |
+| 库的入口：`review()` 和嵌入页列出的 `ReviewOptions` 字段、`startPlugins()`、注册表的 `createVcs`、`createRuntime`、`reviewers`、`rules` 和 `emit`、`toReportOutput()`、`coverageGaps()` 和 `parseSarifLog()` | [嵌入 ocra](./embedding)。在 ocra 还是 0.x 时和插件接口同一规则 |
+| 每个包的主入口：`@open-cr-agent/core`、各适配器和运行时导出的内容 | [嵌入 ocra](./embedding#公开-api)，以及 [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc) 中每个包的 API 报告。在 ocra 还是 0.x 时和插件接口同一规则。`/internal` 入口（`@open-cr-agent/core/internal` 等）和 `@open-cr-agent/vcs-platform` 不是约定 |
 | 错误模型：`OcraError`、它的 `code` 取值、`isOcraError()`，以及 `review()` 抛出什么 | [嵌入 ocra](./embedding#错误)。在 ocra 还是 0.x 时和插件接口同一规则：次版本可能新增代码，重命名或删除代码时变更日志会说明。错误消息不是约定 |
 
 不属于约定的：文本输出、错误消息、进度行和 PR 评论的措辞；会话 `events.jsonl` 里的事件；提示词；模型报告哪些问题；以及费用。请解析 JSON 报告，而不是文本输出。

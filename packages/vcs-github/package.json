@@ -19,12 +19,19 @@
     "node": ">=22.19"
   },
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "@open-cr-agent/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./internal": {
+      "@open-cr-agent/source": "./src/internal.ts",
+      "types": "./dist/internal.d.ts",
+      "default": "./dist/internal.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",

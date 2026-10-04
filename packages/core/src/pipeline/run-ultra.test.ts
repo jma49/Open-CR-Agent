@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { AgentRuntime, AgentTaskSpec } from "../contracts.js";
 import { previewReview } from "./preview.js";
 import { patch, vcs } from "./run.fakes.js";
-import { review } from "./run.js";
+import { review, reviewWithHooks } from "./run.js";
 
 const usage = {
   inputTokens: 7,
@@ -89,7 +89,7 @@ describe("review --ultra", () => {
     const five = [0, 1, 2, 3, 4]
       .map((i) => patch(`src/f${i}.ts`, `const f${i} = ${i};`))
       .join("\n");
-    await review({
+    await reviewWithHooks({
       vcs: vcs({}, five),
       runtime: rt,
       verify: false,

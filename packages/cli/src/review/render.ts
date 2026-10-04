@@ -3,10 +3,10 @@ import {
   type Finding,
   type ReviewReport,
   type Severity,
-  serializeOutput,
   toReportOutput,
   type Verification,
 } from "@open-cr-agent/core";
+import { serializeOutput } from "@open-cr-agent/core/internal";
 import { forTerminal } from "./terminal.js";
 
 const SEVERITIES: Severity[] = ["critical", "warning", "suggestion"];
