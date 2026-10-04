@@ -38,10 +38,13 @@ export interface ModelAttempts {
 export class ChainRunner {
   private readonly health = new ModelHealth();
 
-  constructor(
-    private readonly models: ModelChains,
-    private readonly attempts: ModelAttempts,
-  ) {}
+  private readonly models: ModelChains;
+  private readonly attempts: ModelAttempts;
+
+  constructor(models: ModelChains, attempts: ModelAttempts) {
+    this.models = models;
+    this.attempts = attempts;
+  }
 
   async *runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent> {
     const own = Boolean(spec.models?.length);

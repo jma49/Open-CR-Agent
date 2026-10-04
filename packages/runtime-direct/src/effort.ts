@@ -14,7 +14,11 @@ export class EffortLedger {
   private readonly refused = new Set<string>();
   private readonly applied = new Map<string, AppliedSettings>();
 
-  constructor(private readonly sampling: Sampling) {}
+  private readonly sampling: Sampling;
+
+  constructor(sampling: Sampling) {
+    this.sampling = sampling;
+  }
 
   params(
     agent: string,

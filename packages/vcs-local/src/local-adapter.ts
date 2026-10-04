@@ -59,7 +59,11 @@ export class LocalGitAdapter implements VcsAdapter {
   readonly name = "local";
   private resolved: Promise<ResolvedTarget> | undefined;
 
-  constructor(private readonly options: LocalGitOptions) {}
+  private readonly options: LocalGitOptions;
+
+  constructor(options: LocalGitOptions) {
+    this.options = options;
+  }
 
   async repositoryRoot(): Promise<string> {
     return (await this.target()).root;

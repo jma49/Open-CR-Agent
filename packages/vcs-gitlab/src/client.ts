@@ -57,11 +57,11 @@ export interface Position {
 }
 
 export class GitLabApiError extends OcraError {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
     super("VCS_API_FAILED", message);
+    this.status = status;
     this.name = "GitLabApiError";
   }
 }
@@ -117,10 +117,10 @@ export class GitLabApi {
   private readonly api: PlatformApi;
 
   // `project` is the numeric id or the full path ("group/project").
-  constructor(
-    private readonly project: string | number,
-    options: GitLabApiOptions,
-  ) {
+  private readonly project: string | number;
+
+  constructor(project: string | number, options: GitLabApiOptions) {
+    this.project = project;
     this.baseUrl = (options.baseUrl ?? "https://gitlab.com/api/v4").replace(/\/+$/, "");
     this.api = {
       platform: "GitLab",

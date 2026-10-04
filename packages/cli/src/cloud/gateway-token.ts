@@ -16,11 +16,15 @@ export class GatewayToken {
   private stopped = false;
   private failing = false;
 
-  constructor(
-    private credentials: Credentials,
-    private readonly deps: CloudDeps,
-    private readonly warn: (message: string) => void,
-  ) {}
+  private credentials: Credentials;
+  private readonly deps: CloudDeps;
+  private readonly warn: (message: string) => void;
+
+  constructor(credentials: Credentials, deps: CloudDeps, warn: (message: string) => void) {
+    this.credentials = credentials;
+    this.deps = deps;
+    this.warn = warn;
+  }
 
   get value(): string {
     return this.credentials.access_token;

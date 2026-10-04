@@ -32,12 +32,11 @@ export const OCRA_ERROR_CODES = [
 export type OcraErrorCode = (typeof OCRA_ERROR_CODES)[number];
 
 export class OcraError extends Error {
-  constructor(
-    readonly code: OcraErrorCode,
-    message: string,
-    options?: { cause?: unknown },
-  ) {
+  readonly code: OcraErrorCode;
+
+  constructor(code: OcraErrorCode, message: string, options?: { cause?: unknown }) {
     super(message, options);
+    this.code = code;
     this.name = "OcraError";
   }
 }
@@ -49,12 +48,11 @@ export function isOcraError(error: unknown, code?: OcraErrorCode): error is Ocra
 // A helper completion that failed on every model has still spent tokens on
 // the attempts; callers record them so reports and spend limits stay true.
 export class CompletionError extends OcraError {
-  constructor(
-    message: string,
-    readonly usage: Usage,
-    options?: { cause?: unknown },
-  ) {
+  readonly usage: Usage;
+
+  constructor(message: string, usage: Usage, options?: { cause?: unknown }) {
     super("RUNTIME_FAILED", message, options);
+    this.usage = usage;
     this.name = "CompletionError";
   }
 }

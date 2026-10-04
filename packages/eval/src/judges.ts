@@ -67,10 +67,13 @@ export function parseJudgeAnswer(answer: string): boolean {
 export class OpenAICompatibleJudge implements SemanticJudge {
   calls = 0;
 
-  constructor(
-    private readonly config: JudgeConfig,
-    private readonly fetchImpl: typeof fetch = fetch,
-  ) {}
+  private readonly config: JudgeConfig;
+  private readonly fetchImpl: typeof fetch;
+
+  constructor(config: JudgeConfig, fetchImpl: typeof fetch = fetch) {
+    this.config = config;
+    this.fetchImpl = fetchImpl;
+  }
 
   async sameIssue(reference: string, generated: string): Promise<boolean> {
     this.calls += 1;
@@ -111,10 +114,13 @@ export class MockJudge implements SemanticJudge {
 export class CachedJudge implements SemanticJudge {
   private cache = new Map<string, boolean>();
 
-  constructor(
-    private readonly inner: SemanticJudge,
-    private readonly path: string,
-  ) {}
+  private readonly inner: SemanticJudge;
+  private readonly path: string;
+
+  constructor(inner: SemanticJudge, path: string) {
+    this.inner = inner;
+    this.path = path;
+  }
 
   async load(): Promise<void> {
     try {

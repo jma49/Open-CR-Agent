@@ -17,15 +17,18 @@ export interface GitOptions {
 const GIT_TIMEOUT_MS = 10 * 60_000;
 
 export class GitError extends OcraError {
-  constructor(
-    readonly args: readonly string[],
-    readonly exitCode: number | undefined,
-    readonly stderr: string,
-  ) {
+  readonly args: readonly string[];
+  readonly exitCode: number | undefined;
+  readonly stderr: string;
+
+  constructor(args: readonly string[], exitCode: number | undefined, stderr: string) {
     super(
       "VCS_GIT_FAILED",
       `git ${args.join(" ")} failed (exit ${exitCode ?? "unknown"}): ${stderr.trim()}`,
     );
+    this.args = args;
+    this.exitCode = exitCode;
+    this.stderr = stderr;
     this.name = "GitError";
   }
 }

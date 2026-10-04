@@ -11,10 +11,12 @@ export class ProgressPrinter {
   private lastOutput: number;
   private readonly timer: ReturnType<typeof setInterval>;
 
-  constructor(
-    private readonly err: Output,
-    private readonly options: ProgressOptions,
-  ) {
+  private readonly err: Output;
+  private readonly options: ProgressOptions;
+
+  constructor(err: Output, options: ProgressOptions) {
+    this.err = err;
+    this.options = options;
     this.lastOutput = options.now();
     this.timer = setInterval(() => this.heartbeat(), options.heartbeatMs);
     this.timer.unref?.();

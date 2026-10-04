@@ -56,7 +56,10 @@ export class DirectRuntime implements AgentRuntime {
   private readonly fetch: typeof fetch;
   private readonly efforts: EffortLedger;
 
-  constructor(private readonly options: DirectRuntimeOptions) {
+  private readonly options: DirectRuntimeOptions;
+
+  constructor(options: DirectRuntimeOptions) {
+    this.options = options;
     this.tools = [...reviewTools, ...options.tools];
     this.fetch = options.fetch ?? proxiedFetch(options.env);
     const { temperature, seed } = options.sampling ?? {};

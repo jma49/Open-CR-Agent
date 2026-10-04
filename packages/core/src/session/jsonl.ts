@@ -23,10 +23,10 @@ export const REPORT_FILE = "report.json";
 export class JsonlSessionWriter {
   readonly dir: string;
 
-  constructor(
-    sessionsDir: string,
-    readonly id: string = newRunId(),
-  ) {
+  readonly id: string;
+
+  constructor(sessionsDir: string, id: string = newRunId()) {
+    this.id = id;
     // The sessions directory lives in the reviewed tree, which may carry
     // links planted to send the logs, or the .gitignore write, elsewhere.
     for (const dir of [dirname(sessionsDir), sessionsDir]) refuseSymlink(dir);

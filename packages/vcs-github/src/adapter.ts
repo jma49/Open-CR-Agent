@@ -61,7 +61,11 @@ class GitHubPlatform implements ReviewPlatform {
   // The REST comments behind the platform's, for their GraphQL node ids.
   private readonly listed = new Map<string, IssueComment>();
 
-  constructor(private readonly options: GitHubAdapterOptions) {}
+  private readonly options: GitHubAdapterOptions;
+
+  constructor(options: GitHubAdapterOptions) {
+    this.options = options;
+  }
 
   // REST names the Actions bot "github-actions[bot]", GraphQL "github-actions".
   async bot(): Promise<Bot> {

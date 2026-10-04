@@ -69,7 +69,10 @@ export class PlatformReview implements VcsAdapter {
   private readonly memo = new Map<string, Promise<unknown>>();
   private readonly writers = new Map<string, Promise<boolean>>();
 
-  constructor(private readonly options: PlatformReviewOptions) {
+  private readonly options: PlatformReviewOptions;
+
+  constructor(options: PlatformReviewOptions) {
+    this.options = options;
     this.name = options.name;
     this.platform = options.platform;
   }

@@ -66,7 +66,11 @@ class GitLabPlatform implements ReviewPlatform {
   // User ids by username, from the notes read, for membership lookups.
   private readonly ids = new Map<string, number>();
 
-  constructor(private readonly options: GitLabAdapterOptions) {}
+  private readonly options: GitLabAdapterOptions;
+
+  constructor(options: GitLabAdapterOptions) {
+    this.options = options;
+  }
 
   // The token's own user: a project access token has a bot user of its own.
   async bot(): Promise<Bot> {

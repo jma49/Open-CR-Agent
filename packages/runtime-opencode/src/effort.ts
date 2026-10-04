@@ -141,7 +141,11 @@ export class EffortRoutes {
 export class AppliedEfforts {
   private readonly applied = new Map<string, AppliedSettings>();
 
-  constructor(private readonly sampling: Sampling = {}) {}
+  private readonly sampling: Sampling;
+
+  constructor(sampling: Sampling = {}) {
+    this.sampling = sampling;
+  }
 
   // Whether the call keeps the configured sampling.
   record(agent: string, effort: Effort, model: string, sent: boolean): boolean {

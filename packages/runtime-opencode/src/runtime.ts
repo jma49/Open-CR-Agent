@@ -75,7 +75,10 @@ export class OpenCodeRuntime implements AgentRuntime {
   private readonly helperTools: Record<string, boolean>;
   private readonly applied: AppliedEfforts;
 
-  constructor(private readonly options: OpenCodeRuntimeOptions) {
+  private readonly options: OpenCodeRuntimeOptions;
+
+  constructor(options: OpenCodeRuntimeOptions) {
+    this.options = options;
     const mcpTools = [...reviewTools, ...options.tools].map((t) => [
       `${MCP_SERVER}_${t.name}`,
       false,

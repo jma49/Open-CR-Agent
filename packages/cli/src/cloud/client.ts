@@ -64,7 +64,11 @@ export type LoginStart =
   | { kind: "refused"; status: number };
 
 export class CloudClient {
-  constructor(private readonly deps: CloudDeps) {}
+  private readonly deps: CloudDeps;
+
+  constructor(deps: CloudDeps) {
+    this.deps = deps;
+  }
 
   /** Starts the device flow (RFC 8628, 3.1). */
   async startLogin(server: string): Promise<LoginStart> {

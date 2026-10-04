@@ -34,10 +34,13 @@ export class PluginRegistry {
   private readonly listeners: Owned<(event: ReviewEvent) => void>[] = [];
   private frozen = false;
 
-  constructor(
-    private readonly reservedToolNames: ReadonlySet<string>,
-    private readonly warn: (message: string) => void = () => {},
-  ) {}
+  private readonly reservedToolNames: ReadonlySet<string>;
+  private readonly warn: (message: string) => void;
+
+  constructor(reservedToolNames: ReadonlySet<string>, warn: (message: string) => void = () => {}) {
+    this.reservedToolNames = reservedToolNames;
+    this.warn = warn;
+  }
 
   registerVcs(owner: string, name: string, factory: VcsFactory): void {
     this.add(this.vcs, "VCS adapter", owner, name, factory);

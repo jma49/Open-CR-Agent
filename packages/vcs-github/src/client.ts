@@ -51,11 +51,11 @@ export interface CreateReview {
 }
 
 export class GitHubApiError extends OcraError {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
     super("VCS_API_FAILED", message);
+    this.status = status;
     this.name = "GitHubApiError";
   }
 }
@@ -155,10 +155,12 @@ export class GitHubApi {
   private readonly baseUrl: string;
   private readonly api: PlatformApi;
 
-  constructor(
-    private readonly repository: { owner: string; repo: string },
-    private readonly options: GitHubApiOptions,
-  ) {
+  private readonly repository: { owner: string; repo: string };
+  private readonly options: GitHubApiOptions;
+
+  constructor(repository: { owner: string; repo: string }, options: GitHubApiOptions) {
+    this.repository = repository;
+    this.options = options;
     this.baseUrl = (options.baseUrl ?? "https://api.github.com").replace(/\/$/, "");
     this.api = {
       platform: "GitHub",
