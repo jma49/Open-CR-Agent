@@ -112,3 +112,12 @@ describe("review settings", () => {
     expect(result.error?.issues.map((i) => i.path)).toEqual([["pluginSettings", "b"]]);
   });
 });
+
+describe("the parsed types", () => {
+  it("name each part's keys, so a server can read them", () => {
+    const agents = agentPrefsSchema.parse({ reviewers: { security: { effort: "high" } } });
+    const effort: string | undefined = agents.reviewers?.security?.effort;
+    const models: string[] | undefined = agents.roles?.judge?.models;
+    expect([effort, models]).toEqual(["high", undefined]);
+  });
+});

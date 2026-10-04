@@ -32,6 +32,11 @@ function present<T extends Record<string, unknown>>(
   ) as { [K in keyof T]?: NonNullable<T[K]> };
 }
 
+// null or absent sets nothing, typed as the object it stands for.
+function presentOrNone<T extends Record<string, unknown>>(value: T | null | undefined) {
+  return present(value ?? ({} as T));
+}
+
 export const cloudModelSchema = z
   .string()
   .refine(isCloudModel, `a model is ${CLOUD_PREFIX}<provider>/<model>`);
@@ -56,18 +61,18 @@ export type ModelChains = z.output<typeof modelChainsSchema>;
 const reviewerSchema = z
   .object({ enabled: z.boolean().optional(), models: chain, effort })
   .nullish()
-  .transform((v) => present(v ?? {}));
+  .transform((v) => presentOrNone(v));
 const roleSchema = z
   .object({ models: chain, effort })
   .nullish()
-  .transform((v) => present(v ?? {}));
+  .transform((v) => presentOrNone(v));
 
 export const agentPrefsSchema = z
   .object({
     effort: z
       .object({ top: effort, standard: effort, light: effort })
       .nullish()
-      .transform((v) => present(v ?? {})),
+      .transform((v) => presentOrNone(v)),
     reviewers: z
       .record(
         z
@@ -81,11 +86,11 @@ export const agentPrefsSchema = z
       )
       .refine((r) => Object.keys(r).length <= 30, "at most 30 reviewers")
       .nullish()
-      .transform((v) => present(v ?? {})),
+      .transform((v) => presentOrNone(v)),
     roles: z
       .partialRecord(agentRoleSchema, roleSchema)
       .nullish()
-      .transform((v) => present(v ?? {})),
+      .transform((v) => presentOrNone(v)),
   })
   .transform(present);
 export type AgentPrefs = z.output<typeof agentPrefsSchema>;

@@ -41,7 +41,11 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
             minimal: "minimal";
             none: "none";
         }>, z.ZodLiteral<"">, z.ZodNull]>>, z.ZodTransform<"high" | "low" | "medium" | "minimal" | "none" | undefined, "" | "high" | "low" | "medium" | "minimal" | "none" | null | undefined>>;
-    }, z.core.$strip>>>, z.ZodTransform<{}, {
+    }, z.core.$strip>>>, z.ZodTransform<{
+        top?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        standard?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        light?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+    }, {
         top: "high" | "low" | "medium" | "minimal" | "none" | undefined;
         standard: "high" | "low" | "medium" | "minimal" | "none" | undefined;
         light: "high" | "low" | "medium" | "minimal" | "none" | undefined;
@@ -56,13 +60,25 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
             minimal: "minimal";
             none: "none";
         }>, z.ZodLiteral<"">, z.ZodNull]>>, z.ZodTransform<"high" | "low" | "medium" | "minimal" | "none" | undefined, "" | "high" | "low" | "medium" | "minimal" | "none" | null | undefined>>;
-    }, z.core.$strip>>>, z.ZodTransform<{}, {
+    }, z.core.$strip>>>, z.ZodTransform<{
+        enabled?: NonNullable<boolean | undefined>;
+        models?: string[];
+        effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+    }, {
         enabled?: boolean | undefined;
         models?: string[] | null | undefined;
         effort: "high" | "low" | "medium" | "minimal" | "none" | undefined;
     } | null | undefined>>>>>, z.ZodTransform<{
-        [x: string]: {} | undefined;
-    }, Record<string, {}> | null | undefined>>;
+        [x: string]: {
+            enabled?: NonNullable<boolean | undefined>;
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        } | undefined;
+    }, Record<string, {
+        enabled?: NonNullable<boolean | undefined>;
+        models?: string[];
+        effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+    }> | null | undefined>>;
     roles: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodEnum<{
         helper: "helper";
         judge: "judge";
@@ -76,33 +92,82 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
             minimal: "minimal";
             none: "none";
         }>, z.ZodLiteral<"">, z.ZodNull]>>, z.ZodTransform<"high" | "low" | "medium" | "minimal" | "none" | undefined, "" | "high" | "low" | "medium" | "minimal" | "none" | null | undefined>>;
-    }, z.core.$strip>>>, z.ZodTransform<{}, {
+    }, z.core.$strip>>>, z.ZodTransform<{
+        models?: string[];
+        effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+    }, {
         models?: string[] | null | undefined;
         effort: "high" | "low" | "medium" | "minimal" | "none" | undefined;
     } | null | undefined>>>>>, z.ZodTransform<{
-        helper?: {};
-        judge?: {};
-        verifier?: {};
-    }, Partial<Record<"helper" | "judge" | "verifier", {}>> | null | undefined>>;
+        helper?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
+        judge?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
+        verifier?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
+    }, Partial<Record<"helper" | "judge" | "verifier", {
+        models?: string[];
+        effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+    }>> | null | undefined>>;
 }, z.core.$strip>, z.ZodTransform<{
-    effort?: {};
+    effort?: {
+        top?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        standard?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        light?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+    };
     reviewers?: {
-        [x: string]: {} | undefined;
+        [x: string]: {
+            enabled?: NonNullable<boolean | undefined>;
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        } | undefined;
     };
     roles?: {
-        helper?: {};
-        judge?: {};
-        verifier?: {};
+        helper?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
+        judge?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
+        verifier?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
     };
 }, {
-    effort: {};
+    effort: {
+        top?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        standard?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        light?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+    };
     reviewers: {
-        [x: string]: {} | undefined;
+        [x: string]: {
+            enabled?: NonNullable<boolean | undefined>;
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        } | undefined;
     };
     roles: {
-        helper?: {};
-        judge?: {};
-        verifier?: {};
+        helper?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
+        judge?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
+        verifier?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
     };
 }>>;
 
@@ -389,7 +454,11 @@ export const preferencesUpdateSchema: z.ZodObject<{
                 minimal: "minimal";
                 none: "none";
             }>, z.ZodLiteral<"">, z.ZodNull]>>, z.ZodTransform<"high" | "low" | "medium" | "minimal" | "none" | undefined, "" | "high" | "low" | "medium" | "minimal" | "none" | null | undefined>>;
-        }, z.core.$strip>>>, z.ZodTransform<{}, {
+        }, z.core.$strip>>>, z.ZodTransform<{
+            top?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            standard?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            light?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        }, {
             top: "high" | "low" | "medium" | "minimal" | "none" | undefined;
             standard: "high" | "low" | "medium" | "minimal" | "none" | undefined;
             light: "high" | "low" | "medium" | "minimal" | "none" | undefined;
@@ -404,13 +473,25 @@ export const preferencesUpdateSchema: z.ZodObject<{
                 minimal: "minimal";
                 none: "none";
             }>, z.ZodLiteral<"">, z.ZodNull]>>, z.ZodTransform<"high" | "low" | "medium" | "minimal" | "none" | undefined, "" | "high" | "low" | "medium" | "minimal" | "none" | null | undefined>>;
-        }, z.core.$strip>>>, z.ZodTransform<{}, {
+        }, z.core.$strip>>>, z.ZodTransform<{
+            enabled?: NonNullable<boolean | undefined>;
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        }, {
             enabled?: boolean | undefined;
             models?: string[] | null | undefined;
             effort: "high" | "low" | "medium" | "minimal" | "none" | undefined;
         } | null | undefined>>>>>, z.ZodTransform<{
-            [x: string]: {} | undefined;
-        }, Record<string, {}> | null | undefined>>;
+            [x: string]: {
+                enabled?: NonNullable<boolean | undefined>;
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            } | undefined;
+        }, Record<string, {
+            enabled?: NonNullable<boolean | undefined>;
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        }> | null | undefined>>;
         roles: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodEnum<{
             helper: "helper";
             judge: "judge";
@@ -424,33 +505,82 @@ export const preferencesUpdateSchema: z.ZodObject<{
                 minimal: "minimal";
                 none: "none";
             }>, z.ZodLiteral<"">, z.ZodNull]>>, z.ZodTransform<"high" | "low" | "medium" | "minimal" | "none" | undefined, "" | "high" | "low" | "medium" | "minimal" | "none" | null | undefined>>;
-        }, z.core.$strip>>>, z.ZodTransform<{}, {
+        }, z.core.$strip>>>, z.ZodTransform<{
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        }, {
             models?: string[] | null | undefined;
             effort: "high" | "low" | "medium" | "minimal" | "none" | undefined;
         } | null | undefined>>>>>, z.ZodTransform<{
-            helper?: {};
-            judge?: {};
-            verifier?: {};
-        }, Partial<Record<"helper" | "judge" | "verifier", {}>> | null | undefined>>;
+            helper?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
+            judge?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
+            verifier?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
+        }, Partial<Record<"helper" | "judge" | "verifier", {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        }>> | null | undefined>>;
     }, z.core.$strip>, z.ZodTransform<{
-        effort?: {};
+        effort?: {
+            top?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            standard?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            light?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
         reviewers?: {
-            [x: string]: {} | undefined;
+            [x: string]: {
+                enabled?: NonNullable<boolean | undefined>;
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            } | undefined;
         };
         roles?: {
-            helper?: {};
-            judge?: {};
-            verifier?: {};
+            helper?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
+            judge?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
+            verifier?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
         };
     }, {
-        effort: {};
+        effort: {
+            top?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            standard?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            light?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
         reviewers: {
-            [x: string]: {} | undefined;
+            [x: string]: {
+                enabled?: NonNullable<boolean | undefined>;
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            } | undefined;
         };
         roles: {
-            helper?: {};
-            judge?: {};
-            verifier?: {};
+            helper?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
+            judge?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
+            verifier?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
         };
     }>>>>;
     settings: z.ZodOptional<z.ZodNullable<z.ZodPipe<z.ZodObject<{
