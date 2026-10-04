@@ -1,0 +1,47 @@
+name: Commits
+
+# The commit rules of AGENTS.md for ocra's other repositories (ocra-cloud,
+# ocra-site), with this repository's commitlint config and attribution check,
+# so the rules live once. This repository runs the same steps in ci.yml's
+# `commits` job, which branch protection requires by that name.
+#   jobs:
+#     commits:
+#       if: github.event_name == 'pull_request'
+#       uses: jma49/Open-CR-Agent/.github/workflows/commits.yml@main
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  commits:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: jma49/Open-CR-Agent
+          ref: main
+          path: .ocra-engine
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .ocra-engine/.nvmrc
+          cache: npm
+          cache-dependency-path: .ocra-engine/package-lock.json
+      - working-directory: .ocra-engine
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          .ocra-engine/node_modules/.bin/commitlint --config .ocra-engine/commitlint.config.mjs \
+            --from "$BASE" --to "$HEAD" --verbose
+      - env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: node .ocra-engine/scripts/attribution.mjs "$BASE" "$HEAD"
