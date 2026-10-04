@@ -46,7 +46,7 @@ const PLATFORMS = {
   gitlab: platform(resolveGitLabTarget, () => ({})),
 } satisfies Record<string, FindChangeRequest>;
 
-export type Platform = "local" | keyof typeof PLATFORMS;
+type Platform = "local" | keyof typeof PLATFORMS;
 
 // What a review published to a platform lands on, as the output names it.
 export const CHANGE_REQUEST = {

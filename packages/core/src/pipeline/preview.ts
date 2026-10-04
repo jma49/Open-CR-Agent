@@ -35,7 +35,7 @@ export interface PreviewTask {
 
 // An estimate of input cost only: output, later turns, verification and
 // judging are unknown before the run.
-export type InputCost =
+type InputCost =
   | { model: string; status: "priced"; usd: number }
   // Priced at 0, like models through ocra Cloud: no cost can be counted.
   | { model: string; status: "unpriced" }

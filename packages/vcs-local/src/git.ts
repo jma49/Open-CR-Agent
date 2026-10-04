@@ -14,7 +14,7 @@ export interface GitOptions {
 
 // Every git call ends: a fetch can wait on the network forever, and a diff
 // of a huge repository should fail rather than hang the review.
-export const GIT_TIMEOUT_MS = 10 * 60_000;
+const GIT_TIMEOUT_MS = 10 * 60_000;
 
 export class GitError extends OcraError {
   constructor(

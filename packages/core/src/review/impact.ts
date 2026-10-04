@@ -6,8 +6,8 @@ import type { FileDiff } from "../domain.js";
 // change can break without spending their own steps to find them. Symbols
 // are found by definition patterns common to the languages we review; a miss
 // only costs that hint, never a finding.
-export const MAX_SYMBOLS = 8;
-export const MAX_CALLERS_PER_SYMBOL = 10;
+const MAX_SYMBOLS = 8;
+const MAX_CALLERS_PER_SYMBOL = 10;
 
 const DEFINITIONS = [
   // function f, def f, func f, func (r T) f, fn f, class C, interface I,

@@ -20,7 +20,7 @@ export interface FakePackage {
   source?: string;
 }
 
-export const ACCOUNT_PLUGIN_SOURCE = `export default {
+const ACCOUNT_PLUGIN_SOURCE = `export default {
   name: "acct-plugin",
   configure(ctx) {
     ctx.registerRules([

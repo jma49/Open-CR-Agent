@@ -42,8 +42,8 @@ type PlannedBundle = Awaited<ReturnType<typeof planBundle>>;
 
 // In default mode only bundles large enough that a reviewer's 30 steps may
 // not cover them get a plan phase; --ultra plans every task.
-export const PLAN_MIN_FILES = 5;
-export const PLAN_MIN_PATCH_CHARS = 40_000;
+const PLAN_MIN_FILES = 5;
+const PLAN_MIN_PATCH_CHARS = 40_000;
 
 export function isLargeBundle(files: readonly { patch: string }[]): boolean {
   const chars = files.reduce((sum, f) => sum + f.patch.length, 0);

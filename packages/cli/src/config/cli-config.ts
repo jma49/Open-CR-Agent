@@ -27,7 +27,7 @@ import {
   type SettingsLayer,
 } from "./settings.js";
 
-export const CONFIG_PATH = ".ocra/config.json";
+const CONFIG_PATH = ".ocra/config.json";
 
 export type CliConfig = Omit<
   z.infer<typeof configSchema>,

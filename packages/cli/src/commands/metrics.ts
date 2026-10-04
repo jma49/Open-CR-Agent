@@ -14,9 +14,9 @@ import {
   sessionsDir,
 } from "../session/store.js";
 
-export const METRICS_VERSION = 1;
+const METRICS_VERSION = 1;
 
-export const METRICS_USAGE = `Usage: ocra metrics [options]
+const METRICS_USAGE = `Usage: ocra metrics [options]
 
 Counts over the finished reviews in ${SESSIONS_DIR}: runs, cost, findings,
 what reviewers later fixed or dismissed, per reviewer. Reads each session's
@@ -29,7 +29,7 @@ Options:
   -h, --help           Show help
 `;
 
-export interface ReviewerMetrics {
+interface ReviewerMetrics {
   tasks: number;
   failedTasks: number;
   findings: number;
@@ -230,7 +230,7 @@ function rate(fixed: number, dismissed: number): number | null {
 const percent = (value: number | null) => (value === null ? "n/a" : `${Math.round(value * 100)}%`);
 const dollars = (value: number | null) => (value === null ? "n/a" : `$${value.toFixed(2)}`);
 
-export function renderMetrics(m: Metrics): string {
+function renderMetrics(m: Metrics): string {
   const lines = [
     `Runs: ${m.runs.total}${m.since ? ` since ${m.since}` : ""} (${m.runs.incomplete} incomplete, ${m.runs.unreadable} unreadable)`,
     `  by verdict: ${entries(m.runs.byVerdict)}`,

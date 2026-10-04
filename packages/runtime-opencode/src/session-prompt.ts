@@ -16,18 +16,18 @@ import {
 
 // A session that was cut off has still spent tokens and may have reported
 // findings; this bounds the one extra request that collects them.
-export const HARVEST_TIMEOUT_MS = 5_000;
+const HARVEST_TIMEOUT_MS = 5_000;
 
 // A prompt returns only when the agent is done, so silence on the request is
 // normal; silence in the session is not. A session whose messages have not
 // changed for this long (no new step, no streamed text, no tool progress) is
 // stopped and the task moves to the next model instead of waiting for its
 // full timeout. Generous, so a slow step that is still writing survives.
-export const INACTIVITY_MS = 5 * 60_000;
+const INACTIVITY_MS = 5 * 60_000;
 // Each poll also reports what the session has spent, and a run's spend limit
 // stops running tasks on those reports: this bounds how far past the limit a
 // task can get before it is stopped.
-export const ACTIVITY_POLL_MS = 10_000;
+const ACTIVITY_POLL_MS = 10_000;
 
 export interface ActivityOptions {
   inactivityMs?: number;
@@ -52,7 +52,7 @@ export interface PromptInput {
   resume?: ResumeOptions;
 }
 
-export interface ResumeOptions {
+interface ResumeOptions {
   doneTool: string;
   maxSteps: number;
   message: string;
@@ -62,7 +62,7 @@ export interface ResumeOptions {
 // with no text, no done tool and steps to spare (2026-09-28), and the task
 // counted as completed with its files unread. Continuing the same session
 // keeps what it read and is cheaper than starting over.
-export function stoppedEarly(outcome: AttemptOutcome, resume: ResumeOptions): boolean {
+function stoppedEarly(outcome: AttemptOutcome, resume: ResumeOptions): boolean {
   return (
     !outcome.toolCalls.includes(resume.doneTool) &&
     outcome.steps < resume.maxSteps &&
@@ -214,7 +214,7 @@ function watchActivity(
 }
 
 // What changes while an agent works: steps, parts, streamed text, tool states.
-export function activitySignature(messages: readonly SessionMessage[]): string {
+function activitySignature(messages: readonly SessionMessage[]): string {
   return messages
     .map((m) =>
       m.parts.map((p) => `${p.type}:${p.state?.status ?? ""}:${p.text?.length ?? 0}`).join(","),
@@ -239,6 +239,6 @@ async function harvest(
   }
 }
 
-export function emptyOutcome(): AttemptOutcome {
+function emptyOutcome(): AttemptOutcome {
   return { findings: [], steps: 0, toolCalls: [], text: "", usage: emptyUsage() };
 }

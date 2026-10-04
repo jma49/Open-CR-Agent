@@ -5,19 +5,18 @@ import { z } from "zod";
 
 const report = reportOutputSchema.shape;
 
-export const instanceStatusSchema = z.enum([
+const instanceStatusSchema = z.enum([
   "reviewed",
   "failed",
   "unavailable",
   "skipped_budget",
   "skipped_quota",
 ]);
-export type InstanceStatus = z.output<typeof instanceStatusSchema>;
 
 // One PR's result in a run directory (instances/<id>.json): what scoring
 // reads of ocra's report, and how the run went. Results are read back to
 // resume and to rescore, so they are validated like any file on disk.
-export const instanceResultSchema = z.strictObject({
+const instanceResultSchema = z.strictObject({
   id: z.string(),
   status: instanceStatusSchema,
   durationMs: z.number(),

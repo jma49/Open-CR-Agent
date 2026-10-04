@@ -9,7 +9,7 @@ const TIMEOUT_MS = 10_000;
 // What a shared configuration may set: settings, rules and model providers
 // (a company gateway, for example), never plugins or a runtime, because it
 // is fetched from outside the repository.
-export const remoteConfigSchema = z
+const remoteConfigSchema = z
   .object({
     $schema: z.string().optional(),
     models: z.record(z.enum(MODEL_TIERS), z.unknown()).optional(),

@@ -16,9 +16,9 @@ import { GitLabApi } from "./client.js";
 // what the adapter sends. Shared by the GitLab tests.
 
 // The bot user of a project access token.
-export const BOT = "project_42_bot_7f3a";
+const BOT = "project_42_bot_7f3a";
 export const START = "d".repeat(40);
-export const API = "https://gitlab.example.com/api/v4";
+const API = "https://gitlab.example.com/api/v4";
 
 const USER_IDS: Record<string, number> = { [AUTHOR]: 1, [MAINTAINER]: 2, [OUTSIDER]: 3, [BOT]: 99 };
 // Developer and Maintainer; the outsider is not a member (404).
@@ -69,7 +69,7 @@ export const diff: FileDiff = {
   ],
 };
 
-export const code: CodeSource = {
+const code: CodeSource = {
   getDiff: async () => [diff],
   readFile: async () => undefined,
   searchCode: async () => [],

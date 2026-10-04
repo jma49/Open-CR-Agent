@@ -19,7 +19,7 @@ export interface ReferenceMatch {
   matchedIndex?: number;
 }
 
-export const LINE_TOLERANCE = 1;
+const LINE_TOLERANCE = 1;
 
 // Port of AACR-Bench's evaluate_comments so results stay comparable with the
 // published numbers: path, then side, then line proximity, then the judge.

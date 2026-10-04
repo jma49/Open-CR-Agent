@@ -1,6 +1,6 @@
 import type { FileDiff, RiskTier } from "./domain.js";
 
-export interface TriagePolicy {
+interface TriagePolicy {
   trivialMaxLines: number;
   liteMaxLines: number;
   maxFilesBeforeFull: number;
@@ -10,7 +10,7 @@ export interface TriagePolicy {
   sensitivePathWords: ReadonlySet<string>;
 }
 
-export const defaultTriagePolicy: TriagePolicy = {
+const defaultTriagePolicy: TriagePolicy = {
   trivialMaxLines: 10,
   liteMaxLines: 100,
   maxFilesBeforeFull: 20,

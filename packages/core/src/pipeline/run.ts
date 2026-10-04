@@ -12,8 +12,6 @@ import { MAX_TIMER_MS, REVIEW_DEFAULTS, type ReviewHooks, type ReviewOptions } f
 import { planReview } from "./plan.js";
 import { newRunId } from "./run-id.js";
 
-export { GUIDELINES_PATH } from "./plan.js";
-
 // The library entry: plan (deterministic stages) → execute (one agent task
 // per cell) → filter (memory, the previous review) → check (verify, judge)
 // → report. The `ocra` command is one caller. The manual's Embedding page

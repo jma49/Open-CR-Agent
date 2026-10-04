@@ -4,7 +4,7 @@ import type { Dataset, Instance, ReferenceComment } from "./instance.js";
 
 // Why an annotated issue can or cannot be found, decided by the deterministic
 // stages alone. It bounds recall before any model is involved.
-export type Reachability =
+type Reachability =
   | "file_excluded"
   | "not_in_change"
   | "no_reviewer"
@@ -13,7 +13,7 @@ export type Reachability =
   | "outside_diff"
   | "reachable";
 
-export const REACHABILITY_ORDER: readonly Reachability[] = [
+const REACHABILITY_ORDER: readonly Reachability[] = [
   "file_excluded",
   "not_in_change",
   "no_reviewer",

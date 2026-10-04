@@ -14,7 +14,6 @@ export interface FileGrouper {
 export const groupingResponseSchema = z.array(
   z.object({ label: z.string(), files: z.array(z.number().int()) }),
 );
-export type GroupingResponse = z.infer<typeof groupingResponseSchema>;
 
 export const GROUPING_SYSTEM_PROMPT = `You group the changed files of a pull request into clusters that should be reviewed together.
 

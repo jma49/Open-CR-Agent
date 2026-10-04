@@ -2,8 +2,7 @@ import { z } from "zod";
 import type { Finding } from "../domain.js";
 import { data, join, labelled, oneLine, type PromptText, section } from "../review/prompt-text.js";
 
-export const verificationVerdictSchema = z.enum(["confirmed", "refuted", "uncertain"]);
-export type VerificationVerdict = z.infer<typeof verificationVerdictSchema>;
+const verificationVerdictSchema = z.enum(["confirmed", "refuted", "uncertain"]);
 
 export const verificationResponseSchema = z.array(
   z.object({

@@ -15,7 +15,7 @@
 declare const brand: unique symbol;
 export type PromptText = string & { readonly [brand]: "PromptText" };
 
-export const SECTIONS = [
+const SECTIONS = [
   "change_request",
   "title",
   "description",

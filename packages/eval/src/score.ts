@@ -17,7 +17,7 @@ import {
 } from "./metrics.js";
 import type { InstanceResult } from "./results.js";
 
-export interface Scored {
+interface Scored {
   counts: Counts;
   metrics: QualityMetrics;
 }

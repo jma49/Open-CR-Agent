@@ -30,7 +30,7 @@ export interface Instance {
   golden?: GoldenInfo;
 }
 
-export type GoldenTier = "smoke" | "full" | "adversarial";
+type GoldenTier = "smoke" | "full" | "adversarial";
 
 export interface ForbiddenRange {
   path: string;
@@ -46,13 +46,13 @@ export interface Adjudication {
   title: string;
 }
 
-export interface Location {
+interface Location {
   path: string;
   fromLine: number;
   toLine: number;
 }
 
-export interface GoldenInfo {
+interface GoldenInfo {
   tier: GoldenTier;
   clean: boolean;
   forbid: ForbiddenRange[];

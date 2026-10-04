@@ -8,7 +8,7 @@ export interface Bundle {
   files: FileDiff[];
 }
 
-export type BundleStrategy = "single" | "small_set" | "grouped" | "per_file" | "per_directory";
+type BundleStrategy = "single" | "small_set" | "grouped" | "per_file" | "per_directory";
 
 export interface BundleResult {
   bundles: Bundle[];

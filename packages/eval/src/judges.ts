@@ -10,7 +10,7 @@ export interface JudgeConfig {
 }
 
 export const GEMINI_OPENAI_URL = "https://generativelanguage.googleapis.com/v1beta/openai";
-export const DEFAULT_JUDGE_MODEL = "gemini-flash-lite-latest";
+const DEFAULT_JUDGE_MODEL = "gemini-flash-lite-latest";
 
 // Same variable names as the official AACR-Bench evaluation; falls back to a
 // Gemini key through Google's OpenAI-compatible endpoint.
@@ -30,7 +30,7 @@ export function judgeConfigFromEnv(
     : undefined;
 }
 
-export function judgePrompt(reference: string, generated: string): string {
+function judgePrompt(reference: string, generated: string): string {
   const task =
     'Determine whether two given review comments express the same concern or suggestion. Ignore differences in wording, tone, or formatting—focus solely on semantic equivalence of the underlying issue. If the core intent and technical substance are identical, answer "yes"; otherwise, answer "no".';
   return [

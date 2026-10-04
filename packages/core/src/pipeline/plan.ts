@@ -18,7 +18,7 @@ import { rank } from "./matrix.js";
 import type { ReviewHooks, ReviewOptions } from "./options.js";
 import { newRunId } from "./run-id.js";
 
-export const GUIDELINES_PATH = "AGENTS.md";
+const GUIDELINES_PATH = "AGENTS.md";
 
 // Everything the deterministic stages decide before any reviewer runs.
 export interface ReviewPlan {

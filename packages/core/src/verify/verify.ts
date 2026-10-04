@@ -7,7 +7,7 @@ import type { FileDiff, Finding, Verification } from "../domain.js";
 import { errorMessage, OcraError, usageSpent } from "../errors.js";
 import { buildVerificationPrompt, fileExcerpt, verificationResponseSchema } from "./prompt.js";
 
-export const VERIFY_TIMEOUT_MS = 120_000;
+const VERIFY_TIMEOUT_MS = 120_000;
 
 export interface RefutedFinding {
   fingerprint: string;

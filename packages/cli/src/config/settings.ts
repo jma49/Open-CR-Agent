@@ -18,7 +18,7 @@ export type Settings = FileSettings & {
   ultra: boolean;
 };
 
-export type SettingSource = "shared" | "file" | "env" | "account" | "flag";
+type SettingSource = "shared" | "file" | "env" | "account" | "flag";
 
 export type LayerSettings = { [K in keyof Settings]?: Settings[K] };
 

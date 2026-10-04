@@ -1,6 +1,6 @@
 import type { Finding, Severity, Verdict, Verification } from "../domain.js";
 
-export const PATTERN_WARNINGS = 3;
+const PATTERN_WARNINGS = 3;
 
 export interface VerdictInput {
   severity: Severity;

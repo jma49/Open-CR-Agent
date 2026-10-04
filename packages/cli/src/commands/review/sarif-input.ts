@@ -5,7 +5,7 @@ import { ConfigError } from "../../config/cli-config.js";
 
 // A log is untrusted input like everything else that reaches the review; it
 // is bounded before it is parsed.
-export const MAX_SARIF_BYTES = 20 * 1024 * 1024;
+const MAX_SARIF_BYTES = 20 * 1024 * 1024;
 
 export async function loadSarifLogs(paths: readonly string[], cwd: string): Promise<SarifLog[]> {
   const logs: SarifLog[] = [];

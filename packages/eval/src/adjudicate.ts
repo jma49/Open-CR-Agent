@@ -24,7 +24,6 @@ const entrySchema = z.object({
 });
 const labelsSchema = z.object({ goldenDir: z.string(), entries: z.array(entrySchema) });
 
-export type LabelEntry = z.infer<typeof entrySchema>;
 export type LabelsFile = z.infer<typeof labelsSchema>;
 
 const CASE_CATEGORIES = new Set(["correctness", "security", "performance"]);

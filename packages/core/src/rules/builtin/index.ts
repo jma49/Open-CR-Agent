@@ -8,9 +8,8 @@ import { TYPESCRIPT_RULES } from "./typescript.js";
 
 export { PERFORMANCE_RULES } from "./performance.js";
 export { SECURITY_RULES } from "./security.js";
-export { GENERAL_RULES };
 
-export const LANGUAGE_RULES: Record<Language, string> = {
+const LANGUAGE_RULES: Record<Language, string> = {
   typescript: TYPESCRIPT_RULES,
   python: PYTHON_RULES,
   go: GO_RULES,

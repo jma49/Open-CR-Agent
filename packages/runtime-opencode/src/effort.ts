@@ -14,7 +14,7 @@ const GOOGLE_PROVIDERS = new Set(["google", "google-vertex"]);
 
 // OpenCode merges a configured variant over a built-in one of the same name
 // (1.18.32 has "high" and "max" for most models), so ocra's carry a prefix.
-export function effortVariant(level: Effort): string {
+function effortVariant(level: Effort): string {
   return `ocra-${level}`;
 }
 

@@ -17,7 +17,7 @@ export const MAINTAINER = "maintainer";
 // Someone without it.
 export const OUTSIDER = "outsider";
 
-export interface ScenarioComment {
+interface ScenarioComment {
   author: string;
   body: string;
   // Who edited the comment after it was posted.
@@ -30,7 +30,7 @@ export interface Scenario {
   threads?: { resolvedBy?: string; comments: ScenarioComment[] }[];
 }
 
-export interface Conversation {
+interface Conversation {
   review: VcsAdapter;
   // Bodies of the inline comments the adapter posted.
   inline(): string[];

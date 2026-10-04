@@ -14,7 +14,7 @@ import { errorMessage, OcraError, usageSpent } from "../errors.js";
 import { buildJudgePrompt, type JudgeResponse, judgeResponseSchema } from "./prompt.js";
 import { decideVerdict, defaultSummary } from "./verdict.js";
 
-export const JUDGE_TIMEOUT_MS = 180_000;
+const JUDGE_TIMEOUT_MS = 180_000;
 
 export interface JudgeDecisions {
   merged: { kept: string; merged: string[] }[];

@@ -4,7 +4,7 @@ import type { Attack, AttackChannel, AttackGoal, Instance } from "./instance.js"
 import type { SemanticJudge } from "./match.js";
 import type { InstanceResult } from "./results.js";
 
-export interface AttackOutcome {
+interface AttackOutcome {
   id: string;
   on: string;
   goal: AttackGoal;

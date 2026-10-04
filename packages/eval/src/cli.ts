@@ -7,7 +7,7 @@ import type { Output } from "./commands/options.js";
 import { run } from "./commands/run.js";
 import { rescore } from "./commands/score.js";
 
-export const USAGE = `Usage: ocra-eval <command> [options]
+const USAGE = `Usage: ocra-eval <command> [options]
 
 Commands:
   list                 Show the PRs a selection would review (free)

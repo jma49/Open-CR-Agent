@@ -41,7 +41,7 @@ const result = z.looseObject({
   locations: z.array(location).optional(),
 });
 
-export const sarifRunSchema = z.looseObject({
+const sarifRunSchema = z.looseObject({
   tool: z.looseObject({
     driver: z.looseObject({
       name: z.string().min(1),
@@ -53,7 +53,7 @@ export const sarifRunSchema = z.looseObject({
   results: z.array(result).optional(),
 });
 
-export const sarifLogSchema = z.looseObject({
+const sarifLogSchema = z.looseObject({
   version: z.literal("2.1.0"),
   runs: z.array(sarifRunSchema),
 });

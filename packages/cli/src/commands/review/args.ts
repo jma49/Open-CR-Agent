@@ -3,15 +3,15 @@ import { errorMessage } from "@open-cr-agent/core";
 import type { LocalTarget } from "@open-cr-agent/vcs-local";
 import { UsageError } from "../../io/usage-error.js";
 
-export type OutputFormat = "text" | "json" | "sarif";
+type OutputFormat = "text" | "json" | "sarif";
 
-export interface PullRequestArgs {
+interface PullRequestArgs {
   number: number;
   repo?: string;
   publish: boolean;
 }
 
-export interface MergeRequestArgs {
+interface MergeRequestArgs {
   iid: number;
   // The project's numeric id or full path.
   project?: string;

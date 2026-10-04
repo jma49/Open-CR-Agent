@@ -4,7 +4,7 @@ import { usageSpent } from "../errors.js";
 import { data, join, labelled, section } from "../review/prompt-text.js";
 import type { RelocationRequest } from "./anchor.js";
 
-export const RELOCATE_TIMEOUT_MS = 30_000;
+const RELOCATE_TIMEOUT_MS = 30_000;
 
 export const RELOCATE_SYSTEM_PROMPT = `You locate the code a review finding is about. The finding quotes code that does not match the file exactly: the reviewer paraphrased it, trimmed it, or copied it from memory. Find the lines of the diff it refers to.
 

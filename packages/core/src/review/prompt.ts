@@ -18,7 +18,7 @@ export const MAX_GUIDELINES_CHARS = 20_000;
 // Runtimes cap an agent's turns, and on OpenCode the last turn has no tools:
 // a reviewer that kept its findings for the end lost them. A quarter of the
 // review tasks on Vertex ended at the cap (2026-09-28).
-export const TURN_BUDGET = `## Turn budget
+const TURN_BUDGET = `## Turn budget
 Your turns are limited, and the last one allows no tool calls, so a finding you have not reported by then is lost. Report each issue with ${REVIEW_TOOLS.reportFinding} as soon as you have confirmed it, before you investigate the next one; never keep findings for the end. Spread your turns over every file in <ocra_review_files>.`;
 
 export interface ReviewPromptInput {
@@ -84,8 +84,8 @@ export function buildReviewPrompt(input: ReviewPromptInput): ReviewPrompt {
   };
 }
 
-export const MAX_TITLE_CHARS = 300;
-export const MAX_DESCRIPTION_CHARS = 8_000;
+const MAX_TITLE_CHARS = 300;
+const MAX_DESCRIPTION_CHARS = 8_000;
 
 // Also used by the judge, which sees the same change request.
 export function renderChangeRequest(cr: ChangeRequest, maxDescription = MAX_DESCRIPTION_CHARS) {

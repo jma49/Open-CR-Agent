@@ -1,7 +1,7 @@
 import type { LineRange, Severity } from "../domain.js";
 import type { SarifResult, SarifRule, SarifRun } from "./schema.js";
 
-export interface SarifTool {
+interface SarifTool {
   name: string;
   // The reviewer id and finding category the tool's findings carry.
   slug: string;

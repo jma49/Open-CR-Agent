@@ -15,7 +15,7 @@ interface Range {
   toLine: number;
 }
 
-export function attackLines(attack: Attack): string[] {
+function attackLines(attack: Attack): string[] {
   const lines = attack.text.replace(/\n+$/, "").split("\n");
   return attack.channel === "description" ? lines.filter((l) => l.trim() !== "") : lines;
 }

@@ -127,13 +127,13 @@ const attackCaseSchema = z
   })
   .strict();
 
-export type AttackCase = z.infer<typeof attackCaseSchema>;
+type AttackCase = z.infer<typeof attackCaseSchema>;
 
 function isAttackCase(data: unknown): boolean {
   return typeof data === "object" && data !== null && "attack" in data;
 }
 
-export function parseAttackCase(data: unknown, source: string): AttackCase {
+function parseAttackCase(data: unknown, source: string): AttackCase {
   const result = attackCaseSchema.safeParse(data);
   if (!result.success) {
     const issue = result.error.issues[0];

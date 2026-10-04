@@ -44,7 +44,7 @@ import { startToolServer, type ToolServer } from "./tool-server.js";
 import { createUntimedDispatcher, untimedFetch } from "./transport.js";
 
 // Sent once to a review agent that stopped before finishing (session-prompt.ts).
-export const REVIEW_RESUME = {
+const REVIEW_RESUME = {
   doneTool: REVIEW_TOOLS.taskDone,
   maxSteps: MAX_AGENT_STEPS,
   message: RESUME_MESSAGE,

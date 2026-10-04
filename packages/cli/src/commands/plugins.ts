@@ -63,7 +63,7 @@ async function list(out: Output, dir: string): Promise<number> {
   return EXIT.ok;
 }
 
-export function parseSpec(spec: string): { name: string; version: string } {
+function parseSpec(spec: string): { name: string; version: string } {
   const at = spec.lastIndexOf("@");
   const name = at > 0 ? spec.slice(0, at) : spec;
   const version = at > 0 ? spec.slice(at + 1) : "";

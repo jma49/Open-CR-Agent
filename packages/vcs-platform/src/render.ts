@@ -78,7 +78,7 @@ const VERDICT: Record<ReviewReport["verdict"], string> = {
 // File paths come from the diff, so the author controls them: a backtick or
 // newline must not end the code span and let markup through, and angle
 // brackets must not form ocra's HTML-comment markers in the raw body.
-export function codeSpan(text: string): string {
+function codeSpan(text: string): string {
   const safe = text
     .replaceAll("`", "\u02cb")
     .replace(/[\r\n]+/g, " ")

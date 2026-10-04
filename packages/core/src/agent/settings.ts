@@ -15,7 +15,7 @@ export const EFFORT_LEVELS = [
 // a reviewer's settings, so checking stays independent of what was checked.
 export type AgentRole = "verifier" | "judge" | "helper";
 export const AGENT_ROLES: readonly AgentRole[] = ["verifier", "judge", "helper"];
-export const ROLE_TIERS: Readonly<Record<AgentRole, ModelTier>> = {
+const ROLE_TIERS: Readonly<Record<AgentRole, ModelTier>> = {
   verifier: "standard",
   judge: "top",
   helper: "light",

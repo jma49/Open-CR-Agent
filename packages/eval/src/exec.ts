@@ -9,7 +9,7 @@ export interface ExecResult {
 
 // A child that ignores SIGTERM (a CLI stuck while cleaning up) is killed
 // after this grace, so a timed-out run always ends.
-export const KILL_GRACE_MS = 30_000;
+const KILL_GRACE_MS = 30_000;
 
 /**
  * The environment for an `ocra` run on a benchmark: ocra Cloud off, so a

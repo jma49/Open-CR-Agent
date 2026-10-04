@@ -17,7 +17,7 @@ import { forTerminal } from "../io/terminal.js";
 import { UsageError } from "../io/usage-error.js";
 import { listSessions, reportPath, SESSIONS_DIR, sessionsDir } from "../session/store.js";
 
-export const MEMORY_USAGE = `Usage: ocra memory <command>
+const MEMORY_USAGE = `Usage: ocra memory <command>
 
 Remember findings the team accepts, so ocra stops reporting them.
 Entries live in ${MEMORY_PATH}; commit it to share them.

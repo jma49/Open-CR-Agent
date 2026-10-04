@@ -5,10 +5,10 @@ export type Severity = z.infer<typeof severitySchema>;
 
 // A finding in a report is new or reported before; fixed and dismissed
 // earlier findings are listed separately (report.rereview).
-export const findingStatusSchema = z.enum(["new", "unfixed"]);
+const findingStatusSchema = z.enum(["new", "unfixed"]);
 export type FindingStatus = z.infer<typeof findingStatusSchema>;
 
-export const lineRangeSchema = z.object({
+const lineRangeSchema = z.object({
   start: z.number().int().positive(),
   end: z.number().int().positive(),
 });

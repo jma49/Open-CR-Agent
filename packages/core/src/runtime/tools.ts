@@ -4,8 +4,8 @@ import type { ToolDefinition } from "../plugin/types.js";
 import { data as promptData } from "../review/prompt-text.js";
 import { REVIEW_TOOLS } from "../review/tools.js";
 
-export const MAX_READ_LINES = 400;
-export const MAX_SEARCH_RESULTS = 50;
+const MAX_READ_LINES = 400;
+const MAX_SEARCH_RESULTS = 50;
 // Lines and results are also capped in characters: one line of a minified
 // bundle or a JSON fixture can be megabytes, and every step resends it.
 export const MAX_LINE_CHARS = 2_000;
@@ -27,7 +27,7 @@ function fitting(lines: readonly string[]): string[] {
   return kept;
 }
 
-export const reportFindingInput = z.object({
+const reportFindingInput = z.object({
   file: z.string().min(1).describe("Path of a file in <ocra_review_files>"),
   existingCode: z
     .string()

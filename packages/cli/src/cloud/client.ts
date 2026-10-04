@@ -24,8 +24,8 @@ import { withFileLock } from "./file-lock.js";
 // schema (@open-cr-agent/cloud-contract) before a caller sees it. Calls for the account carry the
 // saved session's token and renew it on the way.
 
-export const USER_AGENT = `ocra/${VERSION}`;
-export const CLOUD_TIMEOUT_MS = 30_000;
+const USER_AGENT = `ocra/${VERSION}`;
+const CLOUD_TIMEOUT_MS = 30_000;
 
 /** A call to ocra Cloud that could not be sent or whose answer cannot be used. */
 export class CloudError extends OcraError {

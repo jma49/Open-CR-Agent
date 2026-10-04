@@ -205,9 +205,9 @@ function streamed(res: import("node:http").ServerResponse, completion: Completio
   res.end("data: [DONE]\n\n");
 }
 
-export const FILE = "src/a.ts";
-export const FILE_CONTENT = "const a = 1;\nexport { a };\n";
-export const FINDING = {
+const FILE = "src/a.ts";
+const FILE_CONTENT = "const a = 1;\nexport { a };\n";
+const FINDING = {
   file: FILE,
   existingCode: "const a = 1;",
   severity: "warning",
@@ -233,7 +233,7 @@ export function fakeContext(): ReviewContext & { reads: string[]; searches: stri
   };
 }
 
-export function taskSpec(context: ReviewContext, timeoutMs = 60_000): AgentTaskSpec {
+function taskSpec(context: ReviewContext, timeoutMs = 60_000): AgentTaskSpec {
   return {
     taskId: "t1",
     reviewer: "correctness",

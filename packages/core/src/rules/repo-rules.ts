@@ -13,7 +13,7 @@ export type RepoRule = z.infer<typeof repoRuleSchema>;
 export type RuleSource = "repository" | "shared" | "account" | "plugin";
 export type SourcedRule = RepoRule & { source?: RuleSource };
 
-export const repoRulesFileSchema = z.object({ rules: z.array(repoRuleSchema) });
+const repoRulesFileSchema = z.object({ rules: z.array(repoRuleSchema) });
 
 export const REPO_RULES_PATH = ".ocra/rules.json";
 

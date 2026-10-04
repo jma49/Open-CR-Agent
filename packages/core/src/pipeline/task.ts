@@ -87,7 +87,7 @@ export async function executeTask(
 // have reported findings; a runtime that stops its session delivers them
 // shortly after. Waiting a bounded moment keeps them in the report and in
 // the spend limit, without letting a runtime that ignores the abort hang.
-export const ABORT_GRACE_MS = 10_000;
+const ABORT_GRACE_MS = 10_000;
 
 async function collectAfterAbort(
   iterator: AsyncIterator<AgentEvent>,
@@ -151,7 +151,7 @@ function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks)
 
 // A reviewer steered by the change could flood the pull request with
 // comments or pad them without end; both are bounded.
-export const MAX_FINDINGS_PER_TASK = 50;
+const MAX_FINDINGS_PER_TASK = 50;
 const MAX_TITLE = 300;
 const MAX_TEXT = 4_000;
 const MAX_EVIDENCE = 10;

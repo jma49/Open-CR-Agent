@@ -90,7 +90,7 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
 // Hands out what an attempt has spent in increments, each what grew since the
 // last one; `rest` settles the finished attempt's total, so the increments
 // add up to it and nothing is counted twice.
-export class LiveUsage {
+class LiveUsage {
   private seen = emptyUsage();
   private given = emptyUsage();
   private wake: (() => void) | undefined;

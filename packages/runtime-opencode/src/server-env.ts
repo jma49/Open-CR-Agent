@@ -106,7 +106,7 @@ export function missingCredentials(
 
 const GOOGLE_KEY = "GOOGLE_GENERATIVE_AI_API_KEY";
 const GOOGLE_KEY_ALIASES = ["GEMINI_API_KEY", "GOOGLE_API_KEY"];
-export const EXTRA_ENV_VARIABLE = "OCRA_RUNTIME_ENV";
+const EXTRA_ENV_VARIABLE = "OCRA_RUNTIME_ENV";
 // OpenCode installs its plugin package from npm into every config directory
 // when it starts, and the SDK of a provider it does not bundle when a model
 // first uses it; no flag turns either off. ocra loads no OpenCode plugins and
@@ -141,7 +141,7 @@ const NEVER_BY_PREFIX = [
 // a provider declared in configuration only the one it names, for a known
 // catalog provider its variables, for any other every variable with its
 // prefix that is not a platform token.
-export function credentialNames(
+function credentialNames(
   base: Env,
   providers: readonly string[],
   custom: CustomProviders = {},

@@ -76,7 +76,7 @@ export type CallParams = Pick<
   "temperature" | "seed" | "reasoning_effort" | "reasoning"
 >;
 
-export interface ChatError {
+interface ChatError {
   message: string;
   retryable: boolean;
   quota?: QuotaError;
@@ -103,7 +103,7 @@ const EFFORT_PARAMETER = /\breasoning(?:_effort)?\b/i;
 const BODY_EXCERPT = 300;
 // A transient failure is sent once more after this pause; a second failure
 // goes to the failback, which decides what it means for the model.
-export const TRANSIENT_RETRY_MS = 1_000;
+const TRANSIENT_RETRY_MS = 1_000;
 
 export function toolSpec(tool: ToolDefinition): ToolSpec {
   const { $schema: _, ...parameters } = z.toJSONSchema(tool.inputSchema) as Record<string, unknown>;
