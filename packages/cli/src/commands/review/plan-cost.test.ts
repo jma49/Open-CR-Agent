@@ -4,6 +4,7 @@ import type { AgentTaskSpec } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { capture, deps, removeRepos, repoWithChange } from "../../run.fakes.js";
 import { run } from "../../run.js";
+import { cliPlanOutputSchema } from "./plan-schema.js";
 
 afterEach(removeRepos);
 
@@ -39,6 +40,7 @@ describe("ocra review --plan input cost", () => {
       await run(["review", "--plan", "--format", "json"], json, capture(), deps(cwd, done)),
     ).toBe(0);
     const plan = JSON.parse(json.text());
+    cliPlanOutputSchema.parse(plan);
     const byReviewer = Object.fromEntries(
       plan.tasks.map((t: { reviewer: string; inputCost: unknown }) => [t.reviewer, t.inputCost]),
     );
@@ -76,6 +78,7 @@ describe("ocra review --plan input cost", () => {
     const json = capture();
     await run(["review", "--plan", "--format", "json"], json, capture(), deps(repo({}), done));
     const plan = JSON.parse(json.text());
+    cliPlanOutputSchema.parse(plan);
     expect(plan.tasks[0]).not.toHaveProperty("inputCost");
     expect(plan).not.toHaveProperty("inputCost");
     const text = capture();

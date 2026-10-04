@@ -34,7 +34,7 @@ const usageSchema = z.strictObject({
   costUsd: z.number(),
 });
 
-const changeRequestSchema = z.strictObject({
+export const changeRequestSchema = z.strictObject({
   id: z.string(),
   title: z.string(),
   description: z.string(),
@@ -135,7 +135,7 @@ const taskOutcomeSchema = z.strictObject({
   usage: usageSchema,
 });
 
-const skippedCellSchema = z.strictObject({
+export const skippedCellSchema = z.strictObject({
   reviewer: z.string(),
   bundle: z.string(),
   reason: skipReasonSchema,

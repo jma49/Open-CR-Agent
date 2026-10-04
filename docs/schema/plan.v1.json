@@ -1,0 +1,367 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ocra.majincheng.com/schema/plan.v1.json",
+  "title": "ocra review plan",
+  "description": "What ocra review --plan --format json writes (version 1): the files, tasks and estimated prompt sizes of a review, before any model call. A version only gains optional fields; anything else is a new version.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "changeRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "baseSha": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "override": {
+          "type": "object",
+          "properties": {
+            "by": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "by",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "baseSha",
+        "headSha"
+      ],
+      "additionalProperties": false
+    },
+    "tier": {
+      "type": "string",
+      "enum": [
+        "trivial",
+        "lite",
+        "full"
+      ]
+    },
+    "selected": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "excluded": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "binary",
+              "secret",
+              "deleted",
+              "user_exclude",
+              "extension",
+              "generated",
+              "too_large"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "bundles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "label",
+          "files"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "groupingSkipped": {
+      "type": "boolean"
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string"
+          },
+          "reviewer": {
+            "type": "string"
+          },
+          "bundle": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "promptTokens": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "effort": {
+            "type": "string",
+            "enum": [
+              "none",
+              "minimal",
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "planPromptTokens": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "inputCost": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "model": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "const": "priced"
+                  },
+                  "usd": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "model",
+                  "status",
+                  "usd"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "model": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "const": "unpriced"
+                  }
+                },
+                "required": [
+                  "model",
+                  "status"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "model": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string",
+                    "const": "unknown"
+                  }
+                },
+                "required": [
+                  "model",
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "taskId",
+          "reviewer",
+          "bundle",
+          "files",
+          "promptTokens"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "skipped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "reviewer": {
+            "type": "string"
+          },
+          "bundle": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "disabled",
+              "below_tier",
+              "no_matching_files",
+              "no_guidelines",
+              "task_limit"
+            ]
+          }
+        },
+        "required": [
+          "reviewer",
+          "bundle",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "promptTokens": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "planCalls": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "inputCost": {
+      "type": "object",
+      "properties": {
+        "usd": {
+          "type": "number"
+        },
+        "priced": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unpriced": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unknown": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "usd",
+        "priced",
+        "unpriced",
+        "unknown"
+      ],
+      "additionalProperties": false
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "settings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {},
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "source"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "accountSettings": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "version"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "version",
+    "changeRequest",
+    "tier",
+    "selected",
+    "excluded",
+    "bundles",
+    "groupingSkipped",
+    "tasks",
+    "skipped",
+    "promptTokens",
+    "planCalls",
+    "warnings",
+    "settings"
+  ],
+  "additionalProperties": false
+}

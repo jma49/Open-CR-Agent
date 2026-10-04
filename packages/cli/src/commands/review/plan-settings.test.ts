@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { capture, critical, deps, removeRepos, repoWithChange } from "../../run.fakes.js";
 import { run } from "../../run.js";
 import { signedIn } from "./cloud.fakes.js";
+import { cliPlanOutputSchema } from "./plan-schema.js";
 
 afterEach(removeRepos);
 
@@ -108,6 +109,8 @@ describe("--plan's settings and sources (golden)", () => {
     `);
 
     const json = JSON.parse((await plan(["--format", "json"], extra, cwd)).out);
+
+    cliPlanOutputSchema.parse(json);
     expect(compact(json)).toMatchInlineSnapshot(`
       {
         "accountSettings": {
@@ -145,6 +148,8 @@ describe("--plan's settings and sources (golden)", () => {
   it("leaves a command-line --ultra out of the account's settings", async () => {
     const { cwd, extra } = layered();
     const json = JSON.parse((await plan(["--ultra", "--format", "json"], extra, cwd)).out);
+
+    cliPlanOutputSchema.parse(json);
     expect(json.settings.filter((s: { key: string }) => s.key === "ultra")).toEqual([]);
   });
 
@@ -158,6 +163,8 @@ describe("--plan's settings and sources (golden)", () => {
       "
     `);
     const json = JSON.parse((await plan(["--format", "json"], {}, cwd)).out);
+
+    cliPlanOutputSchema.parse(json);
     expect(compact(json)).toMatchInlineSnapshot(`
       {
         "accountSettings": undefined,
