@@ -80,6 +80,8 @@ jobs:
         with:
           name: packages
           path: packed
+      # The linters check-packages runs on each tarball (publint, attw).
+      - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: node scripts/check-packages.mjs --tarballs packed
 
   # Can mint a publish token, so it installs nothing and runs no code but npm

@@ -5,10 +5,16 @@
 // GitHub Action does, with the dependency versions this lockfile pins
 // (scripts/pinned-lock.mjs). Catches missing files, undeclared dependencies,
 // broken bin entries and a lockfile the Action cannot pin before anything
-// is published. Last, installs them as the Action does with `opencode: false`
-// (--omit=optional): OpenCode is left out, and ocra says so with exit code 2
-// when the configured runtime needs it. Needs network access for third-party
-// dependencies.
+// is published. Each tarball is also linted as published: publint (the
+// package.json against the files) and attw (the types resolve under Node's
+// ESM and bundler resolution; the packages are ESM only). The source
+// condition every entry starts with (@open-cr-agent/source, for the tests)
+// names files that are not published; both tools skip conditions they do not
+// know, and so does every consumer. Last, installs them as the Action does
+// with `opencode: false` (--omit=optional): OpenCode is left out, and ocra
+// says so with exit code 2 when the configured runtime needs it. Needs
+// network access for third-party dependencies, and the root devDependencies
+// (npm ci) for the linters.
 //
 // Usage: node scripts/check-packages.mjs [--tarballs <dir>]
 // With --tarballs, checks the tarballs in <dir> (packed by the release
@@ -85,6 +91,13 @@ function tarballFor(p, work) {
   return tarball;
 }
 
+// publint and attw on a tarball; they print what they find.
+function lint(tarball, work) {
+  const bin = (name) => join(root, "node_modules", ".bin", name);
+  run(bin("publint"), ["run", tarball, "--strict"], work);
+  run(bin("attw"), [tarball, "--profile", "esm-only", "--format", "ascii", "--no-emoji"], work);
+}
+
 // Paths inside a tarball, relative to the package root.
 const filesIn = (tarball, work) =>
   run("tar", ["-tzf", tarball], work)
@@ -109,8 +122,13 @@ try {
     for (const required of ["README.md", "LICENSE"]) {
       if (!files.includes(required)) throw new Error(`${p.json.name} packs no ${required}`);
     }
+    try {
+      lint(tarball, work);
+    } catch (error) {
+      throw new Error(`${p.json.name} fails publint or attw:\n${error.stdout ?? error.message}`);
+    }
     console.log(
-      `${given ? "checking" : "packed"} ${basename(tarball)} (${files.length} files, ${(statSync(tarball).size / 1024).toFixed(0)} kB)`,
+      `${given ? "checking" : "packed"} ${basename(tarball)} (${files.length} files, ${(statSync(tarball).size / 1024).toFixed(0)} kB), publint and attw pass`,
     );
     return tarball;
   });

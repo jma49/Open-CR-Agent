@@ -162,6 +162,8 @@ packages/
   eval/              AACR-Bench replay, precision / recall / F1 / cost
 ```
 
+Each published package has a curated main entry, its public API: named exports only, recorded in `etc/<package>.api.md` by API Extractor and checked in CI (`npm run check:api`), so a change to it shows in review. What the packages share with each other beyond that goes through a `./internal` subpath export (`@open-cr-agent/core/internal` and others), which is not a contract and may change in any release. The manual's Embedding and Stability pages say which entries are a contract. `npm run check:packages` lints every packed tarball with publint and attw (ESM only) before it installs them.
+
 ## Roadmap
 
 | Milestone | Scope |

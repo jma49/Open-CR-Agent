@@ -83,6 +83,7 @@ Concrete rules behind the principles above, from the [2026-09-26 self-audit](doc
 - Source files, identifiers and commit messages are in English.
 - Prefer pure functions for deterministic stages; keep I/O at the edges.
 - Validate every LLM output against a Zod schema before it crosses a stage boundary.
+- **Public API goes through the API report.** A published package's main entry (`src/index.ts`) exports a named list, never `export *`. Adding, removing or changing a public export updates `etc/<package>.api.md` in the same PR (`npm run api`; `npm run check:api`, part of `verify` and CI, fails otherwise), and a change that can break a caller gets a changelog entry under the 0.x rule. What only ocra's own packages need goes to the package's `src/internal.ts` (`<package>/internal`), which is not a contract. Every `exports` entry starts with the `@open-cr-agent/source` condition (`scripts/workspace-exports.test.mjs`).
 
 ## User manual
 
