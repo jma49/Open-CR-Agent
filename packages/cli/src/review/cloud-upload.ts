@@ -66,7 +66,9 @@ export function uploadOf(
     source,
     tier: report.tier,
     verdict: report.verdict,
-    complete: gaps.notReviewed === 0,
+    // As the exit code reads it: a review that missed files or could not
+    // verify a critical finding is incomplete.
+    complete: gaps.notReviewed === 0 && report.unverifiedCriticals === 0,
     findings: {
       critical: severity("critical"),
       warning: severity("warning"),
@@ -78,7 +80,7 @@ export function uploadOf(
     },
     tasks: {
       completed: report.tasks.filter((t) => t.status === "completed").length,
-      failed: report.tasks.filter((t) => t.status === "failed").length,
+      failed: report.tasks.filter((t) => t.status === "failed" || t.status === "timed_out").length,
     },
     usage: {
       inputTokens: report.usage.inputTokens,

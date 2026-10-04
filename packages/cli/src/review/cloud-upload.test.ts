@@ -97,17 +97,26 @@ const report = {
     { reviewer: "logic", status: "timed_out", usage: { costUsd: 0.05 } },
     { reviewer: "style", status: "cancelled", usage: { costUsd: 0 } },
   ],
+  // As reconcile builds it: fixed and dismissed findings are gone from
+  // findings[] and carry the reviewer the earlier review recorded, when it did.
   rereview: {
     fixed: [
       { fingerprint: "fp-gone-unknown", title: "FIXED TITLE", file: "src/fixed-path.ts" },
-      { fingerprint: "fp-3", title: "t", file: "a" },
-      { fingerprint: "fp-dismissed", title: "t", file: "a" },
+      { fingerprint: "fp-gone-logic", title: "t", file: "a", reviewer: "logic" },
     ],
-    dismissed: [{ fingerprint: "fp-dismissed", title: "DISMISSED TITLE", file: "src/d.ts" }],
+    dismissed: [
+      {
+        fingerprint: "fp-dismissed",
+        title: "DISMISSED TITLE",
+        file: "src/d.ts",
+        reviewer: "security",
+      },
+    ],
     notReproduced: [],
     notRechecked: [],
     unchanged: [],
   },
+  unverifiedCriticals: 0,
   usage: { inputTokens: 100, outputTokens: 20, reasoningTokens: 0, cachedTokens: 0, costUsd: 0.5 },
 } as unknown as ReviewReport;
 
@@ -121,11 +130,21 @@ describe("the review upload", () => {
       complete: false,
       findings: { critical: 1, warning: 2, suggestion: 0 },
       files: { reviewed: 1, notReviewed: 1 },
-      tasks: { completed: 1, failed: 1 },
+      tasks: { completed: 1, failed: 2 },
       usage: { inputTokens: 100, outputTokens: 20, costUsd: 0.5 },
       durationMs: 1235,
     });
     expect(JSON.stringify(up)).not.toMatch(/SECRET|secret\.ts|const key/);
+  });
+
+  it("is incomplete whenever the exit code says so", () => {
+    const allReviewed = {
+      ...report,
+      coverage: [{ path: "src/secret.ts", status: "reviewed" }],
+    } as unknown as ReviewReport;
+    expect(uploadOf(allReviewed, "local", "f".repeat(64), 1).complete).toBe(true);
+    const unverified = { ...allReviewed, unverifiedCriticals: 1 } as ReviewReport;
+    expect(uploadOf(unverified, "local", "f".repeat(64), 1).complete).toBe(false);
   });
 
   it("counts per reviewer, by verification and by outcome", () => {
