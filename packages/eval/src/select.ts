@@ -1,3 +1,4 @@
+import { at } from "@open-cr-agent/core/internal";
 import type { Instance } from "./instance.js";
 
 export interface SelectionOptions {
@@ -63,7 +64,7 @@ function shuffle<T>(items: readonly T[], seed: number): T[] {
   };
   for (let i = result.length - 1; i > 0; i -= 1) {
     const j = Math.floor(next() * (i + 1));
-    [result[i], result[j]] = [result[j] as T, result[i] as T];
+    [result[i], result[j]] = [at(result, j), at(result, i)];
   }
   return result;
 }

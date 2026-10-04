@@ -1,3 +1,4 @@
+import { at } from "../at.js";
 import type { CoverageEntry } from "../report/report.js";
 import type { FileDecision } from "../select/select.js";
 import type { JobResult } from "./execute.js";
@@ -33,7 +34,7 @@ export function coverageOf(
   }
   const status = new Map<string, "reviewed" | "failed" | "unreviewed">();
   for (const [k, completed] of done) {
-    const file = k.split("\0")[1] as string;
+    const file = at(k.split("\0"), 1);
     const now = completed ? "reviewed" : ran.has(k) ? "failed" : "unreviewed";
     const before = status.get(file);
     // failed outranks unreviewed, which outranks reviewed.

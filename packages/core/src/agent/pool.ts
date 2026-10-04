@@ -1,3 +1,4 @@
+import { at } from "../at.js";
 export async function mapWithConcurrency<T, R>(
   items: readonly T[],
   limit: number,
@@ -8,7 +9,7 @@ export async function mapWithConcurrency<T, R>(
   const runners = Array.from({ length: Math.min(Math.max(limit, 1), items.length) }, async () => {
     while (next < items.length) {
       const index = next++;
-      results[index] = await worker(items[index] as T);
+      results[index] = await worker(at(items, index));
     }
   });
   await Promise.all(runners);

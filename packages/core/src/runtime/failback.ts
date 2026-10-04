@@ -133,12 +133,23 @@ const FIELDS = [
   "costUsd",
 ] as const satisfies readonly (keyof Usage)[];
 
+// Each field of a usage from the same field of two others.
+function mapUsage(a: Usage, b: Usage, combine: (x: number, y: number) => number): Usage {
+  return {
+    inputTokens: combine(a.inputTokens, b.inputTokens),
+    outputTokens: combine(a.outputTokens, b.outputTokens),
+    reasoningTokens: combine(a.reasoningTokens, b.reasoningTokens),
+    cachedTokens: combine(a.cachedTokens, b.cachedTokens),
+    costUsd: combine(a.costUsd, b.costUsd),
+  };
+}
+
 function larger(a: Usage, b: Usage): Usage {
-  return Object.fromEntries(FIELDS.map((f) => [f, Math.max(a[f], b[f])])) as unknown as Usage;
+  return mapUsage(a, b, Math.max);
 }
 
 function beyond(a: Usage, b: Usage): Usage {
-  return Object.fromEntries(FIELDS.map((f) => [f, Math.max(0, a[f] - b[f])])) as unknown as Usage;
+  return mapUsage(a, b, (x, y) => Math.max(0, x - y));
 }
 
 function ahead(a: Usage, b: Usage): boolean {

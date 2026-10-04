@@ -18,17 +18,15 @@ const toolCallSchema = z.object({
   id: z.string(),
   function: z.object({ name: z.string(), arguments: z.string() }),
 });
+const choiceSchema = z.object({
+  message: z.object({
+    content: z.string().nullable().optional(),
+    tool_calls: z.array(toolCallSchema).optional(),
+  }),
+});
 const completionSchema = z.object({
-  choices: z
-    .array(
-      z.object({
-        message: z.object({
-          content: z.string().nullable().optional(),
-          tool_calls: z.array(toolCallSchema).optional(),
-        }),
-      }),
-    )
-    .min(1),
+  // At least one: the first is the answer.
+  choices: z.tuple([choiceSchema], choiceSchema),
   usage: z
     .object({
       prompt_tokens: z.number().optional(),
@@ -203,7 +201,7 @@ async function send(
   if (!parsed.success) {
     return { ok: false, error: malformed("answered without a chat completion", body, secrets) };
   }
-  const choice = parsed.data.choices[0] as NonNullable<(typeof parsed.data.choices)[0]>;
+  const [choice] = parsed.data.choices;
   return {
     ok: true,
     content: choice.message.content ?? "",

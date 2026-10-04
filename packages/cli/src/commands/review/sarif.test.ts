@@ -1,6 +1,7 @@
-import type { Finding, ReviewReport } from "@open-cr-agent/core";
+import { type Finding, parseSarifLog, type ReviewReport } from "@open-cr-agent/core";
+import { at, serializeOutput } from "@open-cr-agent/core/internal";
 import { describe, expect, it } from "vitest";
-import { plainText, renderSarif } from "./sarif.js";
+import { plainText, renderSarif, sarifLog } from "./sarif.js";
 
 function finding(overrides: Partial<Finding> = {}): Finding {
   return {
@@ -41,8 +42,10 @@ const report: ReviewReport = {
   warnings: [],
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: a SARIF log is loosely typed JSON
-const sarif = (r: ReviewReport): any => JSON.parse(renderSarif(r, "1.2.3"));
+// The log as written, typed; the first test also reads it back through
+// core's SARIF schema, as --import-sarif would.
+const sarif = (r: ReviewReport) => sarifLog(r, "1.2.3");
+const firstRun = (r: ReviewReport) => at(sarif(r).runs, 0);
 
 describe("renderSarif", () => {
   it("writes a SARIF 2.1.0 log with one rule per reviewer category", () => {
@@ -56,34 +59,26 @@ describe("renderSarif", () => {
     });
     expect(log.version).toBe("2.1.0");
     expect(log.$schema).toBe("https://json.schemastore.org/sarif-2.1.0.json");
-    const [run] = log.runs;
+    expect(parseSarifLog(serializeOutput(log)).runs).toHaveLength(1);
+    const run = at(log.runs, 0);
     expect(run.tool.driver).toMatchObject({ name: "ocra", version: "1.2.3" });
-    expect(run.tool.driver.rules.map((r: { id: string }) => r.id)).toEqual([
-      "correctness",
-      "security",
-    ]);
-    expect(
-      run.results.map((r: { level: string; ruleId: string; ruleIndex: number }) => [
-        r.ruleId,
-        r.ruleIndex,
-        r.level,
-      ]),
-    ).toEqual([
+    expect(run.tool.driver.rules.map((r) => r.id)).toEqual(["correctness", "security"]);
+    expect(run.results.map((r) => [r.ruleId, r.ruleIndex, r.level])).toEqual([
       ["correctness", 0, "warning"],
       ["security", 1, "error"],
       ["correctness", 0, "note"],
     ]);
-    expect(run.invocations[0].executionSuccessful).toBe(true);
+    expect(at(run.invocations, 0).executionSuccessful).toBe(true);
     expect(run.properties).toMatchObject({ verdict: "approved_with_comments", tier: "full" });
   });
 
   it("carries a finding's text, lines, fingerprint and verification", () => {
-    const [result] = sarif({
-      ...report,
-      findings: [finding({ suggestion: "Use <=." })],
-    }).runs[0].results;
+    const result = at(
+      firstRun({ ...report, findings: [finding({ suggestion: "Use <=." })] }).results,
+      0,
+    );
     expect(result.message.text).toBe("Off by one\n\nThe loop stops early.\n\nSuggestion: Use <=.");
-    expect(result.locations[0].physicalLocation).toEqual({
+    expect(at(result.locations, 0).physicalLocation).toEqual({
       artifactLocation: { uri: "src/a.ts", uriBaseId: "%SRCROOT%" },
       region: { startLine: 3, endLine: 5 },
     });
@@ -98,11 +93,11 @@ describe("renderSarif", () => {
   });
 
   it("gives a finding without lines the whole file, and encodes the path as a URI", () => {
-    const [result] = sarif({
+    const run = firstRun({
       ...report,
       findings: [finding({ file: "docs/a b#c?.md", lineRange: undefined as never })],
-    }).runs[0].results;
-    expect(result.locations[0].physicalLocation).toEqual({
+    });
+    expect(at(at(run.results, 0).locations, 0).physicalLocation).toEqual({
       artifactLocation: { uri: "docs/a%20b%23c%3F.md", uriBaseId: "%SRCROOT%" },
     });
   });
@@ -120,8 +115,8 @@ describe("renderSarif", () => {
         finding({ fingerprint: "2".repeat(16) }),
       ],
     });
-    const [withFix, deletion, without] = log.runs[0].results;
-    expect(withFix.fixes).toEqual([
+    const [withFix, deletion, without] = at(log.runs, 0).results;
+    expect(withFix?.fixes).toEqual([
       {
         description: { text: "Replace the lines with the suggested code" },
         artifactChanges: [
@@ -137,13 +132,14 @@ describe("renderSarif", () => {
         ],
       },
     ]);
-    expect(deletion.fixes[0].artifactChanges[0].replacements).toEqual([
+    expect(deletion?.fixes?.[0]?.artifactChanges[0]?.replacements).toEqual([
       {
         deletedRegion: { startLine: 7, startColumn: 1, endLine: 9, endColumn: 1 },
         insertedContent: { text: "" },
       },
     ]);
-    expect(without.fixes).toBeUndefined();
+    expect(without).toBeDefined();
+    expect(without?.fixes).toBeUndefined();
   });
 
   it("keeps findings still open from an earlier review, marked unchanged", () => {
@@ -154,7 +150,7 @@ describe("renderSarif", () => {
       severity: "critical" as const,
       commented: true,
     };
-    const run = sarif({
+    const run = firstRun({
       ...report,
       rereview: {
         fixed: [],
@@ -163,8 +159,8 @@ describe("renderSarif", () => {
         unchanged: [open],
         dismissed: [],
       },
-    }).runs[0];
-    expect(run.tool.driver.rules.map((r: { id: string }) => r.id)).toEqual(["ocra-carried-over"]);
+    });
+    expect(run.tool.driver.rules.map((r) => r.id)).toEqual(["ocra-carried-over"]);
     expect(run.results).toEqual([
       expect.objectContaining({
         ruleId: "ocra-carried-over",
@@ -177,17 +173,17 @@ describe("renderSarif", () => {
   });
 
   it("reports an incomplete review as an unsuccessful run, with its warnings", () => {
-    const run = sarif({
+    const run = firstRun({
       ...report,
       coverage: [...report.coverage, { path: "src/b.ts", status: "unreviewed" }],
       warnings: ["spend limit of $2 reached"],
-    }).runs[0];
-    expect(run.invocations[0].executionSuccessful).toBe(false);
-    expect(
-      run.invocations[0].toolExecutionNotifications.map(
-        (n: { message: { text: string } }) => n.message.text,
-      ),
-    ).toEqual(["1 selected file(s) were not reviewed", "spend limit of $2 reached"]);
+    });
+    const invocation = at(run.invocations, 0);
+    expect(invocation.executionSuccessful).toBe(false);
+    expect(invocation.toolExecutionNotifications.map((n) => n.message.text)).toEqual([
+      "1 selected file(s) were not reviewed",
+      "spend limit of $2 reached",
+    ]);
     expect(run.properties.notReviewed).toEqual(["src/b.ts"]);
   });
 

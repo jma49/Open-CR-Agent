@@ -65,6 +65,10 @@ interface ArtifactLocation {
 }
 
 export function renderSarif(report: ReviewReport, version: string): string {
+  return `${serializeOutput(sarifLog(report, version))}\n`;
+}
+
+export function sarifLog(report: ReviewReport, version: string) {
   const open = [
     ...(report.rereview?.unchanged ?? []),
     ...(report.rereview?.notReproduced ?? []),
@@ -137,7 +141,7 @@ export function renderSarif(report: ReviewReport, version: string): string {
       },
     ],
   };
-  return `${serializeOutput(log)}\n`;
+  return log;
 }
 
 // Open findings an earlier review reported, carried over under their own

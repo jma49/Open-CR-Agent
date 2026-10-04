@@ -1,3 +1,4 @@
+import { at } from "../at.js";
 import type { FileDiff, Hunk, LineRange } from "../domain.js";
 
 interface NumberedLine {
@@ -79,7 +80,7 @@ function findMatches(groups: NumberedLine[][], target: string[]): Match[] {
     candidates.flatMap((lines) => consecutiveMatches(lines, target, equals));
   const exact = across((a, b) => a === b);
   if (exact.length > 0 || target.length > 1) return exact;
-  const fragment = target[0] as string;
+  const fragment = at(target, 0);
   if (fragment.length < MIN_PARTIAL_QUOTE_CHARS) return [];
   const partial = across((line, t) => line.includes(t));
   return partial.length === 1 ? partial : [];
@@ -97,10 +98,10 @@ function consecutiveMatches(
   const matches: Match[] = [];
   for (let i = 0; i + target.length <= lines.length; i += 1) {
     const window = lines.slice(i, i + target.length);
-    if (window.every((l, j) => equals(l.text, target[j] as string))) {
+    if (window.every((l, j) => equals(l.text, at(target, j)))) {
       matches.push({
         range: {
-          start: (window[0] as NumberedLine).line,
+          start: at(window, 0).line,
           end: (window.at(-1) as NumberedLine).line,
         },
         touchesAdded: window.some((l) => l.added),
@@ -116,7 +117,7 @@ function pick(matches: Match[]): SnippetMatch {
   const best = added.length > 0 ? added : matches;
   if (best.length === 0) return NONE;
   if (best.length > 1) return { kind: "ambiguous" };
-  return { kind: "found", range: (best[0] as Match).range };
+  return { kind: "found", range: at(best, 0).range };
 }
 
 export function normalizeSnippet(code: string): string[] {

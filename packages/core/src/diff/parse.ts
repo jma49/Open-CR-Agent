@@ -1,3 +1,4 @@
+import { at } from "../at.js";
 import type { FileChangeKind, FileDiff } from "../domain.js";
 import { parseHunks } from "./hunks.js";
 import { readQuotedToken } from "./quoted-path.js";
@@ -23,15 +24,15 @@ function splitLines(text: string): string[] {
 }
 
 function parseFileSection(lines: string[]): FileDiff {
-  const header = parseHeaderPaths((lines[0] as string).slice(FILE_HEADER.length));
+  const header = parseHeaderPaths(at(lines, 0).slice(FILE_HEADER.length));
   let oldPath = header?.oldPath ?? "";
   let newPath = header?.newPath ?? "";
   let kind: FileChangeKind = "modified";
   let isBinary = false;
 
   let i = 1;
-  for (; i < lines.length && !(lines[i] as string).startsWith("@@"); i += 1) {
-    const line = lines[i] as string;
+  for (; i < lines.length && !at(lines, i).startsWith("@@"); i += 1) {
+    const line = at(lines, i);
     if (line.startsWith("new file mode")) kind = "added";
     else if (line.startsWith("deleted file mode")) kind = "deleted";
     else if (line.startsWith("rename from ")) {
@@ -101,7 +102,7 @@ function parseHeaderPaths(rest: string): { oldPath: string; newPath: string } | 
 
 function parseMarkerPath(rest: string): string | undefined {
   const quoted = readQuotedToken(rest, 0);
-  const path = quoted ? quoted.value : (rest.split("\t")[0] as string);
+  const path = quoted ? quoted.value : at(rest.split("\t"), 0);
   return path === "/dev/null" ? undefined : stripPrefix(path);
 }
 

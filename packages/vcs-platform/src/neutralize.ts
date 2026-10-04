@@ -1,3 +1,5 @@
+import { at } from "@open-cr-agent/core/internal";
+
 // Model text is untrusted: it may not close our markup, mention people,
 // pull in images, spell one of ocra's commands (`/ocra …`, which would count
 // if ocra posted as a person with write access), start a line with a slash
@@ -46,14 +48,14 @@ export function safeMarkdown(text: string, { startsLine = false }: Placement = {
   const lines = text.split("\n");
   const out: string[] = [];
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i] as string;
+    const line = at(lines, i);
     const opener = i > 0 || startsLine ? FENCE_OPENER.exec(line) : null;
-    const end = opener ? closingFence(lines, i + 1, (opener[1] as string).length) : -1;
+    const end = opener ? closingFence(lines, i + 1, at(opener, 1).length) : -1;
     if (end === -1) {
       out.push(neutralizeInline(line));
       continue;
     }
-    for (let j = i; j <= end; j++) out.push(neutralizeCode(lines[j] as string));
+    for (let j = i; j <= end; j++) out.push(neutralizeCode(at(lines, j)));
     i = end;
   }
   return out.join("\n");
@@ -61,7 +63,7 @@ export function safeMarkdown(text: string, { startsLine = false }: Placement = {
 
 function closingFence(lines: readonly string[], from: number, length: number): number {
   const closer = new RegExp(`^ {0,3}\`{${length},}[ \\t]*$`);
-  for (let j = from; j < lines.length; j++) if (closer.test(lines[j] as string)) return j;
+  for (let j = from; j < lines.length; j++) if (closer.test(at(lines, j))) return j;
   return -1;
 }
 

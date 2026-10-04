@@ -3,6 +3,7 @@
 // any of it, and nothing outside this repository should import it.
 
 export { AGENT_ROLES } from "./agent/settings.js";
+export { at } from "./at.js";
 export { parseUnifiedDiff } from "./diff/parse.js";
 export { severitySchema, verificationSchema } from "./domain.js";
 export { errnoCode, isNotFound, usageSpent } from "./errors.js";

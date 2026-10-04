@@ -128,24 +128,13 @@ export class DirectRuntime implements AgentRuntime {
   // variable that is not set.
   private unreachable(chain: readonly string[]): OcraError | undefined {
     for (const model of chain) {
-      const { providerID, modelID } = parseModel(model);
-      const provider = this.options.providers?.[providerID];
-      if (!provider) {
-        return new OcraError(
-          "CONFIG_INVALID",
-          `"${model}" names no provider declared in configuration; the direct runtime reaches only declared OpenAI-compatible endpoints (use the opencode runtime for ${providerID})`,
-        );
-      }
-      if (!provider.models[modelID]) {
-        return new OcraError(
-          "CONFIG_INVALID",
-          `"${model}" has no price in the declaration of provider "${providerID}"`,
-        );
-      }
-      if (provider.apiKeyEnv && !this.options.env[provider.apiKeyEnv]) {
+      const declared = this.declared(model);
+      if (declared instanceof OcraError) return declared;
+      const { apiKeyEnv } = declared.provider;
+      if (apiKeyEnv && !this.options.env[apiKeyEnv]) {
         return new OcraError(
           "CONFIG_CREDENTIALS_MISSING",
-          `No API key for provider "${providerID}": set ${provider.apiKeyEnv}`,
+          `No API key for provider "${parseModel(model).providerID}": set ${apiKeyEnv}`,
         );
       }
     }
@@ -163,9 +152,33 @@ export class DirectRuntime implements AgentRuntime {
     };
   }
 
-  private target(model: string): Target {
+  // A model's provider and price, from the configuration's declaration.
+  private declared(
+    model: string,
+  ): { provider: CustomProvider; modelID: string; price: ModelPrice } | OcraError {
     const { providerID, modelID } = parseModel(model);
-    const provider = this.options.providers?.[providerID] as CustomProvider;
+    const provider = this.options.providers?.[providerID];
+    if (!provider) {
+      return new OcraError(
+        "CONFIG_INVALID",
+        `"${model}" names no provider declared in configuration; the direct runtime reaches only declared OpenAI-compatible endpoints (use the opencode runtime for ${providerID})`,
+      );
+    }
+    const price = provider.models[modelID];
+    if (!price) {
+      return new OcraError(
+        "CONFIG_INVALID",
+        `"${model}" has no price in the declaration of provider "${providerID}"`,
+      );
+    }
+    return { provider, modelID, price };
+  }
+
+  // Only for a model unreachable() let through, so declared() cannot fail.
+  private target(model: string): Target {
+    const declared = this.declared(model);
+    if (declared instanceof OcraError) throw declared;
+    const { provider, modelID, price } = declared;
     const key = provider.apiKeyEnv ? this.options.env[provider.apiKeyEnv] : undefined;
     return {
       endpoint: {
@@ -174,7 +187,7 @@ export class DirectRuntime implements AgentRuntime {
         fetch: this.fetch,
       },
       model: modelID,
-      price: provider.models[modelID] as ModelPrice,
+      price,
     };
   }
 }

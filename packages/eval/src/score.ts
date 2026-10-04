@@ -1,4 +1,5 @@
 import type { AnchoringSummary, OutputFinding, Usage } from "@open-cr-agent/core";
+import { at } from "@open-cr-agent/core/internal";
 import type { Instance } from "./instance.js";
 import {
   type GeneratedComment,
@@ -135,7 +136,7 @@ function recallBy(matches: readonly ReferenceMatch[], key: (m: ReferenceMatch) =
 
 function percentile(sorted: readonly number[], p: number): number {
   if (sorted.length === 0) return 0;
-  return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] as number;
+  return at(sorted, Math.min(sorted.length - 1, Math.floor(p * sorted.length)));
 }
 
 function anchoringOf(

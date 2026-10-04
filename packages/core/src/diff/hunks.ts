@@ -1,3 +1,4 @@
+import { at } from "../at.js";
 import type { DiffLine, Hunk } from "../domain.js";
 
 const HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
@@ -6,7 +7,7 @@ export function parseHunks(lines: readonly string[]): Hunk[] {
   const hunks: Hunk[] = [];
   let i = 0;
   while (i < lines.length) {
-    const header = lines[i] as string;
+    const header = at(lines, i);
     const match = HUNK_HEADER.exec(header);
     i += 1;
     if (!match) continue;
@@ -35,7 +36,7 @@ function readHunkBody(lines: readonly string[], start: number, hunk: Hunk): numb
   let i = start;
 
   while (i < lines.length && (oldRemaining > 0 || newRemaining > 0)) {
-    const raw = lines[i] as string;
+    const raw = at(lines, i);
     if (raw.startsWith("\\")) {
       i += 1;
       continue;

@@ -1,3 +1,4 @@
+import { at } from "../at.js";
 import type { FileDiff } from "../domain.js";
 import { errorMessage } from "../errors.js";
 import { buildGroupingPrompt, type FileGrouper, groupingResponseSchema } from "./grouping.js";
@@ -74,8 +75,8 @@ function fromGroups(
     for (const i of members) assigned.add(i);
     if (members.length === 0) continue;
     bundles.push({
-      label: group.label.trim() || (files[members[0] as number] as FileDiff).newPath,
-      files: members.map((i) => files[i] as FileDiff),
+      label: group.label.trim() || at(files, at(members, 0)).newPath,
+      files: members.map((i) => at(files, i)),
     });
   }
 
