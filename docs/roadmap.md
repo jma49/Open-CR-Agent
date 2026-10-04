@@ -89,7 +89,7 @@ This phase's success condition is not a list of interfaces: it is three external
 
 **M11 — Evidence** (a standing credit line: cents a run for the nightly test, tens of dollars for golden runs; the free OpenRouter model covers what it can).
 
-1. A nightly live smoke test in CI on a two-file pull request with the cheapest model, gated by a secret: the first real-model integration test the project has. The workflow exists (`nightly-live.yml`: a fixed seven-file change of this repository on the free OpenRouter model with the `direct` runtime, every task completed, $0, gated by the `OCRA_LIVE_SMOKE` variable and the `OPENROUTER_API_KEY` secret); it runs once the maintainer sets both.
+1. A nightly live smoke test in CI on a two-file pull request with the cheapest model, gated by a secret: the first real-model integration test the project has. The workflow exists (`nightly-live.yml`: a fixed seven-file change of this repository on the free OpenRouter model with the `direct` runtime, every task completed, $0, gated by the `OCRA_LIVE_SMOKE` variable and the `OPENROUTER_API_KEY` secret); both are set, and it shares the free model's daily quota with the dogfood reviews and `eval-free.yml`, which runs the golden smoke tier on what is left.
 2. The golden set grown until a five-point change is visible; precision and recall published per reviewer, per model and per language, with cost per change, as a trend across releases.
 3. M5 and M6 as written above, under that evidence.
 4. Only then: prompts, rules and reviewers unfreeze, one change at a time, each measured.
@@ -104,7 +104,8 @@ This phase's success condition is not a list of interfaces: it is three external
 
 **M14 — ocra Cloud** (moved to Now on 2026-10-04, [ADR-0024](adr/0024-ocra-cloud.md); the main line). Open core plus an optional hosted service on the published packages, in its own private repository.
 
-1. **Phase 1, the MVP:** sign-in with GitHub and `ocra login` (device flow); the user's own key stored encrypted in the cloud and used only by an allowlisted model gateway that logs no bodies; zero configuration when logged in; metadata-only upload after a review, content opt-in; a web view of reviews, statistics, keys and sessions; a public data policy.
+1. **Phase 1, the MVP:** sign-in with GitHub and `ocra login` (device flow); the user's own key stored encrypted in the cloud and used only by an allowlisted model gateway that logs no bodies; zero configuration when logged in; metadata-only upload after a review, content opt-in; a web view of reviews, statistics, keys and sessions; a public data policy. Built and live at https://app.ocracloud.com (2026-10-04): the CLI side landed in #344–#346 and #348 (`ocra login/logout/whoami`, `ocra-<provider>/<model>` through the gateway, the counts upload with `--no-upload`, the web's default models). Left before it opens: a release with the CLI side, the master-key re-wrap script, content opt-in, and the first external users (M13).
+4. **Models and reasoning effort per agent** ([ADR-0025](adr/0025-per-agent-models-and-effort.md)), in `.ocra/config.json` or as ocra Cloud account defaults under the repository's settings. Landed: effort per tier, reviewer and role on the `direct` runtime (#349). Next: per-agent model chains, the OpenCode mapping, the web's Agents page, then a policy cap and a per-agent cost estimate.
 2. **Phase 2:** a hosted GitHub App (install, nothing to configure), with organizations.
 3. **Phase 3:** models ocra provides, a free allowance and paid plans, once there is a model budget.
 
