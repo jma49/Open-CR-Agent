@@ -7,7 +7,7 @@ import {
 import { OpenCodeRuntime } from "./runtime.js";
 
 // The real OpenCode binary against the scripted endpoint, as
-// custom-provider.test.ts runs it.
+// custom-provider.e2e.test.ts runs it.
 runtimeConformance("OpenCodeRuntime", {
   // OpenCode retries a rate-limited request itself before ocra hears of it.
   timeoutMs: 240_000,

@@ -13,6 +13,7 @@
     "build": "tsc -b && node scripts/mark-bins.mjs",
     "typecheck": "tsc -b && tsc -p tsconfig.test.json && tsc -p scripts/tsconfig.json",
     "test": "vitest run",
+    "test:unit": "vitest run --project unit",
     "check": "biome check --error-on-warnings .",
     "format": "biome check --write .",
     "verify": "npm run check && npm run typecheck && npm run check:api && npm run knip && npm test",
