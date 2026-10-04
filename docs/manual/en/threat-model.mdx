@@ -53,6 +53,27 @@ ocra's rules against the author (no dismissal, no override, no forged earlier re
 
 Not tried yet, so only a design: a separate reviewer project that only maintainers can change, started by a merge request webhook through a pipeline trigger, running on its protected default branch with the token and the model key as protected variables, and reading the merge request as data. Developers could then neither change the review nor read its secrets. Its result would not be the merge request pipeline's status, so merging would still be gated by approval rules.
 
+## ocra Cloud
+
+This applies only while you are signed in (`ocra login`) and `OCRA_CLOUD` is not `off`; a review that is not signed in never contacts ocra Cloud. What ocra Cloud holds and keeps is in its [data policy](https://app.ocracloud.com/privacy); the decisions behind this section are ADR-0024, ADR-0027 and ADR-0028.
+
+| Who | What they control |
+|---|---|
+| ocra Cloud, or whoever compromises it | Your account's settings, rules, plugin names and memory, as the CLI fetches them; the model calls of `ocra-<provider>/<model>` models, which pass through its gateway with the keys you stored; the counts, and the findings when you share them, that the CLI sends |
+| Someone holding your terminal's session token | Model calls through the gateway with your stored keys, up to the account's daily cap |
+| Someone holding your browser session | Your settings, rules, plugin names and memory, and replacing or deleting your stored keys |
+
+| They try to | What stops it |
+|---|---|
+| Send your code or a local key to a server of their choosing | Account settings cannot declare providers, `extends` or a key variable: the CLI drops them whatever the server sends. A model from the account must be `ocra-<provider>/<model>`, which only reaches the gateway's fixed list of providers. |
+| Run code on your machine | A plugin your account names loads only if you installed and allowed that exact version on this machine (`ocra plugins allow`), from that directory, after its integrity is checked; never in `--pr` or `--mr` reviews or with `--no-repo-config`. An unknown runtime name from the account is dropped. |
+| Read your stored provider keys | They are encrypted under a master key kept apart from the database and are never returned; neither a terminal session nor a browser session can read one. |
+| Weaken or inflate reviews through settings and rules | Your repository's configuration wins over the account's, including its spend limit; the gateway's daily cap and your provider's spending limit bound cost. `ocra review --plan` shows which setting came from where, the report records the settings version and every rule with its source, and the web keeps every saved version. |
+| Hide findings through memory | Account memory applies only to the repository it was set for and only while you are signed in; the terminal, the report and the pull request summary say how many findings it hid, apart from `.ocra/memory.json`. |
+| Read your code | Only what you route through the gateway (`ocra-` models) passes through it, in memory; it stores counts, and findings with the code they quote only when you turn sharing on, after secret-looking tokens are redacted on your machine. The repository is sent as a salted hash. |
+
+A stolen terminal session cannot change settings or read keys; revoke it on the web's sessions page, and its refresh token stops working at once. A signed-in review of an untrusted pull request still takes the base commit's configuration, with your account's settings and memory under it and no account plugins.
+
 ## What ocra does not protect against
 
 - **Steering.** A pull request can hide an issue from a reviewer or talk the judge out of a finding. A clean verdict proves nothing. Keep human review and security tooling for anything that must not slip through.
