@@ -40,16 +40,16 @@ ocra-review:
   allow_failure:
     exit_codes: [1]
   script:
-    - npm install -g --ignore-scripts @open-cr-agent/cli@0.5.0
+    - npm install -g --ignore-scripts @open-cr-agent/cli@0.6.0
     - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
 ```
 
-任务也可以使用[容器镜像](./installation#容器镜像)，不需要安装步骤。请按摘要固定镜像（`docker buildx imagetools inspect ghcr.io/jma49/ocra:0.5.0` 会打印出来），并按[稳定性](./stability#校验发布版本)里的方法校验它的构建来源证明：
+任务也可以使用[容器镜像](./installation#容器镜像)，不需要安装步骤。请按摘要固定镜像（`docker buildx imagetools inspect ghcr.io/jma49/ocra:0.6.0` 会打印出来），并按[稳定性](./stability#校验发布版本)里的方法校验它的构建来源证明：
 
 ```yaml
 ocra-review:
   image:
-    name: ghcr.io/jma49/ocra:0.5.0@sha256:<digest>
+    name: ghcr.io/jma49/ocra:0.6.0@sha256:<digest>
     # 任务的 script 在 shell 里运行，不经过镜像的 ocra 入口点。
     entrypoint: [""]
   # （rules、variables、interruptible 和 allow_failure 同上）

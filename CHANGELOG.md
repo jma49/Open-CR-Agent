@@ -6,6 +6,84 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-04
+
+Hardening and reliability for ocra Cloud users: concurrent runs no longer sign each other out, an unreachable or ended session says so instead of silently running signed out, shared findings are redacted with the same rules on the machine and the server, and every answer from ocra Cloud is checked before use. Using the `ocra` command does not change: install, flags and the JSON report work as before, and `docker run <image> ocra review …` keeps working. Code that embeds the engine should read **Changed**: `ReviewOptions` groups its settings and the CLI package's public entry is `run(argv)`. The Action's tag for this release is `jma49/Open-CR-Agent@v0.6.0`.
+
+### Added
+
+- Error code `CLOUD_API_FAILED`: `ocra login` and `ocra whoami` name it when ocra Cloud cannot be reached or answers something unusable.
+- `@open-cr-agent/cloud-contract`: the wire contract between the CLI and ocra Cloud as one package of Zod schemas and constants (upload, preferences, memory and device sign-in shapes, upload limits, verdict, tier and effort vocabularies, provider ids, error codes), with the redaction pass and its test vectors. Its first publish is by hand, before the release that includes it.
+- A finding may carry a `fix` (`{ startLine, endLine, replacement }`), in the JSON report and as SARIF `fixes`; no reviewer produces one yet ([ADR-0029](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0029-committable-suggestions.md)).
+- An inline comment on exactly a fix's lines ends with a committable suggestion: GitHub's `suggestion` block, GitLab's `suggestion:-N+0`, posted as written or not at all.
+- Error code `upstream_redirect` (502): ocra Cloud's gateway refuses a provider's redirect rather than resend the key elsewhere.
+- `errorMessage(error)`, the message of any thrown value, for runtimes and other callers of the public API.
+- `MODEL_TIERS`, the model tiers strongest first; `ModelTier` is derived from it.
+- The `opencode` runtime sends the configured reasoning effort: `reasoningEffort` for OpenAI, a thinking budget for Claude 4+ and Gemini 2.5, `thinkingLevel` for Gemini 3, one OpenCode variant per model and level.
+- `effortCapability(model)` in `@open-cr-agent/core`: ocra's table of the parameter and levels a model takes; `AppliedSettings.unsupported` names models a level was left out for.
+- `ocra review --plan` estimates each task's input cost at the input price of its chain's first model, and the total; models priced at 0 or through ocra Cloud show as unpriced, catalog-priced models as of unknown price. The plan JSON carries `inputCost` per task and in total.
+- A JSON Schema for `ocra review --plan --format json` (`docs/schema/plan.v1.json`), generated from the code and tested against it.
+- `resolveGitHubTarget` and `resolveGitLabTarget` find a pull or merge request the way `ocra review --pr` and `--mr` do, with their token, API address and origin rules, and make its adapter; `vcs-platform` exports the types they share (`ResolveTargetOptions`, `PlatformTarget`, `ChangeRequestRef`, `LocalCode`).
+- The review state on GitHub and GitLab records the reviewer of each finding, and the JSON report's `rereview` entries carry it as `reviewer`; `PriorFinding.reviewer` is optional, so state written before still loads.
+- `ChainRunner` and `ModelAttempts` in `@open-cr-agent/core`: a runtime implements one attempt on one model, and the runner picks the chain, keeps each model's health and fails over, as both built-in runtimes now do; `AttemptOutcome`, `AttemptError` and `QuotaError` describe an attempt.
+- What a runtime needs besides `ChainRunner` is public in `@open-cr-agent/core`: `reviewTools`, `REVIEW_TOOLS`, `MAX_AGENT_STEPS`, `RESUME_MESSAGE`, `parseModel`, `parseQuotaError`, `withoutSecrets`, `emptyUsage`, `addUsage`, `EFFORT_LEVELS`, `thinkingBudget` and `proxiedFetch`. The built-in runtimes import nothing from `@open-cr-agent/core/internal`.
+- `vcs-platform` exports the schemas the platform adapters' options share: `codeSourceSchema`, `historySchema`, `changeRequestSchema`, `commitIdSchema` and `fetchSchema`.
+
+### Changed
+
+- `run(argv)` takes only the arguments and writes to stdout and stderr; the output streams and the dependencies it took for tests are no longer public.
+- Every call to ocra Cloud sends the `ocra/<version>` user agent and waits up to 30 seconds; each answer is checked before it is used, and one that does not fit is treated like a refusal.
+- The CLI reads and sends ocra Cloud's shapes through `@open-cr-agent/cloud-contract`; what it sends and accepts is unchanged.
+- `ReviewPlatform` (`@open-cr-agent/vcs-platform`) requires `suggestionFence`, the platform's suggestion syntax.
+- A level the capability table does not list for a model is left out of its calls on `opencode`, with one warning per agent; calls that send an effort run without the configured temperature.
+- The line "From your ocra Cloud settings: …" names the settings in the order `--plan` lists them.
+- `NpmRunner` takes the directory to run npm in as a second argument; a custom runner should run npm there.
+- `ReportOutput`, `OutputFinding` and `OutputPriorFinding` are derived from `reportOutputSchema`; the report's JSON is unchanged.
+- `reportOutputSchema` rejects an optional field present with the value `undefined`; JSON input is unaffected.
+- After upgrading, a repository whose remote is written in SSH form, or with a port or a trailing `/`, gets a new hash once: earlier uploads and account memory recorded under the old hash do not match it until they are recorded again. HTTPS remotes keep their hash.
+- `ReviewOptions` groups its settings: `limits` (`concurrency`, `taskTimeoutMs`, `runTimeoutMs`, `maxCostUsd`, `maxTasks`), `stages` (`verify`, `judge`), `mode` (`full`, was `fullReview`; `ultra`) and `identity` (`runId`, `provenance`).
+- `ReviewOptions.selection` takes any of its fields; the rest keep their defaults.
+- The direct runtime words a tier without a model as the OpenCode runtime does: `No model configured for the "<tier>" tier; set models.<tier> in .ocra/config.json or OCRA_MODEL_<TIER>`.
+- A shared configuration (`extends`) with an invalid value is ignored, with the usual warning, even when the repository's file sets that key itself; before, the file's value hid the invalid one.
+- The `snapshot` option of the `github` and `gitlab` adapters is the change request as ocra reads it (validated commit ids), not GitHub's or GitLab's API answer; `resolveGitHubTarget` and `resolveGitLabTarget` build it.
+- `ocra memory add` says why a session's report cannot be read instead of finding nothing in it.
+- The OpenCode runtime validates the session messages it reads; an answer in another shape fails the task with the reason instead of being read in part.
+
+### Removed
+
+- The `@open-cr-agent/vcs-github/internal` and `@open-cr-agent/vcs-gitlab/internal` entries, which only the CLI used and were not a contract.
+
+### Fixed
+
+- `pluginSettings` from your ocra Cloud account are looked up by the package name the account lists, as ocra Cloud stores them, so a plugin whose package and plugin names differ now gets its settings.
+- The ocra Cloud credentials and salt files are written atomically (0600, temporary file and rename); a credentials file that holds no session reads as signed out with one warning instead of failing every review, and `ocra logout` removes it.
+- ocra Cloud's providers list is checked before use: an answer that is not a list stops the review with an error instead of a crash, a malformed entry is left out, and the effort style a provider lists (`openai` or `openrouter`) is used, an unknown one ignored with a warning.
+- Upgrading fixes concurrent ocra runs on one machine signing each other out of ocra Cloud: one process refreshes at a time under a lock beside `credentials.json`, always with the refresh token it re-reads inside the lock, and a refresh refused because another process rotated the token takes that process's saved pair instead of signing out.
+- A review whose ocra Cloud session ended warns `your ocra Cloud session ended: run ocra login`, and one that cannot reach ocra Cloud warns once that it runs without the account's rules, limits (`maxCostUsd` included), models, memory and upload, instead of silently running signed out; with an `ocra-` model the error says ocra Cloud could not be reached rather than asking to sign in.
+- A 401 for a live token renews the session once and retries once; a 404 for the account settings is no settings, without a warning.
+- `ocra login` saves the session even when it cannot read the login.
+- A run with ocra Cloud models and `"runtime": "direct"` renews the gateway token before it expires, so runs longer than an hour keep their model calls; with `opencode`, the token is sized to outlive `runTimeoutMinutes`, with a warning when no token can.
+- `taskTimeoutMinutes` and `runTimeoutMinutes` above 35791 (about 24.8 days) are refused instead of making every task time out at once; `review()` cuts a longer `taskTimeoutMs` or `runTimeoutMs` to that limit.
+- The parsed types of the per-agent settings name their keys (`reviewers.<id>.models`, `roles.<role>.effort`) instead of `{}`.
+- `ocra review --help` says `--no-upload` sends nothing about the review: no counts, per-reviewer counts or findings.
+- `ocra review --plan` names each setting's real source: `shared` for a shared configuration (`extends`) and `env` for `OCRA_MODEL_*` and `OCRA_EFFORT_*`, which it reported as `file`; a combined list names the layers it combines, such as `shared+account`. The sources are recorded by the merge that applies the settings, so the plan cannot drift from the review.
+- `ocra review --mr --publish` says "merge request", not "pull request", when Ctrl-C comes while it publishes.
+- ocra Cloud gets one repository hash per repository, whatever form its remote URL takes (`git@host:o/r`, `ssh://`, `https://`, with a user, a port, a trailing `/` or `.git`), so SSH clones and HTTPS CI group together and match the account's memory.
+- With `--pr` or `--mr`, the hash is the pull or merge request's repository, not the checkout's origin.
+- When ocra Cloud cannot be reached, a review hashes with the account salt saved at the last answer instead of this machine's.
+- A review warns once when the account remembers findings but does not share findings, so its memory cannot apply.
+- `ocra metrics` and the ocra Cloud upload credit a fixed or dismissed finding to the reviewer that reported it, even when the review that sees it fixed no longer has a finding with its fingerprint.
+- The counts sent to ocra Cloud agree with the exit code: a review with a critical finding it could not verify is uploaded as incomplete, and timed-out tasks count as failed, as they do per reviewer.
+
+### Security
+
+- Shared findings: the redaction pass before upload matches ocra Cloud's and runs the same test vectors. It now also covers a finding's file path and category, keys that contain `/`, hex keys, the password in a URL, Slack and Discord webhook URLs, and quoted values assigned to names such as `password` or `api_key`. Hex runs of 32 or more characters, digests included, now read `[redacted]`.
+- Model ids, provider names and gateway paths from ocra Cloud are validated before they reach the runtime configuration; others are dropped with a warning.
+- The OpenCode runtime refuses `{` and `}` in every declared provider's id, address and model names, not only those from a configuration file.
+- `ocra login` opens only the sign-in page's own address on the server in use, and on Windows opens it without a command interpreter; any other address is printed for the user to open.
+- Account settings named on the terminal are escaped like other untrusted text.
+- `ocra plugins allow` runs npm from the plugin directory, so the current project's npm configuration does not apply, and refuses a package whose registry entry lists no integrity.
+
 ## [0.5.0] - 2026-10-04
 
 ocra Cloud configures everything the CLI reads: models and effort per agent, limits, checking, file selection, path rules, plugins (allowed per machine) and the recall mode, all under the repository's own configuration, with `--plan` showing where each setting came from. Signed-in reviews also send per-reviewer counts, and, only when the account turns it on, their findings, so the web can show a review in full and remember findings across machines. The Action's tag for this release is `jma49/Open-CR-Agent@v0.5.0`.
@@ -229,7 +307,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.2.0...v0.3.0
