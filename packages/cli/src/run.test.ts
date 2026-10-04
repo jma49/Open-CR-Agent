@@ -1,7 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { OcraPlugin } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { BUILTIN_PLUGINS } from "./review/command.js";
 import {
@@ -23,8 +22,6 @@ describe("BUILTIN_PLUGINS", () => {
       "vcs-local",
       "vcs-github",
       "vcs-gitlab",
-      "runtime-opencode",
-      "runtime-direct",
       "reviewer-correctness",
       "reviewer-security",
       "reviewer-performance",
@@ -373,20 +370,14 @@ describe("ocra review", () => {
   it("previews the review with --plan without creating a runtime", async () => {
     const cwd = repoWithChange();
     writeFileSync(join(cwd, "yarn.lock"), "lock\n");
-    const refuseRuntime: OcraPlugin = {
-      name: "runtime-opencode",
-      configure(ctx) {
-        ctx.registerRuntime("opencode", () => {
-          throw new Error("--plan must not start a runtime");
-        });
-      },
-    };
     const out = capture();
     const code = await run(["review", "--plan"], out, capture(), {
       ...deps(cwd, critical),
-      builtinPlugins: BUILTIN_PLUGINS.map((p) =>
-        p.name === refuseRuntime.name ? refuseRuntime : p,
-      ),
+      runtimes: {
+        opencode: async () => {
+          throw new Error("--plan must not import a runtime");
+        },
+      },
     });
     expect(code).toBe(0);
     expect(out.text()).toContain("Plan: Working tree changes");

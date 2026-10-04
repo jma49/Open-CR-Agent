@@ -4,6 +4,7 @@ import type { AgentEvent, AgentTaskSpec, OcraPlugin } from "@open-cr-agent/core"
 import { afterEach, describe, expect, it } from "vitest";
 import { capture, changeRequestFixture, removeFixtures } from "./change-request.fakes.js";
 import { BUILTIN_PLUGINS, type ReviewDeps } from "./review/command.js";
+import { BUILTIN_RUNTIMES } from "./review/runtimes.js";
 import { run } from "./run.js";
 
 afterEach(removeFixtures);
@@ -81,7 +82,8 @@ function deps(cwd: string, fetchImpl: typeof fetch, env: Record<string, string>)
   return {
     cwd,
     env,
-    builtinPlugins: BUILTIN_PLUGINS.map((p) => (p.name === warning.name ? warning : p)),
+    builtinPlugins: BUILTIN_PLUGINS,
+    runtimes: { opencode: async () => warning },
     writeFile: async () => {},
     now: Date.now,
     heartbeatMs: 60_000,
@@ -208,6 +210,7 @@ describe("ocra review --mr", () => {
       cwd: clone,
       env: {},
       builtinPlugins: BUILTIN_PLUGINS,
+      runtimes: BUILTIN_RUNTIMES,
       writeFile: async () => {},
       now: Date.now,
       heartbeatMs: 60_000,
@@ -219,6 +222,7 @@ describe("ocra review --mr", () => {
       cwd: clone,
       env: {},
       builtinPlugins: BUILTIN_PLUGINS,
+      runtimes: BUILTIN_RUNTIMES,
       writeFile: async () => {},
       now: Date.now,
       heartbeatMs: 60_000,

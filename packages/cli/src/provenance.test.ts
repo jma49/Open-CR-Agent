@@ -3,7 +3,6 @@ import { join } from "node:path";
 import type { OcraPlugin, RuntimeOptions } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { parseReviewArgs, type ReviewArgs } from "./review/args.js";
-import { BUILTIN_PLUGINS } from "./review/command.js";
 import { type CliConfig, loadConfig } from "./review/config.js";
 import { configHash, requestedSampling } from "./review/provenance.js";
 import { capture, deps, removeRepos, repoWithChange } from "./run.fakes.js";
@@ -88,14 +87,11 @@ describe("ocra review provenance", () => {
 
   async function review(cwd: string, flags: string[]) {
     const seen: Omit<RuntimeOptions, "tools">[] = [];
-    const plugins = BUILTIN_PLUGINS.map((p) =>
-      p.name === "runtime-opencode" ? recording(seen) : p,
-    );
     const code = await run(
       ["review", "--format", "json", "--output", "r.json", ...flags],
       capture(),
       capture(),
-      deps(cwd, async function* () {}, { builtinPlugins: plugins }),
+      deps(cwd, async function* () {}, { runtimes: { opencode: async () => recording(seen) } }),
     );
     expect(code).toBe(0);
     return { seen, report: JSON.parse(readFileSync(join(cwd, "r.json"), "utf8")) };

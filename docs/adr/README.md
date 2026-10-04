@@ -24,5 +24,6 @@
 | [0020](0020-direct-runtime.md) | A second runtime, `direct`: a tool loop over declared OpenAI-compatible endpoints, nothing else on the network; the runtime logic both share lives in core; a conformance suite every runtime passes |
 | [0021](0021-reviewer-entity.md) | Proposed: the reviewer declares its tools; finding processors at two insertion points (after Execute, after Verify) that can keep, drop or downgrade with a recorded reason, never raise or add; `tools` can land now, processors with their first customer |
 | [0022](0022-organization-policy.md) | Proposed: an organization policy named by `OCRA_POLICY` (pinned https or a runner file), never by the repository; it caps spend, allowed models, providers, runtimes, mandatory reviewers and excluded paths over every other layer, fails closed, and the report says what it did |
+| [0023](0023-optional-opencode-runtime.md) | The OpenCode runtime is an optional dependency of the CLI, imported only when the configured runtime needs it; the Action's `opencode: false` installs without it (11 MB instead of 175 MB); no install cache |
 
 Copy [0000-template.md](0000-template.md) to add a new record.

@@ -151,9 +151,8 @@ async function review(
   const deps: ReviewDeps = {
     cwd: f.clone,
     env: { GITHUB_TOKEN: "t" },
-    builtinPlugins: BUILTIN_PLUGINS.map((p) =>
-      p.name === runtime.plugin.name ? runtime.plugin : p,
-    ),
+    builtinPlugins: BUILTIN_PLUGINS,
+    runtimes: { opencode: async () => runtime.plugin },
     writeFile: async () => {},
     now: Date.now,
     heartbeatMs: 60_000,

@@ -19,8 +19,6 @@ import {
   startPlugins,
   toPlanOutput,
 } from "@open-cr-agent/core";
-import { directRuntimePlugin } from "@open-cr-agent/runtime-direct";
-import { opencodeRuntimePlugin } from "@open-cr-agent/runtime-opencode";
 import { githubPlugin } from "@open-cr-agent/vcs-github";
 import { gitlabPlugin } from "@open-cr-agent/vcs-gitlab";
 import { findRepositoryRoot, localGitPlugin } from "@open-cr-agent/vcs-local";
@@ -31,6 +29,7 @@ import { renderPlan } from "./plan-render.js";
 import { type Output, ProgressPrinter } from "./progress.js";
 import { configHash, requestedSampling } from "./provenance.js";
 import { renderJson, renderText, safeJson } from "./render.js";
+import type { RuntimeLoaders } from "./runtimes.js";
 import { renderSarif } from "./sarif.js";
 import { loadSarifLogs } from "./sarif-input.js";
 import { localTarget, mergeRequestTarget, pullRequestTarget } from "./target.js";
@@ -44,8 +43,6 @@ export const BUILTIN_PLUGINS: readonly OcraPlugin[] = [
   localGitPlugin,
   githubPlugin,
   gitlabPlugin,
-  opencodeRuntimePlugin,
-  directRuntimePlugin,
   correctnessReviewerPlugin,
   securityReviewerPlugin,
   performanceReviewerPlugin,
@@ -58,6 +55,7 @@ export interface ReviewDeps {
   cwd: string;
   env: Readonly<Record<string, string | undefined>>;
   builtinPlugins: readonly OcraPlugin[];
+  runtimes: RuntimeLoaders;
   writeFile(path: string, content: string): Promise<void>;
   now(): number;
   heartbeatMs: number;
@@ -103,10 +101,11 @@ export async function reviewCommand(
   const { config } = target;
   const session = { dir: join(root, SESSIONS_DIR), id: newRunId() };
 
-  // A plan calls no model and writes no session log.
+  // A plan calls no model, writes no session log and imports no runtime: it
+  // works without the optional runtime-opencode.
   const builtins = args.plan
     ? deps.builtinPlugins.filter((p) => p.name !== sessionJsonlPlugin.name)
-    : deps.builtinPlugins;
+    : [...deps.builtinPlugins, ...(await builtinRuntime(deps.runtimes, config.runtime))];
   const registry = await startPlugins([...builtins, ...target.plugins], {
     settings: args.plan
       ? config.pluginSettings
@@ -215,6 +214,12 @@ export async function reviewCommand(
     io.err.write(`[ocra] Published the review to the ${target.publishesTo ?? "change request"}\n`);
   }
   return exitCode(report, io.err);
+}
+
+// A runtime not built in comes from a plugin of the configuration.
+async function builtinRuntime(runtimes: RuntimeLoaders, name: string): Promise<OcraPlugin[]> {
+  const load = Object.hasOwn(runtimes, name) ? runtimes[name] : undefined;
+  return load ? [await load()] : [];
 }
 
 function runOptions(config: CliConfig): Omit<ReviewOptions, "vcs" | "runtime"> {

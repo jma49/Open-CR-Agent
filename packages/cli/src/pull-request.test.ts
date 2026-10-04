@@ -3,6 +3,7 @@ import type { AgentEvent, AgentTaskSpec, OcraPlugin } from "@open-cr-agent/core"
 import { afterEach, describe, expect, it } from "vitest";
 import { capture, changeRequestFixture, removeFixtures } from "./change-request.fakes.js";
 import { BUILTIN_PLUGINS, type ReviewDeps } from "./review/command.js";
+import { BUILTIN_RUNTIMES } from "./review/runtimes.js";
 import { run } from "./run.js";
 
 afterEach(removeFixtures);
@@ -71,7 +72,8 @@ describe("ocra review --pr", () => {
     const deps: ReviewDeps = {
       cwd: clone,
       env: { GITHUB_TOKEN: "t" },
-      builtinPlugins: BUILTIN_PLUGINS.map((p) => (p.name === fakeRuntime.name ? fakeRuntime : p)),
+      builtinPlugins: BUILTIN_PLUGINS,
+      runtimes: { opencode: async () => fakeRuntime },
       writeFile: async () => {},
       now: Date.now,
       heartbeatMs: 60_000,
@@ -131,6 +133,7 @@ describe("ocra review --pr", () => {
           cwd: clone,
           env: { GITHUB_TOKEN: "t" },
           builtinPlugins: BUILTIN_PLUGINS,
+          runtimes: BUILTIN_RUNTIMES,
           writeFile: async () => {},
           now: Date.now,
           heartbeatMs: 60_000,
@@ -189,7 +192,8 @@ describe("ocra review --pr", () => {
       const code = await run(["review", "--pr", "7", "--repo", "o/r"], capture(), err, {
         cwd: clone,
         env: { GITHUB_TOKEN: "t" },
-        builtinPlugins: BUILTIN_PLUGINS.map((p) => (p.name === critical.name ? critical : p)),
+        builtinPlugins: BUILTIN_PLUGINS,
+        runtimes: { opencode: async () => critical },
         writeFile: async () => {},
         now: Date.now,
         heartbeatMs: 60_000,
@@ -222,6 +226,7 @@ describe("ocra review --pr", () => {
       cwd: clone,
       env: {},
       builtinPlugins: BUILTIN_PLUGINS,
+      runtimes: BUILTIN_RUNTIMES,
       writeFile: async () => {},
       now: Date.now,
       heartbeatMs: 60_000,

@@ -15,7 +15,7 @@ ocra is an early 0.x release: options and output may still change between minor 
 - **Git**
 - An API key for at least one model provider
 
-The OpenCode agent runtime is installed automatically as a dependency; no separate install is needed.
+The OpenCode agent runtime, the default, is installed automatically as an optional dependency; no separate install is needed. To install without it, see [Without OpenCode](#without-opencode).
 
 ## From npm
 
@@ -32,9 +32,22 @@ To run it without installing, npx downloads it first:
 npx @open-cr-agent/cli review
 ```
 
-Install with optional dependencies, as npm does by default: the OpenCode binary comes as an optional dependency. With `--omit=optional`, ocra can only use the binary that `opencode-ai`'s install script downloads, so that works only where npm runs the script (see [OpenCode binary](#opencode-binary)).
+Install with optional dependencies, as npm does by default: the OpenCode runtime and its binary are optional dependencies, and `--omit=optional` leaves OpenCode out (see [Without OpenCode](#without-opencode)).
 
 npm 11.16 and later warn that `opencode-ai` has an install script not covered by `allowScripts`, and npm 12 blocks it. ocra does not need that script: it finds the OpenCode binary in the platform package without it, so you can leave it blocked.
+
+## Without OpenCode
+
+The OpenCode runtime, `@open-cr-agent/runtime-opencode`, is an optional dependency of the CLI: with its native binary it is about 165 MB of the 175 MB an install takes. If every model you use is on an endpoint you declare and the configuration sets `"runtime": "direct"` ([Choosing the runtime](./providers#choosing-the-runtime)), you can leave it out. `npm install -g` installs optional dependencies whatever you pass, so install ocra into a directory of its own instead:
+
+```bash
+npm install --prefix ~/.ocra --omit=optional @open-cr-agent/cli
+~/.ocra/node_modules/.bin/ocra --version   # or put ~/.ocra/node_modules/.bin on your PATH
+```
+
+The same `--omit=optional` works for ocra as a dependency of a project. ocra imports a runtime only when a review needs one, and `ocra review --plan` needs none. A review whose configuration selects `opencode`, the default, stops before any model call with exit code 2, names the missing package and both ways out: set `"runtime": "direct"`, or install the runtime next to ocra at ocra's exact version (`npm install --prefix ~/.ocra @open-cr-agent/runtime-opencode@<version>`).
+
+In the GitHub Action, the input `opencode: false` does the same ([GitHub](./github#the-runtime)).
 
 ## Container image
 

@@ -6,6 +6,7 @@ import { metricsCommand } from "./metrics.js";
 import { parseReviewArgs, REVIEW_USAGE, UsageError } from "./review/args.js";
 import { BUILTIN_PLUGINS, EXIT, type ReviewDeps, reviewCommand } from "./review/command.js";
 import type { Output } from "./review/progress.js";
+import { BUILTIN_RUNTIMES } from "./review/runtimes.js";
 import { forTerminal } from "./review/terminal.js";
 import { VERSION } from "./version.js";
 
@@ -26,6 +27,7 @@ export function defaultDeps(): ReviewDeps {
     cwd: process.cwd(),
     env: process.env,
     builtinPlugins: BUILTIN_PLUGINS,
+    runtimes: BUILTIN_RUNTIMES,
     writeFile: (path, content) => writeFile(path, content, "utf8"),
     now: Date.now,
     heartbeatMs: 30_000,

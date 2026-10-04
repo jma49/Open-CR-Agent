@@ -15,7 +15,7 @@ ocra 目前是早期的 0.x 版本：不同的次版本之间，选项和输出�
 - **Git**
 - 至少一个模型供应商的 API key
 
-OpenCode agent 运行时会作为依赖自动安装，不需要单独安装。
+默认的 OpenCode agent 运行时会作为可选依赖自动安装，不需要单独安装。不想装它，见[不装 OpenCode](#不装-opencode)。
 
 ## 从 npm 安装
 
@@ -32,9 +32,22 @@ ocra --version
 npx @open-cr-agent/cli review
 ```
 
-请连同可选依赖一起安装（npm 默认如此）：OpenCode 二进制文件是可选依赖。用 `--omit=optional` 安装时，ocra 只能使用 `opencode-ai` 的安装脚本下载的二进制文件，所以只有在 npm 运行了这个脚本时才可行（见 [OpenCode 二进制文件](#opencode-二进制文件)）。
+请连同可选依赖一起安装（npm 默认如此）：OpenCode 运行时和它的二进制文件都是可选依赖，`--omit=optional` 会把 OpenCode 整个略去（见[不装 OpenCode](#不装-opencode)）。
 
 npm 11.16 及更高版本会提示 `opencode-ai` 有一个不在 `allowScripts` 允许范围内的安装脚本，npm 12 会直接拦下它。ocra 不需要这个脚本：没有它也能在平台包里找到 OpenCode 二进制文件，所以不必放行。
+
+## 不装 OpenCode
+
+OpenCode 运行时 `@open-cr-agent/runtime-opencode` 是 CLI 的可选依赖：连同它的原生二进制文件，约占一次安装 175 MB 中的 165 MB。如果你用的模型都在自己声明的端点上，并且配置里设了 `"runtime": "direct"`（见[选择运行时](./providers#选择运行时)），就可以不装它。`npm install -g` 不管传什么参数都会安装可选依赖，所以请把 ocra 装进一个单独的目录：
+
+```bash
+npm install --prefix ~/.ocra --omit=optional @open-cr-agent/cli
+~/.ocra/node_modules/.bin/ocra --version   # 或者把 ~/.ocra/node_modules/.bin 加进 PATH
+```
+
+把 ocra 作为项目依赖安装时，同样可以用 `--omit=optional`。ocra 只在评审需要时才导入运行时，`ocra review --plan` 不需要运行时。如果配置选的是默认的 `opencode`，评审会在调用任何模型之前以退出码 2 停下，说明缺了哪个包，并给出两条出路：设置 `"runtime": "direct"`，或者在 ocra 旁边安装与 ocra 版本完全一致的运行时（`npm install --prefix ~/.ocra @open-cr-agent/runtime-opencode@<版本>`）。
+
+在 GitHub Action 里，输入 `opencode: false` 起同样的作用（见 [GitHub](./github#运行时)）。
 
 ## 容器镜像
 

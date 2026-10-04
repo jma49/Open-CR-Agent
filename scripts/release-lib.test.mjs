@@ -195,11 +195,12 @@ describe("readWorkspaces", () => {
     expect(names(publishOrder(workspaces))).toEqual([
       "@open-cr-agent/core",
       "@open-cr-agent/runtime-direct",
-      "@open-cr-agent/runtime-opencode",
       "@open-cr-agent/vcs-platform",
       "@open-cr-agent/vcs-github",
       "@open-cr-agent/vcs-gitlab",
       "@open-cr-agent/vcs-local",
+      // An optional dependency of the CLI, still published before it.
+      "@open-cr-agent/runtime-opencode",
       "@open-cr-agent/cli",
     ]);
   });

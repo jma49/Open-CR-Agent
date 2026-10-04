@@ -74,7 +74,8 @@ export function deps(
   return {
     cwd,
     env: {},
-    builtinPlugins: BUILTIN_PLUGINS.map((p) => (p.name === fakeRuntime.name ? fakeRuntime : p)),
+    builtinPlugins: BUILTIN_PLUGINS,
+    runtimes: { opencode: async () => fakeRuntime },
     writeFile: async (path, content) => writeFileSync(path, content),
     now: Date.now,
     heartbeatMs: 60_000,

@@ -5,12 +5,15 @@
 // GitHub Action does, with the dependency versions this lockfile pins
 // (scripts/pinned-lock.mjs). Catches missing files, undeclared dependencies,
 // broken bin entries and a lockfile the Action cannot pin before anything
-// is published. Needs network access for third-party dependencies.
+// is published. Last, installs them as the Action does with `opencode: false`
+// (--omit=optional): OpenCode is left out, and ocra says so with exit code 2
+// when the configured runtime needs it. Needs network access for third-party
+// dependencies.
 //
 // Usage: node scripts/check-packages.mjs [--tarballs <dir>]
 // With --tarballs, checks the tarballs in <dir> (packed by the release
 // workflow's pack job) instead of packing this checkout.
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   existsSync,
@@ -64,6 +67,9 @@ function findsOpencode(dir) {
   run(binary, ["--version"], dir);
   console.log(`installed runtime finds OpenCode at ${binary.replace(realpathSync(dir), ".")}`);
 }
+
+// What an install takes on disk, as du counts it.
+const megabytes = (dir) => `${(run("du", ["-sk", dir], dir).split("\t")[0] / 1024) | 0} MB`;
 
 // The tarball of a workspace package: packed from this checkout, or the
 // one given for its name and version.
@@ -178,7 +184,45 @@ try {
     throw new Error(`the pinned install reports ${pinnedVersion}, expected ${expected}`);
   }
   findsOpencode(pinned);
-  console.log(`installed ocra ${pinnedVersion} as the Action does, pinned by package-lock.json`);
+  console.log(
+    `installed ocra ${pinnedVersion} as the Action does, pinned by package-lock.json (${megabytes(pinned)})`,
+  );
+
+  const lean = join(work, "lean");
+  mkdirSync(lean);
+  writeFileSync(join(lean, "package.json"), JSON.stringify(manifest));
+  writeFileSync(join(lean, "package-lock.json"), JSON.stringify(lockfile));
+  run(
+    "npm",
+    ["ci", "--omit=optional", "--ignore-scripts", "--no-audit", "--no-fund", "--loglevel=error"],
+    lean,
+    { env },
+  );
+  for (const left of ["@open-cr-agent/runtime-opencode", "opencode-ai"]) {
+    if (existsSync(join(lean, "node_modules", left))) {
+      throw new Error(`--omit=optional still installed ${left}`);
+    }
+  }
+  const leanMain = join(lean, "node_modules", "@open-cr-agent", "cli", "dist", "main.js");
+  const missing = spawnSync(process.execPath, [leanMain, "review"], {
+    cwd: repo,
+    encoding: "utf8",
+    env,
+  });
+  if (
+    missing.status !== 2 ||
+    !missing.stderr.includes("needs @open-cr-agent/runtime-opencode, which is not installed")
+  ) {
+    throw new Error(
+      `ocra without OpenCode exited ${missing.status}:\n${missing.stdout}${missing.stderr}`,
+    );
+  }
+  const leanPlan = run(process.execPath, [leanMain, "review", "--plan"], repo);
+  if (!leanPlan.includes("Review tasks: 1"))
+    throw new Error(`unexpected --plan output:\n${leanPlan}`);
+  console.log(
+    `installed ocra without OpenCode (${megabytes(lean)}): review --plan runs, review explains what is missing`,
+  );
 } finally {
   rmSync(work, { recursive: true, force: true });
 }

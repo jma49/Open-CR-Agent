@@ -230,6 +230,24 @@ describe("pinnedLockfile", () => {
         cpu: expect.any(Array),
       });
     }
+    // The Action's `opencode: false` installs with --omit=optional: that
+    // leaves out OpenCode and only it (ADR-0023).
+    const optional = (name) => lockfile.packages[`node_modules/${name}`]?.optional === true;
+    for (const name of ["@open-cr-agent/runtime-opencode", "opencode-ai", "@opencode-ai/sdk"]) {
+      expect(optional(name), name).toBe(true);
+    }
+    for (const name of [
+      "@open-cr-agent/cli",
+      "@open-cr-agent/core",
+      "@open-cr-agent/runtime-direct",
+      "@open-cr-agent/vcs-github",
+      "@open-cr-agent/vcs-gitlab",
+      "@open-cr-agent/vcs-local",
+      "@open-cr-agent/vcs-platform",
+    ]) {
+      expect(paths, name).toContain(`node_modules/${name}`);
+      expect(optional(name), name).toBe(false);
+    }
     for (const tool of ["typescript", "vitest", "@biomejs/biome", "@open-cr-agent/eval"]) {
       expect(paths).not.toContain(`node_modules/${tool}`);
     }
