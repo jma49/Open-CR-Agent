@@ -43,13 +43,33 @@ export function serializeMemory(entries: readonly MemoryEntry[]): string {
   return `${JSON.stringify({ accepted: entries }, null, 2)}\n`;
 }
 
-export function applyMemory(
+// Where a remembered finding was accepted: the repository's file, or the
+// memory of the ocra Cloud account that ran the review (ADR-0028).
+export type MemorySource = "repository" | "account";
+export type RememberedEntry = MemoryEntry & { source: MemorySource };
+
+// The union of both sources; a fingerprint both list is the repository's.
+export function mergeMemory(
+  repository: readonly MemoryEntry[],
+  account: readonly MemoryEntry[],
+): RememberedEntry[] {
+  const merged = repository.map((e): RememberedEntry => ({ ...e, source: "repository" }));
+  const seen = new Set(repository.map((e) => e.fingerprint));
+  for (const e of account) {
+    if (seen.has(e.fingerprint)) continue;
+    seen.add(e.fingerprint);
+    merged.push({ ...e, source: "account" });
+  }
+  return merged;
+}
+
+export function applyMemory<E extends MemoryEntry>(
   findings: readonly Finding[],
-  memory: readonly MemoryEntry[],
-): { kept: Finding[]; remembered: MemoryEntry[] } {
+  memory: readonly E[],
+): { kept: Finding[]; remembered: E[] } {
   const accepted = new Map(memory.map((e) => [e.fingerprint, e]));
   const kept: Finding[] = [];
-  const remembered: MemoryEntry[] = [];
+  const remembered: E[] = [];
   for (const finding of findings) {
     const entry = accepted.get(finding.fingerprint);
     if (entry) remembered.push(entry);

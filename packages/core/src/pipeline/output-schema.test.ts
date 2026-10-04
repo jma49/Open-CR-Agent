@@ -81,7 +81,15 @@ const full: ReviewReport = {
   findings: [finding, { ...finding, fingerprint: "2".repeat(16), provenance: { task: "x" } }],
   unverifiedCriticals: 1,
   refuted: [{ fingerprint: "3".repeat(16), file: "src/a.ts", title: "t", reason: "r" }],
-  remembered: [{ fingerprint: "4".repeat(16), file: "src/a.ts", title: "t", reason: "r" }],
+  remembered: [
+    {
+      fingerprint: "4".repeat(16),
+      file: "src/a.ts",
+      title: "t",
+      reason: "r",
+      source: "repository",
+    },
+  ],
   judgement: {
     merged: [{ kept: "a", merged: ["b"] }],
     dropped: [{ fingerprint: "5".repeat(16), file: "f", title: "t", reason: "r" }],

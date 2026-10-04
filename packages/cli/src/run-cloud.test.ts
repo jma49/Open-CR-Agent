@@ -1,62 +1,11 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { CloudDeps } from "./cloud.js";
 import { capture, critical, deps, removeRepos, repoWithChange } from "./run.fakes.js";
 import { run } from "./run.js";
+import { PREFERENCES, signedIn } from "./run-cloud.fakes.js";
 
 afterEach(removeRepos);
-
-const NOW = Date.now();
-
-const PREFERENCES = {
-  runtime: null,
-  models: { standard: ["ocra-openrouter/m"], light: ["ocra-openrouter/m"] },
-  agents: { reviewers: { security: { effort: "high" } } },
-};
-
-function signedIn(
-  env: Record<string, string> = {},
-  preferences: unknown = PREFERENCES,
-  offline = false,
-) {
-  const dir = mkdtempSync(join(tmpdir(), "ocra-runcloud-"));
-  const credentialsPath = join(dir, "ocra", "credentials.json");
-  mkdirSync(join(dir, "ocra"));
-  writeFileSync(
-    credentialsPath,
-    JSON.stringify({
-      server: "https://cloud.test",
-      login: "octo",
-      access_token: "ocra_cli_t",
-      refresh_token: "ocra_ref_r",
-      expires_at: NOW + 3_600_000,
-    }),
-  );
-  const calls: { path: string; body?: unknown }[] = [];
-  const cloud: CloudDeps = {
-    env,
-    fetch: (async (input: string | URL | Request, init?: RequestInit) => {
-      const path = new URL(String(input)).pathname;
-      calls.push({ path, ...(init?.body ? { body: JSON.parse(String(init.body)) } : {}) });
-      if (offline) throw new TypeError("fetch failed");
-      if (path === "/api/preferences") return Response.json(preferences);
-      if (path === "/api/providers")
-        return Response.json({
-          providers: [{ name: "openrouter", paths: ["/v1/chat/completions"] }],
-        });
-      if (path === "/api/reviews") return Response.json({ id: "r1" });
-      return new Response("{}", { status: 404 });
-    }) as typeof fetch,
-    now: Date.now,
-    sleep: async () => {},
-    openBrowser: () => {},
-    credentialsPath,
-    clientName: "t",
-  };
-  return { cloud, calls };
-}
 
 describe("a review while signed in to ocra Cloud", () => {
   it("uses the web's default models when none are configured, then sends the counts", async () => {
@@ -66,6 +15,8 @@ describe("a review while signed in to ocra Cloud", () => {
     await run(["review"], capture(), err, deps(cwd, critical, { cloud }, true));
     expect(calls.map((c) => c.path)).toEqual([
       "/api/preferences",
+      "/api/account/salt",
+      "/api/memory",
       "/api/providers",
       "/api/reviews",
     ]);
@@ -89,8 +40,13 @@ describe("a review while signed in to ocra Cloud", () => {
     );
     const err = capture();
     await run(["review", "--no-upload"], capture(), err, d);
-    // The settings are still read; the repository's models win over the account's.
-    expect(calls.map((c) => c.path)).toEqual(["/api/preferences"]);
+    // The settings and the memory are still read; the repository's models
+    // win over the account's.
+    expect(calls.map((c) => c.path)).toEqual([
+      "/api/preferences",
+      "/api/account/salt",
+      "/api/memory",
+    ]);
     expect(err.text()).toContain("From your ocra Cloud settings: reviewers.security");
     expect(err.text()).not.toContain("models.standard");
   });

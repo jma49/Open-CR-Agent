@@ -185,10 +185,20 @@ export function renderSummary({
       );
     }
   }
-  if (report.remembered.length > 0) {
+  const fromRepository = report.remembered.filter((e) => e.source === "repository").length;
+  const fromAccount = report.remembered.length - fromRepository;
+  if (fromRepository > 0) {
     lines.push(
       "",
-      `${report.remembered.length} finding(s) matched \`.ocra/memory.json\` and are not repeated.`,
+      `${fromRepository} finding(s) matched \`.ocra/memory.json\` and are not repeated.`,
+    );
+  }
+  // The reviewer's own account memory can hide findings too; say so, so a
+  // suppression nobody on the team chose is visible (ADR-0028).
+  if (fromAccount > 0) {
+    lines.push(
+      "",
+      `${fromAccount} finding(s) matched the reviewing account's ocra Cloud memory and are not repeated.`,
     );
   }
   const rereview = report.rereview;

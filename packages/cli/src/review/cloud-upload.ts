@@ -12,12 +12,15 @@ import {
 import { verificationSchema } from "@open-cr-agent/core/internal";
 import { type CloudDeps, cloudSession, readCredentials } from "../cloud.js";
 import { VERSION } from "../version.js";
+import type { SharedFinding } from "./cloud-findings.js";
 
 // After a review, a signed-in CLI sends ocra Cloud its counts (ADR-0024):
 // the verdict, how many findings of each severity, files and tasks, tokens
-// and time. Never a path, a title, a finding's text or code. The repository
-// is a hash salted with a value that stays on this machine, so the server
-// can group reviews of one repository without learning which it is.
+// and time. A path, a title, a finding's text or code go only when the
+// account shares findings (ADR-0028, cloud-findings.ts). The repository is
+// a salted hash, so the server can group reviews of one repository without
+// learning which it is: the salt stays on this machine, or is the account's
+// while it shares findings, so the hash matches on all its machines.
 
 const run = promisify(execFile);
 
@@ -164,8 +167,8 @@ async function repositoryId(root: string): Promise<string> {
   }
 }
 
-/** A random salt kept beside the credentials, made on first use. */
-async function salt(credentialsPath: string): Promise<string> {
+/** This machine's random salt, kept beside the credentials, made on first use. */
+async function machineSalt(credentialsPath: string): Promise<string> {
   const path = join(dirname(credentialsPath), "upload-salt");
   try {
     const existing = (await readFile(path, "utf8")).trim();
@@ -177,9 +180,15 @@ async function salt(credentialsPath: string): Promise<string> {
   return fresh;
 }
 
-export async function repoHash(root: string, credentialsPath: string): Promise<string> {
+/** The repository's hash, salted with the account's salt when given, else this machine's. */
+export async function repoHash(
+  root: string,
+  credentialsPath: string,
+  accountSalt?: string,
+): Promise<string> {
+  const salt = accountSalt ?? (await machineSalt(credentialsPath));
   return createHash("sha256")
-    .update(`${await salt(credentialsPath)}:${await repositoryId(root)}`)
+    .update(`${salt}:${await repositoryId(root)}`)
     .digest("hex");
 }
 
@@ -190,15 +199,20 @@ export async function cloudEnabled(deps: CloudDeps): Promise<boolean> {
   );
 }
 
-/** Sends the counts; a failure is a warning, never a failed review. */
+/**
+ * Sends the counts, and the findings when given; answers how many findings
+ * the server kept, or undefined when it took nothing. A failure is a
+ * warning, never a failed review.
+ */
 export async function uploadReview(
   upload: ReviewUpload,
   deps: CloudDeps,
   warn: (message: string) => void,
-): Promise<boolean> {
+  findings?: readonly SharedFinding[],
+): Promise<{ findings: number } | undefined> {
   try {
     const session = await cloudSession(deps);
-    if (!session) return false;
+    if (!session) return undefined;
     const res = await deps.fetch(`${session.server}/api/reviews`, {
       method: "POST",
       headers: {
@@ -206,18 +220,22 @@ export async function uploadReview(
         authorization: `Bearer ${session.access_token}`,
         "user-agent": `ocra/${VERSION}`,
       },
-      body: JSON.stringify(upload),
+      // The server's contract (ADR-0028): `findings` carries the list
+      // when findings are shared, in place of the counts object.
+      body: JSON.stringify(findings ? { ...upload, findings } : upload),
       signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) {
       warn(`ocra Cloud did not take the review's counts (HTTP ${res.status})`);
-      return false;
+      return undefined;
     }
-    return true;
+    const answer = (await res.json().catch(() => ({}))) as { findings?: unknown };
+    const kept = answer.findings;
+    return { findings: typeof kept === "number" && Number.isInteger(kept) && kept > 0 ? kept : 0 };
   } catch (error) {
     warn(
       `could not send the review's counts to ocra Cloud: ${error instanceof Error ? error.name : "error"}`,
     );
-    return false;
+    return undefined;
   }
 }

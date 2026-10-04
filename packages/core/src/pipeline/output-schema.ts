@@ -178,7 +178,9 @@ export const reportOutputSchema = z.strictObject({
   findings: z.array(outputFindingSchema),
   unverifiedCriticals: z.int().nonnegative(),
   refuted: z.array(refutedFindingSchema),
-  remembered: z.array(memoryEntrySchema),
+  remembered: z.array(
+    memoryEntrySchema.extend({ source: z.enum(["repository", "account"]).optional() }),
+  ),
   judgement: judgeDecisionsSchema.optional(),
   rereview: z
     .strictObject({

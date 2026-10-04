@@ -62,6 +62,10 @@ export interface ReviewOptions {
   // Where AGENTS.md and .ocra/rules.json are read from. Defaults to the
   // revision under review; pull request reviews pass the trusted base.
   readTrusted?: (path: string) => Promise<string | undefined>;
+  // Findings the signed-in ocra Cloud account remembers for this repository
+  // (ADR-0028), applied with .ocra/memory.json's; a fingerprint both list is
+  // reported as the repository's.
+  accountMemory?: readonly MemoryEntry[];
   selection?: SelectionPolicy;
   concurrency?: number;
   taskTimeoutMs?: number;

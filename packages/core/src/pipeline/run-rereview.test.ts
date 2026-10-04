@@ -100,8 +100,43 @@ describe("review against the previous review", () => {
       readTrusted: async (p) => (p === ".ocra/memory.json" ? memory : undefined),
     });
     expect(second.findings).toEqual([]);
-    expect(second.remembered).toEqual([entry]);
+    expect(second.remembered).toEqual([{ ...entry, source: "repository" }]);
     expect(rt.specs.at(-1)?.userPrompt).toContain("- src/a.ts: t (accepted: known and accepted)");
+  });
+
+  it("applies the account's memory with the repository's, the repository's first", async () => {
+    const rt = reporting(finding("src/a.ts", "const a = 1;"), finding("src/b.ts", "const b = 2;"));
+    const opts = { vcs: vcs({}, twoFiles), runtime: rt, verify: false, judge: false } as const;
+    const first = await review(opts);
+    const fp = (file: string) => first.findings.find((f) => f.file === file)?.fingerprint ?? "";
+    expect(fp("src/a.ts")).not.toBe(fp("src/b.ts"));
+    const inRepo = { fingerprint: fp("src/a.ts"), file: "src/a.ts", title: "t", reason: "ours" };
+    const memory = JSON.stringify({ accepted: [inRepo] });
+    const second = await review({
+      ...opts,
+      readTrusted: async (p) => (p === ".ocra/memory.json" ? memory : undefined),
+      accountMemory: [
+        { ...inRepo, reason: "also the account's" },
+        { fingerprint: fp("src/b.ts"), file: "src/b.ts", title: "t", reason: "mine" },
+      ],
+    });
+    expect(second.findings).toEqual([]);
+    expect(second.remembered).toEqual(
+      expect.arrayContaining([
+        { ...inRepo, source: "repository" },
+        {
+          fingerprint: fp("src/b.ts"),
+          file: "src/b.ts",
+          title: "t",
+          reason: "mine",
+          source: "account",
+        },
+      ]),
+    );
+    expect(second.remembered).toHaveLength(2);
+    expect(rt.specs.map((s) => s.userPrompt).join("\n")).toContain(
+      "- src/b.ts: t (accepted: mine)",
+    );
   });
 
   it("keeps the verdict when a finding is not reported again but its code is unchanged", async () => {

@@ -9,7 +9,7 @@ import type {
   Verification,
 } from "../domain.js";
 import type { JudgeDecisions } from "../judge/judge.js";
-import type { MemoryEntry } from "../memory/memory.js";
+import type { MemoryEntry, MemorySource } from "../memory/memory.js";
 import type { RefutedFinding } from "../verify/verify.js";
 import type { SkippedCell } from "./matrix.js";
 import type { ReviewPreview } from "./preview.js";
@@ -73,7 +73,9 @@ export interface ReportOutput {
   findings: OutputFinding[];
   unverifiedCriticals: number;
   refuted: RefutedFinding[];
-  remembered: MemoryEntry[];
+  // `source` was added in version 1 without a bump: optional, so a report
+  // written before it still reads; ocra always writes it.
+  remembered: (MemoryEntry & { source?: MemorySource })[];
   judgement?: JudgeDecisions;
   rereview?: Record<
     "fixed" | "notReproduced" | "notRechecked" | "unchanged" | "dismissed",

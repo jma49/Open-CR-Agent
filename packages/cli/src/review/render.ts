@@ -75,10 +75,15 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
       `Verification dropped ${refuted.length} finding(s) the code disproves (see the JSON report).`,
     );
   }
-  if (report.remembered.length > 0) {
+  const fromRepository = report.remembered.filter((e) => e.source === "repository").length;
+  const fromAccount = report.remembered.length - fromRepository;
+  if (fromRepository > 0) {
     lines.push(
-      `${report.remembered.length} finding(s) matched the repository's memory and were not reported.`,
+      `${fromRepository} finding(s) matched the repository's memory and were not reported.`,
     );
+  }
+  if (fromAccount > 0) {
+    lines.push(`${fromAccount} finding(s) matched your ocra Cloud memory and were not reported.`);
   }
   const rereview = report.rereview;
   if (report.scope?.mode === "incremental") {

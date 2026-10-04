@@ -9,7 +9,7 @@ import type {
   Verdict,
 } from "../domain.js";
 import type { JudgeDecisions } from "../judge/judge.js";
-import type { MemoryEntry } from "../memory/memory.js";
+import type { RememberedEntry } from "../memory/memory.js";
 import type { ExclusionReason } from "../select/select.js";
 import type { RefutedFinding } from "../verify/verify.js";
 import type { SkippedCell } from "./matrix.js";
@@ -77,8 +77,8 @@ export interface ReviewReport {
   // timed out or ran out of budget). With `verify: false` this stays 0.
   unverifiedCriticals: number;
   refuted: RefutedFinding[];
-  // Findings the repository's memory marks as accepted.
-  remembered: MemoryEntry[];
+  // Findings the repository's or the account's memory marks as accepted.
+  remembered: RememberedEntry[];
   // What the judge merged, dropped or recalibrated; absent when it did not run.
   judgement?: JudgeDecisions;
   // With an earlier review: whether this run reviewed only what changed since.

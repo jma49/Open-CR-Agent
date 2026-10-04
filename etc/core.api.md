@@ -428,6 +428,9 @@ const memoryEntrySchema: z.ZodObject<{
 }, z.core.$strip>;
 
 // @public (undocumented)
+export type MemorySource = "repository" | "account";
+
+// @public (undocumented)
 export type ModelChains = {
     [Tier in ModelTier]?: readonly string[];
 };
@@ -678,6 +681,11 @@ export interface RefutedFinding {
 }
 
 // @public (undocumented)
+export type RememberedEntry = MemoryEntry & {
+    source: MemorySource;
+};
+
+// @public (undocumented)
 export const REPORT_VERSION = 1;
 
 // @public (undocumented)
@@ -724,7 +732,9 @@ export interface ReportOutput {
     // (undocumented)
     refuted: RefutedFinding[];
     // (undocumented)
-    remembered: MemoryEntry[];
+    remembered: (MemoryEntry & {
+        source?: MemorySource;
+    })[];
     // (undocumented)
     rereview?: Record<"fixed" | "notReproduced" | "notRechecked" | "unchanged" | "dismissed", OutputPriorFinding[]>;
     // (undocumented)
@@ -856,6 +866,10 @@ export const reportOutputSchema: z.ZodObject<{
         title: z.ZodString;
         reason: z.ZodString;
         added: z.ZodOptional<z.ZodString>;
+        source: z.ZodOptional<z.ZodEnum<{
+            account: "account";
+            repository: "repository";
+        }>>;
     }, z.core.$strip>>;
     judgement: z.ZodOptional<z.ZodObject<{
         merged: z.ZodArray<z.ZodObject<{
@@ -1186,6 +1200,8 @@ export type ReviewEvent = {
 // @public (undocumented)
 export interface ReviewOptions {
     // (undocumented)
+    accountMemory?: readonly MemoryEntry[];
+    // (undocumented)
     concurrency?: number;
     // (undocumented)
     effort?: TierEfforts;
@@ -1257,7 +1273,7 @@ export interface ReviewReport {
     // (undocumented)
     refuted: RefutedFinding[];
     // (undocumented)
-    remembered: MemoryEntry[];
+    remembered: RememberedEntry[];
     // (undocumented)
     rereview?: {
         fixed: PriorFinding[];

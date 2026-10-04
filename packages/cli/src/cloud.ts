@@ -4,6 +4,7 @@ import { homedir, hostname } from "node:os";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 import { errorMessage } from "@open-cr-agent/core/internal";
+import { fetchAccountSalt, saveAccountSalt } from "./account-salt.js";
 import { UsageError } from "./review/args.js";
 import type { Output } from "./review/progress.js";
 import { forTerminal } from "./review/terminal.js";
@@ -245,6 +246,7 @@ async function logout(out: Output, deps: CloudDeps): Promise<number> {
     }
   }
   await rm(deps.credentialsPath, { force: true });
+  await saveAccountSalt(deps.credentialsPath, null);
   out.write(saved ? "Signed out.\n" : "Not signed in.\n");
   return 0;
 }
@@ -303,6 +305,10 @@ async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean
         expires_at: deps.now() + t.expires_in * 1000,
       };
       await writeCredentials(deps.credentialsPath, credentials);
+      // Best effort: each signed-in review asks again.
+      await fetchAccountSalt(deps, server, t.access_token)
+        .then((salt) => saveAccountSalt(deps.credentialsPath, salt))
+        .catch(() => {});
       out.write(forTerminal(`Signed in as ${credentials.login}.\n`));
       return 0;
     }

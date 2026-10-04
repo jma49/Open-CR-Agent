@@ -48,7 +48,7 @@ export {
   type OcraErrorCode,
 } from "./errors.js";
 export type { JudgeDecisions } from "./judge/judge.js";
-export type { MemoryEntry } from "./memory/memory.js";
+export type { MemoryEntry, MemorySource, RememberedEntry } from "./memory/memory.js";
 export type {
   AgentRole,
   RoleSetting,

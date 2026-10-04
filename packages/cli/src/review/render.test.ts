@@ -195,6 +195,19 @@ describe("renderText", () => {
     );
   });
 
+  it("counts the findings each memory hid", () => {
+    const entry = { file: "a.ts", title: "t", reason: "r" };
+    const text = renderText({
+      ...base,
+      remembered: [
+        { ...entry, fingerprint: "1".repeat(16), source: "repository" },
+        { ...entry, fingerprint: "2".repeat(16), source: "account" },
+      ],
+    });
+    expect(text).toContain("1 finding(s) matched the repository's memory and were not reported.");
+    expect(text).toContain("1 finding(s) matched your ocra Cloud memory and were not reported.");
+  });
+
   it("never claims a clean result when nothing was reviewed", () => {
     const failed: ReviewReport = {
       ...base,

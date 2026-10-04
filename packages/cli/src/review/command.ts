@@ -33,8 +33,9 @@ import { VERSION } from "../version.js";
 import { type AccountPlugins, accountPlugins } from "./account-plugins.js";
 import type { ReviewArgs } from "./args.js";
 import { withCloudProviders } from "./cloud-providers.js";
+import { prepareCloudReview, sendToCloud } from "./cloud-review.js";
 import { fetchAccountSettings, layerAccountSettings } from "./cloud-settings.js";
-import { cloudEnabled, repoHash, uploadOf, uploadReview } from "./cloud-upload.js";
+import { cloudEnabled } from "./cloud-upload.js";
 import { agentChains, type CliConfig, ConfigError } from "./config.js";
 import { renderPlan } from "./plan-render.js";
 import { type Output, ProgressPrinter } from "./progress.js";
@@ -194,6 +195,9 @@ export async function reviewCommand(
   }
 
   const sarif = await loadSarifLogs(args.importSarif ?? [], deps.cwd);
+  // The repository's hash and the account's memory for it (ADR-0028).
+  const cloudReview =
+    cloudDeps && signedIn ? await prepareCloudReview(root, cloudDeps, warn) : undefined;
   const sampling = requestedSampling(config, args);
   const models = config.models;
   const agentModels = agentChains({ reviewers: overrides, roles: config.roles });
@@ -244,6 +248,7 @@ export async function reviewCommand(
       runtime,
       reviewers: registry.reviewers,
       rules,
+      ...(cloudReview?.memory.length ? { accountMemory: cloudReview.memory } : {}),
       onEvent: (event) => {
         registry.emit(event);
         progress.onEvent(event);
@@ -268,6 +273,8 @@ export async function reviewCommand(
     await deps.writeFile(resolve(deps.cwd, args.output), rendered);
     io.err.write(`[ocra] Wrote ${args.output}\n`);
   }
+  const hidden = report.remembered.filter((e) => e.source === "account").length;
+  if (hidden > 0) io.err.write(`[ocra] ${hidden} finding(s) hidden by your ocra Cloud memory\n`);
   if (interrupt.signal.aborted) return EXIT.interrupted;
   if (target.publish) {
     // Stopping halfway could post the inline comments without the summary
@@ -285,17 +292,13 @@ export async function reviewCommand(
     }
     io.err.write(`[ocra] Published the review to the ${target.publishesTo ?? "change request"}\n`);
   }
-  if (signedIn && cloudDeps && !args.noUpload) {
-    const source = args.pullRequest ? "github" : args.mergeRequest ? "gitlab" : "local";
-    const upload = uploadOf(
-      report,
-      source,
-      await repoHash(root, cloudDeps.credentialsPath),
-      deps.now() - started,
-    );
-    if (await uploadReview(upload, cloudDeps, warn)) {
-      io.err.write("[ocra] Sent this review's counts to ocra Cloud (--no-upload to skip)\n");
-    }
+  if (cloudReview && cloudDeps && !args.noUpload) {
+    await sendToCloud(report, cloudReview, cloudDeps, {
+      source: args.pullRequest ? "github" : args.mergeRequest ? "gitlab" : "local",
+      durationMs: deps.now() - started,
+      err: io.err,
+      warn,
+    });
   }
   return exitCode(report, io.err);
 }

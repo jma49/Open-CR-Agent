@@ -346,6 +346,13 @@
           },
           "added": {
             "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "repository",
+              "account"
+            ]
           }
         },
         "required": [

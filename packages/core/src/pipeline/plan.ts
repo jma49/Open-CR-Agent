@@ -1,7 +1,7 @@
 import { type Bundle, bundleFiles, defaultBundlePolicy } from "../bundle/bundle.js";
 import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
 import type { ChangeRequest, FileDiff, RiskTier } from "../domain.js";
-import { MEMORY_PATH, type MemoryEntry, parseMemory } from "../memory/memory.js";
+import { MEMORY_PATH, mergeMemory, parseMemory, type RememberedEntry } from "../memory/memory.js";
 import {
   parseRepoRules,
   REPO_RULES_PATH,
@@ -34,7 +34,7 @@ export interface ReviewPlan {
   context: ReviewContext;
   guidelines: string | undefined;
   repoRules: SourcedRule[];
-  memory: MemoryEntry[];
+  memory: RememberedEntry[];
   usage: Usage[];
   warnings: string[];
 }
@@ -42,7 +42,15 @@ export interface ReviewPlan {
 // Planning needs no model except for grouping, which is skipped without a runtime.
 export type PlanOptions = Pick<
   ReviewOptions & ReviewHooks,
-  "vcs" | "rules" | "readTrusted" | "selection" | "bundling" | "grouper" | "effort" | "roles"
+  | "vcs"
+  | "rules"
+  | "readTrusted"
+  | "accountMemory"
+  | "selection"
+  | "bundling"
+  | "grouper"
+  | "effort"
+  | "roles"
 > & {
   // Absent for a plan preview, which nobody looks up again.
   runId?: string;
@@ -117,7 +125,10 @@ export async function planReview(
       ...(options.rules ?? []),
       ...fileRules.map((rule): SourcedRule => ({ ...rule, source: "repository" })),
     ],
-    memory: memoryText === undefined ? [] : parseMemory(memoryText),
+    memory: mergeMemory(
+      memoryText === undefined ? [] : parseMemory(memoryText),
+      options.accountMemory ?? [],
+    ),
     usage,
     warnings: bundled.warnings,
   };

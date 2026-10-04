@@ -5,6 +5,7 @@ import { join } from "node:path";
 import type { ReviewReport } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import type { CloudDeps } from "../cloud.js";
+import type { SharedFinding } from "./cloud-findings.js";
 import { repoHash, uploadOf, uploadReview } from "./cloud-upload.js";
 
 const NOW = 1_000_000_000;
@@ -187,21 +188,41 @@ describe("the review upload", () => {
     expect(await repoHash(repo(), a.credentialsPath)).not.toBe(h1);
   });
 
+  it("hashes with the account's salt alike on every machine, and apart from this machine's", async () => {
+    const a = cloud(() => new Response("{}"));
+    const b = cloud(() => new Response("{}"));
+    const plain = repo("https://github.com/org/repo");
+    const account = "a".repeat(64);
+    const onA = await repoHash(plain, a.credentialsPath, account);
+    expect(await repoHash(plain, b.credentialsPath, account)).toBe(onA);
+    expect(await repoHash(plain, a.credentialsPath)).not.toBe(onA);
+  });
+
+  it("sends the findings in place of the counts object and answers how many were kept", async () => {
+    const ok = cloud(() => Response.json({ id: "x", findings: 1 }));
+    const up = uploadOf(report, "local", "f".repeat(64), 1);
+    const shared = [{ fingerprint: "fp" } as unknown as SharedFinding];
+    expect(await uploadReview(up, ok.deps, () => {}, shared)).toEqual({ findings: 1 });
+    const sent = JSON.parse(String(ok.calls[0]?.init?.body));
+    expect(sent.findings).toEqual([{ fingerprint: "fp" }]);
+    expect(sent.reviewers).toEqual(up.reviewers);
+  });
+
   it("posts with the session token, and turns a failure into a warning", async () => {
     const ok = cloud(() => Response.json({ id: "x" }));
     const warnings: string[] = [];
     const up = uploadOf(report, "github", "f".repeat(64), 1);
-    expect(await uploadReview(up, ok.deps, (m) => warnings.push(m))).toBe(true);
+    expect(await uploadReview(up, ok.deps, (m) => warnings.push(m))).toEqual({ findings: 0 });
     expect(ok.calls[0]?.path).toBe("/api/reviews");
     expect(new Headers(ok.calls[0]?.init?.headers).get("authorization")).toBe("Bearer ocra_cli_t");
     expect(JSON.parse(String(ok.calls[0]?.init?.body))).toEqual(up);
 
     const down = cloud(() => new Response("{}", { status: 503 }));
-    expect(await uploadReview(up, down.deps, (m) => warnings.push(m))).toBe(false);
+    expect(await uploadReview(up, down.deps, (m) => warnings.push(m))).toBeUndefined();
     const offline = cloud(() => {
       throw new TypeError("fetch failed");
     });
-    expect(await uploadReview(up, offline.deps, (m) => warnings.push(m))).toBe(false);
+    expect(await uploadReview(up, offline.deps, (m) => warnings.push(m))).toBeUndefined();
     expect(warnings).toHaveLength(2);
     expect(warnings.join(" ")).not.toContain("ocra_cli_t");
   });

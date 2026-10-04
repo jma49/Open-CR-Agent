@@ -1,7 +1,8 @@
-import { mkdtempSync, readFileSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { accountSaltPath } from "./account-salt.js";
 import { type CloudDeps, type Credentials, cloudCommand, cloudSession } from "./cloud.js";
 
 const SERVER = "https://cloud.test";
@@ -101,6 +102,37 @@ describe("ocra login", () => {
     for (const secret of ["ocra_dev_secret", "ocra_cli_a1", "ocra_ref_r1"]) {
       expect([...t.out, ...t.err].join("")).not.toContain(secret);
     }
+  });
+
+  it("keeps the account's salt beside the session, and none when the account answers none", async () => {
+    const salt = "5".repeat(64);
+    const t = setup({
+      "POST /api/device/code": ok(code),
+      "POST /api/device/token": ok(tokens),
+      "GET /api/me": ok({ login: "octo" }),
+      "GET /api/account/salt": ok({ salt }),
+    });
+    expect(await cloudCommand("login", [], t.io.out, t.io.err, t.deps)).toBe(0);
+    const path = accountSaltPath(t.deps.credentialsPath);
+    expect(readFileSync(path, "utf8").trim()).toBe(salt);
+    if (process.platform !== "win32") expect(statSync(path).mode & 0o777).toBe(0o600);
+    expect(
+      t.cloud.calls.find((c) => c.path === "GET /api/account/salt")?.headers.get("authorization"),
+    ).toBe("Bearer ocra_cli_a1");
+
+    t.deps.fetch = fakeCloud({
+      "POST /api/device/code": ok(code),
+      "POST /api/device/token": ok(tokens),
+      "GET /api/me": ok({ login: "octo" }),
+      "GET /api/account/salt": ok({ salt: null }),
+    }).fetch;
+    expect(await cloudCommand("login", [], t.io.out, t.io.err, t.deps)).toBe(0);
+    expect(existsSync(path)).toBe(false);
+
+    writeFileSync(path, `${salt}\n`);
+    t.deps.fetch = fakeCloud({}).fetch;
+    expect(await cloudCommand("logout", [], t.io.out, t.io.err, t.deps)).toBe(0);
+    expect(existsSync(path)).toBe(false);
   });
 
   it("does not open a browser with --no-browser", async () => {
