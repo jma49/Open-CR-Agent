@@ -1,5 +1,6 @@
 import { OcraError } from "@open-cr-agent/core";
 import type { PlatformTarget, ResolveTargetOptions } from "@open-cr-agent/vcs-platform";
+import { mergeRequestOf } from "./adapter.js";
 import { GitLabApi } from "./client.js";
 
 const GITLAB_API = "https://gitlab.com/api/v4";
@@ -33,17 +34,11 @@ export async function resolveGitLabTarget(
   });
   const iid = ref.number;
   const merge = await api.getMergeRequest(iid);
-  const refs = merge.diff_refs;
-  if (!refs) {
-    throw new OcraError(
-      "VCS_NOT_READY",
-      `merge request !${iid} has no diff yet; try again shortly`,
-    );
-  }
+  const snapshot = mergeRequestOf(merge);
   return {
     platform: "gitlab",
-    baseSha: refs.start_sha,
-    headSha: refs.head_sha,
+    baseSha: snapshot.baseSha,
+    headSha: snapshot.headSha,
     headRefs: [`refs/merge-requests/${iid}/head`],
     webUrl: merge.web_url,
     createVcs: (registry, local) =>
@@ -53,7 +48,7 @@ export async function resolveGitLabTarget(
         token,
         apiUrl,
         code: local.code,
-        snapshot: merge,
+        snapshot,
         history: local.history,
         ...(fetchImpl ? { fetch: fetchImpl } : {}),
       }),

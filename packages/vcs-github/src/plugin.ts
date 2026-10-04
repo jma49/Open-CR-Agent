@@ -1,8 +1,13 @@
 import type { OcraPlugin } from "@open-cr-agent/core";
-import type { CodeSource, History } from "@open-cr-agent/vcs-platform";
+import {
+  changeRequestSchema,
+  codeSourceSchema,
+  fetchSchema,
+  historySchema,
+} from "@open-cr-agent/vcs-platform";
 import { z } from "zod";
 import { DEFAULT_BOT_LOGIN, GitHubAdapter } from "./adapter.js";
-import { GitHubApi, type PullRequest } from "./client.js";
+import { GitHubApi } from "./client.js";
 
 const optionsSchema = z.object({
   owner: z.string().min(1),
@@ -12,28 +17,10 @@ const optionsSchema = z.object({
   apiUrl: z.string().url().optional(),
   botLogin: z.string().min(1).default(DEFAULT_BOT_LOGIN),
   requestChanges: z.boolean().default(false),
-  fetch: z.custom<typeof fetch>((value) => typeof value === "function").optional(),
-  code: z.custom<CodeSource>(
-    (value) =>
-      typeof value === "object" &&
-      value !== null &&
-      ["getDiff", "readFile", "searchCode"].every(
-        (m) => typeof (value as Record<string, unknown>)[m] === "function",
-      ),
-    "code must provide getDiff, readFile and searchCode",
-  ),
-  snapshot: z
-    .custom<PullRequest>((value) => typeof value === "object" && value !== null && "head" in value)
-    .optional(),
-  history: z
-    .custom<History>(
-      (value) =>
-        typeof value === "object" &&
-        value !== null &&
-        typeof (value as Record<string, unknown>).filesChangedSince === "function",
-      "history must provide filesChangedSince",
-    )
-    .optional(),
+  fetch: fetchSchema.optional(),
+  code: codeSourceSchema,
+  snapshot: changeRequestSchema.optional(),
+  history: historySchema.optional(),
 });
 
 export const githubPlugin: OcraPlugin = {

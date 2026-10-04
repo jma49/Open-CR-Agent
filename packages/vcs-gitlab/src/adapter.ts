@@ -31,7 +31,14 @@ export interface GitLabAdapterOptions {
   // The merge request as the diff under review was built from it. Without it
   // the adapter fetches the merge request itself, and a push in between would
   // publish the new head for the old diff.
-  snapshot?: MergeRequest;
+  snapshot?: MergeRequestSnapshot;
+}
+
+// The merge request as ocra reads it. GitLab places a comment against three
+// commits: the target branch's head the diff starts from (baseSha), the
+// source branch's head (headSha) and their merge base.
+export interface MergeRequestSnapshot extends PlatformChangeRequest {
+  mergeBaseSha: string;
 }
 
 // A GitLab merge request as ocra's review conversation (vcs-platform).
@@ -54,7 +61,7 @@ const UNKNOWN_EDITOR = "(unknown)";
 class GitLabPlatform implements ReviewPlatform {
   readonly text = { changeRequest: "merge request", authority: "the Developer role or higher" };
   readonly suggestionFence = gitlabSuggestion;
-  private mergeRequest: Promise<MergeRequest> | undefined;
+  private mergeRequest: Promise<MergeRequestSnapshot> | undefined;
   private user: Promise<{ id: number; username: string }> | undefined;
   private editors: Promise<Map<number, string | undefined>> | undefined;
   // User ids by username, from the notes read, for membership lookups.
@@ -70,16 +77,8 @@ class GitLabPlatform implements ReviewPlatform {
   }
 
   async changeRequest(): Promise<PlatformChangeRequest> {
-    const mr = await this.mr();
-    const refs = diffRefs(mr);
-    return {
-      id: `${projectPath(mr.web_url)}!${mr.iid}`,
-      title: mr.title,
-      description: mr.description ?? "",
-      baseSha: refs.start_sha,
-      headSha: refs.head_sha,
-      ...(mr.author ? { author: mr.author.username } : {}),
-    };
+    const { mergeBaseSha: _, ...changeRequest } = await this.mr();
+    return changeRequest;
   }
 
   // Comments on the merge request as a whole: plain notes and the notes of
@@ -150,7 +149,8 @@ class GitLabPlatform implements ReviewPlatform {
     fresh: readonly InlineFinding[],
   ): Promise<PublishedFindings> {
     if (fresh.length === 0) return { posted: [], warnings: [] };
-    const refs = diffRefs(await this.mr());
+    const mr = await this.mr();
+    const refs = { base_sha: mr.mergeBaseSha, start_sha: mr.baseSha, head_sha: mr.headSha };
     const diffs = await this.options.code.getDiff();
     const posted: string[] = [];
     const warnings: string[] = [];
@@ -189,22 +189,31 @@ class GitLabPlatform implements ReviewPlatform {
     return this.editors;
   }
 
-  private mr(): Promise<MergeRequest> {
+  private mr(): Promise<MergeRequestSnapshot> {
     this.mergeRequest ??= this.options.snapshot
       ? Promise.resolve(this.options.snapshot)
-      : this.options.api.getMergeRequest(this.options.iid);
+      : this.options.api.getMergeRequest(this.options.iid).then(mergeRequestOf);
     return this.mergeRequest;
   }
 }
 
-function diffRefs(mr: MergeRequest): NonNullable<MergeRequest["diff_refs"]> {
-  if (!mr.diff_refs) {
+export function mergeRequestOf(mr: MergeRequest): MergeRequestSnapshot {
+  const refs = mr.diff_refs;
+  if (!refs) {
     throw new OcraError(
       "VCS_NOT_READY",
       `merge request !${mr.iid} has no diff yet; try again shortly`,
     );
   }
-  return mr.diff_refs;
+  return {
+    id: `${projectPath(mr.web_url)}!${mr.iid}`,
+    title: mr.title,
+    description: mr.description ?? "",
+    baseSha: refs.start_sha,
+    headSha: refs.head_sha,
+    mergeBaseSha: refs.base_sha,
+    ...(mr.author ? { author: mr.author.username } : {}),
+  };
 }
 
 // "https://gitlab.example.com/group/sub/project/-/merge_requests/7" names

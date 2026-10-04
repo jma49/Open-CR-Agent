@@ -110,6 +110,7 @@ describe("resolveGitHubTarget", () => {
           requestChanges: true,
           code: local.code,
           history: local.history,
+          snapshot: { id: "o/r#7", title: "t", description: "", baseSha: BASE, headSha: HEAD },
         }),
       },
     ]);

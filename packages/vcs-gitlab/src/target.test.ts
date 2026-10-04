@@ -64,6 +64,40 @@ describe("resolveGitLabTarget", () => {
     });
   });
 
+  it("gives the adapter the merge request as ocra reads it", async () => {
+    const { options: o } = options({ GITLAB_TOKEN: "t", CI_PROJECT_ID: "42" }, undefined);
+    const target = await resolveGitLabTarget(o);
+    let created: unknown;
+    target.createVcs(
+      {
+        createVcs: (_name, options) => {
+          created = options;
+          return {} as never;
+        },
+      },
+      {
+        code: {
+          getDiff: async () => [],
+          readFile: async () => undefined,
+          searchCode: async () => [],
+        },
+        history: { filesChangedSince: async () => ({ files: [] }) },
+      },
+      {},
+    );
+    expect(created).toMatchObject({
+      project: 42,
+      iid: 7,
+      snapshot: {
+        id: "g/p!7",
+        baseSha: BASE,
+        headSha: HEAD,
+        mergeBaseSha: BASE,
+        author: "contributor",
+      },
+    });
+  });
+
   it("never sends the token to gitlab.com for a self-managed origin", async () => {
     const { options: o, api } = options({ GITLAB_TOKEN: "t" }, "https://gitlab.example.com/g/p");
     await expect(resolveGitLabTarget(o)).rejects.toMatchObject({ code: "CONFIG_INVALID" });

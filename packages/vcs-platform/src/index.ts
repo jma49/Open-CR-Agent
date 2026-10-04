@@ -1,5 +1,13 @@
 // The review conversation every platform adapter shares (ADR-0016), for
 // ocra's own adapters. Not a contract yet: a minor release may change it.
+
+export {
+  changeRequestSchema,
+  codeSourceSchema,
+  commitIdSchema,
+  fetchSchema,
+  historySchema,
+} from "./options.js";
 export type {
   Bot,
   InlineFinding,

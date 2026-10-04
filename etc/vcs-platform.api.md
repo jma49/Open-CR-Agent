@@ -13,6 +13,7 @@ import type { PluginRegistry } from '@open-cr-agent/core';
 import type { PriorReview } from '@open-cr-agent/core';
 import type { ReviewReport } from '@open-cr-agent/core';
 import type { VcsAdapter } from '@open-cr-agent/core';
+import { z } from 'zod';
 
 // @public (undocumented)
 export interface Bot {
@@ -31,7 +32,26 @@ export interface ChangeRequestRef {
 }
 
 // @public (undocumented)
+export const changeRequestSchema: z.ZodObject<{
+    id: z.ZodString;
+    title: z.ZodString;
+    description: z.ZodString;
+    baseSha: z.ZodString;
+    headSha: z.ZodString;
+    author: z.ZodExactOptional<z.ZodString>;
+}, z.core.$strip>;
+
+// @public (undocumented)
 export type CodeSource = Pick<VcsAdapter, "getDiff" | "readFile" | "searchCode">;
+
+// @public (undocumented)
+export const codeSourceSchema: z.ZodCustom<CodeSource, CodeSource>;
+
+// @public (undocumented)
+export const commitIdSchema: z.ZodString;
+
+// @public (undocumented)
+export const fetchSchema: z.ZodCustom<typeof fetch, typeof fetch>;
 
 // @public (undocumented)
 export const githubSuggestion: SuggestionFence;
@@ -48,6 +68,9 @@ export interface History {
         reason: string;
     }>;
 }
+
+// @public (undocumented)
+export const historySchema: z.ZodCustom<History, History>;
 
 // @public (undocumented)
 export interface InlineFinding {

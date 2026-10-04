@@ -1,6 +1,6 @@
 import { OcraError } from "@open-cr-agent/core";
 import type { PlatformTarget, ResolveTargetOptions } from "@open-cr-agent/vcs-platform";
-import { DEFAULT_BOT_LOGIN } from "./adapter.js";
+import { DEFAULT_BOT_LOGIN, pullRequestOf } from "./adapter.js";
 import { GitHubApi } from "./client.js";
 
 // The repository's `github` settings: who ocra comments as, and whether a
@@ -52,7 +52,7 @@ export async function resolveGitHubTarget(
         botLogin: settings.botLogin ?? DEFAULT_BOT_LOGIN,
         requestChanges: settings.requestChanges ?? false,
         code: local.code,
-        snapshot: pull,
+        snapshot: pullRequestOf(pull, { owner, repo }),
         history: local.history,
         ...(fetchImpl ? { fetch: fetchImpl } : {}),
       }),

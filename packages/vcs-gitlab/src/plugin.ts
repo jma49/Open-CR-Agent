@@ -1,8 +1,14 @@
 import type { OcraPlugin } from "@open-cr-agent/core";
-import type { CodeSource, History } from "@open-cr-agent/vcs-platform";
+import {
+  changeRequestSchema,
+  codeSourceSchema,
+  commitIdSchema,
+  fetchSchema,
+  historySchema,
+} from "@open-cr-agent/vcs-platform";
 import { z } from "zod";
 import { GitLabAdapter } from "./adapter.js";
-import { GitLabApi, type MergeRequest } from "./client.js";
+import { GitLabApi } from "./client.js";
 
 const optionsSchema = z.object({
   // The project's numeric id or full path ("group/project").
@@ -10,30 +16,10 @@ const optionsSchema = z.object({
   iid: z.number().int().positive(),
   token: z.string().min(1),
   apiUrl: z.string().url().optional(),
-  fetch: z.custom<typeof fetch>((value) => typeof value === "function").optional(),
-  code: z.custom<CodeSource>(
-    (value) =>
-      typeof value === "object" &&
-      value !== null &&
-      ["getDiff", "readFile", "searchCode"].every(
-        (m) => typeof (value as Record<string, unknown>)[m] === "function",
-      ),
-    "code must provide getDiff, readFile and searchCode",
-  ),
-  snapshot: z
-    .custom<MergeRequest>(
-      (value) => typeof value === "object" && value !== null && "diff_refs" in value,
-    )
-    .optional(),
-  history: z
-    .custom<History>(
-      (value) =>
-        typeof value === "object" &&
-        value !== null &&
-        typeof (value as Record<string, unknown>).filesChangedSince === "function",
-      "history must provide filesChangedSince",
-    )
-    .optional(),
+  fetch: fetchSchema.optional(),
+  code: codeSourceSchema,
+  snapshot: changeRequestSchema.extend({ mergeBaseSha: commitIdSchema }).optional(),
+  history: historySchema.optional(),
 });
 
 export const gitlabPlugin: OcraPlugin = {

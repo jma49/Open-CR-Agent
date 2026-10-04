@@ -38,7 +38,7 @@ export interface GitHubAdapterOptions {
   // The pull request as the diff under review was built from it. Without it
   // the adapter fetches the pull request itself, and a push in between would
   // publish the new head for the old diff.
-  snapshot?: PullRequest;
+  snapshot?: PlatformChangeRequest;
 }
 
 export const DEFAULT_BOT_LOGIN = "github-actions[bot]";
@@ -58,7 +58,7 @@ export class GitHubAdapter extends PlatformReview {
 class GitHubPlatform implements ReviewPlatform {
   readonly text = { changeRequest: "pull request", authority: "write access" };
   readonly suggestionFence = githubSuggestion;
-  private pullRequest: Promise<PullRequest> | undefined;
+  private pullRequest: Promise<PlatformChangeRequest> | undefined;
   // The REST comments behind the platform's, for their GraphQL node ids.
   private readonly listed = new Map<string, IssueComment>();
 
@@ -70,17 +70,14 @@ class GitHubPlatform implements ReviewPlatform {
     return { login, is: (other) => other === login || `${other}[bot]` === login };
   }
 
-  async changeRequest(): Promise<PlatformChangeRequest> {
-    const pr = await this.pr();
-    const { owner, repo } = this.options.pullRequest;
-    return {
-      id: `${owner}/${repo}#${pr.number}`,
-      title: pr.title,
-      description: pr.body ?? "",
-      baseSha: pr.base.sha,
-      headSha: pr.head.sha,
-      ...(pr.user ? { author: pr.user.login } : {}),
-    };
+  changeRequest(): Promise<PlatformChangeRequest> {
+    const { pullRequest } = this.options;
+    this.pullRequest ??= this.options.snapshot
+      ? Promise.resolve(this.options.snapshot)
+      : this.options.api
+          .getPullRequest(pullRequest.number)
+          .then((pr) => pullRequestOf(pr, pullRequest));
+    return this.pullRequest;
   }
 
   async comments(): Promise<PlatformComment[]> {
@@ -207,7 +204,7 @@ class GitHubPlatform implements ReviewPlatform {
     }
     if (fresh.length === 0 && !requestChanges) return [];
     const review = {
-      commit_id: (await this.pr()).head.sha,
+      commit_id: (await this.changeRequest()).headSha,
       event: requestChanges ? ("REQUEST_CHANGES" as const) : ("COMMENT" as const),
       body: `ocra: ${report.findings.length} finding(s); details in the summary comment.`,
     };
@@ -227,13 +224,21 @@ class GitHubPlatform implements ReviewPlatform {
       return [];
     }
   }
+}
 
-  private pr(): Promise<PullRequest> {
-    this.pullRequest ??= this.options.snapshot
-      ? Promise.resolve(this.options.snapshot)
-      : this.options.api.getPullRequest(this.options.pullRequest.number);
-    return this.pullRequest;
-  }
+// The pull request as ocra's review conversation reads it.
+export function pullRequestOf(
+  pr: PullRequest,
+  { owner, repo }: Pick<GitHubPullRequest, "owner" | "repo">,
+): PlatformChangeRequest {
+  return {
+    id: `${owner}/${repo}#${pr.number}`,
+    title: pr.title,
+    description: pr.body ?? "",
+    baseSha: pr.base.sha,
+    headSha: pr.head.sha,
+    ...(pr.user ? { author: pr.user.login } : {}),
+  };
 }
 
 function reviewComment({ finding, body }: InlineFinding): ReviewComment {

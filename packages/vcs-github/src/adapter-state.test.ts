@@ -403,13 +403,12 @@ describe("publishing the reviewed commit", () => {
       code,
       botLogin: "github-actions[bot]",
       snapshot: {
-        number: 7,
+        id: "o/r#7",
         title: "t",
-        body: null,
-        html_url: "u",
-        user: { login: "author" },
-        base: { sha: "b".repeat(40), ref: "main" },
-        head: { sha: reviewed, ref: "feat" },
+        description: "",
+        author: "author",
+        baseSha: "b".repeat(40),
+        headSha: reviewed,
       },
     });
     expect((await github.getChangeRequest()).headSha).toBe(reviewed);
