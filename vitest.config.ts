@@ -13,5 +13,12 @@ export default defineConfig({
     // The end-to-end tests run git in scratch repositories; with every file
     // running in parallel, 5 seconds is not always enough for them.
     testTimeout: 20_000,
+    // Only with --coverage (npm run test:coverage).
+    coverage: {
+      provider: "v8",
+      include: ["packages/*/src/**/*.ts"],
+      exclude: ["**/*.test.ts", "**/*.fakes.ts"],
+      reporter: ["text-summary", "json-summary"],
+    },
   },
 });

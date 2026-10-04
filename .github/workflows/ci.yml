@@ -14,10 +14,14 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  # Branch protection requires this job by name: keep it a single job, the
+  # Node versions go in node-matrix.
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
@@ -26,13 +30,61 @@ jobs:
       - run: npm audit --omit=dev --audit-level=high
       - run: npm run check
       - run: npm run typecheck
+      # Coverage is reported, not gated.
+      - run: npm run test:coverage
+      - run: node scripts/coverage-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+
+  # The supported range: the engines floor exactly, the Node the release
+  # workflow publishes with, and the newest release.
+  node-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22.19.0, 24, latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: node --version
+      - run: npm ci
+      - run: npm run build
       - run: npm test
+
+  # actionlint (with shellcheck, preinstalled on the runner) and zizmor's
+  # offline audits of the workflows, action.yml and dependabot.yml, both at
+  # pinned versions; zizmor reads .github/zizmor.yml.
+  workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: actionlint
+        env:
+          VERSION: 1.7.12
+          SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          archive="actionlint_${VERSION}_linux_amd64.tar.gz"
+          curl -fsSL -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/rhysd/actionlint/releases/download/v${VERSION}/${archive}"
+          echo "$SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -color
+      - name: zizmor
+        run: pipx run zizmor==1.30.1 --offline --format github .
 
   # Installs the packed packages like a user would and runs the installed CLI.
   packages:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22

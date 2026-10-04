@@ -30,6 +30,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
@@ -85,6 +86,7 @@ jobs:
           # 0 and 1 are reviews that finished (1: a confirmed critical, which
           # a model may report); 2 is an error, 3 an incomplete review.
           case "$EXIT" in 0|1) ;; *) echo "::error::ocra review exited $EXIT"; exit 1 ;; esac
+          # shellcheck disable=SC2016 # JavaScript, not shell, expands ${…} here
           node --input-type=module -e '
             import { readFile } from "node:fs/promises";
             const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/report.json", "utf8"));

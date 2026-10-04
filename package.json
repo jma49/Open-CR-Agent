@@ -18,12 +18,14 @@
     "verify": "npm run check && npm run typecheck && npm test",
     "clean": "node -e \"for (const p of require('fs').readdirSync('packages')) require('fs').rmSync('packages/' + p + '/dist', { recursive: true, force: true })\" && find packages -name '*.tsbuildinfo' -not -path '*/node_modules/*' -delete",
     "check:packages": "npm run clean && npm run build && node scripts/check-packages.mjs",
-    "schema": "npm run build && node scripts/report-schema.mjs"
+    "schema": "npm run build && node scripts/report-schema.mjs",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",
     "@types/node": "^26.6.3",
     "@types/picomatch": "^4.0.3",
+    "@vitest/coverage-v8": "^5.0.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.2"
   }

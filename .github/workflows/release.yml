@@ -143,6 +143,7 @@ jobs:
           # The registry can take minutes to serve a version it just accepted,
           # longer for some packages than others (0.2.0 waited on three while
           # cli was served), and the image installs every one of them.
+          # shellcheck disable=SC2016 # JavaScript, not shell, expands ${…} here
           packages=$(node -e 'const fs = require("fs"); for (const d of fs.readdirSync("packages")) { const j = JSON.parse(fs.readFileSync(`packages/${d}/package.json`)); if (!j.private) console.log(j.name); }')
           for _ in $(seq 1 60); do
             missing=""

@@ -1,0 +1,8 @@
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        # ocra-review.yml calls the dogfood workflow at main on purpose: Google
+        # Cloud trusts only ocra-dogfood.yml@refs/heads/main (docs/pitfalls.md).
+        jma49/Open-CR-Agent/*: ref-pin
+        "*": hash-pin

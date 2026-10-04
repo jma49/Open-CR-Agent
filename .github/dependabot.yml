@@ -1,10 +1,14 @@
 version: 2
+# A release is adopted a week after it is published, when a compromised
+# version has usually been found and pulled.
 updates:
   # The npm workspaces share the root package-lock.json, so "/" covers packages/*.
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     # OpenCode is pinned on purpose: a new version can add tools or change the
     # step loop, so it is bumped by hand with a security review (AGENTS.md).
@@ -19,6 +23,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     groups:
       minor-and-patch:
@@ -30,6 +36,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 2
     ignore:
       - dependency-name: node
