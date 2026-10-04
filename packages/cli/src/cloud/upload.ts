@@ -9,11 +9,11 @@ import {
 } from "@open-cr-agent/core";
 import { verificationSchema } from "@open-cr-agent/core/internal";
 import { VERSION } from "../version.js";
+import { CloudClient, CloudError, sessionLostReason } from "./client.js";
 import { readCredentials } from "./credentials.js";
 import type { CloudDeps } from "./deps.js";
 import type { SharedFinding } from "./findings.js";
 import { createPrivateFile, writePrivateFile } from "./private-file.js";
-import { cloudFetch, sessionLostReason } from "./session.js";
 
 // After a review, a signed-in CLI sends ocra Cloud its counts (ADR-0024):
 // the verdict, how many findings of each severity, files and tasks, tokens
@@ -218,28 +218,29 @@ export async function uploadReview(
   findings?: readonly SharedFinding[],
 ): Promise<{ findings: number } | undefined> {
   try {
-    const answer = await cloudFetch(deps, "/api/reviews", {
-      method: "POST",
+    const answer = await new CloudClient(deps).uploadReview(
       // The counts stay in `findings`; the shared list goes in `findingList`.
-      body: JSON.stringify(findings ? { ...upload, findingList: findings } : upload),
-    });
+      findings ? { ...upload, findingList: findings } : upload,
+    );
     if (answer.kind === "signed-out") return undefined;
-    if (answer.kind !== "answered") {
+    if (answer.kind === "status") {
+      warn(`ocra Cloud did not take the review's counts (HTTP ${answer.status})`);
+      return undefined;
+    }
+    if (answer.kind !== "ok") {
       warn(`could not send the review's counts to ocra Cloud: ${sessionLostReason(answer)}`);
       return undefined;
     }
-    const { res } = answer;
-    if (!res.ok) {
-      warn(`ocra Cloud did not take the review's counts (HTTP ${res.status})`);
-      return undefined;
-    }
-    const taken = (await res.json().catch(() => ({}))) as { findings?: unknown };
-    const kept = taken.findings;
-    return { findings: typeof kept === "number" && Number.isInteger(kept) && kept > 0 ? kept : 0 };
+    return answer.value;
   } catch (error) {
-    warn(
-      `could not send the review's counts to ocra Cloud: ${error instanceof Error ? error.name : "error"}`,
-    );
+    warn(`could not send the review's counts to ocra Cloud: ${failureName(error)}`);
     return undefined;
   }
+}
+
+// The warning names the error, not its message; for a call that could not be
+// sent, the cause's name (TypeError for a network failure).
+function failureName(error: unknown): string {
+  const cause = error instanceof CloudError && error.cause instanceof Error ? error.cause : error;
+  return cause instanceof Error ? cause.name : "error";
 }

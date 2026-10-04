@@ -12,9 +12,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { accountSaltPath, saveAccountSalt } from "../cloud/account-salt.js";
+import { CloudClient } from "../cloud/client.js";
 import { type Credentials, readCredentials } from "../cloud/credentials.js";
 import type { CloudDeps } from "../cloud/deps.js";
-import { cloudSession } from "../cloud/session.js";
 import { loginCommand } from "./login.js";
 
 const SERVER = "https://cloud.test";
@@ -231,7 +231,7 @@ describe("sessions", () => {
     const fresh = { access_token: "ocra_cli_a2", refresh_token: "ocra_ref_r2", expires_in: 3600 };
     const cloud = fakeCloud({ "POST /api/device/refresh": ok(fresh) });
     t.deps.fetch = cloud.fetch;
-    const session = await cloudSession(t.deps);
+    const session = await new CloudClient(t.deps).session();
     expect(session.kind === "ok" && session.credentials.access_token).toBe("ocra_cli_a2");
     expect(cloud.calls[0]?.body).toEqual({ refresh_token: "ocra_ref_r1" });
     const saved = JSON.parse(readFileSync(t.deps.credentialsPath, "utf8")) as Credentials;
@@ -271,7 +271,7 @@ describe("the credentials file", () => {
     t.tick(3_600_000);
     const fresh = { access_token: "ocra_cli_a2", refresh_token: "ocra_ref_r2", expires_in: 3600 };
     t.deps.fetch = fakeCloud({ "POST /api/device/refresh": ok(fresh) }).fetch;
-    const session = await cloudSession(t.deps);
+    const session = await new CloudClient(t.deps).session();
     expect(session.kind === "ok" && session.credentials.access_token).toBe("ocra_cli_a2");
     expect(JSON.parse(readFileSync(before, "utf8")).access_token).toBe("ocra_cli_a1");
     expect(JSON.parse(readFileSync(t.deps.credentialsPath, "utf8")).access_token).toBe(
@@ -295,7 +295,7 @@ describe("the credentials file", () => {
       ).toBeUndefined();
       expect(warnings).toHaveLength(1);
       expect(warnings[0]).toContain(t.deps.credentialsPath);
-      expect(await cloudSession(t.deps)).toEqual({ kind: "signed-out" });
+      expect(await new CloudClient(t.deps).session()).toEqual({ kind: "signed-out" });
     }
   });
 

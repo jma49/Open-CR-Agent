@@ -1,11 +1,11 @@
 import type { MemoryEntry, ReviewReport } from "@open-cr-agent/core";
 import type { Output } from "../io/output.js";
 import { originRepository } from "../repository-id.js";
-import { accountSaltOf, readAccountSalt, saveAccountSalt } from "./account-salt.js";
+import { readAccountSalt, saveAccountSalt } from "./account-salt.js";
+import { CloudClient, type CloudSessionLost, sessionLostReason } from "./client.js";
 import type { CloudDeps } from "./deps.js";
 import { sharedFindings } from "./findings.js";
 import { accountHasMemory, fetchAccountMemory } from "./memory.js";
-import { type CloudSessionLost, cloudFetch, sessionLostReason } from "./session.js";
 import { type ReviewSource, repoHash, uploadOf, uploadReview } from "./upload.js";
 
 // What a signed-in review takes from ocra Cloud before it runs (ADR-0028):
@@ -44,10 +44,12 @@ export async function prepareCloudReview(
   const id = repository ?? (await originRepository(root));
   let salt: string | null;
   try {
-    const answer = await cloudFetch(deps, "/api/account/salt");
+    const answer = await new CloudClient(deps).accountSalt();
     if (answer.kind === "signed-out") return undefined;
-    if (answer.kind !== "answered") throw new Error(sessionLostReason(answer));
-    salt = await accountSaltOf(answer.res);
+    if (answer.kind === "status") throw new Error(`HTTP ${answer.status}`);
+    if (answer.kind === "malformed") throw new Error("the answer is not a salt");
+    if (answer.kind !== "ok") throw new Error(sessionLostReason(answer));
+    salt = answer.value;
   } catch (error) {
     // The salt kept from the last answer, else this machine's, still groups
     // the counts. Whether the account still shares findings is unknown, so

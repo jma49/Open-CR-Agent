@@ -1,8 +1,8 @@
 import type { CustomProvider } from "@open-cr-agent/core";
 import { OcraError } from "@open-cr-agent/core";
 import { errorMessage } from "@open-cr-agent/core/internal";
+import { CloudClient, sessionLostReason } from "./client.js";
 import type { CloudDeps } from "./deps.js";
-import { cloudSession, sessionLostReason } from "./session.js";
 
 // Models named ocra-<provider>/<model> go through the ocra Cloud gateway with
 // the key stored there for <provider> (ADR-0024). Each such provider becomes
@@ -68,8 +68,9 @@ export async function withCloudProviders(
   if (env.OCRA_CLOUD === "off") {
     throw new OcraError("CONFIG_INVALID", `Models name ocra Cloud (${names}) but OCRA_CLOUD=off`);
   }
-  const state = deps ? await cloudSession(deps, MIN_TOKEN_MS) : ({ kind: "signed-out" } as const);
-  if (state.kind === "signed-out") {
+  const client = deps ? new CloudClient(deps) : undefined;
+  const state = client ? await client.session(MIN_TOKEN_MS) : ({ kind: "signed-out" } as const);
+  if (!client || state.kind === "signed-out") {
     throw new OcraError(
       "CONFIG_CREDENTIALS_MISSING",
       `Models name ocra Cloud (${names}): sign in with ocra login`,
@@ -88,23 +89,22 @@ export async function withCloudProviders(
     );
   if (state.kind === "unreachable") throw unreachable(state.reason);
   const session = state.credentials;
-  let res: Response;
+  let answer: Awaited<ReturnType<CloudClient["providers"]>>;
   try {
-    res = await (deps as CloudDeps).fetch(`${session.server}/api/providers`, {
-      signal: AbortSignal.timeout(30_000),
-    });
+    answer = await client.providers(session.server);
   } catch (error) {
     throw unreachable(errorMessage(error));
   }
-  if (res.status >= 500 || res.status === 429) throw unreachable(`HTTP ${res.status}`);
-  if (!res.ok) {
+  if (answer.kind === "status" && (answer.status >= 500 || answer.status === 429)) {
+    throw unreachable(`HTTP ${answer.status}`);
+  }
+  if (answer.kind !== "ok") {
     throw new OcraError(
       "RUNTIME_START_FAILED",
-      `ocra Cloud answered ${res.status} for its providers`,
+      `ocra Cloud answered ${answer.status} for its providers`,
     );
   }
-  const listed =
-    ((await res.json()) as { providers?: { name: string; paths: string[] }[] }).providers ?? [];
+  const listed = answer.value;
 
   const declared: Record<string, CustomProvider> = { ...providers };
   for (const [id, modelIds] of wanted) {

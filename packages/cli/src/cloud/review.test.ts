@@ -222,16 +222,12 @@ describe("parseAccountMemory", () => {
   it("keeps the entries it can read and counts the rest", () => {
     const warnings: string[] = [];
     const entries = parseAccountMemory(
-      {
-        entries: [ENTRY, { ...ENTRY, fingerprint: "../../etc" }, { ...ENTRY, reason: "" }, "junk"],
-      },
+      [ENTRY, { ...ENTRY, fingerprint: "../../etc" }, { ...ENTRY, reason: "" }, "junk"],
       (w) => warnings.push(w),
     );
     expect(entries.map((e) => e.fingerprint)).toEqual([ENTRY.fingerprint]);
     expect(warnings).toEqual([
       "ignoring 3 ocra Cloud memory entries this version of ocra cannot read",
     ]);
-    expect(parseAccountMemory({ nope: 1 }, (w) => warnings.push(w))).toEqual([]);
-    expect(warnings.at(-1)).toContain("has no entries");
   });
 });

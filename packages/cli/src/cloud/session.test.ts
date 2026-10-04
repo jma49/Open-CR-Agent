@@ -2,9 +2,9 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { CloudClient, type CloudSession } from "./client.js";
 import type { Credentials } from "./credentials.js";
 import type { CloudDeps } from "./deps.js";
-import { type CloudSession, cloudSession } from "./session.js";
 
 const SERVER = "https://cloud.test";
 const NOW = 1_000_000;
@@ -75,7 +75,10 @@ describe("refreshing the ocra Cloud session", () => {
   it("refreshes once for two callers at once, and both get the new token", async () => {
     const cloud = rotatingCloud();
     const t = signedIn(cloud.fetch);
-    const [a, b] = await Promise.all([cloudSession(t.deps), cloudSession(t.deps)]);
+    const [a, b] = await Promise.all([
+      new CloudClient(t.deps).session(),
+      new CloudClient(t.deps).session(),
+    ]);
     expect(cloud.refreshes).toEqual(["ocra_ref_r1"]);
     expect(tokenOf(a)).toBe("ocra_cli_a2");
     expect(tokenOf(b)).toBe("ocra_cli_a2");
@@ -96,7 +99,7 @@ describe("refreshing the ocra Cloud session", () => {
       });
     });
     t = signedIn(cloud.fetch);
-    const session = await cloudSession(t.deps);
+    const session = await new CloudClient(t.deps).session();
     expect(tokenOf(session)).toBe("ocra_cli_other");
     expect(cloud.refreshes).toEqual(["ocra_ref_r1"]);
   });
@@ -109,7 +112,7 @@ describe("refreshing the ocra Cloud session", () => {
       t?.write({ access_token: "ocra_cli_other", refresh_token: "ocra_ref_other" });
     });
     t = signedIn(cloud.fetch);
-    const session = await cloudSession(t.deps);
+    const session = await new CloudClient(t.deps).session();
     expect(cloud.refreshes).toEqual(["ocra_ref_r1", "ocra_ref_other"]);
     expect(tokenOf(session)).toBe("ocra_cli_a2");
     expect(t.saved().refresh_token).toBe("ocra_ref_r2");
@@ -119,7 +122,7 @@ describe("refreshing the ocra Cloud session", () => {
     const cloud = rotatingCloud();
     cloud.rotate("ocra_ref_elsewhere");
     const t = signedIn(cloud.fetch);
-    expect(await cloudSession(t.deps)).toEqual({ kind: "revoked" });
+    expect(await new CloudClient(t.deps).session()).toEqual({ kind: "revoked" });
     expect(cloud.refreshes).toEqual(["ocra_ref_r1"]);
   });
 
@@ -132,7 +135,7 @@ describe("refreshing the ocra Cloud session", () => {
       t.write({ access_token: "ocra_cli_new", expires_at: NOW + 3_600_000 });
       rmSync(`${t.credentialsPath}.lock`);
     }, 100);
-    expect(tokenOf(await cloudSession(t.deps))).toBe("ocra_cli_new");
+    expect(tokenOf(await new CloudClient(t.deps).session())).toBe("ocra_cli_new");
     expect(cloud.refreshes).toEqual([]);
   });
 
@@ -144,7 +147,7 @@ describe("refreshing the ocra Cloud session", () => {
       JSON.stringify({ token: "dead", at: Date.now() - 31_000 }),
     );
     const started = Date.now();
-    expect(tokenOf(await cloudSession(t.deps))).toBe("ocra_cli_a2");
+    expect(tokenOf(await new CloudClient(t.deps).session())).toBe("ocra_cli_a2");
     expect(Date.now() - started).toBeLessThan(5_000);
     expect(existsSync(`${t.credentialsPath}.lock`)).toBe(false);
   });

@@ -1,7 +1,7 @@
 import type { MemoryEntry } from "@open-cr-agent/core";
-import { memoryEntrySchema } from "@open-cr-agent/core/internal";
+import { errorMessage, memoryEntrySchema } from "@open-cr-agent/core/internal";
+import { CloudClient, type CloudResult, sessionLostReason } from "./client.js";
 import type { CloudDeps } from "./deps.js";
-import { cloudFetch, sessionLostReason } from "./session.js";
 
 // The findings the account remembers for one repository (ADR-0028, 4), set
 // from the web. A review applies them with .ocra/memory.json's.
@@ -15,43 +15,48 @@ export async function fetchAccountMemory(
   repoHash: string,
   warn: (message: string) => void,
 ): Promise<MemoryEntry[]> {
-  let body: unknown;
-  try {
-    const answer = await cloudFetch(deps, `/api/memory?repo=${encodeURIComponent(repoHash)}`);
-    if (answer.kind === "signed-out") return [];
-    if (answer.kind !== "answered") throw new Error(sessionLostReason(answer));
-    const { res } = answer;
-    // A server without account memory has none to apply.
-    if (res.status === 404) return [];
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    body = await res.json();
-  } catch (error) {
+  const cannotRead = (reason: string) => {
     warn(
-      `could not read your ocra Cloud memory (${error instanceof Error ? error.message : "error"}); the review applies the repository's alone`,
+      `could not read your ocra Cloud memory (${reason}); the review applies the repository's alone`,
     );
     return [];
+  };
+  let answer: CloudResult<unknown[]>;
+  try {
+    answer = await new CloudClient(deps).memory(repoHash);
+  } catch (error) {
+    return cannotRead(errorMessage(error));
   }
-  return parseAccountMemory(body, warn);
+  switch (answer.kind) {
+    case "ok":
+      return parseAccountMemory(answer.value, warn);
+    case "signed-out":
+      return [];
+    case "status":
+      // A server without account memory has none to apply.
+      return answer.status === 404 ? [] : cannotRead(`HTTP ${answer.status}`);
+    case "malformed":
+      warn("ignoring your ocra Cloud memory: the server's answer has no entries");
+      return [];
+    default:
+      return cannotRead(sessionLostReason(answer));
+  }
 }
 
 /** Whether the account remembers any finding, for any repository; false when that cannot be read. */
 export async function accountHasMemory(deps: CloudDeps): Promise<boolean> {
   try {
-    const answer = await cloudFetch(deps, "/api/memory");
-    if (answer.kind !== "answered" || !answer.res.ok) return false;
-    const entries = ((await answer.res.json()) as { entries?: unknown } | null)?.entries;
-    return Array.isArray(entries) && entries.length > 0;
+    const answer = await new CloudClient(deps).memory();
+    return answer.kind === "ok" && answer.value.length > 0;
   } catch {
     return false;
   }
 }
 
-export function parseAccountMemory(body: unknown, warn: (message: string) => void): MemoryEntry[] {
-  const list = (body as { entries?: unknown } | null)?.entries;
-  if (!Array.isArray(list)) {
-    warn("ignoring your ocra Cloud memory: the server's answer has no entries");
-    return [];
-  }
+export function parseAccountMemory(
+  list: readonly unknown[],
+  warn: (message: string) => void,
+): MemoryEntry[] {
   const entries: MemoryEntry[] = [];
   let refused = 0;
   for (const raw of list.slice(0, MAX_ENTRIES)) {

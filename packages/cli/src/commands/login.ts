@@ -1,8 +1,9 @@
 import { rm } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { errorMessage } from "@open-cr-agent/core/internal";
-import { accountSaltOf, saveAccountSalt } from "../cloud/account-salt.js";
+import { saveAccountSalt } from "../cloud/account-salt.js";
 import { signInPage } from "../cloud/browser.js";
+import { CloudClient } from "../cloud/client.js";
 import {
   type Credentials,
   credentialsHint,
@@ -10,12 +11,10 @@ import {
   writeCredentials,
 } from "../cloud/credentials.js";
 import { type CloudDeps, cloudUrl, DEFAULT_CLOUD_URL } from "../cloud/deps.js";
-import { fetchMe, postJson, type TokenAnswer } from "../cloud/http.js";
-import { cloudSession } from "../cloud/session.js";
+import type { TokenAnswer } from "../cloud/wire.js";
 import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
 import { forTerminal } from "../io/terminal.js";
-import { VERSION } from "../version.js";
 
 // ocra Cloud sign-in (ADR-0024): `ocra login` runs the OAuth device flow
 // (RFC 8628) against ocra Cloud, `ocra whoami` shows the account, and
@@ -61,7 +60,8 @@ export async function loginCommand(
 }
 
 async function whoami(out: Output, err: Output, deps: CloudDeps): Promise<number> {
-  const session = await cloudSession(deps);
+  const client = new CloudClient(deps);
+  const session = await client.session();
   if (session.kind === "signed-out") {
     err.write("Not signed in. Run ocra login.\n");
     return EXIT.notSignedIn;
@@ -72,7 +72,7 @@ async function whoami(out: Output, err: Output, deps: CloudDeps): Promise<number
   }
   const me =
     session.kind === "ok"
-      ? await fetchMe(deps, session.credentials.server, session.credentials.access_token)
+      ? await client.account(session.credentials.server, session.credentials.access_token)
       : undefined;
   if (session.kind !== "ok" || !me) {
     err.write("Your ocra Cloud session ended. Run ocra login.\n");
@@ -86,11 +86,9 @@ async function logout(out: Output, deps: CloudDeps): Promise<number> {
   const saved = await loadCredentials(deps.credentialsPath);
   if (saved && saved !== "unreadable") {
     // Ends the session on the server too; the local file goes either way.
-    const session = await cloudSession(deps).catch(() => undefined);
-    if (session?.kind === "ok") {
-      const { server, access_token } = session.credentials;
-      await postJson(deps, `${server}/api/auth/logout`, {}, access_token).catch(() => {});
-    }
+    const client = new CloudClient(deps);
+    const session = await client.session().catch(() => undefined);
+    if (session?.kind === "ok") await client.endSession(session.credentials).catch(() => {});
   }
   await rm(deps.credentialsPath, { force: true });
   await saveAccountSalt(deps.credentialsPath, null);
@@ -106,24 +104,13 @@ async function logout(out: Output, deps: CloudDeps): Promise<number> {
 
 async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean): Promise<number> {
   const server = cloudUrl(deps.env);
-  const start = await postJson(deps, `${server}/api/device/code`, { client_name: deps.clientName });
-  const code = start.body as {
-    device_code?: string;
-    user_code?: string;
-    verification_uri?: string;
-    verification_uri_complete?: string;
-    expires_in?: number;
-    interval?: number;
-  };
-  if (
-    start.status !== 200 ||
-    !code.device_code ||
-    !code.user_code ||
-    !code.verification_uri_complete
-  ) {
+  const client = new CloudClient(deps);
+  const start = await client.startLogin(server);
+  if (start.kind === "refused") {
     err.write(`ocra Cloud did not start a login (HTTP ${start.status}). Try again in a minute.\n`);
     return EXIT.error;
   }
+  const { code } = start;
   out.write(
     forTerminal(
       `Confirm this code in your browser: ${code.user_code}\n` +
@@ -141,23 +128,20 @@ async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean
   const deadline = deps.now() + (code.expires_in ?? 600) * 1000;
   while (deps.now() < deadline) {
     await deps.sleep(interval);
-    let answer: { status: number; body: Record<string, unknown> };
+    let t: TokenAnswer & { status: number };
     try {
-      answer = await postJson(deps, `${server}/api/device/token`, {
-        device_code: code.device_code,
-      });
+      t = await client.pollLogin(server, code.device_code);
     } catch (error) {
       // A dropped connection is retried on the next tick.
       err.write(forTerminal(`(${errorMessage(error)}; retrying)\n`));
       continue;
     }
-    const t = answer.body as TokenAnswer;
-    if (answer.status === 200 && t.access_token && t.refresh_token && t.expires_in) {
+    if (t.status === 200 && t.access_token && t.refresh_token && t.expires_in) {
       // The tokens are issued: they are saved even when the login cannot be read.
       let login: string | undefined;
       let unknown = "";
       try {
-        login = (await fetchMe(deps, server, t.access_token))?.login;
+        login = (await client.account(server, t.access_token))?.login;
       } catch (error) {
         unknown = errorMessage(error);
       }
@@ -170,13 +154,11 @@ async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean
       };
       await writeCredentials(deps.credentialsPath, credentials);
       // Best effort: each signed-in review asks again.
-      await deps
-        .fetch(`${server}/api/account/salt`, {
-          headers: { authorization: `Bearer ${t.access_token}`, "user-agent": `ocra/${VERSION}` },
-          signal: AbortSignal.timeout(15_000),
-        })
-        .then(accountSaltOf)
-        .then((salt) => saveAccountSalt(deps.credentialsPath, salt))
+      await client
+        .accountSalt()
+        .then((salt) =>
+          salt.kind === "ok" ? saveAccountSalt(deps.credentialsPath, salt.value) : undefined,
+        )
         .catch(() => {});
       out.write(
         forTerminal(
@@ -197,7 +179,7 @@ async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean
       return EXIT.notSignedIn;
     }
     if (t.error === "expired_token") break;
-    err.write(forTerminal(`Login failed: ${t.error ?? `HTTP ${answer.status}`}\n`));
+    err.write(forTerminal(`Login failed: ${t.error ?? `HTTP ${t.status}`}\n`));
     return EXIT.error;
   }
   err.write("The code expired before it was confirmed. Run ocra login again.\n");

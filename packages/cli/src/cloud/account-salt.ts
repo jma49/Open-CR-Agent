@@ -15,17 +15,6 @@ export function accountSaltPath(credentialsPath: string): string {
   return join(dirname(credentialsPath), "account-salt");
 }
 
-/** The account's salt in ocra Cloud's answer, or null; throws when it holds none. */
-export async function accountSaltOf(res: Response): Promise<string | null> {
-  // A server without account salts shares no findings.
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const body = (await res.json()) as { salt?: unknown };
-  if (body.salt === null) return null;
-  if (typeof body.salt === "string" && SALT.test(body.salt)) return body.salt;
-  throw new Error("the answer is not a salt");
-}
-
 /** Keeps the salt beside the credentials (0600), or removes it when the account has none. */
 export async function saveAccountSalt(credentialsPath: string, salt: string | null): Promise<void> {
   const path = accountSaltPath(credentialsPath);

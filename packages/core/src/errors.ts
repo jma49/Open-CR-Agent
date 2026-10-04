@@ -18,6 +18,8 @@ export const OCRA_ERROR_CODES = [
   "VCS_API_FAILED",
   "VCS_REF_UNKNOWN",
   "VCS_NOT_READY",
+  // ocra Cloud, for a signed-in CLI.
+  "CLOUD_API_FAILED",
   // What runs the models.
   "RUNTIME_START_FAILED",
   "RUNTIME_FAILED",

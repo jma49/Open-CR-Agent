@@ -122,6 +122,7 @@ What ocra's packages throw is an `OcraError` (or one of its subclasses) with a `
 | `VCS_API_FAILED` | The GitHub or GitLab API failed or answered something unexpected; `GitHubApiError` and `GitLabApiError` carry the HTTP `status` |
 | `VCS_REF_UNKNOWN` | A commit or ref that is not in the repository and could not be fetched |
 | `VCS_NOT_READY` | The platform has not prepared the change yet, such as a merge request without a diff; try again shortly |
+| `CLOUD_API_FAILED` | The CLI could not reach ocra Cloud for `ocra login` or `ocra whoami`, or ocra Cloud answered something it cannot use |
 | `RUNTIME_START_FAILED` | The agent runtime could not start (no OpenCode binary, a server that did not come up) |
 | `RUNTIME_FAILED` | A model call failed on every model of its chain (`CompletionError`, which carries the `usage` the attempts spent) |
 | `RUNTIME_INVALID_OUTPUT` | A model answered something that does not match the expected schema |

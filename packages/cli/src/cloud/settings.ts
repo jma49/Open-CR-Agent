@@ -3,8 +3,8 @@ import { errorMessage } from "@open-cr-agent/core/internal";
 import type { CliConfig } from "../config/cli-config.js";
 import { type AccountPlugins, parseAccountPlugins } from "../plugins/account.js";
 import { type AccountSettings, parseAccountSettings } from "./account-settings.js";
+import { CloudClient, type CloudResult, type CloudSessionLost } from "./client.js";
 import type { CloudDeps } from "./deps.js";
-import { type CloudSessionLost, cloudFetch } from "./session.js";
 
 // ocra Cloud's account settings fill what the repository's configuration
 // leaves out (ADR-0025, ADR-0027): a tier's models and effort, a reviewer's
@@ -41,30 +41,29 @@ export async function fetchAccountSettings(
   deps: CloudDeps,
   warn: (message: string) => void,
 ): Promise<AccountRead> {
-  let body: unknown;
+  let answer: CloudResult<Record<string, unknown>>;
   try {
-    const answer = await cloudFetch(deps, "/api/preferences");
-    if (answer.kind !== "answered") return answer;
-    const { res } = answer;
-    // A server without account settings has none to apply.
-    if (res.status === 404) return { kind: "read", plugins: NO_PLUGINS };
-    if (res.status >= 500 || res.status === 429) {
-      return { kind: "unreachable", reason: `HTTP ${res.status}` };
-    }
-    if (!res.ok) {
-      warn(
-        `could not read your ocra Cloud settings (HTTP ${res.status}); the review uses the repository's`,
-      );
-      return { kind: "read", plugins: NO_PLUGINS };
-    }
-    body = await res.json();
+    answer = await new CloudClient(deps).preferences();
   } catch (error) {
     return { kind: "unreachable", reason: errorMessage(error) };
   }
-  if (typeof body !== "object" || body === null) {
+  if (answer.kind === "status") {
+    // A server without account settings has none to apply.
+    if (answer.status === 404) return { kind: "read", plugins: NO_PLUGINS };
+    if (answer.status >= 500 || answer.status === 429) {
+      return { kind: "unreachable", reason: `HTTP ${answer.status}` };
+    }
+    warn(
+      `could not read your ocra Cloud settings (HTTP ${answer.status}); the review uses the repository's`,
+    );
+    return { kind: "read", plugins: NO_PLUGINS };
+  }
+  if (answer.kind === "malformed") {
     warn("ignoring your ocra Cloud settings: the server's answer is not an object");
     return { kind: "read", plugins: NO_PLUGINS };
   }
+  if (answer.kind !== "ok") return answer;
+  const body = answer.value;
   const { settings, warnings } = parseAccountSettings(body);
   for (const warning of warnings) warn(warning);
   return {

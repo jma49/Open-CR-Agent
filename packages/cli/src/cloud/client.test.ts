@@ -1,11 +1,12 @@
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { isOcraError } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import { loginCommand } from "../commands/login.js";
+import { CloudClient } from "./client.js";
 import type { Credentials } from "./credentials.js";
 import type { CloudDeps } from "./deps.js";
-import { cloudFetch, cloudSession } from "./session.js";
 
 const SERVER = "https://cloud.test";
 const NOW = 1_000_000;
@@ -62,12 +63,12 @@ const offline = () => {
 };
 const EXPIRED = { expires_at: NOW - 1 };
 
-describe("cloudSession", () => {
+describe("the session", () => {
   it("is signed-out without a saved session, and ok with a live one, without a call", async () => {
     const none = machine({});
-    expect(await cloudSession(none.deps)).toEqual({ kind: "signed-out" });
+    expect(await new CloudClient(none.deps).session()).toEqual({ kind: "signed-out" });
     const live = machine({}, {});
-    const session = await cloudSession(live.deps);
+    const session = await new CloudClient(live.deps).session();
     expect(session.kind === "ok" && session.credentials.access_token).toBe("ocra_cli_a1");
     expect([...none.calls, ...live.calls]).toEqual([]);
   });
@@ -75,7 +76,7 @@ describe("cloudSession", () => {
   it("is revoked when the refresh is refused", async () => {
     for (const refused of [status(400, { error: "invalid_grant" }), status(401)]) {
       const m = machine({ "/api/device/refresh": refused }, EXPIRED);
-      expect(await cloudSession(m.deps)).toEqual({ kind: "revoked" });
+      expect(await new CloudClient(m.deps).session()).toEqual({ kind: "revoked" });
     }
   });
 
@@ -86,14 +87,14 @@ describe("cloudSession", () => {
       [status(429), "HTTP 429"],
     ] as const) {
       const m = machine({ "/api/device/refresh": failing }, EXPIRED);
-      expect(await cloudSession(m.deps)).toEqual({ kind: "unreachable", reason });
+      expect(await new CloudClient(m.deps).session()).toEqual({ kind: "unreachable", reason });
       // The session stays for the next run.
       expect(m.saved().refresh_token).toBe("ocra_ref_r1");
     }
   });
 });
 
-describe("cloudFetch", () => {
+describe("a call for the account", () => {
   it("on a 401 for a live token, refreshes once and retries once with the new token", async () => {
     const m = machine(
       {
@@ -102,8 +103,8 @@ describe("cloudFetch", () => {
       },
       {},
     );
-    const answer = await cloudFetch(m.deps, "/api/preferences");
-    expect(answer.kind === "answered" && answer.res.status).toBe(200);
+    const answer = await new CloudClient(m.deps).preferences();
+    expect(answer).toEqual({ kind: "ok", value: { ok: true } });
     expect(m.calls).toEqual([
       { path: "/api/preferences", auth: "Bearer ocra_cli_a1" },
       { path: "/api/device/refresh", auth: null },
@@ -114,8 +115,8 @@ describe("cloudFetch", () => {
 
   it("retries no more than once, and answers revoked when the refresh is refused", async () => {
     const twice = machine({ "/api/preferences": status(401), "/api/device/refresh": pair }, {});
-    const answer = await cloudFetch(twice.deps, "/api/preferences");
-    expect(answer.kind === "answered" && answer.res.status).toBe(401);
+    const answer = await new CloudClient(twice.deps).preferences();
+    expect(answer).toEqual({ kind: "status", status: 401 });
     expect(twice.calls.map((c) => c.path)).toEqual([
       "/api/preferences",
       "/api/device/refresh",
@@ -128,7 +129,7 @@ describe("cloudFetch", () => {
       },
       {},
     );
-    expect(await cloudFetch(revoked.deps, "/api/preferences")).toEqual({ kind: "revoked" });
+    expect(await new CloudClient(revoked.deps).preferences()).toEqual({ kind: "revoked" });
   });
 });
 
@@ -158,5 +159,66 @@ describe("ocra login", () => {
         /^Signed in; the login is unknown \(.+\): ocra whoami asks again\.\n$/,
       );
     }
+  });
+});
+
+describe("an answer that is not one", () => {
+  const json = (body: unknown) => () => Response.json(body);
+  const text = (body: string) => () => new Response(body);
+
+  it("does not start a login, and polls as an answer without tokens", async () => {
+    const m = machine({
+      "/api/device/code": json({ device_code: 7, user_code: "A" }),
+      "/api/device/token": json({ access_token: 5, refresh_token: "r", expires_in: 60 }),
+    });
+    const client = new CloudClient(m.deps);
+    expect(await client.startLogin(SERVER)).toEqual({ kind: "refused", status: 200 });
+    expect(await client.pollLogin(SERVER, "d")).toEqual({ status: 200 });
+  });
+
+  it("is a server that could not be used when it answers a refresh", async () => {
+    const m = machine({ "/api/device/refresh": text("<html>") }, EXPIRED);
+    expect(await new CloudClient(m.deps).session()).toEqual({
+      kind: "unreachable",
+      reason: "HTTP 200",
+    });
+  });
+
+  it("names no account, with ocra Cloud's error code", async () => {
+    const m = machine({ "/api/me": json({ name: "octo" }) });
+    const error = await new CloudClient(m.deps).account(SERVER, "t").catch((e: unknown) => e);
+    expect(isOcraError(error, "CLOUD_API_FAILED")).toBe(true);
+  });
+
+  it("is malformed for the account's salt, settings and memory", async () => {
+    const m = machine(
+      {
+        "/api/account/salt": json({ salt: "not-hex" }),
+        "/api/preferences": json(["models"]),
+        "/api/memory": json({ entries: 3 }),
+      },
+      {},
+    );
+    const client = new CloudClient(m.deps);
+    expect(await client.accountSalt()).toEqual({ kind: "malformed" });
+    expect(await client.preferences()).toEqual({ kind: "malformed" });
+    expect(await client.memory("f".repeat(64))).toEqual({ kind: "malformed" });
+  });
+
+  it("counts no kept finding for an upload answered without a count", async () => {
+    for (const answer of [text("ok"), json({ findings: "12" }), json({ findings: -1 })]) {
+      const m = machine({ "/api/reviews": answer }, {});
+      expect(await new CloudClient(m.deps).uploadReview({})).toEqual({
+        kind: "ok",
+        value: { findings: 0 },
+      });
+    }
+  });
+
+  it("throws ocra Cloud's error code for a call that could not be sent", async () => {
+    const m = machine({ "/api/preferences": offline }, {});
+    const error = await new CloudClient(m.deps).preferences().catch((e: unknown) => e);
+    expect(isOcraError(error, "CLOUD_API_FAILED")).toBe(true);
+    expect((error as Error).message).toBe("fetch failed");
   });
 });
