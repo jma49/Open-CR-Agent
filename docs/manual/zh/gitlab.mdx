@@ -44,7 +44,10 @@ ocra-review:
 
 ```yaml
 ocra-review:
-  image: ghcr.io/jma49/ocra:0.2.0@sha256:<digest>
+  image:
+    name: ghcr.io/jma49/ocra:0.2.0@sha256:<digest>
+    # 任务的 script 在 shell 里运行，不经过镜像的 ocra 入口点。
+    entrypoint: [""]
   # （rules、variables、interruptible 和 allow_failure 同上）
   script:
     - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish

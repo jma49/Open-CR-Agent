@@ -44,7 +44,10 @@ The job can also use the [container image](./installation#container-image), whic
 
 ```yaml
 ocra-review:
-  image: ghcr.io/jma49/ocra:0.2.0@sha256:<digest>
+  image:
+    name: ghcr.io/jma49/ocra:0.2.0@sha256:<digest>
+    # The job's script runs in a shell, not through the image's ocra entrypoint.
+    entrypoint: [""]
   # (rules, variables, interruptible and allow_failure as above)
   script:
     - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish

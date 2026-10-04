@@ -95,7 +95,7 @@ Done: the organization `open-cr-agent` exists, and the owner account has two-fac
 
 ### The container image
 
-After `publish`, the release workflow's `image` job waits until npm serves the new version, then builds `Dockerfile` with `OCRA_INSTALL=npm` for amd64 and arm64: `scripts/action-install.mjs` installs the published packages, and the build fails if that script would build from source instead. It pushes `ghcr.io/jma49/ocra:<version>` (and `latest` for a release that is not a prerelease) with an SBOM and build provenance, attested with `actions/attest-build-provenance`. The first push creates the package as private: make it public once, under the package's settings on GitHub. Every pull request's `image` job builds the Dockerfile from the commit itself (`OCRA_INSTALL=source`) and runs `ocra --version` and a `--plan` review in it.
+After `publish`, the release workflow's `image` job waits until npm serves the new version, then builds `Dockerfile` with `OCRA_INSTALL=npm` for amd64 and arm64: `scripts/action-install.mjs` installs the published packages, and the build fails if that script would build from source instead. It pushes `ghcr.io/jma49/ocra:<version>` (and `latest` for a release that is not a prerelease) with an SBOM and build provenance, attested with `actions/attest-build-provenance`. The first push creates the package as private: make it public once, under the package's settings on GitHub. Every pull request's `image` job builds the Dockerfile from the commit itself (`OCRA_INSTALL=source`) and runs `--version` (also through a shell, as GitLab does) and a `--plan` review in it.
 
 ### Adding a package
 

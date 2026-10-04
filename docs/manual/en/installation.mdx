@@ -58,7 +58,7 @@ docker run --rm --user "$(id -u):$(id -g)" --volume "$PWD:/repo" \
   --env GEMINI_API_KEY ghcr.io/jma49/ocra:0.2.0 ocra review --from main
 ```
 
-Run it as your own user, as above, so it can write `.ocra/sessions/` in your checkout. Pass the model key and any `OCRA_*` variables with `--env`. Check where an image came from with `gh attestation verify oci://ghcr.io/jma49/ocra:<version> --repo jma49/Open-CR-Agent`.
+Images after 0.2.0 have `ocra` as their entrypoint, so `docker run <image> review --from main` is enough; a leading `ocra`, as above, works with every image. Run it as your own user, as above, so it can write `.ocra/sessions/` in your checkout. Pass the model key and any `OCRA_*` variables with `--env`. Check where an image came from with `gh attestation verify oci://ghcr.io/jma49/ocra:<version> --repo jma49/Open-CR-Agent`.
 
 ## From source
 
