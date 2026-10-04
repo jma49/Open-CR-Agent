@@ -3,8 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveOpencodeBinary } from "./binary.js";
+import { OPENCODE_BUILTIN_TOOLS } from "./opencode-config.js";
 import { type OpencodeServer, startOpencodeServer } from "./opencode-server.js";
-import { OPENCODE_BUILTIN_TOOLS, OpenCodeRuntime } from "./runtime.js";
+import { OpenCodeRuntime } from "./runtime.js";
 import { serverEnv } from "./server-env.js";
 
 describe("OpenCode binary", () => {

@@ -126,6 +126,8 @@ export interface AppliedSettings {
     effort: boolean;
     // (undocumented)
     notApplied?: (keyof Sampling)[];
+    // (undocumented)
+    unsupported?: string[];
 }
 
 // @public (undocumented)
@@ -273,6 +275,25 @@ export const docsReviewerPlugin: OcraPlugin;
 
 // @public (undocumented)
 export type Effort = "none" | "minimal" | "low" | "medium" | "high";
+
+// @public (undocumented)
+export interface EffortCapability {
+    // (undocumented)
+    budget?: {
+        min: number;
+        max?: number;
+    };
+    // (undocumented)
+    levels: readonly Effort[];
+    // (undocumented)
+    parameter: EffortParameter;
+}
+
+// @public (undocumented)
+export function effortCapability(model: string): EffortCapability | undefined;
+
+// @public (undocumented)
+export type EffortParameter = "reasoningEffort" | "thinkingBudget" | "thinkingLevel";
 
 // @public (undocumented)
 export type Env = Readonly<Record<string, string | undefined>>;

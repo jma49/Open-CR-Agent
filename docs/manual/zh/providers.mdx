@@ -52,7 +52,7 @@ OpenCode 自带了与目录里几乎所有供应商通信的代码。只有少�
 - **id**（`gateway`）由你自己取：小写字母、数字和连字符。请选一个 OpenCode 目录里没有的 id，因为声明的供应商会在这次运行中替换同名的已知供应商。
 - **`baseUrl`** 必须是 `https`，或者本机上的普通 `http`：`localhost`、`127.0.0.1` 或 `::1`。比如 Ollama 用 `http://127.0.0.1:11434/v1`。地址里不能有 `{` 或 `}`，OpenCode 会把它们替换成变量或文件内容。
 - **`apiKeyEnv`** 是保存密钥的环境变量的名字。密钥本身从不写进文件，运行时也只拿到这一个变量。平台令牌和云凭据的名字（以 `GITHUB_`、`GITLAB_`、`CI_`、`AWS_`、`AZURE_` 等开头）会被拒绝。不需要密钥的服务可以省略。
-- **`effort`**（可选）说明这个端点怎样接收 `direct` 运行时发送的[推理强度](./configuration#推理强度)：`openai` 发送 `reasoning_effort`（默认值，OpenAI、Gemini API 的 OpenAI 兼容端点和 OpenRouter 都接受），`openrouter` 发送 `reasoning: { effort }`。
+- **`effort`**（可选）说明这个端点怎样接收两种运行时发送的[推理强度](./configuration#推理强度)：`openai` 发送 `reasoning_effort`（默认值，OpenAI、Gemini API 的 OpenAI 兼容端点和 OpenRouter 都接受），`openrouter` 发送 `reasoning: { effort }`。
 - **每个模型都要有价格**，单位是每百万 token 多少美元：`input`、`output`，以及可选的 `cachedInput`。ocra 用它们计算报告里的花费和 `--max-cost-usd`。价格可以写 0，适合跑在你自己硬件上的服务；这时运行会警告该模型没有定价，花费上限也不会计入它。
 - 通过 `extends` 引用的共享配置也可以声明供应商，但必须用 `#sha256=` 固定内容：不固定的话，提供这个文件的人就能把你的代码发到他选的端点。声明了供应商却没有固定的共享文件会被忽略，并给出警告，警告里写着检查过文件之后要加的固定值。仓库里同 id 的声明优先。审查 PR 和 Merge Request 时，供应商和其他配置一样来自 base 提交。
 

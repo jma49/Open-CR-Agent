@@ -129,7 +129,7 @@ describe("ocra review with effort", () => {
     });
   });
 
-  it("warns once that the opencode runtime sends no effort, and records it as not applied", async () => {
+  it("warns once that a runtime sending no effort did not send it, and records it as not applied", async () => {
     const cwd = repo({ effort: { standard: "high" }, verify: false, judge: false });
     const specs: AgentTaskSpec[] = [];
     const err = capture();
@@ -147,7 +147,7 @@ describe("ocra review with effort", () => {
     const report = JSON.parse(readFileSync(join(cwd, "r.json"), "utf8"));
     const warnings = report.warnings.filter((w: string) => w.includes("reasoning effort"));
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain("does not apply reasoning effort yet");
+    expect(warnings[0]).toContain("does not apply reasoning effort;");
     expect(report.provenance.agents.correctness).toEqual({
       tier: "standard",
       effort: "high",

@@ -81,7 +81,8 @@ export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
 `OCRA_EFFORT_TOP`、`OCRA_EFFORT_STANDARD` 和 `OCRA_EFFORT_LIGHT` 会覆盖对应层级的设置。
 
 - `direct` 运行时把级别作为 `reasoning_effort` 发送；对声明了 `"effort": "openrouter"` 的供应商，则发送 `reasoning: { effort }`（见[模型供应商](./providers#你自己的端点)）。`none` 按 `none` 发送。发送其他级别的调用不再发送 `temperature` 和 `seed`：推理模型会拒绝或忽略它们。如果端点返回 HTTP 400 并点名这个参数，这次调用会去掉它重发一次，不算作模型失败；这个模型之后的调用都不再带它，运行结束时给出警告。
-- `opencode` 运行时暂时还不发送推理强度；运行会给出警告，并记为未应用。
+- `opencode` 运行时把级别写进它交给 OpenCode 的配置里，作为模型的供应商参数：OpenAI 推理模型（GPT-5、o 系列）用 `reasoningEffort`，Claude 4 及以后的模型和 Gemini 2.5 用思考预算（thinking budget），Gemini 3 用 `thinkingLevel`；OpenRouter 模型和[声明的供应商](./providers#你自己的端点)按它们的 `effort` 设置接收。思考预算取 OpenCode 模型目录中该模型输出上限的一定比例（`minimal` 1/32、`low` 1/16、`medium` 1/4、`high` 1/2；Claude 至少 1,024 个 token，Gemini 不超出它自己的范围），目录里没有上限时按 32,000 个 token 计算；`none` 关闭思考（Claude 不开启思考，Gemini 2.5 Flash 预算为 0）。每个模型的每个级别对应一个独立的 OpenCode variant，所以同一个模型上的两个 agent 可以使用不同的级别。和 `direct` 一样，发送 `none` 以外级别的调用不带配置的 `temperature`。经 OpenCode 使用的其他供应商（Azure、Bedrock、Groq 等）不发送推理强度。
+- 某个模型接受哪些级别，来自 ocra 内置的一张小表（`@open-cr-agent/core` 的 `effortCapability`），新模型发布后它会过时：在 `opencode` 上，这张表没有为某个模型列出的级别（例如 o3 的 `minimal`、Gemini 3 的 `medium`），或者它不认识的模型，这些调用就不带推理强度，运行时会按 agent 给出一次警告，写明级别和模型。审查不会因此失败。
 - JSON 报告的 `provenance.agents` 列出每个 agent 的层级、推理强度、是否已应用（`applied`），以及它的调用没有发送的采样设置（`notApplied`）。`--plan` 会显示每个任务的推理强度。配置哈希也覆盖推理强度。
 
 ## 供应商 key

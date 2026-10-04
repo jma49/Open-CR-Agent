@@ -1,6 +1,7 @@
 import { type AttemptOutcome, parseQuotaError, usageSpent } from "@open-cr-agent/core/internal";
 import { describe, expect, it } from "vitest";
-import { HELPER_AGENT_STEPS, OpenCodeRuntime, openCodeConfig } from "./runtime.js";
+import { HELPER_AGENT_STEPS, openCodeConfig } from "./opencode-config.js";
+import { OpenCodeRuntime } from "./runtime.js";
 
 const usage = {
   inputTokens: 10,

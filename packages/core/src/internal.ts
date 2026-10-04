@@ -33,6 +33,7 @@ export {
   RESUME_MESSAGE,
   withoutSecrets,
 } from "./runtime/attempt.js";
+export { thinkingBudget } from "./runtime/effort-capability.js";
 export { completeWithFailback, withFailback } from "./runtime/failback.js";
 export { callChain, ModelHealth, parseModel } from "./runtime/models.js";
 export { parseQuotaError, type QuotaError, sleep } from "./runtime/quota.js";

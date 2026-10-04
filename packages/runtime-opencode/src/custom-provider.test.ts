@@ -3,7 +3,8 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { OpenCodeRuntime, openCodeConfig } from "./runtime.js";
+import { openCodeConfig } from "./opencode-config.js";
+import { OpenCodeRuntime } from "./runtime.js";
 
 // An OpenAI-compatible chat endpoint on this machine that answers "Done."
 // and reports 1,000 input and 10 output tokens.

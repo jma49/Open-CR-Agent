@@ -99,8 +99,12 @@ export interface AppliedSampling extends Sampling {
 // What a runtime did with one agent's calls over the run.
 export interface AppliedSettings {
   // Every call that asked for an effort sent it; false when one went
-  // without, because the endpoint refused the parameter.
+  // without: the endpoint refused the parameter, or the runtime had no way
+  // to send that level to the model (`unsupported`).
   effort: boolean;
+  // Models the agent's level was not sent to because, as far as the runtime
+  // knows (the capability table, ADR-0025), they do not take it.
+  unsupported?: string[];
   // Sampling settings left out of the agent's calls: a call that sends an
   // effort other than "none" sends no temperature or seed.
   notApplied?: (keyof Sampling)[];

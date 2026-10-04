@@ -137,13 +137,24 @@ export function effortWarnings(
   const { appliedTo } = runtime;
   if (!appliedTo) {
     return [
-      `the ${runtime.name} runtime does not apply reasoning effort yet; the effort configured for ${asked.map((a) => a.id).join(", ")} was not sent`,
+      `the ${runtime.name} runtime does not apply reasoning effort; the effort configured for ${asked.map((a) => a.id).join(", ")} was not sent`,
     ];
   }
-  const refused = asked.filter((a) => appliedTo.call(runtime, a.id)?.effort === false);
+  const applied = asked.map((a) => ({ agent: a, settings: appliedTo.call(runtime, a.id) }));
+  const unsupported = applied.flatMap(({ agent, settings }) =>
+    settings?.unsupported?.length
+      ? [
+          `the ${runtime.name} runtime did not send reasoning effort "${agent.effort}" for ${agent.id} to ${settings.unsupported.join(", ")}: ocra's capability table knows no way to send that level to that model`,
+        ]
+      : [],
+  );
+  const refused = applied
+    .filter(({ settings }) => settings?.effort === false && !settings.unsupported?.length)
+    .map(({ agent }) => agent.id);
   return refused.length === 0
-    ? []
+    ? unsupported
     : [
-        `the endpoint refused the reasoning effort for ${refused.map((a) => a.id).join(", ")}; those calls were sent again without it`,
+        ...unsupported,
+        `the endpoint refused the reasoning effort for ${refused.join(", ")}; those calls were sent again without it`,
       ];
 }

@@ -117,6 +117,11 @@ export type { ReviewerDefinition, ReviewerScope } from "./review/reviewer.js";
 export type { Language } from "./rules/languages.js";
 export type { RepoRule, RuleSource, SourcedRule } from "./rules/repo-rules.js";
 export type { RuleSet } from "./rules/rule-set.js";
+export {
+  type EffortCapability,
+  type EffortParameter,
+  effortCapability,
+} from "./runtime/effort-capability.js";
 export { parseSarifLog, SarifError, type SarifLog } from "./sarif/schema.js";
 export type { ExclusionReason, SelectionPolicy } from "./select/select.js";
 export type { RefutedFinding } from "./verify/verify.js";

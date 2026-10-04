@@ -56,9 +56,9 @@ describe("effortWarnings and agentProvenance", () => {
   ];
 
   it("warns once when the runtime sends no effort, and records it as not applied", () => {
-    const runtime = { name: "opencode" };
+    const runtime = { name: "acme" };
     expect(effortWarnings(agents, runtime)).toEqual([
-      "the opencode runtime does not apply reasoning effort yet; the effort configured for correctness, judge was not sent",
+      "the acme runtime does not apply reasoning effort; the effort configured for correctness, judge was not sent",
     ]);
     expect(agentProvenance(agents, {})).toEqual({
       correctness: { tier: "standard", effort: "high", applied: false },
@@ -68,7 +68,7 @@ describe("effortWarnings and agentProvenance", () => {
   });
 
   it("says nothing when no effort is configured", () => {
-    expect(effortWarnings([{ id: "helper", tier: "light" }], { name: "opencode" })).toEqual([]);
+    expect(effortWarnings([{ id: "helper", tier: "light" }], { name: "acme" })).toEqual([]);
   });
 
   it("reports what the runtime applied, and the efforts an endpoint refused", () => {
@@ -92,6 +92,31 @@ describe("effortWarnings and agentProvenance", () => {
     expect(agentProvenance(agents, { appliedTo: () => undefined }).correctness).toEqual({
       tier: "standard",
       effort: "high",
+    });
+  });
+});
+
+describe("effortWarnings for levels a model does not take", () => {
+  it("names the agent, the level and the models once per run, apart from refusals", () => {
+    const agents = [
+      { id: "security", tier: "standard" as const, effort: "minimal" as const },
+      { id: "judge", tier: "top" as const, effort: "high" as const },
+    ];
+    const runtime = {
+      name: "opencode",
+      appliedTo: (agent: string) =>
+        agent === "security"
+          ? { effort: false, unsupported: ["openai/o3", "groq/llama"] }
+          : { effort: false },
+    };
+    expect(effortWarnings(agents, runtime)).toEqual([
+      'the opencode runtime did not send reasoning effort "minimal" for security to openai/o3, groq/llama: ocra\'s capability table knows no way to send that level to that model',
+      "the endpoint refused the reasoning effort for judge; those calls were sent again without it",
+    ]);
+    expect(agentProvenance(agents, runtime).security).toEqual({
+      tier: "standard",
+      effort: "minimal",
+      applied: false,
     });
   });
 });
@@ -178,7 +203,7 @@ describe("review with effort", () => {
       provenance: { ocraVersion: "1", configHash: "c" },
     });
     expect(report.warnings.filter((w) => w.includes("reasoning effort"))).toEqual([
-      "the fake runtime does not apply reasoning effort yet; the effort configured for correctness, verifier was not sent",
+      "the fake runtime does not apply reasoning effort; the effort configured for correctness, verifier was not sent",
     ]);
     expect(report.provenance?.agents?.correctness).toEqual({
       tier: "standard",

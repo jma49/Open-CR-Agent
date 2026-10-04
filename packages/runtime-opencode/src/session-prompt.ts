@@ -34,6 +34,8 @@ export interface PromptInput {
   title: string;
   agent: string;
   model: string;
+  // The OpenCode variant that carries the agent's effort (effort.ts).
+  variant?: string;
   system: string;
   user: string;
   tools: Record<string, boolean>;
@@ -89,6 +91,7 @@ export async function promptSession(
         sessionID,
         agent: input.agent,
         model: parseModel(input.model),
+        ...(input.variant ? { variant: input.variant } : {}),
         system: input.system,
         tools: input.tools,
         parts: [{ type: "text", text: input.user }],
@@ -128,6 +131,7 @@ export async function promptSession(
         sessionID,
         agent: input.agent,
         model: parseModel(input.model),
+        ...(input.variant ? { variant: input.variant } : {}),
         system: input.system,
         tools: input.tools,
         parts: [{ type: "text", text: input.resume.message }],
