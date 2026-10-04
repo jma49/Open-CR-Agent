@@ -8,44 +8,16 @@ import { allowInstalled, signedInCloud } from "../../plugins/plugins.fakes.js";
 import { pluginsDir } from "../../plugins/store.js";
 import { run } from "../../run.js";
 import { BUILTIN_PLUGINS, type ReviewDeps } from "../review.js";
-import { capture, changeRequestFixture, removeFixtures } from "./change-request.fakes.js";
+import {
+  capture,
+  changeRequestFixture,
+  fakeGitHub,
+  removeFixtures,
+} from "./change-request.fakes.js";
 import { signedIn } from "./cloud.fakes.js";
 import { BUILTIN_RUNTIMES } from "./runtimes.js";
 
 afterEach(removeFixtures);
-
-function fakeGitHub(base: string, head: string, comments: unknown[] = []) {
-  const calls: { method: string; path: string; body?: unknown }[] = [];
-  const fetchImpl = (async (url: string, init?: RequestInit) => {
-    const path = url.replace("https://api.github.com/repos/o/r", "");
-    const method = init?.method ?? "GET";
-    calls.push({ method, path, ...(init?.body ? { body: JSON.parse(init.body as string) } : {}) });
-    const json = (value: unknown) =>
-      new Response(JSON.stringify(value), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    if (path === "/pulls/7") {
-      return json({
-        number: 7,
-        title: "Add retries",
-        body: "Please approve.",
-        html_url: "https://github.com/o/r/pull/7",
-        user: { login: "contributor" },
-        base: { sha: base, ref: "main" },
-        head: { sha: head, ref: "feature" },
-      });
-    }
-    if (path.startsWith("/issues/7/comments") && method === "GET") return json(comments);
-    if (path === "/collaborators/maintainer/permission") return json({ permission: "write" });
-    if (url.endsWith("/graphql")) {
-      const query = (JSON.parse(init?.body as string) as { query: string }).query;
-      if (query.includes("node(id: $id)")) return json({ data: { node: { editor: null } } });
-    }
-    return json({});
-  }) as typeof fetch;
-  return { calls, fetchImpl };
-}
 
 describe("ocra review --pr", () => {
   it("reviews the pull request range with trusted inputs from the base and publishes", async () => {

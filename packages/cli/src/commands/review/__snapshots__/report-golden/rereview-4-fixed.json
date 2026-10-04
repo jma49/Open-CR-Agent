@@ -1,0 +1,158 @@
+{
+  "version": 1,
+  "runId": "<run-id>",
+  "changeRequest": {
+    "id": "o/r#7",
+    "title": "Change a and b",
+    "description": "",
+    "baseSha": "0be8f271ecab2038cdb1dc9d169b8309bb30cf45",
+    "headSha": "ba39aabcc11cff139771a100d47d5e41aa5a22e8"
+  },
+  "tier": "trivial",
+  "verdict": "approved_with_comments",
+  "summary": "No new issues; 1 earlier finding(s) are still open.",
+  "coverage": [
+    {
+      "path": "a.ts",
+      "status": "reviewed"
+    },
+    {
+      "path": "b.ts",
+      "status": "unchanged"
+    }
+  ],
+  "findings": [],
+  "unverifiedCriticals": 0,
+  "refuted": [],
+  "remembered": [],
+  "tasks": [
+    {
+      "taskId": "correctness-1",
+      "reviewer": "correctness",
+      "bundle": "a.ts",
+      "files": [
+        "a.ts"
+      ],
+      "status": "completed",
+      "findings": 0,
+      "durationMs": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "reasoningTokens": 0,
+        "cachedTokens": 0,
+        "costUsd": 0
+      }
+    }
+  ],
+  "skipped": [
+    {
+      "reviewer": "security",
+      "bundle": "a.ts",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "performance",
+      "bundle": "a.ts",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "docs",
+      "bundle": "a.ts",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "agents-md",
+      "bundle": "a.ts",
+      "reason": "below_tier"
+    }
+  ],
+  "bundles": [
+    {
+      "label": "a.ts",
+      "files": [
+        "a.ts"
+      ]
+    }
+  ],
+  "usage": {
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "reasoningTokens": 0,
+    "cachedTokens": 0,
+    "costUsd": 0
+  },
+  "warnings": [],
+  "scope": {
+    "mode": "incremental",
+    "since": "a3ed68ab4830af30fc1ae7bb039e802742a173f3"
+  },
+  "anchoring": {
+    "byMethod": {
+      "hunk": 0,
+      "file": 0,
+      "cross_file": 0,
+      "relocated": 0,
+      "file_level": 0
+    },
+    "ambiguous": 0,
+    "relocationCalls": 0
+  },
+  "provenance": {
+    "ocraVersion": "<version>",
+    "promptHash": "b9dfa2581504f18c",
+    "configHash": "a8df404aed89c340",
+    "sampling": {},
+    "agents": {
+      "correctness": {
+        "tier": "standard"
+      },
+      "security": {
+        "tier": "standard"
+      },
+      "performance": {
+        "tier": "standard"
+      },
+      "docs": {
+        "tier": "light"
+      },
+      "agents-md": {
+        "tier": "light"
+      },
+      "verifier": {
+        "tier": "standard"
+      },
+      "judge": {
+        "tier": "top"
+      },
+      "helper": {
+        "tier": "light"
+      }
+    }
+  },
+  "rereview": {
+    "fixed": [
+      {
+        "fingerprint": "cd441e4f4a673499",
+        "title": "Check a",
+        "file": "a.ts",
+        "severity": "warning",
+        "verification": "unchecked",
+        "reviewer": "correctness"
+      }
+    ],
+    "notReproduced": [],
+    "notRechecked": [],
+    "unchanged": [
+      {
+        "fingerprint": "92894f246f7b0274",
+        "title": "Check b",
+        "file": "b.ts",
+        "severity": "warning",
+        "verification": "unchecked",
+        "reviewer": "correctness"
+      }
+    ],
+    "dismissed": []
+  }
+}

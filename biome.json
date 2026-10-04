@@ -7,7 +7,8 @@
       "!**/node_modules",
       "!**/*.tsbuildinfo",
       "!evals/golden/*.json",
-      "!docs/schema/*.json"
+      "!docs/schema/*.json",
+      "!**/__snapshots__"
     ]
   },
   "formatter": {

@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "runId": "<run-id>",
+  "changeRequest": {
+    "id": "o/r#7",
+    "title": "Change a and b",
+    "description": "",
+    "baseSha": "0be8f271ecab2038cdb1dc9d169b8309bb30cf45",
+    "headSha": "15533b530281f92f61359255d505e701862ee8e7"
+  },
+  "tier": "trivial",
+  "verdict": "approved_with_comments",
+  "summary": "2 finding(s): 0 critical, 2 warning, 0 suggestion.",
+  "coverage": [
+    {
+      "path": "a.ts",
+      "status": "reviewed"
+    },
+    {
+      "path": "b.ts",
+      "status": "reviewed"
+    }
+  ],
+  "findings": [
+    {
+      "fingerprint": "cd441e4f4a673499",
+      "reviewer": "correctness",
+      "category": "correctness",
+      "severity": "warning",
+      "verification": "unchecked",
+      "file": "a.ts",
+      "inDiff": true,
+      "status": "new",
+      "title": "Check a",
+      "body": "b",
+      "evidence": [],
+      "code": "export const a = 1;",
+      "lines": {
+        "start": 1,
+        "end": 1
+      },
+      "provenance": {
+        "task": "correctness-1"
+      }
+    },
+    {
+      "fingerprint": "92894f246f7b0274",
+      "reviewer": "correctness",
+      "category": "correctness",
+      "severity": "warning",
+      "verification": "unchecked",
+      "file": "b.ts",
+      "inDiff": true,
+      "status": "new",
+      "title": "Check b",
+      "body": "b",
+      "evidence": [],
+      "code": "export const b = 1;",
+      "lines": {
+        "start": 1,
+        "end": 1
+      },
+      "provenance": {
+        "task": "correctness-1"
+      }
+    }
+  ],
+  "unverifiedCriticals": 0,
+  "refuted": [],
+  "remembered": [],
+  "tasks": [
+    {
+      "taskId": "correctness-1",
+      "reviewer": "correctness",
+      "bundle": "small change set",
+      "files": [
+        "a.ts",
+        "b.ts"
+      ],
+      "status": "completed",
+      "findings": 2,
+      "durationMs": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "reasoningTokens": 0,
+        "cachedTokens": 0,
+        "costUsd": 0
+      }
+    }
+  ],
+  "skipped": [
+    {
+      "reviewer": "security",
+      "bundle": "small change set",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "performance",
+      "bundle": "small change set",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "docs",
+      "bundle": "small change set",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "agents-md",
+      "bundle": "small change set",
+      "reason": "below_tier"
+    }
+  ],
+  "bundles": [
+    {
+      "label": "small change set",
+      "files": [
+        "a.ts",
+        "b.ts"
+      ]
+    }
+  ],
+  "usage": {
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "reasoningTokens": 0,
+    "cachedTokens": 0,
+    "costUsd": 0
+  },
+  "warnings": [],
+  "scope": {
+    "mode": "incremental",
+    "since": "15533b530281f92f61359255d505e701862ee8e7"
+  },
+  "anchoring": {
+    "byMethod": {
+      "hunk": 2,
+      "file": 0,
+      "cross_file": 0,
+      "relocated": 0,
+      "file_level": 0
+    },
+    "ambiguous": 0,
+    "relocationCalls": 0
+  },
+  "provenance": {
+    "ocraVersion": "<version>",
+    "promptHash": "b9dfa2581504f18c",
+    "configHash": "a8df404aed89c340",
+    "sampling": {},
+    "agents": {
+      "correctness": {
+        "tier": "standard"
+      },
+      "security": {
+        "tier": "standard"
+      },
+      "performance": {
+        "tier": "standard"
+      },
+      "docs": {
+        "tier": "light"
+      },
+      "agents-md": {
+        "tier": "light"
+      },
+      "verifier": {
+        "tier": "standard"
+      },
+      "judge": {
+        "tier": "top"
+      },
+      "helper": {
+        "tier": "light"
+      }
+    }
+  },
+  "rereview": {
+    "fixed": [],
+    "notReproduced": [],
+    "notRechecked": [],
+    "unchanged": [],
+    "dismissed": []
+  }
+}

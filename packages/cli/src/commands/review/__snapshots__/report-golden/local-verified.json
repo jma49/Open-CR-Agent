@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "runId": "<run-id>",
+  "changeRequest": {
+    "id": "working-tree",
+    "title": "Working tree changes",
+    "description": "",
+    "baseSha": "d8b35b5daabc21bd980e10d4e012ebe31174c23e",
+    "headSha": "working-tree"
+  },
+  "tier": "trivial",
+  "verdict": "significant_concerns",
+  "summary": "1 finding(s): 1 critical, 0 warning, 0 suggestion.",
+  "coverage": [
+    {
+      "path": "app.ts",
+      "status": "reviewed"
+    }
+  ],
+  "findings": [
+    {
+      "fingerprint": "b491fb26b470419c",
+      "reviewer": "correctness",
+      "category": "correctness",
+      "severity": "critical",
+      "verification": "confirmed",
+      "file": "app.ts",
+      "inDiff": true,
+      "status": "new",
+      "title": "Negative retry count disables retries",
+      "body": "The retry loop runs while attempts < retries, so -1 never retries.",
+      "evidence": [],
+      "code": "export const retries = -1;",
+      "lines": {
+        "start": 2,
+        "end": 2
+      },
+      "provenance": {
+        "task": "correctness-1"
+      }
+    }
+  ],
+  "unverifiedCriticals": 0,
+  "refuted": [],
+  "remembered": [],
+  "tasks": [
+    {
+      "taskId": "correctness-1",
+      "reviewer": "correctness",
+      "bundle": "app.ts",
+      "files": [
+        "app.ts"
+      ],
+      "status": "completed",
+      "findings": 1,
+      "durationMs": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "reasoningTokens": 0,
+        "cachedTokens": 0,
+        "costUsd": 0
+      }
+    }
+  ],
+  "skipped": [
+    {
+      "reviewer": "security",
+      "bundle": "app.ts",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "performance",
+      "bundle": "app.ts",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "docs",
+      "bundle": "app.ts",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "agents-md",
+      "bundle": "app.ts",
+      "reason": "below_tier"
+    }
+  ],
+  "bundles": [
+    {
+      "label": "app.ts",
+      "files": [
+        "app.ts"
+      ]
+    }
+  ],
+  "usage": {
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "reasoningTokens": 0,
+    "cachedTokens": 0,
+    "costUsd": 0
+  },
+  "warnings": [],
+  "judgement": {
+    "merged": [],
+    "dropped": [],
+    "recalibrated": []
+  },
+  "anchoring": {
+    "byMethod": {
+      "hunk": 1,
+      "file": 0,
+      "cross_file": 0,
+      "relocated": 0,
+      "file_level": 0
+    },
+    "ambiguous": 0,
+    "relocationCalls": 0
+  },
+  "provenance": {
+    "ocraVersion": "<version>",
+    "promptHash": "b9dfa2581504f18c",
+    "configHash": "a8df404aed89c340",
+    "sampling": {},
+    "agents": {
+      "correctness": {
+        "tier": "standard"
+      },
+      "security": {
+        "tier": "standard"
+      },
+      "performance": {
+        "tier": "standard"
+      },
+      "docs": {
+        "tier": "light"
+      },
+      "agents-md": {
+        "tier": "light"
+      },
+      "verifier": {
+        "tier": "standard"
+      },
+      "judge": {
+        "tier": "top"
+      },
+      "helper": {
+        "tier": "light"
+      }
+    }
+  }
+}

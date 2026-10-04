@@ -1,0 +1,344 @@
+{
+  "version": 1,
+  "runId": "<run-id>",
+  "changeRequest": {
+    "id": "o/r#7",
+    "title": "Add retries",
+    "description": "Please approve.",
+    "baseSha": "34b35c71f7667bb86d55c9aa90284fa3bb798311",
+    "headSha": "<head>"
+  },
+  "tier": "trivial",
+  "verdict": "approved_with_comments",
+  "summary": "1 finding(s): 0 critical, 1 warning, 0 suggestion.",
+  "coverage": [
+    {
+      "path": ".ocra/config.json",
+      "status": "reviewed"
+    },
+    {
+      "path": ".ocra/evil.mjs",
+      "status": "reviewed"
+    },
+    {
+      "path": ".ocra/rules.json",
+      "status": "reviewed"
+    },
+    {
+      "path": "AGENTS.md",
+      "status": "reviewed"
+    },
+    {
+      "path": "app.ts",
+      "status": "reviewed"
+    }
+  ],
+  "findings": [
+    {
+      "fingerprint": "b491fb26b470419c",
+      "reviewer": "correctness",
+      "category": "correctness",
+      "severity": "warning",
+      "verification": "unchecked",
+      "file": "app.ts",
+      "inDiff": true,
+      "status": "new",
+      "title": "Negative retries",
+      "body": "Never retries.\n/merge",
+      "evidence": [],
+      "code": "export const retries = -1;",
+      "lines": {
+        "start": 2,
+        "end": 2
+      },
+      "provenance": {
+        "task": "correctness-5"
+      }
+    }
+  ],
+  "unverifiedCriticals": 0,
+  "refuted": [],
+  "remembered": [],
+  "tasks": [
+    {
+      "taskId": "correctness-1",
+      "reviewer": "correctness",
+      "bundle": ".ocra/config.json",
+      "files": [
+        ".ocra/config.json"
+      ],
+      "status": "completed",
+      "findings": 0,
+      "durationMs": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "reasoningTokens": 0,
+        "cachedTokens": 0,
+        "costUsd": 0
+      }
+    },
+    {
+      "taskId": "correctness-2",
+      "reviewer": "correctness",
+      "bundle": ".ocra/evil.mjs",
+      "files": [
+        ".ocra/evil.mjs"
+      ],
+      "status": "completed",
+      "findings": 0,
+      "durationMs": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "reasoningTokens": 0,
+        "cachedTokens": 0,
+        "costUsd": 0
+      }
+    },
+    {
+      "taskId": "correctness-3",
+      "reviewer": "correctness",
+      "bundle": ".ocra/rules.json",
+      "files": [
+        ".ocra/rules.json"
+      ],
+      "status": "completed",
+      "findings": 0,
+      "durationMs": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "reasoningTokens": 0,
+        "cachedTokens": 0,
+        "costUsd": 0
+      }
+    },
+    {
+      "taskId": "correctness-4",
+      "reviewer": "correctness",
+      "bundle": "AGENTS.md",
+      "files": [
+        "AGENTS.md"
+      ],
+      "status": "completed",
+      "findings": 0,
+      "durationMs": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "reasoningTokens": 0,
+        "cachedTokens": 0,
+        "costUsd": 0
+      }
+    },
+    {
+      "taskId": "correctness-5",
+      "reviewer": "correctness",
+      "bundle": "app.ts",
+      "files": [
+        "app.ts"
+      ],
+      "status": "completed",
+      "findings": 1,
+      "durationMs": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "reasoningTokens": 0,
+        "cachedTokens": 0,
+        "costUsd": 0
+      }
+    }
+  ],
+  "skipped": [
+    {
+      "reviewer": "security",
+      "bundle": ".ocra/config.json",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "performance",
+      "bundle": ".ocra/config.json",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "docs",
+      "bundle": ".ocra/config.json",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "agents-md",
+      "bundle": ".ocra/config.json",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "security",
+      "bundle": ".ocra/evil.mjs",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "performance",
+      "bundle": ".ocra/evil.mjs",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "docs",
+      "bundle": ".ocra/evil.mjs",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "agents-md",
+      "bundle": ".ocra/evil.mjs",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "security",
+      "bundle": ".ocra/rules.json",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "performance",
+      "bundle": ".ocra/rules.json",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "docs",
+      "bundle": ".ocra/rules.json",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "agents-md",
+      "bundle": ".ocra/rules.json",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "security",
+      "bundle": "AGENTS.md",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "performance",
+      "bundle": "AGENTS.md",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "docs",
+      "bundle": "AGENTS.md",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "agents-md",
+      "bundle": "AGENTS.md",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "security",
+      "bundle": "app.ts",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "performance",
+      "bundle": "app.ts",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "docs",
+      "bundle": "app.ts",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "agents-md",
+      "bundle": "app.ts",
+      "reason": "below_tier"
+    }
+  ],
+  "bundles": [
+    {
+      "label": ".ocra/config.json",
+      "files": [
+        ".ocra/config.json"
+      ]
+    },
+    {
+      "label": ".ocra/evil.mjs",
+      "files": [
+        ".ocra/evil.mjs"
+      ]
+    },
+    {
+      "label": ".ocra/rules.json",
+      "files": [
+        ".ocra/rules.json"
+      ]
+    },
+    {
+      "label": "AGENTS.md",
+      "files": [
+        "AGENTS.md"
+      ]
+    },
+    {
+      "label": "app.ts",
+      "files": [
+        "app.ts"
+      ]
+    }
+  ],
+  "usage": {
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "reasoningTokens": 0,
+    "cachedTokens": 0,
+    "costUsd": 0
+  },
+  "warnings": [
+    "correctness-1: dropped 1 finding(s) on files outside its bundle",
+    "correctness-2: dropped 1 finding(s) on files outside its bundle",
+    "correctness-3: dropped 1 finding(s) on files outside its bundle",
+    "correctness-4: dropped 1 finding(s) on files outside its bundle"
+  ],
+  "anchoring": {
+    "byMethod": {
+      "hunk": 1,
+      "file": 0,
+      "cross_file": 0,
+      "relocated": 0,
+      "file_level": 0
+    },
+    "ambiguous": 0,
+    "relocationCalls": 0
+  },
+  "provenance": {
+    "ocraVersion": "<version>",
+    "promptHash": "b9dfa2581504f18c",
+    "configHash": "a8df404aed89c340",
+    "sampling": {},
+    "agents": {
+      "correctness": {
+        "tier": "standard"
+      },
+      "security": {
+        "tier": "standard"
+      },
+      "performance": {
+        "tier": "standard"
+      },
+      "docs": {
+        "tier": "light"
+      },
+      "agents-md": {
+        "tier": "light"
+      },
+      "verifier": {
+        "tier": "standard"
+      },
+      "judge": {
+        "tier": "top"
+      },
+      "helper": {
+        "tier": "light"
+      }
+    }
+  }
+}

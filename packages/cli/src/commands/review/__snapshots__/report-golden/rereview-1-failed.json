@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "runId": "<run-id>",
+  "changeRequest": {
+    "id": "o/r#7",
+    "title": "Change a and b",
+    "description": "",
+    "baseSha": "0be8f271ecab2038cdb1dc9d169b8309bb30cf45",
+    "headSha": "15533b530281f92f61359255d505e701862ee8e7"
+  },
+  "tier": "trivial",
+  "verdict": "approved",
+  "summary": "Nothing was reviewed: no reviewer covered or finished any selected file.",
+  "coverage": [
+    {
+      "path": "a.ts",
+      "status": "failed"
+    },
+    {
+      "path": "b.ts",
+      "status": "failed"
+    }
+  ],
+  "findings": [],
+  "unverifiedCriticals": 0,
+  "refuted": [],
+  "remembered": [],
+  "tasks": [
+    {
+      "taskId": "correctness-1",
+      "reviewer": "correctness",
+      "bundle": "small change set",
+      "files": [
+        "a.ts",
+        "b.ts"
+      ],
+      "status": "failed",
+      "findings": 0,
+      "durationMs": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "reasoningTokens": 0,
+        "cachedTokens": 0,
+        "costUsd": 0
+      },
+      "error": "model unavailable"
+    }
+  ],
+  "skipped": [
+    {
+      "reviewer": "security",
+      "bundle": "small change set",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "performance",
+      "bundle": "small change set",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "docs",
+      "bundle": "small change set",
+      "reason": "below_tier"
+    },
+    {
+      "reviewer": "agents-md",
+      "bundle": "small change set",
+      "reason": "below_tier"
+    }
+  ],
+  "bundles": [
+    {
+      "label": "small change set",
+      "files": [
+        "a.ts",
+        "b.ts"
+      ]
+    }
+  ],
+  "usage": {
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "reasoningTokens": 0,
+    "cachedTokens": 0,
+    "costUsd": 0
+  },
+  "warnings": [],
+  "anchoring": {
+    "byMethod": {
+      "hunk": 0,
+      "file": 0,
+      "cross_file": 0,
+      "relocated": 0,
+      "file_level": 0
+    },
+    "ambiguous": 0,
+    "relocationCalls": 0
+  },
+  "provenance": {
+    "ocraVersion": "<version>",
+    "promptHash": "b9dfa2581504f18c",
+    "configHash": "a8df404aed89c340",
+    "sampling": {},
+    "agents": {
+      "correctness": {
+        "tier": "standard"
+      },
+      "security": {
+        "tier": "standard"
+      },
+      "performance": {
+        "tier": "standard"
+      },
+      "docs": {
+        "tier": "light"
+      },
+      "agents-md": {
+        "tier": "light"
+      },
+      "verifier": {
+        "tier": "standard"
+      },
+      "judge": {
+        "tier": "top"
+      },
+      "helper": {
+        "tier": "light"
+      }
+    }
+  }
+}
