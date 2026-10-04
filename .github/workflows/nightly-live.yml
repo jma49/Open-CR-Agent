@@ -78,7 +78,23 @@ jobs:
             --no-repo-config --config "$RUNNER_TEMP/ocra-live.json" \
             --format json --output "$RUNNER_TEMP/report.json"
           echo "exit=$?" >> "$GITHUB_OUTPUT"
+      # A day whose free requests ran out fails every task with HTTP 429: that
+      # says nothing about ocra, so it is a notice, as in the dogfood workflow.
+      - name: Skip a spent free quota
+        id: quota
+        shell: bash
+        run: |
+          report="$RUNNER_TEMP/report.json"
+          if [ -f "$report" ] && jq -e '
+            [.tasks[]? | select(.status != "completed")] as $failed
+            | ($failed | length) > 0
+              and ([$failed[] | select((.error // "") | test("429|quota|rate.?limit|free-models-per-day"; "i"))] | length) == ($failed | length)
+          ' "$report" > /dev/null; then
+            echo "::notice title=Live smoke skipped::the free model quota is spent until 00:00 UTC"
+            echo "spent=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Check the report
+        if: steps.quota.outputs.spent != 'true'
         shell: bash
         env:
           EXIT: ${{ steps.review.outputs.exit }}

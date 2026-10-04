@@ -75,8 +75,8 @@ Options:
                      .ocra/config.json; it applies with --no-repo-config too
   --no-repo-config   Ignore .ocra/config.json and its plugins (for untrusted
                      code); models come from OCRA_MODEL_* variables or --config
-  --no-upload        When signed in to ocra Cloud, do not send this review's
-                     counts (verdict, numbers of findings, files, tokens)
+  --no-upload        When signed in to ocra Cloud, send nothing about this
+                     review: no counts, per-reviewer counts or findings
   -h, --help         Show help
 `;
 

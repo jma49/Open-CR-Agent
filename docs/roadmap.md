@@ -1,6 +1,6 @@
 # Roadmap
 
-What comes after M1–M4 (`docs/architecture.md`, all built) and the 0.2.0 release, as of 2026-10-01. It records the maintainer's long-term direction, decided on 2026-10-01: ocra is not another review bot but the engine other review agents are built on. It also keeps what the earlier roadmap answered: a comparison with open-source peers, what ocra's first model runs showed, and the goal of 2026-09-30, a project a company can adopt and a company could be built on.
+What comes after M1–M4 (`docs/architecture.md`, all built), as of 2026-10-04 (0.5.0 released). It records the maintainer's long-term direction, decided on 2026-10-01: ocra is not another review bot but the engine other review agents are built on. It also keeps what the earlier roadmap answered: a comparison with open-source peers, what ocra's first model runs showed, and the goal of 2026-09-30, a project a company can adopt and a company could be built on.
 
 ## The rule while evaluation is scarce
 
@@ -104,10 +104,10 @@ This phase's success condition is not a list of interfaces: it is three external
 
 **M14 — ocra Cloud** (moved to Now on 2026-10-04, [ADR-0024](adr/0024-ocra-cloud.md); the main line). Open core plus an optional hosted service on the published packages, in its own private repository.
 
-1. **Phase 1, the MVP:** sign-in with GitHub and `ocra login` (device flow); the user's own key stored encrypted in the cloud and used only by an allowlisted model gateway that logs no bodies; zero configuration when logged in; metadata-only upload after a review, content opt-in; a web view of reviews, statistics, keys and sessions; a public data policy. Built and live at https://app.ocracloud.com (2026-10-04): the CLI side landed in #344–#346 and #348 (`ocra login/logout/whoami`, `ocra-<provider>/<model>` through the gateway, the counts upload with `--no-upload`, the web's default models). Left before it opens: a release with the CLI side, the master-key re-wrap script, content opt-in, and the first external users (M13).
-4. **Models and reasoning effort per agent** ([ADR-0025](adr/0025-per-agent-models-and-effort.md)), in `.ocra/config.json` or as ocra Cloud account defaults under the repository's settings. Landed: effort per tier, reviewer and role on the `direct` runtime (#349); per-agent model chains on both runtimes; a per-agent input cost estimate in `--plan`; the OpenCode effort mapping. Next: the web's Agents page, then a policy cap.
-2. **Phase 2:** a hosted GitHub App (install, nothing to configure), with organizations.
-3. **Phase 3:** models ocra provides, a free allowance and paid plans, once there is a model budget.
+1. **Phase 1, the MVP:** sign-in with GitHub and `ocra login` (device flow); the user's own key stored encrypted in the cloud and used only by an allowlisted model gateway that logs no bodies; zero configuration when logged in; metadata-only upload after a review, content opt-in; a web view of reviews, statistics, keys and sessions; a public data policy. Built and live at https://app.ocracloud.com and released with 0.4.0 and 0.5.0: `ocra login/logout/whoami`, `ocra-<provider>/<model>` through the gateway, the counts upload with `--no-upload`, account configuration layered under the repository's ([ADR-0027](adr/0027-account-configuration.md)), findings shared only when the account opts in, with account memory ([ADR-0028](adr/0028-findings-upload-and-cloud-memory.md)). Left: the first external users (M13).
+2. **Models and reasoning effort per agent** ([ADR-0025](adr/0025-per-agent-models-and-effort.md)), in `.ocra/config.json` or as ocra Cloud account defaults under the repository's settings. Landed: effort per tier, reviewer and role (#349); per-agent model chains on both runtimes; a per-agent input cost estimate in `--plan`; the OpenCode effort mapping; the web's Agents page. Next: a policy cap on effort.
+3. **Phase 2:** a hosted GitHub App (install, nothing to configure), with organizations ([ADR-0026](adr/0026-hosted-review-compute.md), proposed; deferred).
+4. **Phase 3:** models ocra provides, a free allowance and paid plans, once there is a model budget.
 
 **Review experience** (from the comparison with CodeRabbit, 2026-10-04; each behind M11's numbers where it touches quality).
 
