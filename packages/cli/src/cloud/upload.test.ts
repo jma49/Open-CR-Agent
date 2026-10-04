@@ -3,11 +3,11 @@ import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { SharedFinding } from "@open-cr-agent/cloud-contract";
 import type { ReviewReport } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import { originRepository } from "../repository-id.js";
 import type { CloudDeps } from "./deps.js";
-import type { SharedFinding } from "./findings.js";
 import { repoHash, uploadOf, uploadReview } from "./upload.js";
 
 const NOW = 1_000_000_000;

@@ -1,52 +1,41 @@
 {
-  "name": "@open-cr-agent/cli",
+  "name": "@open-cr-agent/cloud-contract",
   "version": "0.5.0",
-  "description": "ocra: open-source multi-agent code review for local changes and GitHub pull requests",
+  "description": "The wire contract between Open-CR-Agent and ocra Cloud: Zod schemas, limits, vocabularies, the redaction pass and its test vectors",
   "keywords": [
     "code-review",
-    "cli",
-    "llm",
-    "agents",
-    "github-action"
+    "zod",
+    "schema"
   ],
   "license": "Apache-2.0",
   "homepage": "https://ocracloud.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jma49/Open-CR-Agent.git",
-    "directory": "packages/cli"
+    "directory": "packages/cloud-contract"
   },
   "bugs": "https://github.com/jma49/Open-CR-Agent/issues",
   "engines": {
     "node": ">=22.19"
   },
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "@open-cr-agent/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./fixtures/*": "./fixtures/*",
     "./package.json": "./package.json"
-  },
-  "bin": {
-    "ocra": "./dist/main.js"
   },
   "files": [
     "dist",
+    "fixtures",
     "!dist/**/*.map"
   ],
   "dependencies": {
-    "@open-cr-agent/cloud-contract": "0.5.0",
-    "@open-cr-agent/core": "0.5.0",
-    "@open-cr-agent/runtime-direct": "0.5.0",
-    "@open-cr-agent/vcs-github": "0.5.0",
-    "@open-cr-agent/vcs-gitlab": "0.5.0",
-    "@open-cr-agent/vcs-local": "0.5.0",
     "zod": "^4.6.5"
-  },
-  "optionalDependencies": {
-    "@open-cr-agent/runtime-opencode": "0.5.0"
   },
   "publishConfig": {
     "access": "public"

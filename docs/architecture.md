@@ -162,6 +162,7 @@ packages/
   vcs-github/        VcsAdapter for GitHub, over vcs-platform
   vcs-gitlab/        VcsAdapter for GitLab merge requests, over vcs-platform
   vcs-local/         VcsAdapter for the local git repository
+  cloud-contract/    the wire contract with ocra Cloud: schemas, limits, redaction
   cli/               `ocra` command
   eval/              AACR-Bench replay, precision / recall / F1 / cost
 ```

@@ -157,6 +157,7 @@ describe("readWorkspaces", () => {
     const workspaces = readWorkspaces(fileURLToPath(new URL("..", import.meta.url)));
     expect(lockstep(workspaces).problems).toEqual([]);
     expect(names(publishOrder(workspaces))).toEqual([
+      "@open-cr-agent/cloud-contract",
       "@open-cr-agent/core",
       "@open-cr-agent/runtime-direct",
       "@open-cr-agent/vcs-platform",

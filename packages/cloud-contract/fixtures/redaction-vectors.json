@@ -1,5 +1,5 @@
 {
-  "about": "Shared by ocra Cloud (test/redaction-vectors.json) and the ocra CLI (packages/cli/src/review/redaction-vectors.json): both redaction passes must agree. Each `redact` entry is a line whose `secret` must not survive; each `keep` line must come back unchanged. Change both copies together.",
+  "about": "The redaction pass of @open-cr-agent/cloud-contract (packages/cloud-contract/src/redact.ts in Open-CR-Agent), which the ocra CLI and ocra Cloud both run. Each `redact` entry is a line whose `secret` must not survive; each `keep` line must come back unchanged. ocra Cloud tests its generated copy of this file.",
   "redact": [
     { "line": "const key = \"AKIAABCDEFGHIJKLMNOP\";", "secret": "AKIAABCDEFGHIJKLMNOP" },
     { "line": "token: ghp_abcdefghijklmnopqrstuvwxyz0123", "secret": "ghp_abcdefghijklmnop" },

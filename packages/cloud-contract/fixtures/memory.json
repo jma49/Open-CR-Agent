@@ -1,0 +1,27 @@
+{
+  "about": "GET /api/memory as ocra Cloud answers it. The ocra CLI applies every entry.",
+  "answer": {
+    "entries": [
+      {
+        "id": "5f0a6c1e-2b7d-4c3e-8a9f-1d2e3f4a5b6c",
+        "repoHash": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+        "repo": "8d969eef",
+        "fingerprint": "3f9a1c7e5b2d8a40",
+        "file": "src/db.ts",
+        "title": "SQL built from input",
+        "reason": "The id is validated by the router before it gets here.",
+        "createdAt": "2026-10-04T12:00:00.000Z"
+      },
+      {
+        "id": "9a8b7c6d-5e4f-4a3b-9c2d-1e0f9a8b7c6d",
+        "repoHash": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+        "repo": "8d969eef",
+        "fingerprint": "a07c4e9b1d3f5a62",
+        "file": "src/retry.ts",
+        "title": "Retry without a limit",
+        "reason": "Bounded by the caller's timeout.",
+        "createdAt": "2026-10-03T08:30:00.000Z"
+      }
+    ]
+  }
+}

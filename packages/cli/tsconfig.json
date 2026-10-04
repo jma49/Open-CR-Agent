@@ -8,6 +8,9 @@
   "exclude": ["src/**/*.test.ts", "src/**/*.fakes.ts"],
   "references": [
     {
+      "path": "../cloud-contract"
+    },
+    {
       "path": "../core"
     },
     {

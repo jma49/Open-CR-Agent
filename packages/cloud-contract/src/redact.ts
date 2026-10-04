@@ -1,7 +1,7 @@
-// Replaces secret-looking tokens before a finding leaves the machine
-// (ADR-0028, 2). ocra Cloud runs the same pass again on what it receives
-// (src/redact.ts there); both run redaction-vectors.json. It catches
-// patterns, not every secret.
+// Replaces secret-looking tokens in a shared finding (ADR-0028, 2): the CLI
+// before the finding leaves the machine, ocra Cloud again on what it
+// receives. fixtures/redaction-vectors.json pins what both must catch and
+// keep. It catches patterns, not every secret.
 
 export const REDACTED = "[redacted]";
 
@@ -47,6 +47,7 @@ const isPath = (s: string) =>
   s.split("/").every((seg) => /^[a-z0-9_-]*$/.test(seg) || /^[A-Za-z]+$/.test(seg));
 const looksRandom = (s: string) => /\d/.test(s) && entropy(s) >= 4.3 && !isPath(s);
 
+/** The text with secret-looking tokens replaced, and whether any was. */
 export function redact(text: string): { text: string; redacted: boolean } {
   let out = text;
   for (const p of PATTERNS) out = out.replace(p, REDACTED);

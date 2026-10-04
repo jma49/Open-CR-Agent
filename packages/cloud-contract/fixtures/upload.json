@@ -1,0 +1,108 @@
+{
+  "about": "POST /api/reviews as the ocra CLI sends it, made by uploadOf() and sharedFindings() from a sample report (packages/cli/src/cloud/contract.test.ts; OCRA_UPDATE_FIXTURES=1 rewrites it). ocra Cloud must keep every field.",
+  "runId": "run-2026-10-04-a1b2",
+  "repoHash": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+  "source": "github",
+  "tier": "full",
+  "verdict": "significant_concerns",
+  "complete": false,
+  "findings": {
+    "critical": 1,
+    "warning": 1,
+    "suggestion": 1
+  },
+  "files": {
+    "reviewed": 2,
+    "notReviewed": 1
+  },
+  "tasks": {
+    "completed": 2,
+    "failed": 1
+  },
+  "usage": {
+    "inputTokens": 1200,
+    "outputTokens": 340,
+    "costUsd": 0.4375
+  },
+  "durationMs": 61234,
+  "ocraVersion": "0.0.0",
+  "reviewers": {
+    "logic": {
+      "tasks": 2,
+      "failedTasks": 1,
+      "findings": {
+        "critical": 0,
+        "warning": 1,
+        "suggestion": 0
+      },
+      "costUsd": 0.1875,
+      "fixed": 1,
+      "dismissed": 0
+    },
+    "security": {
+      "tasks": 1,
+      "failedTasks": 0,
+      "findings": {
+        "critical": 1,
+        "warning": 0,
+        "suggestion": 1
+      },
+      "costUsd": 0.25,
+      "fixed": 0,
+      "dismissed": 1
+    }
+  },
+  "verification": {
+    "confirmed": 1,
+    "uncertain": 1,
+    "unchecked": 1
+  },
+  "outcomes": {
+    "fixed": 1,
+    "dismissed": 1
+  },
+  "findingList": [
+    {
+      "fingerprint": "0123456789abcdef",
+      "reviewer": "security",
+      "severity": "critical",
+      "category": "security",
+      "verification": "confirmed",
+      "file": "src/db.ts",
+      "lineStart": 10,
+      "lineEnd": 12,
+      "title": "SQL built from input",
+      "body": "The id reaches the query unescaped.",
+      "suggestion": null,
+      "code": "const q = 'SELECT * FROM t WHERE id = ' + id;"
+    },
+    {
+      "fingerprint": "fedcba9876543210",
+      "reviewer": "logic",
+      "severity": "warning",
+      "category": "correctness",
+      "verification": "uncertain",
+      "file": "src/retry.ts",
+      "lineStart": null,
+      "lineEnd": null,
+      "title": "Retry without a limit",
+      "body": "A failing call is retried forever.",
+      "suggestion": "Stop after three attempts.",
+      "code": "while (true) await attempt();"
+    },
+    {
+      "fingerprint": "1111222233334444",
+      "reviewer": "security",
+      "severity": "suggestion",
+      "category": "security",
+      "verification": "unchecked",
+      "file": "src/db.ts",
+      "lineStart": 10,
+      "lineEnd": 12,
+      "title": "SQL built from input",
+      "body": "The id reaches the query unescaped.",
+      "suggestion": null,
+      "code": "const q = 'SELECT * FROM t WHERE id = ' + id;"
+    }
+  ]
+}

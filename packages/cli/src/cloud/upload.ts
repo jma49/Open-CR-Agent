@@ -1,58 +1,28 @@
 import { createHash, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import {
-  coverageGaps,
-  type ReviewReport,
-  type Severity,
-  type Verification,
-} from "@open-cr-agent/core";
+import type {
+  ReviewerCounts,
+  ReviewSource,
+  ReviewUpload,
+  SharedFinding,
+} from "@open-cr-agent/cloud-contract";
+import { coverageGaps, type ReviewReport, type Verification } from "@open-cr-agent/core";
 import { verificationSchema } from "@open-cr-agent/core/internal";
 import { VERSION } from "../version.js";
 import { CloudClient, CloudError, sessionLostReason } from "./client.js";
 import { readCredentials } from "./credentials.js";
 import type { CloudDeps } from "./deps.js";
-import type { SharedFinding } from "./findings.js";
 import { createPrivateFile, writePrivateFile } from "./private-file.js";
 
 // After a review, a signed-in CLI sends ocra Cloud its counts (ADR-0024):
 // the verdict, how many findings of each severity, files and tasks, tokens
 // and time. A path, a title, a finding's text or code go only when the
-// account shares findings (ADR-0028, cloud-findings.ts). The repository is
+// account shares findings (ADR-0028, findings.ts). The repository is
 // a salted hash of its `https://host/owner/repo` (repository-id.ts), so
 // the server can group reviews of one repository without learning which
 // it is: the salt stays on this machine, or is the account's while it
 // shares findings, so the hash matches on all its machines.
-
-export type ReviewSource = "local" | "github" | "gitlab";
-
-export type ReviewerCounts = {
-  tasks: number;
-  failedTasks: number;
-  findings: Record<Severity, number>;
-  costUsd: number;
-  fixed: number;
-  dismissed: number;
-};
-
-export type ReviewUpload = {
-  runId: string;
-  repoHash: string;
-  source: ReviewSource;
-  tier: string;
-  verdict: string;
-  complete: boolean;
-  findings: { critical: number; warning: number; suggestion: number };
-  files: { reviewed: number; notReviewed: number };
-  tasks: { completed: number; failed: number };
-  usage: { inputTokens: number; outputTokens: number; costUsd: number };
-  durationMs: number;
-  ocraVersion: string;
-  // Added by ADR-0028; optional so a server reading older uploads still can.
-  reviewers?: Record<string, ReviewerCounts>;
-  verification?: Record<Verification, number>;
-  outcomes?: { fixed: number; dismissed: number };
-};
 
 export function uploadOf(
   report: ReviewReport,

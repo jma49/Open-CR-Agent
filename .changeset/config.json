@@ -14,6 +14,7 @@
       "@open-cr-agent/vcs-github",
       "@open-cr-agent/vcs-gitlab",
       "@open-cr-agent/vcs-local",
+      "@open-cr-agent/cloud-contract",
       "@open-cr-agent/cli"
     ]
   ],

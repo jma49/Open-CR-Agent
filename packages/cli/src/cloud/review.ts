@@ -1,3 +1,4 @@
+import type { ReviewSource } from "@open-cr-agent/cloud-contract";
 import type { MemoryEntry, ReviewReport } from "@open-cr-agent/core";
 import type { Output } from "../io/output.js";
 import { originRepository } from "../repository-id.js";
@@ -6,7 +7,7 @@ import { CloudClient, type CloudSessionLost, sessionLostReason } from "./client.
 import type { CloudDeps } from "./deps.js";
 import { sharedFindings } from "./findings.js";
 import { accountHasMemory, fetchAccountMemory } from "./memory.js";
-import { type ReviewSource, repoHash, uploadOf, uploadReview } from "./upload.js";
+import { repoHash, uploadOf, uploadReview } from "./upload.js";
 
 // What a signed-in review takes from ocra Cloud before it runs (ADR-0028):
 // the repository's hash, whether the account shares findings, and the

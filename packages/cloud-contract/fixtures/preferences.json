@@ -1,0 +1,44 @@
+{
+  "about": "GET /api/preferences as ocra Cloud answers it once every part is saved. The ocra CLI reads all of it as account settings; ocra Cloud saves it with PUT /api/preferences and answers it back unchanged.",
+  "answer": {
+    "runtime": "direct",
+    "models": {
+      "top": ["ocra-anthropic/claude-opus-4-1"],
+      "standard": ["ocra-openrouter/openai/gpt-5-mini", "ocra-deepseek/deepseek-chat"],
+      "light": ["ocra-gemini/gemini-2.5-flash"]
+    },
+    "agents": {
+      "effort": { "top": "high", "light": "none" },
+      "reviewers": {
+        "security": {
+          "enabled": true,
+          "models": ["ocra-anthropic/claude-opus-4-1"],
+          "effort": "high"
+        },
+        "style": { "enabled": false }
+      },
+      "roles": { "judge": { "models": ["ocra-openai/gpt-5"], "effort": "medium" } }
+    },
+    "settings": {
+      "ultra": true,
+      "concurrency": 4,
+      "taskTimeoutMinutes": 10,
+      "runTimeoutMinutes": 30,
+      "maxCostUsd": 2.5,
+      "maxTasks": 40,
+      "verify": true,
+      "judge": true,
+      "sampling": { "temperature": 0.2, "seed": 7 },
+      "include": ["src/**"],
+      "exclude": ["**/*.snap"],
+      "rules": [
+        { "path": "src/db/**", "rule": "Queries go through the scoped() helper." },
+        { "path": ["web/**/*.tsx", "web/**/*.ts"], "rule": "No inline styles." }
+      ],
+      "plugins": ["@acme/ocra-plugin-sql"],
+      "pluginSettings": { "@acme/ocra-plugin-sql": { "dialect": "sqlite" } }
+    },
+    "updatedAt": "2026-10-04T12:00:00.000Z",
+    "version": "0b6c1f0e-5d1e-4a8e-9d0e-6f6d5f4c3b2a"
+  }
+}

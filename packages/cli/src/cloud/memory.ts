@@ -1,3 +1,4 @@
+import { MAX_MEMORY_PER_REPO } from "@open-cr-agent/cloud-contract";
 import type { MemoryEntry } from "@open-cr-agent/core";
 import { errorMessage, memoryEntrySchema } from "@open-cr-agent/core/internal";
 import { CloudClient, type CloudResult, sessionLostReason } from "./client.js";
@@ -5,9 +6,6 @@ import type { CloudDeps } from "./deps.js";
 
 // The findings the account remembers for one repository (ADR-0028, 4), set
 // from the web. A review applies them with .ocra/memory.json's.
-
-// The server keeps at most 500 per repository; more is not an answer to trust.
-const MAX_ENTRIES = 500;
 
 /** The account's entries for the repository; [] and a warning when they cannot be read. */
 export async function fetchAccountMemory(
@@ -59,7 +57,8 @@ export function parseAccountMemory(
 ): MemoryEntry[] {
   const entries: MemoryEntry[] = [];
   let refused = 0;
-  for (const raw of list.slice(0, MAX_ENTRIES)) {
+  // The server keeps no more per repository; more is not an answer to trust.
+  for (const raw of list.slice(0, MAX_MEMORY_PER_REPO)) {
     const r = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
     const parsed = memoryEntrySchema.safeParse({
       fingerprint: r.fingerprint,

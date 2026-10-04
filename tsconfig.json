@@ -8,6 +8,7 @@
     { "path": "packages/vcs-github" },
     { "path": "packages/vcs-gitlab" },
     { "path": "packages/vcs-local" },
+    { "path": "packages/cloud-contract" },
     { "path": "packages/cli" },
     { "path": "packages/eval" }
   ]

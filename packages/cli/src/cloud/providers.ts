@@ -1,3 +1,9 @@
+import {
+  CLOUD_PREFIX,
+  EFFORT_STYLES,
+  GATEWAY_PATH,
+  isCloudModel,
+} from "@open-cr-agent/cloud-contract";
 import type { CustomProvider } from "@open-cr-agent/core";
 import { OcraError } from "@open-cr-agent/core";
 import { errorMessage, REVIEW_DEFAULTS } from "@open-cr-agent/core/internal";
@@ -11,26 +17,8 @@ import { GatewayToken } from "./gateway-token.js";
 // signed-in session's access token. Without such a model nothing here reads
 // the session or touches the network.
 
-export const CLOUD_PREFIX = "ocra-";
 /** Where the access token travels to the runtime; never a user's variable (OCRA_ is refused in config). */
 export const CLOUD_TOKEN_ENV = "OCRA_CLOUD_ACCESS_TOKEN";
-// What ocra Cloud may name. Anything else is dropped before it reaches the
-// runtime's configuration.
-const PROVIDER_NAME = /^[a-z][a-z0-9-]{0,39}$/;
-const MODEL_ID = /^[\w./:@-]{1,200}$/;
-const GATEWAY_PATH = /^\/[\w./-]+$/;
-
-/** Whether `model` is ocra-<provider>/<model> with a provider name and model id ocra Cloud may use. */
-export function isCloudModel(model: string): boolean {
-  const slash = model.indexOf("/");
-  return (
-    slash > 0 &&
-    model.startsWith(CLOUD_PREFIX) &&
-    PROVIDER_NAME.test(model.slice(CLOUD_PREFIX.length, slash)) &&
-    MODEL_ID.test(model.slice(slash + 1))
-  );
-}
-
 // A review runs 25 minutes at most by default; start it with a token that
 // outlives that, and ask for one that outlives a longer run.
 const MIN_TOKEN_MS = 35 * 60_000;
@@ -186,8 +174,6 @@ export async function withCloudProviders(
 function minutes(ms: number): number {
   return Math.floor(ms / 60_000);
 }
-
-const EFFORT_STYLES: readonly NonNullable<CustomProvider["effort"]>[] = ["openai", "openrouter"];
 
 // How the gateway's provider takes a reasoning effort, as ocra Cloud lists
 // it; unlisted, the runtime's default (OpenAI's reasoning_effort). A style

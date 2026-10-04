@@ -19,10 +19,11 @@ Open-CR-Agent is an open-source multi-agent code review system. Deterministic en
 | `@open-cr-agent/vcs-github` | `VcsAdapter` for GitHub pull requests, over `vcs-platform` |
 | `@open-cr-agent/vcs-gitlab` | `VcsAdapter` for GitLab merge requests, over `vcs-platform` |
 | `@open-cr-agent/vcs-local` | `VcsAdapter` for the local git repository (workspace, range, commit) |
+| `@open-cr-agent/cloud-contract` | The wire contract with ocra Cloud: Zod schemas, limits, vocabularies, error codes, the redaction pass and its test vectors |
 | `@open-cr-agent/cli` | The `ocra` command |
 | `@open-cr-agent/eval` | Benchmark replay (AACR-Bench) and quality metrics |
 
-`core` depends on nothing inside the repo. Adapters depend only on `core`, and platform adapters also on `vcs-platform`, where the rules of the review conversation live once (ADR-0016). Only `cli` wires concrete adapters together.
+`core` depends on nothing inside the repo. Adapters depend only on `core`, and platform adapters also on `vcs-platform`, where the rules of the review conversation live once (ADR-0016). Only `cli` wires concrete adapters together. `cloud-contract` depends only on Zod, so ocra Cloud can use it as is.
 
 ## Core engineering principles
 

@@ -1,3 +1,17 @@
+import {
+  accountSchema,
+  type DeviceCode,
+  deviceCodeSchema,
+  memoryAnswerSchema,
+  type ProviderEntry,
+  preferencesAnswerSchema,
+  providerEntrySchema,
+  providersAnswerSchema,
+  saltSchema,
+  type TokenAnswer,
+  tokenAnswerSchema,
+  uploadAnswerSchema,
+} from "@open-cr-agent/cloud-contract";
 import { OcraError } from "@open-cr-agent/core";
 import { errorMessage } from "@open-cr-agent/core/internal";
 import type { z } from "zod";
@@ -5,24 +19,10 @@ import { VERSION } from "../version.js";
 import { type Credentials, readCredentials, writeCredentials } from "./credentials.js";
 import type { CloudDeps } from "./deps.js";
 import { withFileLock } from "./file-lock.js";
-import {
-  accountSchema,
-  type DeviceCode,
-  deviceCodeSchema,
-  memorySchema,
-  type ProviderEntry,
-  preferencesSchema,
-  providerEntrySchema,
-  providersSchema,
-  saltSchema,
-  type TokenAnswer,
-  tokenAnswerSchema,
-  uploadAnswerSchema,
-} from "./wire.js";
 
 // The one way to ocra Cloud (ADR-0024): every call goes through request(),
 // with its user agent and timeout, and every answer is checked against its
-// schema (wire.ts) before a caller sees it. Calls for the account carry the
+// schema (@open-cr-agent/cloud-contract) before a caller sees it. Calls for the account carry the
 // saved session's token and renew it on the way.
 
 export const USER_AGENT = `ocra/${VERSION}`;
@@ -107,7 +107,7 @@ export class CloudClient {
   ): Promise<Exclude<CloudResult<ProviderEntry[]>, CloudSessionLost>> {
     const res = await this.request(`${server}/api/providers`, {});
     if (!res.ok) return { kind: "status", status: res.status };
-    const body = await answerOf(res, providersSchema);
+    const body = await answerOf(res, providersAnswerSchema);
     if (!body) return { kind: "malformed" };
     const entries = body.providers.flatMap((entry) => {
       const parsed = providerEntrySchema.safeParse(entry);
@@ -155,13 +155,13 @@ export class CloudClient {
 
   /** The account's settings, as an object for the settings parsers. */
   preferences(): Promise<CloudResult<Record<string, unknown>>> {
-    return this.call("/api/preferences", preferencesSchema);
+    return this.call("/api/preferences", preferencesAnswerSchema);
   }
 
   /** The findings the account remembers, for one repository's hash or for all. */
   async memory(repoHash?: string): Promise<CloudResult<unknown[]>> {
     const query = repoHash === undefined ? "" : `?repo=${encodeURIComponent(repoHash)}`;
-    const answer = await this.call(`/api/memory${query}`, memorySchema);
+    const answer = await this.call(`/api/memory${query}`, memoryAnswerSchema);
     return answer.kind === "ok" ? { kind: "ok", value: answer.value.entries } : answer;
   }
 

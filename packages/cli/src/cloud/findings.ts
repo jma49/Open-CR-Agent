@@ -1,34 +1,17 @@
-import type { Finding, ReviewReport, Severity, Verification } from "@open-cr-agent/core";
-import { redact } from "./redact.js";
-
-export { REDACTED, redact } from "./redact.js";
+import {
+  MAX_FIELD,
+  MAX_FINDINGS,
+  MAX_TOTAL_BYTES,
+  redact,
+  type SharedFinding,
+} from "@open-cr-agent/cloud-contract";
+import type { Finding, ReviewReport } from "@open-cr-agent/core";
 
 // The findings a review sends ocra Cloud when the account shares them
-// (ADR-0028, 2): what the web needs to show the review, after a redaction
-// pass and within the server's bounds. The server redacts and bounds again;
+// (ADR-0028, 2): what the web needs to show the review, after the contract's
+// redaction pass and within its bounds. The server redacts and bounds again;
 // this pass keeps a secret from leaving the machine at all. It catches
 // patterns, not every secret.
-
-export type SharedFinding = {
-  fingerprint: string;
-  reviewer: string;
-  severity: Severity;
-  category: string;
-  verification: Verification;
-  file: string;
-  lineStart: number | null;
-  lineEnd: number | null;
-  title: string;
-  body: string;
-  suggestion: string | null;
-  code: string;
-  redacted?: true;
-  truncated?: true;
-};
-
-export const MAX_FINDINGS = 200;
-export const MAX_FIELD = 4_096;
-export const MAX_TOTAL_BYTES = 262_144;
 
 /** The report's findings as uploaded, redacted and bounded; `left` counts those not sent. */
 export function sharedFindings(report: Pick<ReviewReport, "findings">): {
@@ -80,7 +63,7 @@ function share(f: Finding): SharedFinding {
 
 // Bytes as sent, escapes included, so the body stays under the server's limit.
 function textBytes(f: SharedFinding): number {
-  return [f.title, f.body, f.suggestion ?? "", f.code].reduce(
+  return [f.title, f.body, f.suggestion ?? "", f.code ?? ""].reduce(
     (sum, s) => sum + Buffer.byteLength(JSON.stringify(s)),
     0,
   );

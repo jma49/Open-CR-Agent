@@ -1,5 +1,6 @@
 import { rm } from "node:fs/promises";
 import { parseArgs } from "node:util";
+import type { TokenAnswer } from "@open-cr-agent/cloud-contract";
 import { errorMessage } from "@open-cr-agent/core/internal";
 import { saveAccountSalt } from "../cloud/account-salt.js";
 import { signInPage } from "../cloud/browser.js";
@@ -11,7 +12,6 @@ import {
   writeCredentials,
 } from "../cloud/credentials.js";
 import { type CloudDeps, cloudUrl, DEFAULT_CLOUD_URL } from "../cloud/deps.js";
-import type { TokenAnswer } from "../cloud/wire.js";
 import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
 import { forTerminal } from "../io/terminal.js";
