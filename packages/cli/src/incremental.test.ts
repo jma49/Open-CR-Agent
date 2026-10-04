@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentEvent, AgentTaskSpec, OcraPlugin, ReviewReport } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
+import { uploadOf } from "./review/cloud-upload.js";
 import { BUILTIN_PLUGINS, type ReviewDeps } from "./review/command.js";
 import { run } from "./run.js";
 
@@ -104,7 +105,7 @@ function fixture() {
 }
 
 // Reports a finding on every file the task was given; fails when told to.
-function reviewer(options: { fail?: boolean } = {}) {
+function reviewer(options: { fail?: boolean; silent?: boolean } = {}) {
   const reviewed: string[][] = [];
   const script = async function* (spec: AgentTaskSpec): AsyncIterable<AgentEvent> {
     const files = ["a.ts", "b.ts"].filter((f) =>
@@ -115,7 +116,7 @@ function reviewer(options: { fail?: boolean } = {}) {
       yield { type: "error", taskId: spec.taskId, error: "model unavailable", retryable: false };
       return;
     }
-    for (const file of files) {
+    for (const file of options.silent ? [] : files) {
       const letter = file[0];
       yield {
         type: "finding",
@@ -192,6 +193,21 @@ describe("incremental re-review of a pull request", () => {
     const forced = await review(f, full, ["--full"]);
     expect(full.reviewed).toEqual([["a.ts", "b.ts"]]);
     expect(forced.scope).toEqual({ mode: "full", reason: "a full review was requested" });
+  });
+
+  it("credits a fix to the reviewer of the finding the earlier review published", async () => {
+    const f = fixture();
+    const first = await review(f, reviewer());
+    const reporter = first.findings.find((x) => x.file === "a.ts")?.reviewer;
+    expect(reporter).toBeDefined();
+
+    f.push({ "a.ts": "export const a = 2;\n" });
+    const second = await review(f, reviewer({ silent: true }));
+    expect(second.findings).toEqual([]);
+    expect(second.rereview?.fixed.map((x) => [x.file, x.reviewer])).toEqual([["a.ts", reporter]]);
+    // Gone from this report, the finding still counts for its reviewer.
+    const counts = uploadOf(second, "github", "f".repeat(64), 1).reviewers ?? {};
+    expect(counts[reporter as string]).toMatchObject({ fixed: 1 });
   });
 
   it("reviews everything again after a force-push and says why", async () => {

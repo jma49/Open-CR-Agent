@@ -150,6 +150,7 @@ function aggregate(
   const byVerification: Record<Verification, number> = { confirmed: 0, uncertain: 0, unchecked: 0 };
   const reviewers = new Map<string, ReviewerMetrics>();
   const reviewerOf = new Map<string, string>();
+  const recorded = new Map<string, string>();
   const unique = new Set<string>();
   const fixed = new Set<string>();
   const dismissed = new Set<string>();
@@ -197,18 +198,27 @@ function aggregate(
       if (!reviewerOf.has(finding.fingerprint))
         reviewerOf.set(finding.fingerprint, finding.reviewer);
     }
-    for (const f of report.rereview?.fixed ?? []) fixed.add(f.fingerprint);
-    for (const f of report.rereview?.dismissed ?? []) dismissed.add(f.fingerprint);
+    for (const f of report.rereview?.fixed ?? []) {
+      fixed.add(f.fingerprint);
+      if (f.reviewer && !recorded.has(f.fingerprint)) recorded.set(f.fingerprint, f.reviewer);
+    }
+    for (const f of report.rereview?.dismissed ?? []) {
+      dismissed.add(f.fingerprint);
+      if (f.reviewer && !recorded.has(f.fingerprint)) recorded.set(f.fingerprint, f.reviewer);
+    }
   }
   // A fingerprint can be dismissed in one review and gone in a later one:
   // the reviewer's decision stands.
   for (const fp of dismissed) fixed.delete(fp);
+  // The reviewer the earlier review recorded with the finding; reports from
+  // before it was recorded fall back to the first that reported the fingerprint.
+  const creditedTo = (fp: string) => recorded.get(fp) ?? reviewerOf.get(fp);
   for (const fp of fixed) {
-    const reviewer = reviewerOf.get(fp);
+    const reviewer = creditedTo(fp);
     if (reviewer) forReviewer(reviewer).fixed += 1;
   }
   for (const fp of dismissed) {
-    const reviewer = reviewerOf.get(fp);
+    const reviewer = creditedTo(fp);
     if (reviewer) forReviewer(reviewer).dismissed += 1;
   }
   for (const r of reviewers.values()) r.acceptanceRate = rate(r.fixed, r.dismissed);

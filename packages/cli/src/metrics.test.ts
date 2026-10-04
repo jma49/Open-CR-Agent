@@ -205,6 +205,42 @@ describe("ocra metrics", () => {
     expect(text.text()).toMatch(/^correctness\s+2\s+0\s+3\s+\$0\.75\s+1\s+0\s+100%$/m);
   });
 
+  it("credits a fix or a dismissal to the reviewer recorded with it, old reports by fingerprint", async () => {
+    const prior = (fingerprint: string, reviewer?: string) => ({
+      fingerprint,
+      title: "t",
+      file: "src/a.ts",
+      severity: "warning",
+      verification: "confirmed",
+      ...(reviewer ? { reviewer } : {}),
+    });
+    // The review that reported A and B left no session here (another machine,
+    // or cleaned up): only the recorded reviewer can tell who reported them.
+    // C's earlier report predates the field and is credited by fingerprint.
+    const dir = repoWithSessions({
+      "20261001T100000Z-000001": report({
+        runId: "20261001T100000Z-000001",
+        findings: [finding(C, "correctness")],
+      }),
+      "20261002T100000Z-000002": report({
+        runId: "20261002T100000Z-000002",
+        rereview: {
+          fixed: [prior(A, "security"), prior(C)],
+          notReproduced: [],
+          notRechecked: [],
+          unchanged: [],
+          dismissed: [prior(B, "performance")],
+        },
+      }),
+    });
+    const metrics = await collectMetrics(join(dir, ".ocra", "sessions"));
+    expect(metrics.outcomes).toEqual({ fixed: 2, dismissed: 1, acceptanceRate: 2 / 3 });
+    expect(metrics.reviewers.security).toMatchObject({ tasks: 0, fixed: 1, dismissed: 0 });
+    expect(metrics.reviewers.performance).toMatchObject({ fixed: 0, dismissed: 1 });
+    // Without a recorded reviewer, the fingerprint's reporter is credited.
+    expect(metrics.reviewers.correctness).toMatchObject({ fixed: 1, dismissed: 0 });
+  });
+
   it("limits the runs with --since, by the start time in the session id", async () => {
     const dir = repoWithSessions({
       "20261001T100000Z-000001": report({ runId: "20261001T100000Z-000001" }),

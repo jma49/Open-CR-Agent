@@ -131,9 +131,10 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
       const trusted = fixture.conversation({
         comments: [{ author: OCRA, body: summaryWith([A]) }],
       });
-      expect((await trusted.review.getPriorReview())?.findings.map((f) => f.fingerprint)).toEqual([
-        A,
-      ]);
+      // A state written before reviewers were recorded still reads, without one.
+      expect(
+        (await trusted.review.getPriorReview())?.findings.map((f) => [f.fingerprint, f.reviewer]),
+      ).toEqual([[A, undefined]]);
       const edited = fixture.conversation({
         comments: [{ author: OCRA, body: summaryWith([A]), editedBy: MAINTAINER }],
       });
@@ -145,6 +146,24 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
         comments: [{ author: MAINTAINER, body: summaryWith([A]) }],
       });
       expect(await planted.review.getPriorReview()).toBeUndefined();
+    });
+
+    it("remembers which reviewer reported each finding, dismissed ones included", async () => {
+      const first = fixture.conversation({});
+      await first.review.publish(
+        report([finding(A, { reviewer: "security" }), finding(B, { reviewer: "performance" })]),
+      );
+      const second = fixture.conversation({
+        comments: [{ author: OCRA, body: first.summary() }],
+        threads: [{ resolvedBy: MAINTAINER, comments: [{ author: OCRA, body: marker(B) }] }],
+      });
+      const prior = await second.review.getPriorReview();
+      expect(prior?.findings.map((f) => [f.fingerprint, f.reviewer, f.dismissed === true])).toEqual(
+        [
+          [A, "security", false],
+          [B, "performance", true],
+        ],
+      );
     });
 
     it("dismisses what a reviewer resolved or declined, never the author or an outsider", async () => {

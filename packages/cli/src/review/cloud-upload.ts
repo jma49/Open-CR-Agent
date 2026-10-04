@@ -95,8 +95,9 @@ export function uploadOf(
 
 // Counted as `ocra metrics` counts one report: a failed or timed-out task is
 // failed, a finding without a verification is unchecked, a dismissal outranks
-// a fix, and a fixed or dismissed finding is attributed to the reviewer of a
-// finding with its fingerprint in this report, or to none.
+// a fix, and a fixed or dismissed finding is attributed to the reviewer the
+// earlier review recorded for it, else to the reviewer of a finding with its
+// fingerprint in this report, else to none.
 function perReviewer(
   report: ReviewReport,
 ): Required<Pick<ReviewUpload, "reviewers" | "verification" | "outcomes">> {
@@ -132,18 +133,18 @@ function perReviewer(
     verification[finding.verification ?? "unchecked"] += 1;
     if (!reviewerOf.has(finding.fingerprint)) reviewerOf.set(finding.fingerprint, finding.reviewer);
   }
-  const dismissed = new Set((report.rereview?.dismissed ?? []).map((f) => f.fingerprint));
-  const fixed = new Set(
-    (report.rereview?.fixed ?? []).map((f) => f.fingerprint).filter((fp) => !dismissed.has(fp)),
+  const outcomeReviewer = (f: { fingerprint: string; reviewer?: string }) =>
+    f.reviewer ?? reviewerOf.get(f.fingerprint);
+  const dismissed = new Map(
+    (report.rereview?.dismissed ?? []).map((f) => [f.fingerprint, outcomeReviewer(f)]),
   );
-  for (const fp of fixed) {
-    const reviewer = reviewerOf.get(fp);
-    if (reviewer) of(reviewer).fixed += 1;
-  }
-  for (const fp of dismissed) {
-    const reviewer = reviewerOf.get(fp);
-    if (reviewer) of(reviewer).dismissed += 1;
-  }
+  const fixed = new Map(
+    (report.rereview?.fixed ?? [])
+      .filter((f) => !dismissed.has(f.fingerprint))
+      .map((f) => [f.fingerprint, outcomeReviewer(f)]),
+  );
+  for (const reviewer of fixed.values()) if (reviewer) of(reviewer).fixed += 1;
+  for (const reviewer of dismissed.values()) if (reviewer) of(reviewer).dismissed += 1;
   return {
     reviewers: Object.fromEntries([...reviewers].sort(([a], [b]) => a.localeCompare(b))),
     verification,

@@ -131,6 +131,9 @@ export interface PriorFinding {
   // it existed; such findings are never judged fixed by their code alone.
   quote?: QuoteSignature;
   verification?: Verification;
+  // The reviewer that reported it, so a fix or a dismissal is credited to it
+  // after the finding itself is gone; absent in state written before it existed.
+  reviewer?: string;
 }
 
 export interface PriorReview {

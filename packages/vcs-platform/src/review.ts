@@ -282,6 +282,7 @@ export class PlatformReview implements VcsAdapter {
           commented: commented.has(f.fingerprint),
           ...(f.quote ? { quote: f.quote } : {}),
           ...(f.verification ? { verification: f.verification } : {}),
+          reviewer: f.reviewer,
         })),
       ...quiet.filter((f) => !current.has(f.fingerprint)),
     ];

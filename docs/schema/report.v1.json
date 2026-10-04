@@ -493,6 +493,9 @@
                   "uncertain",
                   "unchecked"
                 ]
+              },
+              "reviewer": {
+                "type": "string"
               }
             },
             "required": [
@@ -534,6 +537,9 @@
                   "uncertain",
                   "unchecked"
                 ]
+              },
+              "reviewer": {
+                "type": "string"
               }
             },
             "required": [
@@ -575,6 +581,9 @@
                   "uncertain",
                   "unchecked"
                 ]
+              },
+              "reviewer": {
+                "type": "string"
               }
             },
             "required": [
@@ -616,6 +625,9 @@
                   "uncertain",
                   "unchecked"
                 ]
+              },
+              "reviewer": {
+                "type": "string"
               }
             },
             "required": [
@@ -657,6 +669,9 @@
                   "uncertain",
                   "unchecked"
                 ]
+              },
+              "reviewer": {
+                "type": "string"
               }
             },
             "required": [

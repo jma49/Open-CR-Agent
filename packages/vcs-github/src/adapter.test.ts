@@ -52,6 +52,7 @@ describe("GitHubAdapter", () => {
         file: "src/login.ts",
         severity: "warning",
         commented: true,
+        reviewer: "security",
       },
       {
         fingerprint: B,
@@ -59,6 +60,7 @@ describe("GitHubAdapter", () => {
         file: "src/login.ts",
         severity: "warning",
         commented: false,
+        reviewer: "security",
       },
     ]);
   });
@@ -234,6 +236,7 @@ describe("GitHubAdapter", () => {
         severity: "warning",
         commented: true,
         quote,
+        reviewer: "security",
       },
       open,
     ]);

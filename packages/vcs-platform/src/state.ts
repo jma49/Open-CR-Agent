@@ -46,6 +46,7 @@ const stateSchema = z.object({
           })
           .optional(),
         verification: verificationSchema.optional(),
+        reviewer: z.string().min(1).max(100).optional(),
       }),
     )
     .max(MAX_STATE_FINDINGS),
@@ -72,10 +73,11 @@ export function readState(body: string): ReviewState | undefined {
     if (!parsed.success) return undefined;
     const { head, pending, posted, tier } = parsed.data;
     return {
-      findings: parsed.data.findings.map(({ quote, verification, ...finding }) => ({
+      findings: parsed.data.findings.map(({ quote, verification, reviewer, ...finding }) => ({
         ...finding,
         ...(quote ? { quote } : {}),
         ...(verification ? { verification } : {}),
+        ...(reviewer ? { reviewer } : {}),
       })),
       ...(head ? { head } : {}),
       ...(pending ? { pending } : {}),
@@ -96,6 +98,7 @@ export function writeState(state: ReviewState): string {
     commented: f.commented,
     ...(f.quote ? { quote: f.quote } : {}),
     ...(f.verification ? { verification: f.verification } : {}),
+    ...(f.reviewer && f.reviewer.length <= 100 ? { reviewer: f.reviewer } : {}),
   }));
   // Without the full list of unfinished files the next run could skip one of
   // them, so a list that does not fit drops the head and forces a full review.

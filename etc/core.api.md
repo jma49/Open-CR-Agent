@@ -526,6 +526,8 @@ export interface OutputPriorFinding {
     // (undocumented)
     fingerprint: string;
     // (undocumented)
+    reviewer?: string;
+    // (undocumented)
     severity: Severity;
     // (undocumented)
     title: string;
@@ -621,6 +623,8 @@ export interface PriorFinding {
     fingerprint: string;
     // (undocumented)
     quote?: QuoteSignature;
+    // (undocumented)
+    reviewer?: string;
     // (undocumented)
     severity: Severity;
     // (undocumented)
@@ -912,6 +916,7 @@ export const reportOutputSchema: z.ZodObject<{
                 uncertain: "uncertain";
                 unchecked: "unchecked";
             }>;
+            reviewer: z.ZodOptional<z.ZodString>;
         }, z.core.$strict>>;
         notReproduced: z.ZodArray<z.ZodObject<{
             fingerprint: z.ZodString;
@@ -927,6 +932,7 @@ export const reportOutputSchema: z.ZodObject<{
                 uncertain: "uncertain";
                 unchecked: "unchecked";
             }>;
+            reviewer: z.ZodOptional<z.ZodString>;
         }, z.core.$strict>>;
         notRechecked: z.ZodArray<z.ZodObject<{
             fingerprint: z.ZodString;
@@ -942,6 +948,7 @@ export const reportOutputSchema: z.ZodObject<{
                 uncertain: "uncertain";
                 unchecked: "unchecked";
             }>;
+            reviewer: z.ZodOptional<z.ZodString>;
         }, z.core.$strict>>;
         unchanged: z.ZodArray<z.ZodObject<{
             fingerprint: z.ZodString;
@@ -957,6 +964,7 @@ export const reportOutputSchema: z.ZodObject<{
                 uncertain: "uncertain";
                 unchecked: "unchecked";
             }>;
+            reviewer: z.ZodOptional<z.ZodString>;
         }, z.core.$strict>>;
         dismissed: z.ZodArray<z.ZodObject<{
             fingerprint: z.ZodString;
@@ -972,6 +980,7 @@ export const reportOutputSchema: z.ZodObject<{
                 uncertain: "uncertain";
                 unchecked: "unchecked";
             }>;
+            reviewer: z.ZodOptional<z.ZodString>;
         }, z.core.$strict>>;
     }, z.core.$strict>>;
     tasks: z.ZodArray<z.ZodObject<{

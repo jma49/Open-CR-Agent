@@ -57,6 +57,9 @@ export interface OutputPriorFinding {
   file: string;
   severity: Severity;
   verification: Verification;
+  // Added in version 1 without a bump: absent when the earlier review's
+  // state did not record it.
+  reviewer?: string;
 }
 
 export interface ReportOutput {
@@ -164,6 +167,7 @@ function outputPrior(f: PriorFinding): OutputPriorFinding {
     file: f.file,
     severity: f.severity,
     verification: f.verification ?? "unchecked",
+    ...(f.reviewer ? { reviewer: f.reviewer } : {}),
   };
 }
 

@@ -74,6 +74,7 @@ const outputPriorFindingSchema = z.strictObject({
   file: z.string(),
   severity: severitySchema,
   verification: verificationSchema,
+  reviewer: z.string().optional(),
 });
 
 const refutedFindingSchema = z.strictObject({

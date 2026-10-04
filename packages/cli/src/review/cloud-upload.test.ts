@@ -155,6 +155,30 @@ describe("the review upload", () => {
     expect(up.outcomes).toEqual({ fixed: 2, dismissed: 1 });
   });
 
+  it("credits a fix or a dismissal to the reviewer the earlier review recorded", () => {
+    // The fixed finding is gone from this report, so only its recorded
+    // reviewer can claim it; a recorded reviewer outranks this report's.
+    const up = uploadOf(
+      {
+        ...report,
+        rereview: {
+          fixed: [{ fingerprint: "fp-gone", title: "t", file: "a", reviewer: "performance" }],
+          dismissed: [{ fingerprint: "fp-3", title: "t", file: "a", reviewer: "security" }],
+          notReproduced: [],
+          notRechecked: [],
+          unchanged: [],
+        },
+      } as unknown as ReviewReport,
+      "github",
+      "f".repeat(64),
+      1,
+    );
+    expect(up.reviewers?.performance).toMatchObject({ tasks: 0, fixed: 1, dismissed: 0 });
+    expect(up.reviewers?.security).toMatchObject({ fixed: 0, dismissed: 1 });
+    expect(up.reviewers?.logic).toMatchObject({ fixed: 0, dismissed: 0 });
+    expect(up.outcomes).toEqual({ fixed: 1, dismissed: 1 });
+  });
+
   it("never sends a fingerprint, a path or a title from findings or the re-review", () => {
     const up = uploadOf(report, "local", "f".repeat(64), 1);
     // Not vacuous: the re-review's entries are counted, so they were read.
