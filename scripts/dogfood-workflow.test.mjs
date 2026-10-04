@@ -12,32 +12,18 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-// The budget guard and the cost recorder of the dogfood workflow run inline
-// in its steps, because a called workflow runs in the caller's checkout,
-// where this repository's scripts are not. These tests run those scripts as
-// written, against a fake `gh`.
+// The dogfood workflow's scripted steps live next to the action that runs
+// them (.github/actions/dogfood), because a called workflow runs in the
+// caller's checkout, where this repository's files are not. These tests run
+// those scripts against a fake `gh`, and check the workflow's contract.
 const workflowPath = fileURLToPath(
   new URL("../.github/workflows/ocra-dogfood.yml", import.meta.url),
 );
 const workflow = readFileSync(workflowPath, "utf8");
 
-// The `run: |` block of the step with this id, without its indentation.
-/** @param {string} id */
-function stepScript(id) {
-  const lines = workflow.split("\n");
-  const start = lines.findIndex((line) => line.trim() === `- id: ${id}`);
-  if (start < 0) throw new Error(`no step ${id}`);
-  const runAt = lines.findIndex((line, i) => i > start && /^\s*run: \|\s*$/.test(line));
-  const runLine = lines[runAt];
-  if (runLine === undefined) throw new Error(`no run block in step ${id}`);
-  const indent = runLine.search(/\S/);
-  const body = [];
-  for (const line of lines.slice(runAt + 1)) {
-    if (line.trim() !== "" && line.search(/\S/) <= indent) break;
-    body.push(line.slice(indent + 2));
-  }
-  return body.join("\n");
-}
+/** @param {"guard" | "free-outcome" | "cost"} step */
+const stepScript = (step) =>
+  fileURLToPath(new URL(`../.github/actions/dogfood/${step}.sh`, import.meta.url));
 
 const hasBash = spawnSync("bash", ["-c", "true"]).status === 0;
 const hasJq = spawnSync("jq", ["--version"]).status === 0;
@@ -80,7 +66,7 @@ function runGuard({
   chmodSync(join(bin, "gh"), 0o755);
   const output = join(dir, "output");
   writeFileSync(output, "");
-  const result = spawnSync("bash", ["-c", stepScript("guard")], {
+  const result = spawnSync("bash", [stepScript("guard")], {
     encoding: "utf8",
     env: {
       PATH: `${bin}:${process.env.PATH}`,
@@ -218,7 +204,7 @@ function runFreeOutcome({ report, exitCode }) {
   const dir = mkdtempSync(join(tmpdir(), "ocra-free-"));
   const file = join(dir, "report.json");
   if (report !== undefined) writeFileSync(file, JSON.stringify(report));
-  const result = spawnSync("bash", ["-c", stepScript("free-outcome")], {
+  const result = spawnSync("bash", [stepScript("free-outcome")], {
     encoding: "utf8",
     env: {
       PATH: process.env.PATH,
@@ -277,7 +263,7 @@ function runCost({ report, outcome = "success", markAfterReport = false } = {}) 
   }
   const output = join(dir, "output");
   writeFileSync(output, "");
-  const result = spawnSync("bash", ["-c", stepScript("cost")], {
+  const result = spawnSync("bash", [stepScript("cost")], {
     cwd: dir,
     encoding: "utf8",
     env: {
@@ -339,6 +325,17 @@ describe("dogfood workflow contract", () => {
       /^ {4}uses: jma49\/Open-CR-Agent\/\.github\/workflows\/ocra-dogfood\.yml@main$/m,
     );
     expect(caller).toMatch(/^ {4}with:\n {6}model-source: openrouter\n {4}secrets:/m);
+  });
+
+  it("runs its scripted steps through the dogfood action at main", () => {
+    for (const step of ["guard", "free-outcome", "cost"]) {
+      expect(workflow).toMatch(
+        new RegExp(
+          `uses: jma49/Open-CR-Agent/\\.github/actions/dogfood@main\n(?: {8}.*\n)*? {8}with:\n {10}step: ${step}\n`,
+        ),
+      );
+    }
+    expect(workflow).not.toMatch(/uses: \.\/\.github\/actions\/dogfood/);
   });
 
   it("takes the free-quota action at main, the ref it runs from itself", () => {

@@ -55,7 +55,8 @@ jobs:
 
   # actionlint (with shellcheck, preinstalled on the runner) and zizmor's
   # offline audits of the workflows, action.yml and dependabot.yml, both at
-  # pinned versions; zizmor reads .github/zizmor.yml.
+  # pinned versions; zizmor reads .github/zizmor.yml. shellcheck checks the
+  # actions' shell scripts too.
   workflows:
     runs-on: ubuntu-latest
     steps:
@@ -75,6 +76,8 @@ jobs:
           "$RUNNER_TEMP/actionlint" -color
       - name: zizmor
         run: pipx run zizmor==1.30.1 --offline --format github .
+      - name: shellcheck
+        run: shellcheck .github/actions/*/*.sh
 
   # A pull request that changes a published package's source carries a
   # changeset, the entry for CHANGELOG.md (.changeset/README.md). Tests,

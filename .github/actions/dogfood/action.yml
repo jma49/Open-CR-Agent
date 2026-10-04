@@ -1,0 +1,34 @@
+# The dogfood workflow's scripted steps (ocra-dogfood.yml), one shell file
+# each next to this file, tested by scripts/dogfood-workflow.test.mjs. The
+# workflow runs in its callers' repositories with no checkout of this one and
+# uses this action at main, the ref it runs from itself: a pull request's
+# copy of a script never runs there. Each script reads the environment the
+# workflow step sets.
+name: ocra dogfood step
+description: Runs one of the dogfood workflow's steps (guard, free-outcome or cost).
+inputs:
+  step:
+    description: guard, free-outcome or cost.
+    required: true
+outputs:
+  allowed:
+    description: guard; whether a review may start.
+    value: ${{ steps.run.outputs.allowed }}
+  reserve:
+    description: guard; the cents a Vertex review reserves.
+    value: ${{ steps.run.outputs.reserve }}
+  name:
+    description: cost; the ledger artifact's name.
+    value: ${{ steps.run.outputs.name }}
+runs:
+  using: composite
+  steps:
+    - id: run
+      shell: bash
+      env:
+        STEP: ${{ inputs.step }}
+      run: |
+        case "$STEP" in
+          guard | free-outcome | cost) bash "$GITHUB_ACTION_PATH/$STEP.sh" ;;
+          *) echo "::error::unknown dogfood step '$STEP'"; exit 1 ;;
+        esac
