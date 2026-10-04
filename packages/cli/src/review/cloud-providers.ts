@@ -20,7 +20,7 @@ export async function withCloudProviders(
   models: ModelChains,
   providers: Readonly<Record<string, CustomProvider>>,
   env: Env,
-  deps: CloudDeps,
+  deps: CloudDeps | undefined,
   warn: (message: string) => void,
 ): Promise<{ providers: Record<string, CustomProvider>; env: Env }> {
   const wanted = new Map<string, Set<string>>();
@@ -38,14 +38,14 @@ export async function withCloudProviders(
   if (env.OCRA_CLOUD === "off") {
     throw new OcraError("CONFIG_INVALID", `Models name ocra Cloud (${names}) but OCRA_CLOUD=off`);
   }
-  const session = await cloudSession(deps, MIN_TOKEN_MS);
+  const session = deps && (await cloudSession(deps, MIN_TOKEN_MS));
   if (!session) {
     throw new OcraError(
       "CONFIG_CREDENTIALS_MISSING",
       `Models name ocra Cloud (${names}): sign in with ocra login`,
     );
   }
-  const res = await deps.fetch(`${session.server}/api/providers`, {
+  const res = await (deps as CloudDeps).fetch(`${session.server}/api/providers`, {
     signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) {

@@ -7,6 +7,17 @@
 import { OcraPlugin } from '@open-cr-agent/core';
 
 // @public (undocumented)
+type CloudDeps = {
+    env: Readonly<Record<string, string | undefined>>;
+    fetch: typeof fetch;
+    now: () => number;
+    sleep: (ms: number) => Promise<void>;
+    openBrowser: (url: string) => void;
+    credentialsPath: string;
+    clientName: string;
+};
+
+// @public (undocumented)
 interface Output {
     // (undocumented)
     write(chunk: string): unknown;
@@ -16,6 +27,8 @@ interface Output {
 interface ReviewDeps {
     // (undocumented)
     builtinPlugins: readonly OcraPlugin[];
+    // (undocumented)
+    cloud?: CloudDeps;
     // (undocumented)
     cwd: string;
     // (undocumented)

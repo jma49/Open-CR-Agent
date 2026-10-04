@@ -25,10 +25,11 @@ import { githubPlugin } from "@open-cr-agent/vcs-github";
 import { gitlabPlugin } from "@open-cr-agent/vcs-gitlab";
 import { localGitPlugin } from "@open-cr-agent/vcs-local";
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
-import { defaultCloudDeps } from "../cloud.js";
+import type { CloudDeps } from "../cloud.js";
 import { VERSION } from "../version.js";
 import type { ReviewArgs } from "./args.js";
 import { withCloudProviders } from "./cloud-providers.js";
+import { cloudEnabled, defaultModels, repoHash, uploadOf, uploadReview } from "./cloud-upload.js";
 import { type CliConfig, ConfigError } from "./config.js";
 import { renderPlan } from "./plan-render.js";
 import { type Output, ProgressPrinter } from "./progress.js";
@@ -66,6 +67,9 @@ export interface ReviewDeps {
   heartbeatMs: number;
   // Only tests replace it, to fake the GitHub and GitLab APIs.
   fetch?: typeof fetch;
+  // ocra Cloud: the signed-in session, default models and the upload. Absent,
+  // a review never reads a session or contacts ocra Cloud.
+  cloud?: CloudDeps;
   // Calls the handler on Ctrl-C or SIGTERM; returns a function that stops listening.
   onInterrupt?(handler: () => void): () => void;
 }
@@ -145,15 +149,18 @@ export async function reviewCommand(
 
   const sarif = await loadSarifLogs(args.importSarif ?? [], deps.cwd);
   const sampling = requestedSampling(config, args);
-  const cloud = await withCloudProviders(
-    config.models,
-    config.providers,
-    deps.env,
-    { ...defaultCloudDeps(deps.env), ...(deps.fetch ? { fetch: deps.fetch } : {}) },
-    warn,
-  );
+  const cloudDeps = deps.cloud;
+  const signedIn = cloudDeps !== undefined && (await cloudEnabled(cloudDeps));
+  let models = config.models;
+  if (cloudDeps && signedIn && Object.values(models).every((chain) => !chain?.length)) {
+    models = await defaultModels(cloudDeps);
+    if (Object.keys(models).length > 0) {
+      io.err.write("[ocra] No models configured: using your default models from ocra Cloud\n");
+    }
+  }
+  const cloud = await withCloudProviders(models, config.providers, deps.env, cloudDeps, warn);
   const runtime = registry.createRuntime(config.runtime, {
-    models: config.models,
+    models,
     env: cloud.env,
     providers: cloud.providers,
     ...(Object.keys(sampling).length > 0 ? { sampling } : {}),
@@ -168,6 +175,7 @@ export async function reviewCommand(
     interrupt.abort();
   });
   let report: ReviewReport;
+  const started = deps.now();
   try {
     report = await review({
       runId: session.id,
@@ -224,6 +232,18 @@ export async function reviewCommand(
       stopHolding?.();
     }
     io.err.write(`[ocra] Published the review to the ${target.publishesTo ?? "change request"}\n`);
+  }
+  if (signedIn && cloudDeps && !args.noUpload) {
+    const source = args.pullRequest ? "github" : args.mergeRequest ? "gitlab" : "local";
+    const upload = uploadOf(
+      report,
+      source,
+      await repoHash(root, cloudDeps.credentialsPath),
+      deps.now() - started,
+    );
+    if (await uploadReview(upload, cloudDeps, warn)) {
+      io.err.write("[ocra] Sent this review's counts to ocra Cloud (--no-upload to skip)\n");
+    }
   }
   return exitCode(report, io.err);
 }

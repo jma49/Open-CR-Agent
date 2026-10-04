@@ -34,6 +34,7 @@ export function defaultDeps(): ReviewDeps {
     builtinPlugins: BUILTIN_PLUGINS,
     runtimes: BUILTIN_RUNTIMES,
     writeFile: (path, content) => writeFile(path, content, "utf8"),
+    cloud: defaultCloudDeps(process.env),
     now: Date.now,
     heartbeatMs: 30_000,
     onInterrupt(handler) {

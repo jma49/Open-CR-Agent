@@ -150,3 +150,7 @@ The session is saved in `~/.config/ocra/credentials.json` (`$XDG_CONFIG_HOME/ocr
 ```
 
 Such models are unpriced: the reported cost and `--max-cost-usd` do not count them, and ocra warns so. The prompts and the code they quote then pass through ocra Cloud on their way to the provider; it records the model, status, token counts and duration of each call, never the bodies. A review that names no `ocra-` model reads no session and never contacts ocra Cloud, and a provider the configuration declares under an `ocra-` name keeps its own declaration.
+
+When signed in and the repository configures no models (no `models` in the configuration and no `OCRA_MODEL_*`), `ocra review` uses the default models you chose on the server's Default models page, and says so.
+
+After each review, a signed-in CLI sends ocra Cloud the review's counts: the verdict, whether every file was reviewed, how many findings of each severity, files and tasks, tokens, cost and time, the source (local, GitHub, GitLab) and the ocra version. It never sends a path, a title, a finding's text or code. The repository is sent as a SHA-256 of its origin URL (credentials removed) salted with a random value kept in `upload-salt` next to the credentials, so the server can group reviews of one repository without learning which it is; the same repository on another machine gets another hash. `--no-upload` skips this for one review, `OCRA_CLOUD=off` for all, and a failed upload is only a warning.

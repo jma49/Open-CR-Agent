@@ -32,6 +32,8 @@ export interface ReviewArgs {
   importSarif?: string[];
   // Read this file instead of the repository's .ocra/config.json.
   configFile?: string;
+  // Do not send this review's counts to ocra Cloud.
+  noUpload?: true;
   // Override the configuration's sampling.
   temperature?: number;
   seed?: number;
@@ -73,6 +75,8 @@ Options:
                      .ocra/config.json; it applies with --no-repo-config too
   --no-repo-config   Ignore .ocra/config.json and its plugins (for untrusted
                      code); models come from OCRA_MODEL_* variables or --config
+  --no-upload        When signed in to ocra Cloud, do not send this review's
+                     counts (verdict, numbers of findings, files, tokens)
   -h, --help         Show help
 `;
 
@@ -103,6 +107,7 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
   if (mergeRequest) args.mergeRequest = mergeRequest;
   if (values.output !== undefined) args.output = values.output;
   if (values["no-repo-config"]) args.ignoreRepoConfig = true;
+  if (values["no-upload"]) args.noUpload = true;
   if (values.ultra) args.ultra = true;
   if (values.full) {
     if (!pullRequest && !mergeRequest) throw new UsageError("--full needs --pr or --mr");
@@ -168,6 +173,7 @@ function parse(argv: string[]) {
       format: { type: "string" },
       output: { type: "string" },
       "no-repo-config": { type: "boolean" },
+      "no-upload": { type: "boolean" },
       config: { type: "string" },
       reviewers: { type: "string" },
       "max-cost-usd": { type: "string" },
