@@ -75,9 +75,11 @@ Stages are inserted into, not replaced: whoever swaps Verify or Judge gets a pip
 
 When the direction's standing credit line exists, M5 and M6 fold into M11 below.
 
-### Year one (to 2027 Q3): prove the reference reviewer, extract the engine
+### Now: prove the reference reviewer, extract the engine
 
-The year's success condition is not a list of interfaces: it is three external teams running ocra for a month, and a per-reviewer precision number published from a golden set large enough to see a five-point change. Everything else serves those two.
+The roadmap sets no deadlines: each phase starts when the one before it has shown what it set out to show, and ships piece by piece as each item lands. Getting ocra in front of users comes first: M13 starts now, alongside M10–M12, and nothing waits for the contracts to be complete.
+
+This phase's success condition is not a list of interfaces: it is three external teams running ocra on their real pull requests, and a per-reviewer precision number published from a golden set large enough to see a five-point change. Everything else serves those two.
 
 **M10 — Contracts** (no credit). The engine becomes something a program, not only a shell, can call, and its shared model becomes a specification.
 
@@ -87,9 +89,9 @@ The year's success condition is not a list of interfaces: it is three external t
 4. **A second `AgentRuntime`**, a direct SDK tool loop that does not go through OpenCode, and with it the runtime conformance suite: no write, no shell, no outbound network but the model endpoint. It also removes OpenCode's catalog fetch and npm plugin install from review time. Landed as ADR-0020 (`runtime-direct`, declared endpoints only; the shared loop logic in core; the suite runs against both runtimes).
 5. **Reviewer as an entity**: scope, tool set and output schema declared, not only a prompt and a tier; finding processors at the two insertion points. Design proposed in ADR-0021: the per-reviewer tool set can land now; processors land with their first customer (M12 policy, the adversarial canary check); one output schema until a second shape exists.
 6. **Sinks**: SARIF and the platform behind one contract, so a report can go to more than one place in a run.
-7. Carried over from 0.2.0: #288 (neutralize posted text without touching code spans), #289 (the GitHub setup people with push access cannot change, end to end), #290 (the separate GitLab reviewer project), and the live GitLab check.
+7. Carried over from 0.2.0: #289 (the GitHub setup people with push access cannot change, end to end), #290 (the separate GitLab reviewer project), and the live GitLab check. #288 landed in #302.
 
-**M11 — Evidence** (a standing credit line: a few dollars a month for the nightly test, tens for golden runs).
+**M11 — Evidence** (a standing credit line: cents a run for the nightly test, tens of dollars for golden runs; the free OpenRouter model covers what it can).
 
 1. A nightly live smoke test in CI on a two-file pull request with the cheapest model, gated by a secret: the first real-model integration test the project has. The workflow exists (`nightly-live.yml`: a fixed seven-file change of this repository on the free OpenRouter model with the `direct` runtime, every task completed, $0, gated by the `OCRA_LIVE_SMOKE` variable and the `OPENROUTER_API_KEY` secret); it runs once the maintainer sets both.
 2. The golden set grown until a five-point change is visible; precision and recall published per reviewer, per model and per language, with cost per change, as a trend across releases.
@@ -102,16 +104,16 @@ The year's success condition is not a list of interfaces: it is three external t
 2. **A run id** through logs, comments, the report and the session file; the event schema versioned and published. The run id landed (the session id, in the report as `runId`, in the progress output, the summary comment and the SARIF log); the event schema is still internal.
 3. Minimal metrics an operations team can scrape from session files: runs, cost, findings, dismissals, acceptance rate, per reviewer. Landed as `ocra metrics` (text and versioned JSON over the sessions' `report.json`).
 
-**M13 — Use** (people, not code). Three external teams on the Action or the GitLab job for a month, with their dismissals and replies feeding the golden set; the three-maintainer conversations from M8. If no team will run it, year two starts with the product layer, not the control plane.
+**M13 — Use** (people, not code; starts now). Three external teams on the Action or the GitLab job, reviewing their real pull requests, with their dismissals and replies feeding the golden set; the three-maintainer conversations from M8. If no team will run it, the next phase starts with the product layer, not the control plane.
 
-### Year two: the control plane, driven by year one's numbers
+### Next: the control plane, driven by the numbers of the phase before
 
-- **M14 — Control plane.** A service that receives webhooks, queues jobs, holds keys and budgets per organization and writes an audit log; each job is one call of the year-one `review()` entry. Event-driven here, not inside the engine.
+- **M14 — Control plane.** A service that receives webhooks, queues jobs, holds keys and budgets per organization and writes an audit log; each job is one call of the `review()` entry. Event-driven here, not inside the engine.
 - **M15 — Organization memory and context providers.** Organization-scoped memory with owners and expiry; `callers` and `ownership` as the first providers, each measured for recall before the next; a code graph only if they move the number.
 - **M16 — Reach on demand.** Bitbucket or Azure DevOps, whichever is asked for first, through the conformance suite; ocra as an MCP server for agent IDEs; OpenTelemetry export once there are sessions to aggregate.
 - **Governance.** A second maintainer, an issue-response commitment and a version-support policy, since a buyer asks who is accountable before asking what the contracts are.
 
-### Year three: an ecosystem
+### Later: an ecosystem
 
 - **M17 — Certified extensions.** Third-party reviewers, analyzers, runtimes and adapters registered and certified against the conformance suites, the way CSI drivers are.
 - The Finding specification and the Reviewer and Runtime contracts published as documents of their own, open to implementations outside this repository.
@@ -125,14 +127,14 @@ What a company checks before adopting a code review tool, and where ocra is. Upd
 |---|---|
 | Install | npm with provenance; the Action; a container image with attested provenance |
 | Platforms | GitHub; GitLab (GitLab.com and self-managed), tested against a fake API |
-| Embedding | The CLI only; no public engine API yet (M10) |
+| Embedding | The CLI, and the `review()` entry with its Embedding page (a contract under the 0.x rule); the curated export surface waits (M10) |
 | Data stays with the customer | Runs in the customer's CI with the customer's model keys; no ocra service in between; your own OpenAI-compatible endpoint; corporate proxies and CA bundles pass through |
-| Model providers | Any provider in OpenCode's catalog whose SDK OpenCode bundles (all but 7 of 225), and declared endpoints; tested live: Gemini on Vertex and the Gemini API |
+| Model providers | Any provider in OpenCode's catalog whose SDK OpenCode bundles (all but 7 of 225), and declared endpoints, through OpenCode or the `direct` runtime; tested live: Gemini on Vertex, the Gemini API, and a free model through OpenRouter |
 | Security | Threat model with who controls the pipeline, adversarial tier, `SECURITY.md` with private reporting, one conformance suite for every platform's trust rules, a security audit of M9 with every finding fixed or documented (2026-09-30). For a same-project GitLab merge request the review is advice its author could forge (#290 tries a fix) |
-| Supply chain | Trusted publishing, SLSA provenance required by the Action, the package check in its own job, tarball digests carried from pack to publish, an attested image; no code is fetched at review time (OpenCode's npm installs go to a refusing local registry), only the pricing catalog (M10 item 4 removes it) |
+| Supply chain | Trusted publishing, SLSA provenance required by the Action, the package check in its own job, tarball digests carried from pack to publish, an attested image; no code is fetched at review time (OpenCode's npm installs go to a refusing local registry), only the pricing catalog, and with the `direct` runtime not even that |
 | Cost control | Per-run spend limit that stops running tasks and says what it left, task cap, token and dollar reporting, prices required for declared models |
 | Policy | Repository and remote configuration; no organization-level policy the repository cannot override (M12) |
-| Integrations | Versioned JSON report; SARIF 2.1.0 out; no SARIF in (M10) |
+| Integrations | Versioned JSON report with a published JSON Schema; SARIF 2.1.0 out; SARIF in (`--import-sarif`); no sinks contract yet (M10) |
 | Observability | Session files with cost, tokens and latency per run, and one run id across the session directory, the report, the progress output, the summary comment and the SARIF log; `ocra metrics` over the session reports; no published event schema (M12) |
 | Quality evidence | 16 golden cases, one run, agent labels spot-checked by a second model; a nightly live smoke workflow on a free model, waiting for its secret; golden runs paused with the credit (M11) |
 | Support and stability | Early 0.x; the Stability and support page names the contracts; one maintainer |
@@ -140,7 +142,7 @@ What a company checks before adopting a code review tool, and where ocra is. Upd
 
 ## Not now
 
-- **A hosted service or GitHub App before year two.** It needs users and hosting money; the CLI, the Action and the image already let a company run ocra inside its own CI with its own keys, which is what self-hosting customers ask for. The year-one `review()` entry is what the service is built on.
+- **A hosted service or GitHub App before the control-plane phase.** It needs users and hosting money; the CLI, the Action and the image already let a company run ocra inside its own CI with its own keys, which is what self-hosting customers ask for. The `review()` entry is what the service is built on.
 - **Replaceable pipeline stages.** Insertion points, not replacement (see Direction).
 - **A code graph, AST or call-graph context** before one provider is shown to raise recall.
 - **An embedding store for memory** before fingerprint matching is shown to be the limit.
@@ -158,5 +160,5 @@ What a company checks before adopting a code review tool, and where ocra is. Upd
 ## Positioning, to be tested
 
 1. **The reviewer you can run on strangers' pull requests.** Supported by M8; tested by talking to open-source maintainers.
-2. **The engine review agents are built on**: stable contracts, a shared finding model, and a conformance suite for every pluggable part. Decided on 2026-10-01; tested by whether anyone builds on the year-one contracts.
+2. **The engine review agents are built on**: stable contracts, a shared finding model, and a conformance suite for every pluggable part. Decided on 2026-10-01; tested by whether anyone builds on the contracts.
 3. **What large tools do not cover: GitLab and self-hosted deployments, then Gitee and domestic models.** M9 built the reach; dogfood alone cannot show demand.
