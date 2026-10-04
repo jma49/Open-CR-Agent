@@ -27,5 +27,6 @@
 | [0023](0023-optional-opencode-runtime.md) | The OpenCode runtime is an optional dependency of the CLI, imported only when the configured runtime needs it; the Action's `opencode: false` installs without it (11 MB instead of 175 MB); no install cache |
 | [0024](0024-ocra-cloud.md) | ocra Cloud: open core plus an optional hosted service on the published packages; Phase 1 is login (device flow), the user's own key kept in the cloud behind an allowlisted gateway that logs no bodies, metadata-only upload with content opt-in, and a web view; the hosted GitHub App is Phase 2, ocra-provided models Phase 3 |
 | [0025](0025-per-agent-models-and-effort.md) | Models and reasoning effort per agent (reviewers, verifier, judge, helpers), in `.ocra/config.json` or as ocra Cloud account defaults layered under the repository's settings; runtimes map one level vocabulary to each provider and drop what a provider cannot express |
+| [0026](0026-hosted-review-compute.md) | Proposed: hosted reviews for the ocra Cloud GitHub App run in Cloudflare Containers (Sandbox SDK), one microVM per review, credentials injected outside the sandbox, egress limited to GitHub and the gateway; Cloud Run Jobs as the fallback |
 
 Copy [0000-template.md](0000-template.md) to add a new record.
