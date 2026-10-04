@@ -204,6 +204,8 @@ The plan, the reasoning and what is deliberately not built: [roadmap](docs/roadm
 
 ## Packages
 
+To use ocra you install one package, `@open-cr-agent/cli`; it brings the others it needs. The rest are listed for people who embed the engine or build on its contracts.
+
 | Package | Responsibility |
 |---|---|
 | `@open-cr-agent/core` | Domain types, pipeline stages, `VcsAdapter` / `AgentRuntime` / plugin contracts; depends on nothing in the repo |
@@ -213,7 +215,7 @@ The plan, the reasoning and what is deliberately not built: [roadmap](docs/roadm
 | `@open-cr-agent/vcs-github` | `VcsAdapter` for GitHub pull requests |
 | `@open-cr-agent/vcs-gitlab` | `VcsAdapter` for GitLab merge requests |
 | `@open-cr-agent/vcs-local` | `VcsAdapter` for the local git repository |
-| `@open-cr-agent/cloud-contract` | The wire contract with ocra Cloud: Zod schemas, limits, vocabularies, error codes, the redaction pass and its vectors; depends only on Zod |
+| `@open-cr-agent/cloud-contract` | The wire contract with ocra Cloud (Zod schemas, limits, vocabularies, error codes, the redaction pass); installed with the CLI, not used directly |
 | `@open-cr-agent/cli` | The `ocra` command |
 | `@open-cr-agent/eval` | Benchmark replay and quality metrics |
 
