@@ -116,6 +116,12 @@ export async function withCloudProviders(
   if (answer.kind === "status" && (answer.status >= 500 || answer.status === 429)) {
     throw unreachable(`HTTP ${answer.status}`);
   }
+  if (answer.kind === "malformed") {
+    throw new OcraError(
+      "RUNTIME_START_FAILED",
+      "ocra Cloud's answer for its providers is not a list of providers",
+    );
+  }
   if (answer.kind !== "ok") {
     throw new OcraError(
       "RUNTIME_START_FAILED",
@@ -127,8 +133,11 @@ export async function withCloudProviders(
   const declared: Record<string, CustomProvider> = { ...providers };
   for (const [id, modelIds] of wanted) {
     const name = id.slice(CLOUD_PREFIX.length);
-    const paths = listed.find((p) => p.name === name)?.paths ?? [];
-    const valid = paths.filter((path) => typeof path === "string" && GATEWAY_PATH.test(path));
+    const entry = listed.find((p) => p.name === name);
+    const paths = entry?.paths ?? [];
+    const valid = paths.filter(
+      (path): path is string => typeof path === "string" && GATEWAY_PATH.test(path),
+    );
     if (valid.length < paths.length) {
       warn(
         `ignoring ${paths.length - valid.length} gateway path(s) ocra Cloud listed for "${name}" that are not plain paths`,
@@ -145,6 +154,7 @@ export async function withCloudProviders(
       baseUrl: `${session.server}/api/gateway/${name}${chat.slice(0, -"/chat/completions".length)}`,
       apiKeyEnv: CLOUD_TOKEN_ENV,
       models: Object.fromEntries([...modelIds].map((m) => [m, { input: 0, output: 0 }])),
+      ...effortStyleOf(entry?.effort, name, warn),
     };
   }
   warn(
@@ -175,4 +185,23 @@ export async function withCloudProviders(
 
 function minutes(ms: number): number {
   return Math.floor(ms / 60_000);
+}
+
+const EFFORT_STYLES: readonly NonNullable<CustomProvider["effort"]>[] = ["openai", "openrouter"];
+
+// How the gateway's provider takes a reasoning effort, as ocra Cloud lists
+// it; unlisted, the runtime's default (OpenAI's reasoning_effort). A style
+// this version of ocra does not know is refused rather than guessed.
+function effortStyleOf(
+  style: unknown,
+  name: string,
+  warn: (message: string) => void,
+): Pick<CustomProvider, "effort"> {
+  if (style === undefined) return {};
+  const known = EFFORT_STYLES.find((s) => s === style);
+  if (known) return { effort: known };
+  warn(
+    `ignoring the effort style ocra Cloud listed for "${name}", which this version of ocra does not know; efforts go as OpenAI's reasoning_effort`,
+  );
+  return {};
 }

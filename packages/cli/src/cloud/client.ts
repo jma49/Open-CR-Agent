@@ -10,7 +10,10 @@ import {
   type DeviceCode,
   deviceCodeSchema,
   memorySchema,
+  type ProviderEntry,
   preferencesSchema,
+  providerEntrySchema,
+  providersSchema,
   saltSchema,
   type TokenAnswer,
   tokenAnswerSchema,
@@ -101,13 +104,16 @@ export class CloudClient {
   /** The gateway's providers, listed without a session. */
   async providers(
     server: string,
-  ): Promise<
-    { kind: "ok"; value: { name: string; paths: string[] }[] } | { kind: "status"; status: number }
-  > {
+  ): Promise<Exclude<CloudResult<ProviderEntry[]>, CloudSessionLost>> {
     const res = await this.request(`${server}/api/providers`, {});
     if (!res.ok) return { kind: "status", status: res.status };
-    const body = (await res.json()) as { providers?: { name: string; paths: string[] }[] };
-    return { kind: "ok", value: body.providers ?? [] };
+    const body = await answerOf(res, providersSchema);
+    if (!body) return { kind: "malformed" };
+    const entries = body.providers.flatMap((entry) => {
+      const parsed = providerEntrySchema.safeParse(entry);
+      return parsed.success ? [parsed.data] : [];
+    });
+    return { kind: "ok", value: entries };
   }
 
   /**

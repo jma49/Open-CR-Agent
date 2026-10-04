@@ -36,6 +36,17 @@ export const preferencesSchema = z.record(z.string(), z.unknown());
 // Each entry is read on its own by parseAccountMemory, which skips what it cannot use.
 export const memorySchema = z.object({ entries: z.array(z.unknown()) });
 
+// The gateway's providers. An entry that does not fit is left out on its
+// own; paths are checked one by one where they are used, and an effort
+// style the CLI does not know is refused there with a warning.
+export const providersSchema = z.object({ providers: z.array(z.unknown()) });
+export const providerEntrySchema = z.object({
+  name: z.string(),
+  paths: z.array(z.unknown()),
+  effort: z.unknown().optional(),
+});
+export type ProviderEntry = z.infer<typeof providerEntrySchema>;
+
 // How many shared findings the server kept; anything else counts as none.
 export const uploadAnswerSchema = z.object({
   findings: z.number().int().positive().optional().catch(undefined),

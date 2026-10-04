@@ -20,7 +20,11 @@ const listing = {
   ],
 };
 
-function setup(saved?: Partial<Credentials>, env: Record<string, string> = {}) {
+function setup(
+  saved?: Partial<Credentials>,
+  env: Record<string, string> = {},
+  providersAnswer: () => Response = () => Response.json(listing),
+) {
   const dir = mkdtempSync(join(tmpdir(), "ocra-cloudp-"));
   const path = join(dir, "ocra", "credentials.json");
   if (saved) {
@@ -43,7 +47,7 @@ function setup(saved?: Partial<Credentials>, env: Record<string, string> = {}) {
     fetch: (async (input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(String(input));
       calls.push(`${init?.method ?? "GET"} ${url.pathname}`);
-      if (url.pathname === "/api/providers") return Response.json(listing);
+      if (url.pathname === "/api/providers") return providersAnswer();
       if (url.pathname === "/api/device/refresh") {
         return Response.json({
           access_token: "ocra_cli_new",
@@ -206,5 +210,49 @@ describe("models through ocra Cloud", () => {
       const e = await failure(withCloudProviders([[model]], {}, {}, t.deps, t.warn));
       expect(isOcraError(e) && e.code).toBe("CONFIG_INVALID");
     }
+  });
+
+  it("refuses a providers answer that is not a list, with an ocra error, not a crash", async () => {
+    for (const answer of [
+      () => new Response("<html>"),
+      () => Response.json({ providers: "all" }),
+    ]) {
+      const t = setup({}, {}, answer);
+      const e = await failure(withCloudProviders([["ocra-openrouter/m"]], {}, {}, t.deps, t.warn));
+      expect(isOcraError(e) && e.code).toBe("RUNTIME_START_FAILED");
+      expect((e as Error).message).toContain("not a list of providers");
+    }
+    const odd = setup({}, {}, () =>
+      Response.json({ providers: [{ name: "openrouter", paths: "/v1/chat/completions" }] }),
+    );
+    const e = await failure(
+      withCloudProviders([["ocra-openrouter/m"]], {}, {}, odd.deps, odd.warn),
+    );
+    expect(isOcraError(e) && e.code).toBe("CONFIG_INVALID");
+    expect((e as Error).message).toContain('no OpenAI-compatible chat endpoint for "openrouter"');
+  });
+
+  it("takes the effort style ocra Cloud lists, and refuses one it does not know", async () => {
+    const styled = (effort: string) => () =>
+      Response.json({
+        providers: [{ name: "openrouter", paths: ["/v1/chat/completions"], effort }],
+      });
+    const known = setup({}, {}, styled("openrouter"));
+    const out = await withCloudProviders([["ocra-openrouter/m"]], {}, {}, known.deps, known.warn);
+    expect(out.providers["ocra-openrouter"]?.effort).toBe("openrouter");
+
+    const unknown = setup({}, {}, styled("anthropic\u001b[31m"));
+    const other = await withCloudProviders(
+      [["ocra-openrouter/m"]],
+      {},
+      {},
+      unknown.deps,
+      unknown.warn,
+    );
+    expect(other.providers["ocra-openrouter"]).not.toHaveProperty("effort");
+    expect(unknown.warnings.join("\n")).toContain(
+      'ignoring the effort style ocra Cloud listed for "openrouter"',
+    );
+    expect(unknown.warnings.join("\n")).not.toContain("anthropic");
   });
 });
