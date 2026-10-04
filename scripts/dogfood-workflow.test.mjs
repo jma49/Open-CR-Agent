@@ -42,7 +42,15 @@ const today = () => new Date().toISOString().slice(0, 10);
 // A GitHub Actions expression, as the workflow spells it.
 const expression = (inner) => `\${{ ${inner} }}`;
 
-function runGuard({ listing = [], ghFails = false, budget = "24", switch: on = "on" } = {}) {
+function runGuard({
+  listing = [],
+  ghFails = false,
+  budget = "24",
+  switch: on = "on",
+  source = "vertex",
+  key = "",
+  keyInfo,
+} = {}) {
   const dir = mkdtempSync(join(tmpdir(), "ocra-guard-"));
   const bin = join(dir, "bin");
   mkdirSync(bin);
@@ -54,6 +62,15 @@ function runGuard({ listing = [], ghFails = false, budget = "24", switch: on = "
       : `#!/bin/sh\ncat '${join(dir, "listing")}'\n`,
   );
   chmodSync(join(bin, "gh"), 0o755);
+  // OpenRouter's GET /key, or a failed request when keyInfo is undefined.
+  writeFileSync(join(dir, "key.json"), keyInfo === undefined ? "" : JSON.stringify(keyInfo));
+  writeFileSync(
+    join(bin, "curl"),
+    keyInfo === undefined
+      ? "#!/bin/sh\necho 'curl: (22) 503' >&2\nexit 22\n"
+      : `#!/bin/sh\ncat '${join(dir, "key.json")}'\n`,
+  );
+  chmodSync(join(bin, "curl"), 0o755);
   const output = join(dir, "output");
   writeFileSync(output, "");
   const result = spawnSync("bash", ["-c", stepScript("guard")], {
@@ -65,6 +82,11 @@ function runGuard({ listing = [], ghFails = false, budget = "24", switch: on = "
       BUDGET_USD: budget,
       DAILY_USD: "2",
       CAP_USD: "2",
+      SOURCE: source,
+      OPENROUTER_API_KEY: key,
+      FREE_MODEL: "vendor/free",
+      FREE_MAX_TASKS: "8",
+      FREE_MIN_REQUESTS: "40",
       GITHUB_OUTPUT: output,
       GITHUB_STEP_SUMMARY: join(dir, "summary"),
     },
@@ -79,7 +101,7 @@ function runGuard({ listing = [], ghFails = false, budget = "24", switch: on = "
   try {
     summary = readFileSync(join(dir, "summary"), "utf8");
   } catch {}
-  return { status: result.status, outputs, summary };
+  return { status: result.status, outputs, summary, stdout: result.stdout };
 }
 
 describe.skipIf(!hasBash)("dogfood budget guard", () => {
@@ -146,6 +168,93 @@ describe.skipIf(!hasBash)("dogfood budget guard", () => {
   });
 });
 
+describe.skipIf(!hasBash || !hasJq)("dogfood guard on the free model", () => {
+  const free = (remaining) => ({ data: { free_model_daily_requests: { remaining } } });
+
+  it("allows a review without a ledger while the day has requests left", () => {
+    const { status, outputs, summary } = runGuard({
+      source: "openrouter",
+      key: "k",
+      keyInfo: free(600),
+      ghFails: true,
+    });
+    expect(status).toBe(0);
+    expect(outputs).toEqual({ allowed: "true" });
+    expect(summary).toContain("free requests left today: 600");
+  });
+
+  it("skips with a notice when the day's free requests are nearly spent", () => {
+    const { status, outputs, stdout } = runGuard({
+      source: "openrouter",
+      key: "k",
+      keyInfo: free(12),
+    });
+    expect(status).toBe(0);
+    expect(outputs.allowed).toBe("false");
+    expect(stdout).toContain("::notice title=No ocra review::the free model quota is spent");
+  });
+
+  it("reviews when OpenRouter does not report the quota", () => {
+    expect(runGuard({ source: "openrouter", key: "k" }).outputs.allowed).toBe("true");
+    expect(
+      runGuard({ source: "openrouter", key: "k", keyInfo: { data: {} } }).outputs.allowed,
+    ).toBe("true");
+  });
+
+  it("starts nothing while the switch is off, and fails without a key or on an unknown source", () => {
+    const off = runGuard({ source: "openrouter", key: "k", keyInfo: free(600), switch: "off" });
+    expect(off.outputs.allowed).toBe("false");
+    expect(runGuard({ source: "openrouter", keyInfo: free(600) }).status).not.toBe(0);
+    expect(runGuard({ source: "gemini" }).status).not.toBe(0);
+  });
+});
+
+function runFreeOutcome({ report, exitCode }) {
+  const dir = mkdtempSync(join(tmpdir(), "ocra-free-"));
+  const file = join(dir, "report.json");
+  if (report !== undefined) writeFileSync(file, JSON.stringify(report));
+  const result = spawnSync("bash", ["-c", stepScript("free-outcome")], {
+    encoding: "utf8",
+    env: {
+      PATH: process.env.PATH,
+      EXIT_CODE: exitCode,
+      REPORT: report === undefined ? "" : file,
+      GITHUB_STEP_SUMMARY: join(dir, "summary"),
+    },
+  });
+  return { status: result.status, stdout: result.stdout };
+}
+
+describe.skipIf(!hasBash || !hasJq)("dogfood free model outcome", () => {
+  const quota = { status: "failed", error: "HTTP 429: free-models-per-day-stealth" };
+
+  it("reads a review that every task lost to the quota as skipped, not failed", () => {
+    const { status, stdout } = runFreeOutcome({ report: { tasks: [quota, quota] }, exitCode: "2" });
+    expect(status).toBe(0);
+    expect(stdout).toContain("::notice title=No ocra review::the free model quota is spent");
+  });
+
+  it("says when the quota ran out during a review", () => {
+    const { stdout } = runFreeOutcome({
+      report: { tasks: [{ status: "completed" }, quota] },
+      exitCode: "3",
+    });
+    expect(stdout).toContain("::notice title=Incomplete ocra review::");
+  });
+
+  it("warns on other failures and stays quiet on a finished review", () => {
+    const failed = runFreeOutcome({
+      report: { tasks: [{ status: "failed", error: "boom" }] },
+      exitCode: "2",
+    });
+    expect(failed.stdout).toContain("::warning");
+    expect(runFreeOutcome({ exitCode: "2" }).stdout).toContain("::warning");
+    expect(
+      runFreeOutcome({ report: { tasks: [{ status: "completed" }] }, exitCode: "0" }).stdout,
+    ).toBe("");
+  });
+});
+
 function runCost({ report, outcome = "success", markAfterReport = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "ocra-cost-"));
   const temp = join(dir, "temp");
@@ -206,8 +315,10 @@ describe.skipIf(!hasBash || !hasJq)("dogfood cost recorder", () => {
 describe("dogfood workflow contract", () => {
   it("takes nothing from its caller that sets the budget, the switch or the cap", () => {
     // A pull request can edit the caller, so every number the guard uses
-    // comes from repository variables or from this file.
-    expect(workflow).not.toMatch(/^ {4}inputs:/m);
+    // comes from repository variables or from this file. The one input picks
+    // where models come from; the Vertex budget applies whichever it names.
+    const inputs = workflow.match(/^ {4}inputs:\n((?: {6}.*\n| {8,}.*\n)*)/m);
+    expect(inputs?.[1].match(/^ {6}\S.*$/gm)).toEqual(["      model-source:"]);
     expect(workflow).toContain(`BUDGET_USD: ${expression("vars.OCRA_REVIEW_BUDGET_USD")}`);
     expect(workflow).toContain(`SWITCH: ${expression("vars.OCRA_REVIEW")}`);
     expect(workflow).toMatch(/if: >-\n\s+vars\.OCRA_REVIEW == 'on' &&/);
@@ -221,7 +332,7 @@ describe("dogfood workflow contract", () => {
     expect(caller).toMatch(
       /^ {4}uses: jma49\/Open-CR-Agent\/\.github\/workflows\/ocra-dogfood\.yml@main$/m,
     );
-    expect(caller).not.toMatch(/^ {4}with:/m);
+    expect(caller).toMatch(/^ {4}with:\n {6}model-source: openrouter\n {4}secrets:/m);
   });
 
   it("records a reservation before it authenticates", () => {

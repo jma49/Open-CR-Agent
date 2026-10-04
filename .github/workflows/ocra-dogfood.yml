@@ -6,22 +6,39 @@
 # edit its own copy of this file or of the caller, but a copy at its own ref
 # gets no credential, and the caller passes nothing that moves the budget: the
 # switch and the budget are repository variables, read here.
+#
+# With model-source "openrouter" a caller reviews on OpenRouter's free model
+# instead, through the direct runtime and the caller's OPENROUTER_API_KEY: no
+# Google credential, no dollar ledger (the model costs $0), and a task cap in
+# place of the budget, since the limit there is the account's 1000 free
+# requests a UTC day. The configuration is written here, outside the
+# checkout, and passed with --config: nothing in it comes from the pull
+# request.
 name: ocra dogfood
 
 on:
   workflow_call:
+    inputs:
+      model-source:
+        description: Where the models come from, vertex (default) or openrouter.
+        type: string
+        default: vertex
     secrets:
       # Secrets rather than variables: the job log of a public repository
       # would show a variable's value, and these name the Vertex project.
+      # Required with model-source vertex.
       GCP_WIF_PROVIDER:
         description: Full resource name of the Workload Identity provider.
-        required: true
+        required: false
       GCP_SERVICE_ACCOUNT:
         description: Email of the service account that may call Vertex AI models.
-        required: true
+        required: false
       GOOGLE_VERTEX_PROJECT:
         description: Google Cloud project that serves Vertex AI.
-        required: true
+        required: false
+      OPENROUTER_API_KEY:
+        description: OpenRouter key, required with model-source openrouter.
+        required: false
 
 permissions: {}
 
@@ -57,6 +74,15 @@ jobs:
       # UTC day may start reviews with.
       CAP_USD: "2"
       DAILY_USD: "2"
+      SOURCE: ${{ inputs.model-source }}
+      # The free model, in this one place; swap it when the preview ends.
+      FREE_MODEL: stealth/space-bunny-alpha
+      # Review tasks one review may start on the free model: a task takes 30
+      # to 70 requests, so a review stays within a few hundred of the day's
+      # 1000. Files past the cap are reported as not reviewed.
+      FREE_MAX_TASKS: "8"
+      # Requests the day must have left before a review starts.
+      FREE_MIN_REQUESTS: "40"
     steps:
       - id: guard
         shell: bash
@@ -65,8 +91,46 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           SWITCH: ${{ vars.OCRA_REVIEW }}
           BUDGET_USD: ${{ vars.OCRA_REVIEW_BUDGET_USD }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           set -euo pipefail
+          case "$SOURCE" in
+            vertex) ;;
+            openrouter)
+              allowed=true
+              if [ "$SWITCH" != on ]; then
+                allowed=false
+                reason="reviews are off (OCRA_REVIEW is '$SWITCH')"
+              elif [ -z "$OPENROUTER_API_KEY" ]; then
+                echo "::error::model-source openrouter needs the OPENROUTER_API_KEY secret"
+                exit 1
+              else
+                # GET /key is not a model request: it reports the free
+                # requests left today without spending one. When it does not
+                # say, the review runs and a spent quota shows in its report.
+                left=$(curl -fsS --max-time 20 -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+                  https://openrouter.ai/api/v1/key | jq -r '.data.free_model_daily_requests.remaining // empty' || true)
+                if [[ "$left" =~ ^[0-9]+$ ]] && [ "$left" -lt "$FREE_MIN_REQUESTS" ]; then
+                  allowed=false
+                  reason="the free model quota is spent ($left request(s) left) until 00:00 UTC"
+                fi
+              fi
+              echo "allowed=$allowed" >> "$GITHUB_OUTPUT"
+              {
+                echo "### ocra dogfood on the free model"
+                echo
+                echo "Model router/$FREE_MODEL, at most $FREE_MAX_TASKS review tasks; free requests left today: ${left:-not reported}."
+                echo
+                if [ "$allowed" = true ]; then echo "Review allowed."; else echo "**No review:** $reason."; fi
+              } >> "$GITHUB_STEP_SUMMARY"
+              if [ "$allowed" != true ]; then echo "::notice title=No ocra review::$reason"; fi
+              exit 0
+              ;;
+            *)
+              echo "::error::model-source must be vertex or openrouter, got '$SOURCE'"
+              exit 1
+              ;;
+          esac
           cents() {
             if ! [[ "$1" =~ ^[0-9]+(\.[0-9]{1,2})?$ ]]; then
               echo "::error::not a dollar amount: '$1'"
@@ -135,7 +199,7 @@ jobs:
       # The reservation goes into the ledger before anything can be spent; if
       # it cannot be recorded, the job stops here.
       - id: reserve
-        if: steps.guard.outputs.allowed == 'true'
+        if: steps.guard.outputs.allowed == 'true' && steps.guard.outputs.reserve != ''
         shell: bash
         env:
           RESERVE_CENTS: ${{ steps.guard.outputs.reserve }}
@@ -146,7 +210,7 @@ jobs:
           jq -n --argjson cents "$RESERVE_CENTS" '{reservedUsd: ($cents / 100)}' > "$RUNNER_TEMP/ocra-reserve.json"
           echo "name=ocra-cost-$RUN_ID-$RUN_ATTEMPT-r$RESERVE_CENTS" >> "$GITHUB_OUTPUT"
 
-      - if: steps.guard.outputs.allowed == 'true'
+      - if: steps.reserve.outputs.name != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ steps.reserve.outputs.name }}
@@ -164,7 +228,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - if: steps.guard.outputs.allowed == 'true'
+      - if: steps.guard.outputs.allowed == 'true' && env.SOURCE == 'vertex'
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
@@ -178,7 +242,7 @@ jobs:
 
       # Advice only: a failed or incomplete review never fails the pull request.
       - id: review
-        if: steps.guard.outputs.allowed == 'true'
+        if: steps.guard.outputs.allowed == 'true' && env.SOURCE == 'vertex'
         uses: jma49/Open-CR-Agent@324c6abae8a145e71392511f3a731db3c6e29fbb # v0.3.0
         continue-on-error: true
         env:
@@ -189,6 +253,74 @@ jobs:
           OCRA_MODEL_LIGHT: google-vertex/gemini-3.5-flash-lite
         with:
           args: --max-cost-usd ${{ env.CAP_USD }}
+
+      # Written by this file at main, outside the checkout, and passed with
+      # --config, which replaces the base commit's .ocra/config.json: the
+      # runtime, the endpoint and the key's variable name never come from the
+      # pull request. No OCRA_MODEL_* variable is set, since those would win
+      # over the file's models.
+      - name: Write the free model configuration
+        if: steps.guard.outputs.allowed == 'true' && env.SOURCE == 'openrouter'
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -n --arg model "$FREE_MODEL" --argjson maxTasks "$FREE_MAX_TASKS" '{
+            runtime: "direct",
+            maxTasks: $maxTasks,
+            models: { top: ["router/\($model)"], standard: ["router/\($model)"], light: ["router/\($model)"] },
+            providers: {
+              router: {
+                type: "openai-compatible",
+                baseUrl: "https://openrouter.ai/api/v1",
+                apiKeyEnv: "OPENROUTER_API_KEY",
+                models: { ($model): { input: 0, output: 0 } }
+              }
+            }
+          }' > "$RUNNER_TEMP/ocra-free.json"
+
+      # Advice only, as above.
+      - id: review-free
+        if: steps.guard.outputs.allowed == 'true' && env.SOURCE == 'openrouter'
+        uses: jma49/Open-CR-Agent@324c6abae8a145e71392511f3a731db3c6e29fbb # v0.3.0
+        continue-on-error: true
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        with:
+          opencode: false
+          args: --config ${{ runner.temp }}/ocra-free.json
+
+      # A day whose free requests ran out fails every task with HTTP 429 and
+      # ocra exits 2 (or 3, when some tasks finished first). That is a
+      # skipped review, not a broken one: say so instead of leaving a failed
+      # step to read. ocra has already posted the review as incomplete.
+      - id: free-outcome
+        name: Read the free model outcome
+        if: always() && steps.review-free.outcome != '' && steps.review-free.outcome != 'skipped'
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.review-free.outputs.exit-code }}
+          REPORT: ${{ steps.review-free.outputs.report }}
+        run: |
+          set -euo pipefail
+          quota='429|quota|rate.?limit|free-models-per-day'
+          failed=0 spent=0 total=0
+          if [ -n "$REPORT" ] && [ -f "$REPORT" ]; then
+            read -r total failed spent < <(jq -r --arg re "$quota" '
+              [.tasks[]?] as $t
+              | [$t[] | select(.status != "completed")] as $f
+              | "\($t | length) \($f | length) \([$f[] | select((.error // "") | test($re; "i"))] | length)"' "$REPORT")
+          fi
+          {
+            echo
+            echo "ocra exited ${EXIT_CODE:-without an exit code}: $total task(s), $failed not completed, $spent of them on the free quota."
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$spent" -gt 0 ] && [ "$spent" -eq "$total" ]; then
+            echo "::notice title=No ocra review::the free model quota is spent until 00:00 UTC; every review task failed on it"
+          elif [ "$spent" -gt 0 ]; then
+            echo "::notice title=Incomplete ocra review::the free model quota ran out during the review ($spent of $total tasks); it resets at 00:00 UTC"
+          elif [ "${EXIT_CODE:-2}" != 0 ] && [ "${EXIT_CODE:-2}" != 1 ]; then
+            echo "::warning title=ocra review::ocra exited ${EXIT_CODE:-without an exit code}; see the review step's log"
+          fi
 
       # Runs after a failure or a cancellation too: ocra writes its report,
       # partial or not, before it exits. A review that ran and left no

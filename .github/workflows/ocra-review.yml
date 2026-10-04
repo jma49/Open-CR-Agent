@@ -1,7 +1,8 @@
-# Dogfooding: ocra reviews this repository's pull requests on Vertex AI.
-# Off unless the repository variable OCRA_REVIEW is "on". The budget, the
-# keyless credential and the ledger are in ocra-dogfood.yml, called at main
-# as every other repository calls it.
+# Dogfooding: ocra reviews this repository's pull requests on OpenRouter's
+# free model, to collect real reviews within the account's free requests.
+# Off unless the repository variable OCRA_REVIEW is "on". The configuration,
+# the task cap and the quota check are in ocra-dogfood.yml, called at main as
+# every other repository calls it (those stay on Vertex, its default).
 name: ocra review
 
 on:
@@ -32,11 +33,11 @@ jobs:
       contents: read
       id-token: write
       pull-requests: write
-    # At main, not at this pull request's ref: Google Cloud issues the
-    # credential only to ocra-dogfood.yml@refs/heads/main, so a pull request
-    # that edits the called workflow cannot spend with its own copy.
+    # At main, not at this pull request's ref, as for every caller. The
+    # called job asks for id-token: write for its Vertex path, so the grant
+    # stays; without a Google credential step nothing uses it here.
     uses: jma49/Open-CR-Agent/.github/workflows/ocra-dogfood.yml@main
+    with:
+      model-source: openrouter
     secrets:
-      GCP_WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
-      GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-      GOOGLE_VERTEX_PROJECT: ${{ secrets.GOOGLE_VERTEX_PROJECT }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
