@@ -2,6 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { isOcraError } from "@open-cr-agent/core";
 import { errorMessage } from "@open-cr-agent/core/internal";
+import { cloudCommand, defaultCloudDeps, LOGIN_USAGE } from "./cloud.js";
 import { memoryCommand } from "./memory.js";
 import { metricsCommand } from "./metrics.js";
 import { parseReviewArgs, REVIEW_USAGE, UsageError } from "./review/args.js";
@@ -17,6 +18,9 @@ Commands:
   review      Review code changes (run "ocra review --help" for options)
   memory      Remember findings the team accepts (run "ocra memory --help")
   metrics     Counts over past reviews: runs, cost, findings, per reviewer (run "ocra metrics --help")
+  login       Sign in to ocra Cloud (in development; run "ocra login --help")
+  logout      Sign out of ocra Cloud
+  whoami      Show the ocra Cloud account
 
 Options:
   -h, --help     Show help
@@ -64,6 +68,15 @@ export async function run(
         : await metricsCommand(rest, out, deps.cwd);
     } catch (error) {
       err.write(failure(error));
+      return EXIT.error;
+    }
+  }
+  if (command === "login" || command === "logout" || command === "whoami") {
+    try {
+      return await cloudCommand(command, rest, out, err, defaultCloudDeps(deps.env));
+    } catch (error) {
+      if (error instanceof UsageError) err.write(`${error.message}\n\n${LOGIN_USAGE}`);
+      else err.write(failure(error));
       return EXIT.error;
     }
   }

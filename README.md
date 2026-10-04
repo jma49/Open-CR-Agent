@@ -140,7 +140,7 @@ Repository guidelines come from `AGENTS.md`; path-scoped review rules from `.ocr
 { "rules": [{ "path": "api/**", "rule": "Handlers must check tenant ownership." }] }
 ```
 
-A team can also share configuration over https (`extends`), `ocra review --config <file>` reads a file of your own instead of the repository's (also under `--no-repo-config`), `ocra memory` records the findings a team accepts so they are not reported again, and `ocra metrics` counts runs, cost, findings and what became of them over the session reports. Every key: [Configuration](docs/manual/en/configuration.mdx), [Rules](docs/manual/en/rules.mdx).
+A team can also share configuration over https (`extends`), `ocra review --config <file>` reads a file of your own instead of the repository's (also under `--no-repo-config`), `ocra memory` records the findings a team accepts so they are not reported again, and `ocra metrics` counts runs, cost, findings and what became of them over the session reports. `ocra login`, `ocra logout` and `ocra whoami` sign in to ocra Cloud, which is in development and needs `OCRA_CLOUD_URL` until it opens ([CLI](docs/manual/en/cli.mdx#ocra-login-ocra-logout-ocra-whoami)). Every key: [Configuration](docs/manual/en/configuration.mdx), [Rules](docs/manual/en/rules.mdx).
 
 ## Extending ocra
 

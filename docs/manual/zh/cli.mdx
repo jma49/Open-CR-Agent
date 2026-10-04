@@ -130,3 +130,17 @@ ocra memory list
 ```
 
 `ocra memory add` 会在 `.ocra/sessions/` 下最新的会话里查找这个 id；用 `--session <dir>` 可以指定别的会话。条目写入 `.ocra/memory.json`，提交这个文件即可与团队共享。被记住的问题（审查员、文件和引用的代码都相同）不会出现在报告里，只会计数；审查员也会看到自己所审文件里已被接受的问题，不会再提。审查 PR 时，这个文件从 base 提交读取，因此 PR 无法借此压掉针对自己的问题。`.ocra/memory.json` 无效时审查会报错停止，和 `.ocra/rules.json` 无效时一样。
+
+## ocra login、ocra logout、ocra whoami
+
+**开发中。** ocra Cloud（[ADR-0024](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0024-ocra-cloud.md)）尚未开放，因此这几个命令需要用 `OCRA_CLOUD_URL` 指定服务器。ocra 的其他功能都不依赖它们：不登录时审查行为与以前完全相同；设置 `OCRA_CLOUD=off` 后这几个命令拒绝运行。
+
+```bash
+OCRA_CLOUD_URL=https://<server> ocra login   # 显示一个验证码，并打开浏览器确认
+ocra whoami                                   # 当前登录的 GitHub 账号
+ocra logout                                   # 在服务器上结束会话，并删除本地保存的会话
+```
+
+`ocra login` 使用 OAuth 设备授权流程（RFC 8628）：它打印一个验证码（如 `BCDF-GHJK`），打开服务器上的确认页（加 `--no-browser` 则只打印链接），然后等待你在已用 GitHub 登录的浏览器里批准。只批准你自己刚刚发起的验证码。之后这个终端持有一个会话：可以用服务器上保存的 key 调用模型、上传审查结果，但不能读取这些 key，也不能修改账号；它会显示在服务器的会话页面上，可以在那里撤销。
+
+会话保存在 `~/.config/ocra/credentials.json`（或 `$XDG_CONFIG_HOME/ocra/`，Windows 上为 `%APPDATA%\ocra\`），只有你本人可读。访问令牌有效期一小时，用刷新令牌续期，刷新令牌每次使用后都会更换。目前登录还不会改变 `ocra review` 选择模型的方式，这要等网关 provider 完成。
