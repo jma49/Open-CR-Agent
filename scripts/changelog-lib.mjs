@@ -9,13 +9,26 @@ const RELEASE_HEADING = new RegExp(String.raw`^## \[(${VERSION})\] - (\d{4}-\d{2
 const UNRELEASED_HEADING = "## [Unreleased]";
 const LINK = /^\[([^\]]+)\]: (\S+)$/;
 
+/**
+ * @typedef {Record<string, string[]>} Entries
+ * @typedef {{ heading: string, version: string | undefined, date: string | undefined, body: string }} Section
+ */
+
 // A changelog fragment: an optional paragraph, then "### <Category>"
 // headings, each followed by "- " bullets (a bullet may go on over indented
 // lines). A changeset's body is one, and so is a section of CHANGELOG.md.
+/**
+ * @param {string} text
+ * @param {{ prose?: boolean }} [options]
+ */
 export function parseFragment(text, { prose: allowProse = true } = {}) {
+  /** @type {Entries} */
   const entries = {};
+  /** @type {string[]} */
   const prose = [];
+  /** @type {string[]} */
   const problems = [];
+  /** @type {string | undefined} */
   let category;
   let inSection = false;
   for (const line of text.split("\n")) {
@@ -27,7 +40,8 @@ export function parseFragment(text, { prose: allowProse = true } = {}) {
     const heading = /^(#+) (.*)$/.exec(trimmed);
     if (heading) {
       inSection = true;
-      category = heading[1] === "###" && CATEGORIES.includes(heading[2]) ? heading[2] : undefined;
+      const title = /** @type {string} */ (heading[2]);
+      category = heading[1] === "###" && CATEGORIES.includes(title) ? title : undefined;
       if (!category) {
         problems.push(`"${trimmed}" is not a section; use ### ${CATEGORIES.join(", ### ")}`);
       } else entries[category] ??= [];
@@ -51,13 +65,16 @@ export function parseFragment(text, { prose: allowProse = true } = {}) {
   return { prose: prose.join("\n").trim(), entries, problems };
 }
 
+/** @param {Entries} entries */
 export function renderEntries(entries) {
-  return CATEGORIES.filter((name) => entries[name]?.length > 0)
-    .map((name) => `### ${name}\n\n${entries[name].join("\n")}`)
+  return CATEGORIES.filter((name) => (entries[name]?.length ?? 0) > 0)
+    .map((name) => `### ${name}\n\n${entries[name]?.join("\n")}`)
     .join("\n\n");
 }
 
+/** @param {{ entries: Entries }[]} fragments */
 function mergeEntries(fragments) {
+  /** @type {Entries} */
   const merged = {};
   for (const { entries } of fragments) {
     for (const [name, list] of Object.entries(entries))
@@ -68,16 +85,25 @@ function mergeEntries(fragments) {
 
 // The title and introduction, the "## " sections in order, and the link
 // definitions at the end.
+/**
+ * @param {string} text
+ * @returns {{ head: string, sections: Section[], links: string[] }}
+ */
 export function splitChangelog(text) {
   const lines = text.trimEnd().split("\n");
   let end = lines.length;
-  while (end > 0 && (LINK.test(lines[end - 1]) || lines[end - 1].trim() === "")) end--;
+  for (; end > 0; end--) {
+    const line = /** @type {string} */ (lines[end - 1]);
+    if (!LINK.test(line) && line.trim() !== "") break;
+  }
   const links = lines.slice(end).filter((line) => line.trim() !== "");
+  /** @type {{ heading: string, body: string[] }[]} */
   const sections = [];
+  /** @type {string[]} */
   const head = [];
   for (const line of lines.slice(0, end)) {
     if (line.startsWith("## ")) sections.push({ heading: line, body: [] });
-    else if (sections.length > 0) sections.at(-1).body.push(line);
+    else if (sections.length > 0) sections[sections.length - 1]?.body.push(line);
     else head.push(line);
   }
   return {
@@ -95,14 +121,17 @@ export function splitChangelog(text) {
   };
 }
 
+/** @param {{ head: string, sections: { heading: string, body: string }[], links: string[] }} doc */
 function joinChangelog({ head, sections, links }) {
   const parts = sections.map(({ heading, body }) => (body ? `${heading}\n\n${body}` : heading));
   return `${[head, ...parts, links.join("\n")].join("\n\n")}\n`;
 }
 
 // What is wrong with a CHANGELOG.md, as a list.
+/** @param {string} text */
 export function changelogProblems(text) {
   const { sections, links } = splitChangelog(text);
+  /** @type {string[]} */
   const problems = [];
   const linked = new Set(links.map((line) => LINK.exec(line)?.[1]));
   if (sections[0]?.version !== "Unreleased") {
@@ -125,6 +154,10 @@ export function changelogProblems(text) {
 
 // The body of the "## [<version>] - <date>" section, the GitHub release's
 // notes, or undefined.
+/**
+ * @param {string} text
+ * @param {string} version
+ */
 export function releaseNotes(text, version) {
   const section = splitChangelog(text).sections.find((s) => s.version === version && s.date);
   return section?.body || undefined;
@@ -134,6 +167,10 @@ export function releaseNotes(text, version) {
 // the changesets' entries, by category. [Unreleased] is left empty and the
 // compare links move on. Throws when there is nothing to release or the
 // changelog is not one this can extend.
+/**
+ * @param {string} text
+ * @param {{ version: string, date: string, fragments: { entries: Entries }[] }} release
+ */
 export function cutRelease(text, { version, date, fragments }) {
   const problems = changelogProblems(text);
   if (problems.length > 0) throw new Error(`CHANGELOG.md: ${problems.join("; ")}`);
@@ -141,7 +178,8 @@ export function cutRelease(text, { version, date, fragments }) {
   if (doc.sections.some((s) => s.version === version)) {
     throw new Error(`CHANGELOG.md already has a section for ${version}`);
   }
-  const [unreleasedSection, ...released] = doc.sections;
+  // changelogProblems found the [Unreleased] section first.
+  const [unreleasedSection, ...released] = /** @type {[Section, ...Section[]]} */ (doc.sections);
   const unreleased = parseFragment(unreleasedSection.body);
   const entries = mergeEntries([unreleased, ...fragments]);
   const body = [unreleased.prose, renderEntries(entries)].filter(Boolean).join("\n\n");

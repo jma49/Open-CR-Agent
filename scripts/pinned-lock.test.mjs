@@ -4,11 +4,15 @@ import { describe, expect, it } from "vitest";
 import { lookupPaths, pinnedLockfile, registryUrl } from "./pinned-lock.mjs";
 import { readWorkspaces } from "./release-lib.mjs";
 
+/** @typedef {import("./pinned-lock.mjs").Manifest} Manifest */
+
+/** @type {(name: string, json?: Manifest) => import("./pinned-lock.mjs").Workspace} */
 const workspace = (name, json = {}) => ({
   dir: `/repo/packages/${name}`,
   json: { name: `@x/${name}`, version: "1.0.0", ...json },
 });
 
+/** @type {(version: string, extra?: Manifest) => Manifest} */
 const entry = (version, extra = {}) => ({
   version,
   resolved: `https://registry.npmjs.org/pkg/-/pkg-${version}.tgz`,
@@ -17,12 +21,14 @@ const entry = (version, extra = {}) => ({
 });
 
 // A repository whose cli needs core, and whose lockfile hoists what it can.
+/** @param {Record<string, Manifest>} [packages] */
 function repository(packages = {}) {
   const workspaces = [
     workspace("core", { dependencies: { left: "^1.0.0" } }),
     workspace("cli", { dependencies: { "@x/core": "1.0.0", right: "^2.0.0" } }),
     workspace("eval", { private: true, dependencies: { "@x/cli": "1.0.0", bench: "^1.0.0" } }),
   ];
+  /** @type {{ lockfileVersion: number, packages: Record<string, Manifest> }} */
   const lock = {
     lockfileVersion: 3,
     packages: {
@@ -50,6 +56,9 @@ function repository(packages = {}) {
   return { lock, workspaces };
 }
 
+/** @typedef {Parameters<typeof pinnedLockfile>[0]} Options */
+
+/** @type {(repo: Pick<Options, "lock" | "workspaces">, target?: string) => ReturnType<typeof pinnedLockfile>} */
 const build = (repo, target = "@x/cli") =>
   pinnedLockfile({
     ...repo,
@@ -96,8 +105,8 @@ describe("pinnedLockfile", () => {
       name: "ocra-install",
       dependencies: { "@x/cli": "1.0.0" },
     });
-    expect(lockfile.packages["node_modules/right/node_modules/shared"].version).toBe("2.1.0");
-    expect(lockfile.packages["node_modules/shared"].version).toBe("1.5.0");
+    expect(lockfile.packages["node_modules/right/node_modules/shared"]?.version).toBe("2.1.0");
+    expect(lockfile.packages["node_modules/shared"]?.version).toBe("1.5.0");
   });
 
   it("installs workspace packages from their published tarballs", () => {
@@ -118,7 +127,7 @@ describe("pinnedLockfile", () => {
       os: ["linux"],
       libc: ["musl"],
     });
-    expect(lockfile.packages["node_modules/left"].optional).toBeUndefined();
+    expect(lockfile.packages["node_modules/left"]).not.toHaveProperty("optional");
   });
 
   it("makes what an optional package needs optional too, and tolerates its gaps", () => {
@@ -132,7 +141,7 @@ describe("pinnedLockfile", () => {
         "node_modules/helper": entry("1.0.0"),
       }),
     );
-    expect(lockfile.packages["node_modules/helper"].optional).toBe(true);
+    expect(lockfile.packages["node_modules/helper"]?.optional).toBe(true);
     expect(lockfile.packages["node_modules/gone"]).toBeUndefined();
   });
 
@@ -146,8 +155,8 @@ describe("pinnedLockfile", () => {
         }),
       }),
     );
-    expect(lockfile.packages["node_modules/right"].dev).toBeUndefined();
-    expect(lockfile.packages["node_modules/left"].optional).toBeUndefined();
+    expect(lockfile.packages["node_modules/right"]).not.toHaveProperty("dev");
+    expect(lockfile.packages["node_modules/left"]).not.toHaveProperty("optional");
   });
 
   it("marks what only a peer dependency reaches as peer, down its own dependencies", () => {
@@ -164,17 +173,17 @@ describe("pinnedLockfile", () => {
         "node_modules/maybe": entry("1.0.0"),
       }),
     );
-    expect(lockfile.packages["node_modules/host"].peer).toBe(true);
-    expect(lockfile.packages["node_modules/host-dep"].peer).toBe(true);
+    expect(lockfile.packages["node_modules/host"]?.peer).toBe(true);
+    expect(lockfile.packages["node_modules/host-dep"]?.peer).toBe(true);
     // shared is also a regular dependency of left.
-    expect(lockfile.packages["node_modules/shared"].peer).toBeUndefined();
+    expect(lockfile.packages["node_modules/shared"]).not.toHaveProperty("peer");
     // An optional peer is installed only if something else needs it.
     expect(lockfile.packages["node_modules/maybe"]).toBeUndefined();
   });
 
   it("nests what the repository nests under a workspace package", () => {
     const { lockfile } = build(repository({ "packages/core/node_modules/left": entry("0.9.0") }));
-    expect(lockfile.packages["node_modules/@x/core/node_modules/left"].version).toBe("0.9.0");
+    expect(lockfile.packages["node_modules/@x/core/node_modules/left"]?.version).toBe("0.9.0");
     expect(lockfile.packages["node_modules/left"]).toBeUndefined();
   });
 
@@ -192,7 +201,10 @@ describe("pinnedLockfile", () => {
       "lockfile version 2",
     );
     const needsPrivate = repository();
-    needsPrivate.workspaces[1].json.dependencies["@x/eval"] = "1.0.0";
+    const cli = /** @type {Record<string, string>} */ (
+      needsPrivate.workspaces[1]?.json.dependencies
+    );
+    cli["@x/eval"] = "1.0.0";
     expect(() => build(needsPrivate)).toThrow("@x/cli needs @x/eval, which is private");
   });
 
@@ -232,7 +244,8 @@ describe("pinnedLockfile", () => {
     }
     // The Action's `opencode: false` installs with --omit=optional: that
     // leaves out OpenCode and only it (ADR-0023).
-    const optional = (name) => lockfile.packages[`node_modules/${name}`]?.optional === true;
+    const optional = (/** @type {string} */ name) =>
+      lockfile.packages[`node_modules/${name}`]?.optional === true;
     for (const name of ["@open-cr-agent/runtime-opencode", "opencode-ai", "@opencode-ai/sdk"]) {
       expect(optional(name), name).toBe(true);
     }

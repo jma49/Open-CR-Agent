@@ -26,6 +26,7 @@ describe("source files", () => {
   });
 });
 
+/** @param {string} path */
 function lineCount(path) {
   const text = readFileSync(path, "utf8");
   return text.split("\n").length - (text.endsWith("\n") ? 1 : 0);

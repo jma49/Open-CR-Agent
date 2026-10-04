@@ -3,14 +3,36 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const DEPENDENCY_FIELDS = [
+const DEPENDENCY_FIELDS = /** @type {const} */ ([
   "dependencies",
   "devDependencies",
   "peerDependencies",
   "optionalDependencies",
-];
+]);
+
+/**
+ * @typedef {{
+ *   name: string,
+ *   version: string,
+ *   private?: boolean,
+ *   exports?: Record<string, unknown>,
+ *   bin?: Record<string, string>,
+ *   files?: string[],
+ *   engines?: Record<string, string>,
+ *   dependencies?: Record<string, string>,
+ *   devDependencies?: Record<string, string>,
+ *   peerDependencies?: Record<string, string>,
+ *   optionalDependencies?: Record<string, string>,
+ *   [field: string]: unknown,
+ * }} PackageJson
+ * @typedef {{ dir: string, json: PackageJson }} Workspace
+ */
 
 // Every packages/* directory with a package.json, sorted by directory name.
+/**
+ * @param {string} root
+ * @returns {Workspace[]}
+ */
 export function readWorkspaces(root) {
   const base = join(root, "packages");
   return readdirSync(base, { withFileTypes: true })
@@ -27,6 +49,7 @@ export function readWorkspaces(root) {
 // group in .changeset/config.json) and every workspace package depends on
 // them at exactly that version, so a published cli never pairs with a core
 // from another release. Private packages keep a version of their own.
+/** @param {Workspace[]} workspaces */
 export function lockstep(workspaces) {
   const published = workspaces.filter((w) => !w.json.private);
   const version = published[0]?.json.version;
@@ -49,17 +72,22 @@ export function lockstep(workspaces) {
 
 // The packages to publish, each after the workspace packages it needs at
 // install time.
+/** @param {Workspace[]} workspaces */
 export function publishOrder(workspaces) {
   const byName = new Map(workspaces.map((w) => [w.json.name, w]));
+  /** @type {Workspace[]} */
   const order = [];
   const visiting = new Set();
+  /** @param {Workspace} w */
   const visit = (w) => {
     if (order.includes(w)) return;
     if (visiting.has(w)) throw new Error(`dependency cycle through ${w.json.name}`);
     visiting.add(w);
-    const needs = ["dependencies", "peerDependencies", "optionalDependencies"].flatMap((field) =>
-      Object.keys(w.json[field] ?? {}),
-    );
+    const needs = /** @type {const} */ ([
+      "dependencies",
+      "peerDependencies",
+      "optionalDependencies",
+    ]).flatMap((field) => Object.keys(w.json[field] ?? {}));
     for (const name of needs) {
       const dep = byName.get(name);
       if (!dep) continue;
@@ -74,28 +102,44 @@ export function publishOrder(workspaces) {
 }
 
 // Compares the x.y.z part of two versions; false for anything unparsable.
+/**
+ * @param {string | undefined} version
+ * @param {string} minimum
+ */
 export function atLeast(version, minimum) {
-  const parse = (v) => (v ?? "").split("-")[0].split(".").map(Number);
+  /** @param {string | undefined} v */
+  const parse = (v) => (v ?? "").split("-")[0]?.split(".").map(Number) ?? [];
   const [have, need] = [parse(version), parse(minimum)];
   if (have.length !== 3 || have.some((n) => !Number.isInteger(n))) return false;
   for (let i = 0; i < 3; i++) {
-    if (have[i] !== need[i]) return have[i] > need[i];
+    const [a, b] = [/** @type {number} */ (have[i]), need[i]];
+    if (a !== b) return b !== undefined && a > b;
   }
   return true;
 }
 
 // A prerelease must not become what `npm install` picks by default.
+/** @param {string} version */
 export function distTag(version) {
   return version.includes("-") ? "next" : "latest";
 }
 
 // The file name `npm pack` gives a package.
+/**
+ * @param {string} name
+ * @param {string} version
+ */
 export function tarballName(name, version) {
   return `${name.replace(/^@/, "").replace("/", "-")}-${version}.tgz`;
 }
 
 // Why a CI run must not publish from this ref, or undefined. Publishing
 // from CI runs on the release tag; a dry run may run on a branch.
+/**
+ * @param {string} version
+ * @param {{ type: string | undefined, name: string | undefined }} ref
+ * @param {boolean} publish
+ */
 export function refProblem(version, ref, publish) {
   if (ref.type === "tag") {
     return ref.name === `v${version}`
@@ -109,6 +153,10 @@ export function refProblem(version, ref, publish) {
 
 // The digests `pack` reported, as a map from file name to "sha512-<base64>",
 // or undefined when the text is not one.
+/**
+ * @param {string} text
+ * @returns {Record<string, string> | undefined}
+ */
 export function parseDigests(text) {
   let parsed;
   try {
@@ -126,6 +174,10 @@ export function parseDigests(text) {
 
 // Why the tarballs about to be published are not the ones `pack` made, or
 // undefined. Both maps go from file name to digest.
+/**
+ * @param {Record<string, string>} expected
+ * @param {Record<string, string>} actual
+ */
 export function digestProblem(expected, actual) {
   const problems = Object.entries(actual).flatMap(([file, digest]) => {
     if (expected[file] === undefined) return [`${file} is not one pack made`];

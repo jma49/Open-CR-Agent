@@ -29,13 +29,28 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { errorMessage } from "./error-message.mjs";
 import { pinnedLockfile } from "./pinned-lock.mjs";
 import { provenanceProblems } from "./provenance.mjs";
 import { readWorkspaces } from "./release-lib.mjs";
 
 const TARGET = "@open-cr-agent/cli";
 const NPMJS = /^https:\/\/registry\.npmjs\.org\/?$/;
-const DEPENDENCY_FIELDS = ["dependencies", "optionalDependencies", "peerDependencies"];
+const DEPENDENCY_FIELDS = /** @type {const} */ ([
+  "dependencies",
+  "optionalDependencies",
+  "peerDependencies",
+]);
+
+/**
+ * @typedef {import("./pinned-lock.mjs").Manifest} Manifest
+ * @typedef {import("./pinned-lock.mjs").Workspace} Workspace
+ * @typedef {import("./provenance.mjs").Dist & { tarball?: string }} Dist
+ * @typedef {"unpublished" | "registry" | "dependencies" | "install" | "provenance"} SourceKind
+ * @typedef {{ reason: string, kind: SourceKind, warn?: boolean, main?: undefined }} Fallback
+ * @typedef {{ manifest: Manifest & { dist?: Dist }, reason?: undefined, kind?: undefined }
+ *   | { manifest?: undefined, reason: string, kind: SourceKind }} Answer
+ */
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const temp = process.env.RUNNER_TEMP ?? tmpdir();
@@ -50,6 +65,7 @@ const started = Date.now();
 
 // The npm ci flags that say whether OpenCode is installed, from the Action's
 // opencode input.
+/** @param {string | undefined} input */
 export function opencodeFlags(input) {
   if (input === undefined || input === "" || input === "true") return [];
   if (input === "false") return ["--omit=optional"];
@@ -60,12 +76,17 @@ export function opencodeFlags(input) {
 // shell and then as one command line, with an argument holding a space (a
 // runner under "C:\Program Files") quoted; a Windows path cannot hold the
 // quote itself.
+/** @param {string[]} args */
 function npmCommand(args) {
   if (process.platform !== "win32") return { file: "npm", args, shell: false };
   const line = ["npm", ...args].map((arg) => (/\s/.test(arg) ? `"${arg}"` : arg)).join(" ");
   return { file: line, args: [], shell: true };
 }
 
+/**
+ * @param {string[]} args
+ * @param {string} cwd
+ */
 function npm(args, cwd, capture = false) {
   const command = npmCommand(args);
   const result = spawnSync(command.file, command.args, {
@@ -77,6 +98,10 @@ function npm(args, cwd, capture = false) {
   return { ok: result.status === 0, out: (result.stdout ?? "").trim() };
 }
 
+/**
+ * @param {string} text
+ * @returns {unknown}
+ */
 function parseJson(text) {
   try {
     return JSON.parse(text);
@@ -85,17 +110,29 @@ function parseJson(text) {
   }
 }
 
+/**
+ * @param {string} name
+ * @param {string} value
+ */
 function output(name, value) {
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
   else console.log(`${name}=${value}`);
 }
 
+/**
+ * @param {string} main
+ * @param {string} how
+ */
 function ready(main, how) {
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
   console.log(`ocra ${how} in ${seconds} s: ${main}`);
   output("main", main);
 }
 
+/**
+ * @param {string} message
+ * @returns {never}
+ */
 function fail(message) {
   console.log(`::error::${message}`);
   process.exit(1);
@@ -109,6 +146,11 @@ function fromSource() {
 
 // The published manifest of name@version, or why there is none. Asked in
 // parallel for every package: each npm view takes most of a second.
+/**
+ * @param {string} name
+ * @param {string} version
+ * @returns {Promise<Answer>}
+ */
 function published(name, version) {
   return new Promise((done) => {
     const command = npmCommand(["view", `${name}@${version}`, "--json", ...CACHE]);
@@ -125,8 +167,12 @@ function published(name, version) {
       done({ reason: `npm view failed: ${error.message}`, kind: "registry" }),
     );
     child.on("close", (status) => {
-      const json = parseJson(out);
-      if (status === 0 && json?.version === version) return done({ manifest: json });
+      const json = /** @type {{ version?: unknown, error?: { code?: string } } | undefined} */ (
+        parseJson(out)
+      );
+      if (status === 0 && json?.version === version) {
+        return done({ manifest: /** @type {Manifest & { dist?: Dist }} */ (json) });
+      }
       const code = json?.error?.code;
       done(
         code === "E404"
@@ -140,6 +186,7 @@ function published(name, version) {
   });
 }
 
+/** @type {(a: Manifest, b: Manifest) => boolean} */
 const sameDependencies = (a, b) =>
   DEPENDENCY_FIELDS.every(
     (field) =>
@@ -150,13 +197,22 @@ const sameDependencies = (a, b) =>
 // Installs the published packages into a directory of their own. Returns the
 // entry point, or why this checkout should be built instead and whether that
 // deserves a warning.
+/**
+ * @param {readonly Workspace[]} workspaces
+ * @param {string} version
+ * @param {string[]} omit
+ * @returns {Promise<{ main: string, reason?: undefined, kind?: undefined, warn?: undefined } | Fallback>}
+ */
 async function fromRegistry(workspaces, version, omit) {
-  const packages = workspaces.filter((w) => !w.json.private).map((w) => w.json);
+  const packages = /** @type {Array<Manifest & { name: string, version: string }>} */ (
+    workspaces.filter((w) => !w.json.private).map((w) => w.json)
+  );
   const answers = await Promise.all(packages.map((json) => published(json.name, json.version)));
+  /** @type {Map<string | undefined, Dist>} */
   const dist = new Map();
   for (const [i, json] of packages.entries()) {
-    const { manifest, reason, kind } = answers[i];
-    if (!manifest) return { reason, kind };
+    const { manifest, reason, kind } = /** @type {Answer} */ (answers[i]);
+    if (!manifest) return /** @type {Fallback} */ ({ reason, kind });
     if (!sameDependencies(manifest, json)) {
       return {
         reason: `${json.name}@${json.version} on npm declares other dependencies`,
@@ -178,7 +234,7 @@ async function fromRegistry(workspaces, version, omit) {
       resolved: (name) => dist.get(name)?.tarball,
     });
   } catch (error) {
-    return { reason: `no pinned install: ${error.message}`, warn: true, kind: "install" };
+    return { reason: `no pinned install: ${errorMessage(error)}`, warn: true, kind: "install" };
   }
   const dir = join(temp, "ocra-cli");
   rmSync(dir, { recursive: true, force: true });
@@ -228,7 +284,7 @@ async function install() {
   try {
     omit = opencodeFlags(process.env.OCRA_INSTALL_OPENCODE);
   } catch (error) {
-    fail(error.message);
+    fail(errorMessage(error));
   }
   const workspaces = readWorkspaces(root);
   const version = workspaces.find((w) => w.json.name === TARGET)?.json.version;
@@ -244,7 +300,7 @@ async function install() {
     `::${result.warn ? "warning" : "notice"}::Building ocra from source at this ref: ${result.reason}.`,
   );
   // Why, for the caller: unpublished, dependencies, registry, install or provenance.
-  output("source", result.kind);
+  output("source", /** @type {SourceKind} */ (result.kind));
   fromSource();
 }
 

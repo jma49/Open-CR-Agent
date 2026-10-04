@@ -12,20 +12,21 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 describe("workspace exports", () => {
   for (const { dir, json } of readWorkspaces(root)) {
     const entries = Object.entries(json.exports ?? {}).filter(
-      ([, entry]) => typeof entry === "object",
+      /** @returns {pair is [string, Record<string, string>]} */
+      (pair) => typeof pair[1] === "object",
     );
 
     // A private package (eval) is a command, not a library: it has no API.
     if (!json.private) {
       it(`${json.name} has a main entry`, () => {
-        expect(json.exports["."]).toBeTypeOf("object");
+        expect(json.exports?.["."]).toBeTypeOf("object");
       });
     }
 
     for (const [path, entry] of entries) {
       it(`${json.name} exports the source of ${path} under @open-cr-agent/source`, () => {
         expect(Object.keys(entry)[0]).toBe("@open-cr-agent/source");
-        expect(existsSync(join(dir, entry["@open-cr-agent/source"]))).toBe(true);
+        expect(existsSync(join(dir, String(entry["@open-cr-agent/source"])))).toBe(true);
         expect(entry.types).toMatch(/^\.\/dist\/.*\.d\.ts$/);
         expect(entry.default).toMatch(/^\.\/dist\//);
       });

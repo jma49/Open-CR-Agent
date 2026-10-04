@@ -14,17 +14,34 @@ const FOOTERS = [
   /^claude-session:/im,
 ];
 
+/** @param {string} text */
 const footer = (text) => FOOTERS.find((p) => p.test(text));
 
-/** Each problem as one line; empty when the pull request is clean. */
+/**
+ * @typedef {object} Commit
+ * @property {string} sha
+ * @property {string} authorName
+ * @property {string} authorEmail
+ * @property {string} committerName
+ * @property {string} committerEmail
+ * @property {string} message
+ */
+
+/**
+ * Each problem as one line; empty when the pull request is clean.
+ * @param {{ commits: Commit[], body?: string }} pullRequest
+ */
 export function attributionProblems({ commits, body }) {
+  /** @type {string[]} */
   const problems = [];
   for (const c of commits) {
     const short = c.sha.slice(0, 7);
-    for (const [role, name, email] of [
+    /** @type {[string, string, string][]} */
+    const people = [
       ["author", c.authorName, c.authorEmail],
       ["committer", c.committerName, c.committerEmail],
-    ]) {
+    ];
+    for (const [role, name, email] of people) {
       if (AI_AUTHOR.test(email) || /^claude$/i.test(name.trim()))
         problems.push(`${short}: ${role} is an AI tool (${name} <${email}>)`);
     }
@@ -38,6 +55,11 @@ export function attributionProblems({ commits, body }) {
 const SEP = "\u001e";
 const FIELD = "\u001f";
 
+/**
+ * @param {string} base
+ * @param {string} head
+ * @returns {Commit[]}
+ */
 export function readCommits(base, head) {
   const format = ["%H", "%an", "%ae", "%cn", "%ce", "%B"].join(FIELD) + SEP;
   const out = execFileSync("git", ["log", `--format=${format}`, `${base}..${head}`], {
@@ -49,11 +71,12 @@ export function readCommits(base, head) {
     .filter(Boolean)
     .map((r) => {
       const [sha, authorName, authorEmail, committerName, committerEmail, message] = r.split(FIELD);
-      return { sha, authorName, authorEmail, committerName, committerEmail, message };
+      const fields = { sha, authorName, authorEmail, committerName, committerEmail, message };
+      return /** @type {Commit} */ (fields);
     });
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [base, head] = process.argv.slice(2);
   if (!base || !head) {
     console.error("usage: node scripts/attribution.mjs <base> <head>");

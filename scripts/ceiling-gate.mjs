@@ -12,10 +12,39 @@ import { pathToFileURL } from "node:url";
 
 export const DEFAULT_BASELINE = "evals/ceiling-baseline.json";
 
+/**
+ * What `ocra-eval ceiling` writes (ceiling.json), as far as the gate reads it.
+ * @typedef {object} Ceiling
+ * @property {{ instances: number, references: number, byReach: { reachable: number } }} summary
+ * @property {{ instance: string, path: string, reach: string }[]} reaches
+ */
+
+/**
+ * The committed baseline: the summary counts and each reference's reach.
+ * @typedef {object} Baseline
+ * @property {number} instances
+ * @property {number} references
+ * @property {number} reachable
+ * @property {Record<string, string>} reaches
+ */
+
+/**
+ * @typedef {object} Comparison
+ * @property {{ key: string, before: string, after: string }[]} changes
+ * @property {string[]} problems
+ * @property {boolean} improved
+ */
+
 // A reference has no id of its own; it is the n-th annotated issue on a path
 // of a case, which is stable while the case file is.
+/**
+ * @param {Ceiling} ceiling
+ * @returns {Baseline}
+ */
 export function baselineOf(ceiling) {
+  /** @type {Map<string, number>} */
   const seen = new Map();
+  /** @type {Record<string, string>} */
   const reaches = {};
   for (const r of ceiling.reaches) {
     const prefix = `${r.instance} ${r.path}`;
@@ -31,7 +60,13 @@ export function baselineOf(ceiling) {
   };
 }
 
+/**
+ * @param {Baseline} baseline
+ * @param {Baseline} current
+ * @returns {Comparison}
+ */
 export function compareCeiling(baseline, current) {
+  /** @type {Comparison["changes"]} */
   const changes = [];
   const keys = new Set([...Object.keys(baseline.reaches), ...Object.keys(current.reaches)]);
   for (const key of [...keys].sort()) {
@@ -39,6 +74,7 @@ export function compareCeiling(baseline, current) {
     const after = current.reaches[key] ?? "absent";
     if (before !== after) changes.push({ key, before, after });
   }
+  /** @type {string[]} */
   const problems = [];
   if (current.instances < baseline.instances) {
     problems.push(
@@ -54,6 +90,11 @@ export function compareCeiling(baseline, current) {
   return { changes, problems, improved: problems.length === 0 && changes.length > 0 };
 }
 
+/**
+ * @param {Baseline} baseline
+ * @param {Baseline} current
+ * @param {Comparison} result
+ */
 export function renderComparison(baseline, current, result) {
   const lines = [
     `Reachable: ${current.reachable} of ${current.references} in ${current.instances} case(s); baseline ${baseline.reachable} of ${baseline.references} in ${baseline.instances}.`,
@@ -73,6 +114,7 @@ export function renderComparison(baseline, current, result) {
   return `${lines.join("\n")}\n`;
 }
 
+/** @param {string[]} argv */
 function main(argv) {
   const write = argv.includes("--write");
   const [ceilingPath, baselinePath = DEFAULT_BASELINE] = argv.filter((a) => a !== "--write");

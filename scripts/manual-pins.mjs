@@ -12,8 +12,15 @@ const PINS = [
   new RegExp(String.raw`(ghcr\.io\/jma49\/ocra:)(${VERSION})`, "g"),
 ];
 
-/** The manual's pages, under docs/manual. */
+/**
+ * The manual's pages, under docs/manual.
+ * @param {string} root
+ */
 export function manualPages(root) {
+  /**
+   * @param {string} dir
+   * @returns {string[]}
+   */
   const walk = (dir) =>
     readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
       const path = join(dir, entry.name);
@@ -23,7 +30,10 @@ export function manualPages(root) {
   return walk(join(root, "docs", "manual"));
 }
 
-/** Each pin in a page: the text, its version and its line. */
+/**
+ * Each pin in a page: the text, its version and its line.
+ * @param {string} text
+ */
 export function pinsIn(text) {
   return PINS.flatMap((pattern) =>
     [...text.matchAll(pattern)].map((match) => ({
@@ -34,7 +44,11 @@ export function pinsIn(text) {
   );
 }
 
-/** The page with every pin moved to version; a prerelease leaves it on the last stable one. */
+/**
+ * The page with every pin moved to version; a prerelease leaves it on the last stable one.
+ * @param {string} text
+ * @param {string} version
+ */
 export function bumpPins(text, version) {
   if (version.includes("-")) return text;
   return PINS.reduce((out, pattern) => out.replace(pattern, `$1${version}`), text);

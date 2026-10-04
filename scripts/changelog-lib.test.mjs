@@ -108,6 +108,7 @@ describe("releaseNotes", () => {
 });
 
 describe("cutRelease", () => {
+  /** @param {string} text */
   const fragment = (text) => parseFragment(text, { prose: false });
 
   it("moves Unreleased and the changesets into the release, and the links on", () => {

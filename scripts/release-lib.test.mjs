@@ -15,11 +15,19 @@ import {
   tarballName,
 } from "./release-lib.mjs";
 
+/** @typedef {import("./release-lib.mjs").Workspace} Workspace */
+
+/**
+ * @param {string} name
+ * @param {Partial<Workspace["json"]>} json
+ * @returns {Workspace}
+ */
 const workspace = (name, json = {}) => ({
   dir: `/repo/packages/${name}`,
   json: { name: `@x/${name}`, version: "1.0.0", ...json },
 });
 
+/** @param {Workspace[]} workspaces */
 const names = (workspaces) => workspaces.map((w) => w.json.name);
 
 describe("lockstep", () => {
@@ -137,6 +145,7 @@ describe("the tarballs pack made", () => {
 });
 
 describe("readWorkspaces", () => {
+  /** @type {string[]} */
   const dirs = [];
   afterEach(() => {
     for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
@@ -174,6 +183,7 @@ describe("readWorkspaces", () => {
     const root = fileURLToPath(new URL("..", import.meta.url));
     const workspaces = readWorkspaces(root);
     const config = JSON.parse(readFileSync(join(root, ".changeset", "config.json"), "utf8"));
+    /** @param {Workspace[]} list */
     const of = (list) => names(list).sort();
     expect([...config.fixed[0]].sort()).toEqual(of(workspaces.filter((w) => !w.json.private)));
     expect(config.fixed).toHaveLength(1);

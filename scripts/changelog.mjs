@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cutRelease, parseFragment, releaseNotes } from "./changelog-lib.mjs";
+import { errorMessage } from "./error-message.mjs";
 import { bumpPins, manualPages } from "./manual-pins.mjs";
 
 const USAGE = `Usage:
@@ -25,12 +26,22 @@ const USAGE = `Usage:
 const root = fileURLToPath(new URL("..", import.meta.url));
 const changelogPath = join(root, "CHANGELOG.md");
 
+/**
+ * @param {string} message
+ * @returns {never}
+ */
 function stop(message, code = 1) {
   console.error(message);
   process.exit(code);
 }
 
 // The release plan changesets would apply: `changeset status --output`.
+/**
+ * @returns {{
+ *   releases: { type: string, newVersion: string }[],
+ *   changesets: { id: string, summary: string }[],
+ * }}
+ */
 function releasePlan() {
   const dir = mkdtempSync(join(tmpdir(), "ocra-changeset-"));
   const file = join(dir, "plan.json");
@@ -46,6 +57,10 @@ function releasePlan() {
 
 // `npm run` exports a user-level allow-scripts setting as
 // npm_config_allow_scripts, which npm 11 refuses in a project install.
+/**
+ * @param {string} command
+ * @param {string[]} args
+ */
 function run(command, args) {
   const env = Object.fromEntries(
     Object.entries(process.env).filter(([key]) => !/^npm_config_allow_scripts$/i.test(key)),
@@ -59,6 +74,7 @@ function run(command, args) {
 // The date as the committer's clock reads it, like the tag dates in git log.
 function today() {
   const now = new Date();
+  /** @param {number} n */
   const pad = (n) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
@@ -73,7 +89,7 @@ function versionPackages() {
         : `changelog: the packages would get different versions: ${[...versions].join(", ")}`,
     );
   }
-  const [version] = versions;
+  const [version] = /** @type {[string]} */ ([...versions]);
   const fragments = plan.changesets.map((c) => ({
     id: c.id,
     ...parseFragment(c.summary, { prose: false }),
@@ -85,7 +101,7 @@ function versionPackages() {
   try {
     next = cutRelease(readFileSync(changelogPath, "utf8"), { version, date, fragments });
   } catch (error) {
-    stop(`changelog: ${error.message}`);
+    stop(`changelog: ${errorMessage(error)}`);
   }
   writeFileSync(changelogPath, next);
   console.log(`CHANGELOG.md has a section for ${version} (${date}).`);
@@ -103,6 +119,7 @@ function versionPackages() {
   );
 }
 
+/** @param {string} version */
 function notes(version) {
   const body = releaseNotes(readFileSync(changelogPath, "utf8"), version);
   if (!body) stop(`changelog: CHANGELOG.md has no "## [${version}] - <date>" section`);
@@ -111,5 +128,5 @@ function notes(version) {
 
 const [command, ...args] = process.argv.slice(2);
 if (command === "version" && args.length === 0) versionPackages();
-else if (command === "notes" && args.length === 1) notes(args[0]);
+else if (command === "notes" && args.length === 1) notes(/** @type {string} */ (args[0]));
 else stop(USAGE, 2);

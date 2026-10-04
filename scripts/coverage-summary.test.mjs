@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { packageOf, renderCoverage } from "./coverage-summary.mjs";
 
+/** @param {number} covered @param {number} total */
 const m = (covered, total) => ({ covered, total, skipped: 0, pct: 0 });
+/** @param {number} covered @param {number} total */
 const metrics = (covered, total) => ({
   lines: m(covered, total),
   statements: m(covered, total),

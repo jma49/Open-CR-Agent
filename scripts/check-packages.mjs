@@ -34,10 +34,12 @@ import {
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { errorMessage } from "./error-message.mjs";
 import { pinnedLockfile } from "./pinned-lock.mjs";
 import { readWorkspaces, tarballName } from "./release-lib.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
+/** @type {(cmd: string, args: string[], cwd: string, extra?: { env?: NodeJS.ProcessEnv }) => string} */
 const run = (cmd, args, cwd, extra = {}) =>
   execFileSync(cmd, args, {
     cwd,
@@ -52,6 +54,7 @@ const given = flag === -1 ? undefined : resolve(process.argv[flag + 1] ?? ".");
 
 // The runtime must find the OpenCode binary in an installed layout, not
 // only inside this monorepo.
+/** @param {string} dir */
 function findsOpencode(dir) {
   const binaryModule = join(
     dir,
@@ -75,16 +78,24 @@ function findsOpencode(dir) {
 }
 
 // What an install takes on disk, as du counts it.
-const megabytes = (dir) => `${(run("du", ["-sk", dir], dir).split("\t")[0] / 1024) | 0} MB`;
+const megabytes = (/** @type {string} */ dir) =>
+  `${(Number(run("du", ["-sk", dir], dir).split("\t")[0]) / 1024) | 0} MB`;
 
 // The tarball of a workspace package: packed from this checkout, or the
 // one given for its name and version.
+/**
+ * @param {import("./pinned-lock.mjs").Workspace} p
+ * @param {string} work
+ */
 function tarballFor(p, work) {
   if (!given) {
     const [info] = JSON.parse(run("npm", ["pack", "--json", "--pack-destination", work], p.dir));
     return join(work, info.filename);
   }
-  const tarball = join(given, tarballName(p.json.name, p.json.version));
+  const tarball = join(
+    given,
+    tarballName(/** @type {string} */ (p.json.name), /** @type {string} */ (p.json.version)),
+  );
   if (!existsSync(tarball)) {
     throw new Error(`${given} has no tarball for ${p.json.name}@${p.json.version}`);
   }
@@ -92,13 +103,18 @@ function tarballFor(p, work) {
 }
 
 // publint and attw on a tarball; they print what they find.
+/**
+ * @param {string} tarball
+ * @param {string} work
+ */
 function lint(tarball, work) {
-  const bin = (name) => join(root, "node_modules", ".bin", name);
+  const bin = (/** @type {string} */ name) => join(root, "node_modules", ".bin", name);
   run(bin("publint"), ["run", tarball, "--strict"], work);
   run(bin("attw"), [tarball, "--profile", "esm-only", "--format", "ascii", "--no-emoji"], work);
 }
 
 // Paths inside a tarball, relative to the package root.
+/** @type {(tarball: string, work: string) => string[]} */
 const filesIn = (tarball, work) =>
   run("tar", ["-tzf", tarball], work)
     .split("\n")
@@ -125,7 +141,8 @@ try {
     try {
       lint(tarball, work);
     } catch (error) {
-      throw new Error(`${p.json.name} fails publint or attw:\n${error.stdout ?? error.message}`);
+      const output = /** @type {{ stdout?: string }} */ (error).stdout;
+      throw new Error(`${p.json.name} fails publint or attw:\n${output ?? errorMessage(error)}`);
     }
     console.log(
       `${given ? "checking" : "packed"} ${basename(tarball)} (${files.length} files, ${(statSync(tarball).size / 1024).toFixed(0)} kB), publint and attw pass`,
@@ -159,7 +176,7 @@ try {
 
   const repo = join(work, "repo");
   run("mkdir", ["-p", repo], work);
-  const git = (...args) => run("git", args, repo);
+  const git = (/** @type {string[]} */ ...args) => run("git", args, repo);
   git("init", "-q");
   git(
     "-c",
@@ -187,7 +204,7 @@ try {
     target: "@open-cr-agent/cli",
     integrity: (name) =>
       `sha512-${createHash("sha512")
-        .update(readFileSync(tarballOf.get(name)))
+        .update(readFileSync(/** @type {string} */ (tarballOf.get(name))))
         .digest("base64")}`,
     resolved: (name) => `file:${tarballOf.get(name)}`,
   });

@@ -10,6 +10,31 @@
 // OpenCode binary for every OS and CPU, 2.1 GB (measured 2026-09-29).
 import { relative, sep } from "node:path";
 
+/**
+ * A package.json, or a package's entry in package-lock.json: the fields
+ * read here, and whatever else it holds.
+ * @typedef {{
+ *   name?: string,
+ *   version?: string,
+ *   private?: boolean,
+ *   repository?: { url?: string },
+ *   dependencies?: Record<string, string>,
+ *   optionalDependencies?: Record<string, string>,
+ *   peerDependencies?: Record<string, string>,
+ *   peerDependenciesMeta?: Record<string, { optional?: boolean }>,
+ *   resolved?: string | undefined,
+ *   integrity?: string | undefined,
+ *   link?: boolean,
+ *   inBundle?: boolean,
+ *   optional?: boolean,
+ *   peer?: boolean,
+ *   [field: string]: unknown,
+ * }} Manifest
+ * @typedef {{ dir: string, json: Manifest }} Workspace
+ * @typedef {{ optional: boolean, peer: boolean }} Flags
+ */
+
+/** @type {ReadonlyArray<readonly ["dependencies" | "optionalDependencies" | "peerDependencies", Flags]>} */
 const EDGES = [
   ["dependencies", { optional: false, peer: false }],
   ["optionalDependencies", { optional: true, peer: false }],
@@ -32,6 +57,10 @@ const MANIFEST_FIELDS = [
   "cpu",
 ];
 
+/**
+ * @param {string} name
+ * @param {string} version
+ */
 export function registryUrl(name, version, registry = "https://registry.npmjs.org") {
   const base = name.split("/").pop();
   return `${registry.replace(/\/$/, "")}/${name}/-/${base}-${version}.tgz`;
@@ -40,7 +69,12 @@ export function registryUrl(name, version, registry = "https://registry.npmjs.or
 // Where Node looks for `name` when required from the package at `from`, as
 // lockfile paths: its own node_modules, then each enclosing one up to the
 // root. A workspace directory ("packages/cli") sits directly under the root.
+/**
+ * @param {string} from
+ * @param {string} name
+ */
 export function lookupPaths(from, name) {
+  /** @type {string[]} */
   const paths = [];
   let base = from;
   for (;;) {
@@ -59,6 +93,16 @@ export function lookupPaths(from, name) {
 //   integrity   (name) => the integrity of that workspace package's tarball
 //   resolved    (name, version) => where that tarball is; the registry by default
 // Returns the manifest and the lockfile of a project that depends on target.
+/**
+ * @param {{
+ *   lock: { lockfileVersion?: unknown, packages?: Record<string, Manifest> } | undefined,
+ *   root: string,
+ *   workspaces: readonly Workspace[],
+ *   target: string,
+ *   integrity: (name: string) => string | undefined,
+ *   resolved?: (name: string, version: string) => string | undefined,
+ * }} options
+ */
 export function pinnedLockfile({
   lock,
   root: repository,
@@ -71,6 +115,7 @@ export function pinnedLockfile({
     throw new Error(`package-lock.json has lockfile version ${lock?.lockfileVersion}, not 3`);
   }
   const entries = lock.packages ?? {};
+  /** @type {Map<string, Manifest>} */
   const byDir = new Map();
   for (const w of workspaces) {
     byDir.set(relative(repository, w.dir).split(sep).join("/"), w.json);
@@ -80,12 +125,13 @@ export function pinnedLockfile({
 
   // The lockfile path a dependency of the package at `from` resolves to,
   // following workspace links, or undefined.
+  /** @type {(from: string, name: string) => string | undefined} */
   const resolve = (from, name) => {
     for (const path of lookupPaths(from, name)) {
       const entry = entries[path];
       if (!entry) continue;
       if (!entry.link) return path;
-      if (!byDir.has(entry.resolved)) {
+      if (entry.resolved === undefined || !byDir.has(entry.resolved)) {
         throw new Error(`${path} links to ${entry.resolved}, which is not a workspace package`);
       }
       return entry.resolved;
@@ -96,12 +142,12 @@ export function pinnedLockfile({
   // Every package the target needs installed. As npm marks them, a package
   // is optional when every path to it passes an optional dependency, and
   // peer when every path to it passes a peer dependency.
+  /** @type {Map<string, Flags>} */
   const state = new Map([[start, { optional: false, peer: false }]]);
   const queue = [start];
-  while (queue.length > 0) {
-    const from = queue.shift();
-    const here = state.get(from);
-    const manifest = byDir.get(from) ?? entries[from];
+  for (let from = queue.shift(); from !== undefined; from = queue.shift()) {
+    const here = /** @type {Flags} */ (state.get(from));
+    const manifest = /** @type {Manifest} */ (byDir.get(from) ?? entries[from]);
     for (const [field, kind] of EDGES) {
       for (const name of Object.keys(manifest[field] ?? {})) {
         if (kind.peer && manifest.peerDependenciesMeta?.[name]?.optional) continue;
@@ -129,6 +175,7 @@ export function pinnedLockfile({
   // Workspace packages install from their tarballs under node_modules, with
   // anything nested in their directories nested under them; the rest keeps
   // the repository's layout, so every dependency resolves as it did there.
+  /** @param {string} path */
   const place = (path) => {
     for (const [dir, json] of byDir) {
       if (path === dir) return `node_modules/${json.name}`;
@@ -141,9 +188,11 @@ export function pinnedLockfile({
   const project = {
     name: "ocra-install",
     private: true,
-    dependencies: { [target]: byDir.get(start).version },
+    dependencies: { [target]: /** @type {string} */ (byDir.get(start)?.version) },
   };
+  /** @type {Record<string, Manifest>} */
   const packages = { "": { name: project.name, dependencies: project.dependencies } };
+  /** @type {Map<string, string>} */
   const placed = new Map();
   for (const [path, flags] of state) {
     const at = place(path);
@@ -175,11 +224,19 @@ export function pinnedLockfile({
   };
 }
 
+/**
+ * @param {Manifest} json
+ * @param {(name: string) => string | undefined} integrity
+ * @param {(name: string, version: string) => string | undefined} resolved
+ */
 function fromManifest(json, integrity, resolved) {
+  const name = /** @type {string} */ (json.name);
+  const version = /** @type {string} */ (json.version);
+  /** @type {Manifest} */
   const entry = {
-    version: json.version,
-    resolved: resolved(json.name, json.version),
-    integrity: integrity(json.name),
+    version,
+    resolved: resolved(name, version),
+    integrity: integrity(name),
   };
   for (const field of MANIFEST_FIELDS) {
     if (json[field] !== undefined) entry[field] = json[field];

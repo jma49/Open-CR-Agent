@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import apiExtractor from "@microsoft/api-extractor";
 import { readWorkspaces } from "./release-lib.mjs";
 
-const { Extractor, ExtractorConfig } = apiExtractor;
+const { Extractor, ExtractorConfig, ExtractorLogLevel } = apiExtractor;
 const root = fileURLToPath(new URL("..", import.meta.url));
 const check = process.argv.includes("--check");
 const reportFolder = join(root, "etc");
@@ -46,17 +46,17 @@ try {
         dtsRollup: { enabled: false },
         tsdocMetadata: { enabled: false },
         messages: {
-          compilerMessageReporting: { default: { logLevel: "warning" } },
+          compilerMessageReporting: { default: { logLevel: ExtractorLogLevel.Warning } },
           extractorMessageReporting: {
-            default: { logLevel: "warning" },
+            default: { logLevel: ExtractorLogLevel.Warning },
             // Release tags (@public, @beta) are not used: what the entry
             // exports is public, and the rest is in ./internal.
-            "ae-missing-release-tag": { logLevel: "none" },
-            "ae-undocumented": { logLevel: "none", addToApiReportFile: false },
-            "ae-forgotten-export": { logLevel: "none", addToApiReportFile: false },
+            "ae-missing-release-tag": { logLevel: ExtractorLogLevel.None },
+            "ae-undocumented": { logLevel: ExtractorLogLevel.None, addToApiReportFile: false },
+            "ae-forgotten-export": { logLevel: ExtractorLogLevel.None, addToApiReportFile: false },
           },
           // The sources use line comments, not TSDoc.
-          tsdocMessageReporting: { default: { logLevel: "none" } },
+          tsdocMessageReporting: { default: { logLevel: ExtractorLogLevel.None } },
         },
       },
       configObjectFullPath: undefined,
@@ -68,8 +68,11 @@ try {
     const result = Extractor.invoke(config, {
       localBuild: !check,
       messageCallback: (message) => {
-        if (message.messageId === "console-compiler-version-notice") message.logLevel = "none";
-        const serious = message.logLevel === "error" || message.logLevel === "warning";
+        if (message.messageId === "console-compiler-version-notice")
+          message.logLevel = ExtractorLogLevel.None;
+        const serious =
+          message.logLevel === ExtractorLogLevel.Error ||
+          message.logLevel === ExtractorLogLevel.Warning;
         if (serious && !message.messageId.startsWith("console-api-report")) problems += 1;
       },
     });

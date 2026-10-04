@@ -45,7 +45,7 @@ function statement(workflow = {}, subject = { name: "pkg:npm/%40open-cr-agent/cl
   };
 }
 
-const envelope = (payload) => ({
+const envelope = (/** @type {unknown} */ payload) => ({
   predicateType: "https://slsa.dev/provenance/v1",
   bundle: {
     dsseEnvelope: {
@@ -132,11 +132,12 @@ describe("provenanceProblem", () => {
 });
 
 describe("provenanceProblems", () => {
-  const ok = (body) => ({ ok: true, status: 200, json: async () => body });
+  const ok = (/** @type {unknown} */ body) => ({ ok: true, status: 200, json: async () => body });
 
   it("passes when every package has matching provenance", async () => {
+    /** @type {string[]} */
     const asked = [];
-    const fetch = async (url) => {
+    const fetch = async (/** @type {string} */ url) => {
       asked.push(url);
       return ok(answer());
     };

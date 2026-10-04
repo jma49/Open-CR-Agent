@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { baselineOf, compareCeiling, renderComparison } from "./ceiling-gate.mjs";
 
+/** @param {{ instance: string, path: string, reach: string }[]} reaches */
 function ceiling(reaches) {
   const instances = new Set(reaches.map((r) => r.instance));
   return {

@@ -22,12 +22,15 @@ const workflowPath = fileURLToPath(
 const workflow = readFileSync(workflowPath, "utf8");
 
 // The `run: |` block of the step with this id, without its indentation.
+/** @param {string} id */
 function stepScript(id) {
   const lines = workflow.split("\n");
   const start = lines.findIndex((line) => line.trim() === `- id: ${id}`);
   if (start < 0) throw new Error(`no step ${id}`);
   const runAt = lines.findIndex((line, i) => i > start && /^\s*run: \|\s*$/.test(line));
-  const indent = lines[runAt].search(/\S/);
+  const runLine = lines[runAt];
+  if (runLine === undefined) throw new Error(`no run block in step ${id}`);
+  const indent = runLine.search(/\S/);
   const body = [];
   for (const line of lines.slice(runAt + 1)) {
     if (line.trim() !== "" && line.search(/\S/) <= indent) break;
@@ -40,8 +43,21 @@ const hasBash = spawnSync("bash", ["-c", "true"]).status === 0;
 const hasJq = spawnSync("jq", ["--version"]).status === 0;
 const today = () => new Date().toISOString().slice(0, 10);
 // A GitHub Actions expression, as the workflow spells it.
+/** @param {string} inner */
 const expression = (inner) => `\${{ ${inner} }}`;
 
+/**
+ * @typedef {object} GuardOptions
+ * @property {[string, string][]} [listing] the ledger's artifacts, as `gh` lists them
+ * @property {boolean} [ghFails]
+ * @property {string} [budget]
+ * @property {string} [switch]
+ * @property {string} [source]
+ * @property {string} [key]
+ * @property {{ headers?: string, body?: unknown }} [probe]
+ */
+
+/** @param {GuardOptions} [options] */
 function runGuard({
   listing = [],
   ghFails = false,
@@ -172,6 +188,7 @@ describe.skipIf(!hasBash)("dogfood budget guard", () => {
 
 describe.skipIf(!hasBash || !hasJq)("dogfood guard on the free model", () => {
   // A successful probe that reports what is left, and the 429 of a spent day.
+  /** @param {number} remaining */
   const free = (remaining) => ({
     headers: `HTTP/2 200\r\nX-RateLimit-Limit: 1000\r\nX-RateLimit-Remaining: ${remaining}\r\n\r\n`,
     body: { choices: [] },
@@ -238,6 +255,7 @@ describe.skipIf(!hasBash || !hasJq)("dogfood guard on the free model", () => {
   });
 });
 
+/** @param {{ report?: unknown, exitCode: string }} options */
 function runFreeOutcome({ report, exitCode }) {
   const dir = mkdtempSync(join(tmpdir(), "ocra-free-"));
   const file = join(dir, "report.json");
@@ -284,6 +302,7 @@ describe.skipIf(!hasBash || !hasJq)("dogfood free model outcome", () => {
   });
 });
 
+/** @param {{ report?: string, outcome?: string, markAfterReport?: boolean }} [options] */
 function runCost({ report, outcome = "success", markAfterReport = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "ocra-cost-"));
   const temp = join(dir, "temp");
@@ -347,7 +366,7 @@ describe("dogfood workflow contract", () => {
     // comes from repository variables or from this file. The one input picks
     // where models come from; the Vertex budget applies whichever it names.
     const inputs = workflow.match(/^ {4}inputs:\n((?: {6}.*\n| {8,}.*\n)*)/m);
-    expect(inputs?.[1].match(/^ {6}\S.*$/gm)).toEqual(["      model-source:"]);
+    expect(inputs?.[1]?.match(/^ {6}\S.*$/gm)).toEqual(["      model-source:"]);
     expect(workflow).toContain(`BUDGET_USD: ${expression("vars.OCRA_REVIEW_BUDGET_USD")}`);
     expect(workflow).toContain(`SWITCH: ${expression("vars.OCRA_REVIEW")}`);
     expect(workflow).toMatch(/if: >-\n\s+vars\.OCRA_REVIEW == 'on' &&/);
@@ -365,6 +384,7 @@ describe("dogfood workflow contract", () => {
   });
 
   it("records a reservation before it authenticates", () => {
+    /** @param {string} text */
     const at = (text) => workflow.indexOf(text);
     const reservation = `name: ${expression("steps.reserve.outputs.name")}`;
     expect(at(reservation)).toBeGreaterThan(0);

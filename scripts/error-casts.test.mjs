@@ -11,6 +11,10 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const dir = mkdtempSync(join(tmpdir(), "ocra-error-casts-"));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
+/**
+ * @param {string} name
+ * @param {string} source
+ */
 function lint(name, source) {
   const file = join(dir, name);
   writeFileSync(file, source);

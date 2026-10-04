@@ -5,6 +5,24 @@
 // passes a package that has none, such as one published by hand from a
 // stolen npm login; this checks that one exists and what it claims.
 import { Buffer } from "node:buffer";
+import { errorMessage } from "./error-message.mjs";
+
+/**
+ * An in-toto statement as the registry serves it: untrusted, so every field
+ * is checked where it is read.
+ * @typedef {{
+ *   predicateType?: unknown,
+ *   subject?: unknown,
+ *   predicate?: {
+ *     buildDefinition?: {
+ *       externalParameters?: { workflow?: { repository?: unknown, path?: unknown, ref?: unknown } },
+ *     },
+ *   },
+ * }} Statement
+ * @typedef {{ integrity?: string, attestations?: { url?: unknown } }} Dist
+ * @typedef {(url: string, init: { signal: AbortSignal }) =>
+ *   Promise<{ ok: boolean, status: number, json(): Promise<unknown> }>} Fetch
+ */
 
 export const RELEASE_WORKFLOW = ".github/workflows/release.yml";
 const SLSA_PROVENANCE = "https://slsa.dev/provenance/v1";
@@ -12,6 +30,7 @@ const ATTESTATIONS_URL = /^https:\/\/registry\.npmjs\.org\/-\/npm\/v1\/attestati
 
 // "git+https://github.com/Owner/Repo.git" and "https://github.com/owner/repo"
 // name the same repository; GitHub ignores case in both parts.
+/** @param {string} url */
 export function repositoryUrl(url) {
   return url
     .trim()
@@ -23,6 +42,10 @@ export function repositoryUrl(url) {
 
 // The SLSA provenance statement in the registry's attestations for one
 // package version, or undefined when there is none.
+/**
+ * @param {{ attestations?: unknown } | null | undefined} answer
+ * @returns {Statement | undefined}
+ */
 export function slsaStatement(answer) {
   const attestations = Array.isArray(answer?.attestations) ? answer.attestations : [];
   const envelope = attestations.find((a) => a?.predicateType === SLSA_PROVENANCE)?.bundle
@@ -39,6 +62,10 @@ export function slsaStatement(answer) {
 // Why the statement does not show that name@version, the tarball with this
 // integrity, was built by `repository`'s release workflow from the tag
 // v<version>; undefined when it does.
+/**
+ * @param {Statement | undefined} statement
+ * @param {{ name: string, version: string, integrity: string | undefined, repository: string }} expected
+ */
 export function provenanceProblem(statement, { name, version, integrity, repository }) {
   const release = `${name}@${version}`;
   if (statement?.predicateType !== SLSA_PROVENANCE) return `${release} has no SLSA provenance`;
@@ -49,7 +76,7 @@ export function provenanceProblem(statement, { name, version, integrity, reposit
     return `the provenance of ${release} is for another tarball`;
   }
   const workflow = statement.predicate?.buildDefinition?.externalParameters?.workflow ?? {};
-  const from = (value) => (typeof value === "string" ? value : "unknown");
+  const from = (/** @type {unknown} */ value) => (typeof value === "string" ? value : "unknown");
   if (typeof workflow.repository !== "string") return `${release} names no source repository`;
   if (repositoryUrl(workflow.repository) !== repositoryUrl(repository)) {
     return `${release} was built from ${from(workflow.repository)}, not ${repository}`;
@@ -65,14 +92,21 @@ export function provenanceProblem(statement, { name, version, integrity, reposit
 
 // In-toto subjects carry the tarball's SHA-512 in hex; npm's integrity
 // field carries it in base64.
+/** @param {string | undefined} integrity */
 function sha512Hex(integrity) {
   const match = /^sha512-([A-Za-z0-9+/]+={0,2})$/.exec(integrity ?? "");
-  return match ? Buffer.from(match[1], "base64").toString("hex") : undefined;
+  return match
+    ? Buffer.from(/** @type {string} */ (match[1]), "base64").toString("hex")
+    : undefined;
 }
 
 // Fetches each package's attestations from the registry, in parallel, and
 // returns the first reason one of them cannot be trusted, or undefined.
 // `packages` holds each package's name, version and registry `dist` field.
+/**
+ * @param {ReadonlyArray<{ name: string, version: string, dist: Dist | undefined }>} packages
+ * @param {{ repository: string, fetch?: Fetch, timeoutMs?: number }} options
+ */
 export async function provenanceProblems(
   packages,
   { repository, fetch = globalThis.fetch, timeoutMs = 30_000 },
@@ -83,20 +117,21 @@ export async function provenanceProblems(
       if (typeof url !== "string" || !ATTESTATIONS_URL.test(url)) {
         return `${name}@${version} has no provenance`;
       }
+      /** @type {{ attestations?: unknown } | null | undefined} */
       let answer;
       try {
         const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
         if (!response.ok) {
           return `could not fetch the provenance of ${name}@${version} (HTTP ${response.status})`;
         }
-        answer = await response.json();
+        answer = /** @type {typeof answer} */ (await response.json());
       } catch (error) {
-        return `could not fetch the provenance of ${name}@${version}: ${error.message}`;
+        return `could not fetch the provenance of ${name}@${version}: ${errorMessage(error)}`;
       }
       return provenanceProblem(slsaStatement(answer), {
         name,
         version,
-        integrity: dist.integrity,
+        integrity: dist?.integrity,
         repository,
       });
     }),

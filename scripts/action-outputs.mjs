@@ -19,6 +19,9 @@ import {
 } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { errorMessage } from "./error-message.mjs";
+
+/** @typedef {[name: string, value: string]} Output */
 
 export const SESSIONS_DIR = join(".ocra", "sessions");
 const RUN_ID = /^\d{8}T\d{6}Z-[0-9a-f]{6}$/;
@@ -34,6 +37,10 @@ export function runStamp(now = new Date()) {
 // The newest session that started at or after `started`: run ids begin with
 // their start time, so they sort in order. Sessions of earlier runs in the
 // same checkout are older.
+/**
+ * @param {string[]} names
+ * @param {string} started
+ */
 export function newestSession(names, started) {
   const runs = names.filter((n) => RUN_ID.test(n) && n >= started).sort();
   return runs.at(-1);
@@ -43,8 +50,14 @@ export function newestSession(names, started) {
 // set only for a complete review (exit code 0 or 1): a run that reviewed
 // nothing still writes a report whose verdict reads "approved", and a
 // workflow that gates on the output must not take that for a pass.
-export function reportOutputs(report, exitCode) {
-  if (report === null || typeof report !== "object") throw new Error("the report is not an object");
+/**
+ * @param {unknown} json
+ * @param {string} [exitCode]
+ */
+export function reportOutputs(json, exitCode) {
+  if (json === null || typeof json !== "object") throw new Error("the report is not an object");
+  const report = /** @type {{ runId?: unknown, verdict?: unknown, findings?: unknown }} */ (json);
+  /** @type {Output[]} */
   const out = [];
   const complete = exitCode === undefined || exitCode === "0" || exitCode === "1";
   if (typeof report.runId === "string") out.push(["run-id", report.runId]);
@@ -55,6 +68,7 @@ export function reportOutputs(report, exitCode) {
 
 // $GITHUB_OUTPUT lines. A value with a line break would let it set another
 // output, so such a value is refused.
+/** @param {readonly Output[]} pairs */
 export function formatOutputs(pairs) {
   return pairs
     .map(([name, value]) => {
@@ -69,8 +83,11 @@ function repositoryRoot() {
   return git.status === 0 ? git.stdout.trim() : process.cwd();
 }
 
+/** @param {{ env: Readonly<Record<string, string | undefined>>, root: string }} options */
 export function collectOutputs({ env, root }) {
+  /** @type {Output[]} */
   const pairs = [];
+  /** @type {string[]} */
   const warnings = [];
   if (env.OCRA_EXIT_CODE) pairs.push(["exit-code", env.OCRA_EXIT_CODE]);
   const sarif = env.OCRA_SARIF_FILE;
@@ -93,7 +110,7 @@ export function collectOutputs({ env, root }) {
     copyFileSync(source, copy);
     pairs.push(...reportOutputs(report, env.OCRA_EXIT_CODE), ["report", copy]);
   } catch (error) {
-    warnings.push(`could not read ocra's report ${source}: ${error.message}`);
+    warnings.push(`could not read ocra's report ${source}: ${errorMessage(error)}`);
   }
   return { pairs, warnings };
 }
@@ -106,7 +123,7 @@ function main() {
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, lines);
     else process.stdout.write(lines);
   } catch (error) {
-    console.log(`::warning::could not set the Action's outputs: ${error.message}`);
+    console.log(`::warning::could not set the Action's outputs: ${errorMessage(error)}`);
   }
 }
 

@@ -34,7 +34,7 @@ describe("bumpPins", () => {
 });
 
 describe("version pins in the manual", () => {
-  const { version } = lockstep(readWorkspaces(root));
+  const version = /** @type {string} */ (lockstep(readWorkspaces(root)).version);
   const found = manualPages(root).flatMap((path) =>
     pinsIn(readFileSync(path, "utf8")).map((p) => ({
       ...p,
