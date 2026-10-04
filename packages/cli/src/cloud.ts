@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { errorMessage } from "@open-cr-agent/core/internal";
 import { fetchAccountSalt, saveAccountSalt } from "./account-salt.js";
+import { withFileLock } from "./file-lock.js";
 import { writePrivateFile } from "./private-file.js";
 import { UsageError } from "./review/args.js";
 import type { Output } from "./review/progress.js";
@@ -200,13 +201,37 @@ export async function cloudSession(
   deps: CloudDeps,
   minValidityMs = 60_000,
 ): Promise<Credentials | undefined> {
+  const live = (c: Credentials) => c.expires_at - deps.now() > minValidityMs;
   const saved = await readCredentials(deps.credentialsPath);
-  if (!saved) return undefined;
-  if (saved.expires_at - deps.now() > minValidityMs) return saved;
+  if (!saved || live(saved)) return saved;
+  // One refresh at a time on this machine: the server rotates the refresh
+  // token, so of two processes refreshing with one token, one is refused.
+  return withFileLock(`${deps.credentialsPath}.lock`, async () => {
+    const current = await readCredentials(deps.credentialsPath);
+    // Another process may have refreshed while this one waited for the lock.
+    if (!current || live(current)) return current;
+    const refreshed = await refresh(deps, current);
+    if (refreshed !== "rejected") return refreshed;
+    // Rotated by a process that did not wait for the lock (an older ocra,
+    // or one that gave up waiting): its pair is in the file.
+    const latest = await readCredentials(deps.credentialsPath);
+    if (!latest || latest.refresh_token === current.refresh_token) return undefined;
+    if (live(latest)) return latest;
+    const again = await refresh(deps, latest);
+    return again === "rejected" ? undefined : again;
+  });
+}
+
+/** The new pair, saved; "rejected" when the server refuses the refresh token. */
+async function refresh(
+  deps: CloudDeps,
+  saved: Credentials,
+): Promise<Credentials | "rejected" | undefined> {
   const { status, body } = await postJson(deps, `${saved.server}/api/device/refresh`, {
     refresh_token: saved.refresh_token,
   });
   const t = body as TokenAnswer;
+  if (status === 401 || t.error === "invalid_grant") return "rejected";
   if (status !== 200 || !t.access_token || !t.refresh_token || !t.expires_in) return undefined;
   const next: Credentials = {
     ...saved,
