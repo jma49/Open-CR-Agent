@@ -1,1 +1,10 @@
+# Text files are stored and checked out with LF on every OS: Windows
+# checkouts would otherwise fail Biome's format check.
+* text=auto eol=lf
+
+# Diff fixtures keep their bytes exactly, CR included.
 *.diff -text
+
+# Generated: npm run schema, and Vitest snapshots.
+docs/schema/*.json linguist-generated=true
+**/__snapshots__/*.snap linguist-generated=true
