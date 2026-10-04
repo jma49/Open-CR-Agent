@@ -52,12 +52,7 @@ import type { RuntimeLoaders } from "./review/runtimes.js";
 import { renderSarif } from "./review/sarif.js";
 import { loadSarifLogs } from "./review/sarif-input.js";
 import { effectiveSettings, renderSettings } from "./review/settings-sources.js";
-import {
-  CHANGE_REQUEST,
-  resolveLocalTarget,
-  resolveMergeRequestTarget,
-  resolvePullRequestTarget,
-} from "./review/target.js";
+import { CHANGE_REQUEST, resolveReviewTarget } from "./review/target.js";
 
 export const BUILTIN_PLUGINS: readonly OcraPlugin[] = [
   localGitPlugin,
@@ -97,32 +92,13 @@ export async function reviewCommand(
 ): Promise<number> {
   const root = await findRepositoryRoot(deps.cwd);
   const warn = (message: string) => io.err.write(`[ocra] Warning: ${forTerminal(message)}\n`);
-  const ignoreRepoConfig = args.ignoreRepoConfig === true;
-  const configFile = args.configFile ? resolve(deps.cwd, args.configFile) : undefined;
-  const localArgs = configFile ? { ...args, configFile } : args;
-  const target = args.pullRequest
-    ? await resolvePullRequestTarget(
-        args.pullRequest,
-        deps.cwd,
-        root,
-        deps.env,
-        warn,
-        deps.fetch,
-        ignoreRepoConfig,
-        configFile,
-      )
-    : args.mergeRequest
-      ? await resolveMergeRequestTarget(
-          args.mergeRequest,
-          deps.cwd,
-          root,
-          deps.env,
-          warn,
-          deps.fetch,
-          ignoreRepoConfig,
-          configFile,
-        )
-      : await resolveLocalTarget(localArgs, deps.cwd, root, deps.env, warn, deps.fetch);
+  const target = await resolveReviewTarget(args, {
+    cwd: deps.cwd,
+    root,
+    env: deps.env,
+    warn,
+    ...(deps.fetch ? { fetch: deps.fetch } : {}),
+  });
   // The account's settings fill what the repository leaves out (ADR-0027);
   // unreachable, they cost a warning, so a plan still works offline.
   const cloudDeps = deps.cloud;

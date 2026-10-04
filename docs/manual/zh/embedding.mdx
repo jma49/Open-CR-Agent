@@ -135,7 +135,9 @@ ocra 的各个包抛出的都是 `OcraError`（或它的子类），带有 `code
 
 ## PR 与 Merge Request
 
-`githubPlugin`（`@open-cr-agent/vcs-github`）和 `gitlabPlugin`（`@open-cr-agent/vcs-gitlab`）注册 `github` 和 `gitlab` 适配器。它们 `createVcs` 的选项（仓库、编号、令牌的变量名、是否发布）还没有作为库的约定写入文档；仓库里的 `packages/cli/src/commands/review/target.ts` 展示了 CLI 如何构造它们，包括作为 `readTrusted` 传入的可信 base 读取函数。在本页列出它们之前，请把这些形状当作内部实现。
+`githubPlugin`（`@open-cr-agent/vcs-github`）和 `gitlabPlugin`（`@open-cr-agent/vcs-gitlab`）注册 `github` 和 `gitlab` 适配器。
+
+`resolveGitHubTarget` 和 `resolveGitLabTarget` 按 `ocra review --pr` 和 `--mr` 的方式找到 PR 或 Merge Request。它们各接收一个选项对象：`ref`（编号，以及你指定时的仓库或项目）、`env`（读取的令牌、仓库和 API 变量与 CLI 相同）、`origin()`（检出目录的 origin remote，只在需要时读取）、`warn` 和可选的 `fetch`。它们返回 base 和 head commit、拉取 head 的 refspec、变更请求的网页地址，以及 `createVcs(registry, local, settings)`：commit 进入你的克隆后，用它创建适配器。`local` 提供被审查的代码和仓库历史，`settings` 是 `GitHubSettings`（`botLogin`、`requestChanges`）或 `GitLabSettings`（暂无设置）。拉取 commit、从 base 读取配置、指南和规则（`readTrusted`）由你负责；仓库里的 `packages/cli/src/commands/review/target.ts` 展示了 CLI 的做法。适配器 `createVcs` 接收的选项还不是库的约定，请通过这两个函数使用。
 
 ## 信任
 
@@ -146,7 +148,7 @@ ocra 的各个包抛出的都是 `OcraError`（或它的子类），带有 `code
 每个包的主入口就是它的公开 API，是一份遵循 [0.x 规则](./stability)的约定：
 
 - **`@open-cr-agent/core`**：`review()` 和 `ReviewOptions`；它返回的内容（`ReviewReport`、`Finding` 以及组成它们的类型）、`coverageGaps()`、`toReportOutput()` 及 `ReportOutput`、`reportOutputSchema`、`reportJsonSchema()` 和 `REPORT_VERSION`；`parseSarifLog()`；插件接口（`OcraPlugin` 及其上下文、`startPlugins()`、`PluginRegistry`、内置的审查者插件和 `sessionJsonlPlugin`）；插件实现的约定（`VcsAdapter`、`AgentRuntime` 及它们用到的类型、`ToolDefinition`、`ReviewerDefinition`、`RepoRule`）；运行时可以基于的部分（`ChainRunner` 及 `ModelAttempts`、`AttemptOutcome`、`QuotaError`，审查工具、步数上限以及[插件](./plugins)列出的其他辅助内容）；以及[错误模型](#错误)。
-- **`@open-cr-agent/vcs-local`**：`localGitPlugin`、`LocalTarget`、`LocalGitOptions` 和 `GitError`。**`vcs-github`** 和 **`vcs-gitlab`**：`githubPlugin` 和 `gitlabPlugin`，以及它们的 API 错误。**`runtime-opencode`** 和 **`runtime-direct`**：`opencodeRuntimePlugin` 和 `directRuntimePlugin`。
+- **`@open-cr-agent/vcs-local`**：`localGitPlugin`、`LocalTarget`、`LocalGitOptions` 和 `GitError`。**`vcs-github`** 和 **`vcs-gitlab`**：`githubPlugin` 和 `gitlabPlugin`，`resolveGitHubTarget` 和 `resolveGitLabTarget` 及 `GitHubSettings` 和 `GitLabSettings`，以及它们的 API 错误。**`runtime-opencode`** 和 **`runtime-direct`**：`opencodeRuntimePlugin` 和 `directRuntimePlugin`。
 - **`@open-cr-agent/vcs-platform`** 是 ocra 各平台适配器共用的部分，还不是约定。
 
 每个名字和每个类型的形状都记录在该包的 API 报告里，位于仓库的 [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc) 目录；入口变了而报告没变时，CI 会失败。

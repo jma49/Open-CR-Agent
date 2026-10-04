@@ -9,6 +9,7 @@ import type { CodeMatch } from '@open-cr-agent/core';
 import type { FileDiff } from '@open-cr-agent/core';
 import type { Finding } from '@open-cr-agent/core';
 import type { LineRange } from '@open-cr-agent/core';
+import type { PluginRegistry } from '@open-cr-agent/core';
 import type { PriorReview } from '@open-cr-agent/core';
 import type { ReviewReport } from '@open-cr-agent/core';
 import type { VcsAdapter } from '@open-cr-agent/core';
@@ -19,6 +20,14 @@ export interface Bot {
     is(login: string): boolean;
     // (undocumented)
     login: string;
+}
+
+// @public (undocumented)
+export interface ChangeRequestRef {
+    // (undocumented)
+    number: number;
+    // (undocumented)
+    repository?: string;
 }
 
 // @public (undocumented)
@@ -48,6 +57,14 @@ export interface InlineFinding {
     finding: Finding & {
         lineRange: NonNullable<Finding["lineRange"]>;
     };
+}
+
+// @public (undocumented)
+export interface LocalCode {
+    // (undocumented)
+    code: CodeSource;
+    // (undocumented)
+    history: History;
 }
 
 // @public (undocumented)
@@ -113,6 +130,22 @@ export interface PlatformReviewOptions {
 }
 
 // @public (undocumented)
+export interface PlatformTarget<Settings> {
+    // (undocumented)
+    baseSha: string;
+    // (undocumented)
+    createVcs(registry: Pick<PluginRegistry, "createVcs">, local: LocalCode, settings: Settings): VcsAdapter;
+    // (undocumented)
+    headRefs: string[];
+    // (undocumented)
+    headSha: string;
+    // (undocumented)
+    platform: string;
+    // (undocumented)
+    webUrl: string;
+}
+
+// @public (undocumented)
 interface PlatformText {
     // (undocumented)
     authority: string;
@@ -144,6 +177,20 @@ export interface PublishedFindings {
     posted: string[];
     // (undocumented)
     warnings: string[];
+}
+
+// @public (undocumented)
+export interface ResolveTargetOptions {
+    // (undocumented)
+    env: Readonly<Record<string, string | undefined>>;
+    // (undocumented)
+    fetch?: typeof fetch;
+    // (undocumented)
+    origin(): Promise<string | undefined>;
+    // (undocumented)
+    ref: ChangeRequestRef;
+    // (undocumented)
+    warn(message: string): void;
 }
 
 // @public (undocumented)

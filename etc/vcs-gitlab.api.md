@@ -6,6 +6,8 @@
 
 import { OcraError } from '@open-cr-agent/core';
 import type { OcraPlugin } from '@open-cr-agent/core';
+import type { PlatformTarget } from '@open-cr-agent/vcs-platform';
+import type { ResolveTargetOptions } from '@open-cr-agent/vcs-platform';
 
 // @public (undocumented)
 export class GitLabApiError extends OcraError {
@@ -16,6 +18,12 @@ export class GitLabApiError extends OcraError {
 
 // @public (undocumented)
 export const gitlabPlugin: OcraPlugin;
+
+// @public (undocumented)
+export type GitLabSettings = Record<string, never>;
+
+// @public (undocumented)
+export function resolveGitLabTarget(options: ResolveTargetOptions): Promise<PlatformTarget<GitLabSettings>>;
 
 // (No @packageDocumentation comment for this package)
 

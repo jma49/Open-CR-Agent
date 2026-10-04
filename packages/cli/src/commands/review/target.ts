@@ -1,26 +1,57 @@
-import { dirname } from "node:path";
-import {
-  OcraError,
-  type OcraPlugin,
-  type PluginRegistry,
-  type VcsAdapter,
-} from "@open-cr-agent/core";
-import { DEFAULT_BOT_LOGIN, GitHubApi } from "@open-cr-agent/vcs-github/internal";
-import { GitLabApi } from "@open-cr-agent/vcs-gitlab/internal";
+import { dirname, resolve } from "node:path";
+import type { OcraPlugin, PluginRegistry, VcsAdapter } from "@open-cr-agent/core";
+import { resolveGitHubTarget } from "@open-cr-agent/vcs-github";
+import { resolveGitLabTarget } from "@open-cr-agent/vcs-gitlab";
 import {
   ensureCommits,
   filesChangedSince,
   LocalGitAdapter,
 } from "@open-cr-agent/vcs-local/internal";
-import { type CliConfig, ConfigError, loadConfig } from "../../config/cli-config.js";
+import type {
+  ChangeRequestRef,
+  LocalCode,
+  PlatformTarget,
+  ResolveTargetOptions,
+} from "@open-cr-agent/vcs-platform";
+import { type CliConfig, loadConfig } from "../../config/cli-config.js";
 import { loadExternalPlugins } from "../../plugins/load.js";
 import { repositoryOfWebUrl } from "../../repository-id.js";
-import type { MergeRequestArgs, PullRequestArgs, ReviewArgs } from "./args.js";
+import type { ReviewArgs } from "./args.js";
 
-export type Platform = "local" | "github" | "gitlab";
+// A change request found on its platform, its adapter taking the platform's
+// settings from the configuration.
+type FoundChangeRequest = Omit<PlatformTarget<unknown>, "createVcs"> & {
+  createVcs(registry: PluginRegistry, local: LocalCode, config: CliConfig): VcsAdapter;
+};
+
+type FindChangeRequest = (options: ResolveTargetOptions) => Promise<FoundChangeRequest>;
+
+function platform<S>(
+  resolveTarget: (options: ResolveTargetOptions) => Promise<PlatformTarget<S>>,
+  settings: (config: CliConfig) => S,
+): FindChangeRequest {
+  return async (options) => {
+    const target = await resolveTarget(options);
+    return {
+      ...target,
+      createVcs: (registry, local, config) => target.createVcs(registry, local, settings(config)),
+    };
+  };
+}
+
+// The code review platforms ocra publishes to.
+const PLATFORMS = {
+  github: platform(resolveGitHubTarget, (config) => config.github),
+  gitlab: platform(resolveGitLabTarget, () => ({})),
+} satisfies Record<string, FindChangeRequest>;
+
+export type Platform = "local" | keyof typeof PLATFORMS;
 
 // What a review published to a platform lands on, as the output names it.
-export const CHANGE_REQUEST = { github: "pull request", gitlab: "merge request" } as const;
+export const CHANGE_REQUEST = {
+  github: "pull request",
+  gitlab: "merge request",
+} as const satisfies Record<keyof typeof PLATFORMS, string>;
 
 export interface ReviewTarget {
   platform: Platform;
@@ -37,33 +68,68 @@ export interface ReviewTarget {
   repository?: string;
 }
 
-type Env = Readonly<Record<string, string | undefined>>;
+export interface TargetOptions {
+  cwd: string;
+  root: string;
+  env: Readonly<Record<string, string | undefined>>;
+  warn: (message: string) => void;
+  fetch?: typeof fetch;
+}
 
-export async function resolveLocalTarget(
+interface Inputs extends TargetOptions {
+  ignoreRepoConfig: boolean;
+  configFile?: string;
+}
+
+export async function resolveReviewTarget(
   args: ReviewArgs,
-  cwd: string,
-  root: string,
-  env: Env,
-  warn: (message: string) => void,
-  fetchImpl?: typeof fetch,
+  options: TargetOptions,
 ): Promise<ReviewTarget> {
-  const config = await loadConfig(root, env, {
-    repository: !args.ignoreRepoConfig,
-    ...(args.configFile ? { file: args.configFile } : {}),
-    warn,
-    ...(fetchImpl ? { fetch: fetchImpl } : {}),
+  const inputs: Inputs = {
+    ...options,
+    ignoreRepoConfig: args.ignoreRepoConfig === true,
+    ...(args.configFile ? { configFile: resolve(options.cwd, args.configFile) } : {}),
+  };
+  const change = changeRequestOf(args);
+  return change ? changeRequestTarget(change, inputs) : localTarget(args, inputs);
+}
+
+interface ChangeRequestArgs {
+  platform: keyof typeof PLATFORMS;
+  ref: ChangeRequestRef;
+  publish: boolean;
+}
+
+function changeRequestOf(args: ReviewArgs): ChangeRequestArgs | undefined {
+  const pr = args.pullRequest;
+  if (pr) {
+    const ref = { number: pr.number, ...(pr.repo ? { repository: pr.repo } : {}) };
+    return { platform: "github", ref, publish: pr.publish };
+  }
+  const mr = args.mergeRequest;
+  if (mr) {
+    const ref = { number: mr.iid, ...(mr.project ? { repository: mr.project } : {}) };
+    return { platform: "gitlab", ref, publish: mr.publish };
+  }
+  return undefined;
+}
+
+async function localTarget(args: ReviewArgs, inputs: Inputs): Promise<ReviewTarget> {
+  const { cwd, root, configFile, ignoreRepoConfig } = inputs;
+  const config = await loadConfig(root, inputs.env, {
+    repository: !ignoreRepoConfig,
+    ...(configFile ? { file: configFile } : {}),
+    warn: inputs.warn,
+    ...(inputs.fetch ? { fetch: inputs.fetch } : {}),
   });
   return {
     platform: "local",
     config,
     // Plugins named by the user's own file are resolved from where it is.
-    plugins: await loadExternalPlugins(
-      config.plugins,
-      args.configFile ? dirname(args.configFile) : root,
-    ),
-    accountPlugins: !args.ignoreRepoConfig,
+    plugins: await loadExternalPlugins(config.plugins, configFile ? dirname(configFile) : root),
+    accountPlugins: !ignoreRepoConfig,
     createVcs: (registry) => registry.createVcs("local", { cwd, target: args.target }),
-    ...(args.ignoreRepoConfig ? { readTrusted: untrustedTreeReader(args, cwd) } : {}),
+    ...(ignoreRepoConfig ? { readTrusted: untrustedTreeReader(args, cwd) } : {}),
     publish: false,
   };
 }
@@ -81,234 +147,56 @@ function untrustedTreeReader(
   return (path) => base.readFile(path);
 }
 
-// The pull request's own files are untrusted: configuration, guidelines and
-// rules come from its base commit, and repository plugins never load.
-export async function resolvePullRequestTarget(
-  pr: PullRequestArgs,
-  cwd: string,
-  root: string,
-  env: Env,
-  warn: (message: string) => void,
-  fetchImpl?: typeof fetch,
-  ignoreRepoConfig = false,
-  configFile?: string,
+// The change request's own files are untrusted: configuration, guidelines
+// and rules come from its base commit, and repository plugins never load.
+async function changeRequestTarget(
+  change: ChangeRequestArgs,
+  inputs: Inputs,
 ): Promise<ReviewTarget> {
-  const token = env.GITHUB_TOKEN ?? env.GH_TOKEN;
-  if (!token) {
-    throw new OcraError(
-      "CONFIG_CREDENTIALS_MISSING",
-      "--pr needs a GitHub token in GITHUB_TOKEN or GH_TOKEN",
-    );
-  }
-  const [owner = "", repo = ""] = (pr.repo ?? (await repositoryName(root, env))).split("/");
-  const apiOptions = { token, ...(env.GITHUB_API_URL ? { baseUrl: env.GITHUB_API_URL } : {}) };
-  const api = new GitHubApi(
-    { owner, repo },
-    fetchImpl ? { ...apiOptions, fetch: fetchImpl } : apiOptions,
-  );
-  const pull = await api.getPullRequest(pr.number);
-  await ensureCommits(root, [pull.base.sha, pull.head.sha], [`pull/${pr.number}/head`]);
+  const { cwd, root, configFile, warn } = inputs;
+  const found = await PLATFORMS[change.platform]({
+    ref: change.ref,
+    env: inputs.env,
+    origin: () => originUrl(root),
+    warn,
+    ...(inputs.fetch ? { fetch: inputs.fetch } : {}),
+  });
+  await ensureCommits(root, [found.baseSha, found.headSha], found.headRefs);
 
-  const base = new LocalGitAdapter({ cwd, target: { mode: "commit", commit: pull.base.sha } });
+  const base = new LocalGitAdapter({ cwd, target: { mode: "commit", commit: found.baseSha } });
   const readTrusted = (path: string) => base.readFile(path);
-  const config = await loadConfig(root, env, {
-    repository: !ignoreRepoConfig,
+  const config = await loadConfig(root, inputs.env, {
+    repository: !inputs.ignoreRepoConfig,
     read: readTrusted,
     ...(configFile ? { file: configFile } : {}),
     warn,
-    ...(fetchImpl ? { fetch: fetchImpl } : {}),
+    ...(inputs.fetch ? { fetch: inputs.fetch } : {}),
   });
   if (config.plugins.length > 0) {
-    warn(`plugins in the configuration are not loaded for ${CHANGE_REQUEST.github}s`);
+    warn(`plugins in the configuration are not loaded for ${CHANGE_REQUEST[change.platform]}s`);
   }
-  const code = new LocalGitAdapter({
-    cwd,
-    target: { mode: "range", from: pull.base.sha, to: pull.head.sha },
-  });
+  const local: LocalCode = {
+    code: new LocalGitAdapter({
+      cwd,
+      target: { mode: "range", from: found.baseSha, to: found.headSha },
+    }),
+    history: { filesChangedSince: (from, to) => filesChangedSince(root, from, to) },
+  };
+  const repository = repositoryOfWebUrl(found.webUrl);
   return {
-    platform: "github",
+    platform: change.platform,
     config,
     plugins: [],
     accountPlugins: false,
-    createVcs: (registry) =>
-      registry.createVcs("github", {
-        owner,
-        repo,
-        number: pr.number,
-        token,
-        ...(env.GITHUB_API_URL ? { apiUrl: env.GITHUB_API_URL } : {}),
-        botLogin: config.github.botLogin ?? DEFAULT_BOT_LOGIN,
-        requestChanges: config.github.requestChanges ?? false,
-        code,
-        snapshot: pull,
-        history: {
-          filesChangedSince: (from: string, to: string) => filesChangedSince(root, from, to),
-        },
-        ...(fetchImpl ? { fetch: fetchImpl } : {}),
-      }),
+    createVcs: (registry) => found.createVcs(registry, local, config),
     readTrusted,
-    publish: pr.publish,
-    ...definedRepository(pull.html_url),
+    publish: change.publish,
+    ...(repository ? { repository } : {}),
   };
-}
-
-const GITLAB_API = "https://gitlab.com/api/v4";
-
-// Like a pull request: configuration, guidelines and rules come from the
-// target branch the merge request was based on, and repository plugins never
-// load. GitLab CI sets CI_API_V4_URL and CI_PROJECT_ID; GITLAB_TOKEN must be
-// a token that may write notes, which CI_JOB_TOKEN may not.
-export async function resolveMergeRequestTarget(
-  mr: MergeRequestArgs,
-  cwd: string,
-  root: string,
-  env: Env,
-  warn: (message: string) => void,
-  fetchImpl?: typeof fetch,
-  ignoreRepoConfig = false,
-  configFile?: string,
-): Promise<ReviewTarget> {
-  const token = env.GITLAB_TOKEN;
-  if (!token) {
-    throw new OcraError(
-      "CONFIG_CREDENTIALS_MISSING",
-      "--mr needs a GitLab token in GITLAB_TOKEN with the api scope and the Developer role: a project access token, or on GitLab.com Free a personal access token of a dedicated account (CI_JOB_TOKEN cannot post comments)",
-    );
-  }
-  const origin = await originUrl(root);
-  const project = mr.project ?? env.CI_PROJECT_ID ?? gitlabProject(origin);
-  const apiUrl = gitlabApi(env.CI_API_V4_URL, remoteHost(origin), warn);
-  const api = new GitLabApi(project, {
-    token,
-    baseUrl: apiUrl,
-    ...(fetchImpl ? { fetch: fetchImpl } : {}),
-  });
-  const merge = await api.getMergeRequest(mr.iid);
-  const refs = merge.diff_refs;
-  if (!refs) {
-    throw new OcraError(
-      "VCS_NOT_READY",
-      `merge request !${mr.iid} has no diff yet; try again shortly`,
-    );
-  }
-  await ensureCommits(
-    root,
-    [refs.start_sha, refs.head_sha],
-    [`refs/merge-requests/${mr.iid}/head`],
-  );
-
-  const base = new LocalGitAdapter({ cwd, target: { mode: "commit", commit: refs.start_sha } });
-  const readTrusted = (path: string) => base.readFile(path);
-  const config = await loadConfig(root, env, {
-    repository: !ignoreRepoConfig,
-    read: readTrusted,
-    ...(configFile ? { file: configFile } : {}),
-    warn,
-    ...(fetchImpl ? { fetch: fetchImpl } : {}),
-  });
-  if (config.plugins.length > 0) {
-    warn(`plugins in the configuration are not loaded for ${CHANGE_REQUEST.gitlab}s`);
-  }
-  const code = new LocalGitAdapter({
-    cwd,
-    target: { mode: "range", from: refs.start_sha, to: refs.head_sha },
-  });
-  return {
-    platform: "gitlab",
-    config,
-    plugins: [],
-    accountPlugins: false,
-    createVcs: (registry) =>
-      registry.createVcs("gitlab", {
-        project: /^\d+$/.test(project) ? Number(project) : project,
-        iid: mr.iid,
-        token,
-        apiUrl,
-        code,
-        snapshot: merge,
-        history: {
-          filesChangedSince: (from: string, to: string) => filesChangedSince(root, from, to),
-        },
-        ...(fetchImpl ? { fetch: fetchImpl } : {}),
-      }),
-    readTrusted,
-    publish: mr.publish,
-    ...definedRepository(merge.web_url),
-  };
-}
-
-function definedRepository(webUrl: string): { repository?: string } {
-  const repository = repositoryOfWebUrl(webUrl);
-  return repository ? { repository } : {};
 }
 
 function originUrl(root: string): Promise<string | undefined> {
   return new LocalGitAdapter({ cwd: root, target: { mode: "workspace" } })
     .remoteUrl("origin")
     .catch(() => undefined);
-}
-
-// Where GITLAB_TOKEN goes: to CI_API_V4_URL, which GitLab CI sets, or else
-// to gitlab.com, but only when origin is there too or is no remote host. A
-// token for a self-managed instance must not travel to gitlab.com because
-// the address was left out.
-function gitlabApi(
-  configured: string | undefined,
-  origin: string | undefined,
-  warn: (message: string) => void,
-): string {
-  if (configured) {
-    const api = remoteHost(configured);
-    if (api && origin && site(api) !== site(origin)) {
-      warn(`CI_API_V4_URL is on ${api} but origin is on ${origin}; GITLAB_TOKEN goes to ${api}`);
-    }
-    return configured;
-  }
-  if (origin && site(origin) !== "gitlab.com") {
-    throw new ConfigError(
-      `origin is on ${origin}, not gitlab.com: set CI_API_V4_URL to its API, such as https://${origin}/api/v4, so that GITLAB_TOKEN goes only there`,
-    );
-  }
-  return GITLAB_API;
-}
-
-// GitLab.com answers on subdomains too, such as altssh.gitlab.com for SSH.
-function site(host: string): string {
-  return host === "gitlab.com" || host.endsWith(".gitlab.com") ? "gitlab.com" : host;
-}
-
-// The host of https://host/…, ssh://user@host:port/… or user@host:path; none
-// for a local path, including C:\ on Windows.
-function remoteHost(url: string | undefined): string | undefined {
-  if (!url) return undefined;
-  if (/^[\w+.-]+:\/\//.test(url)) {
-    try {
-      const parsed = new URL(url);
-      return parsed.protocol === "file:" ? undefined : parsed.hostname.toLowerCase() || undefined;
-    } catch {
-      return undefined;
-    }
-  }
-  return /^(?:[^@\s/]+@)?([^:/\s\\]+):(?![\\/])/.exec(url)?.[1]?.toLowerCase();
-}
-
-// The project behind the origin remote: any host, since GitLab runs on many.
-function gitlabProject(url: string | undefined): string {
-  const match = url && /^(?:[\w+.-]+:\/\/[^/]+\/|[^@\s]+@[^:]+:)(.+?)(?:\.git)?\/?$/.exec(url);
-  if (!match?.[1]) {
-    throw new ConfigError("Cannot tell which GitLab project this is; pass --project <id|path>");
-  }
-  return match[1];
-}
-
-async function repositoryName(root: string, env: Env): Promise<string> {
-  if (env.GITHUB_REPOSITORY) return env.GITHUB_REPOSITORY;
-  const url = await new LocalGitAdapter({ cwd: root, target: { mode: "workspace" } })
-    .remoteUrl("origin")
-    .catch(() => undefined);
-  const match = url && /github\.com[:/]([\w.-]+\/[\w.-]+?)(?:\.git)?$/.exec(url);
-  if (!match?.[1]) {
-    throw new ConfigError("Cannot tell which GitHub repository this is; pass --repo owner/name");
-  }
-  return match[1];
 }

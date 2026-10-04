@@ -6,6 +6,8 @@
 
 import { OcraError } from '@open-cr-agent/core';
 import type { OcraPlugin } from '@open-cr-agent/core';
+import type { PlatformTarget } from '@open-cr-agent/vcs-platform';
+import type { ResolveTargetOptions } from '@open-cr-agent/vcs-platform';
 
 // @public (undocumented)
 export class GitHubApiError extends OcraError {
@@ -16,6 +18,17 @@ export class GitHubApiError extends OcraError {
 
 // @public (undocumented)
 export const githubPlugin: OcraPlugin;
+
+// @public (undocumented)
+export interface GitHubSettings {
+    // (undocumented)
+    botLogin?: string;
+    // (undocumented)
+    requestChanges?: boolean;
+}
+
+// @public (undocumented)
+export function resolveGitHubTarget(options: ResolveTargetOptions): Promise<PlatformTarget<GitHubSettings>>;
 
 // (No @packageDocumentation comment for this package)
 

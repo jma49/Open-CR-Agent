@@ -135,7 +135,9 @@ The codes are a contract under the [0.x rule](./stability): a minor release may 
 
 ## Pull requests and merge requests
 
-`githubPlugin` (`@open-cr-agent/vcs-github`) and `gitlabPlugin` (`@open-cr-agent/vcs-gitlab`) register the `github` and `gitlab` adapters. Their `createVcs` options (the repository, the number, the token's variable, whether to publish) are not documented as a library contract yet; `packages/cli/src/commands/review/target.ts` in the repository shows how the CLI builds them, including the trusted-base reader it passes as `readTrusted`. Treat those shapes as internal until this page lists them.
+`githubPlugin` (`@open-cr-agent/vcs-github`) and `gitlabPlugin` (`@open-cr-agent/vcs-gitlab`) register the `github` and `gitlab` adapters.
+
+`resolveGitHubTarget` and `resolveGitLabTarget` find a pull or merge request the way `ocra review --pr` and `--mr` do. Each takes one options object: `ref` (the number, and the repository or project if you name it), `env` (read for the same token, repository and API variables as the CLI's), `origin()` (the checkout's origin remote, read only when needed), `warn` and an optional `fetch`. Each returns the base and head commits, the refspecs that fetch the head, the change request's web page, and `createVcs(registry, local, settings)`, which makes the adapter once the commits are in your clone: `local` gives the code under review and the repository's history, and `settings` is `GitHubSettings` (`botLogin`, `requestChanges`) or `GitLabSettings` (none yet). Fetching the commits and reading configuration, guidelines and rules from the base (`readTrusted`) stay with you; `packages/cli/src/commands/review/target.ts` in the repository shows how the CLI does it. The options the adapters' `createVcs` takes are not a library contract yet; go through these functions.
 
 ## Trust
 
@@ -146,7 +148,7 @@ The program that embeds ocra is the trust boundary. Plugins run code, so load on
 The main entry of each package is its public API, a contract under the [0.x rule](./stability):
 
 - **`@open-cr-agent/core`**: `review()` and `ReviewOptions`; what it returns (`ReviewReport`, `Finding` and the types they are made of), `coverageGaps()`, `toReportOutput()` with `ReportOutput`, `reportOutputSchema`, `reportJsonSchema()` and `REPORT_VERSION`; `parseSarifLog()`; the plugin interface (`OcraPlugin` and its contexts, `startPlugins()`, `PluginRegistry`, the built-in reviewer plugins and `sessionJsonlPlugin`); the contracts a plugin implements (`VcsAdapter`, `AgentRuntime` and the types they use, `ToolDefinition`, `ReviewerDefinition`, `RepoRule`); what a runtime builds on (`ChainRunner` with `ModelAttempts`, `AttemptOutcome`, `QuotaError`, the review tools, the step cap and the other helpers [Plugins](./plugins) lists); and the [error model](#errors).
-- **`@open-cr-agent/vcs-local`**: `localGitPlugin`, `LocalTarget`, `LocalGitOptions` and `GitError`. **`vcs-github`** and **`vcs-gitlab`**: `githubPlugin` and `gitlabPlugin`, and their API errors. **`runtime-opencode`** and **`runtime-direct`**: `opencodeRuntimePlugin` and `directRuntimePlugin`.
+- **`@open-cr-agent/vcs-local`**: `localGitPlugin`, `LocalTarget`, `LocalGitOptions` and `GitError`. **`vcs-github`** and **`vcs-gitlab`**: `githubPlugin` and `gitlabPlugin`, `resolveGitHubTarget` and `resolveGitLabTarget` with `GitHubSettings` and `GitLabSettings`, and their API errors. **`runtime-opencode`** and **`runtime-direct`**: `opencodeRuntimePlugin` and `directRuntimePlugin`.
 - **`@open-cr-agent/vcs-platform`** is what ocra's platform adapters share; it is not a contract yet.
 
 Every name and the shape of every type is in the package's API report, in the repository's [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc) directory; CI fails when an entry changes and its report does not.

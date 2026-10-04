@@ -21,3 +21,9 @@ export {
   gitlabSuggestion,
   type SuggestionFence,
 } from "./suggestion.js";
+export type {
+  ChangeRequestRef,
+  LocalCode,
+  PlatformTarget,
+  ResolveTargetOptions,
+} from "./target.js";
