@@ -108,8 +108,12 @@ jobs:
                 # GET /key is not a model request: it reports the free
                 # requests left today without spending one. When it does not
                 # say, the review runs and a spent quota shows in its report.
-                left=$(curl -fsS --max-time 20 -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-                  https://openrouter.ai/api/v1/key | jq -r '.data.free_model_daily_requests.remaining // empty' || true)
+                # Only the counter is printed, so the log shows what OpenRouter
+                # said, whether or not it matches the 429s that follow.
+                free=$(curl -fsS --max-time 20 -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+                  https://openrouter.ai/api/v1/key | jq -c '.data.free_model_daily_requests // null' || true)
+                echo "GET /key free_model_daily_requests: ${free:-no answer}"
+                left=$(jq -r '.remaining // empty' <<< "${free:-null}" 2>/dev/null || true)
                 if [[ "$left" =~ ^[0-9]+$ ]] && [ "$left" -lt "$FREE_MIN_REQUESTS" ]; then
                   allowed=false
                   reason="the free model quota is spent ($left request(s) left) until 00:00 UTC"

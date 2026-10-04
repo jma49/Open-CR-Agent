@@ -50,8 +50,10 @@ jobs:
         shell: bash
         run: |
           cat > "$RUNNER_TEMP/free-left.sh" <<'SH'
-          curl -fsS --max-time 20 -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-            https://openrouter.ai/api/v1/key | jq -r '.data.free_model_daily_requests.remaining // empty' || true
+          free=$(curl -fsS --max-time 20 -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+            https://openrouter.ai/api/v1/key | jq -c '.data.free_model_daily_requests // null' || true)
+          echo "GET /key free_model_daily_requests: ${free:-no answer}" >&2
+          jq -r '.remaining // empty' <<< "${free:-null}" 2>/dev/null || true
           SH
           # Prints "<open> <total>": cases of the run directory $1 still to
           # review (no result, skipped, or lost to the quota) and all cases.
