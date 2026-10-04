@@ -1,5 +1,9 @@
 import { OcraError } from "@open-cr-agent/core";
-import { retryDecision } from "@open-cr-agent/vcs-platform";
+import {
+  type PlatformApi,
+  pageInfoSchema,
+  sendWithRetry,
+} from "@open-cr-agent/vcs-platform/internal";
 import { z } from "zod";
 
 // Commit ids reach git as arguments; anything else is refused at the boundary.
@@ -75,6 +79,7 @@ const PER_PAGE = 100;
 const MAX_NOTE_PAGES = 30;
 const MAX_DISCUSSION_PAGES = 10;
 const MAX_EDITOR_PAGES = 30;
+const REQUEST_TIMEOUT_MS = 30_000;
 // Developer: may push to unprotected branches, the nearest to GitHub's write.
 export const DEVELOPER = 30;
 
@@ -93,7 +98,7 @@ const editorsSchema = z.object({
   project: z.object({
     mergeRequest: z.object({
       notes: z.object({
-        pageInfo: z.object({ hasNextPage: z.boolean(), endCursor: z.string().nullable() }),
+        pageInfo: pageInfoSchema,
         nodes: z.array(
           z.object({
             id: z.string(),
@@ -109,19 +114,28 @@ const editorsSchema = z.object({
 // validated before it reaches the adapter, and errors never echo the token.
 export class GitLabApi {
   private readonly baseUrl: string;
-  private readonly fetchImpl: typeof fetch;
+  private readonly api: PlatformApi;
 
   // `project` is the numeric id or the full path ("group/project").
   constructor(
     private readonly project: string | number,
-    private readonly options: GitLabApiOptions,
+    options: GitLabApiOptions,
   ) {
     this.baseUrl = (options.baseUrl ?? "https://gitlab.com/api/v4").replace(/\/+$/, "");
-    this.fetchImpl = options.fetch ?? fetch;
+    this.api = {
+      platform: "GitLab",
+      headers: { Accept: "application/json", Authorization: `Bearer ${options.token}` },
+      fetch: options.fetch ?? fetch,
+      sleep: options.sleep,
+      timeoutMs: () => REQUEST_TIMEOUT_MS,
+      toError: (status, message) => new GitLabApiError(status, message),
+    };
   }
 
   async currentUser(): Promise<{ id: number; username: string }> {
-    return user.parse(await this.send("GET", `${this.baseUrl}/user`, "/user"));
+    return user.parse(
+      await sendWithRetry(this.api, { method: "GET", url: `${this.baseUrl}/user`, path: "/user" }),
+    );
   }
 
   // The project's full path, which GraphQL takes instead of the id.
@@ -189,15 +203,13 @@ export class GitLabApi {
   }
 
   async findUser(username: string): Promise<number | undefined> {
-    const found = z
-      .array(user)
-      .parse(
-        await this.send(
-          "GET",
-          `${this.baseUrl}/users?username=${encodeURIComponent(username)}`,
-          "/users",
-        ),
-      );
+    const found = z.array(user).parse(
+      await sendWithRetry(this.api, {
+        method: "GET",
+        url: `${this.baseUrl}/users?username=${encodeURIComponent(username)}`,
+        path: "/users",
+      }),
+    );
     return found.find((u) => u.username === username)?.id;
   }
 
@@ -244,7 +256,16 @@ export class GitLabApi {
         data: z.unknown().optional(),
         errors: z.array(z.object({ message: z.string() })).optional(),
       })
-      .parse(await this.send("POST", url, "/graphql", { query, variables }, true));
+      .parse(
+        await sendWithRetry(this.api, {
+          method: "POST",
+          url,
+          path: "/graphql",
+          body: { query, variables },
+          // GraphQL queries are safe to repeat, although they are POSTs.
+          idempotent: true,
+        }),
+      );
     if (result.errors?.length) {
       throw new GitLabApiError(
         200,
@@ -256,56 +277,7 @@ export class GitLabApi {
 
   private request(method: string, path: string, body?: unknown): Promise<unknown> {
     const project = encodeURIComponent(String(this.project));
-    return this.send(method, `${this.baseUrl}/projects/${project}${path}`, path, body);
-  }
-
-  // GraphQL queries are safe to repeat, although they are POSTs; REST POSTs
-  // create notes and threads, and are not.
-  private async send(
-    method: string,
-    url: string,
-    path: string,
-    body?: unknown,
-    idempotent = method !== "POST",
-  ): Promise<unknown> {
-    const sleep = this.options.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
-    for (let attempt = 1; ; attempt += 1) {
-      const init: RequestInit = {
-        method,
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${this.options.token}`,
-          "User-Agent": "open-cr-agent",
-          ...(body === undefined ? {} : { "Content-Type": "application/json" }),
-        },
-        signal: AbortSignal.timeout(30_000),
-      };
-      if (body !== undefined) init.body = JSON.stringify(body);
-      let response: Response;
-      try {
-        response = await this.fetchImpl(url, init);
-      } catch (error) {
-        const next = retryDecision(method, idempotent, "network_error", attempt);
-        if (!next.retry) throw error;
-        await sleep(next.waitMs);
-        continue;
-      }
-      if (response.ok) return response.status === 204 ? undefined : response.json();
-      const detail = (await response.text().catch(() => "")).slice(0, 500);
-      const next = retryDecision(
-        method,
-        idempotent,
-        { status: response.status, headers: response.headers, body: detail },
-        attempt,
-      );
-      if (next.retry) {
-        await sleep(next.waitMs);
-        continue;
-      }
-      throw new GitLabApiError(
-        response.status,
-        `GitLab ${method} ${path.split("?")[0]} failed with ${response.status}: ${detail}`,
-      );
-    }
+    const url = `${this.baseUrl}/projects/${project}${path}`;
+    return sendWithRetry(this.api, { method, url, path, body });
   }
 }

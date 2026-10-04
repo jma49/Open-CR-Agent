@@ -1,5 +1,11 @@
+import { setTimeout as wait } from "node:timers/promises";
 import { OcraError } from "@open-cr-agent/core";
-import { MAX_ATTEMPTS, retryDecision } from "@open-cr-agent/vcs-platform";
+import { MAX_ATTEMPTS } from "@open-cr-agent/vcs-platform";
+import {
+  type PlatformApi,
+  pageInfoSchema,
+  sendWithRetry,
+} from "@open-cr-agent/vcs-platform/internal";
 import { z } from "zod";
 
 // Commit ids reach git as arguments; anything else is refused at the boundary.
@@ -73,6 +79,8 @@ const MAX_FILE_PAGES = 30;
 const pullRequestFileSchema = z.object({ filename: z.string(), patch: z.string().optional() });
 
 const MAX_COMMENT_PAGES = 30;
+const REQUEST_TIMEOUT_MS = 30_000;
+const REVIEW_TIMEOUT_MS = 120_000;
 const MAX_THREAD_PAGES = 10;
 
 export interface ReviewThread {
@@ -125,7 +133,7 @@ const reviewThreadsSchema = z.object({
   repository: z.object({
     pullRequest: z.object({
       reviewThreads: z.object({
-        pageInfo: z.object({ hasNextPage: z.boolean(), endCursor: z.string().nullable() }),
+        pageInfo: pageInfoSchema,
         nodes: z.array(
           z.object({
             id: z.string(),
@@ -145,14 +153,28 @@ const reviewThreadsSchema = z.object({
 // adapter, and errors never echo the token.
 export class GitHubApi {
   private readonly baseUrl: string;
-  private readonly fetchImpl: typeof fetch;
+  private readonly api: PlatformApi;
 
   constructor(
     private readonly repository: { owner: string; repo: string },
     private readonly options: GitHubApiOptions,
   ) {
     this.baseUrl = (options.baseUrl ?? "https://api.github.com").replace(/\/$/, "");
-    this.fetchImpl = options.fetch ?? fetch;
+    this.api = {
+      platform: "GitHub",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${options.token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      fetch: options.fetch ?? fetch,
+      sleep: options.sleep,
+      // Creating a review with many inline comments can take GitHub a while,
+      // and a POST that timed out after GitHub acted cannot be repeated.
+      timeoutMs: (method, path) =>
+        method === "POST" && path.endsWith("/reviews") ? REVIEW_TIMEOUT_MS : REQUEST_TIMEOUT_MS,
+      toError: (status, message) => new GitHubApiError(status, message),
+    };
   }
 
   async listReviewThreads(number: number): Promise<ReviewThread[]> {
@@ -284,11 +306,19 @@ export class GitHubApi {
   // GraphQL reports its rate limit as an error in a 200 response, which the
   // HTTP retry does not see; it is retried here the same bounded way.
   private async graphql(query: string, variables: Record<string, unknown>): Promise<unknown> {
-    const sleep = this.options.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+    const sleep = this.options.sleep ?? ((ms: number) => wait(ms));
     let result: GraphqlResult;
     for (let attempt = 1; ; attempt += 1) {
       result = graphqlResultSchema.parse(
-        await this.send("POST", this.graphqlUrl(), "/graphql", { query, variables }, true),
+        await sendWithRetry(this.api, {
+          method: "POST",
+          url: this.graphqlUrl(),
+          path: "/graphql",
+          body: { query, variables },
+          // GraphQL queries and resolving a thread are safe to repeat,
+          // although they are POSTs.
+          idempotent: true,
+        }),
       );
       const limited = result.errors?.some((e) => e.type === "RATE_LIMITED");
       if (!limited || attempt >= MAX_ATTEMPTS) break;
@@ -314,61 +344,6 @@ export class GitHubApi {
   private request(method: string, path: string, body?: unknown): Promise<unknown> {
     const { owner, repo } = this.repository;
     const url = `${this.baseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}${path}`;
-    return this.send(method, url, path, body);
-  }
-
-  // GraphQL queries and resolving a thread are safe to repeat, although they
-  // are POSTs; REST POSTs create comments and reviews, and are not.
-  private async send(
-    method: string,
-    url: string,
-    path: string,
-    body?: unknown,
-    idempotent = method !== "POST",
-  ): Promise<unknown> {
-    const sleep = this.options.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
-    for (let attempt = 1; ; attempt += 1) {
-      const init: RequestInit = {
-        method,
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${this.options.token}`,
-          "X-GitHub-Api-Version": "2022-11-28",
-          "User-Agent": "open-cr-agent",
-          ...(body === undefined ? {} : { "Content-Type": "application/json" }),
-        },
-        // Creating a review with many inline comments can take GitHub a while,
-        // and a POST that timed out after GitHub acted cannot be repeated.
-        signal: AbortSignal.timeout(
-          method === "POST" && path.endsWith("/reviews") ? 120_000 : 30_000,
-        ),
-      };
-      if (body !== undefined) init.body = JSON.stringify(body);
-      let response: Response;
-      try {
-        response = await this.fetchImpl(url, init);
-      } catch (error) {
-        const next = retryDecision(method, idempotent, "network_error", attempt);
-        if (!next.retry) throw error;
-        await sleep(next.waitMs);
-        continue;
-      }
-      if (response.ok) return response.status === 204 ? undefined : response.json();
-      const detail = (await response.text().catch(() => "")).slice(0, 500);
-      const next = retryDecision(
-        method,
-        idempotent,
-        { status: response.status, headers: response.headers, body: detail },
-        attempt,
-      );
-      if (next.retry) {
-        await sleep(next.waitMs);
-        continue;
-      }
-      throw new GitHubApiError(
-        response.status,
-        `GitHub ${method} ${path.split("?")[0]} failed with ${response.status}: ${detail}`,
-      );
-    }
+    return sendWithRetry(this.api, { method, url, path, body });
   }
 }

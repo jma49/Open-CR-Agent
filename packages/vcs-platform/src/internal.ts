@@ -1,5 +1,11 @@
 // "@open-cr-agent/vcs-platform/internal": what the platform adapters' tests
 // check against. Not a contract: any release may change it.
+export {
+  type PlatformApi,
+  type PlatformCall,
+  pageInfoSchema,
+  sendWithRetry,
+} from "./http.js";
 export { safeMarkdown } from "./neutralize.js";
 export { renderSummary } from "./render.js";
 export { declinesFinding } from "./review.js";
