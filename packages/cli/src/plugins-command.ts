@@ -29,8 +29,12 @@ exact version with install scripts off into a directory of your own, and
 records its integrity; deny removes it.
 `;
 
-/** Runs npm with these arguments, never through a shell; resolves with its standard output. */
-export type NpmRunner = (args: readonly string[]) => Promise<string>;
+/**
+ * Runs npm with these arguments in `cwd`, never through a shell; resolves
+ * with its standard output. Every call runs in the plugin directory, so the
+ * npm configuration of whatever project ocra was started in does not apply.
+ */
+export type NpmRunner = (args: readonly string[], cwd: string) => Promise<string>;
 
 export interface PluginsDeps {
   dir: string;
@@ -80,22 +84,6 @@ export function parseSpec(spec: string): { name: string; version: string } {
 
 async function allow(spec: string, out: Output, deps: PluginsDeps): Promise<number> {
   const { name, version } = parseSpec(spec);
-  const view = describe(await deps.npm(["view", `${name}@${version}`, "--json"]));
-  if (view.name !== name || view.version !== version) {
-    throw new ConfigError(`npm did not resolve ${name}@${version} to that exact version`);
-  }
-  out.write(
-    forTerminal(
-      [
-        `Package:      ${view.name}@${view.version}`,
-        `Published by: ${view.publisher ?? "unknown"}`,
-        `Maintainers:  ${view.maintainers.join(", ") || "unknown"}`,
-        `Integrity:    ${view.integrity ?? "unknown"}`,
-        `Installing into ${deps.dir} with install scripts off`,
-        "",
-      ].join("\n"),
-    ),
-  );
   await ensureDir(deps.dir);
   // npm installs into the nearest package.json; one of the directory's own
   // keeps it from walking up to a project.
@@ -103,21 +91,43 @@ async function allow(spec: string, out: Output, deps: PluginsDeps): Promise<numb
   if (!(await exists(manifest))) {
     await writeFile(manifest, `${JSON.stringify({ private: true }, null, 2)}\n`, { mode: 0o600 });
   }
-  await deps.npm([
-    "install",
-    "--ignore-scripts",
-    "--no-audit",
-    "--no-fund",
-    "--save-exact",
-    "--prefix",
+  const view = describe(await deps.npm(["view", `${name}@${version}`, "--json"], deps.dir));
+  if (view.name !== name || view.version !== version) {
+    throw new ConfigError(`npm did not resolve ${name}@${version} to that exact version`);
+  }
+  if (!view.integrity) {
+    throw new ConfigError(`npm view lists no integrity for ${name}@${version}; not allowed`);
+  }
+  out.write(
+    forTerminal(
+      [
+        `Package:      ${view.name}@${view.version}`,
+        `Published by: ${view.publisher ?? "unknown"}`,
+        `Maintainers:  ${view.maintainers.join(", ") || "unknown"}`,
+        `Integrity:    ${view.integrity}`,
+        `Installing into ${deps.dir} with install scripts off`,
+        "",
+      ].join("\n"),
+    ),
+  );
+  await deps.npm(
+    [
+      "install",
+      "--ignore-scripts",
+      "--no-audit",
+      "--no-fund",
+      "--save-exact",
+      "--prefix",
+      deps.dir,
+      `${name}@${version}`,
+    ],
     deps.dir,
-    `${name}@${version}`,
-  ]);
+  );
   const installed = await installedEntry(deps.dir, name);
   if (installed?.version !== version || !installed.integrity) {
     throw new ConfigError(`npm did not install ${name}@${version} into ${deps.dir}`);
   }
-  if (view.integrity && view.integrity !== installed.integrity) {
+  if (view.integrity !== installed.integrity) {
     throw new ConfigError(
       `${name}@${version} installed with another integrity than the registry lists; not allowed`,
     );
@@ -140,15 +150,10 @@ async function deny(name: string, out: Output, deps: PluginsDeps): Promise<numbe
   // The record is what loading checks; removing the files is housekeeping.
   await writeAllowed(deps.dir, kept);
   try {
-    await deps.npm([
-      "uninstall",
-      "--ignore-scripts",
-      "--no-audit",
-      "--no-fund",
-      "--prefix",
+    await deps.npm(
+      ["uninstall", "--ignore-scripts", "--no-audit", "--no-fund", "--prefix", deps.dir, name],
       deps.dir,
-      name,
-    ]);
+    );
   } catch {
     await rm(join(deps.dir, "node_modules", name), { recursive: true, force: true });
   }
@@ -213,12 +218,12 @@ export function defaultNpm(env: NodeJS.ProcessEnv = process.env): NpmRunner {
           [join(dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js")],
         ]
       : ["npm", []];
-  return (args) =>
+  return (args, cwd) =>
     new Promise((resolve, reject) => {
       execFile(
         file,
         [...prefix, ...args],
-        { env, timeout: 5 * 60_000, maxBuffer: 16 * 1024 * 1024, shell: false },
+        { cwd, env, timeout: 5 * 60_000, maxBuffer: 16 * 1024 * 1024, shell: false },
         (error, stdout, stderr) => {
           if (error) {
             reject(

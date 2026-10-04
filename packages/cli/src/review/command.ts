@@ -135,7 +135,7 @@ export async function reviewCommand(
       // The account's default for --ultra; there is no --no-ultra to refuse it.
       if (account.settings.ultra === true && !args.ultra) filled.push("ultra");
       if (filled.length > 0) {
-        io.err.write(`[ocra] From your ocra Cloud settings: ${filled.join(", ")}\n`);
+        io.err.write(forTerminal(`[ocra] From your ocra Cloud settings: ${filled.join(", ")}\n`));
       }
     }
     if (account.kind === "read") fromAccount = account.plugins;

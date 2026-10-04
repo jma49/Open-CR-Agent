@@ -45,7 +45,7 @@ ocra plugins list
 ocra plugins deny ocra-plugin-team-rules
 ```
 
-`allow` 要求精确版本，不接受范围或标签。它会显示 registry 中该包的名称、版本、发布者、维护者和 integrity，然后在关闭安装脚本的情况下把这个精确版本安装到 `~/.config/ocra/plugins/`（`$XDG_CONFIG_HOME/ocra/plugins/`，Windows 上为 `%APPDATA%\ocra\plugins\`），并把名称、版本和 integrity 记录在该目录的 `plugins.json` 中（只有你可读）。允许一个插件是你自己的供应链决定，就像添加一个依赖。
+`allow` 要求精确版本，不接受范围或标签。它会显示 registry 中该包的名称、版本、发布者、维护者和 integrity，然后在关闭安装脚本的情况下把这个精确版本安装到 `~/.config/ocra/plugins/`（`$XDG_CONFIG_HOME/ocra/plugins/`，Windows 上为 `%APPDATA%\ocra\plugins\`），并把名称、版本和 integrity 记录在该目录的 `plugins.json` 中（只有你可读）。npm 在该目录中运行，所以你运行 ocra 所在项目的 npm 配置不会生效；registry 中没有列出 integrity 的包会被拒绝。记录的 integrity 只覆盖这个包本身的 tarball，不覆盖它的依赖：依赖由 npm 在安装时按当时的解析结果安装。允许一个插件是你自己的供应链决定，就像添加一个依赖。
 
 审查只在以下条件下加载账户列出的插件：
 

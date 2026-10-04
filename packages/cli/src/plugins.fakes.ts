@@ -12,6 +12,8 @@ export interface FakePackage {
   publisher?: string;
   maintainers?: string[];
   integrity: string;
+  // The registry lists no integrity for it.
+  unlisted?: boolean;
   // Installed with another integrity than the registry lists.
   installedIntegrity?: string;
   // The module's source; default: a plugin that registers a rule naming its settings.
@@ -31,10 +33,13 @@ export const ACCOUNT_PLUGIN_SOURCE = `export default {
 export function fakeNpm(packages: Record<string, FakePackage>): {
   npm: NpmRunner;
   calls: string[][];
+  cwds: string[];
 } {
   const calls: string[][] = [];
-  const npm: NpmRunner = async (args) => {
+  const cwds: string[] = [];
+  const npm: NpmRunner = async (args, cwd) => {
     calls.push([...args]);
+    cwds.push(cwd);
     const [command] = args;
     if (command === "view") {
       const spec = args[1] ?? "";
@@ -46,7 +51,7 @@ export function fakeNpm(packages: Record<string, FakePackage>): {
         version: spec.slice(at + 1),
         _npmUser: pkg.publisher,
         maintainers: pkg.maintainers ?? [],
-        dist: { integrity: pkg.integrity },
+        dist: pkg.unlisted ? {} : { integrity: pkg.integrity },
       });
     }
     const dir = args[args.indexOf("--prefix") + 1] ?? "";
@@ -65,7 +70,7 @@ export function fakeNpm(packages: Record<string, FakePackage>): {
     }
     throw new Error(`unexpected npm ${command}`);
   };
-  return { npm, calls };
+  return { npm, calls, cwds };
 }
 
 export function install(

@@ -45,7 +45,7 @@ ocra plugins list
 ocra plugins deny ocra-plugin-team-rules
 ```
 
-`allow` needs an exact version, never a range or tag. It shows the package's name, version, publisher, maintainers and integrity as the registry lists them, installs that exact version with install scripts off into `~/.config/ocra/plugins/` (`$XDG_CONFIG_HOME/ocra/plugins/`, or `%APPDATA%\ocra\plugins\` on Windows), and records its name, version and integrity in `plugins.json` there (readable only by you). Allowing a plugin is your own supply-chain decision, like adding a dependency.
+`allow` needs an exact version, never a range or tag. It shows the package's name, version, publisher, maintainers and integrity as the registry lists them, installs that exact version with install scripts off into `~/.config/ocra/plugins/` (`$XDG_CONFIG_HOME/ocra/plugins/`, or `%APPDATA%\ocra\plugins\` on Windows), and records its name, version and integrity in `plugins.json` there (readable only by you). npm runs in that directory, so the npm configuration of the project you run ocra from does not apply, and a package whose registry entry lists no integrity is refused. The recorded integrity covers the package tarball itself, not its dependencies: those are installed by npm as it resolves them at that time. Allowing a plugin is your own supply-chain decision, like adding a dependency.
 
 A review loads a plugin your account names only:
 

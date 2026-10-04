@@ -1,9 +1,10 @@
-import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { pluginsDir, readAllowed } from "./plugin-store.js";
 import { fakeNpm } from "./plugins.fakes.js";
+import { defaultNpm } from "./plugins-command.js";
 import { capture, critical, deps } from "./run.fakes.js";
 import { run } from "./run.js";
 
@@ -20,6 +21,7 @@ const PACKAGES = {
   },
   "@scope/tampered@1.0.0": { integrity: "sha512-registry", installedIntegrity: "sha512-other" },
   "ocra-plugin-esc@1.0.0": { publisher: "\u001b]8;;evil\u0007mallory", integrity: "sha512-e" },
+  "ocra-plugin-unlisted@1.0.0": { integrity: "sha512-u", unlisted: true },
 };
 
 function setup() {
@@ -38,7 +40,7 @@ function setup() {
     );
     return { code, out: out.text(), err: err.text() };
   };
-  return { dir: pluginsDir(env), calls: fake.calls, plugins };
+  return { dir: pluginsDir(env), calls: fake.calls, cwds: fake.cwds, plugins };
 }
 
 describe("ocra plugins allow", () => {
@@ -63,7 +65,7 @@ describe("ocra plugins allow", () => {
   });
 
   it("shows the package and its publisher, installs it with scripts off and records its integrity", async () => {
-    const { plugins, calls, dir } = setup();
+    const { plugins, calls, cwds, dir } = setup();
     const { code, out } = await plugins("allow", "ocra-plugin-x@1.2.3");
     expect(code).toBe(0);
     expect(out).toContain("Package:      ocra-plugin-x@1.2.3");
@@ -82,6 +84,7 @@ describe("ocra plugins allow", () => {
         "ocra-plugin-x@1.2.3",
       ],
     ]);
+    expect(cwds).toEqual([dir, dir]);
     expect(await readAllowed(dir)).toEqual([
       { name: "ocra-plugin-x", version: "1.2.3", integrity: "sha512-good" },
     ]);
@@ -98,6 +101,15 @@ describe("ocra plugins allow", () => {
     const { code, err } = await plugins("allow", "@scope/tampered@1.0.0");
     expect(code).toBe(2);
     expect(err).toContain("another integrity");
+    expect(await readAllowed(dir)).toEqual([]);
+  });
+
+  it("refuses a package whose registry entry lists no integrity, before installing it", async () => {
+    const { plugins, calls, dir } = setup();
+    const { code, err } = await plugins("allow", "ocra-plugin-unlisted@1.0.0");
+    expect(code).toBe(2);
+    expect(err).toContain("lists no integrity");
+    expect(calls.map((c) => c[0])).toEqual(["view"]);
     expect(await readAllowed(dir)).toEqual([]);
   });
 
@@ -121,4 +133,17 @@ describe("ocra plugins deny and list", () => {
     expect(calls.at(-1)?.[0]).toBe("uninstall");
     expect((await plugins("deny", "ocra-plugin-x")).out).toContain("was not allowed");
   });
+});
+
+describe("the npm ocra runs", () => {
+  it("runs in the directory it is given, so that directory's npm project applies", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "ocra-npm-cwd-"));
+    homes.push(dir);
+    writeFileSync(join(dir, "package.json"), "{}");
+    const env = Object.fromEntries(
+      Object.entries(process.env).filter(([key]) => !key.toLowerCase().startsWith("npm_")),
+    );
+    const prefix = await defaultNpm(env)(["prefix"], dir);
+    expect(realpathSync(prefix.trim())).toBe(realpathSync(dir));
+  }, 30_000);
 });

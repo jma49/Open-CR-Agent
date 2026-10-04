@@ -18,7 +18,7 @@ type CloudDeps = {
 };
 
 // @public
-type NpmRunner = (args: readonly string[]) => Promise<string>;
+type NpmRunner = (args: readonly string[], cwd: string) => Promise<string>;
 
 // @public (undocumented)
 interface Output {

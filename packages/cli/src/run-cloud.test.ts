@@ -29,6 +29,19 @@ describe("a review while signed in to ocra Cloud", () => {
     expect(JSON.stringify(sent)).not.toMatch(/app\.ts|retries|Negative retry/);
   });
 
+  it("escapes control characters in account settings it names on the terminal", async () => {
+    const cwd = repoWithChange();
+    const odd = {
+      ...PREFERENCES,
+      agents: { reviewers: { "sec\u001b[2Jurity": { effort: "high" } } },
+    };
+    const { cloud } = signedIn({}, odd);
+    const err = capture();
+    await run(["review", "--no-upload"], capture(), err, deps(cwd, critical, { cloud }, true));
+    expect(err.text()).toContain("reviewers.sec\uFFFD[2Jurity");
+    expect(err.text()).not.toContain("\u001b");
+  });
+
   it("uploads nothing with --no-upload, and keeps configured models", async () => {
     const cwd = repoWithChange();
     const { cloud, calls } = signedIn();
