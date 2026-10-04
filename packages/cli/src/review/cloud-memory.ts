@@ -33,6 +33,18 @@ export async function fetchAccountMemory(
   return parseAccountMemory(body, warn);
 }
 
+/** Whether the account remembers any finding, for any repository; false when that cannot be read. */
+export async function accountHasMemory(deps: CloudDeps): Promise<boolean> {
+  try {
+    const answer = await cloudFetch(deps, "/api/memory");
+    if (answer.kind !== "answered" || !answer.res.ok) return false;
+    const entries = ((await answer.res.json()) as { entries?: unknown } | null)?.entries;
+    return Array.isArray(entries) && entries.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export function parseAccountMemory(body: unknown, warn: (message: string) => void): MemoryEntry[] {
   const list = (body as { entries?: unknown } | null)?.entries;
   if (!Array.isArray(list)) {

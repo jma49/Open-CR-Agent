@@ -1,8 +1,6 @@
-import { execFile } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { promisify } from "node:util";
 import {
   coverageGaps,
   type ReviewReport,
@@ -19,11 +17,10 @@ import type { SharedFinding } from "./cloud-findings.js";
 // the verdict, how many findings of each severity, files and tasks, tokens
 // and time. A path, a title, a finding's text or code go only when the
 // account shares findings (ADR-0028, cloud-findings.ts). The repository is
-// a salted hash, so the server can group reviews of one repository without
-// learning which it is: the salt stays on this machine, or is the account's
-// while it shares findings, so the hash matches on all its machines.
-
-const run = promisify(execFile);
+// a salted hash of its `https://host/owner/repo` (repository-id.ts), so
+// the server can group reviews of one repository without learning which
+// it is: the salt stays on this machine, or is the account's while it
+// shares findings, so the hash matches on all its machines.
 
 export type ReviewSource = "local" | "github" | "gitlab";
 
@@ -153,22 +150,6 @@ function perReviewer(
   };
 }
 
-/** The repository's origin without credentials, or its root path when it has none. */
-async function repositoryId(root: string): Promise<string> {
-  try {
-    const { stdout } = await run("git", ["-C", root, "remote", "get-url", "origin"], {
-      timeout: 10_000,
-    });
-    const url = stdout.trim();
-    return url
-      .replace(/^[a-z+]+:\/\/[^@/]*@/i, (m) => m.slice(0, m.indexOf("//") + 2))
-      .replace(/\.git$/, "")
-      .toLowerCase();
-  } catch {
-    return root;
-  }
-}
-
 /** This machine's random salt, kept beside the credentials, made on first use. */
 async function machineSalt(credentialsPath: string): Promise<string> {
   const path = join(dirname(credentialsPath), "upload-salt");
@@ -197,16 +178,17 @@ async function readSalt(path: string): Promise<string | "unreadable" | undefined
   return /^[0-9a-f]{64}$/.test(salt) ? salt : "unreadable";
 }
 
-/** The repository's hash, salted with the account's salt when given, else this machine's. */
+/**
+ * The hash of a repository named as `https://host/owner/repo`
+ * (repository-id.ts), salted with the account's salt when given, else this machine's.
+ */
 export async function repoHash(
-  root: string,
+  repository: string,
   credentialsPath: string,
   accountSalt?: string,
 ): Promise<string> {
   const salt = accountSalt ?? (await machineSalt(credentialsPath));
-  return createHash("sha256")
-    .update(`${salt}:${await repositoryId(root)}`)
-    .digest("hex");
+  return createHash("sha256").update(`${salt}:${repository}`).digest("hex");
 }
 
 /** Whether this run talks to ocra Cloud at all: signed in, not turned off. */

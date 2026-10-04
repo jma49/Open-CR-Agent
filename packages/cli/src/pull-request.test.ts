@@ -6,9 +6,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { capture, changeRequestFixture, removeFixtures } from "./change-request.fakes.js";
 import { pluginsDir } from "./plugin-store.js";
 import { allowInstalled, signedInCloud } from "./plugins.fakes.js";
+import { repoHash } from "./review/cloud-upload.js";
 import { BUILTIN_PLUGINS, type ReviewDeps } from "./review/command.js";
 import { BUILTIN_RUNTIMES } from "./review/runtimes.js";
 import { run } from "./run.js";
+import { signedIn } from "./run-cloud.fakes.js";
 
 afterEach(removeFixtures);
 
@@ -280,5 +282,40 @@ describe("ocra review --pr", () => {
     expect(prompts.length).toBeGreaterThan(0);
     expect(prompts.join("\n")).not.toContain("ACCOUNT PLUGIN RULE");
     expect(err.text()).toContain("do not load for pull or merge requests");
+  });
+
+  it("names the pull request's repository to ocra Cloud, not the checkout's origin", async () => {
+    const { clone, base, head } = changeRequestFixture();
+    const github = fakeGitHub(base, head);
+    const salt = "5".repeat(64);
+    const cloud = signedIn({}, { settings: {} }, false, {
+      "/api/account/salt": () => Response.json({ salt }),
+      "/api/memory": () => Response.json({ entries: [] }),
+    });
+    const fakeRuntime: OcraPlugin = {
+      name: "runtime-opencode",
+      configure(ctx) {
+        ctx.registerRuntime("opencode", () => ({
+          name: "fake",
+          async *runTask(spec) {
+            yield { type: "done", taskId: spec.taskId };
+          },
+        }));
+      },
+    };
+    await run(["review", "--pr", "7", "--repo", "o/r", "--no-upload"], capture(), capture(), {
+      cwd: clone,
+      env: { GITHUB_TOKEN: "t" },
+      builtinPlugins: BUILTIN_PLUGINS,
+      runtimes: { opencode: async () => fakeRuntime },
+      writeFile: async () => {},
+      now: Date.now,
+      heartbeatMs: 60_000,
+      fetch: github.fetchImpl,
+      cloud: cloud.cloud,
+    });
+    const memory = cloud.calls.find((c) => c.path === "/api/memory");
+    const hash = await repoHash("https://github.com/o/r", cloud.credentialsPath, salt);
+    expect(memory?.query).toBe(`?repo=${hash}`);
   });
 });

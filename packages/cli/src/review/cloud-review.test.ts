@@ -8,6 +8,7 @@ import type { CloudDeps } from "../cloud.js";
 import { parseAccountMemory } from "./cloud-memory.js";
 import { prepareCloudReview } from "./cloud-review.js";
 import { repoHash } from "./cloud-upload.js";
+import { originRepository } from "./repository-id.js";
 
 const SALT = "5".repeat(64);
 const ENTRY = {
@@ -21,10 +22,14 @@ const ENTRY = {
   createdAt: "2026-10-01T12:00:00.000Z",
 };
 
-function repo(): string {
+async function hashOf(root: string, credentialsPath: string, salt?: string): Promise<string> {
+  return repoHash(await originRepository(root), credentialsPath, salt);
+}
+
+function repo(origin = "https://github.com/org/repo"): string {
   const dir = mkdtempSync(join(tmpdir(), "ocra-cr-repo-"));
   execFileSync("git", ["init", "-q", dir]);
-  execFileSync("git", ["-C", dir, "remote", "add", "origin", "https://github.com/org/repo"]);
+  execFileSync("git", ["-C", dir, "remote", "add", "origin", origin]);
   return dir;
 }
 
@@ -71,7 +76,7 @@ describe("prepareCloudReview", () => {
     const m = machine(sharing);
     const warnings: string[] = [];
     const ready = await prepareCloudReview(root, m.deps, (w) => warnings.push(w));
-    const hash = await repoHash(root, m.credentialsPath, SALT);
+    const hash = await hashOf(root, m.credentialsPath, SALT);
     expect(ready).toEqual({
       repoHash: hash,
       shareFindings: true,
@@ -102,9 +107,69 @@ describe("prepareCloudReview", () => {
       writeFileSync(accountSaltPath(m.credentialsPath), `${SALT}\n`);
       const ready = await prepareCloudReview(root, m.deps, () => {});
       expect(ready?.shareFindings).toBe(false);
-      expect(ready?.repoHash).toBe(await repoHash(root, m.credentialsPath));
+      expect(ready?.memory).toEqual([]);
+      expect(ready?.repoHash).toBe(await hashOf(root, m.credentialsPath));
       expect(existsSync(accountSaltPath(m.credentialsPath))).toBe(false);
     }
+  });
+
+  it("says once that the account's memory does not apply while it does not share findings", async () => {
+    const off = { ...sharing, "/api/account/salt": () => Response.json({ salt: null }) };
+    const m = machine(off);
+    const warnings: string[] = [];
+    await prepareCloudReview(repo(), m.deps, (w) => warnings.push(w));
+    expect(m.calls).toEqual(["/api/account/salt", "/api/memory"]);
+    expect(warnings).toEqual([
+      "your ocra Cloud account remembers findings, but applies them only while it shares findings (Settings in ocra Cloud); this review applies the repository's memory alone",
+    ]);
+    const none = machine({ ...off, "/api/memory": () => Response.json({ entries: [] }) });
+    const quiet: string[] = [];
+    await prepareCloudReview(repo(), none.deps, (w) => quiet.push(w));
+    expect(quiet).toEqual([]);
+  });
+
+  it("hashes one repository alike whatever form its origin URL takes", async () => {
+    const m = machine(sharing);
+    const forms = [
+      "https://github.com/Org/Repo.git",
+      "git@github.com:org/repo.git",
+      "ssh://git@github.com/org/repo",
+      "ssh://git@github.com:22/org/repo.git",
+      "https://x-token:ghp_secret@GitHub.com:443/org/repo/",
+      "git+ssh://git@ssh.github.com:443/org/Repo.git/",
+    ];
+    const hashes = new Set<string | undefined>();
+    for (const origin of forms) {
+      hashes.add((await prepareCloudReview(repo(origin), m.deps, () => {}))?.repoHash);
+    }
+    expect(hashes.size).toBe(1);
+    const other = await prepareCloudReview(repo("git@github.com:org/other.git"), m.deps, () => {});
+    expect(hashes.has(other?.repoHash)).toBe(false);
+  });
+
+  it("hashes the pull or merge request's repository, not the checkout's origin", async () => {
+    const m = machine(sharing);
+    const target = await prepareCloudReview(
+      repo("git@github.com:org/other.git"),
+      m.deps,
+      () => {},
+      "https://github.com/org/repo",
+    );
+    const origin = await prepareCloudReview(repo(), m.deps, () => {});
+    expect(target?.repoHash).toBe(origin?.repoHash);
+  });
+
+  it("hashes with the account's salt kept from the last answer when ocra Cloud cannot be reached", async () => {
+    const root = repo();
+    const online = await prepareCloudReview(root, machine(sharing).deps, () => {});
+    const m = machine({
+      "/api/account/salt": () => {
+        throw new TypeError("fetch failed");
+      },
+    });
+    writeFileSync(accountSaltPath(m.credentialsPath), `${SALT}\n`);
+    const offline = await prepareCloudReview(root, m.deps, () => {});
+    expect(offline).toEqual({ repoHash: online?.repoHash, shareFindings: false, memory: [] });
   });
 
   it("on a failure to read the salt, warns once, uses this machine's salt and skips the memory", async () => {
@@ -120,7 +185,7 @@ describe("prepareCloudReview", () => {
       const warnings: string[] = [];
       const ready = await prepareCloudReview(root, m.deps, (w) => warnings.push(w));
       expect(ready).toEqual({
-        repoHash: await repoHash(root, m.credentialsPath),
+        repoHash: await hashOf(root, m.credentialsPath),
         shareFindings: false,
         memory: [],
       });

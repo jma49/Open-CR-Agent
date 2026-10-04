@@ -15,6 +15,7 @@ import {
 import type { MergeRequestTarget, PullRequestTarget, ReviewArgs } from "./args.js";
 import { type CliConfig, ConfigError, loadConfig } from "./config.js";
 import { loadExternalPlugins } from "./plugins.js";
+import { repositoryOfWebUrl } from "./repository-id.js";
 
 export interface ReviewTarget {
   config: CliConfig;
@@ -27,6 +28,9 @@ export interface ReviewTarget {
   publish: boolean;
   // What a published review lands on: "pull request" or "merge request".
   publishesTo?: string;
+  // The reviewed repository as `https://host/owner/repo` when it is not
+  // the checkout's origin: the pull or merge request's (repository-id.ts).
+  repository?: string;
 }
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -139,6 +143,7 @@ export async function pullRequestTarget(
     readTrusted,
     publish: pr.publish,
     publishesTo: "pull request",
+    ...definedRepository(pull.html_url),
   };
 }
 
@@ -223,7 +228,13 @@ export async function mergeRequestTarget(
     readTrusted,
     publish: mr.publish,
     publishesTo: "merge request",
+    ...definedRepository(merge.web_url),
   };
+}
+
+function definedRepository(webUrl: string): { repository?: string } {
+  const repository = repositoryOfWebUrl(webUrl);
+  return repository ? { repository } : {};
 }
 
 function originUrl(root: string): Promise<string | undefined> {

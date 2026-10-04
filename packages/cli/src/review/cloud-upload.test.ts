@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,8 +8,13 @@ import { describe, expect, it } from "vitest";
 import type { CloudDeps } from "../cloud.js";
 import type { SharedFinding } from "./cloud-findings.js";
 import { repoHash, uploadOf, uploadReview } from "./cloud-upload.js";
+import { originRepository } from "./repository-id.js";
 
 const NOW = 1_000_000_000;
+
+async function hashOf(root: string, credentialsPath: string, salt?: string): Promise<string> {
+  return repoHash(await originRepository(root), credentialsPath, salt);
+}
 
 function repo(origin?: string): string {
   const dir = mkdtempSync(join(tmpdir(), "ocra-up-repo-"));
@@ -202,14 +208,14 @@ describe("the review upload", () => {
     const b = cloud(() => new Response("{}"));
     const withToken = repo("https://x-token:ghp_secret@github.com/Org/Repo.git");
     const plain = repo("https://github.com/org/repo");
-    const h1 = await repoHash(withToken, a.credentialsPath);
+    const h1 = await hashOf(withToken, a.credentialsPath);
     expect(h1).toMatch(/^[0-9a-f]{64}$/);
-    expect(await repoHash(plain, a.credentialsPath)).toBe(h1);
-    expect(await repoHash(plain, b.credentialsPath)).not.toBe(h1);
+    expect(await hashOf(plain, a.credentialsPath)).toBe(h1);
+    expect(await hashOf(plain, b.credentialsPath)).not.toBe(h1);
     const saltFile = join(a.credentialsPath, "..", "upload-salt");
     expect(readFileSync(saltFile, "utf8").trim()).toMatch(/^[0-9a-f]{64}$/);
     if (process.platform !== "win32") expect(statSync(saltFile).mode & 0o777).toBe(0o600);
-    expect(await repoHash(repo(), a.credentialsPath)).not.toBe(h1);
+    expect(await hashOf(repo(), a.credentialsPath)).not.toBe(h1);
   });
 
   it("hashes with the account's salt alike on every machine, and apart from this machine's", async () => {
@@ -217,9 +223,13 @@ describe("the review upload", () => {
     const b = cloud(() => new Response("{}"));
     const plain = repo("https://github.com/org/repo");
     const account = "a".repeat(64);
-    const onA = await repoHash(plain, a.credentialsPath, account);
-    expect(await repoHash(plain, b.credentialsPath, account)).toBe(onA);
-    expect(await repoHash(plain, a.credentialsPath)).not.toBe(onA);
+    const onA = await hashOf(plain, a.credentialsPath, account);
+    expect(await hashOf(plain, b.credentialsPath, account)).toBe(onA);
+    // An HTTPS clone keeps the hash 0.5.0 gave it: the salted URL as written.
+    expect(onA).toBe(
+      createHash("sha256").update(`${account}:https://github.com/org/repo`).digest("hex"),
+    );
+    expect(await hashOf(plain, a.credentialsPath)).not.toBe(onA);
   });
 
   it("sends the findings beside the counts and answers how many were kept", async () => {
@@ -262,10 +272,10 @@ describe("this machine's salt", () => {
     );
     const root = repo("https://example.com/o/r.git");
     const hashes = await Promise.all(
-      Array.from({ length: 8 }, () => repoHash(root, credentialsPath)),
+      Array.from({ length: 8 }, () => hashOf(root, credentialsPath)),
     );
     expect(new Set(hashes).size).toBe(1);
-    expect(await repoHash(root, credentialsPath)).toBe(hashes[0]);
+    expect(await hashOf(root, credentialsPath)).toBe(hashes[0]);
     const salt = join(credentialsPath, "..", "upload-salt");
     if (process.platform !== "win32") expect(statSync(salt).mode & 0o777).toBe(0o600);
   });

@@ -203,7 +203,9 @@ export async function reviewCommand(
   const sarif = await loadSarifLogs(args.importSarif ?? [], deps.cwd);
   // The repository's hash and the account's memory for it (ADR-0028).
   const cloudReview =
-    cloudDeps && signedIn ? await prepareCloudReview(root, cloudDeps, warn) : undefined;
+    cloudDeps && signedIn
+      ? await prepareCloudReview(root, cloudDeps, warn, target.repository)
+      : undefined;
   const sampling = requestedSampling(config, args);
   const models = config.models;
   const agentModels = agentChains({ reviewers: overrides, roles: config.roles });
