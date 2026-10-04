@@ -6,10 +6,9 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { configJsonSchema, planJsonSchema } from "@open-cr-agent/cli/internal";
 import { REPORT_VERSION, reportJsonSchema } from "@open-cr-agent/core";
 import { PLAN_VERSION } from "@open-cr-agent/core/internal";
-import { planJsonSchema } from "../packages/cli/dist/commands/review/plan-schema.js";
-import { configJsonSchema } from "../packages/cli/dist/config/schema.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 for (const [name, schema] of [
