@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
@@ -12,9 +13,16 @@ export interface ReviewOutcome {
   error?: string;
 }
 
+// The built CLI, found through the package's own bin entry: the package
+// entry is dist/index.js for users but src/index.ts under the tests' source
+// condition, and either way sits one level below the package root.
 export function defaultOcraCommand(): string[] {
   const entry = createRequire(import.meta.url).resolve("@open-cr-agent/cli");
-  return [process.execPath, join(dirname(entry), "main.js")];
+  const root = dirname(dirname(entry));
+  const { bin } = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
+    bin: { ocra: string };
+  };
+  return [process.execPath, join(root, bin.ocra)];
 }
 
 // Runs the real CLI as a black box, like the official adapters for other

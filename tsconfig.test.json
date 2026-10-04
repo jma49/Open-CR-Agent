@@ -5,7 +5,8 @@
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false,
-    "noEmit": true
+    "noEmit": true,
+    "customConditions": ["@open-cr-agent/source"]
   },
   "include": ["packages/*/src/**/*.test.ts", "packages/*/src/**/*.fakes.ts", "vitest.config.ts"]
 }

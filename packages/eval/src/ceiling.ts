@@ -178,7 +178,8 @@ export function renderCeiling(summary: CeilingSummary): string {
   ];
   const excluded = Object.entries(summary.excludedBy);
   if (excluded.length > 0) {
-    lines.push("", "Excluded files by reason: " + excluded.map(([k, v]) => `${k} ${v}`).join(", "));
+    const reasons = excluded.map(([k, v]) => `${k} ${v}`).join(", ");
+    lines.push("", `Excluded files by reason: ${reasons}`);
   }
   lines.push("", "| Category | Issues | Reachable |", "|---|---|---|");
   for (const [category, c] of Object.entries(summary.byCategory).sort(

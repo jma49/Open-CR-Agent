@@ -2,9 +2,9 @@
 # Usage: scripts/worktree.sh <branch> [base]
 # A worktree next to this checkout (../ocra-wt-<branch with / as ->), on a
 # new branch from base (default: origin/main, fetched first), installed and
-# built, so its tests run at once. Packages import each other through
-# dist/, so a worktree without a build tests against nothing, or against
-# another checkout's stale build.
+# built. Tests do not need the build (they resolve workspace packages to
+# src/ through the @open-cr-agent/source export condition); the build is
+# for running ocra and ocra-eval from the worktree.
 set -euo pipefail
 branch="${1:?usage: scripts/worktree.sh <branch> [base]}"
 base="${2:-origin/main}"

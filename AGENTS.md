@@ -101,7 +101,7 @@ Concrete rules behind the principles above, from the [2026-09-26 self-audit](doc
 - The author may merge their own PR once CI is green and they have self-reviewed the full diff; the maintainer spot-checks merged PRs afterwards. Link the issue with `Closes #N` so it closes on merge.
 - Merge with rebase so each Conventional Commit lands on `main` unchanged.
 - Keep PRs small and focused on one increment; split work that grows beyond a reviewable size.
-- Work in a worktree made with `scripts/worktree.sh <branch>`: it installs and builds, which tests need, since packages import each other through `dist/`. Remove agent worktrees (`git worktree remove`) and their local branches when the work is done.
+- Work in a worktree made with `scripts/worktree.sh <branch>`: it installs and builds. Tests and the test type check need no build: they resolve workspace packages to their `src/` through the `@open-cr-agent/source` export condition (`vitest.config.ts`, `tsconfig.test.json`); only tests that run the real CLI build it themselves. Remove agent worktrees (`git worktree remove`) and their local branches when the work is done.
 
 ## Repository hygiene
 

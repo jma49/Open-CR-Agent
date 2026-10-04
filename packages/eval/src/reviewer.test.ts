@@ -1,6 +1,7 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Instance } from "./dataset.js";
 import { exec } from "./exec.js";
@@ -15,8 +16,7 @@ describe("defaultOcraCommand", () => {
   it("points at the built ocra CLI", () => {
     const [node, main] = defaultOcraCommand();
     expect(node).toBe(process.execPath);
-    expect(main).toMatch(/cli[/\\]dist[/\\]main\.js$/);
-    expect(existsSync(main as string)).toBe(true);
+    expect(main).toBe(fileURLToPath(new URL("../../cli/dist/main.js", import.meta.url)));
   });
 });
 

@@ -2,10 +2,20 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { fileURLToPath } from "node:url";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { measureCeiling } from "./ceiling-run.js";
 import type { Instance } from "./dataset.js";
 import { defaultOcraCommand } from "./reviewer.js";
+
+// This test runs the real CLI as a black box, so it needs the build; tsc -b
+// is incremental, so after a build it only checks that dist/ is current.
+beforeAll(() => {
+  const root = fileURLToPath(new URL("../../..", import.meta.url));
+  execFileSync(process.execPath, [join(root, "node_modules/typescript/bin/tsc"), "-b"], {
+    cwd: root,
+  });
+}, 120_000);
 
 const dirs: string[] = [];
 afterEach(() => {
