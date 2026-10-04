@@ -29,7 +29,19 @@ export interface PreviewTask {
   // The failback chain the task and its plan call use: the reviewer's own,
   // else its tier's; absent when neither is configured.
   models?: string[];
+  // Its first prompts, plan call included, at the input price of the first
+  // model of its chain; absent without a chain or without prices to go by.
+  inputCost?: InputCost;
 }
+
+// An estimate of input cost only: output, later turns, verification and
+// judging are unknown before the run.
+export type InputCost =
+  | { model: string; status: "priced"; usd: number }
+  // Priced at 0, like models through ocra Cloud: no cost can be counted.
+  | { model: string; status: "unpriced" }
+  // Priced only by the runtime's catalog, which a plan does not read.
+  | { model: string; status: "unknown" };
 
 export interface ReviewPreview {
   changeRequest: ChangeRequest;
@@ -44,6 +56,10 @@ export interface ReviewPreview {
   promptTokens: number;
   // Plan-phase calls the run would make; their prompts are in promptTokens.
   planCalls: number;
+  // The priced tasks' input cost summed, and how many tasks are priced,
+  // unpriced or of unknown price (no chain counts as unknown); absent when
+  // no task has an estimate.
+  inputCost?: { usd: number; priced: number; unpriced: number; unknown: number };
   warnings: string[];
 }
 
@@ -54,6 +70,9 @@ export type PreviewOptions = Omit<PlanOptions, "runtime"> & {
   maxTasks?: number;
   // The tier chains, to show each task's resolved chain.
   models?: ModelChains;
+  // A model's input price in US dollars per million tokens: 0 when it is
+  // unpriced, undefined when only the runtime's catalog knows it.
+  inputPrice?: (model: string) => number | undefined;
 };
 
 // Everything a review would do before its first model call, for free: which
@@ -97,6 +116,14 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
       plannedBundles.add(key);
       task.planPromptTokens = tokens(buildReviewPrompt({ ...input, forPlanning: true }));
     }
+    const first = task.models?.[0];
+    if (first !== undefined && options.inputPrice) {
+      task.inputCost = inputCost(
+        first,
+        options.inputPrice(first),
+        task.promptTokens + (task.planPromptTokens ?? 0),
+      );
+    }
     return task;
   });
 
@@ -115,6 +142,7 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
     skipped: planned.skipped,
     promptTokens: tasks.reduce((sum, t) => sum + t.promptTokens + (t.planPromptTokens ?? 0), 0),
     planCalls: tasks.filter((t) => t.planPromptTokens !== undefined).length,
+    ...(tasks.some((t) => t.inputCost) ? { inputCost: totalInputCost(tasks) } : {}),
     warnings: [
       ...plan.warnings,
       ...(planned.limited?.length
@@ -124,6 +152,21 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
         : []),
     ],
   };
+}
+
+function inputCost(model: string, price: number | undefined, promptTokens: number): InputCost {
+  if (price === undefined) return { model, status: "unknown" };
+  if (price === 0) return { model, status: "unpriced" };
+  return { model, status: "priced", usd: (promptTokens * price) / 1_000_000 };
+}
+
+function totalInputCost(tasks: readonly PreviewTask[]): NonNullable<ReviewPreview["inputCost"]> {
+  const total = { usd: 0, priced: 0, unpriced: 0, unknown: 0 };
+  for (const { inputCost } of tasks) {
+    if (inputCost?.status === "priced") total.usd += inputCost.usd;
+    total[inputCost?.status ?? "unknown"] += 1;
+  }
+  return total;
 }
 
 // Four characters per token: an estimate, not a tokenizer.

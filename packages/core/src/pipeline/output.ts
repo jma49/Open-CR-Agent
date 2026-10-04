@@ -192,6 +192,8 @@ export function toPlanOutput(preview: ReviewPreview): PlanOutput {
     promptTokens: preview.promptTokens,
     // Added in version 1 without a bump: a new field older readers ignore.
     planCalls: preview.planCalls,
+    // Added in version 1 without a bump, like planCalls.
+    ...(preview.inputCost ? { inputCost: preview.inputCost } : {}),
     warnings: preview.warnings,
   };
 }

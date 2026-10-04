@@ -37,6 +37,7 @@ import { prepareCloudReview, sendToCloud } from "./cloud-review.js";
 import { fetchAccountSettings, layerAccountSettings } from "./cloud-settings.js";
 import { cloudEnabled } from "./cloud-upload.js";
 import { agentChains, type CliConfig, ConfigError } from "./config.js";
+import { inputPriceOf } from "./plan-prices.js";
 import { renderPlan } from "./plan-render.js";
 import { type Output, ProgressPrinter } from "./progress.js";
 import { configHash, requestedSampling } from "./provenance.js";
@@ -178,6 +179,7 @@ export async function reviewCommand(
       effort: config.effort,
       roles: config.roles,
       models: config.models,
+      inputPrice: inputPriceOf(config.providers),
       rules,
       selection: { ...defaultSelectionPolicy, include: config.include, exclude: config.exclude },
       ...(target.readTrusted ? { readTrusted: target.readTrusted } : {}),

@@ -60,7 +60,7 @@ Pick models in `.ocra/config.json` of the repository you review (or with `OCRA_M
 ```bash
 ocra review                                  # uncommitted changes, including untracked files
 ocra review --commit abc123                  # a single commit
-ocra review --plan                           # files, bundles, tasks and prompt sizes; no model call
+ocra review --plan                           # files, bundles, tasks, prompt sizes, input cost; no model call
 ocra review --max-cost-usd 2                 # a spend limit; the report says what it left
 ocra review --format sarif --output out.sarif
 ocra review --import-sarif semgrep.sarif        # an analyzer's results on the change join the review

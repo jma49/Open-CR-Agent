@@ -162,4 +162,31 @@ describe("previewReview with per-agent models", () => {
     });
     expect(plain.tasks[0]).not.toHaveProperty("models");
   });
+
+  it("estimates input cost at the input price of each chain's first model", async () => {
+    const prices: Record<string, number> = { "t/std": 2, "a/sec": 0 };
+    const preview = await previewReview({
+      vcs: vcs({}, patch("src/a.ts", "const a = 1;")),
+      reviewers: [correctnessReviewer, securityReviewer, docsReviewer],
+      reviewerOverrides: {
+        security: { models: ["a/sec", "t/std"], minTier: "trivial" },
+        docs: { models: ["x/catalog"], minTier: "trivial" },
+      },
+      models: { standard: ["t/std", "a/sec"] },
+      inputPrice: (model) => prices[model],
+    });
+    const correctness = preview.tasks.find((t) => t.reviewer === "correctness");
+    const tokens = (correctness?.promptTokens ?? 0) + (correctness?.planPromptTokens ?? 0);
+    expect(Object.fromEntries(preview.tasks.map((t) => [t.reviewer, t.inputCost]))).toEqual({
+      correctness: { model: "t/std", status: "priced", usd: (tokens * 2) / 1_000_000 },
+      security: { model: "a/sec", status: "unpriced" },
+      docs: { model: "x/catalog", status: "unknown" },
+    });
+    expect(preview.inputCost).toEqual({
+      usd: (tokens * 2) / 1_000_000,
+      priced: 1,
+      unpriced: 1,
+      unknown: 1,
+    });
+  });
 });

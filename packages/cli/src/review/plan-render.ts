@@ -27,7 +27,7 @@ export function renderPlan(preview: ReviewPreview): string {
   const width = Math.max(0, ...preview.tasks.map((t) => t.taskId.length));
   for (const t of preview.tasks) {
     lines.push(
-      `  ${t.taskId.padEnd(width)}  ~${number.format(t.promptTokens)} prompt tokens${t.planPromptTokens === undefined ? "" : ` + plan ~${number.format(t.planPromptTokens)}`}${t.effort === undefined ? "" : `  effort ${t.effort}`}${t.models === undefined ? "" : `  models ${t.models.join(", ")}`}  ${t.bundle}`,
+      `  ${t.taskId.padEnd(width)}  ~${number.format(t.promptTokens)} prompt tokens${t.planPromptTokens === undefined ? "" : ` + plan ~${number.format(t.planPromptTokens)}`}${t.effort === undefined ? "" : `  effort ${t.effort}`}${t.models === undefined ? "" : `  models ${t.models.join(", ")}`}${costOf(t.inputCost)}  ${t.bundle}`,
     );
   }
   if (preview.skipped.length > 0) {
@@ -37,9 +37,31 @@ export function renderPlan(preview: ReviewPreview): string {
     }
   }
   for (const warning of preview.warnings) lines.push(`Warning: ${warning}`);
+  if (preview.inputCost) lines.push("", totalCost(preview.inputCost, preview.tasks.length));
   lines.push(
     "",
     `First prompts: ~${number.format(preview.promptTokens)} input tokens in total${preview.planCalls > 0 ? `, ${preview.planCalls} plan call(s) included` : ""}. This is a floor: agents read files and take several turns, so a run usually uses several times as much, plus verification and judging. No model was called.`,
   );
   return forTerminal(`${lines.join("\n")}\n`);
+}
+
+type InputCost = NonNullable<ReviewPreview["tasks"][number]["inputCost"]>;
+
+function costOf(cost: InputCost | undefined): string {
+  if (cost === undefined) return "";
+  if (cost.status === "priced") return `  input ~${usd(cost.usd)}`;
+  return cost.status === "unpriced" ? "  input unpriced" : "  input price unknown";
+}
+
+function totalCost(total: NonNullable<ReviewPreview["inputCost"]>, tasks: number): string {
+  const rest = [
+    total.unpriced > 0 ? `${total.unpriced} unpriced` : "",
+    total.unknown > 0 ? `${total.unknown} of unknown price` : "",
+  ].filter(Boolean);
+  return `Estimated input cost: ~${usd(total.usd)} for the first prompts of ${total.priced} of ${tasks} task(s)${rest.length > 0 ? ` (${rest.join(", ")})` : ""}, at the input price of each chain's first model. Input only: output, later turns, verification and judging are not known before the run.`;
+}
+
+// Cents hide the size of a small prompt's cost; four decimals keep it.
+function usd(value: number): string {
+  return `$${value.toFixed(value >= 1 ? 2 : 4)}`;
 }
