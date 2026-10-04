@@ -15,13 +15,14 @@
     "test": "vitest run",
     "check": "biome check --error-on-warnings .",
     "format": "biome check --write .",
-    "verify": "npm run check && npm run typecheck && npm run check:api && npm test",
+    "verify": "npm run check && npm run typecheck && npm run check:api && npm run knip && npm test",
     "clean": "node -e \"for (const p of require('fs').readdirSync('packages')) require('fs').rmSync('packages/' + p + '/dist', { recursive: true, force: true })\" && find packages -name '*.tsbuildinfo' -not -path '*/node_modules/*' -delete",
     "check:packages": "npm run clean && npm run build && node scripts/check-packages.mjs",
     "schema": "npm run build && node scripts/schema.mjs",
     "test:coverage": "vitest run --coverage",
     "api": "npm run build && node scripts/api-report.mjs",
     "check:api": "node scripts/api-report.mjs --check",
+    "knip": "knip --no-progress",
     "version-packages": "node scripts/changelog.mjs version"
   },
   "devDependencies": {
@@ -36,6 +37,7 @@
     "@types/node": "^26.6.3",
     "@types/picomatch": "^4.0.3",
     "@vitest/coverage-v8": "^5.0.2",
+    "knip": "^6.39.0",
     "publint": "^0.3.25",
     "typescript": "^7.0.2",
     "vitest": "^5.0.2"
