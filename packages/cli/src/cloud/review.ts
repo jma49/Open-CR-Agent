@@ -1,11 +1,12 @@
 import type { MemoryEntry, ReviewReport } from "@open-cr-agent/core";
-import { accountSaltOf, readAccountSalt, saveAccountSalt } from "../account-salt.js";
-import { type CloudDeps, type CloudSessionLost, cloudFetch, sessionLostReason } from "../cloud.js";
 import type { Output } from "../io/output.js";
-import { sharedFindings } from "./cloud-findings.js";
-import { accountHasMemory, fetchAccountMemory } from "./cloud-memory.js";
-import { type ReviewSource, repoHash, uploadOf, uploadReview } from "./cloud-upload.js";
-import { originRepository } from "./repository-id.js";
+import { originRepository } from "../review/repository-id.js";
+import { accountSaltOf, readAccountSalt, saveAccountSalt } from "./account-salt.js";
+import type { CloudDeps } from "./deps.js";
+import { sharedFindings } from "./findings.js";
+import { accountHasMemory, fetchAccountMemory } from "./memory.js";
+import { type CloudSessionLost, cloudFetch, sessionLostReason } from "./session.js";
+import { type ReviewSource, repoHash, uploadOf, uploadReview } from "./upload.js";
 
 // What a signed-in review takes from ocra Cloud before it runs (ADR-0028):
 // the repository's hash, whether the account shares findings, and the

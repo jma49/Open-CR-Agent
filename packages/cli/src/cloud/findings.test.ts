@@ -7,7 +7,7 @@ import {
   REDACTED,
   redact,
   sharedFindings,
-} from "./cloud-findings.js";
+} from "./findings.js";
 import vectors from "./redaction-vectors.json" with { type: "json" };
 
 const CODE = "const q = 'SELECT * FROM t WHERE id = ' + id;";

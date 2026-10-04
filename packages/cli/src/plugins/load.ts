@@ -3,8 +3,8 @@ import { createRequire } from "node:module";
 import { isAbsolute, join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { OcraPlugin } from "@open-cr-agent/core";
-import { installedEntry, readAllowed } from "../plugin-store.js";
-import { ConfigError } from "./config.js";
+import { ConfigError } from "../review/config.js";
+import { installedEntry, readAllowed } from "./store.js";
 
 // Plugins listed in the repository config execute code, so they are resolved
 // only from the repository's own dependencies or relative paths inside it.

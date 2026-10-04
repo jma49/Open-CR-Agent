@@ -1,9 +1,10 @@
 import type { ModelTier, SourcedRule } from "@open-cr-agent/core";
 import { errorMessage } from "@open-cr-agent/core/internal";
-import { type CloudDeps, type CloudSessionLost, cloudFetch } from "../cloud.js";
-import { type AccountPlugins, parseAccountPlugins } from "./account-plugins.js";
+import { type AccountPlugins, parseAccountPlugins } from "../plugins/account.js";
+import type { CliConfig } from "../review/config.js";
 import { type AccountSettings, parseAccountSettings } from "./account-settings.js";
-import type { CliConfig } from "./config.js";
+import type { CloudDeps } from "./deps.js";
+import { type CloudSessionLost, cloudFetch } from "./session.js";
 
 // ocra Cloud's account settings fill what the repository's configuration
 // leaves out (ADR-0025, ADR-0027): a tier's models and effort, a reviewer's

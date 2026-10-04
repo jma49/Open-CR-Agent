@@ -1,6 +1,7 @@
 import type { MemoryEntry } from "@open-cr-agent/core";
 import { memoryEntrySchema } from "@open-cr-agent/core/internal";
-import { type CloudDeps, cloudFetch, sessionLostReason } from "../cloud.js";
+import type { CloudDeps } from "./deps.js";
+import { cloudFetch, sessionLostReason } from "./session.js";
 
 // The findings the account remembers for one repository (ADR-0028, 4), set
 // from the web. A review applies them with .ocra/memory.json's.

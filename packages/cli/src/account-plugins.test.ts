@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentEvent, AgentTaskSpec } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { pluginsDir } from "./plugin-store.js";
+import { parseAccountPlugins } from "./plugins/account.js";
+import { pluginsDir } from "./plugins/store.js";
 import { allowInstalled, install, signedInCloud } from "./plugins.fakes.js";
-import { parseAccountPlugins } from "./review/account-plugins.js";
 import { capture, critical, deps, removeRepos, repoWithChange } from "./run.fakes.js";
 import { run } from "./run.js";
 

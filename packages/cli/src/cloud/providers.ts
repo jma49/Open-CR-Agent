@@ -1,7 +1,8 @@
 import type { CustomProvider } from "@open-cr-agent/core";
 import { OcraError } from "@open-cr-agent/core";
 import { errorMessage } from "@open-cr-agent/core/internal";
-import { type CloudDeps, cloudSession, sessionLostReason } from "../cloud.js";
+import type { CloudDeps } from "./deps.js";
+import { cloudSession, sessionLostReason } from "./session.js";
 
 // Models named ocra-<provider>/<model> go through the ocra Cloud gateway with
 // the key stored there for <provider> (ADR-0024). Each such provider becomes

@@ -1,6 +1,6 @@
 import type { ModelTier } from "@open-cr-agent/core";
+import { ACCOUNT_SCALARS } from "../cloud/settings.js";
 import { forTerminal } from "../io/terminal.js";
-import { ACCOUNT_SCALARS } from "./cloud-settings.js";
 import type { CliConfig } from "./config.js";
 
 // Where each setting of a review came from, for --plan (ADR-0027): the

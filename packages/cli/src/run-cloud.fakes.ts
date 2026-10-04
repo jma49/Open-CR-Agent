@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { CloudDeps } from "./cloud.js";
+import type { CloudDeps } from "./cloud/deps.js";
 
 // A signed-in machine against a fake ocra Cloud, for the CLI's end-to-end
 // tests of what a review takes from and sends to it.

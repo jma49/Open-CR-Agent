@@ -11,14 +11,11 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { accountSaltPath, saveAccountSalt } from "./account-salt.js";
-import {
-  type CloudDeps,
-  type Credentials,
-  cloudCommand,
-  cloudSession,
-  readCredentials,
-} from "./cloud.js";
+import { accountSaltPath, saveAccountSalt } from "./cloud/account-salt.js";
+import { type Credentials, readCredentials } from "./cloud/credentials.js";
+import type { CloudDeps } from "./cloud/deps.js";
+import { cloudSession } from "./cloud/session.js";
+import { cloudCommand } from "./cloud.js";
 
 const SERVER = "https://cloud.test";
 

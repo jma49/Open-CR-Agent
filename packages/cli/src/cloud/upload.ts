@@ -8,10 +8,12 @@ import {
   type Verification,
 } from "@open-cr-agent/core";
 import { verificationSchema } from "@open-cr-agent/core/internal";
-import { type CloudDeps, cloudFetch, readCredentials, sessionLostReason } from "../cloud.js";
-import { createPrivateFile, writePrivateFile } from "../private-file.js";
 import { VERSION } from "../version.js";
-import type { SharedFinding } from "./cloud-findings.js";
+import { readCredentials } from "./credentials.js";
+import type { CloudDeps } from "./deps.js";
+import type { SharedFinding } from "./findings.js";
+import { createPrivateFile, writePrivateFile } from "./private-file.js";
+import { cloudFetch, sessionLostReason } from "./session.js";
 
 // After a review, a signed-in CLI sends ocra Cloud its counts (ADR-0024):
 // the verdict, how many findings of each severity, files and tasks, tokens

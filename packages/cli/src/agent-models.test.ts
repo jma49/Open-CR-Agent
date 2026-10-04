@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentTaskSpec, OcraPlugin, RuntimeOptions } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
-import type { CloudDeps } from "./cloud.js";
+import type { CloudDeps } from "./cloud/deps.js";
 import { parseReviewArgs, type ReviewArgs } from "./review/args.js";
 import { agentChains, type CliConfig, loadConfig } from "./review/config.js";
 import { configHash } from "./review/provenance.js";

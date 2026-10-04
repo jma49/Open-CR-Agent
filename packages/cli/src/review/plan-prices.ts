@@ -1,5 +1,5 @@
 import type { CustomProvider } from "@open-cr-agent/core";
-import { CLOUD_PREFIX } from "./cloud-providers.js";
+import { CLOUD_PREFIX } from "../cloud/providers.js";
 
 // The input prices --plan estimates with, in US dollars per million tokens:
 // a declared provider's; 0 for a model through ocra Cloud, which is not

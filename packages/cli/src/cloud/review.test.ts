@@ -3,12 +3,12 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { accountSaltPath } from "../account-salt.js";
-import type { CloudDeps } from "../cloud.js";
-import { parseAccountMemory } from "./cloud-memory.js";
-import { prepareCloudReview } from "./cloud-review.js";
-import { repoHash } from "./cloud-upload.js";
-import { originRepository } from "./repository-id.js";
+import { originRepository } from "../review/repository-id.js";
+import { accountSaltPath } from "./account-salt.js";
+import type { CloudDeps } from "./deps.js";
+import { parseAccountMemory } from "./memory.js";
+import { prepareCloudReview } from "./review.js";
+import { repoHash } from "./upload.js";
 
 const SALT = "5".repeat(64);
 const ENTRY = {

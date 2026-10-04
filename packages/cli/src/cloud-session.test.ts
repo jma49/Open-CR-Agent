@@ -2,13 +2,10 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  type CloudDeps,
-  type Credentials,
-  cloudCommand,
-  cloudFetch,
-  cloudSession,
-} from "./cloud.js";
+import type { Credentials } from "./cloud/credentials.js";
+import type { CloudDeps } from "./cloud/deps.js";
+import { cloudFetch, cloudSession } from "./cloud/session.js";
+import { cloudCommand } from "./cloud.js";
 
 const SERVER = "https://cloud.test";
 const NOW = 1_000_000;

@@ -12,9 +12,9 @@ import {
   filesChangedSince,
   LocalGitAdapter,
 } from "@open-cr-agent/vcs-local/internal";
+import { loadExternalPlugins } from "../plugins/load.js";
 import type { MergeRequestTarget, PullRequestTarget, ReviewArgs } from "./args.js";
 import { type CliConfig, ConfigError, loadConfig } from "./config.js";
-import { loadExternalPlugins } from "./plugins.js";
 import { repositoryOfWebUrl } from "./repository-id.js";
 
 export interface ReviewTarget {

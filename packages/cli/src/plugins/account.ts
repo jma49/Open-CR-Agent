@@ -1,6 +1,6 @@
 import type { OcraPlugin } from "@open-cr-agent/core";
-import { isPackageName } from "../plugin-store.js";
-import { loadAccountPlugins } from "./plugins.js";
+import { loadAccountPlugins } from "./load.js";
+import { isPackageName } from "./store.js";
 
 // The plugins an ocra Cloud account names, and their settings (ADR-0027):
 // package names only, never a path or a version; what loads is what this

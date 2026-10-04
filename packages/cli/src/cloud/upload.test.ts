@@ -5,10 +5,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ReviewReport } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
-import type { CloudDeps } from "../cloud.js";
-import type { SharedFinding } from "./cloud-findings.js";
-import { repoHash, uploadOf, uploadReview } from "./cloud-upload.js";
-import { originRepository } from "./repository-id.js";
+import { originRepository } from "../review/repository-id.js";
+import type { CloudDeps } from "./deps.js";
+import type { SharedFinding } from "./findings.js";
+import { repoHash, uploadOf, uploadReview } from "./upload.js";
 
 const NOW = 1_000_000_000;
 

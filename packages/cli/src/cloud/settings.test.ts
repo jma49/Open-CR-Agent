@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { type CliConfig, loadConfig } from "../review/config.js";
 import { type AccountSettings, parseAccountSettings } from "./account-settings.js";
-import { layerAccountSettings } from "./cloud-settings.js";
-import { type CliConfig, loadConfig } from "./config.js";
+import { layerAccountSettings } from "./settings.js";
 
 async function config(file?: object): Promise<CliConfig> {
   return loadConfig(

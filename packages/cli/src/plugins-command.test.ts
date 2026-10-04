@@ -2,9 +2,9 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { pluginsDir, readAllowed } from "./plugin-store.js";
+import { defaultNpm } from "./plugins/npm.js";
+import { pluginsDir, readAllowed } from "./plugins/store.js";
 import { fakeNpm } from "./plugins.fakes.js";
-import { defaultNpm } from "./plugins-command.js";
 import { capture, critical, deps } from "./run.fakes.js";
 import { run } from "./run.js";
 

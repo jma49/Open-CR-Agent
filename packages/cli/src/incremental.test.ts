@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentEvent, AgentTaskSpec, OcraPlugin, ReviewReport } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { uploadOf } from "./review/cloud-upload.js";
+import { uploadOf } from "./cloud/upload.js";
 import { BUILTIN_PLUGINS, type ReviewDeps } from "./review/command.js";
 import { run } from "./run.js";
 

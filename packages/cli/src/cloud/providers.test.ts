@@ -3,8 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { isOcraError } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
-import type { CloudDeps, Credentials } from "../cloud.js";
-import { CLOUD_TOKEN_ENV, withCloudProviders } from "./cloud-providers.js";
+import type { Credentials } from "./credentials.js";
+import type { CloudDeps } from "./deps.js";
+import { CLOUD_TOKEN_ENV, withCloudProviders } from "./providers.js";
 
 const SERVER = "https://cloud.test";
 const NOW = 1_000_000_000;

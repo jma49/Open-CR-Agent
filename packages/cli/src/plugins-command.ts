@@ -1,10 +1,10 @@
-import { execFile } from "node:child_process";
 import { access, rm, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { EXIT } from "./io/exit.js";
 import type { Output } from "./io/output.js";
 import { forTerminal } from "./io/terminal.js";
 import { UsageError } from "./io/usage-error.js";
+import type { NpmRunner } from "./plugins/npm.js";
 import {
   type AllowedPlugin,
   ensureDir,
@@ -13,7 +13,7 @@ import {
   isPackageName,
   readAllowed,
   writeAllowed,
-} from "./plugin-store.js";
+} from "./plugins/store.js";
 import { ConfigError } from "./review/config.js";
 
 // `ocra plugins` (ADR-0027): the user's own decision, on each machine, to
@@ -29,13 +29,6 @@ machine allows it. allow shows the package and who published it, installs that
 exact version with install scripts off into a directory of your own, and
 records its integrity; deny removes it.
 `;
-
-/**
- * Runs npm with these arguments in `cwd`, never through a shell; resolves
- * with its standard output. Every call runs in the plugin directory, so the
- * npm configuration of whatever project ocra was started in does not apply.
- */
-export type NpmRunner = (args: readonly string[], cwd: string) => Promise<string>;
 
 export interface PluginsDeps {
   dir: string;
@@ -207,33 +200,4 @@ async function exists(path: string): Promise<boolean> {
     () => true,
     () => false,
   );
-}
-
-// npm on Windows is npm.cmd, which execFile cannot run without a shell; run
-// the npm that ships with this Node directly instead.
-export function defaultNpm(env: NodeJS.ProcessEnv = process.env): NpmRunner {
-  const [file, prefix] =
-    process.platform === "win32"
-      ? [
-          process.execPath,
-          [join(dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js")],
-        ]
-      : ["npm", []];
-  return (args, cwd) =>
-    new Promise((resolve, reject) => {
-      execFile(
-        file,
-        [...prefix, ...args],
-        { cwd, env, timeout: 5 * 60_000, maxBuffer: 16 * 1024 * 1024, shell: false },
-        (error, stdout, stderr) => {
-          if (error) {
-            reject(
-              new ConfigError(
-                `npm ${args[0]} failed: ${forTerminal(String(stderr).trim().split("\n").slice(-3).join(" ") || error.message)}`,
-              ),
-            );
-          } else resolve(String(stdout));
-        },
-      );
-    });
 }

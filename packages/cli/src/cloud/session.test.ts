@@ -2,7 +2,9 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type CloudDeps, type CloudSession, type Credentials, cloudSession } from "./cloud.js";
+import type { Credentials } from "./credentials.js";
+import type { CloudDeps } from "./deps.js";
+import { type CloudSession, cloudSession } from "./session.js";
 
 const SERVER = "https://cloud.test";
 const NOW = 1_000_000;

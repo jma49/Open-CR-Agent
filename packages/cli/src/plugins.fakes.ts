@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { CloudDeps } from "./cloud.js";
-import { readAllowed, writeAllowed } from "./plugin-store.js";
-import type { NpmRunner } from "./plugins-command.js";
+import type { CloudDeps } from "./cloud/deps.js";
+import type { NpmRunner } from "./plugins/npm.js";
+import { readAllowed, writeAllowed } from "./plugins/store.js";
 
 // A fake npm for `ocra plugins` and account plugin loading: `view` describes
 // the packages it knows, `install` writes them into the --prefix directory
