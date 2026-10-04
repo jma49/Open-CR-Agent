@@ -49,7 +49,7 @@ function runGuard({
   switch: on = "on",
   source = "vertex",
   key = "",
-  keyInfo,
+  probe,
 } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "ocra-guard-"));
   const bin = join(dir, "bin");
@@ -62,13 +62,15 @@ function runGuard({
       : `#!/bin/sh\ncat '${join(dir, "listing")}'\n`,
   );
   chmodSync(join(bin, "gh"), 0o755);
-  // OpenRouter's GET /key, or a failed request when keyInfo is undefined.
-  writeFileSync(join(dir, "key.json"), keyInfo === undefined ? "" : JSON.stringify(keyInfo));
+  // OpenRouter's answer to the one-token probe ({ headers, body }), or a
+  // failed request when probe is undefined.
+  writeFileSync(join(dir, "headers"), probe?.headers ?? "");
+  writeFileSync(join(dir, "body"), probe === undefined ? "" : JSON.stringify(probe.body ?? {}));
   writeFileSync(
     join(bin, "curl"),
-    keyInfo === undefined
-      ? "#!/bin/sh\necho 'curl: (22) 503' >&2\nexit 22\n"
-      : `#!/bin/sh\ncat '${join(dir, "key.json")}'\n`,
+    probe === undefined
+      ? "#!/bin/sh\necho 'curl: (28) timed out' >&2\nexit 28\n"
+      : `#!/bin/sh\nwhile [ $# -gt 0 ]; do\n  if [ "$1" = -D ]; then cp '${join(dir, "headers")}' "$2"; shift; fi\n  shift\ndone\ncat '${join(dir, "body")}'\n`,
   );
   chmodSync(join(bin, "curl"), 0o755);
   const output = join(dir, "output");
@@ -169,13 +171,27 @@ describe.skipIf(!hasBash)("dogfood budget guard", () => {
 });
 
 describe.skipIf(!hasBash || !hasJq)("dogfood guard on the free model", () => {
-  const free = (remaining) => ({ data: { free_model_daily_requests: { remaining } } });
+  // A successful probe that reports what is left, and the 429 of a spent day.
+  const free = (remaining) => ({
+    headers: `HTTP/2 200\r\nX-RateLimit-Limit: 1000\r\nX-RateLimit-Remaining: ${remaining}\r\n\r\n`,
+    body: { choices: [] },
+  });
+  const spent = {
+    headers: "HTTP/2 429\r\n\r\n",
+    body: {
+      error: {
+        message: "Rate limit exceeded: free-models-per-day-stealth. ",
+        code: 429,
+        metadata: { headers: { "X-RateLimit-Limit": "1000", "X-RateLimit-Remaining": "0" } },
+      },
+    },
+  };
 
   it("allows a review without a ledger while the day has requests left", () => {
     const { status, outputs, summary } = runGuard({
       source: "openrouter",
       key: "k",
-      keyInfo: free(600),
+      probe: free(600),
       ghFails: true,
     });
     expect(status).toBe(0);
@@ -187,24 +203,37 @@ describe.skipIf(!hasBash || !hasJq)("dogfood guard on the free model", () => {
     const { status, outputs, stdout } = runGuard({
       source: "openrouter",
       key: "k",
-      keyInfo: free(12),
+      probe: free(12),
     });
     expect(status).toBe(0);
     expect(outputs.allowed).toBe("false");
     expect(stdout).toContain("::notice title=No ocra review::the free model quota is spent");
+    expect(stdout).toContain("X-RateLimit-Remaining: 12");
+    const refused = runGuard({ source: "openrouter", key: "k", probe: spent });
+    expect(refused.outputs.allowed).toBe("false");
+    expect(refused.stdout).toContain("(0 request(s) left)");
   });
 
   it("reviews when OpenRouter does not report the quota", () => {
     expect(runGuard({ source: "openrouter", key: "k" }).outputs.allowed).toBe("true");
     expect(
-      runGuard({ source: "openrouter", key: "k", keyInfo: { data: {} } }).outputs.allowed,
+      runGuard({ source: "openrouter", key: "k", probe: { headers: "HTTP/2 200\r\n\r\n" } }).outputs
+        .allowed,
     ).toBe("true");
+    // A 429 that is not the daily limit says nothing about the day.
+    const minute = {
+      headers: "HTTP/2 429\r\n\r\n",
+      body: { error: { message: "Rate limit exceeded: free-models-per-min. ", code: 429 } },
+    };
+    expect(runGuard({ source: "openrouter", key: "k", probe: minute }).outputs.allowed).toBe(
+      "true",
+    );
   });
 
   it("starts nothing while the switch is off, and fails without a key or on an unknown source", () => {
-    const off = runGuard({ source: "openrouter", key: "k", keyInfo: free(600), switch: "off" });
+    const off = runGuard({ source: "openrouter", key: "k", probe: free(600), switch: "off" });
     expect(off.outputs.allowed).toBe("false");
-    expect(runGuard({ source: "openrouter", keyInfo: free(600) }).status).not.toBe(0);
+    expect(runGuard({ source: "openrouter", probe: free(600) }).status).not.toBe(0);
     expect(runGuard({ source: "gemini" }).status).not.toBe(0);
   });
 });

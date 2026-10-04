@@ -105,15 +105,22 @@ jobs:
                 echo "::error::model-source openrouter needs the OPENROUTER_API_KEY secret"
                 exit 1
               else
-                # GET /key is not a model request: it reports the free
-                # requests left today without spending one. When it does not
-                # say, the review runs and a spent quota shows in its report.
-                # Only the counter is printed, so the log shows what OpenRouter
-                # said, whether or not it matches the 429s that follow.
-                free=$(curl -fsS --max-time 20 -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-                  https://openrouter.ai/api/v1/key | jq -c '.data.free_model_daily_requests // null' || true)
-                echo "GET /key free_model_daily_requests: ${free:-no answer}"
-                left=$(jq -r '.remaining // empty' <<< "${free:-null}" 2>/dev/null || true)
+                # One chat request of one token to the free model: its
+                # rate-limit headers, or the 429 that refuses it, say how many
+                # of the day's free requests are left. GET /key's
+                # free_model_daily_requests is another pool (limit 50) that
+                # these requests do not count against. When neither says, the
+                # review runs and a spent quota shows in its report.
+                headers=$(mktemp)
+                request=$(jq -nc --arg m "$FREE_MODEL" '{model: $m, max_tokens: 1, messages: [{role: "user", content: "ok"}]}')
+                answer=$(curl -sS --max-time 30 -D "$headers" -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+                  -H "Content-Type: application/json" -d "$request" \
+                  https://openrouter.ai/api/v1/chat/completions || true)
+                left=$(tr -d '\r' < "$headers" | awk -F': *' 'tolower($1) == "x-ratelimit-remaining" { v = $2 } END { print v }')
+                if [ -z "$left" ]; then
+                  left=$(jq -r 'select(.error.message // "" | test("per-day")) | .error.metadata.headers["X-RateLimit-Remaining"] // empty' <<< "$answer" 2>/dev/null || true)
+                fi
+                echo "Free model probe: $(head -1 "$headers" | tr -d '\r'); $(tr -d '\r' < "$headers" | grep -i '^x-ratelimit' | tr '\n' ' ')left: ${left:-not reported}"
                 if [[ "$left" =~ ^[0-9]+$ ]] && [ "$left" -lt "$FREE_MIN_REQUESTS" ]; then
                   allowed=false
                   reason="the free model quota is spent ($left request(s) left) until 00:00 UTC"
