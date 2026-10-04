@@ -1,10 +1,10 @@
 import {
   type AppliedSampling,
   type CustomProvider,
+  MAX_AGENT_STEPS,
   OcraError,
   type Sampling,
 } from "@open-cr-agent/core";
-import { MAX_AGENT_STEPS } from "@open-cr-agent/core/internal";
 import type { ToolServer } from "./tool-server.js";
 
 export const MCP_SERVER = "ocra";

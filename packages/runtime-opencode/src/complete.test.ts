@@ -1,5 +1,5 @@
 import type { AttemptOutcome } from "@open-cr-agent/core";
-import { parseQuotaError, usageSpent } from "@open-cr-agent/core/internal";
+import { CompletionError, parseQuotaError } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import { HELPER_AGENT_STEPS, openCodeConfig } from "./opencode-config.js";
 import { OpenCodeRuntime } from "./runtime.js";
@@ -91,7 +91,8 @@ describe("OpenCodeRuntime.complete", () => {
     const failure = await all.runtime
       .complete(request, new AbortController().signal)
       .catch((e) => e);
-    expect(usageSpent(failure)?.inputTokens).toBe(20);
+    expect(failure).toBeInstanceOf(CompletionError);
+    expect(failure.usage.inputTokens).toBe(20);
   });
 
   it("requires a model for the tier", async () => {

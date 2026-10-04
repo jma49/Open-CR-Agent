@@ -2,7 +2,11 @@ import { createRequire } from "node:module";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { ReviewContext } from "@open-cr-agent/core";
-import { MAX_READ_LINES, reviewTools } from "@open-cr-agent/core/internal";
+import { reviewTools } from "@open-cr-agent/core";
+
+// core caps a read_file result at this many lines.
+const MAX_READ_LINES = 400;
+
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { startToolServer, type ToolServer } from "./tool-server.js";

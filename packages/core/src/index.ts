@@ -50,11 +50,13 @@ export {
 } from "./errors.js";
 export type { JudgeDecisions } from "./judge/judge.js";
 export type { MemoryEntry, MemorySource, RememberedEntry } from "./memory/memory.js";
-export type {
-  AgentRole,
-  RoleSetting,
-  RoleSettings,
-  TierEfforts,
+export { type ProxyEnv, proxiedFetch } from "./net/proxied-fetch.js";
+export {
+  type AgentRole,
+  EFFORT_LEVELS,
+  type RoleSetting,
+  type RoleSettings,
+  type TierEfforts,
 } from "./pipeline/agents.js";
 export { SpendLimitReached } from "./pipeline/budget.js";
 export { AccessDeniedError } from "./pipeline/context.js";
@@ -88,6 +90,7 @@ export {
   type TaskStatus,
 } from "./pipeline/report.js";
 export { type ReviewOptions, review } from "./pipeline/run.js";
+export { addUsage, emptyUsage } from "./pipeline/usage.js";
 export {
   agentsMdReviewerPlugin,
   correctnessReviewerPlugin,
@@ -114,17 +117,27 @@ export type {
   VcsFactory,
 } from "./plugin/types.js";
 export type { ReviewerDefinition, ReviewerScope } from "./review/reviewer.js";
+export { REVIEW_TOOLS, type ReviewToolName } from "./review/tools.js";
 export type { Language } from "./rules/languages.js";
 export type { RepoRule, RuleSource, SourcedRule } from "./rules/repo-rules.js";
 export type { RuleSet } from "./rules/rule-set.js";
-export type { AttemptError, AttemptOutcome } from "./runtime/attempt.js";
+export {
+  type AttemptError,
+  type AttemptOutcome,
+  MAX_AGENT_STEPS,
+  RESUME_MESSAGE,
+  withoutSecrets,
+} from "./runtime/attempt.js";
 export { ChainRunner, type ModelAttempts } from "./runtime/chain-runner.js";
 export {
   type EffortCapability,
   type EffortParameter,
   effortCapability,
+  thinkingBudget,
 } from "./runtime/effort-capability.js";
-export type { QuotaError } from "./runtime/quota.js";
+export { type ModelRef, parseModel } from "./runtime/models.js";
+export { parseQuotaError, type QuotaError } from "./runtime/quota.js";
+export { reviewTools } from "./runtime/tools.js";
 export { parseSarifLog, SarifError, type SarifLog } from "./sarif/schema.js";
 export type { ExclusionReason, SelectionPolicy } from "./select/select.js";
 export type { RefutedFinding } from "./verify/verify.js";

@@ -13,19 +13,17 @@ import {
   type CompletionRequest,
   type CompletionResult,
   type Effort,
-  OcraError,
-  type ReviewContext,
-  type RuntimeOptions,
-  type Usage,
-} from "@open-cr-agent/core";
-import {
   MAX_AGENT_STEPS,
+  OcraError,
   parseModel,
   RESUME_MESSAGE,
   REVIEW_TOOLS,
+  type ReviewContext,
+  type RuntimeOptions,
   reviewTools,
+  type Usage,
   withoutSecrets,
-} from "@open-cr-agent/core/internal";
+} from "@open-cr-agent/core";
 import { createOpencodeClient, type OpencodeClient } from "@opencode-ai/sdk/v2";
 import { resolveOpencodeBinary } from "./binary.js";
 import { AppliedEfforts, type EffortRoutes } from "./effort.js";

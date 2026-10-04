@@ -1,11 +1,13 @@
 import {
   type AppliedSettings,
   type CustomProvider,
+  EFFORT_LEVELS,
   type Effort,
   effortCapability,
+  parseModel,
   type Sampling,
+  thinkingBudget,
 } from "@open-cr-agent/core";
-import { EFFORT_LEVELS, parseModel, thinkingBudget } from "@open-cr-agent/core/internal";
 
 type Options = Record<string, unknown>;
 const GOOGLE_PROVIDERS = new Set(["google", "google-vertex"]);

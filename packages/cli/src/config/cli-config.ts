@@ -3,6 +3,7 @@ import { join } from "node:path";
 import {
   type AgentRole,
   type CustomProvider,
+  EFFORT_LEVELS,
   type ModelChains,
   type ModelTier,
   OcraError,
@@ -13,7 +14,7 @@ import {
   type SourcedRule,
   type TierEfforts,
 } from "@open-cr-agent/core";
-import { AGENT_ROLES, EFFORT_LEVELS, MAX_TIMER_MS, RISK_TIERS } from "@open-cr-agent/core/internal";
+import { AGENT_ROLES, MAX_TIMER_MS, RISK_TIERS } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 import { fetchRemoteConfig, mergeConfig, type RemoteConfig } from "./remote.js";
 

@@ -1,5 +1,10 @@
-import { type AttemptOutcome, OcraError, type Usage } from "@open-cr-agent/core";
-import { emptyUsage, errorMessage, parseModel } from "@open-cr-agent/core/internal";
+import {
+  type AttemptOutcome,
+  emptyUsage,
+  OcraError,
+  parseModel,
+  type Usage,
+} from "@open-cr-agent/core";
 import type { OpencodeClient } from "@opencode-ai/sdk/v2";
 import { type SessionMessage, sessionUsage, summarizeSession } from "./session-outcome.js";
 
@@ -115,7 +120,7 @@ export async function promptSession(
       return {
         ...(await harvest(session, sessionID, reportTool, input.toolPrefix)),
         error: {
-          message: `could not read the finished session: ${errorMessage(error)}`,
+          message: `could not read the finished session: ${error instanceof Error ? error.message : String(error)}`,
           retryable: false,
         },
       };
@@ -152,7 +157,7 @@ export async function promptSession(
         ? { message: "cancelled", retryable: false }
         : silence.signal.aborted
           ? { message: `no activity for ${seconds}s`, retryable: true }
-          : { message: errorMessage(error), retryable: true },
+          : { message: error instanceof Error ? error.message : String(error), retryable: true },
     };
   } finally {
     silence.stop();

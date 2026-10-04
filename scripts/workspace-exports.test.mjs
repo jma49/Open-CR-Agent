@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -25,5 +25,23 @@ describe("workspace exports", () => {
         expect(entry.default).toMatch(/^\.\/dist\//);
       });
     }
+  }
+});
+
+// A runtime is a plugin like a third party's (ADR-0006): it builds on core's
+// public API only, so that API is enough to write one.
+describe("runtime packages", () => {
+  for (const { dir, json } of readWorkspaces(root).filter((w) =>
+    w.json.name.includes("/runtime-"),
+  )) {
+    it(`${json.name} imports nothing from @open-cr-agent/core/internal`, () => {
+      const src = join(dir, "src");
+      const files = readdirSync(src, { recursive: true }).filter((f) => String(f).endsWith(".ts"));
+      expect(files.length).toBeGreaterThan(0);
+      const internal = files.filter((f) =>
+        readFileSync(join(src, String(f)), "utf8").includes('"@open-cr-agent/core/internal"'),
+      );
+      expect(internal).toEqual([]);
+    });
   }
 });

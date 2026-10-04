@@ -12,6 +12,9 @@ export class AccessDeniedError extends OcraError {
 }
 
 // @public (undocumented)
+export function addUsage(total: Usage, next: Usage): Usage;
+
+// @public (undocumented)
 export type AgentEvent = {
     type: "progress";
     taskId: string;
@@ -314,6 +317,9 @@ export const docsReviewerPlugin: OcraPlugin;
 export type Effort = "none" | "minimal" | "low" | "medium" | "high";
 
 // @public (undocumented)
+export const EFFORT_LEVELS: readonly ["none", "minimal", "low", "medium", "high"];
+
+// @public (undocumented)
 export interface EffortCapability {
     // (undocumented)
     budget?: {
@@ -331,6 +337,9 @@ export function effortCapability(model: string): EffortCapability | undefined;
 
 // @public (undocumented)
 export type EffortParameter = "reasoningEffort" | "thinkingBudget" | "thinkingLevel";
+
+// @public (undocumented)
+export function emptyUsage(): Usage;
 
 // @public (undocumented)
 export type Env = Readonly<Record<string, string | undefined>>;
@@ -486,6 +495,9 @@ const lineRangeSchema: z.ZodObject<{
 }, z.core.$strip>;
 
 // @public (undocumented)
+export const MAX_AGENT_STEPS = 30;
+
+// @public (undocumented)
 export type MemoryEntry = z.infer<typeof memoryEntrySchema>;
 
 // @public (undocumented)
@@ -525,6 +537,14 @@ export interface ModelPrice {
     input: number;
     // (undocumented)
     output: number;
+}
+
+// @public (undocumented)
+export interface ModelRef {
+    // (undocumented)
+    modelID: string;
+    // (undocumented)
+    providerID: string;
 }
 
 // @public (undocumented)
@@ -622,6 +642,12 @@ export interface OutputPriorFinding {
     // (undocumented)
     verification: Verification;
 }
+
+// @public (undocumented)
+export function parseModel(model: string): ModelRef;
+
+// @public (undocumented)
+export function parseQuotaError(message: string, statusCode?: number): QuotaError | undefined;
 
 // @public (undocumented)
 export function parseSarifLog(text: string): SarifLog;
@@ -750,6 +776,25 @@ export interface ProvenanceInput {
     ocraVersion: string;
     // (undocumented)
     sampling?: Sampling;
+}
+
+// @public (undocumented)
+export function proxiedFetch(env: ProxyEnv): typeof fetch;
+
+// @public (undocumented)
+export interface ProxyEnv {
+    // (undocumented)
+    HTTP_PROXY?: string | undefined;
+    // (undocumented)
+    http_proxy?: string | undefined;
+    // (undocumented)
+    HTTPS_PROXY?: string | undefined;
+    // (undocumented)
+    https_proxy?: string | undefined;
+    // (undocumented)
+    NO_PROXY?: string | undefined;
+    // (undocumented)
+    no_proxy?: string | undefined;
 }
 
 // @public (undocumented)
@@ -1205,7 +1250,19 @@ const repoRuleSchema: z.ZodObject<{
 }, z.core.$strip>;
 
 // @public (undocumented)
+export const RESUME_MESSAGE: string;
+
+// @public (undocumented)
 export function review(options: ReviewOptions): Promise<ReviewReport>;
+
+// @public (undocumented)
+export const REVIEW_TOOLS: {
+    readonly readFile: "read_file";
+    readonly readDiff: "read_diff";
+    readonly codeSearch: "code_search";
+    readonly reportFinding: "report_finding";
+    readonly taskDone: "task_done";
+};
 
 // @public (undocumented)
 export interface ReviewContext {
@@ -1424,6 +1481,12 @@ export interface ReviewReport {
     // (undocumented)
     warnings: string[];
 }
+
+// @public (undocumented)
+export type ReviewToolName = (typeof REVIEW_TOOLS)[keyof typeof REVIEW_TOOLS];
+
+// @public (undocumented)
+export const reviewTools: readonly ToolDefinition[];
 
 // @public (undocumented)
 export type RiskTier = z.infer<typeof riskTierSchema>;
@@ -1676,6 +1739,9 @@ const taskStatusSchema: z.ZodEnum<{
 }>;
 
 // @public (undocumented)
+export function thinkingBudget(capability: EffortCapability, level: Effort, outputLimit?: number): number | undefined;
+
+// @public (undocumented)
 export type TierEfforts = {
     readonly [Tier in ModelTier]?: Effort | undefined;
 };
@@ -1752,6 +1818,9 @@ const verificationSchema: z.ZodEnum<{
     uncertain: "uncertain";
     unchecked: "unchecked";
 }>;
+
+// @public (undocumented)
+export function withoutSecrets(text: string, secrets: readonly string[]): string;
 
 // (No @packageDocumentation comment for this package)
 

@@ -1,5 +1,13 @@
-import type { Effort, ModelPrice, QuotaError, ToolDefinition, Usage } from "@open-cr-agent/core";
-import { errorMessage, parseQuotaError, sleep, withoutSecrets } from "@open-cr-agent/core/internal";
+import { setTimeout } from "node:timers/promises";
+import {
+  type Effort,
+  type ModelPrice,
+  parseQuotaError,
+  type QuotaError,
+  type ToolDefinition,
+  type Usage,
+  withoutSecrets,
+} from "@open-cr-agent/core";
 import { z } from "zod";
 
 // The subset of the OpenAI chat completions protocol the loop needs: one
@@ -142,7 +150,7 @@ async function sendRetrying(
 ): Promise<ChatResponse> {
   const first = await send(endpoint, request, price, signal);
   if (first.ok || !first.error.transient) return first;
-  await sleep(TRANSIENT_RETRY_MS, signal);
+  await setTimeout(TRANSIENT_RETRY_MS, undefined, { signal }).catch(() => undefined);
   if (signal.aborted) return first;
   return send(endpoint, request, price, signal);
 }
@@ -169,7 +177,14 @@ async function send(
     );
   } catch (error) {
     if (signal.aborted) return { ok: false, error: { message: "cancelled", retryable: false } };
-    return { ok: false, error: { message: errorMessage(error), retryable: true, transient: true } };
+    return {
+      ok: false,
+      error: {
+        message: error instanceof Error ? error.message : String(error),
+        retryable: true,
+        transient: true,
+      },
+    };
   }
   const body = await response.text().catch(() => "");
   if (!response.ok) return { ok: false, error: failure(response, body, secrets) };

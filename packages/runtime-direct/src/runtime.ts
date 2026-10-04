@@ -10,19 +10,17 @@ import {
   type CompletionResult,
   type CustomProvider,
   type Effort,
+  MAX_AGENT_STEPS,
   type ModelPrice,
   OcraError,
-  type RuntimeOptions,
-  type ToolDefinition,
-  type Usage,
-} from "@open-cr-agent/core";
-import {
-  MAX_AGENT_STEPS,
   parseModel,
   proxiedFetch,
   RESUME_MESSAGE,
+  type RuntimeOptions,
   reviewTools,
-} from "@open-cr-agent/core/internal";
+  type ToolDefinition,
+  type Usage,
+} from "@open-cr-agent/core";
 import { EffortLedger } from "./effort.js";
 import { runLoop } from "./loop.js";
 import type { Endpoint } from "./openai.js";

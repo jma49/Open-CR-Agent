@@ -1,11 +1,13 @@
-import type {
-  AttemptOutcome,
-  ModelPrice,
-  ReviewContext,
-  ToolDefinition,
-  Usage,
+import {
+  type AttemptOutcome,
+  addUsage,
+  emptyUsage,
+  type ModelPrice,
+  REVIEW_TOOLS,
+  type ReviewContext,
+  type ToolDefinition,
+  type Usage,
 } from "@open-cr-agent/core";
-import { addUsage, emptyUsage, errorMessage, REVIEW_TOOLS } from "@open-cr-agent/core/internal";
 import {
   type CallParams,
   type ChatMessage,
@@ -143,6 +145,6 @@ async function runTool(
   try {
     return await tool.execute(parsed.data, context);
   } catch (error) {
-    return `Tool failed: ${errorMessage(error)}`;
+    return `Tool failed: ${error instanceof Error ? error.message : String(error)}`;
   }
 }

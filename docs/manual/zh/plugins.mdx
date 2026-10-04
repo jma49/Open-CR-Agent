@@ -81,6 +81,8 @@ ocra plugins deny ocra-plugin-team-rules
 
 运行时不必自己在模型之间做故障切换：`@open-cr-agent/core` 的 `ChainRunner` 可以替它实现 `runTask` 和 `complete`。它决定一次调用用哪条模型链（agent 自己的，否则是层级的），对没有配置模型的层级给出 `CONFIG_INVALID` 错误，在整次运行中记录每个模型的健康状况（短时限流会等待，配额用尽的模型在本次运行中不再使用，持续失败的模型由熔断器跳过），并在一次尝试失败时换下一个模型。运行时提供 `ModelAttempts`：`task` 和 `complete` 在一个模型上执行一次尝试，返回 `AttemptOutcome`（发现、步数、工具调用、文本和用量，以及一个 `error`，说明换个模型是否可能成功，带 `QuotaError` 时说明是否需要等待、等多久）；可选的 `refuse` 在发出任何请求之前说明一条模型链为什么无法使用，可选的 `ready` 启动这些尝试需要的东西。每个运行时实例创建一个 runner，这样它记录的健康状况覆盖整次运行。两个内置运行时都是这样实现的。
 
+运行时需要的其余部分也在 `@open-cr-agent/core` 中，你自己的运行时可以按内置运行时的方式执行审查：`reviewTools`，和 `RuntimeOptions.tools` 一起提供给 agent 的只读审查工具，以及 `REVIEW_TOOLS`，它们的名字（一次尝试的发现就是 agent 传给 `report_finding` 的内容；`task_done` 结束尝试）；`MAX_AGENT_STEPS`，每次审查尝试的模型请求上限；`RESUME_MESSAGE`，agent 在还有步数、没有回答也没有调用 `task_done` 时停下，会收到一次这条消息；`parseModel(model)`，拆分 `provider/model`，其他写法抛出 `CONFIG_INVALID`；`parseQuotaError(message, status?)`，把供应商的限流或配额错误读成 `QuotaError`；`withoutSecrets(text, secrets)`，在引用供应商的错误之前去掉其中的密钥；`emptyUsage()` 和 `addUsage()`；`EFFORT_LEVELS` 和 `thinkingBudget(capability, level, outputLimit?)`，ocra 为某个级别推算的思考预算；以及 `proxiedFetch(env)`，按给定环境中的 `HTTP_PROXY`、`HTTPS_PROXY` 和 `NO_PROXY` 走代理的 `fetch`。
+
 每个插件只能拿到自己的设置（`ctx.settings`），并由可选的 `settingsSchema` 校验。同一个名字重复注册、使用保留的工具名，或在 `configure` 阶段之后再注册，都会报错并指出是哪个插件。
 
 ## 安全

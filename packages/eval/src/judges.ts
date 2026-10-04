@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
-import { proxiedFetch } from "@open-cr-agent/core/internal";
+import { proxiedFetch } from "@open-cr-agent/core";
 import type { SemanticJudge } from "./match.js";
 
 export interface JudgeConfig {
