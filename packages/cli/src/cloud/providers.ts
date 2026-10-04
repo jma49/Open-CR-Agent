@@ -1,8 +1,9 @@
 import type { CustomProvider } from "@open-cr-agent/core";
 import { OcraError } from "@open-cr-agent/core";
-import { errorMessage } from "@open-cr-agent/core/internal";
+import { errorMessage, REVIEW_DEFAULTS } from "@open-cr-agent/core/internal";
 import { CloudClient, sessionLostReason } from "./client.js";
 import type { CloudDeps } from "./deps.js";
+import { GatewayToken } from "./gateway-token.js";
 
 // Models named ocra-<provider>/<model> go through the ocra Cloud gateway with
 // the key stored there for <provider> (ADR-0024). Each such provider becomes
@@ -30,8 +31,20 @@ export function isCloudModel(model: string): boolean {
   );
 }
 
-// A review may run for half an hour; start it with a token that outlives it.
+// A review runs 25 minutes at most by default; start it with a token that
+// outlives that, and ask for one that outlives a longer run.
 const MIN_TOKEN_MS = 35 * 60_000;
+const TOKEN_MARGIN_MS = 10 * 60_000;
+
+/** The run the models serve: how long it may last, and whether its runtime reads a key at each call. */
+export type CloudRun = { timeoutMs: number; keyReadPerCall: boolean };
+
+export type CloudProviders = {
+  providers: Record<string, CustomProvider>;
+  env: Env;
+  // Stops renewing the gateway token; called when the run ends.
+  stop(): void;
+};
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -42,7 +55,8 @@ export async function withCloudProviders(
   env: Env,
   deps: CloudDeps | undefined,
   warn: (message: string) => void,
-): Promise<{ providers: Record<string, CustomProvider>; env: Env }> {
+  run: CloudRun = { timeoutMs: REVIEW_DEFAULTS.runTimeoutMs, keyReadPerCall: false },
+): Promise<CloudProviders> {
   const wanted = new Map<string, Set<string>>();
   const dropped: string[] = [];
   for (const model of chains.flatMap((chain) => chain ?? [])) {
@@ -62,15 +76,19 @@ export async function withCloudProviders(
       `ignoring ${dropped.join(", ")}: an ocra Cloud model is ${CLOUD_PREFIX}<provider>/<model>, with a provider of lowercase letters, digits and - and a model of letters, digits and ./:@_-`,
     );
   }
-  if (wanted.size === 0) return { providers: { ...providers }, env };
+  if (wanted.size === 0) return { providers: { ...providers }, env, stop: () => {} };
 
   const names = [...wanted.keys()].join(", ");
   if (env.OCRA_CLOUD === "off") {
     throw new OcraError("CONFIG_INVALID", `Models name ocra Cloud (${names}) but OCRA_CLOUD=off`);
   }
   const client = deps ? new CloudClient(deps) : undefined;
-  const state = client ? await client.session(MIN_TOKEN_MS) : ({ kind: "signed-out" } as const);
-  if (!client || state.kind === "signed-out") {
+  // A runtime that reads the key once needs a token that outlives the run;
+  // one that reads it at each call gets it renewed during the run.
+  const needed = run.timeoutMs + TOKEN_MARGIN_MS;
+  const minValidity = run.keyReadPerCall ? MIN_TOKEN_MS : Math.max(MIN_TOKEN_MS, needed);
+  const state = client ? await client.session(minValidity) : ({ kind: "signed-out" } as const);
+  if (!client || !deps || state.kind === "signed-out") {
     throw new OcraError(
       "CONFIG_CREDENTIALS_MISSING",
       `Models name ocra Cloud (${names}): sign in with ocra login`,
@@ -132,5 +150,29 @@ export async function withCloudProviders(
   warn(
     `${names}: models through ocra Cloud are not priced, so reported cost and --max-cost-usd do not count them`,
   );
-  return { providers: declared, env: { ...env, [CLOUD_TOKEN_ENV]: session.access_token } };
+  if (!run.keyReadPerCall) {
+    const left = session.expires_at - deps.now();
+    if (left < needed) {
+      warn(
+        `this run may last ${minutes(run.timeoutMs)} minutes, but its runtime reads the ocra Cloud token once and the token lasts ${minutes(left)}: model calls through ocra Cloud fail after that (use "runtime": "direct", which renews it, or a shorter runTimeoutMinutes)`,
+      );
+    }
+    return {
+      providers: declared,
+      env: { ...env, [CLOUD_TOKEN_ENV]: session.access_token },
+      stop: () => {},
+    };
+  }
+  const token = new GatewayToken(session, deps, warn);
+  token.start();
+  // The token is read at each call, so a renewed one is used from then on.
+  const live = Object.defineProperty({ ...env }, CLOUD_TOKEN_ENV, {
+    get: () => token.value,
+    enumerable: true,
+  });
+  return { providers: declared, env: live, stop: () => token.stop() };
+}
+
+function minutes(ms: number): number {
+  return Math.floor(ms / 60_000);
 }

@@ -153,6 +153,15 @@ describe("loadConfig", () => {
       ".ocra/config.json is invalid",
     );
   });
+
+  it("refuses a timeout longer than a timer keeps, and takes the longest it keeps", async () => {
+    for (const key of ["taskTimeoutMinutes", "runTimeoutMinutes"]) {
+      await expect(loadConfig(root(`{"${key}":99999}`), {})).rejects.toThrow(
+        ".ocra/config.json is invalid",
+      );
+      expect(await loadConfig(root(`{"${key}":35791}`), {})).toMatchObject({ [key]: 35791 });
+    }
+  });
 });
 
 describe("configJsonSchema", () => {

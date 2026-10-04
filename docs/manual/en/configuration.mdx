@@ -100,8 +100,8 @@ To reach your own server or a company gateway that speaks the OpenAI API, declar
 | Key | Default | Meaning |
 |---|---|---|
 | `concurrency` | `4` | Review tasks running at once (1–32) |
-| `taskTimeoutMinutes` | `10` | Limit for one review task |
-| `runTimeoutMinutes` | `25` | Limit for the whole run |
+| `taskTimeoutMinutes` | `10` | Limit for one review task, at most `35791` (about 24.8 days, the longest a timer keeps) |
+| `runTimeoutMinutes` | `25` | Limit for the whole run, at most `35791` |
 | `maxCostUsd` | none | Spend limit for the run: review tasks use up to 80% of it, verification and judging the rest (see `--max-cost-usd`) |
 | `maxTasks` | `60` | Most review tasks one run starts. Past it, `--ultra`'s second passes go first, then later reviewers, so every file keeps its first reviewer as long as possible; skipped files are reported as not reviewed (exit code `3`) |
 | `judge` | `true` | Merge, filter and recalibrate findings across reviewers (one top-tier call per run with findings) |

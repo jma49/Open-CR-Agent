@@ -106,11 +106,13 @@
     },
     "taskTimeoutMinutes": {
       "type": "number",
-      "exclusiveMinimum": 0
+      "exclusiveMinimum": 0,
+      "maximum": 35791
     },
     "runTimeoutMinutes": {
       "type": "number",
-      "exclusiveMinimum": 0
+      "exclusiveMinimum": 0,
+      "maximum": 35791
     },
     "verify": {
       "type": "boolean"

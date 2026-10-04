@@ -80,7 +80,7 @@ try {
 | `rules` | Path-scoped review rules (`SourcedRule[]`: a `RepoRule` with an optional `source`, `repository`, `shared`, `account` or `plugin`), the registry's plus your own; the report's `provenance.rules` lists them with `.ocra/rules.json`'s as `repository` |
 | `readTrusted` | Where `AGENTS.md`, `.ocra/rules.json` and `.ocra/memory.json` are read from. Default: the revision under review; for a pull request, pass a reader of the trusted base so the change cannot rewrite them |
 | `selection` | Which files are reviewed: `include`, `exclude`, `maxPatchChars` |
-| `concurrency`, `taskTimeoutMs`, `runTimeoutMs` | Parallel tasks (4), the per-task timeout (10 minutes) and the run's (25 minutes) |
+| `concurrency`, `taskTimeoutMs`, `runTimeoutMs` | Parallel tasks (4), the per-task timeout (10 minutes) and the run's (25 minutes); a timeout past 2^31 - 1 ms (about 24.8 days) is cut to that |
 | `verify`, `judge` | Fact-check findings against the diff, and merge, filter and recalibrate them across reviewers (both default on) |
 | `maxCostUsd`, `maxTasks` | The spend limit ([`--max-cost-usd`](./cli)) and the task cap |
 | `fullReview` | Review every file although the platform reports what changed since the previous review |

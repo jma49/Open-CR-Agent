@@ -270,6 +270,22 @@ describe("review", () => {
     expect(report.tasks[0]).toMatchObject({ status: "timed_out", error: "timed out after 20ms" });
   });
 
+  it("reads a timeout too long for a timer as no practical limit, not as none at all", async () => {
+    const rt = runtime(async function* (spec) {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      yield { type: "done", taskId: spec.taskId };
+    });
+    // 40,000 minutes: past 2^31 - 1 ms, where a timer fires at once.
+    const forever = 40_000 * 60_000;
+    const report = await review({
+      vcs: vcs({}, twoFiles),
+      runtime: rt,
+      taskTimeoutMs: forever,
+      runTimeoutMs: forever,
+    });
+    expect(report.tasks.map((t) => t.status)).toEqual(["completed"]);
+  });
+
   it("cancels tasks when the caller aborts the run", async () => {
     const controller = new AbortController();
     const rt = runtime(async function* () {

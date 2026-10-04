@@ -376,6 +376,33 @@ describe("DirectRuntime.complete", () => {
     ]);
   });
 
+  it("reads the key at every request, so a key renewed during a run is used from then on", async () => {
+    // The CLI renews the ocra Cloud gateway token in place while a run lasts.
+    const server = await endpoint([{ content: "a" }, { content: "b" }]);
+    let key = "sk-first";
+    const env = Object.defineProperty({}, "LOCAL_KEY", { get: () => key, enumerable: true });
+    const live = new DirectRuntime({
+      models: { light: ["local/m1"] },
+      tools: [],
+      env,
+      providers: {
+        local: {
+          baseUrl: server.url,
+          apiKeyEnv: "LOCAL_KEY",
+          models: { m1: { input: 1, output: 1 } },
+        },
+      },
+    });
+    const request = { tier: "light", system: "s", user: "u", timeoutMs: 5_000 } as const;
+    await live.complete(request, new AbortController().signal);
+    key = "sk-renewed";
+    await live.complete(request, new AbortController().signal);
+    expect(server.seen.map((r) => r.authorization)).toEqual([
+      "Bearer sk-first",
+      "Bearer sk-renewed",
+    ]);
+  });
+
   it("throws once every model failed twice", async () => {
     const server = await endpoint(Array.from({ length: 4 }, () => ({ status: 500 })));
     await expect(

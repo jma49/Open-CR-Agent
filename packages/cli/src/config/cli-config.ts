@@ -13,7 +13,7 @@ import {
   type SourcedRule,
   type TierEfforts,
 } from "@open-cr-agent/core";
-import { AGENT_ROLES, EFFORT_LEVELS, RISK_TIERS } from "@open-cr-agent/core/internal";
+import { AGENT_ROLES, EFFORT_LEVELS, MAX_TIMER_MS, RISK_TIERS } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 import { fetchRemoteConfig, mergeConfig, type RemoteConfig } from "./remote.js";
 
@@ -22,6 +22,12 @@ export const CONFIG_PATH = ".ocra/config.json";
 // How much a model reasons before answering (ADR-0025); unset leaves the
 // provider's default.
 const effort = z.enum(EFFORT_LEVELS);
+// The longest timeout a timer keeps, about 24.8 days; a longer one would fire at once.
+const timeoutMinutes = z
+  .number()
+  .positive()
+  .max(Math.floor(MAX_TIMER_MS / 60_000))
+  .optional();
 
 const modelChain = z
   .union([z.string().min(1), z.array(z.string().min(1)).min(1)])
@@ -90,8 +96,8 @@ export const configSchema = z
       .strict()
       .default({}),
     concurrency: z.number().int().min(1).max(32).optional(),
-    taskTimeoutMinutes: z.number().positive().optional(),
-    runTimeoutMinutes: z.number().positive().optional(),
+    taskTimeoutMinutes: timeoutMinutes,
+    runTimeoutMinutes: timeoutMinutes,
     verify: z.boolean().optional(),
     judge: z.boolean().optional(),
     maxCostUsd: z.number().positive().optional(),

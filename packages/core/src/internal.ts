@@ -23,6 +23,7 @@ export {
 } from "./pipeline/output.js";
 export { previewReview, type ReviewPreview } from "./pipeline/preview.js";
 export { stableHash } from "./pipeline/provenance.js";
+export { MAX_TIMER_MS, REVIEW_DEFAULTS } from "./pipeline/run.js";
 export { newRunId } from "./pipeline/run-id.js";
 export { addUsage, emptyUsage } from "./pipeline/usage.js";
 export { REVIEW_TOOLS } from "./review/tools.js";

@@ -82,7 +82,7 @@ describe("models through ocra Cloud", () => {
       t.deps,
       t.warn,
     );
-    expect(out).toEqual({ providers: {}, env: { A: "1" } });
+    expect(out).toMatchObject({ providers: {}, env: { A: "1" } });
     expect(t.calls).toEqual([]);
   });
 
@@ -144,6 +144,29 @@ describe("models through ocra Cloud", () => {
 
     const e = await failure(withCloudProviders([["ocra-deepseek/m"]], {}, {}, t.deps, t.warn));
     expect(isOcraError(e) && e.code).toBe("CONFIG_INVALID");
+  });
+
+  it("asks a runtime that reads the token once for one that outlives the run, and warns when none can", async () => {
+    const t = setup({});
+    const twoHours = { timeoutMs: 120 * 60_000, keyReadPerCall: false };
+    const out = await withCloudProviders([["ocra-openrouter/m"]], {}, {}, t.deps, t.warn, twoHours);
+    expect(t.calls[0]).toBe("POST /api/device/refresh");
+    expect(out.env[CLOUD_TOKEN_ENV]).toBe("ocra_cli_new");
+    expect(t.warnings.join("\n")).toContain(
+      "this run may last 120 minutes, but its runtime reads the ocra Cloud token once and the token lasts 60",
+    );
+  });
+
+  it("hands a runtime that reads the token at each call the renewed one", async () => {
+    const t = setup({});
+    const out = await withCloudProviders([["ocra-openrouter/m"]], {}, {}, t.deps, t.warn, {
+      timeoutMs: 120 * 60_000,
+      keyReadPerCall: true,
+    });
+    out.stop();
+    expect(t.calls).toEqual(["GET /api/providers"]);
+    expect(out.env[CLOUD_TOKEN_ENV]).toBe("ocra_cli_live");
+    expect(t.warnings.join("\n")).not.toContain("reads the ocra Cloud token once");
   });
 
   it("refreshes a token that would expire during the review", async () => {

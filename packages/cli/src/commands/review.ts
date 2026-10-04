@@ -1,5 +1,6 @@
 import { join, relative, resolve } from "node:path";
 import {
+  type AgentRuntime,
   agentsMdReviewerPlugin,
   correctnessReviewerPlugin,
   coverageGaps,
@@ -20,6 +21,7 @@ import {
   defaultSelectionPolicy,
   newRunId,
   previewReview,
+  REVIEW_DEFAULTS,
   toPlanOutput,
 } from "@open-cr-agent/core/internal";
 import { githubPlugin } from "@open-cr-agent/vcs-github";
@@ -218,14 +220,27 @@ export async function reviewCommand(
     deps.env,
     cloudDeps,
     warn,
+    {
+      timeoutMs: config.runTimeoutMinutes
+        ? config.runTimeoutMinutes * 60_000
+        : REVIEW_DEFAULTS.runTimeoutMs,
+      // The direct runtime reads a provider's key at each call (DirectRuntime.target).
+      keyReadPerCall: config.runtime === "direct",
+    },
   );
-  const runtime = registry.createRuntime(config.runtime, {
-    models,
-    ...(Object.keys(agentModels).length > 0 ? { agentModels } : {}),
-    env: cloud.env,
-    providers: cloud.providers,
-    ...(Object.keys(sampling).length > 0 ? { sampling } : {}),
-  });
+  let runtime: AgentRuntime;
+  try {
+    runtime = registry.createRuntime(config.runtime, {
+      models,
+      ...(Object.keys(agentModels).length > 0 ? { agentModels } : {}),
+      env: cloud.env,
+      providers: cloud.providers,
+      ...(Object.keys(sampling).length > 0 ? { sampling } : {}),
+    });
+  } catch (error) {
+    cloud.stop();
+    throw error;
+  }
 
   const progress = new ProgressPrinter(io.err, { heartbeatMs: deps.heartbeatMs, now: deps.now });
   const interrupt = new AbortController();
@@ -268,6 +283,7 @@ export async function reviewCommand(
   } finally {
     stopListening?.();
     progress.stop();
+    cloud.stop();
     await runtime.dispose?.();
   }
 

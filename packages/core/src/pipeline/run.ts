@@ -111,7 +111,16 @@ export interface ReviewHooks {
   abortGraceMs?: number;
 }
 
-const DEFAULTS = { concurrency: 4, taskTimeoutMs: 10 * 60_000, runTimeoutMs: 25 * 60_000 };
+export const REVIEW_DEFAULTS = {
+  concurrency: 4,
+  taskTimeoutMs: 10 * 60_000,
+  runTimeoutMs: 25 * 60_000,
+} as const;
+const DEFAULTS = REVIEW_DEFAULTS;
+
+// Timers fire at once past 2^31 - 1 ms (about 24.8 days); a longer timeout
+// means no practical limit, so it is cut to the longest one a timer keeps.
+export const MAX_TIMER_MS = 2 ** 31 - 1;
 
 // The library entry: plan (deterministic stages) → execute (one agent task
 // per cell) → verify → judge → report. The `ocra` command is one caller.
@@ -122,7 +131,9 @@ export function review(options: ReviewOptions): Promise<ReviewReport> {
 
 export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Promise<ReviewReport> {
   const emit = options.onEvent ?? (() => {});
-  const timeout = AbortSignal.timeout(options.runTimeoutMs ?? DEFAULTS.runTimeoutMs);
+  const timeout = AbortSignal.timeout(
+    Math.min(options.runTimeoutMs ?? DEFAULTS.runTimeoutMs, MAX_TIMER_MS),
+  );
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
   const reviewers = options.reviewers ?? [correctnessReviewer];
   if (reviewers.length === 0) throw new OcraError("CONFIG_INVALID", "No reviewer is registered");
@@ -181,7 +192,7 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
   };
   const execute = {
     runtime: options.runtime,
-    taskTimeoutMs: options.taskTimeoutMs ?? DEFAULTS.taskTimeoutMs,
+    taskTimeoutMs: Math.min(options.taskTimeoutMs ?? DEFAULTS.taskTimeoutMs, MAX_TIMER_MS),
     abortGraceMs: options.abortGraceMs,
     // Past the spend limit a quote that does not match stays file-level.
     relocate:
