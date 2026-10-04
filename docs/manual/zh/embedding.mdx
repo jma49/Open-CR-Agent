@@ -149,6 +149,7 @@ ocra 的各个包抛出的都是 `OcraError`（或它的子类），带有 `code
 
 - **`@open-cr-agent/core`**：`review()` 和 `ReviewOptions`；它返回的内容（`ReviewReport`、`Finding` 以及组成它们的类型）、`coverageGaps()`、`toReportOutput()` 及 `ReportOutput`、`reportOutputSchema`、`reportJsonSchema()` 和 `REPORT_VERSION`；`parseSarifLog()`；插件接口（`OcraPlugin` 及其上下文、`startPlugins()`、`PluginRegistry`、内置的审查者插件和 `sessionJsonlPlugin`）；插件实现的约定（`VcsAdapter`、`AgentRuntime` 及它们用到的类型、`ToolDefinition`、`ReviewerDefinition`、`RepoRule`）；运行时可以基于的部分（`ChainRunner` 及 `ModelAttempts`、`AttemptOutcome`、`QuotaError`，审查工具、步数上限以及[插件](./plugins)列出的其他辅助内容）；以及[错误模型](#错误)。
 - **`@open-cr-agent/vcs-local`**：`localGitPlugin`、`LocalTarget`、`LocalGitOptions` 和 `GitError`。**`vcs-github`** 和 **`vcs-gitlab`**：`githubPlugin` 和 `gitlabPlugin`，`resolveGitHubTarget` 和 `resolveGitLabTarget` 及 `GitHubSettings` 和 `GitLabSettings`，以及它们的 API 错误。**`runtime-opencode`** 和 **`runtime-direct`**：`opencodeRuntimePlugin` 和 `directRuntimePlugin`。
+- **`@open-cr-agent/cli`**：`run(argv)`，即带参数（不含 node 和脚本路径）运行 `ocra` 命令，输出写到 stdout 和 stderr，返回值是[退出码](./cli)。
 - **`@open-cr-agent/vcs-platform`** 是 ocra 各平台适配器共用的部分，还不是约定。
 
 每个名字和每个类型的形状都记录在该包的 API 报告里，位于仓库的 [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc) 目录；入口变了而报告没变时，CI 会失败。

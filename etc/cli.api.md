@@ -4,59 +4,8 @@
 
 ```ts
 
-import { OcraPlugin } from '@open-cr-agent/core';
-
 // @public (undocumented)
-type CloudDeps = {
-    env: Readonly<Record<string, string | undefined>>;
-    fetch: typeof fetch;
-    now: () => number;
-    sleep: (ms: number) => Promise<void>;
-    openBrowser: (url: string) => void;
-    credentialsPath: string;
-    clientName: string;
-};
-
-// @public
-type NpmRunner = (args: readonly string[], cwd: string) => Promise<string>;
-
-// @public (undocumented)
-interface Output {
-    // (undocumented)
-    write(chunk: string): unknown;
-}
-
-// @public (undocumented)
-interface ReviewDeps {
-    // (undocumented)
-    builtinPlugins: readonly OcraPlugin[];
-    // (undocumented)
-    cloud?: CloudDeps;
-    // (undocumented)
-    cwd: string;
-    // (undocumented)
-    env: Readonly<Record<string, string | undefined>>;
-    // (undocumented)
-    fetch?: typeof fetch;
-    // (undocumented)
-    heartbeatMs: number;
-    // (undocumented)
-    now(): number;
-    // (undocumented)
-    npm?: NpmRunner;
-    // (undocumented)
-    onInterrupt?(handler: () => void): () => void;
-    // (undocumented)
-    runtimes: RuntimeLoaders;
-    // (undocumented)
-    writeFile(path: string, content: string): Promise<void>;
-}
-
-// @public (undocumented)
-export function run(argv: string[], out: Output, err: Output, deps?: ReviewDeps): Promise<number>;
-
-// @public (undocumented)
-type RuntimeLoaders = Readonly<Record<string, () => Promise<OcraPlugin>>>;
+export function run(argv: readonly string[]): Promise<number>;
 
 // (No @packageDocumentation comment for this package)
 

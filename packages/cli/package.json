@@ -27,6 +27,11 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./internal": {
+      "@open-cr-agent/source": "./src/internal.ts",
+      "types": "./dist/internal.d.ts",
+      "default": "./dist/internal.js"
+    },
     "./package.json": "./package.json"
   },
   "bin": {
