@@ -56,7 +56,7 @@ jobs:
   # actionlint (with shellcheck, preinstalled on the runner) and zizmor's
   # offline audits of the workflows, action.yml and dependabot.yml, both at
   # pinned versions; zizmor reads .github/zizmor.yml. shellcheck checks the
-  # actions' shell scripts too.
+  # shell scripts of the actions and scripts/ too.
   workflows:
     runs-on: ubuntu-latest
     steps:
@@ -77,7 +77,7 @@ jobs:
       - name: zizmor
         run: pipx run zizmor==1.30.1 --offline --format github .
       - name: shellcheck
-        run: shellcheck .github/actions/*/*.sh
+        run: shellcheck .github/actions/*/*.sh scripts/*.sh
 
   # A pull request that changes a published package's source carries a
   # changeset, the entry for CHANGELOG.md (.changeset/README.md). Tests,
@@ -171,35 +171,7 @@ jobs:
           OCRA_INSTALL: ${{ matrix.install }}
           OCRA_MAIN: ${{ steps.install.outputs.main }}
           OCRA_SOURCE: ${{ steps.install.outputs.source }}
-        run: |
-          # Building from source is right only while a package at this version
-          # is not on npm yet, or when this commit declares other dependencies
-          # than the published version; never because an install or a check
-          # of what npm serves failed.
-          if [ "$OCRA_INSTALL" = npm ] && [ "${OCRA_MAIN#"$RUNNER_TEMP"}" = "$OCRA_MAIN" ]; then
-            case "$OCRA_SOURCE" in
-              unpublished | dependencies) echo "Built from source: $OCRA_SOURCE" ;;
-              *)
-                echo "::error::the Action built from source ($OCRA_SOURCE) instead of installing from npm"
-                exit 1
-                ;;
-            esac
-          fi
-          # The install used an npm cache of its own, not ~/.npm.
-          node -e 'require("fs").statSync(require("path").join(process.env.RUNNER_TEMP, "ocra-npm-cache", "_cacache"))'
-          node "$OCRA_MAIN" --version
-          # The runtime finds the OpenCode binary in the installed layout.
-          node --input-type=module -e '
-            import { execFileSync } from "node:child_process";
-            import { createRequire } from "node:module";
-            import { dirname, join } from "node:path";
-            import { pathToFileURL } from "node:url";
-            const index = createRequire(process.env.OCRA_MAIN).resolve("@open-cr-agent/runtime-opencode");
-            // import() takes a URL: a Windows path would read as the scheme "d:".
-            const { resolveOpencodeBinary } = await import(pathToFileURL(join(dirname(index), "binary.js")).href);
-            const binary = resolveOpencodeBinary({});
-            console.log(binary, execFileSync(binary, ["--version"], { encoding: "utf8" }).trim());
-          '
+        run: node scripts/check-action-install.mjs
       # The Action's outputs, from a session report laid out as ocra writes
       # it (a review needs a model).
       - id: outputs
