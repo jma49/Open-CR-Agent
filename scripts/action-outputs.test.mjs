@@ -51,6 +51,16 @@ describe("newestSession", () => {
 });
 
 describe("reportOutputs", () => {
+  it("leaves the verdict out of a review that did not complete", () => {
+    // A run whose every task failed still writes a report reading "approved".
+    const report = { runId: "20261004T030435Z-fc396a", verdict: "approved", findings: [] };
+    for (const code of ["2", "3"]) {
+      expect(reportOutputs(report, code).map(([name]) => name)).toEqual(["run-id", "findings"]);
+    }
+    expect(reportOutputs(report, "1")).toContainEqual(["verdict", "approved"]);
+    expect(reportOutputs(report, "0")).toContainEqual(["verdict", "approved"]);
+  });
+
   it("gives the run id, the verdict and the number of findings", () => {
     expect(reportOutputs(report)).toEqual([
       ["run-id", "20261003T120005Z-a1b2c3"],

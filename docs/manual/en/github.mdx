@@ -59,7 +59,7 @@ Give the step an `id` to read its outputs. They are set whenever ocra ran, also 
 | `findings` | The number of findings in the report |
 | `sarif` | Path to the SARIF log, when `sarif` is `true` |
 
-`verdict`, `run-id`, `report` and `findings` are empty when ocra wrote no report (exit code `2`). For example, to keep the report and say the verdict in the job summary:
+`verdict` is empty unless the review completed (exit code `0` or `1`): a run that could not review everything (exit `2` or `3`) may still write a report, but its verdict says nothing about the unreviewed files. `run-id`, `report` and `findings` are empty when ocra wrote no report. For example, to keep the report and say the verdict in the job summary:
 
 ```yaml
       - id: ocra

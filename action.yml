@@ -34,7 +34,7 @@ inputs:
 outputs:
   verdict:
     description: >-
-      The review's verdict: approved, approved_with_comments, minor_issues or
+      Empty unless the review completed (exit code 0 or 1). The review's verdict: approved, approved_with_comments, minor_issues or
       significant_concerns. Empty when ocra wrote no report.
     value: ${{ steps.review.outputs.verdict }}
   exit-code:

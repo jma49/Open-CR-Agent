@@ -39,12 +39,16 @@ export function newestSession(names, started) {
   return runs.at(-1);
 }
 
-// The outputs a session report gives, as [name, value] pairs.
-export function reportOutputs(report) {
+// The outputs a session report gives, as [name, value] pairs. The verdict is
+// set only for a complete review (exit code 0 or 1): a run that reviewed
+// nothing still writes a report whose verdict reads "approved", and a
+// workflow that gates on the output must not take that for a pass.
+export function reportOutputs(report, exitCode) {
   if (report === null || typeof report !== "object") throw new Error("the report is not an object");
   const out = [];
+  const complete = exitCode === undefined || exitCode === "0" || exitCode === "1";
   if (typeof report.runId === "string") out.push(["run-id", report.runId]);
-  if (typeof report.verdict === "string") out.push(["verdict", report.verdict]);
+  if (complete && typeof report.verdict === "string") out.push(["verdict", report.verdict]);
   if (Array.isArray(report.findings)) out.push(["findings", String(report.findings.length)]);
   return out;
 }
@@ -87,7 +91,7 @@ export function collectOutputs({ env, root }) {
     const copy = join(env.RUNNER_TEMP ?? root, "ocra", "report.json");
     mkdirSync(resolve(copy, ".."), { recursive: true });
     copyFileSync(source, copy);
-    pairs.push(...reportOutputs(report), ["report", copy]);
+    pairs.push(...reportOutputs(report, env.OCRA_EXIT_CODE), ["report", copy]);
   } catch (error) {
     warnings.push(`could not read ocra's report ${source}: ${error.message}`);
   }

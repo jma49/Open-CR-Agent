@@ -59,7 +59,7 @@ jobs:
 | `findings` | 报告里的问题数 |
 | `sarif` | `sarif` 为 `true` 时 SARIF 日志的路径 |
 
-ocra 没有写出报告时（退出码 `2`），`verdict`、`run-id`、`report` 和 `findings` 为空。例如，保存报告并在 job 摘要里写明结论：
+只有评审完整完成时（退出码 `0` 或 `1`）才会设置 `verdict`：没能评审全部内容的运行（退出码 `2` 或 `3`）也可能写出报告，但其中的结论并不涵盖没评审的文件。ocra 没有写出报告时，`run-id`、`report` 和 `findings` 为空。例如，保存报告并在 job 摘要里写明结论：
 
 ```yaml
       - id: ocra
