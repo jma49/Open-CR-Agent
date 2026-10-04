@@ -44,28 +44,9 @@ jobs:
         with:
           persist-credentials: false
 
-      # The free requests left today, from one chat request of one token to
-      # the free model: its rate-limit headers, or the 429 that refuses it.
-      # Each ask spends one request. GET /key's free_model_daily_requests is
-      # another pool (limit 50) that these requests do not count against.
-      # Empty when OpenRouter does not say.
       - name: Write the helpers
         shell: bash
         run: |
-          cat > "$RUNNER_TEMP/free-left.sh" <<'SH'
-          headers=$(mktemp)
-          request=$(jq -nc --arg m "$MODEL" '{model: $m, max_tokens: 1, messages: [{role: "user", content: "ok"}]}')
-          answer=$(curl -sS --max-time 30 -D "$headers" -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-            -H "Content-Type: application/json" -d "$request" \
-            https://openrouter.ai/api/v1/chat/completions || true)
-          left=$(tr -d '\r' < "$headers" | awk -F': *' 'tolower($1) == "x-ratelimit-remaining" { v = $2 } END { print v }')
-          if [ -z "$left" ]; then
-            left=$(jq -r 'select(.error.message // "" | test("per-day")) | .error.metadata.headers["X-RateLimit-Remaining"] // empty' <<< "$answer" 2>/dev/null || true)
-          fi
-          echo "Free model probe: $(head -1 "$headers" | tr -d '\r'); $(tr -d '\r' < "$headers" | grep -i '^x-ratelimit' | tr '\n' ' ')left: ${left:-not reported}" >&2
-          rm -f "$headers"
-          echo "$left"
-          SH
           # Prints "<open> <total>": cases of the run directory $1 still to
           # review (no result, skipped, or lost to the quota) and all cases.
           cat > "$RUNNER_TEMP/cycle-state.sh" <<'SH'
@@ -95,7 +76,7 @@ jobs:
             echo "::error::OPENROUTER_API_KEY is not set; add it as a repository secret or switch OCRA_EVAL_FREE off"
             exit 1
           fi
-          left=$(bash "$RUNNER_TEMP/free-left.sh")
+          left=$(node scripts/free-quota.mjs "$MODEL")
           go=true
           if [[ "$left" =~ ^[0-9]+$ ]] && [ "$left" -lt "$START_MIN" ]; then
             go=false
@@ -183,7 +164,7 @@ jobs:
           while kill -0 "$pid" 2>/dev/null; do
             for _ in $(seq 60); do kill -0 "$pid" 2>/dev/null || break; sleep 5; done
             kill -0 "$pid" 2>/dev/null || break
-            left=$(bash "$RUNNER_TEMP/free-left.sh")
+            left=$(node scripts/free-quota.mjs "$MODEL")
             if [[ "$left" =~ ^[0-9]+$ ]] && [ "$left" -lt "$HEADROOM" ]; then
               stopped=$left
               kill -TERM -- "-$pid" 2>/dev/null

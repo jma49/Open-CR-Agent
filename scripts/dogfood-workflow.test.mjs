@@ -54,7 +54,7 @@ const expression = (inner) => `\${{ ${inner} }}`;
  * @property {string} [switch]
  * @property {string} [source]
  * @property {string} [key]
- * @property {{ headers?: string, body?: unknown }} [probe]
+ * @property {string} [left] the free requests the free-quota step reported
  */
 
 /** @param {GuardOptions} [options] */
@@ -65,7 +65,7 @@ function runGuard({
   switch: on = "on",
   source = "vertex",
   key = "",
-  probe,
+  left = "",
 } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "ocra-guard-"));
   const bin = join(dir, "bin");
@@ -78,17 +78,6 @@ function runGuard({
       : `#!/bin/sh\ncat '${join(dir, "listing")}'\n`,
   );
   chmodSync(join(bin, "gh"), 0o755);
-  // OpenRouter's answer to the one-token probe ({ headers, body }), or a
-  // failed request when probe is undefined.
-  writeFileSync(join(dir, "headers"), probe?.headers ?? "");
-  writeFileSync(join(dir, "body"), probe === undefined ? "" : JSON.stringify(probe.body ?? {}));
-  writeFileSync(
-    join(bin, "curl"),
-    probe === undefined
-      ? "#!/bin/sh\necho 'curl: (28) timed out' >&2\nexit 28\n"
-      : `#!/bin/sh\nwhile [ $# -gt 0 ]; do\n  if [ "$1" = -D ]; then cp '${join(dir, "headers")}' "$2"; shift; fi\n  shift\ndone\ncat '${join(dir, "body")}'\n`,
-  );
-  chmodSync(join(bin, "curl"), 0o755);
   const output = join(dir, "output");
   writeFileSync(output, "");
   const result = spawnSync("bash", ["-c", stepScript("guard")], {
@@ -102,6 +91,7 @@ function runGuard({
       CAP_USD: "2",
       SOURCE: source,
       OPENROUTER_API_KEY: key,
+      FREE_LEFT: left,
       FREE_MODEL: "vendor/free",
       FREE_MAX_TASKS: "8",
       FREE_MIN_REQUESTS: "40",
@@ -187,28 +177,13 @@ describe.skipIf(!hasBash)("dogfood budget guard", () => {
 });
 
 describe.skipIf(!hasBash || !hasJq)("dogfood guard on the free model", () => {
-  // A successful probe that reports what is left, and the 429 of a spent day.
-  /** @param {number} remaining */
-  const free = (remaining) => ({
-    headers: `HTTP/2 200\r\nX-RateLimit-Limit: 1000\r\nX-RateLimit-Remaining: ${remaining}\r\n\r\n`,
-    body: { choices: [] },
-  });
-  const spent = {
-    headers: "HTTP/2 429\r\n\r\n",
-    body: {
-      error: {
-        message: "Rate limit exceeded: free-models-per-day-stealth. ",
-        code: 429,
-        metadata: { headers: { "X-RateLimit-Limit": "1000", "X-RateLimit-Remaining": "0" } },
-      },
-    },
-  };
-
+  // The free-quota step's count (scripts/lib/free-quota.test.mjs reads it
+  // from OpenRouter's answers).
   it("allows a review without a ledger while the day has requests left", () => {
     const { status, outputs, summary } = runGuard({
       source: "openrouter",
       key: "k",
-      probe: free(600),
+      left: "600",
       ghFails: true,
     });
     expect(status).toBe(0);
@@ -217,40 +192,23 @@ describe.skipIf(!hasBash || !hasJq)("dogfood guard on the free model", () => {
   });
 
   it("skips with a notice when the day's free requests are nearly spent", () => {
-    const { status, outputs, stdout } = runGuard({
-      source: "openrouter",
-      key: "k",
-      probe: free(12),
-    });
+    const { status, outputs, stdout } = runGuard({ source: "openrouter", key: "k", left: "12" });
     expect(status).toBe(0);
     expect(outputs.allowed).toBe("false");
     expect(stdout).toContain("::notice title=No ocra review::the free model quota is spent");
-    expect(stdout).toContain("X-RateLimit-Remaining: 12");
-    const refused = runGuard({ source: "openrouter", key: "k", probe: spent });
+    const refused = runGuard({ source: "openrouter", key: "k", left: "0" });
     expect(refused.outputs.allowed).toBe("false");
     expect(refused.stdout).toContain("(0 request(s) left)");
   });
 
   it("reviews when OpenRouter does not report the quota", () => {
     expect(runGuard({ source: "openrouter", key: "k" }).outputs.allowed).toBe("true");
-    expect(
-      runGuard({ source: "openrouter", key: "k", probe: { headers: "HTTP/2 200\r\n\r\n" } }).outputs
-        .allowed,
-    ).toBe("true");
-    // A 429 that is not the daily limit says nothing about the day.
-    const minute = {
-      headers: "HTTP/2 429\r\n\r\n",
-      body: { error: { message: "Rate limit exceeded: free-models-per-min. ", code: 429 } },
-    };
-    expect(runGuard({ source: "openrouter", key: "k", probe: minute }).outputs.allowed).toBe(
-      "true",
-    );
   });
 
   it("starts nothing while the switch is off, and fails without a key or on an unknown source", () => {
-    const off = runGuard({ source: "openrouter", key: "k", probe: free(600), switch: "off" });
+    const off = runGuard({ source: "openrouter", key: "k", left: "600", switch: "off" });
     expect(off.outputs.allowed).toBe("false");
-    expect(runGuard({ source: "openrouter", probe: free(600) }).status).not.toBe(0);
+    expect(runGuard({ source: "openrouter", left: "600" }).status).not.toBe(0);
     expect(runGuard({ source: "gemini" }).status).not.toBe(0);
   });
 });
@@ -381,6 +339,14 @@ describe("dogfood workflow contract", () => {
       /^ {4}uses: jma49\/Open-CR-Agent\/\.github\/workflows\/ocra-dogfood\.yml@main$/m,
     );
     expect(caller).toMatch(/^ {4}with:\n {6}model-source: openrouter\n {4}secrets:/m);
+  });
+
+  it("takes the free-quota action at main, the ref it runs from itself", () => {
+    // The job has no checkout of this repository; the action brings its
+    // script, and a pull request's copy of either never runs here.
+    expect(workflow).toMatch(
+      /^ {8}uses: jma49\/Open-CR-Agent\/\.github\/actions\/free-quota@main$/m,
+    );
   });
 
   it("records a reservation before it authenticates", () => {

@@ -84,9 +84,20 @@ jobs:
       # Requests the day must have left before a review starts.
       FREE_MIN_REQUESTS: "40"
     steps:
+      # How many of the day's free requests are left (the action brings its
+      # script along: this job has no checkout of this repository). Empty
+      # when OpenRouter does not say; then the review runs and a spent quota
+      # shows in its report.
+      - id: free
+        if: inputs.model-source == 'openrouter'
+        uses: jma49/Open-CR-Agent/.github/actions/free-quota@main
+        with:
+          model: ${{ env.FREE_MODEL }}
+          api-key: ${{ secrets.OPENROUTER_API_KEY }}
       - id: guard
         shell: bash
         env:
+          FREE_LEFT: ${{ steps.free.outputs.left }}
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
           SWITCH: ${{ vars.OCRA_REVIEW }}
@@ -105,22 +116,7 @@ jobs:
                 echo "::error::model-source openrouter needs the OPENROUTER_API_KEY secret"
                 exit 1
               else
-                # One chat request of one token to the free model: its
-                # rate-limit headers, or the 429 that refuses it, say how many
-                # of the day's free requests are left. GET /key's
-                # free_model_daily_requests is another pool (limit 50) that
-                # these requests do not count against. When neither says, the
-                # review runs and a spent quota shows in its report.
-                headers=$(mktemp)
-                request=$(jq -nc --arg m "$FREE_MODEL" '{model: $m, max_tokens: 1, messages: [{role: "user", content: "ok"}]}')
-                answer=$(curl -sS --max-time 30 -D "$headers" -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-                  -H "Content-Type: application/json" -d "$request" \
-                  https://openrouter.ai/api/v1/chat/completions || true)
-                left=$(tr -d '\r' < "$headers" | awk -F': *' 'tolower($1) == "x-ratelimit-remaining" { v = $2 } END { print v }')
-                if [ -z "$left" ]; then
-                  left=$(jq -r 'select(.error.message // "" | test("per-day")) | .error.metadata.headers["X-RateLimit-Remaining"] // empty' <<< "$answer" 2>/dev/null || true)
-                fi
-                echo "Free model probe: $(head -1 "$headers" | tr -d '\r'); $(tr -d '\r' < "$headers" | grep -i '^x-ratelimit' | tr '\n' ' ')left: ${left:-not reported}"
+                left=$FREE_LEFT
                 if [[ "$left" =~ ^[0-9]+$ ]] && [ "$left" -lt "$FREE_MIN_REQUESTS" ]; then
                   allowed=false
                   reason="the free model quota is spent ($left request(s) left) until 00:00 UTC"

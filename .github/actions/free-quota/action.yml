@@ -1,0 +1,32 @@
+# OpenRouter's free requests left today (scripts/free-quota.mjs), for a
+# workflow that runs in another repository's checkout: the dogfood workflow
+# uses this action at main, which brings the script along. Spends one free
+# request; without a key it asks nothing and the count is empty.
+name: OpenRouter free requests left
+description: One probe request to OpenRouter's free model; the count it reports, or empty.
+inputs:
+  model:
+    description: The free model to probe.
+    required: true
+  api-key:
+    description: The OpenRouter key.
+    required: true
+outputs:
+  left:
+    description: Free requests left today; empty when OpenRouter does not say.
+    value: ${{ steps.probe.outputs.left }}
+runs:
+  using: composite
+  steps:
+    - id: probe
+      shell: bash
+      env:
+        MODEL: ${{ inputs.model }}
+        OPENROUTER_API_KEY: ${{ inputs.api-key }}
+      run: |
+        set -euo pipefail
+        left=""
+        if [ -n "$OPENROUTER_API_KEY" ]; then
+          left=$(node "$GITHUB_ACTION_PATH/../../../scripts/free-quota.mjs" "$MODEL")
+        fi
+        echo "left=$left" >> "$GITHUB_OUTPUT"
