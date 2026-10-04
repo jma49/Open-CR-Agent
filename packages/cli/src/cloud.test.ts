@@ -1,9 +1,24 @@
-import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  linkSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { accountSaltPath } from "./account-salt.js";
-import { type CloudDeps, type Credentials, cloudCommand, cloudSession } from "./cloud.js";
+import { accountSaltPath, saveAccountSalt } from "./account-salt.js";
+import {
+  type CloudDeps,
+  type Credentials,
+  cloudCommand,
+  cloudSession,
+  readCredentials,
+} from "./cloud.js";
 
 const SERVER = "https://cloud.test";
 
@@ -232,5 +247,66 @@ describe("sessions", () => {
     expect(() => statSync(t.deps.credentialsPath)).toThrow();
     expect(await cloudCommand("logout", [], t.io.out, t.io.err, t.deps)).toBe(0);
     expect(t.out.at(-1)).toBe("Not signed in.\n");
+  });
+});
+
+describe("the credentials file", () => {
+  it("is replaced whole, never rewritten in place, and stays readable only by you", async () => {
+    const t = setup({});
+    await signedIn(t);
+    // A hard link keeps the old file: an in-place rewrite would change it too.
+    const before = `${t.deps.credentialsPath}.before`;
+    linkSync(t.deps.credentialsPath, before);
+    if (process.platform !== "win32") chmodSync(t.deps.credentialsPath, 0o644);
+    t.tick(3_600_000);
+    const fresh = { access_token: "ocra_cli_a2", refresh_token: "ocra_ref_r2", expires_in: 3600 };
+    t.deps.fetch = fakeCloud({ "POST /api/device/refresh": ok(fresh) }).fetch;
+    expect((await cloudSession(t.deps))?.access_token).toBe("ocra_cli_a2");
+    expect(JSON.parse(readFileSync(before, "utf8")).access_token).toBe("ocra_cli_a1");
+    expect(JSON.parse(readFileSync(t.deps.credentialsPath, "utf8")).access_token).toBe(
+      "ocra_cli_a2",
+    );
+    if (process.platform !== "win32")
+      expect(statSync(t.deps.credentialsPath).mode & 0o777).toBe(0o600);
+    expect(
+      readdirSync(join(t.deps.credentialsPath, "..")).filter((f) => f.endsWith(".tmp")),
+    ).toEqual([]);
+  });
+
+  it("reads as signed out, with a warning naming it, when it holds no session", async () => {
+    const t = setup({});
+    await signedIn(t);
+    for (const text of ["", "{", '{"server":"https://cloud.test","acc', "null", "[]", "{}"]) {
+      writeFileSync(t.deps.credentialsPath, text);
+      const warnings: string[] = [];
+      expect(
+        await readCredentials(t.deps.credentialsPath, (m) => warnings.push(m)),
+      ).toBeUndefined();
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain(t.deps.credentialsPath);
+      expect(await cloudSession(t.deps)).toBeUndefined();
+    }
+  });
+
+  it("ocra logout removes a file it cannot read", async () => {
+    const t = setup({});
+    await signedIn(t);
+    writeFileSync(t.deps.credentialsPath, '{"server":');
+    const cloud = fakeCloud({});
+    t.deps.fetch = cloud.fetch;
+    expect(await cloudCommand("logout", [], t.io.out, t.io.err, t.deps)).toBe(0);
+    expect(existsSync(t.deps.credentialsPath)).toBe(false);
+    expect(t.out.at(-1)).toContain("could not be read");
+    expect(cloud.calls).toEqual([]);
+  });
+
+  it("keeps the account's salt by replacing the file whole", async () => {
+    const t = setup({});
+    const path = accountSaltPath(t.deps.credentialsPath);
+    await saveAccountSalt(t.deps.credentialsPath, "1".repeat(64));
+    linkSync(path, `${path}.before`);
+    await saveAccountSalt(t.deps.credentialsPath, "2".repeat(64));
+    expect(readFileSync(`${path}.before`, "utf8").trim()).toBe("1".repeat(64));
+    expect(readFileSync(path, "utf8").trim()).toBe("2".repeat(64));
   });
 });

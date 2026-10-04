@@ -1,6 +1,7 @@
-import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { CloudDeps } from "./cloud.js";
+import { writePrivateFile } from "./private-file.js";
 import { VERSION } from "./version.js";
 
 // The account's repository-hash salt (ADR-0028, 4). The server answers one
@@ -41,8 +42,5 @@ export async function saveAccountSalt(credentialsPath: string, salt: string | nu
     await rm(path, { force: true });
     return;
   }
-  await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  await writeFile(path, `${salt}\n`, { mode: 0o600 });
-  // writeFile keeps the mode of a file that already exists.
-  await chmod(path, 0o600);
+  await writePrivateFile(path, `${salt}\n`);
 }

@@ -252,3 +252,21 @@ describe("the review upload", () => {
     expect(warnings.join(" ")).not.toContain("ocra_cli_t");
   });
 });
+
+describe("this machine's salt", () => {
+  it("is one salt when the first reviews on a machine start at once", async () => {
+    const credentialsPath = join(
+      mkdtempSync(join(tmpdir(), "ocra-salt-")),
+      "ocra",
+      "credentials.json",
+    );
+    const root = repo("https://example.com/o/r.git");
+    const hashes = await Promise.all(
+      Array.from({ length: 8 }, () => repoHash(root, credentialsPath)),
+    );
+    expect(new Set(hashes).size).toBe(1);
+    expect(await repoHash(root, credentialsPath)).toBe(hashes[0]);
+    const salt = join(credentialsPath, "..", "upload-salt");
+    if (process.platform !== "win32") expect(statSync(salt).mode & 0o777).toBe(0o600);
+  });
+});

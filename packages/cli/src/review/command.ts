@@ -120,7 +120,7 @@ export async function reviewCommand(
   // The account's settings fill what the repository leaves out (ADR-0027);
   // unreachable, they cost a warning, so a plan still works offline.
   const cloudDeps = deps.cloud;
-  const signedIn = cloudDeps !== undefined && (await cloudEnabled(cloudDeps));
+  const signedIn = cloudDeps !== undefined && (await cloudEnabled(cloudDeps, warn));
   let config = target.config;
   let filled: string[] = [];
   let fromAccount: AccountPlugins = { plugins: [], pluginSettings: {} };

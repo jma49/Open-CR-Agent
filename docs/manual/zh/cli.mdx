@@ -147,7 +147,7 @@ ocra logout                                   # 在服务器上结束会话，�
 
 `ocra login` 使用 OAuth 设备授权流程（RFC 8628）：它打印一个验证码（如 `BCDF-GHJK`），打开服务器上的确认页（加 `--no-browser` 则只打印链接），然后等待你在已用 GitHub 登录的浏览器里批准。只批准你自己刚刚发起的验证码。之后这个终端持有一个会话：可以用服务器上保存的 key 调用模型、上传审查结果，但不能读取这些 key，也不能修改账号；它会显示在服务器的会话页面上，可以在那里撤销。
 
-会话保存在 `~/.config/ocra/credentials.json`（或 `$XDG_CONFIG_HOME/ocra/`，Windows 上为 `%APPDATA%\ocra\`），只有你本人可读。访问令牌有效期一小时，用刷新令牌续期，刷新令牌每次使用后都会更换。登录后，名为 `ocra-<provider>/<model>` 的模型会经由 ocra Cloud、使用服务器上为 `<provider>` 保存的 key 调用（走服务器列出的 OpenAI 兼容对话接口），例如：
+会话保存在 `~/.config/ocra/credentials.json`（或 `$XDG_CONFIG_HOME/ocra/`，Windows 上为 `%APPDATA%\ocra\`），只有你本人可读。它和旁边保存的盐都先写入临时文件再改名替换，所以其他 ocra 进程不会读到写了一半的文件。文件里没有有效会话（被截断、清空或被改动）时按未登录处理：审查会警告一次并指出该文件，然后不连接 ocra Cloud 继续运行；`ocra logout` 会删除它。访问令牌有效期一小时，用刷新令牌续期，刷新令牌每次使用后都会更换。登录后，名为 `ocra-<provider>/<model>` 的模型会经由 ocra Cloud、使用服务器上为 `<provider>` 保存的 key 调用（走服务器列出的 OpenAI 兼容对话接口），例如：
 
 ```json
 { "runtime": "direct", "models": { "standard": "ocra-openrouter/qwen/qwen3.8-27b:free" } }

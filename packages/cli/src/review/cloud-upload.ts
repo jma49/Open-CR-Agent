@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@open-cr-agent/core";
 import { verificationSchema } from "@open-cr-agent/core/internal";
 import { type CloudDeps, cloudSession, readCredentials } from "../cloud.js";
+import { createPrivateFile, writePrivateFile } from "../private-file.js";
 import { VERSION } from "../version.js";
 import type { SharedFinding } from "./cloud-findings.js";
 
@@ -171,14 +172,29 @@ async function repositoryId(root: string): Promise<string> {
 /** This machine's random salt, kept beside the credentials, made on first use. */
 async function machineSalt(credentialsPath: string): Promise<string> {
   const path = join(dirname(credentialsPath), "upload-salt");
-  try {
-    const existing = (await readFile(path, "utf8")).trim();
-    if (/^[0-9a-f]{64}$/.test(existing)) return existing;
-  } catch {}
+  const existing = await readSalt(path);
+  if (existing !== "unreadable") {
+    if (existing) return existing;
+    // Two first reviews at once agree on the salt the first of them made.
+    const fresh = randomBytes(32).toString("hex");
+    if (await createPrivateFile(path, `${fresh}\n`)) return fresh;
+    const made = await readSalt(path);
+    if (made && made !== "unreadable") return made;
+  }
   const fresh = randomBytes(32).toString("hex");
-  await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  await writeFile(path, `${fresh}\n`, { mode: 0o600 });
+  await writePrivateFile(path, `${fresh}\n`);
   return fresh;
+}
+
+async function readSalt(path: string): Promise<string | "unreadable" | undefined> {
+  let text: string;
+  try {
+    text = await readFile(path, "utf8");
+  } catch {
+    return undefined;
+  }
+  const salt = text.trim();
+  return /^[0-9a-f]{64}$/.test(salt) ? salt : "unreadable";
 }
 
 /** The repository's hash, salted with the account's salt when given, else this machine's. */
@@ -194,9 +210,13 @@ export async function repoHash(
 }
 
 /** Whether this run talks to ocra Cloud at all: signed in, not turned off. */
-export async function cloudEnabled(deps: CloudDeps): Promise<boolean> {
+export async function cloudEnabled(
+  deps: CloudDeps,
+  warn: (message: string) => void,
+): Promise<boolean> {
   return (
-    deps.env.OCRA_CLOUD !== "off" && (await readCredentials(deps.credentialsPath)) !== undefined
+    deps.env.OCRA_CLOUD !== "off" &&
+    (await readCredentials(deps.credentialsPath, warn)) !== undefined
   );
 }
 

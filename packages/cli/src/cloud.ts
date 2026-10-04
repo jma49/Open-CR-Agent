@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process";
-import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import { homedir, hostname } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { errorMessage } from "@open-cr-agent/core/internal";
 import { fetchAccountSalt, saveAccountSalt } from "./account-salt.js";
+import { writePrivateFile } from "./private-file.js";
 import { UsageError } from "./review/args.js";
 import type { Output } from "./review/progress.js";
 import { forTerminal } from "./review/terminal.js";
@@ -111,25 +112,48 @@ function openBrowser(url: string): void {
   }
 }
 
-export async function readCredentials(path: string): Promise<Credentials | undefined> {
+/**
+ * The saved session; undefined when there is none or the file does not hold
+ * one, which `warn` hears about (a file cut short by a crash, or edited).
+ */
+export async function readCredentials(
+  path: string,
+  warn?: (message: string) => void,
+): Promise<Credentials | undefined> {
+  const saved = await loadCredentials(path);
+  if (saved !== "unreadable") return saved;
+  warn?.(`ignoring ${path}: it holds no ocra Cloud session; run ocra login to sign in again`);
+  return undefined;
+}
+
+async function loadCredentials(path: string): Promise<Credentials | "unreadable" | undefined> {
   let text: string;
   try {
     text = await readFile(path, "utf8");
   } catch {
     return undefined;
   }
-  const c = JSON.parse(text) as Partial<Credentials>;
-  if (!c.server || !c.access_token || !c.refresh_token || typeof c.expires_at !== "number") {
-    return undefined;
+  let c: Partial<Credentials> | null;
+  try {
+    c = JSON.parse(text) as Partial<Credentials> | null;
+  } catch {
+    return "unreadable";
+  }
+  if (
+    typeof c !== "object" ||
+    c === null ||
+    !c.server ||
+    !c.access_token ||
+    !c.refresh_token ||
+    typeof c.expires_at !== "number"
+  ) {
+    return "unreadable";
   }
   return c as Credentials;
 }
 
 async function writeCredentials(path: string, c: Credentials): Promise<void> {
-  await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  await writeFile(path, `${JSON.stringify(c, null, 2)}\n`, { mode: 0o600 });
-  // writeFile keeps the mode of a file that already exists.
-  await chmod(path, 0o600);
+  await writePrivateFile(path, `${JSON.stringify(c, null, 2)}\n`);
 }
 
 type TokenAnswer = {
@@ -235,8 +259,8 @@ async function whoami(out: Output, err: Output, deps: CloudDeps): Promise<number
 }
 
 async function logout(out: Output, deps: CloudDeps): Promise<number> {
-  const saved = await readCredentials(deps.credentialsPath);
-  if (saved) {
+  const saved = await loadCredentials(deps.credentialsPath);
+  if (saved && saved !== "unreadable") {
     // Ends the session on the server too; the local file goes either way.
     const session = await cloudSession(deps).catch(() => undefined);
     if (session) {
@@ -247,7 +271,13 @@ async function logout(out: Output, deps: CloudDeps): Promise<number> {
   }
   await rm(deps.credentialsPath, { force: true });
   await saveAccountSalt(deps.credentialsPath, null);
-  out.write(saved ? "Signed out.\n" : "Not signed in.\n");
+  out.write(
+    saved === "unreadable"
+      ? "Removed the saved session, which could not be read.\n"
+      : saved
+        ? "Signed out.\n"
+        : "Not signed in.\n",
+  );
   return 0;
 }
 

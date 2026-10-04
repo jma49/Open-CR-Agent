@@ -60,6 +60,24 @@ describe("a review while signed in to ocra Cloud", () => {
     await run(["review"], capture(), err, deps(cwd, critical, {}, true));
     expect(err.text()).not.toContain("ocra Cloud");
   });
+
+  it("reviews signed out, with one warning, when the credentials file is empty or cut short", async () => {
+    for (const text of ["", '{"server":"https://cloud.test","acc']) {
+      const cwd = repoWithChange();
+      const { cloud, calls, credentialsPath } = signedIn({}, PREFERENCES, false, {});
+      writeFileSync(credentialsPath, text);
+      const err = capture();
+      const exit = await run(["review"], capture(), err, deps(cwd, critical, { cloud }, true));
+      expect(exit).toBe(1);
+      expect(calls).toEqual([]);
+      const warnings = err
+        .text()
+        .split("\n")
+        .filter((line) => line.includes(credentialsPath));
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain("run ocra login");
+    }
+  });
 });
 
 const ACCOUNT = {
