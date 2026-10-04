@@ -1,69 +1,35 @@
-import { MODEL_TIERS } from "@open-cr-agent/core";
-import { ACCOUNT_SCALARS } from "../../cloud/settings.js";
-import type { CliConfig } from "../../config/cli-config.js";
+import type { ListedSetting } from "../../config/settings.js";
 import { forTerminal } from "../../io/terminal.js";
 
 // Where each setting of a review came from, for --plan (ADR-0027): the
-// configuration (its file, a shared one it extends, or OCRA_* variables),
-// the ocra Cloud account, both for the keys that combine, or ocra's default.
-
-export type SettingSource = "file" | "account" | "file+account" | "default";
+// layers that set it (shared, file, env, account), joined with + for the
+// lists that combine, or ocra's default.
 
 export interface EffectiveSetting {
   key: string;
   // Absent for a default: ocra's own, or the runtime's.
   value?: unknown;
-  source: SettingSource;
+  source: string;
 }
 
-/** file: the configuration before the account's settings; effective: after; filled: what they filled. */
-export function effectiveSettings(
-  file: CliConfig,
-  effective: CliConfig,
-  filled: readonly string[],
-): EffectiveSetting[] {
-  const settings: EffectiveSetting[] = [];
-  const add = (key: string, value: unknown, fromFile: boolean) => {
-    const fromAccount = filled.includes(key);
-    const source: SettingSource =
-      fromFile && fromAccount
-        ? "file+account"
-        : fromAccount
-          ? "account"
-          : fromFile
-            ? "file"
-            : "default";
-    settings.push(source === "default" ? { key, source } : { key, value, source });
-  };
-  add("runtime", effective.runtime, file.runtimeSet);
-  for (const tier of MODEL_TIERS) {
-    add(`models.${tier}`, effective.models[tier], file.models[tier] !== undefined);
-  }
-  for (const tier of MODEL_TIERS) {
-    add(`effort.${tier}`, effective.effort[tier], file.effort[tier] !== undefined);
-  }
-  for (const [id, entry] of Object.entries(effective.reviewers)) {
-    add(`reviewers.${id}`, entry, file.reviewers[id] !== undefined);
-  }
-  for (const [role, entry] of Object.entries(effective.roles)) {
-    add(`roles.${role}`, entry, file.roles[role as keyof typeof file.roles] !== undefined);
-  }
-  for (const key of ACCOUNT_SCALARS) add(key, effective[key], file[key] !== undefined);
-  add("include", effective.include, file.include.length > 0);
-  add("exclude", effective.exclude, file.exclude.length > 0);
-  add(
-    "rules",
-    effective.rules.map(({ path, source }) => ({ path, source })),
-    file.rules.length > 0,
+export interface AccountVersion {
+  version: string | null;
+}
+
+export function effectiveSettings(listed: readonly ListedSetting[]): EffectiveSetting[] {
+  return listed.map(({ key, value, sources }) =>
+    sources.length === 0 ? { key, source: "default" } : { key, value, source: sources.join("+") },
   );
-  // A flag rather than a key: listed only when the account turned it on.
-  if (filled.includes("ultra")) settings.push({ key: "ultra", value: true, source: "account" });
-  return settings;
+}
+
+/** The settings the account set, alone or with other layers. */
+export function filledByAccount(listed: readonly ListedSetting[]): string[] {
+  return listed.filter((s) => s.sources.includes("account")).map((s) => s.key);
 }
 
 export function renderSettings(
   settings: readonly EffectiveSetting[],
-  account: CliConfig["accountSettings"],
+  account: AccountVersion | undefined,
 ): string {
   const lines = [
     "",

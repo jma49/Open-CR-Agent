@@ -1,6 +1,6 @@
-import { MODEL_TIERS, type SourcedRule } from "@open-cr-agent/core";
+import type { SourcedRule } from "@open-cr-agent/core";
 import { errorMessage } from "@open-cr-agent/core/internal";
-import type { CliConfig } from "../config/cli-config.js";
+import type { SettingsLayer } from "../config/settings.js";
 import { type AccountPlugins, parseAccountPlugins } from "../plugins/account.js";
 import { type AccountSettings, parseAccountSettings } from "./account-settings.js";
 import { CloudClient, type CloudResult, type CloudSessionLost } from "./client.js";
@@ -11,18 +11,6 @@ import type { CloudDeps } from "./deps.js";
 // or role's whole entry, the runtime and each limit. What the configuration
 // sets always wins; include, exclude and rules combine, the repository's
 // first.
-
-// Each set by the configuration or else by the account, whole.
-export const ACCOUNT_SCALARS = [
-  "concurrency",
-  "taskTimeoutMinutes",
-  "runTimeoutMinutes",
-  "maxCostUsd",
-  "maxTasks",
-  "verify",
-  "judge",
-  "sampling",
-] as const;
 
 export type AccountRead =
   | { kind: "read"; settings?: AccountSettings; plugins: AccountPlugins }
@@ -71,75 +59,22 @@ export async function fetchAccountSettings(
   };
 }
 
-/** The configuration with the account's settings under it, and what they filled in. */
-export function layerAccountSettings(
-  config: CliConfig,
-  account: AccountSettings,
-): { config: CliConfig; filled: string[] } {
-  const filled: string[] = [];
-  const models = { ...config.models };
-  const effort = { ...config.effort };
-  for (const tier of MODEL_TIERS) {
-    const chain = account.models?.[tier];
-    if (!config.models[tier]?.length && chain) {
-      models[tier] = chain;
-      filled.push(`models.${tier}`);
-    }
-    const level = account.effort?.[tier];
-    if (config.effort[tier] === undefined && level !== undefined) {
-      effort[tier] = level;
-      filled.push(`effort.${tier}`);
-    }
-  }
-  const reviewers = { ...config.reviewers };
-  for (const [id, entry] of Object.entries(account.reviewers ?? {})) {
-    if (reviewers[id] === undefined) {
-      reviewers[id] = entry;
-      filled.push(`reviewers.${id}`);
-    }
-  }
-  const roles = { ...config.roles };
-  for (const [role, entry] of Object.entries(account.roles ?? {}) as [
-    keyof typeof roles,
-    (typeof roles)[keyof typeof roles],
-  ][]) {
-    if (roles[role] === undefined && entry) {
-      roles[role] = entry;
-      filled.push(`roles.${role}`);
-    }
-  }
-  const out: CliConfig = {
-    ...config,
-    models,
-    effort,
-    reviewers,
-    roles,
-    accountSettings: { version: account.version },
+/**
+ * The account's settings as the layer under the configuration: they fill
+ * what it leaves out, and add to its include, exclude and rules.
+ */
+export function accountLayer(account: AccountSettings): SettingsLayer {
+  const { version: _, rules, ultra, ...settings } = account;
+  return {
+    source: "account",
+    under: true,
+    settings: {
+      ...settings,
+      ...(rules
+        ? { rules: rules.map((rule): SourcedRule => ({ ...rule, source: "account" })) }
+        : {}),
+      // The account's default for --ultra; there is no --no-ultra to refuse it.
+      ...(ultra === true ? { ultra } : {}),
+    },
   };
-  if (!config.runtimeSet && account.runtime) {
-    out.runtime = account.runtime;
-    out.runtimeSet = true;
-    filled.push("runtime");
-  }
-  for (const key of ACCOUNT_SCALARS) {
-    if (config[key] === undefined && account[key] !== undefined) {
-      Object.assign(out, { [key]: account[key] });
-      filled.push(key);
-    }
-  }
-  for (const key of ["include", "exclude"] as const) {
-    const added = (account[key] ?? []).filter((glob) => !config[key].includes(glob));
-    if (added.length > 0) {
-      out[key] = [...config[key], ...added];
-      filled.push(key);
-    }
-  }
-  if (account.rules?.length) {
-    out.rules = [
-      ...config.rules,
-      ...account.rules.map((rule): SourcedRule => ({ ...rule, source: "account" })),
-    ];
-    filled.push("rules");
-  }
-  return { config: out, filled };
 }

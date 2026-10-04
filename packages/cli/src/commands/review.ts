@@ -31,9 +31,10 @@ import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
 import type { CloudDeps } from "../cloud/deps.js";
 import { withCloudProviders } from "../cloud/providers.js";
 import { prepareCloudReview, sendToCloud, sessionLostWarning } from "../cloud/review.js";
-import { fetchAccountSettings, layerAccountSettings } from "../cloud/settings.js";
+import { accountLayer, fetchAccountSettings } from "../cloud/settings.js";
 import { cloudEnabled } from "../cloud/upload.js";
-import { agentChains, type CliConfig, ConfigError } from "../config/cli-config.js";
+import { agentChains, type CliConfig, ConfigError, resolveConfig } from "../config/cli-config.js";
+import type { SettingsLayer } from "../config/settings.js";
 import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
 import { forTerminal } from "../io/terminal.js";
@@ -51,7 +52,12 @@ import { renderJson, renderText, safeJson } from "./review/render.js";
 import type { RuntimeLoaders } from "./review/runtimes.js";
 import { renderSarif } from "./review/sarif.js";
 import { loadSarifLogs } from "./review/sarif-input.js";
-import { effectiveSettings, renderSettings } from "./review/settings-sources.js";
+import {
+  type AccountVersion,
+  effectiveSettings,
+  filledByAccount,
+  renderSettings,
+} from "./review/settings-sources.js";
 import { CHANGE_REQUEST, resolveReviewTarget } from "./review/target.js";
 
 export const BUILTIN_PLUGINS: readonly OcraPlugin[] = [
@@ -103,8 +109,8 @@ export async function reviewCommand(
   // unreachable, they cost a warning, so a plan still works offline.
   const cloudDeps = deps.cloud;
   let signedIn = cloudDeps !== undefined && (await cloudEnabled(cloudDeps, warn));
-  let config = target.config;
-  let filled: string[] = [];
+  const layers: SettingsLayer[] = [...target.layers];
+  let accountSettings: AccountVersion | undefined;
   let fromAccount: AccountPlugins = { plugins: [], pluginSettings: {} };
   if (cloudDeps && signedIn) {
     const account = await fetchAccountSettings(cloudDeps, warn);
@@ -113,16 +119,17 @@ export async function reviewCommand(
       signedIn = false;
       if (account.kind !== "signed-out") warn(sessionLostWarning(account));
     } else if (account.settings) {
-      ({ config, filled } = layerAccountSettings(config, account.settings));
-      // The account's default for --ultra; there is no --no-ultra to refuse it.
-      if (account.settings.ultra === true && !args.ultra) filled.push("ultra");
-      if (filled.length > 0) {
-        io.err.write(forTerminal(`[ocra] From your ocra Cloud settings: ${filled.join(", ")}\n`));
-      }
+      layers.push(accountLayer(account.settings));
+      accountSettings = { version: account.settings.version };
     }
     if (account.kind === "read") fromAccount = account.plugins;
   }
-  const ultra = args.ultra === true || filled.includes("ultra");
+  if (args.ultra) layers.push({ source: "flag", settings: { ultra: true } });
+  const { config, ultra, listed } = resolveConfig(layers);
+  const filled = filledByAccount(listed);
+  if (filled.length > 0) {
+    io.err.write(forTerminal(`[ocra] From your ocra Cloud settings: ${filled.join(", ")}\n`));
+  }
   const session = { dir: sessionsDir(root), id: newRunId() };
 
   // A plan calls no model, writes no session log and imports no runtime: it
@@ -172,11 +179,11 @@ export async function reviewCommand(
       ...(ultra ? { ultra: true } : {}),
       ...(config.maxTasks !== undefined ? { maxTasks: config.maxTasks } : {}),
     });
-    const settings = effectiveSettings(target.config, config, filled);
+    const settings = effectiveSettings(listed);
     const rendered =
       args.format === "json"
-        ? `${safeJson({ ...toPlanOutput(preview), settings, ...accountOf(config) })}\n`
-        : renderPlan(preview) + renderSettings(settings, config.accountSettings);
+        ? `${safeJson({ ...toPlanOutput(preview), settings, ...accountOf(accountSettings) })}\n`
+        : renderPlan(preview) + renderSettings(settings, accountSettings);
     if (args.output === undefined) io.out.write(rendered);
     else await deps.writeFile(resolve(deps.cwd, args.output), rendered);
     return EXIT.ok;
@@ -238,9 +245,9 @@ export async function reviewCommand(
       reviewerOverrides: overrides,
       provenance: {
         ocraVersion: VERSION,
-        configHash: configHash(config, ultra ? { ...args, ultra: true } : args),
+        configHash: configHash(config, ultra ? { ...args, ultra: true } : args, accountSettings),
         sampling,
-        ...accountOf(config),
+        ...accountOf(accountSettings),
       },
       ...(args.maxCostUsd !== undefined ? { maxCostUsd: args.maxCostUsd } : {}),
       ...(ultra ? { ultra: true } : {}),
@@ -308,8 +315,8 @@ export async function reviewCommand(
   return exitCode(report, io.err);
 }
 
-function accountOf(config: CliConfig): { accountSettings?: { version: string | null } } {
-  return config.accountSettings ? { accountSettings: config.accountSettings } : {};
+function accountOf(account: AccountVersion | undefined): { accountSettings?: AccountVersion } {
+  return account ? { accountSettings: account } : {};
 }
 
 // A runtime not built in comes from a plugin of the configuration.

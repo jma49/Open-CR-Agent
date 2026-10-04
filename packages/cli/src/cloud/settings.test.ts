@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { type CliConfig, loadConfig } from "../config/cli-config.js";
+import { filledByAccount } from "../commands/review/settings-sources.js";
+import { type CliConfig, loadConfigLayers, resolveConfig } from "../config/cli-config.js";
+import type { SettingsLayer } from "../config/settings.js";
 import { type AccountSettings, parseAccountSettings } from "./account-settings.js";
-import { layerAccountSettings } from "./settings.js";
+import { accountLayer } from "./settings.js";
 
-async function config(file?: object): Promise<CliConfig> {
-  return loadConfig(
+async function config(file?: object): Promise<SettingsLayer[]> {
+  const { layers } = await loadConfigLayers(
     "/repo",
     {},
     {
@@ -12,6 +14,17 @@ async function config(file?: object): Promise<CliConfig> {
       read: async () => (file ? JSON.stringify(file) : undefined),
     },
   );
+  return layers;
+}
+
+// The configuration with the account's settings under it, and the settings
+// the account set.
+function layerAccountSettings(
+  layers: SettingsLayer[],
+  account: AccountSettings,
+): { config: CliConfig; filled: string[] } {
+  const { config, listed } = resolveConfig([...layers, accountLayer(account)]);
+  return { config, filled: filledByAccount(listed) };
 }
 
 function account(body: unknown): AccountSettings {
@@ -52,7 +65,6 @@ describe("account settings under the repository's configuration", () => {
     expect(out.roles.judge).toEqual({ effort: "high" });
     expect(out.runtime).toBe("opencode");
     expect(filled).toEqual(["models.top", "effort.top", "reviewers.docs", "roles.judge"]);
-    expect(out.accountSettings).toEqual({ version: "v7" });
   });
 
   it("set the runtime only when the configuration does not", async () => {

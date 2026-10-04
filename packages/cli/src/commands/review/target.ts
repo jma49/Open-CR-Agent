@@ -13,7 +13,8 @@ import type {
   PlatformTarget,
   ResolveTargetOptions,
 } from "@open-cr-agent/vcs-platform";
-import { type CliConfig, loadConfig } from "../../config/cli-config.js";
+import { type CliConfig, loadConfigLayers } from "../../config/cli-config.js";
+import type { SettingsLayer } from "../../config/settings.js";
 import { loadExternalPlugins } from "../../plugins/load.js";
 import { repositoryOfWebUrl } from "../../repository-id.js";
 import type { ReviewArgs } from "./args.js";
@@ -55,7 +56,9 @@ export const CHANGE_REQUEST = {
 
 export interface ReviewTarget {
   platform: Platform;
-  config: CliConfig;
+  // The configuration's layers (settings.ts), for the review to put the
+  // account's and the command line's on.
+  layers: SettingsLayer[];
   plugins: OcraPlugin[];
   // Whether plugins the ocra Cloud account names may load (ADR-0027): only
   // where the repository's could.
@@ -116,7 +119,7 @@ function changeRequestOf(args: ReviewArgs): ChangeRequestArgs | undefined {
 
 async function localTarget(args: ReviewArgs, inputs: Inputs): Promise<ReviewTarget> {
   const { cwd, root, configFile, ignoreRepoConfig } = inputs;
-  const config = await loadConfig(root, inputs.env, {
+  const { config, layers } = await loadConfigLayers(root, inputs.env, {
     repository: !ignoreRepoConfig,
     ...(configFile ? { file: configFile } : {}),
     warn: inputs.warn,
@@ -124,7 +127,7 @@ async function localTarget(args: ReviewArgs, inputs: Inputs): Promise<ReviewTarg
   });
   return {
     platform: "local",
-    config,
+    layers,
     // Plugins named by the user's own file are resolved from where it is.
     plugins: await loadExternalPlugins(config.plugins, configFile ? dirname(configFile) : root),
     accountPlugins: !ignoreRepoConfig,
@@ -165,7 +168,7 @@ async function changeRequestTarget(
 
   const base = new LocalGitAdapter({ cwd, target: { mode: "commit", commit: found.baseSha } });
   const readTrusted = (path: string) => base.readFile(path);
-  const config = await loadConfig(root, inputs.env, {
+  const { config, layers } = await loadConfigLayers(root, inputs.env, {
     repository: !inputs.ignoreRepoConfig,
     read: readTrusted,
     ...(configFile ? { file: configFile } : {}),
@@ -185,7 +188,7 @@ async function changeRequestTarget(
   const repository = repositoryOfWebUrl(found.webUrl);
   return {
     platform: change.platform,
-    config,
+    layers,
     plugins: [],
     accountPlugins: false,
     createVcs: (registry) => found.createVcs(registry, local, config),

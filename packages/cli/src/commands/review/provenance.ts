@@ -21,19 +21,12 @@ export function requestedSampling(config: CliConfig, args: ReviewArgs): Sampling
 // unset it adds nothing, so configurations that set none keep their hash.
 // The ocra Cloud account settings (ADR-0027) add their version and rules
 // only when they were layered in, so a signed-out run keeps its hash.
-export function configHash(config: CliConfig, args: ReviewArgs): string {
-  // runtimeSet says where the runtime came from, not what ran: the runtime is hashed.
-  const {
-    sampling: _,
-    runtimeSet: _set,
-    providers,
-    extends: shared,
-    effort,
-    roles,
-    rules,
-    accountSettings,
-    ...rest
-  } = config;
+export function configHash(
+  config: CliConfig,
+  args: ReviewArgs,
+  accountSettings?: { version: string | null },
+): string {
+  const { sampling: _, providers, extends: shared, effort, roles, rules, ...rest } = config;
   const bare = (account: boolean) =>
     rules
       .filter((rule) => (rule.source === "account") === account)

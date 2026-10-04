@@ -79,7 +79,7 @@ describe("--plan's settings and sources (golden)", () => {
     const { cwd, extra } = layered();
     const text = await plan([], extra, cwd);
     expect(text.err).toMatchInlineSnapshot(`
-      "[ocra] From your ocra Cloud settings: effort.standard, models.light, reviewers.security, roles.verifier, runtime, concurrency, exclude, rules, ultra
+      "[ocra] From your ocra Cloud settings: runtime, models.light, effort.standard, reviewers.security, roles.verifier, concurrency, exclude, rules, ultra
       "
     `);
     expect(settingsOf(text.out)).toMatchInlineSnapshot(`
@@ -87,21 +87,21 @@ describe("--plan's settings and sources (golden)", () => {
       Settings (under your ocra Cloud settings, version v3):
         runtime             "direct"  (account)
         models.top          ["google/top"]  (file)
-        models.standard     ["google/standard"]  (file)
+        models.standard     ["google/standard"]  (env)
         models.light        ["ocra-openrouter/b"]  (account)
-        effort.top          "high"  (file)
+        effort.top          "high"  (env)
         effort.standard     "medium"  (account)
-        effort.light        "low"  (file)
+        effort.light        "low"  (shared)
         reviewers.docs      {"enabled":false}  (file)
         reviewers.security  {"effort":"high"}  (account)
-        roles.judge         {"effort":"high"}  (file)
+        roles.judge         {"effort":"high"}  (shared)
         roles.verifier      {"effort":"low"}  (account)
         concurrency         3  (account)
-        maxCostUsd          3  (file)
+        maxCostUsd          3  (shared)
         maxTasks            2  (file)
         include             ["**/*.ts"]  (file)
-        exclude             ["vendor/**","**/*.md"]  (file+account)
-        rules               [{"path":"**","source":"shared"},{"path":"**/*.ts","source":"account"}]  (file+account)
+        exclude             ["vendor/**","**/*.md"]  (shared+account)
+        rules               [{"path":"**","source":"shared"},{"path":"**/*.ts","source":"account"}]  (shared+account)
         ultra               true  (account)
         default: taskTimeoutMinutes, runTimeoutMinutes, verify, judge, sampling
       "
@@ -116,26 +116,26 @@ describe("--plan's settings and sources (golden)", () => {
         "settings": [
           "{"key":"runtime","value":"direct","source":"account"}",
           "{"key":"models.top","value":["google/top"],"source":"file"}",
-          "{"key":"models.standard","value":["google/standard"],"source":"file"}",
+          "{"key":"models.standard","value":["google/standard"],"source":"env"}",
           "{"key":"models.light","value":["ocra-openrouter/b"],"source":"account"}",
-          "{"key":"effort.top","value":"high","source":"file"}",
+          "{"key":"effort.top","value":"high","source":"env"}",
           "{"key":"effort.standard","value":"medium","source":"account"}",
-          "{"key":"effort.light","value":"low","source":"file"}",
+          "{"key":"effort.light","value":"low","source":"shared"}",
           "{"key":"reviewers.docs","value":{"enabled":false},"source":"file"}",
           "{"key":"reviewers.security","value":{"effort":"high"},"source":"account"}",
-          "{"key":"roles.judge","value":{"effort":"high"},"source":"file"}",
+          "{"key":"roles.judge","value":{"effort":"high"},"source":"shared"}",
           "{"key":"roles.verifier","value":{"effort":"low"},"source":"account"}",
           "{"key":"concurrency","value":3,"source":"account"}",
           "{"key":"taskTimeoutMinutes","source":"default"}",
           "{"key":"runTimeoutMinutes","source":"default"}",
-          "{"key":"maxCostUsd","value":3,"source":"file"}",
+          "{"key":"maxCostUsd","value":3,"source":"shared"}",
           "{"key":"maxTasks","value":2,"source":"file"}",
           "{"key":"verify","source":"default"}",
           "{"key":"judge","source":"default"}",
           "{"key":"sampling","source":"default"}",
           "{"key":"include","value":["**/*.ts"],"source":"file"}",
-          "{"key":"exclude","value":["vendor/**","**/*.md"],"source":"file+account"}",
-          "{"key":"rules","value":[{"path":"**","source":"shared"},{"path":"**/*.ts","source":"account"}],"source":"file+account"}",
+          "{"key":"exclude","value":["vendor/**","**/*.md"],"source":"shared+account"}",
+          "{"key":"rules","value":[{"path":"**","source":"shared"},{"path":"**/*.ts","source":"account"}],"source":"shared+account"}",
           "{"key":"ultra","value":true,"source":"account"}",
         ],
       }

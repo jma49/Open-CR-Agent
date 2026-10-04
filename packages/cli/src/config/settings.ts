@@ -1,22 +1,24 @@
 import { isDeepStrictEqual } from "node:util";
-import { OcraError, type SourcedRule } from "@open-cr-agent/core";
+import { MODEL_TIERS, OcraError, type SourcedRule } from "@open-cr-agent/core";
 import { z } from "zod";
 import { configSchema } from "./schema.js";
 
 // A review's settings come in layers: a shared configuration (extends), the
-// repository's file or the user's own (--config), OCRA_* variables, and the
-// ocra Cloud account's settings under them all (ADR-0027). One merge
-// applies them and records, per setting, the layers its value came from,
-// so what --plan reports is what was applied.
+// repository's file or the user's own (--config), OCRA_* variables, the
+// ocra Cloud account's settings under them all (ADR-0027), and the command
+// line. One merge applies them and records, per setting, the layers its
+// value came from, so what --plan reports is what was applied.
 
 type FileSettings = z.output<typeof configSchema>;
 
 export type Settings = FileSettings & {
   // A shared configuration's rules, then the account's.
   rules: SourcedRule[];
+  // Recall over cost (--ultra); the account may turn it on by default.
+  ultra: boolean;
 };
 
-export type SettingSource = "shared" | "file" | "env" | "account";
+export type SettingSource = "shared" | "file" | "env" | "account" | "flag";
 
 export type LayerSettings = { [K in keyof Settings]?: Settings[K] };
 
@@ -41,39 +43,63 @@ type Merge =
   // Each layer's values after the ones before.
   | "concat";
 
+// How --plan lists a setting: always (as ocra's default when no layer set
+// it), or only once a layer set it; a map's entries one by one, the given
+// ones always, others once set.
+interface Listed {
+  list: "always" | "set";
+  entries?: readonly string[];
+  show?: (value: never) => unknown;
+}
+
 const ALL = ["shared", "file", "env", "account"] as const;
 const NOT_ENV = ["shared", "file", "account"] as const;
+const ALWAYS: Listed = { list: "always" };
 
-// How each setting merges, and which layers may set it: a shared
-// configuration is fetched from outside the repository, so it never names
-// plugins or a runtime; the account never moves code or keys (providers,
-// extends) or decides whose comments are trusted (github). The layers'
-// parsers refuse these with a warning; here they are a broken invariant.
+// How each setting merges, which layers may set it, and how --plan lists
+// it, in --plan's order. A shared configuration is fetched from outside the
+// repository, so it never names plugins or a runtime; the account never
+// moves code or keys (providers, extends) or decides whose comments are
+// trusted (github). The layers' parsers refuse these with a warning; here
+// they are a broken invariant.
 const MERGE: {
-  readonly [K in keyof Settings]-?: { merge: Merge; from: readonly SettingSource[] };
+  readonly [K in keyof Settings]-?: {
+    merge: Merge;
+    from: readonly SettingSource[];
+    plan?: Listed;
+  };
 } = {
+  runtime: { merge: "replace", from: ["file", "account"], plan: ALWAYS },
+  models: { merge: "entries", from: ALL, plan: { list: "always", entries: MODEL_TIERS } },
+  effort: { merge: "entries", from: ALL, plan: { list: "always", entries: MODEL_TIERS } },
+  reviewers: { merge: "entries", from: NOT_ENV, plan: { list: "set" } },
+  roles: { merge: "entries", from: NOT_ENV, plan: { list: "set" } },
+  concurrency: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
+  taskTimeoutMinutes: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
+  runTimeoutMinutes: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
+  maxCostUsd: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
+  maxTasks: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
+  verify: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
+  judge: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
+  sampling: { merge: "replace", from: ["file", "account"], plan: ALWAYS },
+  include: { merge: "concat", from: NOT_ENV, plan: ALWAYS },
+  exclude: { merge: "concat", from: NOT_ENV, plan: ALWAYS },
+  rules: {
+    merge: "concat",
+    from: ["shared", "account"],
+    // Where each rule applies and whose it is; the rule's text can be long.
+    plan: {
+      list: "always",
+      show: (rules: SourcedRule[]) => rules.map(({ path, source }) => ({ path, source })),
+    },
+  },
+  ultra: { merge: "replace", from: ["account", "flag"], plan: { list: "set" } },
   $schema: { merge: "replace", from: ["shared", "file"] },
-  models: { merge: "entries", from: ALL },
-  effort: { merge: "entries", from: ALL },
-  concurrency: { merge: "replace", from: NOT_ENV },
-  taskTimeoutMinutes: { merge: "replace", from: NOT_ENV },
-  runTimeoutMinutes: { merge: "replace", from: NOT_ENV },
-  verify: { merge: "replace", from: NOT_ENV },
-  judge: { merge: "replace", from: NOT_ENV },
-  maxCostUsd: { merge: "replace", from: NOT_ENV },
-  maxTasks: { merge: "replace", from: NOT_ENV },
-  sampling: { merge: "replace", from: ["file", "account"] },
   github: { merge: "entries", from: ["shared", "file"] },
-  include: { merge: "concat", from: NOT_ENV },
-  exclude: { merge: "concat", from: NOT_ENV },
-  runtime: { merge: "replace", from: ["file", "account"] },
   plugins: { merge: "replace", from: ["file"] },
-  reviewers: { merge: "entries", from: NOT_ENV },
-  roles: { merge: "entries", from: NOT_ENV },
   pluginSettings: { merge: "replace", from: ["file"] },
   providers: { merge: "entries", from: ["shared", "file"] },
   extends: { merge: "replace", from: ["file"] },
-  rules: { merge: "concat", from: ["shared", "account"] },
 };
 
 // The configuration file's schema without its defaults, so a layer holds
@@ -87,14 +113,14 @@ export const layerSchema = z
       ]),
     ),
   )
-  .strict() as unknown as z.ZodType<Omit<LayerSettings, "rules">>;
+  .strict() as unknown as z.ZodType<Omit<LayerSettings, "rules" | "ultra">>;
 
 /** The layers, earliest first, over ocra's defaults, and where each setting came from. */
 export function resolveSettings(layers: readonly SettingsLayer[]): {
   settings: Settings;
   sources: SettingSources;
 } {
-  const merged: Record<string, unknown> = { ...configSchema.parse({}), rules: [] };
+  const merged: Record<string, unknown> = { ...configSchema.parse({}), rules: [], ultra: false };
   const sources: SettingSources = {};
   const record = (name: string, source: SettingSource) => {
     const from = sources[name] ?? [];
@@ -132,4 +158,42 @@ export function resolveSettings(layers: readonly SettingsLayer[]): {
     }
   }
   return { settings: merged as Settings, sources };
+}
+
+export interface ListedSetting {
+  key: string;
+  // Absent for ocra's default.
+  value?: unknown;
+  // Empty for ocra's default.
+  sources: SettingSource[];
+}
+
+/**
+ * The settings --plan lists, in its order, with their sources. A setting
+ * only a command-line flag set is the flag's, not a setting, and is left
+ * out.
+ */
+export function listSettings(settings: Settings, sources: SettingSources): ListedSetting[] {
+  const listed: ListedSetting[] = [];
+  for (const [key, rule] of Object.entries(MERGE)) {
+    const plan = rule.plan;
+    if (!plan) continue;
+    const value = settings[key as keyof Settings];
+    const add = (name: string, shown: unknown, always: boolean) => {
+      const from = (sources[name] ?? []).filter((source) => source !== "flag");
+      if (from.length === 0 && !always) return;
+      listed.push(
+        from.length === 0 ? { key: name, sources: [] } : { key: name, value: shown, sources: from },
+      );
+    };
+    if (rule.merge === "entries") {
+      const map = value as Record<string, unknown>;
+      for (const entry of plan.entries ?? Object.keys(map)) {
+        add(`${key}.${entry}`, map[entry], plan.list === "always");
+      }
+    } else {
+      add(key, plan.show ? plan.show(value as never) : value, plan.list === "always");
+    }
+  }
+  return listed;
 }

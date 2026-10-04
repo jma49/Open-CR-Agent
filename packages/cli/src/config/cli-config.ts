@@ -16,7 +16,14 @@ import {
 import { z } from "zod";
 import { fetchRemoteConfig, type RemoteConfig } from "./remote.js";
 import { type configSchema, DEFAULT_RUNTIME, effort } from "./schema.js";
-import { layerSchema, resolveSettings, type SettingsLayer } from "./settings.js";
+import {
+  type ListedSetting,
+  layerSchema,
+  listSettings,
+  resolveSettings,
+  type SettingSources,
+  type SettingsLayer,
+} from "./settings.js";
 
 export const CONFIG_PATH = ".ocra/config.json";
 
@@ -25,18 +32,21 @@ export type CliConfig = Omit<
   "models" | "effort" | "providers" | "runtime"
 > & {
   runtime: string;
-  // Whether the configuration chose the runtime (else it is the default).
-  runtimeSet: boolean;
   models: ModelChains;
-  // The file's, with OCRA_EFFORT_<TIER> on top.
   effort: TierEfforts;
   providers: Record<string, CustomProvider>;
   // Rules from a shared configuration named by extends, then the account's.
   rules: SourcedRule[];
-  // The ocra Cloud account settings layered under this configuration
-  // (ADR-0027), by version; absent when none were.
-  accountSettings?: { version: string | null };
 };
+
+// The configuration a set of layers resolves to, where each setting came
+// from, and whether the review favors recall (--ultra or the account's).
+export interface ResolvedConfig {
+  config: CliConfig;
+  sources: SettingSources;
+  ultra: boolean;
+  listed: ListedSetting[];
+}
 
 export interface LoadOptions {
   repository: boolean;
@@ -70,22 +80,42 @@ export async function loadConfig(
   env: Readonly<Record<string, string | undefined>>,
   options: LoadOptions = { repository: true },
 ): Promise<CliConfig> {
-  const { settings, sources } = resolveSettings(await configLayers(root, env, options));
-  for (const model of unpriced(settings.providers, [
-    ...Object.values(settings.models),
-    ...Object.values(agentChains(settings)),
+  return (await loadConfigLayers(root, env, options)).config;
+}
+
+/** The configuration's layers, and what they resolve to on their own. */
+export async function loadConfigLayers(
+  root: string,
+  env: Readonly<Record<string, string | undefined>>,
+  options: LoadOptions = { repository: true },
+): Promise<{ config: CliConfig; layers: SettingsLayer[] }> {
+  const layers = await configLayers(root, env, options);
+  const { config } = resolveConfig(layers);
+  for (const model of unpriced(config.providers, [
+    ...Object.values(config.models),
+    ...Object.values(agentChains(config)),
   ])) {
     options.warn?.(
       `${model} has a price of 0: reported cost and --max-cost-usd do not count its tokens`,
     );
   }
+  return { config, layers };
+}
+
+export function resolveConfig(layers: readonly SettingsLayer[]): ResolvedConfig {
+  const { settings, sources } = resolveSettings(layers);
+  const { ultra, providers, ...rest } = settings;
   return {
-    ...settings,
-    runtime: settings.runtime ?? DEFAULT_RUNTIME,
-    runtimeSet: sources.runtime !== undefined,
-    models: defined(settings.models),
-    effort: defined(settings.effort),
-    providers: toProviders(settings.providers),
+    config: {
+      ...rest,
+      runtime: settings.runtime ?? DEFAULT_RUNTIME,
+      models: defined(settings.models),
+      effort: defined(settings.effort),
+      providers: toProviders(providers),
+    },
+    sources,
+    ultra,
+    listed: listSettings(settings, sources),
   };
 }
 
@@ -177,7 +207,7 @@ export function agentChains(config: {
 
 // Models of declared providers, named in a chain, priced at 0 per token.
 function unpriced(
-  providers: z.infer<typeof configSchema>["providers"],
+  providers: Record<string, CustomProvider>,
   chains: readonly (readonly string[] | undefined)[],
 ): string[] {
   const named = new Set(chains.flatMap((chain) => chain ?? []));

@@ -53,15 +53,14 @@ describe("configHash", () => {
     const config = await loadConfig("/nowhere", {}, { repository: false });
     // Signed out, the default configuration keeps the hash ocra 0.3 computed.
     expect(configHash(config, args())).toBe("a8df404aed89c340");
-    const v1 = configHash({ ...config, accountSettings: { version: "v1" } }, args());
+    const v1 = configHash(config, args(), { version: "v1" });
     expect(v1).not.toBe("a8df404aed89c340");
-    expect(configHash({ ...config, accountSettings: { version: "v2" } }, args())).not.toBe(v1);
+    expect(configHash(config, args(), { version: "v2" })).not.toBe(v1);
     const withRule: CliConfig = {
       ...config,
-      accountSettings: { version: "v1" },
       rules: [{ path: "**", rule: "r", source: "account" }],
     };
-    expect(configHash(withRule, args())).not.toBe(v1);
+    expect(configHash(withRule, args(), { version: "v1" })).not.toBe(v1);
     // A shared rule hashes as before rules had a source.
     const shared = { ...config, rules: [{ path: "**", rule: "r", source: "shared" as const }] };
     expect(configHash(shared, args())).toBe(
