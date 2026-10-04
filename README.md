@@ -68,7 +68,7 @@ ocra review --pr 42 --publish                # a GitHub pull request, posted as 
 ocra review --mr 7 --publish                 # a GitLab merge request
 ```
 
-Without installing: `npx @open-cr-agent/cli review`. The [quickstart](docs/manual/en/quickstart.mdx) walks through a first run; [Model providers](docs/manual/en/providers.mdx) covers every provider, including your own OpenAI-compatible endpoint with a price per model.
+Without installing: `npx @open-cr-agent/cli review`. OpenCode, the default runtime, is an optional dependency; with the `direct` runtime you can install without it, 11 MB instead of 175 MB ([Installation](docs/manual/en/installation.mdx#without-opencode)). The [quickstart](docs/manual/en/quickstart.mdx) walks through a first run; [Model providers](docs/manual/en/providers.mdx) covers every provider, including your own OpenAI-compatible endpoint with a price per model.
 
 ## In CI
 
@@ -96,7 +96,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-Pin the Action by commit, as here: a tag can be moved. Its outputs (`verdict`, `exit-code`, `run-id`, `findings`, `report`, and `sarif` with `sarif: true`) feed later steps, such as uploading SARIF to code scanning. The Action installs the published CLI only when every package carries provenance from this repository's release workflow; otherwise it builds from source and says so. Pull requests from forks need the gated `pull_request_target` setup in the [GitHub guide](docs/manual/en/github.mdx).
+Pin the Action by commit, as here: a tag can be moved. Its outputs (`verdict`, `exit-code`, `run-id`, `findings`, `report`, and `sarif` with `sarif: true`) feed later steps, such as uploading SARIF to code scanning. The Action installs the published CLI only when every package carries provenance from this repository's release workflow; otherwise it builds from source and says so. With `"runtime": "direct"` in the configuration, `opencode: false` skips installing OpenCode. Pull requests from forks need the gated `pull_request_target` setup in the [GitHub guide](docs/manual/en/github.mdx).
 
 **GitLab merge requests**, on GitLab.com or self-managed, from a CI job: see the [GitLab guide](docs/manual/en/gitlab.mdx).
 

@@ -11,9 +11,21 @@
 // entry point as the step output `main`, and why it built from source as
 // `source`.
 //
+// OCRA_INSTALL_OPENCODE=false (the Action's `opencode` input) leaves out the
+// CLI's optional dependencies, which are OpenCode and only it (ADR-0023):
+// for a configuration that uses the direct runtime. A build from source
+// installs everything: the build itself needs optional platform packages.
+//
 // Usage: node scripts/action-install.mjs [--from-source]
 import { spawn, spawnSync } from "node:child_process";
-import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,6 +47,14 @@ const CACHE = ["--cache", join(temp, "ocra-npm-cache")];
 // environment. The OpenCode binary is resolved without one.
 const INSTALL_FLAGS = [...CACHE, "--ignore-scripts", "--no-audit", "--no-fund", "--loglevel=error"];
 const started = Date.now();
+
+// The npm ci flags that say whether OpenCode is installed, from the Action's
+// opencode input.
+export function opencodeFlags(input) {
+  if (input === undefined || input === "" || input === "true") return [];
+  if (input === "false") return ["--omit=optional"];
+  throw new Error(`the opencode input must be true or false, not ${JSON.stringify(input)}`);
+}
 
 // How to start npm: a .cmd shim on Windows, which Node starts only through a
 // shell and then as one command line, with an argument holding a space (a
@@ -130,7 +150,7 @@ const sameDependencies = (a, b) =>
 // Installs the published packages into a directory of their own. Returns the
 // entry point, or why this checkout should be built instead and whether that
 // deserves a warning.
-async function fromRegistry(workspaces, version) {
+async function fromRegistry(workspaces, version, omit) {
   const packages = workspaces.filter((w) => !w.json.private).map((w) => w.json);
   const answers = await Promise.all(packages.map((json) => published(json.name, json.version)));
   const dist = new Map();
@@ -167,7 +187,7 @@ async function fromRegistry(workspaces, version) {
   writeFileSync(join(dir, "package-lock.json"), `${JSON.stringify(pinned.lockfile, null, 2)}\n`);
 
   console.log(`Installing ${TARGET}@${version}, dependencies pinned by this ref's lockfile`);
-  if (!npm(["ci", ...INSTALL_FLAGS], dir).ok) {
+  if (!npm(["ci", ...INSTALL_FLAGS, ...omit], dir).ok) {
     return { reason: `npm ci of ${TARGET}@${version} failed`, warn: true, kind: "install" };
   }
   // Building this checkout instead would skip the check, so a bad signature
@@ -204,6 +224,12 @@ async function fromRegistry(workspaces, version) {
 }
 
 async function install() {
+  let omit;
+  try {
+    omit = opencodeFlags(process.env.OCRA_INSTALL_OPENCODE);
+  } catch (error) {
+    fail(error.message);
+  }
   const workspaces = readWorkspaces(root);
   const version = workspaces.find((w) => w.json.name === TARGET)?.json.version;
   if (!version) fail(`${TARGET} is not in this checkout`);
@@ -211,8 +237,9 @@ async function install() {
     console.log("Building ocra from source at this ref: --from-source was given.");
     return fromSource();
   }
-  const result = await fromRegistry(workspaces, version);
-  if (result.main) return ready(result.main, `${version} installed from npm`);
+  const result = await fromRegistry(workspaces, version, omit);
+  const without = omit.length > 0 ? " without OpenCode" : "";
+  if (result.main) return ready(result.main, `${version} installed from npm${without}`);
   console.log(
     `::${result.warn ? "warning" : "notice"}::Building ocra from source at this ref: ${result.reason}.`,
   );
@@ -221,4 +248,7 @@ async function install() {
   fromSource();
 }
 
-await install();
+// Run, not imported by its test.
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await install();
+}

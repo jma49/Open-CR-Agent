@@ -45,6 +45,7 @@ Store your model key as a repository secret. Models come from the base branch's 
 | `github-token` | `${{ github.token }}` | Token for reading the pull request and posting the review |
 | `args` | | Extra `ocra review` options, such as `--reviewers correctness,security`, split on spaces and newlines (no quoting) |
 | `fail-on-concerns` | `false` | Fail the job when the verdict is `significant_concerns` (a critical finding the verifier confirmed). An incomplete review (exit code `3`) always fails the job |
+| `opencode` | `true` | Install OpenCode, the default runtime. Set `false` when the configuration sets `"runtime": "direct"`; see [The runtime](#the-runtime). Not in v0.2.0 |
 | `sarif` | `false` | Also write the review as SARIF 2.1.0 for [code scanning](#code-scanning), to the file the `sarif` output names. It takes the place of `--format` and `--output` in `args` |
 
 Give the step an `id` to read its outputs. They are set whenever ocra ran, also when the step fails:
@@ -83,6 +84,20 @@ Pass outputs to a script through `env`, as here, rather than writing `${{ }}` in
 The verdict is advice. The models read the pull request, so its author can plant text that steers a reviewer away from an issue or talks the judge out of one, and an unverified model claim can be wrong. Do not make the check a required status in place of human review; if you turn on `fail-on-concerns`, treat a pass as "nothing confirmed", not "safe".
 
 Pull requests from forks get no secrets on `pull_request`, so their review stops with a message naming the missing key. To review them, see [Pull requests from forks](#pull-requests-from-forks).
+
+### The runtime
+
+The Action installs OpenCode, the default runtime: with its native binary for the runner's platform, it is 97 of the 108 packages the Action installs and about 165 MB of 175 MB. When every model in the base branch's configuration is on an endpoint you declare and that configuration sets `"runtime": "direct"` ([Choosing the runtime](./providers#choosing-the-runtime)), set `opencode: false`: the install leaves OpenCode out and takes 11 packages. Should the configuration then select `opencode`, the review stops before any model call with exit code `2`, naming the missing package. The input is not in v0.2.0.
+
+```yaml
+      - uses: jma49/Open-CR-Agent@<commit> # a release after v0.2.0
+        with:
+          opencode: false
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+```
+
+The install is not cached between runs: it uses an npm cache of its own each time, so every package, signature and provenance statement comes from the registry, never from a cache another workflow of the repository could have written.
 
 ## What gets posted
 

@@ -45,6 +45,7 @@ jobs:
 | `github-token` | `${{ github.token }}` | 用来读取 PR 和发布评审的 token |
 | `args` | | 额外的 `ocra review` 参数，例如 `--reviewers correctness,security`；按空格和换行拆分（不支持引号） |
 | `fail-on-concerns` | `false` | 结论为 `significant_concerns`（存在经核查确认的 critical 问题）时让 job 失败。审查不完整（退出码 `3`）时 job 总会失败 |
+| `opencode` | `true` | 安装默认运行时 OpenCode。配置里设了 `"runtime": "direct"` 时可设为 `false`，见[运行时](#运行时)。v0.2.0 没有这个输入 |
 | `sarif` | `false` | 同时把审查结果写成 SARIF 2.1.0，用于[代码扫描](#代码扫描)，文件路径见输出 `sarif`。它会取代 `args` 里的 `--format` 和 `--output` |
 
 给这一步设置 `id`，就能读取它的输出。只要 ocra 运行过，输出就会设置，步骤失败时也一样：
@@ -83,6 +84,20 @@ ocra 没有写出报告时（退出码 `2`），`verdict`、`run-id`、`report` 
 结论只是参考意见。模型会读到 PR 的内容，PR 作者可以在其中埋入文字，诱导审查员漏报问题，或说服 Judge 丢掉问题；未经核查的模型判断也可能是错的。不要用这项检查代替人工审查、把它设为必需的状态检查；如果打开 `fail-on-concerns`，通过只代表“没有被确认的问题”，不代表“安全”。
 
 来自 fork 的 PR 在 `pull_request` 事件下拿不到 secret，审查会停下，并提示缺少哪个 key。如何审查这类 PR，见[来自 fork 的 PR](#来自-fork-的-pr)。
+
+### 运行时
+
+Action 默认安装 OpenCode 运行时：连同 runner 平台的原生二进制文件，它占 Action 所装 108 个包中的 97 个，175 MB 中的约 165 MB。如果 base 分支配置里的模型都在你声明的端点上，并且配置设了 `"runtime": "direct"`（见[选择运行时](./providers#选择运行时)），请设置 `opencode: false`：安装会略去 OpenCode，只装 11 个包。此时如果配置选的是 `opencode`，评审会在调用任何模型之前以退出码 `2` 停下，并说明缺了哪个包。v0.2.0 没有这个输入。
+
+```yaml
+      - uses: jma49/Open-CR-Agent@<commit> # v0.2.0 之后的版本
+        with:
+          opencode: false
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+```
+
+安装不在运行之间缓存：每次都使用自己的 npm 缓存，所以每个包、签名和 provenance 声明都直接来自 npm 源，而不会来自仓库里其他 workflow 可能写入的缓存。
 
 ## 会发布什么
 

@@ -18,6 +18,12 @@ inputs:
       the verifier confirmed). Off by default: the verdict comes from models
       that read the change and is advice, not a security gate.
     default: "false"
+  opencode:
+    description: >-
+      Install OpenCode, the default runtime (about 140 MB). Set to false when
+      the configuration sets "runtime": "direct": the install then leaves it
+      out, and a review that needs it stops with exit code 2.
+    default: "true"
   sarif:
     description: >-
       Also write the review as SARIF 2.1.0 (for code scanning) to the file
@@ -69,6 +75,8 @@ runs:
     - name: Install ocra
       id: install
       shell: bash
+      env:
+        OCRA_INSTALL_OPENCODE: ${{ inputs.opencode }}
       run: node "$GITHUB_ACTION_PATH/scripts/action-install.mjs"
 
     # Inputs reach the script only through environment variables, never
