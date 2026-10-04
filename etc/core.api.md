@@ -131,6 +131,34 @@ export interface AppliedSettings {
 }
 
 // @public (undocumented)
+export interface AttemptError {
+    // (undocumented)
+    message: string;
+    // (undocumented)
+    quota?: QuotaError;
+    // (undocumented)
+    retryable: boolean;
+}
+
+// @public (undocumented)
+export interface AttemptOutcome {
+    // (undocumented)
+    error?: AttemptError;
+    // (undocumented)
+    findings: unknown[];
+    // (undocumented)
+    resumed?: true;
+    // (undocumented)
+    steps: number;
+    // (undocumented)
+    text: string;
+    // (undocumented)
+    toolCalls: string[];
+    // (undocumented)
+    usage: Usage;
+}
+
+// @public (undocumented)
 export interface BootstrapContext<Settings = unknown> {
     // (undocumented)
     env: Env;
@@ -138,6 +166,15 @@ export interface BootstrapContext<Settings = unknown> {
     settings: Settings;
     // (undocumented)
     warn(message: string): void;
+}
+
+// @public (undocumented)
+export class ChainRunner {
+    constructor(models: ModelChains, attempts: ModelAttempts);
+    // (undocumented)
+    complete(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult>;
+    // (undocumented)
+    runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent>;
 }
 
 // @public (undocumented)
@@ -464,6 +501,18 @@ const memoryEntrySchema: z.ZodObject<{
 export type MemorySource = "repository" | "account";
 
 // @public (undocumented)
+export interface ModelAttempts {
+    // (undocumented)
+    complete(model: string, request: CompletionRequest, signal: AbortSignal): Promise<AttemptOutcome>;
+    // (undocumented)
+    ready?(): Promise<void>;
+    // (undocumented)
+    refuse?(chain: readonly string[], own: boolean): OcraError | undefined;
+    // (undocumented)
+    task(model: string, spec: AgentTaskSpec, signal: AbortSignal, onUsage: (spent: Usage) => void): Promise<AttemptOutcome>;
+}
+
+// @public (undocumented)
 export type ModelChains = {
     [Tier in ModelTier]?: readonly string[];
 };
@@ -701,6 +750,14 @@ export interface ProvenanceInput {
     ocraVersion: string;
     // (undocumented)
     sampling?: Sampling;
+}
+
+// @public (undocumented)
+export interface QuotaError {
+    // (undocumented)
+    daily: boolean;
+    // (undocumented)
+    retryAfterMs?: number;
 }
 
 // @public (undocumented)

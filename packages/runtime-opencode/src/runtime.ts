@@ -8,26 +8,22 @@ import {
   type AgentTaskSpec,
   type AppliedSampling,
   type AppliedSettings,
+  type AttemptOutcome,
+  ChainRunner,
   type CompletionRequest,
   type CompletionResult,
   type Effort,
-  type ModelTier,
   OcraError,
   type ReviewContext,
   type RuntimeOptions,
   type Usage,
 } from "@open-cr-agent/core";
 import {
-  type AttemptOutcome,
-  callChain,
-  completeWithFailback,
   MAX_AGENT_STEPS,
-  ModelHealth,
   parseModel,
   RESUME_MESSAGE,
   REVIEW_TOOLS,
   reviewTools,
-  withFailback,
   withoutSecrets,
 } from "@open-cr-agent/core/internal";
 import { createOpencodeClient, type OpencodeClient } from "@opencode-ai/sdk/v2";
@@ -77,7 +73,7 @@ export class OpenCodeRuntime implements AgentRuntime {
   readonly sampling: AppliedSampling;
   private infra: Promise<Infra> | undefined;
   private context: ReviewContext | undefined;
-  private readonly health = new ModelHealth();
+  private readonly chains: ChainRunner;
   private readonly helperTools: Record<string, boolean>;
   private readonly applied: AppliedEfforts;
 
@@ -89,6 +85,14 @@ export class OpenCodeRuntime implements AgentRuntime {
     this.helperTools = { ...DISABLED_BUILTINS, ...Object.fromEntries(mcpTools) };
     this.sampling = openCodeSampling(options.sampling);
     this.applied = new AppliedEfforts(options.sampling);
+    this.chains = new ChainRunner(options.models, {
+      refuse: (chain, own) => this.unprepared(chain, own),
+      ready: async () => {
+        await this.start();
+      },
+      task: (model, spec, signal, onUsage) => this.attemptTask(model, spec, signal, onUsage),
+      complete: (model, request, signal) => this.attemptCompletion(model, request, signal),
+    });
   }
 
   appliedTo(agent: string): AppliedSettings | undefined {
@@ -100,74 +104,11 @@ export class OpenCodeRuntime implements AgentRuntime {
       throw new OcraError("INTERNAL", "An OpenCodeRuntime instance serves a single review run");
     }
     this.context = spec.context;
-
-    const chain = callChain(this.options.models, spec.modelTier, spec.models);
-    const refused = chain.length === 0 ? noModel(spec.modelTier) : this.unprepared(spec.models);
-    if (refused) {
-      yield { type: "error", taskId: spec.taskId, retryable: false, error: refused };
-      return;
-    }
-
-    const infra = await this.start();
-    yield* withFailback({
-      taskId: spec.taskId,
-      tier: spec.modelTier,
-      ...(spec.models?.length ? { agent: spec.reviewer } : {}),
-      chain,
-      health: this.health,
-      signal,
-      attempt: (model, onUsage) =>
-        this.prompt(
-          infra,
-          {
-            title: `ocra ${spec.taskId}`,
-            ...this.effortCall(infra, REVIEW_AGENT, spec.reviewer, spec.effort, model),
-            model,
-            system: spec.systemPrompt,
-            user: spec.userPrompt,
-            tools: DISABLED_BUILTINS,
-            toolPrefix: `${MCP_SERVER}_`,
-            resume: REVIEW_RESUME,
-          },
-          signal,
-          onUsage,
-        ),
-    });
+    yield* this.chains.runTask(spec, signal);
   }
 
-  async complete(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult> {
-    const chain = callChain(this.options.models, request.tier, request.models);
-    const refused = chain.length === 0 ? noModel(request.tier) : this.unprepared(request.models);
-    if (refused) throw new OcraError("CONFIG_INVALID", refused);
-
-    const infra = await this.start();
-    return completeWithFailback({
-      tier: request.tier,
-      ...(request.models?.length ? { agent: request.agent ?? request.tier } : {}),
-      chain,
-      health: this.health,
-      signal,
-      attempt: (model) =>
-        this.prompt(
-          infra,
-          {
-            title: "ocra helper",
-            ...this.effortCall(
-              infra,
-              HELPER_AGENT,
-              request.agent ?? request.tier,
-              request.effort,
-              model,
-            ),
-            model,
-            system: request.system,
-            user: request.user,
-            tools: this.helperTools,
-            toolPrefix: `${MCP_SERVER}_`,
-          },
-          signal,
-        ),
-    });
+  complete(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult> {
+    return this.chains.complete(request, signal);
   }
 
   async dispose(): Promise<void> {
@@ -177,6 +118,57 @@ export class OpenCodeRuntime implements AgentRuntime {
     process.off("exit", infra.onExit);
     await Promise.allSettled([infra.server.close(), infra.tools.close(), infra.dispatcher.close()]);
     await rm(infra.root, { recursive: true, force: true });
+  }
+
+  private async attemptTask(
+    model: string,
+    spec: AgentTaskSpec,
+    signal: AbortSignal,
+    onUsage: (spent: Usage) => void,
+  ): Promise<AttemptOutcome> {
+    const infra = await this.start();
+    return this.prompt(
+      infra,
+      {
+        title: `ocra ${spec.taskId}`,
+        ...this.effortCall(infra, REVIEW_AGENT, spec.reviewer, spec.effort, model),
+        model,
+        system: spec.systemPrompt,
+        user: spec.userPrompt,
+        tools: DISABLED_BUILTINS,
+        toolPrefix: `${MCP_SERVER}_`,
+        resume: REVIEW_RESUME,
+      },
+      signal,
+      onUsage,
+    );
+  }
+
+  private async attemptCompletion(
+    model: string,
+    request: CompletionRequest,
+    signal: AbortSignal,
+  ): Promise<AttemptOutcome> {
+    const infra = await this.start();
+    return this.prompt(
+      infra,
+      {
+        title: "ocra helper",
+        ...this.effortCall(
+          infra,
+          HELPER_AGENT,
+          request.agent ?? request.tier,
+          request.effort,
+          model,
+        ),
+        model,
+        system: request.system,
+        user: request.user,
+        tools: this.helperTools,
+        toolPrefix: `${MCP_SERVER}_`,
+      },
+      signal,
+    );
   }
 
   // The OpenCode agent and variant one attempt runs with, recorded for the
@@ -228,13 +220,16 @@ export class OpenCodeRuntime implements AgentRuntime {
   // The server holds the credentials of the providers it started with; an
   // agent's own chain naming another would fail at OpenCode as "model not
   // found". The tier chains are always among them.
-  private unprepared(own: readonly string[] | undefined): string | undefined {
-    if (!own?.length) return undefined;
+  private unprepared(chain: readonly string[], own: boolean): OcraError | undefined {
+    if (!own) return undefined;
     const prepared = new Set(providersOf(this.options));
-    const model = own.find((m) => !prepared.has(parseModel(m).providerID));
+    const model = chain.find((m) => !prepared.has(parseModel(m).providerID));
     return model === undefined
       ? undefined
-      : `"${model}" is not among the models the runtime was started with (RuntimeOptions.models or agentModels)`;
+      : new OcraError(
+          "CONFIG_INVALID",
+          `"${model}" is not among the models the runtime was started with (RuntimeOptions.models or agentModels)`,
+        );
   }
 
   private start(): Promise<Infra> {
@@ -315,8 +310,4 @@ function chainModels(options: Pick<RuntimeOptions, "models" | "agentModels">): s
 // The providers of those models, so each gets its credentials like a tier's.
 export function providersOf(options: Pick<RuntimeOptions, "models" | "agentModels">): string[] {
   return chainModels(options).map((m) => parseModel(m).providerID);
-}
-
-function noModel(tier: ModelTier): string {
-  return `No model configured for the "${tier}" tier; set models.${tier} in .ocra/config.json or OCRA_MODEL_${tier.toUpperCase()}`;
 }

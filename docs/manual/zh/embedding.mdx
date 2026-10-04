@@ -145,7 +145,7 @@ ocra 的各个包抛出的都是 `OcraError`（或它的子类），带有 `code
 
 每个包的主入口就是它的公开 API，是一份遵循 [0.x 规则](./stability)的约定：
 
-- **`@open-cr-agent/core`**：`review()` 和 `ReviewOptions`；它返回的内容（`ReviewReport`、`Finding` 以及组成它们的类型）、`coverageGaps()`、`toReportOutput()` 及 `ReportOutput`、`reportOutputSchema`、`reportJsonSchema()` 和 `REPORT_VERSION`；`parseSarifLog()`；插件接口（`OcraPlugin` 及其上下文、`startPlugins()`、`PluginRegistry`、内置的审查者插件和 `sessionJsonlPlugin`）；插件实现的约定（`VcsAdapter`、`AgentRuntime` 及它们用到的类型、`ToolDefinition`、`ReviewerDefinition`、`RepoRule`）；以及[错误模型](#错误)。
+- **`@open-cr-agent/core`**：`review()` 和 `ReviewOptions`；它返回的内容（`ReviewReport`、`Finding` 以及组成它们的类型）、`coverageGaps()`、`toReportOutput()` 及 `ReportOutput`、`reportOutputSchema`、`reportJsonSchema()` 和 `REPORT_VERSION`；`parseSarifLog()`；插件接口（`OcraPlugin` 及其上下文、`startPlugins()`、`PluginRegistry`、内置的审查者插件和 `sessionJsonlPlugin`）；插件实现的约定（`VcsAdapter`、`AgentRuntime` 及它们用到的类型、`ToolDefinition`、`ReviewerDefinition`、`RepoRule`）；运行时可以基于的部分（`ChainRunner` 及 `ModelAttempts`、`AttemptOutcome`、`QuotaError`；见[插件](./plugins)）；以及[错误模型](#错误)。
 - **`@open-cr-agent/vcs-local`**：`localGitPlugin`、`LocalTarget`、`LocalGitOptions` 和 `GitError`。**`vcs-github`** 和 **`vcs-gitlab`**：`githubPlugin` 和 `gitlabPlugin`，以及它们的 API 错误。**`runtime-opencode`** 和 **`runtime-direct`**：`opencodeRuntimePlugin` 和 `directRuntimePlugin`。
 - **`@open-cr-agent/vcs-platform`** 是 ocra 各平台适配器共用的部分，还不是约定。
 

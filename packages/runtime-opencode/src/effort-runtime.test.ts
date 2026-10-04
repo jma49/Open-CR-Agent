@@ -1,5 +1,4 @@
-import type { AgentTaskSpec, Effort } from "@open-cr-agent/core";
-import type { AttemptOutcome } from "@open-cr-agent/core/internal";
+import type { AgentTaskSpec, AttemptOutcome, Effort } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import { effortWarnings } from "../../core/src/pipeline/agents.js";
 import { collect, fakeContext } from "../../core/src/runtime/conformance.fakes.js";

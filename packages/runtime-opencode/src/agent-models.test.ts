@@ -1,6 +1,5 @@
-import type { AgentTaskSpec } from "@open-cr-agent/core";
+import type { AgentTaskSpec, AttemptOutcome } from "@open-cr-agent/core";
 import { isOcraError } from "@open-cr-agent/core";
-import type { AttemptOutcome } from "@open-cr-agent/core/internal";
 import { describe, expect, it } from "vitest";
 import { collect, fakeContext } from "../../core/src/runtime/conformance.fakes.js";
 import { OpenCodeRuntime, type OpenCodeRuntimeOptions, providersOf } from "./runtime.js";

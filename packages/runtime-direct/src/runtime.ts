@@ -4,26 +4,24 @@ import {
   type AgentTaskSpec,
   type AppliedSampling,
   type AppliedSettings,
+  type AttemptOutcome,
+  ChainRunner,
   type CompletionRequest,
   type CompletionResult,
   type CustomProvider,
   type Effort,
   type ModelPrice,
-  type ModelTier,
   OcraError,
   type RuntimeOptions,
   type ToolDefinition,
+  type Usage,
 } from "@open-cr-agent/core";
 import {
-  callChain,
-  completeWithFailback,
   MAX_AGENT_STEPS,
-  ModelHealth,
   parseModel,
   proxiedFetch,
   RESUME_MESSAGE,
   reviewTools,
-  withFailback,
 } from "@open-cr-agent/core/internal";
 import { EffortLedger } from "./effort.js";
 import { runLoop } from "./loop.js";
@@ -55,7 +53,7 @@ export class DirectRuntime implements AgentRuntime {
   readonly name = "direct";
   // The chat completions protocol takes both settings.
   readonly sampling: AppliedSampling;
-  private readonly health = new ModelHealth();
+  private readonly chains: ChainRunner;
   private readonly tools: readonly ToolDefinition[];
   private readonly fetch: typeof fetch;
   private readonly efforts: EffortLedger;
@@ -69,65 +67,61 @@ export class DirectRuntime implements AgentRuntime {
       ...(seed === undefined ? {} : { seed }),
     };
     this.efforts = new EffortLedger(this.sampling);
+    this.chains = new ChainRunner(options.models, {
+      refuse: (chain) => this.unreachable(chain),
+      task: (model, spec, signal, onUsage) => this.attemptTask(model, spec, signal, onUsage),
+      complete: (model, request, signal) => this.attemptCompletion(model, request, signal),
+    });
   }
 
   appliedTo(agent: string): AppliedSettings | undefined {
     return this.efforts.appliedTo(agent);
   }
 
-  async *runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent> {
-    const chain = callChain(this.options.models, spec.modelTier, spec.models);
-    const refused = chain.length === 0 ? noModel(spec.modelTier) : this.unreachable(chain);
-    if (refused) {
-      yield { type: "error", taskId: spec.taskId, error: refused.message, retryable: false };
-      return;
-    }
-    yield* withFailback({
-      taskId: spec.taskId,
-      tier: spec.modelTier,
-      ...(spec.models?.length ? { agent: spec.reviewer } : {}),
-      chain,
-      health: this.health,
+  runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent> {
+    return this.chains.runTask(spec, signal);
+  }
+
+  complete(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult> {
+    return this.chains.complete(request, signal);
+  }
+
+  private attemptTask(
+    model: string,
+    spec: AgentTaskSpec,
+    signal: AbortSignal,
+    onUsage: (spent: Usage) => void,
+  ): Promise<AttemptOutcome> {
+    return runLoop({
+      ...this.target(model),
+      ...this.call({ agent: spec.reviewer, effort: spec.effort, model }),
+      system: spec.systemPrompt,
+      user: spec.userPrompt,
+      tools: this.tools,
+      context: spec.context,
+      maxSteps: MAX_AGENT_STEPS,
+      resume: RESUME_MESSAGE,
+      timeoutMs: spec.timeoutMs,
       signal,
-      attempt: (model, onUsage) =>
-        runLoop({
-          ...this.target(model),
-          ...this.call({ agent: spec.reviewer, effort: spec.effort, model }),
-          system: spec.systemPrompt,
-          user: spec.userPrompt,
-          tools: this.tools,
-          context: spec.context,
-          maxSteps: MAX_AGENT_STEPS,
-          resume: RESUME_MESSAGE,
-          timeoutMs: spec.timeoutMs,
-          signal,
-          onUsage,
-        }),
+      onUsage,
     });
   }
 
-  async complete(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult> {
-    const chain = callChain(this.options.models, request.tier, request.models);
-    const refused = chain.length === 0 ? noModel(request.tier) : this.unreachable(chain);
-    if (refused) throw refused;
-    return completeWithFailback({
-      tier: request.tier,
-      ...(request.models?.length ? { agent: request.agent ?? request.tier } : {}),
-      chain,
-      health: this.health,
+  private attemptCompletion(
+    model: string,
+    request: CompletionRequest,
+    signal: AbortSignal,
+  ): Promise<AttemptOutcome> {
+    return runLoop({
+      ...this.target(model),
+      ...this.call({ agent: request.agent ?? request.tier, effort: request.effort, model }),
+      system: request.system,
+      user: request.user,
+      tools: [],
+      context: NO_CONTEXT,
+      maxSteps: 1,
+      timeoutMs: request.timeoutMs,
       signal,
-      attempt: (model) =>
-        runLoop({
-          ...this.target(model),
-          ...this.call({ agent: request.agent ?? request.tier, effort: request.effort, model }),
-          system: request.system,
-          user: request.user,
-          tools: [],
-          context: NO_CONTEXT,
-          maxSteps: 1,
-          timeoutMs: request.timeoutMs,
-          signal,
-        }),
     });
   }
 
@@ -193,10 +187,3 @@ const NO_CONTEXT = {
   readDiff: () => undefined,
   searchCode: async () => [],
 };
-
-function noModel(tier: ModelTier): OcraError {
-  return new OcraError(
-    "CONFIG_INVALID",
-    `No ${tier} model configured (set OCRA_MODEL_${tier.toUpperCase()} or models.${tier})`,
-  );
-}

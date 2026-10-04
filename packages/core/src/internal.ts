@@ -28,16 +28,10 @@ export { newRunId } from "./pipeline/run-id.js";
 export { addUsage, emptyUsage } from "./pipeline/usage.js";
 export { REVIEW_TOOLS } from "./review/tools.js";
 export { repoRuleSchema } from "./rules/repo-rules.js";
-export {
-  type AttemptOutcome,
-  MAX_AGENT_STEPS,
-  RESUME_MESSAGE,
-  withoutSecrets,
-} from "./runtime/attempt.js";
+export { MAX_AGENT_STEPS, RESUME_MESSAGE, withoutSecrets } from "./runtime/attempt.js";
 export { thinkingBudget } from "./runtime/effort-capability.js";
-export { completeWithFailback, withFailback } from "./runtime/failback.js";
-export { callChain, ModelHealth, parseModel } from "./runtime/models.js";
-export { parseQuotaError, type QuotaError, sleep } from "./runtime/quota.js";
+export { parseModel } from "./runtime/models.js";
+export { parseQuotaError, sleep } from "./runtime/quota.js";
 export { MAX_READ_LINES, reviewTools } from "./runtime/tools.js";
 export { defaultSelectionPolicy } from "./select/select.js";
 export { REPORT_FILE } from "./session/jsonl.js";
