@@ -16,6 +16,7 @@ describe("at", () => {
       } catch (e) {
         return e;
       }
+      return undefined;
     })();
     expect(isOcraError(error, "INTERNAL")).toBe(true);
   });
