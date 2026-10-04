@@ -3,8 +3,14 @@ import { mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "n
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SharedFinding } from "@open-cr-agent/cloud-contract";
-import type { ReviewReport } from "@open-cr-agent/core";
-import { scratchRepos } from "@open-cr-agent/test-support";
+import {
+  finding,
+  priorFinding,
+  reviewReport,
+  scratchRepos,
+  taskOutcome,
+  usage,
+} from "@open-cr-agent/test-support";
 import { afterAll, describe, expect, it } from "vitest";
 import { originRepository } from "../repository-id.js";
 import type { CloudDeps } from "./deps.js";
@@ -51,12 +57,12 @@ function cloud(answer: (path: string, init?: RequestInit) => Response) {
   return { deps, calls, credentialsPath };
 }
 
-const report = {
+const report = reviewReport({
   runId: "run-1",
   tier: "lite",
-  verdict: "changes_requested",
+  verdict: "significant_concerns",
   findings: [
-    {
+    finding({
       severity: "critical",
       title: "SECRET TITLE",
       file: "src/secret.ts",
@@ -64,8 +70,8 @@ const report = {
       reviewer: "security",
       fingerprint: "fp-secret-critical",
       verification: "confirmed",
-    },
-    {
+    }),
+    finding({
       severity: "warning",
       title: "t",
       file: "a",
@@ -73,15 +79,15 @@ const report = {
       reviewer: "security",
       fingerprint: "fp-dismissed",
       verification: "uncertain",
-    },
-    {
+    }),
+    finding({
       severity: "warning",
       title: "t",
       file: "a",
       body: "b",
       reviewer: "logic",
       fingerprint: "fp-3",
-    },
+    }),
   ],
   coverage: [
     { path: "src/secret.ts", status: "reviewed" },
@@ -89,33 +95,37 @@ const report = {
     { path: "c.ts", status: "excluded", reason: "generated" },
   ],
   tasks: [
-    { reviewer: "security", status: "completed", usage: { costUsd: 0.25 } },
-    { reviewer: "logic", status: "failed", usage: { costUsd: 0.1 } },
-    { reviewer: "logic", status: "timed_out", usage: { costUsd: 0.05 } },
-    { reviewer: "style", status: "cancelled", usage: { costUsd: 0 } },
+    taskOutcome({ reviewer: "security", status: "completed", usage: usage({ costUsd: 0.25 }) }),
+    taskOutcome({ reviewer: "logic", status: "failed", usage: usage({ costUsd: 0.1 }) }),
+    taskOutcome({ reviewer: "logic", status: "timed_out", usage: usage({ costUsd: 0.05 }) }),
+    taskOutcome({ reviewer: "style", status: "cancelled", usage: usage() }),
   ],
   // As reconcile builds it: fixed and dismissed findings are gone from
   // findings[] and carry the reviewer the earlier review recorded, when it did.
   rereview: {
     fixed: [
-      { fingerprint: "fp-gone-unknown", title: "FIXED TITLE", file: "src/fixed-path.ts" },
-      { fingerprint: "fp-gone-logic", title: "t", file: "a", reviewer: "logic" },
+      priorFinding({
+        fingerprint: "fp-gone-unknown",
+        title: "FIXED TITLE",
+        file: "src/fixed-path.ts",
+      }),
+      priorFinding({ fingerprint: "fp-gone-logic", title: "t", file: "a", reviewer: "logic" }),
     ],
     dismissed: [
-      {
+      priorFinding({
         fingerprint: "fp-dismissed",
         title: "DISMISSED TITLE",
         file: "src/d.ts",
         reviewer: "security",
-      },
+      }),
     ],
     notReproduced: [],
     notRechecked: [],
     unchanged: [],
   },
   unverifiedCriticals: 0,
-  usage: { inputTokens: 100, outputTokens: 20, reasoningTokens: 0, cachedTokens: 0, costUsd: 0.5 },
-} as unknown as ReviewReport;
+  usage: usage({ inputTokens: 100, outputTokens: 20, costUsd: 0.5 }),
+});
 
 describe("the review upload", () => {
   it("carries counts only", () => {
@@ -123,7 +133,7 @@ describe("the review upload", () => {
     expect(up).toMatchObject({
       runId: "run-1",
       source: "local",
-      verdict: "changes_requested",
+      verdict: "significant_concerns",
       complete: false,
       findings: { critical: 1, warning: 2, suggestion: 0 },
       files: { reviewed: 1, notReviewed: 1 },
@@ -135,12 +145,12 @@ describe("the review upload", () => {
   });
 
   it("is incomplete whenever the exit code says so", () => {
-    const allReviewed = {
+    const allReviewed = reviewReport({
       ...report,
       coverage: [{ path: "src/secret.ts", status: "reviewed" }],
-    } as unknown as ReviewReport;
+    });
     expect(uploadOf(allReviewed, "local", "f".repeat(64), 1).complete).toBe(true);
-    const unverified = { ...allReviewed, unverifiedCriticals: 1 } as ReviewReport;
+    const unverified = reviewReport({ ...allReviewed, unverifiedCriticals: 1 });
     expect(uploadOf(unverified, "local", "f".repeat(64), 1).complete).toBe(false);
   });
 
@@ -184,13 +194,22 @@ describe("the review upload", () => {
       {
         ...report,
         rereview: {
-          fixed: [{ fingerprint: "fp-gone", title: "t", file: "a", reviewer: "performance" }],
-          dismissed: [{ fingerprint: "fp-3", title: "t", file: "a", reviewer: "security" }],
+          fixed: [
+            priorFinding({
+              fingerprint: "fp-gone",
+              title: "t",
+              file: "a",
+              reviewer: "performance",
+            }),
+          ],
+          dismissed: [
+            priorFinding({ fingerprint: "fp-3", title: "t", file: "a", reviewer: "security" }),
+          ],
           notReproduced: [],
           notRechecked: [],
           unchanged: [],
         },
-      } as unknown as ReviewReport,
+      },
       "github",
       "f".repeat(64),
       1,

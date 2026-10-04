@@ -5,7 +5,6 @@ import {
   type Effort,
   type Finding,
   MODEL_TIERS,
-  type ReviewReport,
   type RiskTier,
   type Verdict,
 } from "@open-cr-agent/core";
@@ -15,6 +14,7 @@ import {
   severitySchema,
   verificationSchema,
 } from "@open-cr-agent/core/internal";
+import { priorFinding, reviewReport, taskOutcome, usage } from "@open-cr-agent/test-support";
 import { describe, expect, it } from "vitest";
 import { parseAccountPlugins } from "../plugins/account.js";
 import { parseAccountSettings } from "./account-settings.js";
@@ -88,7 +88,7 @@ const { verification: _v, ...unchecked } = finding({
   severity: "suggestion",
 });
 
-const report = {
+const report = reviewReport({
   runId: "run-2026-10-04-a1b2",
   tier: "full",
   verdict: "significant_concerns",
@@ -99,28 +99,34 @@ const report = {
     { path: "src/huge.ts", status: "unreviewed" },
   ],
   tasks: [
-    { reviewer: "security", status: "completed", usage: { costUsd: 0.25 } },
-    { reviewer: "logic", status: "completed", usage: { costUsd: 0.125 } },
-    { reviewer: "logic", status: "timed_out", usage: { costUsd: 0.0625 } },
+    taskOutcome({ reviewer: "security", status: "completed", usage: usage({ costUsd: 0.25 }) }),
+    taskOutcome({ reviewer: "logic", status: "completed", usage: usage({ costUsd: 0.125 }) }),
+    taskOutcome({ reviewer: "logic", status: "timed_out", usage: usage({ costUsd: 0.0625 }) }),
   ],
   rereview: {
-    fixed: [{ fingerprint: "aaaabbbbccccdddd", title: "t", file: "a.ts", reviewer: "logic" }],
+    fixed: [
+      priorFinding({
+        fingerprint: "aaaabbbbccccdddd",
+        title: "t",
+        file: "a.ts",
+        reviewer: "logic",
+      }),
+    ],
     dismissed: [
-      { fingerprint: "eeeeffff00001111", title: "t", file: "b.ts", reviewer: "security" },
+      priorFinding({
+        fingerprint: "eeeeffff00001111",
+        title: "t",
+        file: "b.ts",
+        reviewer: "security",
+      }),
     ],
     notReproduced: [],
     notRechecked: [],
     unchanged: [],
   },
   unverifiedCriticals: 0,
-  usage: {
-    inputTokens: 1200,
-    outputTokens: 340,
-    reasoningTokens: 0,
-    cachedTokens: 0,
-    costUsd: 0.4375,
-  },
-} as unknown as ReviewReport;
+  usage: usage({ inputTokens: 1200, outputTokens: 340, costUsd: 0.4375 }),
+});
 
 describe("the contract's fixtures", () => {
   it("upload.json is what this CLI sends", () => {

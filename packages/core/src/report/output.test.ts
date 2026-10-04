@@ -22,7 +22,11 @@ const finding: Finding = {
   quote: { lines: 1, hash: "fedcba9876543210" },
 };
 
-const report = {
+// A file-level finding: no line range.
+const { lineRange: _, ...fileLevel } = { ...finding, fingerprint: "1".repeat(16) };
+
+const report: ReviewReport = {
+  runId: "20260101T000000Z-abcdef",
   changeRequest: { id: "1", title: "t", description: "", baseSha: "b", headSha: "h" },
   tier: "full",
   verdict: "minor_issues",
@@ -31,13 +35,13 @@ const report = {
   bundles: [],
   tasks: [],
   skipped: [],
-  findings: [finding, { ...finding, fingerprint: "1".repeat(16), lineRange: undefined }],
+  findings: [finding, fileLevel],
   unverifiedCriticals: 1,
   refuted: [],
   remembered: [],
   usage: { inputTokens: 1, outputTokens: 1, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 },
   warnings: [],
-} as unknown as ReviewReport;
+};
 
 describe("toReportOutput", () => {
   it("publishes a versioned report without internal fields", () => {

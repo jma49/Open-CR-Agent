@@ -93,10 +93,8 @@ describe("renderSarif", () => {
   });
 
   it("gives a finding without lines the whole file, and encodes the path as a URI", () => {
-    const run = firstRun({
-      ...report,
-      findings: [finding({ file: "docs/a b#c?.md", lineRange: undefined as never })],
-    });
+    const { lineRange: _, ...noLines } = finding({ file: "docs/a b#c?.md" });
+    const run = firstRun({ ...report, findings: [noLines] });
     expect(at(at(run.results, 0).locations, 0).physicalLocation).toEqual({
       artifactLocation: { uri: "docs/a%20b%23c%3F.md", uriBaseId: "%SRCROOT%" },
     });

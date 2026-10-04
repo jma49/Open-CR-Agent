@@ -1,4 +1,5 @@
 import { type Finding, type ReviewReport, toReportOutput } from "@open-cr-agent/core";
+import { at } from "@open-cr-agent/core/internal";
 import { describe, expect, it } from "vitest";
 import { renderJson, renderText } from "./render.js";
 
@@ -124,7 +125,7 @@ describe("renderText", () => {
       coverage: [...base.coverage, { path: "src/b.ts", status: "failed" }],
       tasks: [
         ...base.tasks,
-        { ...base.tasks[0], taskId: "correctness-2", status: "failed", error: "x" } as never,
+        { ...at(base.tasks, 0), taskId: "correctness-2", status: "failed", error: "x" },
       ],
     };
     const text = renderText(report);
@@ -132,7 +133,7 @@ describe("renderText", () => {
     expect(text).toContain("Incomplete: 1 of 2 review task(s) did not finish.");
     expect(text).toContain("Incomplete: 1 selected file(s) were not reviewed.");
     expect(renderText(base)).toContain("No issues found.\n");
-    const nothingSelected = { ...base, coverage: [base.coverage[1] as never] };
+    const nothingSelected = { ...base, coverage: [at(base.coverage, 1)] };
     expect(renderText(nothingSelected)).toContain(
       "Nothing to review: no changed file was selected.",
     );
@@ -212,7 +213,7 @@ describe("renderText", () => {
     const failed: ReviewReport = {
       ...base,
       coverage: [{ path: "src/a.ts", status: "failed" }],
-      tasks: [{ ...base.tasks[0], status: "failed" } as never],
+      tasks: [{ ...at(base.tasks, 0), status: "failed" }],
     };
     // The matrix skipped every reviewer: no task ran at all.
     const skipped: ReviewReport = {

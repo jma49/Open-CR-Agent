@@ -51,15 +51,18 @@ describe("committable suggestions", () => {
   });
 
   it("offers none unless the comment is on exactly the fixed lines in the diff", () => {
-    const cases: Partial<Finding>[] = [
-      { fix: { startLine: 3, endLine: 4, replacement: "x();" } },
-      { fix: { startLine: 2, endLine: 5, replacement: "x();" } },
-      { anchor: { method: "file", inDiff: false } },
-      { lineRange: undefined as never, anchor: { method: "file_level", inDiff: false } },
+    const { lineRange: _, ...fileLevel } = withFix("x();", {
+      anchor: { method: "file_level", inDiff: false },
+    });
+    const cases: Finding[] = [
+      withFix("x();", { fix: { startLine: 3, endLine: 4, replacement: "x();" } }),
+      withFix("x();", { fix: { startLine: 2, endLine: 5, replacement: "x();" } }),
+      withFix("x();", { anchor: { method: "file", inDiff: false } }),
+      fileLevel,
     ];
-    for (const overrides of cases) {
+    for (const finding of cases) {
       for (const fence of [githubSuggestion, gitlabSuggestion]) {
-        expect(block(inlineBody(withFix("x();", overrides), fence))).toBeUndefined();
+        expect(block(inlineBody(finding, fence))).toBeUndefined();
       }
     }
     expect(block(inlineBody(finding(A), githubSuggestion))).toBeUndefined();
