@@ -132,6 +132,23 @@ describe("ocra review --mr", () => {
     expect(gitlab.calls.every((c) => c.url.startsWith("https://gitlab.com/api/"))).toBe(true);
   });
 
+  it("names the merge request when Ctrl-C comes during publishing", async () => {
+    const { clone, base, head } = changeRequestFixture();
+    const gitlab = fakeGitLab(base, head);
+    const handlers: (() => void)[] = [];
+    const err = capture();
+    await run(["review", "--mr", "7", "--project", "o/r", "--publish"], capture(), err, {
+      ...deps(clone, gitlab.fetchImpl, { GITLAB_TOKEN: "glpat-t" }),
+      onInterrupt: (handler) => {
+        handlers.push(handler);
+        return () => {};
+      },
+    });
+    // The last handler is the one held while publishing.
+    handlers.at(-1)?.();
+    expect(err.text()).toContain("may leave the merge request half updated");
+  });
+
   it("takes the project and the API from GitLab CI's variables", async () => {
     const { clone, base, head } = changeRequestFixture();
     const api = "https://gitlab.example.com/api/v4";

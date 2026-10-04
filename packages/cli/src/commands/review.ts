@@ -53,6 +53,7 @@ import { renderSarif } from "./review/sarif.js";
 import { loadSarifLogs } from "./review/sarif-input.js";
 import { effectiveSettings, renderSettings } from "./review/settings-sources.js";
 import {
+  CHANGE_REQUEST,
   resolveLocalTarget,
   resolveMergeRequestTarget,
   resolvePullRequestTarget,
@@ -303,12 +304,13 @@ export async function reviewCommand(
   const hidden = report.remembered.filter((e) => e.source === "account").length;
   if (hidden > 0) io.err.write(`[ocra] ${hidden} finding(s) hidden by your ocra Cloud memory\n`);
   if (interrupt.signal.aborted) return EXIT.interrupted;
-  if (target.publish) {
+  if (target.publish && target.platform !== "local") {
+    const changeRequest = CHANGE_REQUEST[target.platform];
     // Stopping halfway could post the inline comments without the summary
     // that remembers them; a first Ctrl-C only warns.
     const stopHolding = deps.onInterrupt?.(() => {
       io.err.write(
-        "[ocra] Publishing; Ctrl-C again quits now and may leave the pull request half updated\n",
+        `[ocra] Publishing; Ctrl-C again quits now and may leave the ${changeRequest} half updated\n`,
       );
     });
     try {
@@ -317,11 +319,11 @@ export async function reviewCommand(
     } finally {
       stopHolding?.();
     }
-    io.err.write(`[ocra] Published the review to the ${target.publishesTo ?? "change request"}\n`);
+    io.err.write(`[ocra] Published the review to the ${changeRequest}\n`);
   }
   if (cloudReview && cloudDeps && !args.noUpload) {
     await sendToCloud(report, cloudReview, cloudDeps, {
-      source: args.pullRequest ? "github" : args.mergeRequest ? "gitlab" : "local",
+      source: target.platform,
       durationMs: deps.now() - started,
       err: io.err,
       warn,

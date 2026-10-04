@@ -17,7 +17,13 @@ import { loadExternalPlugins } from "../../plugins/load.js";
 import { repositoryOfWebUrl } from "../../repository-id.js";
 import type { MergeRequestArgs, PullRequestArgs, ReviewArgs } from "./args.js";
 
+export type Platform = "local" | "github" | "gitlab";
+
+// What a review published to a platform lands on, as the output names it.
+export const CHANGE_REQUEST = { github: "pull request", gitlab: "merge request" } as const;
+
 export interface ReviewTarget {
+  platform: Platform;
   config: CliConfig;
   plugins: OcraPlugin[];
   // Whether plugins the ocra Cloud account names may load (ADR-0027): only
@@ -26,8 +32,6 @@ export interface ReviewTarget {
   createVcs(registry: PluginRegistry): VcsAdapter;
   readTrusted?: (path: string) => Promise<string | undefined>;
   publish: boolean;
-  // What a published review lands on: "pull request" or "merge request".
-  publishesTo?: string;
   // The reviewed repository as `https://host/owner/repo` when it is not
   // the checkout's origin: the pull or merge request's (repository-id.ts).
   repository?: string;
@@ -50,6 +54,7 @@ export async function resolveLocalTarget(
     ...(fetchImpl ? { fetch: fetchImpl } : {}),
   });
   return {
+    platform: "local",
     config,
     // Plugins named by the user's own file are resolved from where it is.
     plugins: await loadExternalPlugins(
@@ -114,13 +119,14 @@ export async function resolvePullRequestTarget(
     ...(fetchImpl ? { fetch: fetchImpl } : {}),
   });
   if (config.plugins.length > 0) {
-    warn("plugins in the configuration are not loaded for pull requests");
+    warn(`plugins in the configuration are not loaded for ${CHANGE_REQUEST.github}s`);
   }
   const code = new LocalGitAdapter({
     cwd,
     target: { mode: "range", from: pull.base.sha, to: pull.head.sha },
   });
   return {
+    platform: "github",
     config,
     plugins: [],
     accountPlugins: false,
@@ -142,7 +148,6 @@ export async function resolvePullRequestTarget(
       }),
     readTrusted,
     publish: pr.publish,
-    publishesTo: "pull request",
     ...definedRepository(pull.html_url),
   };
 }
@@ -202,13 +207,14 @@ export async function resolveMergeRequestTarget(
     ...(fetchImpl ? { fetch: fetchImpl } : {}),
   });
   if (config.plugins.length > 0) {
-    warn("plugins in the configuration are not loaded for merge requests");
+    warn(`plugins in the configuration are not loaded for ${CHANGE_REQUEST.gitlab}s`);
   }
   const code = new LocalGitAdapter({
     cwd,
     target: { mode: "range", from: refs.start_sha, to: refs.head_sha },
   });
   return {
+    platform: "gitlab",
     config,
     plugins: [],
     accountPlugins: false,
@@ -227,7 +233,6 @@ export async function resolveMergeRequestTarget(
       }),
     readTrusted,
     publish: mr.publish,
-    publishesTo: "merge request",
     ...definedRepository(merge.web_url),
   };
 }
