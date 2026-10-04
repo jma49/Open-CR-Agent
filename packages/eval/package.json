@@ -1,20 +1,13 @@
 {
   "name": "@open-cr-agent/eval",
-  "version": "0.2.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Benchmark replay and review quality metrics for Open-CR-Agent",
   "license": "Apache-2.0",
-  "type": "module",
-  "exports": {
-    ".": {
-      "@open-cr-agent/source": "./src/index.ts",
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
+  "engines": {
+    "node": ">=22.19"
   },
-  "files": [
-    "dist"
-  ],
+  "type": "module",
   "dependencies": {
     "@open-cr-agent/cli": "0.5.0",
     "@open-cr-agent/core": "0.5.0",

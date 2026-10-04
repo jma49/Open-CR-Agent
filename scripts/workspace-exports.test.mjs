@@ -11,11 +11,16 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 // first, or the dist/ entries would win; consumers never set it.
 describe("workspace exports", () => {
   for (const { dir, json } of readWorkspaces(root)) {
-    const entries = Object.entries(json.exports).filter(([, entry]) => typeof entry === "object");
+    const entries = Object.entries(json.exports ?? {}).filter(
+      ([, entry]) => typeof entry === "object",
+    );
 
-    it(`${json.name} has a main entry`, () => {
-      expect(json.exports["."]).toBeTypeOf("object");
-    });
+    // A private package (eval) is a command, not a library: it has no API.
+    if (!json.private) {
+      it(`${json.name} has a main entry`, () => {
+        expect(json.exports["."]).toBeTypeOf("object");
+      });
+    }
 
     for (const [path, entry] of entries) {
       it(`${json.name} exports the source of ${path} under @open-cr-agent/source`, () => {
