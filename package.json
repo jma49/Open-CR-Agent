@@ -10,7 +10,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && node scripts/mark-bins.mjs",
     "typecheck": "tsc -b && tsc -p tsconfig.test.json",
     "test": "vitest run",
     "check": "biome check .",
