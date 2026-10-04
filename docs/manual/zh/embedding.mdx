@@ -108,7 +108,7 @@ try {
 
 `review()` 只在运行无法开始时 reject：没有审查员、`.ocra/rules.json` 或 `.ocra/memory.json` 无效，或者 VCS 适配器读不到改动。任务开始运行之后，任务失败、辅助调用失败、模型配额用尽和触及花费上限都会记录在报告里（任务结果、覆盖情况、警告），而不是抛出；按上文用 `coverageGaps(report)` 读取它们。
 
-ocra 的各个包抛出的都是 `OcraError`（或它的子类），带有 `code`；`isOcraError(error, code?)` 可以判断，`OCRA_ERROR_CODES` 列出全部代码。如果错误源于另一个错误（JSON 解析错误、读取失败），那个错误就是 `cause`。请按代码分支，不要按消息：消息是给人看的，措辞可能会改。插件提供的适配器或运行时可能抛出它自己的错误，所以调用方也要处理不是 `OcraError` 的错误。
+ocra 的各个包抛出的都是 `OcraError`（或它的子类），带有 `code`；`isOcraError(error, code?)` 可以判断，`OCRA_ERROR_CODES` 列出全部代码。如果错误源于另一个错误（JSON 解析错误、读取失败），那个错误就是 `cause`。请按代码分支，不要按消息：消息是给人看的，措辞可能会改。插件提供的适配器或运行时可能抛出它自己的错误，所以调用方也要处理不是 `OcraError` 的错误；`errorMessage(error)` 能取出任何被抛出值的消息，不管它是不是 `Error`。
 
 | 代码 | 含义 |
 |---|---|

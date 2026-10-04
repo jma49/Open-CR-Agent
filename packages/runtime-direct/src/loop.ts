@@ -2,6 +2,7 @@ import {
   type AttemptOutcome,
   addUsage,
   emptyUsage,
+  errorMessage,
   type ModelPrice,
   REVIEW_TOOLS,
   type ReviewContext,
@@ -145,6 +146,6 @@ async function runTool(
   try {
     return await tool.execute(parsed.data, context);
   } catch (error) {
-    return `Tool failed: ${error instanceof Error ? error.message : String(error)}`;
+    return `Tool failed: ${errorMessage(error)}`;
   }
 }

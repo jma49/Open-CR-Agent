@@ -1,3 +1,4 @@
+import { errorMessage } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import { GitLabApi, GitLabApiError } from "./client.js";
 
@@ -112,9 +113,9 @@ describe("GitLabApi", () => {
     const { client } = api([json({ message: "403 Forbidden" }, 403)]);
     const error = await client.createNote(7, "hi").catch((e: Error) => e);
     expect(error).toBeInstanceOf(GitLabApiError);
-    expect((error as Error).message).toBe(
+    expect(errorMessage(error)).toBe(
       'GitLab POST /merge_requests/7/notes failed with 403: {"message":"403 Forbidden"}',
     );
-    expect((error as Error).message).not.toContain("glpat-secret");
+    expect(errorMessage(error)).not.toContain("glpat-secret");
   });
 });

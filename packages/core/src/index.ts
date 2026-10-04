@@ -54,6 +54,7 @@ export type {
 } from "./domain.js";
 export {
   CompletionError,
+  errorMessage,
   isOcraError,
   OCRA_ERROR_CODES,
   OcraError,

@@ -1,7 +1,7 @@
 import { rm } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import type { TokenAnswer } from "@open-cr-agent/cloud-contract";
-import { errorMessage } from "@open-cr-agent/core/internal";
+import { errorMessage } from "@open-cr-agent/core";
 import { saveAccountSalt } from "../cloud/account-salt.js";
 import { signInPage } from "../cloud/browser.js";
 import { CloudClient } from "../cloud/client.js";

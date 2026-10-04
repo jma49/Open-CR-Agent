@@ -108,7 +108,7 @@ Events (`onEvent`) are how progress, the session log and the terminal output are
 
 `review()` rejects only when the run cannot start: no reviewers, an invalid `.ocra/rules.json` or `.ocra/memory.json`, or a change the VCS adapter cannot read. Once tasks run, a failed task, a failed helper call, a model that is out of quota and the spend limit are recorded in the report (task outcomes, coverage, warnings), not thrown; read them with `coverageGaps(report)` as above.
 
-What ocra's packages throw is an `OcraError` (or one of its subclasses) with a `code`; `isOcraError(error, code?)` tells you so, and `OCRA_ERROR_CODES` lists the codes. Where an error has an underlying one (a JSON parse error, a failed read), it is the `cause`. Branch on the code, never on the message: messages are for people and may be reworded. A plugin's adapter or runtime may throw errors of its own, so a caller should handle errors that are not `OcraError` too.
+What ocra's packages throw is an `OcraError` (or one of its subclasses) with a `code`; `isOcraError(error, code?)` tells you so, and `OCRA_ERROR_CODES` lists the codes. Where an error has an underlying one (a JSON parse error, a failed read), it is the `cause`. Branch on the code, never on the message: messages are for people and may be reworded. A plugin's adapter or runtime may throw errors of its own, so a caller should handle errors that are not `OcraError` too; `errorMessage(error)` gives the message of any thrown value, an `Error` or not.
 
 | Code | Meaning |
 |---|---|

@@ -9,7 +9,7 @@ import {
   writeSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { OcraError } from "../errors.js";
+import { isNotFound, OcraError } from "../errors.js";
 import { newRunId } from "../pipeline/run-id.js";
 import { toReportOutput } from "../report/output.js";
 import type { ReviewEvent } from "../report/report.js";
@@ -64,6 +64,6 @@ function refuseSymlink(path: string): void {
       );
     }
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    if (!isNotFound(error)) throw error;
   }
 }

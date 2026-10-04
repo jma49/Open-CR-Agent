@@ -12,8 +12,7 @@ import {
   tokenAnswerSchema,
   uploadAnswerSchema,
 } from "@open-cr-agent/cloud-contract";
-import { OcraError } from "@open-cr-agent/core";
-import { errorMessage } from "@open-cr-agent/core/internal";
+import { errorMessage, OcraError } from "@open-cr-agent/core";
 import type { z } from "zod";
 import { VERSION } from "../version.js";
 import { type Credentials, readCredentials, writeCredentials } from "./credentials.js";

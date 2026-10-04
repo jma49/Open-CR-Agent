@@ -345,6 +345,9 @@ export function emptyUsage(): Usage;
 export type Env = Readonly<Record<string, string | undefined>>;
 
 // @public (undocumented)
+export function errorMessage(error: unknown): string;
+
+// @public (undocumented)
 export type ExclusionReason = z.infer<typeof exclusionReasonSchema>;
 
 // @public (undocumented)

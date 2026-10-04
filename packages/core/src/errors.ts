@@ -64,5 +64,17 @@ export function usageSpent(error: unknown): Usage | undefined {
 }
 
 export function errorMessage(error: unknown): string {
+  // biome-ignore lint/plugin: the one definition the rule points to
   return error instanceof Error ? error.message : String(error);
+}
+
+// The code of a failed system call (ENOENT, EEXIST, …), when the error has one.
+export function errnoCode(error: unknown): string | undefined {
+  return error instanceof Error && "code" in error && typeof error.code === "string"
+    ? error.code
+    : undefined;
+}
+
+export function isNotFound(error: unknown): boolean {
+  return errnoCode(error) === "ENOENT";
 }

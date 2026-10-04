@@ -5,7 +5,7 @@
 export { AGENT_ROLES } from "./agent/settings.js";
 export { parseUnifiedDiff } from "./diff/parse.js";
 export { severitySchema, verificationSchema } from "./domain.js";
-export { errorMessage, usageSpent } from "./errors.js";
+export { errnoCode, isNotFound, usageSpent } from "./errors.js";
 export {
   MEMORY_PATH,
   memoryEntrySchema,

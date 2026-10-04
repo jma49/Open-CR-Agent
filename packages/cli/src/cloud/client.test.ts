@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { isOcraError } from "@open-cr-agent/core";
+import { errorMessage, isOcraError } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import { loginCommand } from "../commands/login.js";
 import { CloudClient } from "./client.js";
@@ -219,6 +219,6 @@ describe("an answer that is not one", () => {
     const m = machine({ "/api/preferences": offline }, {});
     const error = await new CloudClient(m.deps).preferences().catch((e: unknown) => e);
     expect(isOcraError(error, "CLOUD_API_FAILED")).toBe(true);
-    expect((error as Error).message).toBe("fetch failed");
+    expect(errorMessage(error)).toBe("fetch failed");
   });
 });

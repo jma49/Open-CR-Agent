@@ -1,5 +1,4 @@
-import { type FileDiff, OcraError, type ReviewReport } from "@open-cr-agent/core";
-import { errorMessage } from "@open-cr-agent/core/internal";
+import { errorMessage, type FileDiff, OcraError, type ReviewReport } from "@open-cr-agent/core";
 import {
   type Bot,
   type CodeSource,

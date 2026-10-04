@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { OcraError } from "../errors.js";
+import { errorMessage, OcraError } from "../errors.js";
 
 // The part of SARIF 2.1.0 an import reads. Objects are loose: a log carries
 // far more than this, and none of it is trusted beyond what is checked here.
@@ -75,7 +75,7 @@ export function parseSarifLog(text: string): SarifLog {
   try {
     data = JSON.parse(text);
   } catch (error) {
-    throw new SarifError(`not valid JSON: ${(error as Error).message}`);
+    throw new SarifError(`not valid JSON: ${errorMessage(error)}`);
   }
   const parsed = sarifLogSchema.safeParse(data);
   if (!parsed.success)

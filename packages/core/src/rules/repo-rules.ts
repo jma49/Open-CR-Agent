@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { OcraError } from "../errors.js";
+import { errorMessage, OcraError } from "../errors.js";
 
 export const repoRuleSchema = z.object({
   path: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
@@ -24,7 +24,7 @@ export function parseRepoRules(json: string): RepoRule[] {
   } catch (error) {
     throw new OcraError(
       "CONFIG_INVALID",
-      `${REPO_RULES_PATH} is not valid JSON: ${(error as Error).message}`,
+      `${REPO_RULES_PATH} is not valid JSON: ${errorMessage(error)}`,
       { cause: error },
     );
   }

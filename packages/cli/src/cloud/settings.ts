@@ -1,5 +1,5 @@
 import type { SourcedRule } from "@open-cr-agent/core";
-import { errorMessage } from "@open-cr-agent/core/internal";
+import { errorMessage } from "@open-cr-agent/core";
 import type { SettingsLayer } from "../config/settings.js";
 import { type AccountPlugins, parseAccountPlugins } from "../plugins/account.js";
 import { type AccountSettings, parseAccountSettings } from "./account-settings.js";

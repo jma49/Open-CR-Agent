@@ -5,8 +5,8 @@ import {
   isCloudModel,
 } from "@open-cr-agent/cloud-contract";
 import type { CustomProvider } from "@open-cr-agent/core";
-import { OcraError } from "@open-cr-agent/core";
-import { errorMessage, REVIEW_DEFAULTS } from "@open-cr-agent/core/internal";
+import { errorMessage, OcraError } from "@open-cr-agent/core";
+import { REVIEW_DEFAULTS } from "@open-cr-agent/core/internal";
 import { CloudClient, sessionLostReason } from "./client.js";
 import type { CloudDeps } from "./deps.js";
 import { GatewayToken } from "./gateway-token.js";

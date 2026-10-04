@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { SpendLimitReached } from "./agent/budget.js";
 import { emptyUsage } from "./agent/usage.js";
-import { CompletionError, isOcraError, OCRA_ERROR_CODES, OcraError } from "./errors.js";
+import {
+  CompletionError,
+  errorMessage,
+  isOcraError,
+  OCRA_ERROR_CODES,
+  OcraError,
+} from "./errors.js";
 import { parseMemory } from "./memory/memory.js";
 import { AccessDeniedError } from "./pipeline/context.js";
 import { review } from "./pipeline/run.js";
@@ -99,6 +105,6 @@ describe("codes on representative throws", () => {
       reviewers: [],
     }).catch((e: unknown) => e);
     expect(isOcraError(error, "CONFIG_INVALID")).toBe(true);
-    expect((error as Error).message).toBe("No reviewer is registered");
+    expect(errorMessage(error)).toBe("No reviewer is registered");
   });
 });

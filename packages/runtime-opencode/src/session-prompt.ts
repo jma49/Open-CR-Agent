@@ -1,6 +1,7 @@
 import {
   type AttemptOutcome,
   emptyUsage,
+  errorMessage,
   OcraError,
   parseModel,
   type Usage,
@@ -120,7 +121,7 @@ export async function promptSession(
       return {
         ...(await harvest(session, sessionID, reportTool, input.toolPrefix)),
         error: {
-          message: `could not read the finished session: ${error instanceof Error ? error.message : String(error)}`,
+          message: `could not read the finished session: ${errorMessage(error)}`,
           retryable: false,
         },
       };
@@ -157,7 +158,7 @@ export async function promptSession(
         ? { message: "cancelled", retryable: false }
         : silence.signal.aborted
           ? { message: `no activity for ${seconds}s`, retryable: true }
-          : { message: error instanceof Error ? error.message : String(error), retryable: true },
+          : { message: errorMessage(error), retryable: true },
     };
   } finally {
     silence.stop();

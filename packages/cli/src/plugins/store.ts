@@ -1,5 +1,6 @@
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { isNotFound } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 import { ConfigError } from "../config/cli-config.js";
 import { ocraConfigDir } from "../config/user-dir.js";
@@ -42,7 +43,7 @@ export async function readAllowed(dir: string): Promise<AllowedPlugin[]> {
   try {
     text = await readFile(join(dir, "plugins.json"), "utf8");
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    if (isNotFound(error)) return [];
     throw error;
   }
   let data: unknown;

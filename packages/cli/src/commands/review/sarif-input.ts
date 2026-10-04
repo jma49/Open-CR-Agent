@@ -1,6 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
-import { parseSarifLog, type SarifLog } from "@open-cr-agent/core";
+import { errorMessage, parseSarifLog, type SarifLog } from "@open-cr-agent/core";
 import { ConfigError } from "../../config/cli-config.js";
 
 // A log is untrusted input like everything else that reaches the review; it
@@ -20,12 +20,12 @@ export async function loadSarifLogs(paths: readonly string[], cwd: string): Prom
       text = await readFile(file, "utf8");
     } catch (error) {
       if (error instanceof ConfigError) throw error;
-      throw new ConfigError(`--import-sarif ${path}: ${(error as Error).message}`);
+      throw new ConfigError(`--import-sarif ${path}: ${errorMessage(error)}`);
     }
     try {
       logs.push(parseSarifLog(text));
     } catch (error) {
-      throw new ConfigError(`--import-sarif ${path}: ${(error as Error).message}`);
+      throw new ConfigError(`--import-sarif ${path}: ${errorMessage(error)}`);
     }
   }
   return logs;

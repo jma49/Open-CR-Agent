@@ -9,7 +9,7 @@ import {
   type PriorReview,
   type VcsAdapter,
 } from "@open-cr-agent/core";
-import { parseUnifiedDiff } from "@open-cr-agent/core/internal";
+import { errnoCode, parseUnifiedDiff } from "@open-cr-agent/core/internal";
 import { GitError, git, isShallow, SHALLOW_HINT } from "./git.js";
 
 export type LocalTarget =
@@ -255,7 +255,7 @@ async function readWorkingTreeFile(root: string, inside: string): Promise<string
       await handle.close();
     }
   } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code;
+    const code = errnoCode(error);
     if (code === "ENOENT" || code === "ENOTDIR") return undefined;
     throw error;
   }

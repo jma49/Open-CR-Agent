@@ -3,7 +3,12 @@ import { lstat, mkdir, open, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import type { MemoryEntry, OutputFinding } from "@open-cr-agent/core";
-import { MEMORY_PATH, parseMemory, serializeMemory } from "@open-cr-agent/core/internal";
+import {
+  isNotFound,
+  MEMORY_PATH,
+  parseMemory,
+  serializeMemory,
+} from "@open-cr-agent/core/internal";
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
 import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
@@ -107,7 +112,7 @@ async function readMemory(root: string): Promise<MemoryEntry[]> {
   try {
     return parseMemory(await readFile(join(root, MEMORY_PATH), "utf8"));
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    if (isNotFound(error)) return [];
     throw error;
   }
 }

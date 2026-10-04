@@ -1,6 +1,7 @@
 import { MAX_MEMORY_PER_REPO } from "@open-cr-agent/cloud-contract";
 import type { MemoryEntry } from "@open-cr-agent/core";
-import { errorMessage, memoryEntrySchema } from "@open-cr-agent/core/internal";
+import { errorMessage } from "@open-cr-agent/core";
+import { memoryEntrySchema } from "@open-cr-agent/core/internal";
 import { CloudClient, type CloudResult, sessionLostReason } from "./client.js";
 import type { CloudDeps } from "./deps.js";
 

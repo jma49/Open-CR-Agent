@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { isNotFound } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 import { type GoldenCase, parseCase, readJson } from "./golden.js";
 import type { GoldenFinding } from "./golden-score.js";
@@ -55,7 +56,7 @@ export async function readLabels(runDir: string): Promise<LabelsFile | undefined
   try {
     data = await readJson(path);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    if (isNotFound(error)) return undefined;
     throw error;
   }
   const result = labelsSchema.safeParse(data);

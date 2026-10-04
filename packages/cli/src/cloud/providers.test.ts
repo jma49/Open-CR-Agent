@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { isOcraError } from "@open-cr-agent/core";
+import { errorMessage, isOcraError } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import type { Credentials } from "./credentials.js";
 import type { CloudDeps } from "./deps.js";
@@ -220,7 +220,7 @@ describe("models through ocra Cloud", () => {
       const t = setup({}, {}, answer);
       const e = await failure(withCloudProviders([["ocra-openrouter/m"]], {}, {}, t.deps, t.warn));
       expect(isOcraError(e) && e.code).toBe("RUNTIME_START_FAILED");
-      expect((e as Error).message).toContain("not a list of providers");
+      expect(errorMessage(e)).toContain("not a list of providers");
     }
     const odd = setup({}, {}, () =>
       Response.json({ providers: [{ name: "openrouter", paths: "/v1/chat/completions" }] }),
@@ -229,7 +229,7 @@ describe("models through ocra Cloud", () => {
       withCloudProviders([["ocra-openrouter/m"]], {}, {}, odd.deps, odd.warn),
     );
     expect(isOcraError(e) && e.code).toBe("CONFIG_INVALID");
-    expect((e as Error).message).toContain('no OpenAI-compatible chat endpoint for "openrouter"');
+    expect(errorMessage(e)).toContain('no OpenAI-compatible chat endpoint for "openrouter"');
   });
 
   it("takes the effort style ocra Cloud lists, and refuses one it does not know", async () => {

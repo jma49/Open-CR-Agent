@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { readFile, rm, stat, writeFile } from "node:fs/promises";
+import { errnoCode, isNotFound } from "@open-cr-agent/core/internal";
 
 // A lock between ocra processes on one machine: a file created exclusively,
 // holding when it was taken. Its times are the wall clock's, the one clock
@@ -45,7 +46,7 @@ async function acquire(path: string, timing: LockTiming): Promise<string | undef
       return token;
     } catch (error) {
       // A lock that cannot be made at all (a read-only directory) is no lock.
-      if ((error as NodeJS.ErrnoException).code !== "EEXIST") return undefined;
+      if (errnoCode(error) !== "EEXIST") return undefined;
     }
     const age = await ageOf(path);
     if (age === undefined) continue;
@@ -64,7 +65,7 @@ async function ageOf(path: string): Promise<number | undefined> {
     const at = (JSON.parse(await readFile(path, "utf8")) as { at?: unknown }).at;
     if (typeof at === "number") return Date.now() - at;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    if (isNotFound(error)) return undefined;
   }
   // Being written, or not a lock of ours: its file's own time stands in.
   try {

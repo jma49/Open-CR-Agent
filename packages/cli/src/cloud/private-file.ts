@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { link, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
+import { errnoCode } from "@open-cr-agent/core/internal";
 
 // Files only this user may read (the ocra Cloud session, the salts), written
 // so that no reader, another ocra process included, ever sees one half
@@ -28,7 +29,7 @@ export async function createPrivateFile(path: string, text: string): Promise<boo
     await link(temp, path);
     return true;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
+    if (errnoCode(error) === "EEXIST") return false;
     throw error;
   } finally {
     await rm(temp, { force: true });

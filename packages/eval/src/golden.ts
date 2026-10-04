@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { errorMessage } from "@open-cr-agent/core";
 import { severitySchema } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 import { attackInstance } from "./attack.js";
@@ -236,6 +237,6 @@ export async function readJson(path: string, label = path): Promise<unknown> {
   try {
     return JSON.parse(text);
   } catch (error) {
-    throw new Error(`${label}: not valid JSON (${(error as Error).message})`);
+    throw new Error(`${label}: not valid JSON (${errorMessage(error)})`);
   }
 }

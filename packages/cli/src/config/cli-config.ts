@@ -4,6 +4,7 @@ import {
   type CustomProvider,
   EFFORT_LEVELS,
   type Effort,
+  errorMessage,
   MODEL_TIERS,
   type ModelChains,
   type ModelTier,
@@ -13,6 +14,7 @@ import {
   type SourcedRule,
   type TierEfforts,
 } from "@open-cr-agent/core";
+import { isNotFound } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 import { fetchRemoteConfig, type RemoteConfig } from "./remote.js";
 import { type configSchema, DEFAULT_RUNTIME, effort } from "./schema.js";
@@ -226,7 +228,7 @@ function ownFile(file: string): () => Promise<string> {
     try {
       return await readFile(file, "utf8");
     } catch (error) {
-      throw new ConfigError(`cannot read ${file}: ${(error as Error).message}`, { cause: error });
+      throw new ConfigError(`cannot read ${file}: ${errorMessage(error)}`, { cause: error });
     }
   };
 }
@@ -235,7 +237,7 @@ async function readConfigFromDisk(root: string, path: string): Promise<string | 
   try {
     return await readFile(join(root, path), "utf8");
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    if (isNotFound(error)) return undefined;
     throw error;
   }
 }
@@ -252,7 +254,7 @@ async function fileLayers(
   try {
     data = JSON.parse(text);
   } catch (error) {
-    throw new ConfigError(`${label} is not valid JSON: ${(error as Error).message}`, {
+    throw new ConfigError(`${label} is not valid JSON: ${errorMessage(error)}`, {
       cause: error,
     });
   }
@@ -273,7 +275,7 @@ async function fileLayers(
       local.data.maxCostUsd === undefined
         ? "; none of its settings apply, including any spend or task limit"
         : "; none of its settings apply";
-    options.warn?.(`could not load extends ${shared}: ${(error as Error).message}${limits}`);
+    options.warn?.(`could not load extends ${shared}: ${errorMessage(error)}${limits}`);
     return [file];
   }
   const { rules = [], ...rest } = remote;

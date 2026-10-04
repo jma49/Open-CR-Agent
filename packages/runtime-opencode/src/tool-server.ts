@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { ReviewContext, ToolDefinition } from "@open-cr-agent/core";
+import { errorMessage } from "@open-cr-agent/core";
 
 // src/ and dist/ both sit one level below the package root.
 const VERSION: string = createRequire(import.meta.url)("../package.json").version;
@@ -66,7 +67,7 @@ function buildMcpServer(
         try {
           return { content: [{ type: "text" as const, text: await tool.execute(args, ctx) }] };
         } catch (error) {
-          return failure(error instanceof Error ? error.message : String(error));
+          return failure(errorMessage(error));
         }
       },
     );

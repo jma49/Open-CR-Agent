@@ -7,7 +7,7 @@ import type {
   ReviewReport,
   VcsAdapter,
 } from "@open-cr-agent/core";
-import { errorMessage } from "@open-cr-agent/core/internal";
+import { errorMessage } from "@open-cr-agent/core";
 import type {
   Bot,
   InlineFinding,

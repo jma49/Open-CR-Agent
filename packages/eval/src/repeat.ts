@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { isNotFound } from "@open-cr-agent/core/internal";
 import { formatInterval, formatValue, METRICS, type SavedSummary } from "./compare.js";
 import { readJson } from "./golden.js";
 import { confidenceInterval, type Interval } from "./interval.js";
@@ -80,7 +81,7 @@ export async function readRepeats(runDir: string): Promise<RepeatSummary | undef
   try {
     return (await readJson(join(runDir, REPEATS_FILE))) as RepeatSummary;
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    if (isNotFound(error)) return undefined;
     throw error;
   }
 }

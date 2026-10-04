@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { isAbsolute, join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { OcraPlugin } from "@open-cr-agent/core";
+import { errorMessage } from "@open-cr-agent/core";
 import { ConfigError } from "../config/cli-config.js";
 import { installedEntry, readAllowed } from "./store.js";
 
@@ -77,7 +78,7 @@ export async function loadAllowedPlugins(
       if (!isPlugin(plugin)) throw new Error('it exports no ocra plugin as default or "plugin"');
       loaded.push({ name, plugin });
     } catch (error) {
-      warn(`skipping plugin ${name} from your ocra Cloud settings: ${(error as Error).message}`);
+      warn(`skipping plugin ${name} from your ocra Cloud settings: ${errorMessage(error)}`);
     }
   }
   return loaded;

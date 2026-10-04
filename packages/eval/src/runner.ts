@@ -8,6 +8,7 @@ import type {
   Usage,
   Verdict,
 } from "@open-cr-agent/core";
+import { errorMessage } from "@open-cr-agent/core";
 import { plantAttack } from "./attack.js";
 import type { Instance } from "./instance.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
@@ -140,14 +141,14 @@ async function reviewOne(
     repoDir = await (options.prepare ?? prepareRepository)(options.reposDir, instance);
   } catch (error) {
     const status = error instanceof UnavailableCommitError ? "unavailable" : "failed";
-    return { ...base, status, durationMs: 0, error: (error as Error).message };
+    return { ...base, status, durationMs: 0, error: errorMessage(error) };
   }
   let target = instance;
   if (instance.golden?.attack) {
     try {
       target = { ...instance, headCommit: await plantAttack(repoDir, instance) };
     } catch (error) {
-      const message = `planting the attack failed: ${(error as Error).message}`;
+      const message = `planting the attack failed: ${errorMessage(error)}`;
       return { ...base, status: "failed", durationMs: 0, error: message };
     }
   }

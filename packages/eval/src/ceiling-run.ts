@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { RiskTier } from "@open-cr-agent/core";
+import { errorMessage } from "@open-cr-agent/core";
 import { type PlanOutput, parseUnifiedDiff } from "@open-cr-agent/core/internal";
 import {
   classifyReferences,
@@ -68,7 +69,7 @@ export async function measureCeiling(
       options.log(`${label}: ${instance.references.length} issue(s) classified`);
     } catch (error) {
       const kind = error instanceof UnavailableCommitError ? "unavailable" : "failed";
-      options.log(`${label}: ${kind}: ${(error as Error).message.split("\n")[0]}`);
+      options.log(`${label}: ${kind}: ${errorMessage(error).split("\n")[0]}`);
     }
   }
 

@@ -1,6 +1,7 @@
 import { setTimeout } from "node:timers/promises";
 import {
   type Effort,
+  errorMessage,
   type ModelPrice,
   parseQuotaError,
   type QuotaError,
@@ -180,7 +181,7 @@ async function send(
     return {
       ok: false,
       error: {
-        message: error instanceof Error ? error.message : String(error),
+        message: errorMessage(error),
         retryable: true,
         transient: true,
       },

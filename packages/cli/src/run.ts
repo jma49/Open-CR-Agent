@@ -1,7 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
-import { isOcraError } from "@open-cr-agent/core";
-import { errorMessage } from "@open-cr-agent/core/internal";
+import { errorMessage, isOcraError } from "@open-cr-agent/core";
 import { defaultCloudDeps } from "./cloud/deps.js";
 import { LOGIN_USAGE, loginCommand } from "./commands/login.js";
 import { memoryCommand } from "./commands/memory.js";

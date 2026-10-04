@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Finding } from "../domain.js";
-import { OcraError } from "../errors.js";
+import { errorMessage, OcraError } from "../errors.js";
 
 export const MEMORY_PATH = ".ocra/memory.json";
 const MAX_ENTRIES = 1_000;
@@ -26,7 +26,7 @@ export function parseMemory(json: string): MemoryEntry[] {
   } catch (error) {
     throw new OcraError(
       "CONFIG_INVALID",
-      `${MEMORY_PATH} is not valid JSON: ${(error as Error).message}`,
+      `${MEMORY_PATH} is not valid JSON: ${errorMessage(error)}`,
       { cause: error },
     );
   }

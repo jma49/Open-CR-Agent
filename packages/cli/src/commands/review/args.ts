@@ -1,4 +1,5 @@
 import { parseArgs } from "node:util";
+import { errorMessage } from "@open-cr-agent/core";
 import type { LocalTarget } from "@open-cr-agent/vcs-local";
 import { UsageError } from "../../io/usage-error.js";
 
@@ -78,7 +79,7 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
   try {
     parsed = parse(argv);
   } catch (error) {
-    throw new UsageError((error as Error).message);
+    throw new UsageError(errorMessage(error));
   }
   const { values, positionals } = parsed;
   if (values.help) return "help";
