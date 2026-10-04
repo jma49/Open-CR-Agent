@@ -6,9 +6,8 @@ Rules for humans and AI agents working on Open-CR-Agent (`ocra`). This file is a
 
 Open-CR-Agent is an open-source multi-agent code review system. Deterministic engineering (file selection, bundling, rule matching, anchoring) wraps LLM agents that only make judgment calls. See [docs/architecture.md](docs/architecture.md) and the decision records in [docs/adr/](docs/adr/).
 
-- Language: TypeScript (ESM, strict), Node >= 22.19
-- Monorepo: npm workspaces under `packages/`
-- Tests: Vitest (`npm test`) · Types: `npm run typecheck` · Lint/format: Biome (`npm run check`) · All three: `npm run verify`
+- TypeScript (ESM, strict), Node >= 22.19, npm workspaces under `packages/`
+- `npm run verify` runs Biome (`check`), `typecheck`, the API reports (`check:api`), `knip` and every test. `npm run test:unit` is the fast loop; a test that spawns processes or real git is a `*.e2e.test.ts`
 
 | Package | Responsibility |
 |---|---|
@@ -38,7 +37,7 @@ Open-CR-Agent is an open-source multi-agent code review system. Deterministic en
 9. **Verifiable, observable, reversible changes.** Every change keeps behavior testable, runtime state observable and failures diagnosable, with backward compatibility and a rollback path considered. Errors and logs keep diagnostic context without leaking sensitive data.
 10. **Delete rather than keep compatibility.** When refactoring internal paths, delete obsolete implementations directly; do not add compatibility layers, deprecated shims or dual-write logic. Compatibility of external contracts (CLI flags, config file format, plugin interfaces, published package APIs, session file format) is evaluated separately against the contract, as a contractual obligation rather than a reason to keep old code.
 
-> **Change checklist:** run `npm run verify` before every commit (Biome, type check, tests). Prompt, rule or stage changes also need an eval run before merge. Larger changes update `README.md` in the same PR (see User manual). A change to the JSON report or to `.ocra/config.json` updates its schema (`npm run schema`); the tests say when they differ.
+> **Change checklist:** run `npm run verify` before every commit. Prompt, rule or stage changes also need an eval run before merge. Larger changes update `README.md` in the same PR (see User manual). A change to the JSON report or to `.ocra/config.json` updates its schema (`npm run schema`); the tests say when they differ.
 
 ## Engineering best practices
 
@@ -53,7 +52,7 @@ Concrete rules behind the principles above, from the project's self-audits. Know
 - **Least privilege for child processes.** Spawn with `execFile`/`spawn` and argument arrays, never a shell; pass `--end-of-options` before user refs; give child processes only the environment variables they need.
 - **Bind local servers to `127.0.0.1` with a per-run random port and credential**, compare credentials with `timingSafeEqual`.
 - **Secrets never reach code, logs, prompts, reports or session files.** Tests that touch secret handling assert the secret string is absent from every output.
-- **Pin what can change the attack surface.** OpenCode is pinned, its built-in tool list is asserted, and `custom-provider.test.ts` shows it reaches no network at review time but the model endpoint and its pricing catalog; treat any bump as a security review, and read that test's result as part of it.
+- **Pin what can change the attack surface.** OpenCode is pinned, its built-in tool list is asserted, and `custom-provider.e2e.test.ts` shows it reaches no network at review time but the model endpoint and its pricing catalog; treat any bump as a security review, and read that test's result as part of it.
 
 ### Performance and cost
 
@@ -83,6 +82,7 @@ Concrete rules behind the principles above, from the project's self-audits. Know
 - **The code is the documentation.** Avoid large comment blocks. Express intent through names, types and small functions. Write a comment only for a "why" the code cannot say: a non-obvious constraint, a workaround, a deliberate trade-off. Never restate what the code does, narrate a change, or leave TODO chatter.
 - Source files, identifiers and commit messages are in English.
 - Prefer pure functions for deterministic stages; keep I/O at the edges.
+- `scripts/*.mjs` are thin entry points; their logic lives in `scripts/lib/*.mjs` next to its test.
 - Validate every LLM output against a Zod schema before it crosses a stage boundary.
 - **Public API goes through the API report.** A published package's main entry (`src/index.ts`) exports a named list, never `export *`. Adding, removing or changing a public export updates `etc/<package>.api.md` in the same PR (`npm run api`; `npm run check:api`, part of `verify` and CI, fails otherwise), and a change that can break a caller gets a changelog entry under the 0.x rule. What only ocra's own packages need goes to the package's `src/internal.ts` (`<package>/internal`), which is not a contract. Every `exports` entry starts with the `@open-cr-agent/source` condition (`scripts/workspace-exports.test.mjs`).
 
@@ -106,6 +106,20 @@ Concrete rules behind the principles above, from the project's self-audits. Know
 - **A changeset per user-visible PR.** A PR that changes what users of the packages or the Action see adds one with `npx changeset`: the bump, and the `CHANGELOG.md` entry as short lines under Keep a Changelog sections (`### Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`), details left to the PR or the manual. Never edit `CHANGELOG.md`'s sections by hand outside a release PR; `npm run version-packages` writes them ([.changeset/README.md](.changeset/README.md)). CI's `changeset` job fails a PR that changes a published package's `src/` without one; `npx changeset --empty` answers for a change users do not see.
 - Work in a worktree made with `scripts/worktree.sh <branch>`: it installs and builds. Tests and the test type check need no build: they resolve workspace packages to their `src/` through the `@open-cr-agent/source` export condition (`vitest.config.ts`, `tsconfig.test.json`); only tests that run the real CLI build it themselves. Remove agent worktrees (`git worktree remove`) and their local branches when the work is done.
 
+## Working with agents
+
+Mirrored word for word in the AGENTS.md of ocra, ocra-cloud and ocra-site: change all three together.
+
+- **One owner per issue queue, one worktree per session.** Never edit a checkout another session is using.
+- **The maintainer runs production:** deploys, production database writes and secret-store changes. Prepare the exact command and a dry-run result, then hand off.
+- **A critical Dependabot alert is a P0:** fix or pin it the same day.
+- **Validate what you act on, after normalising it** (`new URL()`, path resolution), never only the raw input.
+- **Uniqueness and currency live in the database** (`UNIQUE`, `ON CONFLICT`, compare-and-set), never in check-then-write code.
+- **A fix's test fails on the old code on an assertion,** not on a module the fix adds (`scripts/fails-without.sh` refuses that).
+- **Shapes the CLI and ocra Cloud share live in `@open-cr-agent/cloud-contract`;** never retype them.
+- **Show only what exists:** mocks, demos and the landing use shipped behaviour and recorded or synthetic data, never the maintainer's accounts, numbers, keys or budget.
+- **Keep AGENTS.md under 150 lines:** a rule names the check that enforces it; stories go to `../ocra-internal/pitfalls.md`.
+
 ## Repository hygiene
 
 The repository is public: anything committed stays readable in history even after a later commit deletes it.
@@ -122,16 +136,12 @@ The repository is public: anything committed stays readable in history even afte
 - Follow [Conventional Commits](https://www.conventionalcommits.org/): `<type>(<optional scope>): <subject>`.
   - Types: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
 - Subject: imperative mood, lowercase start, no trailing period, at most 72 characters.
-- Body (optional): wrap at 72 characters, explain *what* and *why*, not *how*.
-- One logical change per commit.
-- **Commits must not include `Co-authored-by` trailers or any other co-author metadata.**
-- **Pull request titles, descriptions and comments must not include AI attribution** such as "Generated with Claude Code" or similar tool footers.
-- **Commits are authored and committed under a person's identity**, never an AI tool's (`noreply@anthropic.com`). Set `user.name`/`user.email` in agent sessions. CI's `commits` job enforces these three rules on every pull request (`scripts/attribution.mjs`).
+- Body (optional): wrap at 72 characters, explain *what* and *why*, not *how*. One logical change per commit.
+- **No AI attribution anywhere:** commits are authored and committed under a person's identity (never `noreply@anthropic.com`; set `user.name`/`user.email` in agent sessions), carry no `Co-authored-by` or other co-author metadata, and pull request titles, descriptions and comments carry no tool footer such as "Generated with Claude Code". CI's `commits` job enforces this (`scripts/attribution.mjs`).
 
 ## Agile practices
 
 - Work is planned as milestones in `docs/roadmap.md`, broken into small issues, each deliverable in one PR. When a milestone item lands, update the roadmap's readiness checklist and the README's milestone table in the same PR.
-- Every PR keeps `npm run verify` green; CI enforces it.
 - New behavior ships with tests. Review-quality changes (prompts, rules, stages) must be measured with the eval package before merge.
 - Record significant technical decisions as a new ADR in `docs/adr/` instead of rewriting old ones. Record spike results in `docs/spikes/`.
 - **Working notes are private.** The handoff, the pitfalls, the pending checks, the release runbook and the audits live in the maintainers' private notes (`jma49/ocra-internal`, cloned next to this checkout as `../ocra-internal`), not in this public repository. Never commit them, or details of the maintainer's accounts, keys, budget or machines, here.
