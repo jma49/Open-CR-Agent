@@ -166,7 +166,7 @@ packages/
 
 Each published package has a curated main entry, its public API: named exports only, recorded in `etc/<package>.api.md` by API Extractor and checked in CI (`npm run check:api`), so a change to it shows in review. What the packages share with each other beyond that goes through a `./internal` subpath export (`@open-cr-agent/core/internal` and others), which is not a contract and may change in any release. The manual's Embedding and Stability pages say which entries are a contract. `npm run check:packages` lints every packed tarball with publint and attw (ESM only) before it installs them.
 
-Inside `cli/src`, `run.ts` dispatches to one module per command, `commands/<name>.ts` (the review command's parts in `commands/review/`), over shared modules that never import a command: `io/` (output, terminal sanitising, `UsageError`, the `EXIT` codes), `config/`, `cloud/` (ocra Cloud credentials, session, calls), `plugins/` and `session/` (the session store). Argument parsers are named `parse*`, functions that turn arguments into a review target `resolve*`.
+Inside `cli/src`, `run.ts` dispatches to one module per command, `commands/<name>.ts` (the review command's parts in `commands/review/`: `reviewCommand` runs `resolveRun`, then `planRun` or `executeRun`, `writeReport`, `deliver` (publish, upload) and `exitCode`), over shared modules that never import a command: `io/` (output, terminal sanitising, `UsageError`, the `EXIT` codes), `config/`, `cloud/` (ocra Cloud credentials, session, calls), `plugins/` and `session/` (the session store). Argument parsers are named `parse*`, functions that turn arguments into a review target `resolve*`.
 
 ## Roadmap
 

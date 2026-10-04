@@ -46,3 +46,10 @@ export function renderSettings(
   if (defaults.length > 0) lines.push(`  default: ${defaults.join(", ")}`);
   return forTerminal(`${lines.join("\n")}\n`);
 }
+
+// The account's settings version, for the plan and the provenance.
+export function accountOf(account: AccountVersion | undefined): {
+  accountSettings?: AccountVersion;
+} {
+  return account ? { accountSettings: account } : {};
+}
