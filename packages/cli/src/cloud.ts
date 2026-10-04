@@ -14,8 +14,8 @@ import { VERSION } from "./version.js";
 // `ocra logout` ends the session. Nothing here runs unless one of these
 // commands is used: a self-hosted user never sees a login prompt.
 
-// ocra Cloud is in development and has no public address yet; until it
-// does, the server is named with OCRA_CLOUD_URL.
+/** ocra Cloud's address; OCRA_CLOUD_URL names another server. */
+export const DEFAULT_CLOUD_URL = "https://app.ocracloud.com";
 
 export const LOGIN_USAGE = `Usage: ocra login [--no-browser]
        ocra logout
@@ -27,7 +27,7 @@ session to ${credentialsHint()} (readable only by you).
 
 Environment:
   OCRA_CLOUD=off   Disable ocra Cloud: these commands refuse to run
-  OCRA_CLOUD_URL   The ocra Cloud server (required while ocra Cloud is in development)
+  OCRA_CLOUD_URL   Another ocra Cloud server (default ${DEFAULT_CLOUD_URL})
 `;
 
 export type Credentials = {
@@ -76,14 +76,12 @@ export function credentialsPath(env: CloudDeps["env"]): string {
 }
 
 function cloudUrl(env: CloudDeps["env"]): string {
-  if (!env.OCRA_CLOUD_URL) {
-    throw new UsageError("ocra Cloud is not open yet: set OCRA_CLOUD_URL to a server to sign in");
-  }
+  const named = env.OCRA_CLOUD_URL || DEFAULT_CLOUD_URL;
   let url: URL;
   try {
-    url = new URL(env.OCRA_CLOUD_URL);
+    url = new URL(named);
   } catch {
-    throw new UsageError(`OCRA_CLOUD_URL is not a URL: ${env.OCRA_CLOUD_URL}`);
+    throw new UsageError(`OCRA_CLOUD_URL is not a URL: ${named}`);
   }
   if (url.protocol !== "https:" && url.hostname !== "localhost" && url.hostname !== "127.0.0.1") {
     throw new UsageError(`OCRA_CLOUD_URL must use https: ${url}`);

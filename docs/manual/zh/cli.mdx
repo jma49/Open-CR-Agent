@@ -133,10 +133,10 @@ ocra memory list
 
 ## ocra login、ocra logout、ocra whoami
 
-**开发中。** ocra Cloud（[ADR-0024](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0024-ocra-cloud.md)）尚未开放，因此这几个命令需要用 `OCRA_CLOUD_URL` 指定服务器。ocra 的其他功能都不依赖它们：不登录时审查行为与以前完全相同；设置 `OCRA_CLOUD=off` 后这几个命令拒绝运行。
+**开发中。** ocra Cloud（[ADR-0024](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0024-ocra-cloud.md)）的地址是 https://app.ocracloud.com；`OCRA_CLOUD_URL` 可以指定其他服务器。ocra 的其他功能都不依赖这几个命令：不登录时审查行为与以前完全相同；设置 `OCRA_CLOUD=off` 后这几个命令拒绝运行。
 
 ```bash
-OCRA_CLOUD_URL=https://<server> ocra login   # 显示一个验证码，并打开浏览器确认
+ocra login                                    # 显示一个验证码，并打开浏览器确认
 ocra whoami                                   # 当前登录的 GitHub 账号
 ocra logout                                   # 在服务器上结束会话，并删除本地保存的会话
 ```

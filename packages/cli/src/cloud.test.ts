@@ -10,13 +10,14 @@ type Route = (body: Record<string, unknown>, headers: Headers) => { status: numb
 
 /** A fake ocra Cloud: routes by method and path, and a recorded log of calls. */
 function fakeCloud(routes: Record<string, Route | Route[]>) {
-  const calls: { path: string; body: Record<string, unknown>; headers: Headers }[] = [];
+  const calls: { path: string; body: Record<string, unknown>; headers: Headers; url: string }[] =
+    [];
   const fakeFetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(String(input));
     const key = `${init?.method ?? "GET"} ${url.pathname}`;
     const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
     const headers = new Headers(init?.headers);
-    calls.push({ path: key, body, headers });
+    calls.push({ path: key, body, headers, url: `${url.origin}${url.pathname}` });
     let route = routes[key];
     if (Array.isArray(route)) route = route.length > 1 ? route.shift() : route[0];
     if (!route) return new Response("{}", { status: 404 });
@@ -131,11 +132,10 @@ describe("ocra login", () => {
     expect(polls).toBeLessThanOrEqual(600 / 5);
   });
 
-  it("refuses to run without a server, or with ocra Cloud off", async () => {
-    const none = setup({}, {});
-    await expect(cloudCommand("login", [], none.io.out, none.io.err, none.deps)).rejects.toThrow(
-      /OCRA_CLOUD_URL/,
-    );
+  it("uses app.ocracloud.com by default, and refuses http or ocra Cloud off", async () => {
+    const none = setup({ "POST /api/device/code": () => ({ status: 503, body: {} }) }, {});
+    expect(await cloudCommand("login", [], none.io.out, none.io.err, none.deps)).toBe(2);
+    expect(none.cloud.calls[0]?.url).toBe("https://app.ocracloud.com/api/device/code");
     const http = setup({}, { OCRA_CLOUD_URL: "http://cloud.example" });
     await expect(cloudCommand("login", [], http.io.out, http.io.err, http.deps)).rejects.toThrow(
       /https/,

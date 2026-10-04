@@ -133,10 +133,10 @@ ocra memory list
 
 ## ocra login, ocra logout, ocra whoami
 
-**In development.** ocra Cloud ([ADR-0024](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0024-ocra-cloud.md)) is not open yet, so these commands need `OCRA_CLOUD_URL` to name a server. Nothing else in ocra uses them: reviews work exactly as before without a login, and with `OCRA_CLOUD=off` the commands refuse to run.
+**In development.** ocra Cloud ([ADR-0024](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0024-ocra-cloud.md)) lives at https://app.ocracloud.com; `OCRA_CLOUD_URL` names another server. Nothing else in ocra uses these commands: reviews work exactly as before without a login, and with `OCRA_CLOUD=off` the commands refuse to run.
 
 ```bash
-OCRA_CLOUD_URL=https://<server> ocra login   # shows a code and opens the browser to confirm it
+ocra login                                    # shows a code and opens the browser to confirm it
 ocra whoami                                   # the signed-in GitHub account
 ocra logout                                   # ends the session on the server and deletes it here
 ```
