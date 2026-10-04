@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { readFile, rm, stat, writeFile } from "node:fs/promises";
+import { setTimeout as sleep } from "node:timers/promises";
 import { errnoCode, isNotFound } from "@open-cr-agent/core/internal";
 
 // A lock between ocra processes on one machine: a file created exclusively,
@@ -55,7 +56,7 @@ async function acquire(path: string, timing: LockTiming): Promise<string | undef
       continue;
     }
     if (Date.now() >= deadline) return undefined;
-    await new Promise((resolve) => setTimeout(resolve, timing.pollMs));
+    await sleep(timing.pollMs);
   }
 }
 

@@ -1,4 +1,5 @@
 import { hostname } from "node:os";
+import { setTimeout as sleep } from "node:timers/promises";
 import { UsageError } from "../io/usage-error.js";
 import { VERSION } from "../version.js";
 import { openBrowser } from "./browser.js";
@@ -22,7 +23,7 @@ export function defaultCloudDeps(env: CloudDeps["env"] = process.env): CloudDeps
     env,
     fetch: globalThis.fetch,
     now: Date.now,
-    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    sleep: (ms) => sleep(ms),
     openBrowser: (url) => openBrowser(url),
     credentialsPath: credentialsPath(env),
     clientName: `${hostname()} (ocra ${VERSION})`,

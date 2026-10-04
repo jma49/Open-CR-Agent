@@ -7,6 +7,7 @@ export { at } from "./at.js";
 export { parseUnifiedDiff } from "./diff/parse.js";
 export { severitySchema, verificationSchema } from "./domain.js";
 export { errnoCode, isNotFound, usageSpent } from "./errors.js";
+export { shortHash } from "./hash.js";
 export {
   MEMORY_PATH,
   memoryEntrySchema,
@@ -28,5 +29,4 @@ export { newRunId } from "./pipeline/run-id.js";
 export { readReport } from "./report/read.js";
 export { isUnsafeCodePoint, serializeOutput } from "./report/serialize.js";
 export { repoRuleSchema } from "./rules/repo-rules.js";
-export { sleep } from "./runtime/quota.js";
 export { REPORT_FILE } from "./session/jsonl.js";

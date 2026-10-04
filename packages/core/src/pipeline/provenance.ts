@@ -1,8 +1,8 @@
-import { createHash } from "node:crypto";
 import type { ResolvedAgent, ReviewerOverrides } from "../agent/settings.js";
 import { RELOCATE_SYSTEM_PROMPT } from "../anchor/relocate.js";
 import { GROUPING_SYSTEM_PROMPT } from "../bundle/grouping.js";
 import type { AgentRuntime, AppliedSampling, Sampling } from "../contracts.js";
+import { shortHash } from "../hash.js";
 import { JUDGE_SYSTEM_PROMPT } from "../judge/prompt.js";
 import type { AgentProvenance, RuleProvenance, RunProvenance } from "../report/provenance.js";
 import { PLAN_SYSTEM_PROMPT } from "../review/plan-phase.js";
@@ -25,7 +25,7 @@ export interface ProvenanceInput {
 // A short digest of a JSON value, the same whatever order its keys were
 // written in.
 export function stableHash(value: unknown): string {
-  return createHash("sha256").update(canonicalJson(value)).digest("hex").slice(0, 16);
+  return shortHash(canonicalJson(value));
 }
 
 function canonicalJson(value: unknown): string {

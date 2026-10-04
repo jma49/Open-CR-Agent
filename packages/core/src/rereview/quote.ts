@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto";
 import { normalizeSnippet } from "../anchor/match.js";
 import type { LineRange, QuoteSignature } from "../domain.js";
+import { shortHash } from "../hash.js";
 
 // The signature covers the anchored lines of the file, not the model's quote:
 // models often quote part of a line, and a partial quote would never match a
@@ -27,5 +27,5 @@ export function containsQuote(content: string, signature: QuoteSignature): boole
 }
 
 function hashLines(lines: readonly string[]): string {
-  return createHash("sha256").update(lines.join("\n")).digest("hex").slice(0, 16);
+  return shortHash(lines.join("\n"));
 }

@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
 import type { OutputFinding, Severity } from "@open-cr-agent/core";
+import { shortHash } from "@open-cr-agent/core/internal";
 import type { Adjudication, ForbiddenRange, Instance } from "./instance.js";
 import { matchComments, type SemanticJudge } from "./match.js";
 import type { InstanceResult } from "./results.js";
@@ -202,7 +202,7 @@ function casesHash(instances: readonly Instance[]): string {
       golden: i.golden,
     }))
     .sort((a, b) => a.id.localeCompare(b.id));
-  return createHash("sha256").update(JSON.stringify(cases)).digest("hex").slice(0, 16);
+  return shortHash(JSON.stringify(cases));
 }
 
 function toGoldenFinding(caseId: string, finding: OutputFinding): GoldenFinding {
