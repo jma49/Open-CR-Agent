@@ -7,7 +7,7 @@
 //
 // npm-shrinkwrap.json would pin the tree for `npm install -g` too, but npm
 // installs a dependency's shrinkwrap without its platform checks: every
-// OpenCode binary for every OS and CPU, 2.1 GB (docs/pitfalls.md).
+// OpenCode binary for every OS and CPU, 2.1 GB (measured 2026-09-29).
 import { relative, sep } from "node:path";
 
 const EDGES = [

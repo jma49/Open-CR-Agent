@@ -81,7 +81,7 @@ jobs:
         run: pipx run zizmor==1.30.1 --offline --format github .
 
   # A pull request that changes a published package's source carries a
-  # changeset, the entry for CHANGELOG.md (docs/releasing.md). Tests,
+  # changeset, the entry for CHANGELOG.md (.changeset/README.md). Tests,
   # fixtures and files outside src/ need none (changedFilePatterns in
   # .changeset/config.json); for a source change users do not see,
   # `npx changeset --empty` answers.

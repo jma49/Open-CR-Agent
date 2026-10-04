@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Publishing the workspace packages. docs/releasing.md is the runbook.
+// Publishing the workspace packages. The release runbook is in the maintainers' private notes.
 // Changesets sets the version (npm run version-packages); this script, not
 // `changeset publish`, publishes, because the release workflow must publish
 // exactly the tarballs it tested, checked by digest. The maintainer runs
@@ -244,7 +244,7 @@ function publishCommand(real) {
   console.log(`\nEvery package is on the registry at ${version} (from ${head}).`);
   if (!ci) {
     console.log(
-      "Next, per docs/releasing.md: trusted publishing after the first release, then the GitHub release:\n" +
+      "Next, per the release runbook: trusted publishing after the first release, then the GitHub release:\n" +
         `  node scripts/changelog.mjs notes ${version} | gh release create v${version} --target ${head} --title v${version} --notes-file -`,
     );
   }

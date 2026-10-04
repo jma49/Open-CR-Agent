@@ -2,13 +2,9 @@
 
 What comes after M1–M4 (`docs/architecture.md`, all built) and the 0.2.0 release, as of 2026-10-01. It records the maintainer's long-term direction, decided on 2026-10-01: ocra is not another review bot but the engine other review agents are built on. It also keeps what the earlier roadmap answered: a comparison with open-source peers, what ocra's first model runs showed, and the goal of 2026-09-30, a project a company can adopt and a company could be built on.
 
-## The rule while model credit is frozen
+## The rule while evaluation is scarce
 
-Model runs are paid from a Google Cloud trial credit, and the maintainer set a floor: nothing is spent below $100 left. What remains above it is the dogfood allotment in CI and $6.18 of evaluation money, which cannot buy a quality number: one golden smoke run costs about $11.
-
-So, until new credit arrives: **ship only what tests prove without a model: contracts, reach, trust, cost control and operability. Prompts, rules and reviewers stay frozen, and no `[needs-eval]` change merges.** Labels keep coming from real reviews (dogfood), which cost nothing extra. Every page states what was tested live and what was not; readiness is claimed only where it is shown.
-
-Once credit is back, M5 and M6 resume, starting with one golden smoke run of `main` (about $11). The direction below needs a standing line of credit, small but permanent (a nightly live smoke test costs cents a day); finding it is a business decision, not an engineering one.
+Evaluation runs on models cost money, and today there is little of it. So: **ship what tests prove without a model first: contracts, reach, trust, cost control and operability. Prompts, rules and reviewers change only with an eval run behind them.** Labels keep coming from real reviews. Every page states what was tested live and what was not; readiness is claimed only where it is shown. M5 and M6 resume when evaluation is funded; free models (M11) cover what they can.
 
 ## Where ocra stands
 
@@ -21,7 +17,7 @@ Once credit is back, M5 and M6 resume, starting with one golden smoke run of `ma
 
 **What ocra has that none of them publish:** defense in depth for untrusted pull requests. No write, shell or web tools for agents; an environment allowlist; configuration, rules and memory from the base commit; prompt-injection boundaries; neutralized comment output, with no commands and no links from model text; commands only from verified, unedited comments of people with write access; a threat model and a measured adversarial tier. Also: structured output (a versioned JSON report, SARIF), a per-run spend limit that says what it left, and a pipeline in which code decides everything but the judgment calls.
 
-**What the first runs on Vertex showed** (`docs/handoff.md`):
+**What the first runs on Vertex showed:**
 
 - **Recall is the gap, and it is lost at the reviewers.** Across 20 baseline reviews the reviewers reported 14 findings in total; Verify refuted none and the judge dropped none.
 - **Ten AACR-Bench PRs cannot decide a change.** Two identical runs gave precision 66.7% and 40.0%: with 5–6 findings a run, one finding moves precision by 20 points.

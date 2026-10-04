@@ -59,4 +59,4 @@ The dataset is cached at `~/.cache/ocra/aacr-bench/` (clones under `repos/`, one
 
 ## Traps
 
-Read the evaluation section of `docs/pitfalls.md` before a run: the free-quota limits, rebuilding during a run (it changes the code under test), LFS repositories, git 2.43, and resuming with `--retry-failed`.
+Maintainers: read the evaluation section of the private `pitfalls.md` before a run: the free-quota limits, rebuilding during a run (it changes the code under test), LFS repositories, git 2.43, and resuming with `--retry-failed`.

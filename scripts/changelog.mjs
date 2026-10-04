@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Versioning and CHANGELOG.md; docs/releasing.md is the runbook.
+// Versioning and CHANGELOG.md; The release runbook is in the maintainers' private notes.
 //
 // Changesets decides the version and writes it (`changeset version`), but
 // no changelog (`"changelog": false` in .changeset/config.json): its

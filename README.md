@@ -224,7 +224,7 @@ npm link --workspace @open-cr-agent/cli   # ocra from this checkout
 npm run verify                            # Biome, type check and tests (no model, no network)
 ```
 
-Rules for humans and agents, the same ones CI enforces: [AGENTS.md](AGENTS.md). Releases: [docs/releasing.md](docs/releasing.md), [CHANGELOG.md](CHANGELOG.md). State and next steps for whoever picks the project up: [docs/handoff.md](docs/handoff.md).
+Rules for humans and agents, the same ones CI enforces: [AGENTS.md](AGENTS.md). Releases: [CHANGELOG.md](CHANGELOG.md); a change users see adds a changeset ([.changeset/README.md](.changeset/README.md)).
 
 ## Contributing and security
 

@@ -4,7 +4,7 @@ name: Release
 # npm trusted publishing: no npm token is stored anywhere, and npm attaches
 # provenance. Versions the registry already has are skipped, so re-running a
 # failed run resumes it, and the release of a version published by hand (the
-# first one, see docs/releasing.md) passes.
+# first one, see the maintainers' release runbook) passes.
 # A dry run by hand: gh workflow run release.yml --ref main
 
 on:

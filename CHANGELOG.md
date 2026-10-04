@@ -2,7 +2,7 @@
 
 All notable changes to the `@open-cr-agent/*` packages and the GitHub Action. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the packages, released together at one version, follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While that version is 0.x, a minor release may change options, configuration and output; each such change is listed here.
 
-Entries come from the changesets in `.changeset/`, one per pull request that changes what users see; [docs/releasing.md](docs/releasing.md) says how to write one.
+Entries come from the changesets in `.changeset/`, one per pull request that changes what users see; [.changeset/README.md](.changeset/README.md) says how to write one.
 
 ## [Unreleased]
 
@@ -59,7 +59,7 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [0.2.0] - 2026-09-29
 
-ocra reviews GitLab merge requests, writes SARIF, runs from a container image, and can send reviews to your own OpenAI-compatible endpoint. The fixes found by the [2026-09-30 security audit](https://github.com/jma49/Open-CR-Agent/blob/main/docs/audits/2026-09-30-m9-security.md) are in. The GitHub Action is `jma49/Open-CR-Agent@v0.2.0`.
+ocra reviews GitLab merge requests, writes SARIF, runs from a container image, and can send reviews to your own OpenAI-compatible endpoint. The fixes found by the 2026-09-30 security audit are in. The GitHub Action is `jma49/Open-CR-Agent@v0.2.0`.
 
 ### Added
 
