@@ -44,28 +44,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Write the helpers
-        shell: bash
-        run: |
-          # Prints "<open> <total>": cases of the run directory $1 still to
-          # review (no result, skipped, or lost to the quota) and all cases.
-          cat > "$RUNNER_TEMP/cycle-state.sh" <<'SH'
-          set -euo pipefail
-          dir=$1
-          if [ ! -f "$dir/run.json" ]; then echo "1 0"; exit 0; fi
-          open=0 total=0
-          while read -r id; do
-            if ! [[ "$id" =~ ^[A-Za-z0-9_.@-]+$ ]] || [[ "$id" == .* ]]; then echo "bad id in run.json" >&2; exit 1; fi
-            total=$((total + 1))
-            file="$dir/instances/$id.json"
-            if [ ! -f "$file" ] || jq -e --arg re "$QUOTA_RE" \
-              '(.status | startswith("skipped")) or any(.tasks[]?; (.error // "") | test($re; "i"))' "$file" >/dev/null; then
-              open=$((open + 1))
-            fi
-          done < <(jq -r '.ids[]' "$dir/run.json")
-          echo "$open $total"
-          SH
-
       - id: probe
         shell: bash
         env:
@@ -103,7 +81,7 @@ jobs:
           mkdir -p "$EVAL_DIR"
           n=$(cat "$EVAL_DIR/free-cycle" 2>/dev/null || echo 1)
           [[ "$n" =~ ^[1-9][0-9]*$ ]] || n=1
-          read -r open total < <(bash "$RUNNER_TEMP/cycle-state.sh" "$EVAL_DIR/free-smoke-$n")
+          read -r open total < <(node scripts/eval-cycle.mjs "$EVAL_DIR/free-smoke-$n")
           if [ "$open" -eq 0 ]; then
             rm -rf -- "${EVAL_DIR:?}/free-smoke-$n"
             n=$((n + 1))
@@ -141,10 +119,7 @@ jobs:
             }
           }' > "$RUNNER_TEMP/ocra-free.json"
 
-      # ocra-eval stops by itself when the quota refuses a case. To leave
-      # HEADROOM requests for the rest of the day, a watcher asks every five
-      # minutes (one request each) and stops the eval's process group below
-      # it; the case in progress then has no result and runs again next time.
+      # The eval, stopped with HEADROOM requests left (see the script).
       - id: eval
         if: steps.probe.outputs.go == 'true'
         shell: bash
@@ -153,32 +128,7 @@ jobs:
           JUDGE_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           JUDGE_BASE_URL: https://openrouter.ai/api/v1
           LABEL: ${{ steps.cycle.outputs.label }}
-        run: |
-          set -uo pipefail
-          export JUDGE_MODEL="$MODEL"
-          setsid node packages/eval/dist/main.js run --dataset golden --tier smoke \
-            --label "$LABEL" --out "$EVAL_DIR" --retry-failed \
-            --config "$RUNNER_TEMP/ocra-free.json" &
-          pid=$!
-          stopped=""
-          while kill -0 "$pid" 2>/dev/null; do
-            for _ in $(seq 60); do kill -0 "$pid" 2>/dev/null || break; sleep 5; done
-            kill -0 "$pid" 2>/dev/null || break
-            left=$(node scripts/free-quota.mjs "$MODEL")
-            if [[ "$left" =~ ^[0-9]+$ ]] && [ "$left" -lt "$HEADROOM" ]; then
-              stopped=$left
-              kill -TERM -- "-$pid" 2>/dev/null
-              break
-            fi
-          done
-          wait "$pid"
-          code=$?
-          if [ -n "$stopped" ]; then
-            echo "::notice title=Free eval paused::stopped with $stopped free request(s) left; the cycle resumes on the next run"
-            echo "Stopped with $stopped free request(s) left." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          exit "$code"
+        run: bash scripts/eval-free-run.sh
 
       - id: after
         if: always() && steps.cycle.outputs.label != ''
@@ -188,7 +138,7 @@ jobs:
         run: |
           set -euo pipefail
           dir="$EVAL_DIR/$LABEL"
-          read -r open total < <(bash "$RUNNER_TEMP/cycle-state.sh" "$dir")
+          read -r open total < <(node scripts/eval-cycle.mjs "$dir")
           {
             echo
             echo "### $LABEL"
