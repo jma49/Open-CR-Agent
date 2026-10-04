@@ -106,6 +106,26 @@ jobs:
             const binary = resolveOpencodeBinary({});
             console.log(binary, execFileSync(binary, ["--version"], { encoding: "utf8" }).trim());
           '
+      # The Action's outputs, from a session report laid out as ocra writes
+      # it (a review needs a model).
+      - id: outputs
+        run: |
+          session=.ocra/sessions/20991231T235959Z-abcdef
+          mkdir -p "$session"
+          printf '{"version":1,"runId":"20991231T235959Z-abcdef","verdict":"approved","findings":[]}\n' > "$session/report.json"
+          OCRA_EXIT_CODE=0 OCRA_STARTED="$(date -u +%Y%m%dT%H%M%SZ)" node scripts/action-outputs.mjs
+      - env:
+          EXIT_CODE: ${{ steps.outputs.outputs.exit-code }}
+          RUN_ID: ${{ steps.outputs.outputs.run-id }}
+          VERDICT: ${{ steps.outputs.outputs.verdict }}
+          FINDINGS: ${{ steps.outputs.outputs.findings }}
+          REPORT: ${{ steps.outputs.outputs.report }}
+        run: |
+          test "$EXIT_CODE" = 0
+          test "$RUN_ID" = 20991231T235959Z-abcdef
+          test "$VERDICT" = approved
+          test "$FINDINGS" = 0
+          grep -q '"verdict":"approved"' "$REPORT"
 
   # The container image, built from this commit rather than from npm (its
   # version may not be published yet), then run as a user would.

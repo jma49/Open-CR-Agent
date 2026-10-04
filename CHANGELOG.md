@@ -14,7 +14,7 @@ Changes to the `@open-cr-agent/*` packages and the GitHub Action. The packages a
 - **A JSON Schema for the report.** `docs/schema/report.v1.json` (draft 2020-12) is generated from the code and tested against it; `reportJsonSchema()` and `reportOutputSchema` in `@open-cr-agent/core` give the same schema to programs.
 - **A run id.** Every review has one id, the name of its session directory: the first progress line names it, the JSON report carries it as `runId` (an optional addition to version 1), the summary comment shows it under Coverage and cost, and the SARIF log carries it as `automationDetails.id`. `review()` takes `runId`; without it one is generated.
 - **`ocra metrics`.** Counts over the finished reviews in `.ocra/sessions/`: runs by verdict, cost, findings by severity and verification, what became of earlier findings (fixed or dismissed, and their ratio as the acceptance rate), and the same per reviewer; `--since`, `--sessions`, and `--format json` with `"version": 1` for dashboards and scripts.
-
+- **Action outputs.** The GitHub Action sets `verdict`, `exit-code`, `run-id`, `findings` and `report` (a copy of the JSON report under `$RUNNER_TEMP`), also when the step fails, and with the new input `sarif: true` writes a SARIF log and names it in the `sarif` output. The manual's workflows now pin the Action by commit.
 
 ### Fixed
 

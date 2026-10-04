@@ -91,12 +91,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@v0.2.0
+      - uses: jma49/Open-CR-Agent@121f4ce23ca2b263bd3d24a23c910bd7b8c7530e # v0.2.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-The Action installs the published CLI only when every package carries provenance from this repository's release workflow; otherwise it builds from source and says so. Pull requests from forks need the gated `pull_request_target` setup in the [GitHub guide](docs/manual/en/github.mdx).
+Pin the Action by commit, as here: a tag can be moved. Its outputs (`verdict`, `exit-code`, `run-id`, `findings`, `report`, and `sarif` with `sarif: true`) feed later steps, such as uploading SARIF to code scanning. The Action installs the published CLI only when every package carries provenance from this repository's release workflow; otherwise it builds from source and says so. Pull requests from forks need the gated `pull_request_target` setup in the [GitHub guide](docs/manual/en/github.mdx).
 
 **GitLab merge requests**, on GitLab.com or self-managed, from a CI job: see the [GitLab guide](docs/manual/en/gitlab.mdx).
 

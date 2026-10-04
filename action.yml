@@ -18,6 +18,36 @@ inputs:
       the verifier confirmed). Off by default: the verdict comes from models
       that read the change and is advice, not a security gate.
     default: "false"
+  sarif:
+    description: >-
+      Also write the review as SARIF 2.1.0 (for code scanning) to the file
+      the sarif output names. Takes the place of --format and --output in
+      args.
+    default: "false"
+
+outputs:
+  verdict:
+    description: >-
+      The review's verdict: approved, approved_with_comments, minor_issues or
+      significant_concerns. Empty when ocra wrote no report.
+    value: ${{ steps.review.outputs.verdict }}
+  exit-code:
+    description: >-
+      ocra's exit code (0; 1 significant concerns; 2 error; 3 incomplete
+      review), before fail-on-concerns turns 1 into a passing step.
+    value: ${{ steps.review.outputs.exit-code }}
+  run-id:
+    description: The run id, also in the summary comment and the SARIF log.
+    value: ${{ steps.review.outputs.run-id }}
+  report:
+    description: Path to the JSON report (the shape of ocra review --format json).
+    value: ${{ steps.review.outputs.report }}
+  sarif:
+    description: Path to the SARIF log, when the sarif input is true.
+    value: ${{ steps.review.outputs.sarif }}
+  findings:
+    description: The number of findings in the report.
+    value: ${{ steps.review.outputs.findings }}
 
 runs:
   using: composite
@@ -44,12 +74,14 @@ runs:
     # Inputs reach the script only through environment variables, never
     # interpolated into it, so pull request text cannot inject shell code.
     - name: Review
+      id: review
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         OCRA_PR: ${{ github.event.pull_request.number }}
         OCRA_ARGS: ${{ inputs.args }}
         OCRA_FAIL_ON_CONCERNS: ${{ inputs.fail-on-concerns }}
+        OCRA_SARIF: ${{ inputs.sarif }}
         OCRA_MAIN: ${{ steps.install.outputs.main }}
       run: |
         if [ -z "$OCRA_PR" ]; then
@@ -59,6 +91,14 @@ runs:
         # Split on whitespace, across lines, without glob expansion against
         # the checkout.
         read -r -d '' -a extra <<< "$OCRA_ARGS" || true
+        mkdir -p "$RUNNER_TEMP/ocra"
+        export OCRA_SARIF_FILE="$RUNNER_TEMP/ocra/ocra.sarif"
+        rm -f "$OCRA_SARIF_FILE"
+        # Last, so they win over a --format or --output in args.
+        if [ "$OCRA_SARIF" = "true" ]; then extra+=(--format sarif --output "$OCRA_SARIF_FILE"); fi
+        # Run ids start with the UTC second the run started: the outputs
+        # come from the session report of this run, not an earlier one.
+        export OCRA_STARTED="$(date -u +%Y%m%dT%H%M%SZ)"
         # Bash does not pass a cancellation's SIGINT/SIGTERM on to a child it
         # waits for, so ocra runs in the background and gets them forwarded:
         # it then stops, writes its partial report and publishes nothing.
@@ -69,5 +109,6 @@ runs:
         while kill -0 "$pid" 2>/dev/null; do
           wait "$pid" && code=0 || code=$?
         done
+        OCRA_EXIT_CODE="$code" node "$GITHUB_ACTION_PATH/scripts/action-outputs.mjs"
         if [ "$code" -eq 1 ] && [ "$OCRA_FAIL_ON_CONCERNS" != "true" ]; then code=0; fi
         exit "$code"

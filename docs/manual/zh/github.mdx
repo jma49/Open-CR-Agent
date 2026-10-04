@@ -27,12 +27,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@v0.2.0
+      - uses: jma49/Open-CR-Agent@121f4ce23ca2b263bd3d24a23c910bd7b8c7530e # v0.2.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-`@v0.2.0` 是一个发布版本。tag 可以被移动，要确保带着你的模型 key 运行的代码确定不变，可以改为固定到该版本的提交（`jma49/Open-CR-Agent@<提交> # v0.2.0`）。
+这里把 Action 固定到 v0.2.0 发布版本的提交，并在注释里写明版本号。tag 可以被移动，固定到提交才能确保带着你的模型 key 运行的代码确定不变；`git ls-remote --tags https://github.com/jma49/Open-CR-Agent v0.2.0` 会打印某个版本对应的提交，Dependabot 也会更新这种固定方式及其注释。
 
 从 v0.1.1 起，Action 从 npm 安装 ocra：安装与 Action 自身版本号相同的 `@open-cr-agent/cli`，每个依赖都固定在 Action 的 `package-lock.json` 锁定的版本，不运行安装脚本，使用 npm 官方源时还会校验源的签名。只有当 ocra 自己的每个包都带有 [provenance](./stability#校验发布版本)，证明它由本仓库的发布 workflow 从该版本的标签构建时，才会使用这些包；否则改为从自身源码构建，并给出警告。npm 上已发布的版本不会再改变。某个版本还没发布到 npm 时（发布后的最初几分钟），Action 改为从自身源码构建；v0.1.0 始终从源码构建。所以 `@main` 运行的是 `main` 上的 Action 代码，加上 `main` 所写版本号对应的发布版，而不是尚未发布的包代码；只有 `main` 在那次发布之后改了包的依赖时，才会构建 `main`。
 
@@ -45,6 +45,40 @@ jobs:
 | `github-token` | `${{ github.token }}` | 用来读取 PR 和发布评审的 token |
 | `args` | | 额外的 `ocra review` 参数，例如 `--reviewers correctness,security`；按空格和换行拆分（不支持引号） |
 | `fail-on-concerns` | `false` | 结论为 `significant_concerns`（存在经核查确认的 critical 问题）时让 job 失败。审查不完整（退出码 `3`）时 job 总会失败 |
+| `sarif` | `false` | 同时把审查结果写成 SARIF 2.1.0，用于[代码扫描](#代码扫描)，文件路径见输出 `sarif`。它会取代 `args` 里的 `--format` 和 `--output` |
+
+给这一步设置 `id`，就能读取它的输出。只要 ocra 运行过，输出就会设置，步骤失败时也一样：
+
+| 输出 | 含义 |
+|---|---|
+| `verdict` | `approved`、`approved_with_comments`、`minor_issues` 或 `significant_concerns` |
+| `exit-code` | ocra 的[退出码](./cli#退出码)，是 `fail-on-concerns` 把 `1` 变成通过之前的值 |
+| `run-id` | 运行 id，摘要评论和 SARIF 日志里也有 |
+| `report` | JSON 报告的路径，格式同 [`--format json`](./cli#json-输出)，位于 `$RUNNER_TEMP` 下 |
+| `findings` | 报告里的问题数 |
+| `sarif` | `sarif` 为 `true` 时 SARIF 日志的路径 |
+
+ocra 没有写出报告时（退出码 `2`），`verdict`、`run-id`、`report` 和 `findings` 为空。例如，保存报告并在 job 摘要里写明结论：
+
+```yaml
+      - id: ocra
+        uses: jma49/Open-CR-Agent@121f4ce23ca2b263bd3d24a23c910bd7b8c7530e # v0.2.0
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      - if: ${{ !cancelled() && steps.ocra.outputs.report != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ocra-report
+          path: ${{ steps.ocra.outputs.report }}
+      - if: ${{ !cancelled() }}
+        env:
+          VERDICT: ${{ steps.ocra.outputs.verdict }}
+          FINDINGS: ${{ steps.ocra.outputs.findings }}
+          RUN_ID: ${{ steps.ocra.outputs.run-id }}
+        run: echo "ocra: $VERDICT, $FINDINGS findings (run $RUN_ID)" >> "$GITHUB_STEP_SUMMARY"
+```
+
+像这里一样通过 `env` 把输出交给脚本，不要把 `${{ }}` 直接写进 `run`。
 
 结论只是参考意见。模型会读到 PR 的内容，PR 作者可以在其中埋入文字，诱导审查员漏报问题，或说服 Judge 丢掉问题；未经核查的模型判断也可能是错的。不要用这项检查代替人工审查、把它设为必需的状态检查；如果打开 `fail-on-concerns`，通过只代表“没有被确认的问题”，不代表“安全”。
 
@@ -68,7 +102,7 @@ jobs:
 
 ## 代码扫描
 
-如果还想把问题显示为代码扫描（code scanning）告警，可以输出 SARIF，再用 GitHub 的 `upload-sarif` action 上传。在上面的 workflow 里加一个权限和两处配置：
+如果还想把问题显示为代码扫描（code scanning）告警，可以用输入 `sarif` 输出 SARIF，再用 GitHub 的 `upload-sarif` action 上传。在上面的 workflow 里加一个权限和几行配置：
 
 ```yaml
 permissions:
@@ -83,20 +117,21 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@v0.2.0
+      - id: ocra
+        uses: jma49/Open-CR-Agent@121f4ce23ca2b263bd3d24a23c910bd7b8c7530e # v0.2.0
         with:
-          args: --format sarif --output ocra.sarif
+          sarif: true
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       - uses: github/codeql-action/upload-sarif@v4
         # 审查不完整时上一步会失败，这里也照样上传。
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.ocra.outputs.sarif != '' }}
         with:
-          sarif_file: ocra.sarif
+          sarif_file: ${{ steps.ocra.outputs.sarif }}
           category: ocra
 ```
 
-- 审查结果仍会发到 PR 上：`--output` 只改变 ocra 打印内容的去处。
+- 审查结果仍会发到 PR 上，输出 `report` 也仍然指向 JSON 报告：SARIF 只改变 ocra 打印的内容。`args: --format sarif --output ocra.sarif` 效果相同，路径由你指定。
 - 代码扫描只显示带行号的结果。ocra 没能定位到行的问题在文件里，但不会在那里显示。之前的审查在此后没改动过的文件里报告的问题也是如此：PR 第一次审查之后，ocra 只审查有改动的部分。要让代码扫描在每次 push 后都显示全部问题，请在 `args` 里加上 `--full`，代价是每次都要完整审查一遍。
 - 公开仓库可以使用代码扫描；私有仓库需要 GitHub Code Security。
 - 文件里有什么，见 [SARIF 输出](./cli#sarif-输出)。
@@ -107,7 +142,7 @@ jobs:
 
 ```yaml
       - run: pipx run semgrep scan --config p/default --metrics=off --sarif --output semgrep.sarif
-      - uses: jma49/Open-CR-Agent@v0.2.0
+      - uses: jma49/Open-CR-Agent@121f4ce23ca2b263bd3d24a23c910bd7b8c7530e # v0.2.0
         with:
           args: --import-sarif semgrep.sarif
         env:
@@ -169,7 +204,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@<commit> # v0.2.0
+      - uses: jma49/Open-CR-Agent@121f4ce23ca2b263bd3d24a23c910bd7b8c7530e # v0.2.0
         with:
           args: --max-cost-usd 2
         env:
@@ -226,7 +261,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@<commit> # v0.2.0
+      - uses: jma49/Open-CR-Agent@121f4ce23ca2b263bd3d24a23c910bd7b8c7530e # v0.2.0
         with:
           github-token: ${{ steps.app.outputs.token }}
           args: --max-cost-usd 2
