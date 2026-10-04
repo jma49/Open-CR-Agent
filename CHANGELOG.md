@@ -6,6 +6,10 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-03
+
+ocra gets a second runtime that needs no OpenCode (`runtime: direct`), a library entry (`review()`) with a curated, recorded public API, SARIF import, run ids and `ocra metrics`, Action outputs, error codes, and reproducible evaluation. The curated API removes exports from every package's main entry: see Changed and Removed. The GitHub Action is `jma49/Open-CR-Agent@v0.3.0`.
+
 ### Added
 
 - `"runtime": "direct"` reviews through the endpoints declared under `providers` without OpenCode: an OpenAI chat completions tool loop with the same step cap, failback and prices, and no other network access ([ADR-0020](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0020-direct-runtime.md)).
@@ -29,6 +33,7 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 - Action outputs `verdict`, `exit-code`, `run-id`, `findings` and `report` (the JSON report under `$RUNNER_TEMP`), also when the step fails; the input `sarif: true` writes a SARIF log named in the `sarif` output.
 - What ocra's packages throw is an `OcraError` with a stable `code` (`CONFIG_INVALID`, `VCS_GIT_FAILED`, `RUNTIME_FAILED`, `BUDGET_EXHAUSTED` and the others the Embedding page lists) and the underlying error as `cause`; `isOcraError()` and `OCRA_ERROR_CODES` come with it.
 - An install with `--omit=optional` leaves OpenCode out (11 MB instead of 175 MB) for the `direct` runtime, and the Action's new input `opencode: false` does the same.
+- A JSON Schema for `.ocra/config.json`, `docs/schema/config.v1.json`; the file may name it in `$schema` so editors complete and check it.
 
 ### Changed
 
@@ -41,6 +46,7 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 - Each package's main entry exports a curated list instead of everything (`export *`): the Embedding page lists it, and `etc/<package>.api.md` records every name and type.
 - `core` keeps `review()` with what it takes and returns, the report output and its schema, `parseSarifLog()`, the plugin interface, the `VcsAdapter` and `AgentRuntime` contracts, the domain types and the error model.
 - What the packages share beyond that is in `@open-cr-agent/core/internal` and the other `/internal` entries, which are not a contract; open an issue for anything you need that is gone rather than importing them.
+- The container image runs `ocra` as its entrypoint (`docker run <image> review …`; the 0.2.0 form `docker run <image> ocra review …` still works). A GitLab job using the image sets `entrypoint: [""]`.
 
 ### Removed
 
@@ -170,7 +176,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/jma49/Open-CR-Agent/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/jma49/Open-CR-Agent/compare/v0.1.0...v0.1.1

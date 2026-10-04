@@ -1,6 +1,6 @@
 {
   "name": "@open-cr-agent/runtime-direct",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Agent runtime for Open-CR-Agent that calls OpenAI-compatible endpoints directly",
   "keywords": [
     "code-review",
@@ -33,7 +33,7 @@
     "!dist/**/*.map"
   ],
   "dependencies": {
-    "@open-cr-agent/core": "0.2.0",
+    "@open-cr-agent/core": "0.3.0",
     "zod": "^4.6.5"
   },
   "publishConfig": {

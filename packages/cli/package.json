@@ -1,6 +1,6 @@
 {
   "name": "@open-cr-agent/cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "ocra: open-source multi-agent code review for local changes and GitHub pull requests",
   "keywords": [
     "code-review",
@@ -37,15 +37,15 @@
     "!dist/**/*.map"
   ],
   "dependencies": {
-    "@open-cr-agent/core": "0.2.0",
-    "@open-cr-agent/runtime-direct": "0.2.0",
-    "@open-cr-agent/vcs-github": "0.2.0",
-    "@open-cr-agent/vcs-gitlab": "0.2.0",
-    "@open-cr-agent/vcs-local": "0.2.0",
+    "@open-cr-agent/core": "0.3.0",
+    "@open-cr-agent/runtime-direct": "0.3.0",
+    "@open-cr-agent/vcs-github": "0.3.0",
+    "@open-cr-agent/vcs-gitlab": "0.3.0",
+    "@open-cr-agent/vcs-local": "0.3.0",
     "zod": "^4.6.5"
   },
   "optionalDependencies": {
-    "@open-cr-agent/runtime-opencode": "0.2.0"
+    "@open-cr-agent/runtime-opencode": "0.3.0"
   },
   "publishConfig": {
     "access": "public"
