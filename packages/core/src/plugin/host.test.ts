@@ -174,6 +174,15 @@ describe("startPlugins", () => {
       configure: (ctx) => ctx.registerTool(tool("report_finding")),
     };
     await expect(startPlugins([hijack])).rejects.toBeInstanceOf(PluginError);
+
+    // Reviewer ids share a namespace with the roles a configuration can set.
+    for (const role of ["judge", "verifier", "helper"]) {
+      const named: OcraPlugin = {
+        name: `as-${role}`,
+        configure: (ctx) => ctx.registerReviewer({ ...correctnessReviewer, id: role }),
+      };
+      await expect(startPlugins([named])).rejects.toThrow(`cannot register reviewer "${role}"`);
+    }
   });
 
   it("forbids registration after the configure phase", async () => {

@@ -1,5 +1,6 @@
 import type { AgentRuntime, VcsAdapter } from "../contracts.js";
 import { errorMessage, OcraError } from "../errors.js";
+import { AGENT_ROLES } from "../pipeline/agents.js";
 import type { ReviewEvent } from "../pipeline/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { RepoRule } from "../rules/repo-rules.js";
@@ -46,6 +47,13 @@ export class PluginRegistry {
   }
 
   registerReviewer(owner: string, reviewer: ReviewerDefinition): void {
+    // Reviewer ids share one namespace with the roles (ADR-0025): settings
+    // and provenance are keyed by either.
+    if ((AGENT_ROLES as readonly string[]).includes(reviewer.id)) {
+      throw new PluginError(
+        `Plugin "${owner}" cannot register reviewer "${reviewer.id}": the name is reserved for a role`,
+      );
+    }
     this.add(this.reviewerMap, "reviewer", owner, reviewer.id, reviewer);
   }
 
