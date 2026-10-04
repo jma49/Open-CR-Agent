@@ -6,3 +6,7 @@ rules:
         # Cloud trusts only ocra-dogfood.yml@refs/heads/main (the maintainers' pitfalls notes).
         jma49/Open-CR-Agent/*: ref-pin
         "*": hash-pin
+  # The pinned actionlint (ci.yml) does not know GitHub's "$/" form for an
+  # action in this repository yet; the jobs use "./.github/actions/setup".
+  self-repository:
+    disable: true

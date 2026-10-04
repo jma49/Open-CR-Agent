@@ -1,0 +1,27 @@
+# The repository's own jobs: Node.js from .nvmrc, npm's cache, and npm ci,
+# after the caller's checkout. The release workflow and the Action's install
+# test set Node up themselves: they run without a cache on purpose.
+name: Set up the workspace
+description: Node.js from .nvmrc (or node-version) with npm's cache, then npm ci.
+inputs:
+  node-version:
+    description: A Node.js version instead of .nvmrc's.
+    default: ""
+  npm-ci-args:
+    description: Arguments for npm ci, such as --ignore-scripts.
+    default: ""
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        node-version-file: ${{ inputs.node-version == '' && '.nvmrc' || '' }}
+        cache: npm
+    - shell: bash
+      env:
+        NPM_CI_ARGS: ${{ inputs.npm-ci-args }}
+      run: |
+        # The input is a list of flags: word splitting is wanted.
+        # shellcheck disable=SC2086
+        npm ci $NPM_CI_ARGS
