@@ -67,6 +67,12 @@ describe("review provenance", () => {
       promptHash: promptHash([correctnessReviewer]),
       configHash: "c0ffee",
       sampling: { temperature: 0, seed: 7 },
+      agents: {
+        correctness: { tier: "standard" },
+        verifier: { tier: "standard" },
+        judge: { tier: "top" },
+        helper: { tier: "light" },
+      },
     });
   });
 });

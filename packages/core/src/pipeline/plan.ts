@@ -5,6 +5,7 @@ import { MEMORY_PATH, type MemoryEntry, parseMemory } from "../memory/memory.js"
 import { parseRepoRules, REPO_RULES_PATH, type RepoRule } from "../rules/repo-rules.js";
 import { defaultSelectionPolicy, type FileDecision, selectFiles } from "../select/select.js";
 import { triage } from "../triage.js";
+import { roleEffort } from "./agents.js";
 import { reviewContext } from "./context.js";
 import { runtimeGrouper } from "./helpers.js";
 import { rank } from "./matrix.js";
@@ -36,7 +37,7 @@ export interface ReviewPlan {
 // Planning needs no model except for grouping, which is skipped without a runtime.
 export type PlanOptions = Pick<
   ReviewOptions & ReviewHooks,
-  "vcs" | "rules" | "readTrusted" | "selection" | "bundling" | "grouper"
+  "vcs" | "rules" | "readTrusted" | "selection" | "bundling" | "grouper" | "effort" | "roles"
 > & {
   // Absent for a plan preview, which nobody looks up again.
   runId?: string;
@@ -77,7 +78,9 @@ export async function planReview(
   const usage: Usage[] = [];
   const grouper =
     options.grouper ??
-    (options.runtime ? runtimeGrouper(options.runtime, signal, (u) => usage.push(u)) : undefined);
+    (options.runtime
+      ? runtimeGrouper(options.runtime, signal, (u) => usage.push(u), roleEffort("helper", options))
+      : undefined);
   const widened =
     options.reviewOnly && options.priorTier && rank(tier) > rank(options.priorTier)
       ? { from: options.priorTier, to: tier }

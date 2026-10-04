@@ -1,10 +1,4 @@
-import type {
-  ModelPrice,
-  ReviewContext,
-  Sampling,
-  ToolDefinition,
-  Usage,
-} from "@open-cr-agent/core";
+import type { ModelPrice, ReviewContext, ToolDefinition, Usage } from "@open-cr-agent/core";
 import {
   type AttemptOutcome,
   addUsage,
@@ -12,7 +6,15 @@ import {
   errorMessage,
   REVIEW_TOOLS,
 } from "@open-cr-agent/core/internal";
-import { type ChatMessage, chat, type Endpoint, type ToolCall, toolSpec } from "./openai.js";
+import {
+  type CallParams,
+  type ChatMessage,
+  chat,
+  type Endpoint,
+  type ToolCall,
+  toolSpec,
+  withoutEffort,
+} from "./openai.js";
 
 export interface LoopInput {
   endpoint: Endpoint;
@@ -28,8 +30,10 @@ export interface LoopInput {
   // done call and no answer.
   resume?: string;
   timeoutMs: number;
-  // Sent with every request.
-  sampling?: Sampling;
+  // Sent with every request, until the endpoint refuses the effort in them.
+  params?: CallParams;
+  // The endpoint refused the effort; the rest of the attempt goes without it.
+  onEffortRefused?: () => void;
   signal: AbortSignal;
   onUsage?: (spent: Usage) => void;
 }
@@ -57,6 +61,7 @@ export async function runLoop(input: LoopInput): Promise<AttemptOutcome> {
   };
   const texts: string[] = [];
   let done = false;
+  let params = input.params ?? {};
 
   while (outcome.steps < input.maxSteps) {
     const response = await chat(
@@ -65,12 +70,16 @@ export async function runLoop(input: LoopInput): Promise<AttemptOutcome> {
         model: input.model,
         messages,
         ...(specs.length > 0 ? { tools: specs } : {}),
-        ...input.sampling,
+        ...params,
       },
       input.price,
       signal,
     );
     outcome.steps += 1;
+    if (response.effortDropped) {
+      params = withoutEffort(params);
+      input.onEffortRefused?.();
+    }
     if (!response.ok) {
       outcome.error = timeout.aborted
         ? { message: `timed out after ${Math.round(input.timeoutMs / 1000)}s`, retryable: true }

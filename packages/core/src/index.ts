@@ -9,9 +9,11 @@ export type {
   AgentRuntime,
   AgentTaskSpec,
   AppliedSampling,
+  AppliedSettings,
   CodeMatch,
   CompletionRequest,
   CompletionResult,
+  Effort,
   ModelTier,
   ReviewContext,
   Sampling,
@@ -47,6 +49,12 @@ export {
 } from "./errors.js";
 export type { JudgeDecisions } from "./judge/judge.js";
 export type { MemoryEntry } from "./memory/memory.js";
+export type {
+  AgentRole,
+  RoleSetting,
+  RoleSettings,
+  TierEfforts,
+} from "./pipeline/agents.js";
 export { SpendLimitReached } from "./pipeline/budget.js";
 export { AccessDeniedError } from "./pipeline/context.js";
 export type {
@@ -63,7 +71,11 @@ export {
   toReportOutput,
 } from "./pipeline/output.js";
 export { reportJsonSchema, reportOutputSchema } from "./pipeline/output-schema.js";
-export type { ProvenanceInput, RunProvenance } from "./pipeline/provenance.js";
+export type {
+  AgentProvenance,
+  ProvenanceInput,
+  RunProvenance,
+} from "./pipeline/provenance.js";
 export {
   type AnchoringSummary,
   type CoverageEntry,

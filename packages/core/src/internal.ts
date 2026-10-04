@@ -7,6 +7,7 @@ export { severitySchema, verificationSchema } from "./domain.js";
 export { errorMessage, usageSpent } from "./errors.js";
 export { MEMORY_PATH, parseMemory, serializeMemory } from "./memory/memory.js";
 export { proxiedFetch } from "./net/proxied-fetch.js";
+export { AGENT_ROLES, EFFORT_LEVELS } from "./pipeline/agents.js";
 export { reviewContext } from "./pipeline/context.js";
 export { RISK_TIERS } from "./pipeline/matrix.js";
 export {

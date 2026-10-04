@@ -3,9 +3,11 @@ import {
   type AgentRuntime,
   type AgentTaskSpec,
   type AppliedSampling,
+  type AppliedSettings,
   type CompletionRequest,
   type CompletionResult,
   type CustomProvider,
+  type Effort,
   type ModelPrice,
   type ModelTier,
   OcraError,
@@ -22,6 +24,7 @@ import {
   reviewTools,
   withFailback,
 } from "@open-cr-agent/core/internal";
+import { EffortLedger } from "./effort.js";
 import { runLoop } from "./loop.js";
 import type { Endpoint } from "./openai.js";
 
@@ -37,6 +40,12 @@ interface Target {
   price: ModelPrice;
 }
 
+interface Call {
+  agent: string;
+  effort: Effort | undefined;
+  model: string;
+}
+
 // Talks to the declared OpenAI-compatible endpoints itself: no OpenCode
 // process, no catalog fetch, no package install, nothing on disk. A model of
 // a provider that is not declared in configuration is refused, since the
@@ -48,6 +57,7 @@ export class DirectRuntime implements AgentRuntime {
   private readonly health = new ModelHealth();
   private readonly tools: readonly ToolDefinition[];
   private readonly fetch: typeof fetch;
+  private readonly efforts: EffortLedger;
 
   constructor(private readonly options: DirectRuntimeOptions) {
     this.tools = [...reviewTools, ...options.tools];
@@ -57,6 +67,11 @@ export class DirectRuntime implements AgentRuntime {
       ...(temperature === undefined ? {} : { temperature }),
       ...(seed === undefined ? {} : { seed }),
     };
+    this.efforts = new EffortLedger(this.sampling);
+  }
+
+  appliedTo(agent: string): AppliedSettings | undefined {
+    return this.efforts.appliedTo(agent);
   }
 
   async *runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent> {
@@ -75,6 +90,7 @@ export class DirectRuntime implements AgentRuntime {
       attempt: (model, onUsage) =>
         runLoop({
           ...this.target(model),
+          ...this.call({ agent: spec.reviewer, effort: spec.effort, model }),
           system: spec.systemPrompt,
           user: spec.userPrompt,
           tools: this.tools,
@@ -82,7 +98,6 @@ export class DirectRuntime implements AgentRuntime {
           maxSteps: MAX_AGENT_STEPS,
           resume: RESUME_MESSAGE,
           timeoutMs: spec.timeoutMs,
-          sampling: this.sampling,
           signal,
           onUsage,
         }),
@@ -101,13 +116,13 @@ export class DirectRuntime implements AgentRuntime {
       attempt: (model) =>
         runLoop({
           ...this.target(model),
+          ...this.call({ agent: request.agent ?? request.tier, effort: request.effort, model }),
           system: request.system,
           user: request.user,
           tools: [],
           context: NO_CONTEXT,
           maxSteps: 1,
           timeoutMs: request.timeoutMs,
-          sampling: this.sampling,
           signal,
         }),
     });
@@ -140,6 +155,17 @@ export class DirectRuntime implements AgentRuntime {
       }
     }
     return undefined;
+  }
+
+  // What one attempt sends besides the conversation, and where a refused
+  // effort is recorded.
+  private call({ agent, effort, model }: Call) {
+    const { providerID } = parseModel(model);
+    const style = this.options.providers?.[providerID]?.effort;
+    return {
+      params: this.efforts.params(agent, effort, model, style),
+      onEffortRefused: () => this.efforts.refuse(agent, model),
+    };
   }
 
   private target(model: string): Target {

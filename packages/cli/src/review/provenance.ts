@@ -17,11 +17,14 @@ export function requestedSampling(config: CliConfig, args: ReviewArgs): Sampling
 // The effective configuration and the flags that change what is reviewed
 // and how, so two runs can tell they were set up alike. Keys are names of
 // environment variables, never their values; a password written into a
-// URL is dropped. Sampling is recorded on its own.
+// URL is dropped. Sampling is recorded on its own. Effort is covered; left
+// unset it adds nothing, so configurations that set none keep their hash.
 export function configHash(config: CliConfig, args: ReviewArgs): string {
-  const { sampling: _, providers, extends: shared, ...rest } = config;
+  const { sampling: _, providers, extends: shared, effort, roles, ...rest } = config;
   return stableHash({
     ...rest,
+    ...(Object.keys(effort).length > 0 ? { effort } : {}),
+    ...(Object.keys(roles).length > 0 ? { roles } : {}),
     ...(shared === undefined ? {} : { extends: withoutCredentials(shared) }),
     providers: Object.fromEntries(
       Object.entries(providers).map(([id, p]) => [

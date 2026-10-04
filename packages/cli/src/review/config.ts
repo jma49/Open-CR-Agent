@@ -1,18 +1,24 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  type AgentRole,
   type CustomProvider,
   type ModelChains,
   type ModelTier,
   OcraError,
   type RepoRule,
   type RiskTier,
+  type TierEfforts,
 } from "@open-cr-agent/core";
-import { RISK_TIERS } from "@open-cr-agent/core/internal";
+import { AGENT_ROLES, EFFORT_LEVELS, RISK_TIERS } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 import { fetchRemoteConfig, mergeConfig, type RemoteConfig } from "./remote-config.js";
 
 export const CONFIG_PATH = ".ocra/config.json";
+
+// How much a model reasons before answering (ADR-0025); unset leaves the
+// provider's default.
+const effort = z.enum(EFFORT_LEVELS);
 
 const modelChain = z
   .union([z.string().min(1), z.array(z.string().min(1)).min(1)])
@@ -56,6 +62,9 @@ const providerSchema = z
         z.object({ input: price, output: price, cachedInput: price.optional() }).strict(),
       )
       .refine((models) => Object.keys(models).length > 0, "must list at least one model"),
+    // How the endpoint takes a reasoning effort: "openai" sends
+    // reasoning_effort (the default), "openrouter" sends reasoning.effort.
+    effort: z.enum(["openai", "openrouter"]).optional(),
   })
   .strict();
 
@@ -68,6 +77,11 @@ const configSchema = z
     $schema: z.string().optional(),
     models: z
       .object({ top: modelChain, standard: modelChain, light: modelChain })
+      .partial()
+      .strict()
+      .default({}),
+    effort: z
+      .object({ top: effort, standard: effort, light: effort })
       .partial()
       .strict()
       .default({}),
@@ -108,9 +122,16 @@ const configSchema = z
           .object({
             enabled: z.boolean(),
             minTier: z.enum(RISK_TIERS as [RiskTier, ...RiskTier[]]),
+            effort,
           })
           .partial()
           .strict(),
+      )
+      .default({}),
+    roles: z
+      .partialRecord(
+        z.enum(AGENT_ROLES as [AgentRole, ...AgentRole[]]),
+        z.object({ effort }).partial().strict(),
       )
       .default({}),
     pluginSettings: z.record(z.string(), z.unknown()).default({}),
@@ -136,8 +157,10 @@ export function configJsonSchema(): Record<string, unknown> {
   };
 }
 
-export type CliConfig = Omit<z.infer<typeof configSchema>, "models" | "providers"> & {
+export type CliConfig = Omit<z.infer<typeof configSchema>, "models" | "effort" | "providers"> & {
   models: ModelChains;
+  // The file's, with OCRA_EFFORT_<TIER> on top.
+  effort: TierEfforts;
   providers: Record<string, CustomProvider>;
   // Rules from a shared configuration named by extends.
   rules: RepoRule[];
@@ -157,6 +180,12 @@ const MODEL_ENV: Record<ModelTier, string> = {
   top: "OCRA_MODEL_TOP",
   standard: "OCRA_MODEL_STANDARD",
   light: "OCRA_MODEL_LIGHT",
+};
+
+const EFFORT_ENV: Record<ModelTier, string> = {
+  top: "OCRA_EFFORT_TOP",
+  standard: "OCRA_EFFORT_STANDARD",
+  light: "OCRA_EFFORT_LIGHT",
 };
 
 export class ConfigError extends OcraError {
@@ -193,12 +222,30 @@ export async function loadConfig(
       .filter((m) => m !== "");
     if (chain.length > 0) models[tier] = chain;
   }
+  const efforts: { -readonly [Tier in keyof TierEfforts]: TierEfforts[Tier] } = {
+    ...parsed.effort,
+  };
+  for (const [tier, name] of Object.entries(EFFORT_ENV) as [ModelTier, string][]) {
+    const value = env[name]?.trim();
+    if (!value) continue;
+    const level = effort.safeParse(value);
+    if (!level.success) {
+      throw new ConfigError(`${name} must be one of ${EFFORT_LEVELS.join(", ")}`);
+    }
+    efforts[tier] = level.data;
+  }
   for (const model of unpriced(parsed.providers, models)) {
     options.warn?.(
       `${model} has a price of 0: reported cost and --max-cost-usd do not count its tokens`,
     );
   }
-  return { ...parsed, models, providers: toProviders(parsed.providers), rules };
+  return {
+    ...parsed,
+    models,
+    effort: efforts,
+    providers: toProviders(parsed.providers),
+    rules,
+  };
 }
 
 function toProviders(
@@ -210,6 +257,7 @@ function toProviders(
       {
         baseUrl: p.baseUrl,
         ...(p.apiKeyEnv ? { apiKeyEnv: p.apiKeyEnv } : {}),
+        ...(p.effort ? { effort: p.effort } : {}),
         models: Object.fromEntries(
           Object.entries(p.models).map(([model, price]) => [
             model,

@@ -1,5 +1,6 @@
-import type { AgentRuntime, Usage } from "../contracts.js";
+import type { AgentRuntime, Effort, Usage } from "../contracts.js";
 import { errorMessage, usageSpent } from "../errors.js";
+import { agentCall } from "../pipeline/agents.js";
 import type { ReviewPrompt } from "./prompt.js";
 import type { ReviewerDefinition } from "./reviewer.js";
 
@@ -18,6 +19,7 @@ export async function planBundle(
   reviewer: ReviewerDefinition,
   prompt: ReviewPrompt,
   signal: AbortSignal,
+  effort?: Effort,
 ): Promise<{ plan?: string; usage: Usage[]; warning?: string }> {
   const complete = runtime.complete?.bind(runtime);
   if (!complete) return { usage: [] };
@@ -25,6 +27,7 @@ export async function planBundle(
     const answer = await complete(
       {
         tier: reviewer.modelTier,
+        ...agentCall(reviewer.id, effort),
         system: PLAN_SYSTEM_PROMPT.replace("{{reviewer}}", reviewer.id),
         user: prompt.user,
         timeoutMs: PLAN_TIMEOUT_MS,

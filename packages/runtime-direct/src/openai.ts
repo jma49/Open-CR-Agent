@@ -1,4 +1,4 @@
-import type { ModelPrice, ToolDefinition, Usage } from "@open-cr-agent/core";
+import type { Effort, ModelPrice, ToolDefinition, Usage } from "@open-cr-agent/core";
 import {
   errorMessage,
   parseQuotaError,
@@ -64,7 +64,16 @@ export interface ChatRequest {
   tools?: readonly ToolSpec[];
   temperature?: number;
   seed?: number;
+  // One of the two, by the provider's declaration.
+  reasoning_effort?: Effort;
+  reasoning?: { effort: Effort };
 }
+
+// What a request sends besides the conversation.
+export type CallParams = Pick<
+  ChatRequest,
+  "temperature" | "seed" | "reasoning_effort" | "reasoning"
+>;
 
 export interface ChatError {
   message: string;
@@ -73,13 +82,21 @@ export interface ChatError {
   // A failure the next request may not repeat: a dropped connection, a 5xx,
   // an answer that is not a completion.
   transient?: boolean;
+  // A 400 that names the effort parameter: the endpoint or model does not
+  // take it.
+  effortRefused?: boolean;
 }
 
-export type ChatResponse =
+// effortDropped: the endpoint refused the effort parameter, and the answer
+// is that of the same request sent again without it.
+export type ChatResponse = (
   | { ok: true; content: string; toolCalls: ToolCall[]; usage: Usage }
-  | { ok: false; error: ChatError };
+  | { ok: false; error: ChatError }
+) & { effortDropped?: true };
 
 const AUTH_STATUS = new Set([401, 403]);
+// How an endpoint names the effort parameters in a 400 that refuses them.
+const EFFORT_PARAMETER = /\breasoning(?:_effort)?\b/i;
 // How much of an error body an error message keeps: enough to diagnose, not
 // a page of HTML.
 const BODY_EXCERPT = 300;
@@ -95,10 +112,35 @@ export function toolSpec(tool: ToolDefinition): ToolSpec {
   };
 }
 
-// One request to the endpoint, sent a second time when the first failed in
-// a way a moment may cure. Only the key named for this provider goes out,
-// and only to its base URL.
+// One request to the endpoint. A refused effort parameter is not the model's
+// failure: the request goes once more without it, so the review still runs
+// and the failback chain does not move.
 export async function chat(
+  endpoint: Endpoint,
+  request: ChatRequest,
+  price: ModelPrice,
+  signal: AbortSignal,
+): Promise<ChatResponse> {
+  const first = await sendRetrying(endpoint, request, price, signal);
+  if (first.ok || !first.error.effortRefused || !hasEffort(request)) return first;
+  return {
+    ...(await sendRetrying(endpoint, withoutEffort(request), price, signal)),
+    effortDropped: true,
+  };
+}
+
+function hasEffort(params: CallParams): boolean {
+  return params.reasoning_effort !== undefined || params.reasoning !== undefined;
+}
+
+export function withoutEffort<T extends CallParams>(params: T): T {
+  const { reasoning_effort: _effort, reasoning: _reasoning, ...rest } = params;
+  return rest as T;
+}
+
+// Sent a second time when the first failed in a way a moment may cure. Only
+// the key named for this provider goes out, and only to its base URL.
+async function sendRetrying(
   endpoint: Endpoint,
   request: ChatRequest,
   price: ModelPrice,
@@ -185,6 +227,7 @@ function failure(
   return {
     message,
     retryable: !AUTH_STATUS.has(status),
+    ...(status === 400 && EFFORT_PARAMETER.test(body) ? { effortRefused: true } : {}),
     ...(quota ? { quota } : {}),
     ...(!quota && (status >= 500 || status === 408) ? { transient: true } : {}),
   };

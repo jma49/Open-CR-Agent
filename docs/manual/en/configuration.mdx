@@ -52,6 +52,24 @@ export OCRA_MODEL_LIGHT="google/gemini-flash-lite-latest"
 export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
 ```
 
+## Effort
+
+Most current models can be told how much to reason before they answer. `effort` sets it per tier, `reviewers.<id>.effort` for one reviewer (its review tasks and its plan call), and `roles.<role>.effort` for the `verifier`, the `judge` or the `helper` calls (grouping files, relocating quotes). Levels are `none`, `minimal`, `low`, `medium` and `high`. An agent takes its own effort, else its tier's (reviewers by their tier, the verifier `standard`, the judge `top`, helpers `light`); the verifier and the judge never take a reviewer's. Unset sends nothing, so the provider's default applies.
+
+```json
+{
+  "effort": { "standard": "medium", "top": "high" },
+  "reviewers": { "security": { "effort": "high" } },
+  "roles": { "helper": { "effort": "minimal" } }
+}
+```
+
+`OCRA_EFFORT_TOP`, `OCRA_EFFORT_STANDARD` and `OCRA_EFFORT_LIGHT` override a tier's effort.
+
+- The `direct` runtime sends the level as `reasoning_effort`, or as `reasoning: { effort }` for a provider declared with `"effort": "openrouter"` ([Model providers](./providers#your-own-endpoint)). `none` is sent as `none`. A call that sends any other level sends no `temperature` or `seed`: reasoning models refuse or override them. If the endpoint answers HTTP 400 naming the parameter, the call is sent again without it, once, without counting as the model's failure; that model's later calls go without it, and the run warns.
+- The `opencode` runtime does not send an effort yet; the run warns and records it as not applied.
+- The JSON report's `provenance.agents` lists each agent's tier, its effort and whether it was `applied`, and `notApplied` for the sampling settings its calls left out. `--plan` shows each task's effort. The configuration hash covers effort.
+
 ## Provider keys
 
 Keys are read from the environment only. Use the variable your provider expects in OpenCode, for example `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`. For Google, `GEMINI_API_KEY`, `GOOGLE_API_KEY` and `GOOGLE_GENERATIVE_AI_API_KEY` all work.
@@ -86,7 +104,7 @@ ocra skips binary files, likely secrets (`.env`, keys, certificates, cloud and r
 
 ## Reviewers
 
-`reviewers.<id>` turns a reviewer off or sets the risk tier it starts at (higher or lower than its default). Risk tiers, from lowest: `trivial` (≤10 changed lines), `lite` (≤100), `full` (larger changes, more than 20 files, or a sensitive path: CI workflows, or a directory or file name with a word such as `auth`, `oauth`, `jwt`, `password`, `credential`, `secret`, `login`, `permission`, `acl`, `identity`, `crypto` or `security`).
+`reviewers.<id>` turns a reviewer off, sets the risk tier it starts at (higher or lower than its default), or sets its [effort](#effort). Risk tiers, from lowest: `trivial` (≤10 changed lines), `lite` (≤100), `full` (larger changes, more than 20 files, or a sensitive path: CI workflows, or a directory or file name with a word such as `auth`, `oauth`, `jwt`, `password`, `credential`, `secret`, `login`, `permission`, `acl`, `identity`, `crypto` or `security`).
 
 ```json
 { "reviewers": { "correctness": { "minTier": "lite" }, "security": { "enabled": false } } }
@@ -102,7 +120,7 @@ An organization can keep common settings in one place and let repositories exten
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `reviewers`, `github`, `providers` (only when pinned, see below) and `rules` (the same shape as `.ocra/rules.json` entries). It cannot list plugins or choose a runtime: it comes from outside the repository and must not run code. The repository's own values win; `include`, `exclude` and `rules` are combined and `models`, `reviewers`, `github` and `providers` are merged key by key.
+The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned, see below) and `rules` (the same shape as `.ocra/rules.json` entries). It cannot list plugins or choose a runtime: it comes from outside the repository and must not run code. The repository's own values win; `include`, `exclude` and `rules` are combined and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` are merged key by key.
 
 Only `https` URLs are accepted, without redirects, up to 256 KB. The optional `#sha256=` fragment pins the exact content; a file that declares `providers` must be pinned, since a provider decides where your code goes ([Model providers](./providers#your-own-endpoint)). If the file cannot be loaded or is invalid, ocra warns and continues with the repository's own settings; limits set only in the shared file, such as `maxCostUsd`, then do not apply, so set them in the repository too if they must always hold.
 

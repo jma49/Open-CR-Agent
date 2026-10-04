@@ -27,7 +27,7 @@ export function renderPlan(preview: ReviewPreview): string {
   const width = Math.max(0, ...preview.tasks.map((t) => t.taskId.length));
   for (const t of preview.tasks) {
     lines.push(
-      `  ${t.taskId.padEnd(width)}  ~${number.format(t.promptTokens)} prompt tokens${t.planPromptTokens === undefined ? "" : ` + plan ~${number.format(t.planPromptTokens)}`}  ${t.bundle}`,
+      `  ${t.taskId.padEnd(width)}  ~${number.format(t.promptTokens)} prompt tokens${t.planPromptTokens === undefined ? "" : ` + plan ~${number.format(t.planPromptTokens)}`}${t.effort === undefined ? "" : `  effort ${t.effort}`}  ${t.bundle}`,
     );
   }
   if (preview.skipped.length > 0) {

@@ -62,6 +62,43 @@
       },
       "additionalProperties": false
     },
+    "effort": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "top": {
+          "type": "string",
+          "enum": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "standard": {
+          "type": "string",
+          "enum": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "light": {
+          "type": "string",
+          "enum": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "concurrency": {
       "type": "integer",
       "minimum": 1,
@@ -179,6 +216,44 @@
               "lite",
               "full"
             ]
+          },
+          "effort": {
+            "type": "string",
+            "enum": [
+              "none",
+              "minimal",
+              "low",
+              "medium",
+              "high"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "roles": {
+      "default": {},
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "enum": [
+          "verifier",
+          "judge",
+          "helper"
+        ]
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "effort": {
+            "type": "string",
+            "enum": [
+              "none",
+              "minimal",
+              "low",
+              "medium",
+              "high"
+            ]
           }
         },
         "additionalProperties": false
@@ -245,6 +320,13 @@
               ],
               "additionalProperties": false
             }
+          },
+          "effort": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "openrouter"
+            ]
           }
         },
         "required": [

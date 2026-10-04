@@ -22,10 +22,18 @@ export interface VcsAdapter {
 
 export type ModelTier = "top" | "standard" | "light";
 
+// How much a model reasons before it answers (ADR-0025). Unset leaves the
+// provider's default; "none" asks for no reasoning where a provider can say so.
+export type Effort = "none" | "minimal" | "low" | "medium" | "high";
+
 export interface AgentTaskSpec {
   taskId: string;
+  // The agent the task runs for: its settings and what was applied are kept
+  // under this id.
   reviewer: string;
   modelTier: ModelTier;
+  // Absent: the runtime sends no effort.
+  effort?: Effort;
   systemPrompt: string;
   userPrompt: string;
   context: ReviewContext;
@@ -56,6 +64,10 @@ export interface Usage {
 
 export interface CompletionRequest {
   tier: ModelTier;
+  // The agent the call is made for: a reviewer id (its plan call), or the
+  // role "verifier", "judge" or "helper".
+  agent?: string;
+  effort?: Effort;
   system: string;
   user: string;
   timeoutMs: number;
@@ -79,10 +91,23 @@ export interface AppliedSampling extends Sampling {
   notApplied?: (keyof Sampling)[];
 }
 
+// What a runtime did with one agent's calls over the run.
+export interface AppliedSettings {
+  // Every call that asked for an effort sent it; false when one went
+  // without, because the endpoint refused the parameter.
+  effort: boolean;
+  // Sampling settings left out of the agent's calls: a call that sends an
+  // effort other than "none" sends no temperature or seed.
+  notApplied?: (keyof Sampling)[];
+}
+
 export interface AgentRuntime {
   readonly name: string;
   // Absent: the runtime applies none of the requested sampling settings.
   readonly sampling?: AppliedSampling;
+  // What the runtime applied for an agent that asked for an effort; undefined
+  // when that agent made no such call. Absent: the runtime sends no effort.
+  appliedTo?(agent: string): AppliedSettings | undefined;
   runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent>;
   // Throws a CompletionError carrying the usage of failed attempts.
   complete?(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult>;

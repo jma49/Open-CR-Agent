@@ -35,7 +35,24 @@ export type AgentEvent = {
 };
 
 // @public (undocumented)
+export interface AgentProvenance {
+    // (undocumented)
+    applied?: boolean;
+    // (undocumented)
+    effort?: Effort;
+    // (undocumented)
+    notApplied?: (keyof Sampling)[];
+    // (undocumented)
+    tier: ModelTier;
+}
+
+// @public (undocumented)
+export type AgentRole = "verifier" | "judge" | "helper";
+
+// @public (undocumented)
 export interface AgentRuntime {
+    // (undocumented)
+    appliedTo?(agent: string): AppliedSettings | undefined;
     // (undocumented)
     complete?(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult>;
     // (undocumented)
@@ -55,6 +72,8 @@ export const agentsMdReviewerPlugin: OcraPlugin;
 export interface AgentTaskSpec {
     // (undocumented)
     context: ReviewContext;
+    // (undocumented)
+    effort?: Effort;
     // (undocumented)
     modelTier: ModelTier;
     // (undocumented)
@@ -93,6 +112,14 @@ const anchorMethodSchema: z.ZodEnum<{
 
 // @public (undocumented)
 export interface AppliedSampling extends Sampling {
+    // (undocumented)
+    notApplied?: (keyof Sampling)[];
+}
+
+// @public (undocumented)
+export interface AppliedSettings {
+    // (undocumented)
+    effort: boolean;
     // (undocumented)
     notApplied?: (keyof Sampling)[];
 }
@@ -147,6 +174,10 @@ export class CompletionError extends OcraError {
 
 // @public (undocumented)
 export interface CompletionRequest {
+    // (undocumented)
+    agent?: string;
+    // (undocumented)
+    effort?: Effort;
     // (undocumented)
     system: string;
     // (undocumented)
@@ -210,6 +241,8 @@ export interface CustomProvider {
     // (undocumented)
     baseUrl: string;
     // (undocumented)
+    effort?: "openai" | "openrouter";
+    // (undocumented)
     models: Readonly<Record<string, ModelPrice>>;
 }
 
@@ -231,6 +264,9 @@ export type DiffLine = {
 
 // @public (undocumented)
 export const docsReviewerPlugin: OcraPlugin;
+
+// @public (undocumented)
+export type Effort = "none" | "minimal" | "low" | "medium" | "high";
 
 // @public (undocumented)
 export type Env = Readonly<Record<string, string | undefined>>;
@@ -981,6 +1017,25 @@ export const reportOutputSchema: z.ZodObject<{
                 temperature: "temperature";
             }>>>;
         }, z.core.$strict>;
+        agents: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+            tier: z.ZodEnum<{
+                light: "light";
+                standard: "standard";
+                top: "top";
+            }>;
+            effort: z.ZodOptional<z.ZodEnum<{
+                high: "high";
+                low: "low";
+                medium: "medium";
+                minimal: "minimal";
+                none: "none";
+            }>>;
+            applied: z.ZodOptional<z.ZodBoolean>;
+            notApplied: z.ZodOptional<z.ZodArray<z.ZodEnum<{
+                seed: "seed";
+                temperature: "temperature";
+            }>>>;
+        }, z.core.$strict>>>;
     }, z.core.$strict>>;
     usage: z.ZodObject<{
         inputTokens: z.ZodNumber;
@@ -1032,6 +1087,8 @@ export interface ReviewerDefinition {
 
 // @public (undocumented)
 export interface ReviewerOverride {
+    // (undocumented)
+    effort?: Effort | undefined;
     // (undocumented)
     enabled?: boolean | undefined;
     // (undocumented)
@@ -1105,6 +1162,8 @@ export interface ReviewOptions {
     // (undocumented)
     concurrency?: number;
     // (undocumented)
+    effort?: TierEfforts;
+    // (undocumented)
     fullReview?: boolean;
     // (undocumented)
     judge?: boolean;
@@ -1122,6 +1181,8 @@ export interface ReviewOptions {
     reviewerOverrides?: ReviewerOverrides;
     // (undocumented)
     reviewers?: readonly ReviewerDefinition[];
+    // (undocumented)
+    roles?: RoleSettings;
     // (undocumented)
     rules?: readonly RepoRule[];
     // (undocumented)
@@ -1221,6 +1282,17 @@ const riskTierSchema: z.ZodEnum<{
 }>;
 
 // @public (undocumented)
+export interface RoleSetting {
+    // (undocumented)
+    effort?: Effort | undefined;
+}
+
+// @public (undocumented)
+export type RoleSettings = {
+    readonly [Role in AgentRole]?: RoleSetting | undefined;
+};
+
+// @public (undocumented)
 export interface RuleSet {
     // (undocumented)
     general?: string;
@@ -1230,6 +1302,8 @@ export interface RuleSet {
 
 // @public (undocumented)
 export interface RunProvenance {
+    // (undocumented)
+    agents?: Record<string, AgentProvenance>;
     // (undocumented)
     configHash: string;
     // (undocumented)
@@ -1418,6 +1492,11 @@ const taskStatusSchema: z.ZodEnum<{
     failed: "failed";
     timed_out: "timed_out";
 }>;
+
+// @public (undocumented)
+export type TierEfforts = {
+    readonly [Tier in ModelTier]?: Effort | undefined;
+};
 
 // @public (undocumented)
 export interface ToolDefinition<Shape extends z.ZodRawShape = z.ZodRawShape> {

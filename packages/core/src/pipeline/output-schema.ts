@@ -8,6 +8,7 @@ import {
 } from "../domain.js";
 import { memoryEntrySchema } from "../memory/memory.js";
 import { exclusionReasonSchema } from "../select/select.js";
+import { EFFORT_LEVELS } from "./agents.js";
 import { skipReasonSchema } from "./matrix.js";
 import { REPORT_VERSION, type ReportOutput } from "./output.js";
 import { taskStatusSchema } from "./report.js";
@@ -139,11 +140,19 @@ const samplingSchema = z.strictObject({
   notApplied: z.array(z.enum(["temperature", "seed"])).optional(),
 });
 
+const agentProvenanceSchema = z.strictObject({
+  tier: z.enum(["top", "standard", "light"]),
+  effort: z.enum(EFFORT_LEVELS).optional(),
+  applied: z.boolean().optional(),
+  notApplied: z.array(z.enum(["temperature", "seed"])).optional(),
+});
+
 const provenanceSchema = z.strictObject({
   ocraVersion: z.string(),
   promptHash: z.string(),
   configHash: z.string(),
   sampling: samplingSchema,
+  agents: z.record(z.string(), agentProvenanceSchema).optional(),
 });
 
 export const reportOutputSchema = z.strictObject({

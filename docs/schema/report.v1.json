@@ -906,6 +906,52 @@
             }
           },
           "additionalProperties": false
+        },
+        "agents": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "tier": {
+                "type": "string",
+                "enum": [
+                  "top",
+                  "standard",
+                  "light"
+                ]
+              },
+              "effort": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "minimal",
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "applied": {
+                "type": "boolean"
+              },
+              "notApplied": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "temperature",
+                    "seed"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "tier"
+            ],
+            "additionalProperties": false
+          }
         }
       },
       "required": [

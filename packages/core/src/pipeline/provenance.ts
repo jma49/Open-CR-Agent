@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto";
 import { RELOCATE_SYSTEM_PROMPT } from "../anchor/relocate.js";
 import { GROUPING_SYSTEM_PROMPT } from "../bundle/grouping.js";
-import type { AppliedSampling, Sampling } from "../contracts.js";
+import type { AgentRuntime, AppliedSampling, Effort, ModelTier, Sampling } from "../contracts.js";
 import { JUDGE_SYSTEM_PROMPT } from "../judge/prompt.js";
 import { PLAN_SYSTEM_PROMPT } from "../review/plan-phase.js";
 import { buildReviewPrompt } from "../review/prompt.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { VERIFY_SYSTEM_PROMPT } from "../verify/prompt.js";
+import type { ResolvedAgent } from "./agents.js";
 import type { ReviewerOverrides } from "./matrix.js";
 
 // What a run was made with, so two runs can be told apart before their
@@ -18,6 +19,20 @@ export interface RunProvenance {
   // The caller's hash of its effective configuration, secrets left out.
   configHash: string;
   sampling: AppliedSampling;
+  // Per agent (each enabled reviewer, and the verifier, judge and helper
+  // roles): its model tier, the effort it asked for, and what was applied.
+  // Absent from reports made before agents were recorded.
+  agents?: Record<string, AgentProvenance>;
+}
+
+export interface AgentProvenance {
+  tier: ModelTier;
+  effort?: Effort;
+  // With an effort: whether every call sent it. Absent when the agent made
+  // no call that asked for one.
+  applied?: boolean;
+  // Sampling settings the agent's calls left out because they sent an effort.
+  notApplied?: (keyof Sampling)[];
 }
 
 // Supplied by the caller; the review adds the prompt hash and what the
@@ -92,10 +107,34 @@ export function appliedSampling(
   return asked.length > 0 ? { notApplied: asked } : {};
 }
 
+// A runtime that cannot say what it applied applied no effort.
+export function agentProvenance(
+  agents: readonly ResolvedAgent[],
+  runtime: Pick<AgentRuntime, "appliedTo">,
+): Record<string, AgentProvenance> {
+  const entries = agents.map(({ id, tier, effort }): [string, AgentProvenance] => {
+    if (effort === undefined) return [id, { tier }];
+    if (!runtime.appliedTo) return [id, { tier, effort, applied: false }];
+    const applied = runtime.appliedTo(id);
+    if (!applied) return [id, { tier, effort }];
+    return [
+      id,
+      {
+        tier,
+        effort,
+        applied: applied.effort,
+        ...(applied.notApplied?.length ? { notApplied: [...applied.notApplied] } : {}),
+      },
+    ];
+  });
+  return Object.fromEntries(entries);
+}
+
 export function runProvenance(
   input: ProvenanceInput,
-  runtime: { readonly sampling?: AppliedSampling },
+  runtime: Pick<AgentRuntime, "sampling" | "appliedTo">,
   reviewers: readonly ReviewerDefinition[],
+  agents: readonly ResolvedAgent[],
   overrides?: ReviewerOverrides,
 ): RunProvenance {
   return {
@@ -103,5 +142,6 @@ export function runProvenance(
     promptHash: promptHash(reviewers, overrides),
     configHash: input.configHash,
     sampling: appliedSampling(runtime, input.sampling),
+    agents: agentProvenance(agents, runtime),
   };
 }

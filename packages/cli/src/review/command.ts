@@ -134,6 +134,8 @@ export async function reviewCommand(
       vcs,
       reviewers: registry.reviewers,
       reviewerOverrides: overrides,
+      effort: config.effort,
+      roles: config.roles,
       rules: [...registry.rules, ...config.rules],
       selection: { ...defaultSelectionPolicy, include: config.include, exclude: config.exclude },
       ...(target.readTrusted ? { readTrusted: target.readTrusted } : {}),
@@ -257,6 +259,8 @@ async function builtinRuntime(runtimes: RuntimeLoaders, name: string): Promise<O
 function runOptions(config: CliConfig): Omit<ReviewOptions, "vcs" | "runtime"> {
   const options: Omit<ReviewOptions, "vcs" | "runtime"> = {
     selection: { ...defaultSelectionPolicy, include: config.include, exclude: config.exclude },
+    effort: config.effort,
+    roles: config.roles,
   };
   if (config.concurrency !== undefined) options.concurrency = config.concurrency;
   if (config.taskTimeoutMinutes !== undefined)

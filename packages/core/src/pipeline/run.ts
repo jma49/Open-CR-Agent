@@ -15,6 +15,13 @@ import type { RepoRule } from "../rules/repo-rules.js";
 import type { SarifLog } from "../sarif/schema.js";
 import type { SelectionPolicy } from "../select/select.js";
 import { markUnchecked, verifyFindings } from "../verify/verify.js";
+import {
+  effortWarnings,
+  type RoleSettings,
+  resolveAgents,
+  roleEffort,
+  type TierEfforts,
+} from "./agents.js";
 import { SpendLimitReached, spendTracker } from "./budget.js";
 import { coverageOf } from "./coverage.js";
 import { type JobResult, runJob } from "./execute.js";
@@ -41,6 +48,10 @@ export interface ReviewOptions {
   runtime: AgentRuntime;
   reviewers?: readonly ReviewerDefinition[];
   reviewerOverrides?: ReviewerOverrides;
+  // Reasoning effort per model tier, and the roles' own (ADR-0025); a
+  // reviewer's own is in reviewerOverrides.
+  effort?: TierEfforts;
+  roles?: RoleSettings;
   rules?: readonly RepoRule[];
   // Where AGENTS.md and .ocra/rules.json are read from. Defaults to the
   // revision under review; pull request reviews pass the trusted base.
@@ -140,10 +151,15 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
     options.relocate === false
       ? undefined
       : (options.relocate ??
-        runtimeRelocator(options.runtime, signal, (u) => {
-          relocationUsage.push(u);
-          budget.add(u);
-        }));
+        runtimeRelocator(
+          options.runtime,
+          signal,
+          (u) => {
+            relocationUsage.push(u);
+            budget.add(u);
+          },
+          roleEffort("helper", options),
+        ));
   // Tasks report spend while they run, so the one that uses up the review
   // share stops every task still running, not only the ones not yet started.
   const spendLimit = new AbortController();
@@ -163,6 +179,7 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
       (async (request: RelocationRequest) => (budget.exhausted() ? undefined : relocator(request))),
     ultra: options.ultra === true,
     plans: new Map(),
+    agents: options,
     emit,
     onUsage: spend,
     signal: AbortSignal.any([signal, spendLimit.signal]),
@@ -237,6 +254,7 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
           signal,
           concurrency,
           budget,
+          effort: roleEffort("verifier", options),
         });
   if (verification.checked > 0) {
     emit({
@@ -253,6 +271,7 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
     changeRequest: plan.changeRequest,
     tier: plan.tier,
     signal,
+    effort: roleEffort("judge", options),
     enabled: judgeWanted && judgeAffordable,
     keepDropped: options.ultra === true,
     carried: stillOpen(reconciled),
@@ -317,9 +336,17 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
     report.spendLimit = { usd: options.maxCostUsd, ...(reached ? { reached } : {}) };
   }
   report.anchoring = summarizeAnchoring(report.findings, relocationUsage.length);
+  const agents = resolveAgents(reviewers, options);
+  report.warnings.push(...effortWarnings(agents, options.runtime));
   if (options.provenance) {
     const { runtime, reviewerOverrides } = options;
-    report.provenance = runProvenance(options.provenance, runtime, reviewers, reviewerOverrides);
+    report.provenance = runProvenance(
+      options.provenance,
+      runtime,
+      reviewers,
+      agents,
+      reviewerOverrides,
+    );
   }
   if (prior.review) {
     report.rereview = {

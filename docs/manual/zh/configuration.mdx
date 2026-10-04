@@ -52,6 +52,24 @@ export OCRA_MODEL_LIGHT="google/gemini-flash-lite-latest"
 export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
 ```
 
+## 推理强度
+
+当前大多数模型都可以指定回答前推理多少。`effort` 按层级设置，`reviewers.<id>.effort` 设置单个审查员（包括它的审查任务和计划调用），`roles.<role>.effort` 设置 `verifier`（核验）、`judge`（裁决）或 `helper`（辅助调用：给文件分组、重新定位引用的代码）。可选级别为 `none`、`minimal`、`low`、`medium` 和 `high`。每个 agent 先用自己的设置，没有就用它所在层级的设置（审查员按自己的层级，verifier 为 `standard`，judge 为 `top`，helper 为 `light`）；verifier 和 judge 从不沿用审查员的设置。不设置时什么都不发送，使用供应商的默认值。
+
+```json
+{
+  "effort": { "standard": "medium", "top": "high" },
+  "reviewers": { "security": { "effort": "high" } },
+  "roles": { "helper": { "effort": "minimal" } }
+}
+```
+
+`OCRA_EFFORT_TOP`、`OCRA_EFFORT_STANDARD` 和 `OCRA_EFFORT_LIGHT` 会覆盖对应层级的设置。
+
+- `direct` 运行时把级别作为 `reasoning_effort` 发送；对声明了 `"effort": "openrouter"` 的供应商，则发送 `reasoning: { effort }`（见[模型供应商](./providers#你自己的端点)）。`none` 按 `none` 发送。发送其他级别的调用不再发送 `temperature` 和 `seed`：推理模型会拒绝或忽略它们。如果端点返回 HTTP 400 并点名这个参数，这次调用会去掉它重发一次，不算作模型失败；这个模型之后的调用都不再带它，运行结束时给出警告。
+- `opencode` 运行时暂时还不发送推理强度；运行会给出警告，并记为未应用。
+- JSON 报告的 `provenance.agents` 列出每个 agent 的层级、推理强度、是否已应用（`applied`），以及它的调用没有发送的采样设置（`notApplied`）。`--plan` 会显示每个任务的推理强度。配置哈希也覆盖推理强度。
+
 ## 供应商 key
 
 key 只从环境变量读取，变量名用 OpenCode 里各供应商对应的名字，例如 `ANTHROPIC_API_KEY`、`OPENAI_API_KEY`。Google 支持 `GEMINI_API_KEY`、`GOOGLE_API_KEY` 和 `GOOGLE_GENERATIVE_AI_API_KEY`。
@@ -86,7 +104,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 
 ## 审查员
 
-`reviewers.<id>` 可以关闭某个审查员，或设置它开始运行的风险档位（可以比默认高，也可以更低）。风险档位从低到高：`trivial`（改动 ≤10 行）、`lite`（≤100 行）、`full`（更大的改动、超过 20 个文件，或涉及敏感路径：CI workflow，或目录名、文件名中含有 `auth`、`oauth`、`jwt`、`password`、`credential`、`secret`、`login`、`permission`、`acl`、`identity`、`crypto`、`security` 等单词）。
+`reviewers.<id>` 可以关闭某个审查员，设置它开始运行的风险档位（可以比默认高，也可以更低），或设置它的[推理强度](#推理强度)。风险档位从低到高：`trivial`（改动 ≤10 行）、`lite`（≤100 行）、`full`（更大的改动、超过 20 个文件，或涉及敏感路径：CI workflow，或目录名、文件名中含有 `auth`、`oauth`、`jwt`、`password`、`credential`、`secret`、`login`、`permission`、`acl`、`identity`、`crypto`、`security` 等单词）。
 
 ```json
 { "reviewers": { "correctness": { "minTier": "lite" }, "security": { "enabled": false } } }
@@ -102,7 +120,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`reviewers`、`github`、`providers`（必须固定内容，见下文）和 `rules`（格式与 `.ocra/rules.json` 的条目相同）。它不能列出插件，也不能选择运行时：它来自仓库之外，不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 会合并，`models`、`reviewers`、`github` 和 `providers` 按键合并。
+共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`effort`、`reviewers`、`roles`、`github`、`providers`（必须固定内容，见下文）和 `rules`（格式与 `.ocra/rules.json` 的条目相同）。它不能列出插件，也不能选择运行时：它来自仓库之外，不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 会合并，`models`、`effort`、`reviewers`、`roles`、`github` 和 `providers` 按键合并。
 
 只接受 `https` 地址，不跟随重定向，最大 256 KB。可选的 `#sha256=` 片段会固定文件内容；声明了 `providers` 的文件必须固定，因为供应商决定了你的代码发往哪里（见[模型供应商](./providers#你自己的端点)）。文件无法加载或内容无效时，ocra 会给出警告，然后继续使用仓库自己的设置；只写在共享文件里的限制（例如 `maxCostUsd`）这时就不生效，必须始终生效的限制请在仓库里也写一份。
 

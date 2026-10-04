@@ -6,6 +6,7 @@ import { findCallers } from "../review/impact.js";
 import { planBundle } from "../review/plan-phase.js";
 import { buildReviewPrompt } from "../review/prompt.js";
 import { resolveRules } from "../rules/resolve.js";
+import { type AgentSettings, reviewerEffort } from "./agents.js";
 import { toFinding } from "./findings.js";
 import type { MatrixCell } from "./matrix.js";
 import type { ReviewPlan } from "./plan.js";
@@ -34,6 +35,7 @@ export interface ExecuteOptions {
   // runtime reports it. JobResult.usage still carries the total.
   onUsage?: ((usage: Usage) => void) | undefined;
   signal: AbortSignal;
+  agents?: AgentSettings;
 }
 
 type PlannedBundle = Awaited<ReturnType<typeof planBundle>>;
@@ -65,6 +67,7 @@ export async function runJob(
     guidelines: plan.guidelines,
     accepted: memoryFor(files, plan.memory),
   };
+  const effort = reviewerEffort(job.reviewer, options.agents ?? {});
   const extraUsage: Usage[] = [];
   const extraWarnings: string[] = [];
   let prompt = buildReviewPrompt(input);
@@ -79,6 +82,7 @@ export async function runJob(
         job.reviewer,
         buildReviewPrompt({ ...input, forPlanning: true }),
         options.signal,
+        effort,
       );
     if (!shared) options.plans?.set(key, planning);
     const planned = await planning;
@@ -105,6 +109,7 @@ export async function runJob(
       taskId: job.taskId,
       reviewer: job.reviewer.id,
       modelTier: job.reviewer.modelTier,
+      ...(effort === undefined ? {} : { effort }),
       systemPrompt: prompt.system,
       userPrompt: prompt.user,
       context: plan.context,

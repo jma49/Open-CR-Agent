@@ -106,6 +106,7 @@ describe("ocra review provenance", () => {
       promptHash: expect.stringMatching(/^[0-9a-f]{16}$/),
       configHash: expect.stringMatching(/^[0-9a-f]{16}$/),
       sampling: { temperature: 0, notApplied: ["seed"] },
+      agents: expect.objectContaining({ correctness: { tier: "standard" } }),
     });
     // The session's report.json carries it too.
     const sessions = join(cwd, ".ocra", "sessions");

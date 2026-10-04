@@ -32,6 +32,8 @@ export interface SeenRequest {
   tools: { function: { name: string; parameters: Record<string, unknown> } }[] | undefined;
   temperature?: number;
   seed?: number;
+  reasoning_effort?: string;
+  reasoning?: { effort: string };
 }
 
 export interface Reply {

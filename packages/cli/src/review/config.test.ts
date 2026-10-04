@@ -23,6 +23,8 @@ describe("loadConfig", () => {
   it("returns defaults without a config file", async () => {
     expect(await loadConfig(root(), {})).toEqual({
       models: {},
+      effort: {},
+      roles: {},
       include: [],
       exclude: [],
       runtime: "opencode",

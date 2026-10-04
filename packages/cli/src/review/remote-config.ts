@@ -13,6 +13,7 @@ export const remoteConfigSchema = z
   .object({
     $schema: z.string().optional(),
     models: z.record(z.enum(["top", "standard", "light"]), z.unknown()).optional(),
+    effort: z.partialRecord(z.enum(["top", "standard", "light"]), z.unknown()).optional(),
     concurrency: z.unknown().optional(),
     taskTimeoutMinutes: z.unknown().optional(),
     runTimeoutMinutes: z.unknown().optional(),
@@ -23,6 +24,7 @@ export const remoteConfigSchema = z
     include: z.array(z.string()).optional(),
     exclude: z.array(z.string()).optional(),
     reviewers: z.record(z.string(), z.unknown()).optional(),
+    roles: z.record(z.string(), z.unknown()).optional(),
     github: z.record(z.string(), z.unknown()).optional(),
     providers: z.record(z.string(), z.unknown()).optional(),
     rules: z.array(repoRuleSchema).max(500).optional(),
@@ -100,7 +102,7 @@ export function mergeConfig(
 ): Record<string, unknown> {
   const { rules: _rules, ...settings } = remote;
   const merged: Record<string, unknown> = { ...settings, ...local };
-  for (const key of ["models", "reviewers", "github", "providers"] as const) {
+  for (const key of ["models", "effort", "reviewers", "roles", "github", "providers"] as const) {
     const a = settings[key];
     const b = local[key];
     if (a !== undefined || b !== undefined)

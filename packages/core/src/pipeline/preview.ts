@@ -1,4 +1,5 @@
 import { defaultBundlePolicy } from "../bundle/bundle.js";
+import type { Effort } from "../contracts.js";
 import type { ChangeRequest, RiskTier } from "../domain.js";
 import { memoryFor } from "../memory/memory.js";
 import { buildReviewPrompt } from "../review/prompt.js";
@@ -6,6 +7,7 @@ import type { ReviewerDefinition } from "../review/reviewer.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import { resolveRules } from "../rules/resolve.js";
 import type { FileDecision } from "../select/select.js";
+import { reviewerEffort } from "./agents.js";
 import { isLargeBundle } from "./execute.js";
 import { planTasks, type ReviewerOverrides, type SkippedCell } from "./matrix.js";
 import { type PlanOptions, planReview } from "./plan.js";
@@ -20,6 +22,9 @@ export interface PreviewTask {
   // The plan phase's one call before the review (--ultra, or a large bundle),
   // on the reviewer's tier; shared by --ultra's two samples.
   planPromptTokens?: number;
+  // The reasoning effort the task and its plan call ask for; absent: the
+  // provider's default.
+  effort?: Effort;
 }
 
 export interface ReviewPreview {
@@ -77,6 +82,8 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
       files,
       promptTokens: tokens(prompt),
     };
+    const effort = reviewerEffort(cell.reviewer, options);
+    if (effort !== undefined) task.effort = effort;
     const key = `${cell.reviewer.id}\0${cell.bundle.label}`;
     if ((options.ultra || isLargeBundle(cell.bundle.files)) && !plannedBundles.has(key)) {
       plannedBundles.add(key);

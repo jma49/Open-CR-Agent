@@ -29,6 +29,9 @@ export interface CustomProvider {
   // Prices in US dollars per million tokens, by model id, so reported cost
   // and the spend limit count its use.
   models: Readonly<Record<string, ModelPrice>>;
+  // How the endpoint takes a reasoning effort: OpenAI's `reasoning_effort`
+  // (default), or OpenRouter's `reasoning: { effort }`.
+  effort?: "openai" | "openrouter";
 }
 
 export interface ModelPrice {
