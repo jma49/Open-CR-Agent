@@ -102,6 +102,26 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: npx --no-install changeset status --since="origin/$BASE_REF"
 
+  # The pull request's own commits follow Conventional Commits
+  # (commitlint.config.mjs); history before this check is not rewritten.
+  commits:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: npx --no-install commitlint --from "$BASE" --to "$HEAD" --verbose
+
   # Installs the packed packages like a user would and runs the installed CLI.
   packages:
     runs-on: ubuntu-latest

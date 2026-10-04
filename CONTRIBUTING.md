@@ -33,7 +33,7 @@ npm run verify   # Biome, type check and tests; no model or network calls
 - New behavior ships with a test at the lowest layer that can express it; a fix ships with a test that fails without it.
 - Tests never call a model or the network: use the fakes next to the tests.
 - A change to user-facing behavior updates the manual in `docs/manual/en` and `docs/manual/zh` in the same pull request. If you cannot write one of the two languages, say so in the pull request and a maintainer will add it.
-- Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/); pull requests are merged with a rebase, so each commit lands on `main` as written.
+- Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) (CI checks a pull request's commits; `npx commitlint --from origin/main` checks yours); pull requests are merged with a rebase, so each commit lands on `main` as written.
 
 ## License
 
