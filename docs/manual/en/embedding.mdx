@@ -86,6 +86,7 @@ try {
 | `signal` | An `AbortSignal`: the run stops, keeps what it found and writes a partial report |
 | `onEvent` | Receives each `ReviewEvent` as the run progresses |
 | `runId` | Names the run in the report, the events and what is posted; generated when absent. The CLI passes its session id |
+| `provenance` | `{ ocraVersion, configHash, sampling? }`: with it, the report's `provenance` adds the hash of the system prompts the enabled reviewers and helper stages send and the sampling the runtime applied (`sampling` is what you asked the runtime for; `stableHash()` hashes a configuration of yours) |
 
 `bundling`, `grouper`, `relocate` and `abortGraceMs` are tuning and test hooks, not part of the contract.
 

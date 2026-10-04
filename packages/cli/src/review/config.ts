@@ -73,6 +73,20 @@ const configSchema = z
     judge: z.boolean().optional(),
     maxCostUsd: z.number().positive().optional(),
     maxTasks: z.number().int().min(1).max(1_000).optional(),
+    // Unset: each provider's default. A seed makes sampling repeatable only
+    // where the provider supports it.
+    sampling: z
+      .object({
+        temperature: z.number().min(0).max(2),
+        seed: z
+          .number()
+          .int()
+          .min(0)
+          .max(2 ** 31 - 1),
+      })
+      .partial()
+      .strict()
+      .optional(),
     github: z
       .object({ requestChanges: z.boolean(), botLogin: z.string().min(1) })
       .partial()

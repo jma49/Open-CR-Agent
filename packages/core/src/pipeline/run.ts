@@ -22,6 +22,7 @@ import { importSarif } from "./imports.js";
 import { DEFAULT_MAX_TASKS, type MatrixCell, planTasks, type ReviewerOverrides } from "./matrix.js";
 import { planReview } from "./plan.js";
 import { mapWithConcurrency } from "./pool.js";
+import { type ProvenanceInput, runProvenance } from "./provenance.js";
 import {
   type CoverageEntry,
   coverageGaps,
@@ -78,6 +79,8 @@ export interface ReviewOptions {
   // Names the run in every output; the CLI passes its session id. Generated
   // when absent.
   runId?: string;
+  // Recorded in the report with the prompt hash and the sampling applied.
+  provenance?: ProvenanceInput;
   signal?: AbortSignal;
   onEvent?: (event: ReviewEvent) => void;
 }
@@ -306,6 +309,10 @@ export async function review(options: ReviewOptions): Promise<ReviewReport> {
     report.spendLimit = { usd: options.maxCostUsd, ...(reached ? { reached } : {}) };
   }
   report.anchoring = summarizeAnchoring(report.findings, relocationUsage.length);
+  if (options.provenance) {
+    const { runtime, reviewerOverrides } = options;
+    report.provenance = runProvenance(options.provenance, runtime, reviewers, reviewerOverrides);
+  }
   if (prior.review) {
     report.rereview = {
       fixed: reconciled.fixed,

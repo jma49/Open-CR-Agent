@@ -70,6 +70,7 @@ To reach your own server or a company gateway that speaks the OpenAI API, declar
 | `maxTasks` | `60` | Most review tasks one run starts. Past it, `--ultra`'s second passes go first, then later reviewers, so every file keeps its first reviewer as long as possible; skipped files are reported as not reviewed (exit code `3`) |
 | `judge` | `true` | Merge, filter and recalibrate findings across reviewers (one top-tier call per run with findings) |
 | `verify` | `true` | Fact-check findings before reporting them (one standard-tier call per file with findings) |
+| `sampling` | none | `{ "temperature": 0–2, "seed": n }` for every model call; either may be left out, and unset means each provider's default. `--temperature` and `--seed` override it. The `direct` runtime sends both. The `opencode` runtime sets the temperature on its agents, and OpenCode passes it on only for models its catalog says accept one (it marks your [declared models](./providers#your-own-endpoint) so); it has no seed setting, so a seed is reported as not applied. The JSON report's `provenance.sampling` says what was applied. A seed makes runs repeatable only where the provider honors it |
 
 A task that fails or times out never fails the run; its files are reported as `failed`.
 

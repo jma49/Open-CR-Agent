@@ -871,6 +871,51 @@
       ],
       "additionalProperties": false
     },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "ocraVersion": {
+          "type": "string"
+        },
+        "promptHash": {
+          "type": "string"
+        },
+        "configHash": {
+          "type": "string"
+        },
+        "sampling": {
+          "type": "object",
+          "properties": {
+            "temperature": {
+              "type": "number"
+            },
+            "seed": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "notApplied": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "temperature",
+                  "seed"
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "ocraVersion",
+        "promptHash",
+        "configHash",
+        "sampling"
+      ],
+      "additionalProperties": false
+    },
     "usage": {
       "type": "object",
       "properties": {

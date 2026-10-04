@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
+import { proxiedFetch } from "@open-cr-agent/core";
 import type { SemanticJudge } from "./match.js";
 
 export interface JudgeConfig {
@@ -146,4 +147,30 @@ export class CachedJudge implements SemanticJudge {
 
 function words(text: string): Set<string> {
   return new Set(text.toLowerCase().match(/[a-z_]{3,}/g) ?? []);
+}
+
+export interface JudgeSetup {
+  judge: SemanticJudge;
+  cacheFile: string;
+  description: string;
+}
+
+export function createJudge(mock: boolean, env: NodeJS.ProcessEnv): JudgeSetup {
+  if (mock) {
+    return {
+      judge: new MockJudge(),
+      cacheFile: "judge-cache.mock.json",
+      description: "mock (word overlap, not comparable)",
+    };
+  }
+  const config = judgeConfigFromEnv(env);
+  if (!config)
+    throw new Error(
+      "No judge configured: set JUDGE_API_KEY or GEMINI_API_KEY, or pass --mock-judge",
+    );
+  return {
+    judge: new OpenAICompatibleJudge(config, proxiedFetch(env)),
+    cacheFile: `judge-cache.${config.model.replace(/[^\w.-]/g, "_")}.json`,
+    description: `${config.model} via ${config.baseUrl}`,
+  };
 }

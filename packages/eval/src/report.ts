@@ -1,8 +1,13 @@
 import type { AttackSummary } from "./attack-score.js";
 import type { GoldenSummary } from "./golden-score.js";
+import { type ProvenanceSummary, renderProvenance } from "./provenance.js";
 import type { Summary } from "./score.js";
 
-export type RunSummary = Summary & { golden?: GoldenSummary; attacks?: AttackSummary };
+export type RunSummary = Summary & {
+  golden?: GoldenSummary;
+  attacks?: AttackSummary;
+  provenance?: ProvenanceSummary;
+};
 
 export interface RunInfo {
   runId: string;
@@ -12,6 +17,9 @@ export interface RunInfo {
   judge: string;
   // What every review was passed besides the range and the format.
   review?: string[];
+  // The sampling asked of every review; what each applied is in the
+  // summary's provenance.
+  sampling?: { temperature?: number; seed?: number };
 }
 
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
@@ -26,6 +34,7 @@ export function renderMarkdown(info: RunInfo, summary: RunSummary): string {
     `- Models: ${JSON.stringify(info.models)}`,
     `- Judge: ${info.judge}`,
     ...(info.review ? [`- Review flags: ${info.review.join(" ")}`] : []),
+    `- Provenance: ${renderProvenance(summary.provenance)}`,
     `- Instances: ${summary.instances.reviewed} reviewed, ${summary.instances.failed} failed, ${summary.instances.unavailable} unavailable in the dataset, ${summary.instances.skippedBudget} skipped for budget, ${summary.instances.skippedQuota} skipped for spent quota (of ${summary.instances.selected})`,
     "",
     summary.golden ? "## Quality, benchmark matching (ignores labels)" : "## Quality",

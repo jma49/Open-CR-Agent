@@ -64,6 +64,8 @@ export interface ChatRequest {
   model: string;
   messages: readonly ChatMessage[];
   tools?: readonly ToolSpec[];
+  temperature?: number;
+  seed?: number;
 }
 
 export interface ChatError {

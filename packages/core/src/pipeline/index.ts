@@ -5,6 +5,7 @@ export * from "./matrix.js";
 export * from "./output.js";
 export * from "./output-schema.js";
 export * from "./preview.js";
+export * from "./provenance.js";
 export * from "./report.js";
 export * from "./run.js";
 export * from "./run-id.js";

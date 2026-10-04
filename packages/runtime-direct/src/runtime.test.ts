@@ -25,11 +25,17 @@ async function endpoint(script: readonly (Reply | ((r: never) => Reply))[]) {
   return server;
 }
 
-function runtime(url: string, chain: string[] = ["local/m1"], env: Record<string, string> = {}) {
+function runtime(
+  url: string,
+  chain: string[] = ["local/m1"],
+  env: Record<string, string> = {},
+  sampling?: { temperature?: number; seed?: number },
+) {
   return new DirectRuntime({
     models: { standard: chain, light: chain },
     tools: [],
     env: { LOCAL_KEY: KEY, ...env },
+    ...(sampling ? { sampling } : {}),
     providers: {
       local: {
         baseUrl: url,
@@ -384,5 +390,35 @@ describe("DirectRuntime.complete", () => {
       ),
     ).rejects.toThrow(/every light model failed/);
     expect(server.seen.map((r) => r.model)).toEqual(["m1", "m1", "m2", "m2"]);
+  });
+});
+
+describe("DirectRuntime sampling", () => {
+  it("sends the configured temperature and seed with every request, and says so", async () => {
+    const server = await endpoint([
+      { toolCalls: [{ name: "read_file", args: { path: "src/a.ts" } }] },
+      { content: "Reviewed.", toolCalls: [{ name: "task_done", args: {} }] },
+    ]);
+    const sampled = runtime(server.url, ["local/m1"], {}, { temperature: 0, seed: 42 });
+    await collect(sampled.runTask(spec(context()), new AbortController().signal));
+    await sampled.complete(
+      { tier: "light", system: "s", user: "u", timeoutMs: 5_000 },
+      new AbortController().signal,
+    );
+    expect(server.seen).toHaveLength(3);
+    for (const request of server.seen) expect(request).toMatchObject({ temperature: 0, seed: 42 });
+    expect(sampled.sampling).toEqual({ temperature: 0, seed: 42 });
+  });
+
+  it("leaves both to the provider when none is configured", async () => {
+    const server = await endpoint([{ content: "yes" }]);
+    const plain = runtime(server.url);
+    await plain.complete(
+      { tier: "light", system: "s", user: "u", timeoutMs: 5_000 },
+      new AbortController().signal,
+    );
+    expect(server.seen[0]).not.toHaveProperty("temperature");
+    expect(server.seen[0]).not.toHaveProperty("seed");
+    expect(plain.sampling).toEqual({});
   });
 });

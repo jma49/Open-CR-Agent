@@ -6,6 +6,7 @@ import {
   type AgentEvent,
   type AgentRuntime,
   type AgentTaskSpec,
+  type AppliedSampling,
   type AttemptOutcome,
   type CompletionRequest,
   type CompletionResult,
@@ -21,6 +22,7 @@ import {
   type ReviewContext,
   type RuntimeOptions,
   reviewTools,
+  type Sampling,
   type Usage,
   withFailback,
   withoutSecrets,
@@ -89,6 +91,7 @@ interface Infra {
 
 export class OpenCodeRuntime implements AgentRuntime {
   readonly name = "opencode";
+  readonly sampling: AppliedSampling;
   private infra: Promise<Infra> | undefined;
   private context: ReviewContext | undefined;
   private readonly health = new ModelHealth();
@@ -100,6 +103,7 @@ export class OpenCodeRuntime implements AgentRuntime {
       false,
     ]);
     this.helperTools = { ...DISABLED_BUILTINS, ...Object.fromEntries(mcpTools) };
+    this.sampling = openCodeSampling(options.sampling);
   }
 
   async *runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent> {
@@ -236,7 +240,7 @@ export class OpenCodeRuntime implements AgentRuntime {
         binary: this.options.binary ?? resolveOpencodeBinary(this.options.env),
         cwd: workspace,
         env: serverEnv(this.options.env, dirs, providersOf(this.options.models), custom),
-        config: openCodeConfig(tools, this.helperTools, custom),
+        config: openCodeConfig(tools, this.helperTools, custom, this.options.sampling),
       });
       started = server;
       const dispatcher = createUntimedDispatcher();
@@ -263,16 +267,32 @@ export class OpenCodeRuntime implements AgentRuntime {
   }
 }
 
+// OpenCode 1.18.32 takes a temperature per agent and sends it when the
+// model's catalog entry says the model accepts one; a model declared in
+// configuration is marked so (providerConfig). It has no seed setting: the
+// request it builds carries temperature, topP, topK and the output limit only.
+function openCodeSampling(sampling: Sampling = {}): AppliedSampling {
+  return {
+    ...(sampling.temperature === undefined ? {} : { temperature: sampling.temperature }),
+    ...(sampling.seed === undefined ? {} : { notApplied: ["seed" as const] }),
+  };
+}
+
 export function openCodeConfig(
   tools: Pick<ToolServer, "url" | "headers">,
   helperTools: Record<string, boolean>,
   custom: Readonly<Record<string, CustomProvider>> = {},
+  sampling: Sampling = {},
 ) {
   const permission = { edit: "deny", bash: "deny", webfetch: "deny", skill: "deny" };
+  const { temperature } = sampling;
+  const agentSampling = temperature === undefined ? {} : { temperature };
   return {
     share: "disabled",
     autoupdate: false,
-    ...(Object.keys(custom).length > 0 ? { provider: providerConfig(custom) } : {}),
+    ...(Object.keys(custom).length > 0
+      ? { provider: providerConfig(custom, temperature !== undefined) }
+      : {}),
     mcp: {
       [MCP_SERVER]: {
         type: "remote",
@@ -289,6 +309,7 @@ export function openCodeConfig(
         steps: MAX_AGENT_STEPS,
         tools: DISABLED_BUILTINS,
         permission,
+        ...agentSampling,
       },
       [HELPER_AGENT]: {
         mode: "primary",
@@ -296,6 +317,7 @@ export function openCodeConfig(
         steps: HELPER_AGENT_STEPS,
         tools: helperTools,
         permission,
+        ...agentSampling,
       },
     },
   };
@@ -306,7 +328,9 @@ export function openCodeConfig(
 // (docs/spikes/0002). The key stays in the environment: OpenCode reads
 // {env:NAME} itself, and the configuration, which OpenCode may log, never
 // holds it. Prices are per million tokens, as OpenCode's catalog has them.
-function providerConfig(custom: Readonly<Record<string, CustomProvider>>) {
+// OpenCode assumes a declared model takes no temperature and drops one;
+// with a temperature configured, the models are marked as taking it.
+function providerConfig(custom: Readonly<Record<string, CustomProvider>>, temperature: boolean) {
   return Object.fromEntries(
     Object.entries(custom).map(([id, provider]) => [
       id,
@@ -322,6 +346,7 @@ function providerConfig(custom: Readonly<Record<string, CustomProvider>>) {
             model,
             {
               name: model,
+              ...(temperature ? { temperature: true } : {}),
               cost: {
                 input: price.input,
                 output: price.output,

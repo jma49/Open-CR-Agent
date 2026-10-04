@@ -16,7 +16,7 @@ export const groupingResponseSchema = z.array(
 );
 export type GroupingResponse = z.infer<typeof groupingResponseSchema>;
 
-const SYSTEM_PROMPT = `You group the changed files of a pull request into clusters that should be reviewed together.
+export const GROUPING_SYSTEM_PROMPT = `You group the changed files of a pull request into clusters that should be reviewed together.
 
 Files belong in the same group when they:
 - implement one feature or module together,
@@ -39,7 +39,7 @@ export function buildGroupingPrompt(
     (f, i) => `[${i}] ${f.kind} ${data(oneLine(f.newPath))} (+${f.additions} -${f.deletions})`,
   );
   return {
-    system: SYSTEM_PROMPT.replace("{{max}}", String(maxFilesPerGroup)),
+    system: GROUPING_SYSTEM_PROMPT.replace("{{max}}", String(maxFilesPerGroup)),
     user: list.join("\n"),
   };
 }

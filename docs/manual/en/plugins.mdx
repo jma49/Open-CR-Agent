@@ -56,6 +56,8 @@ Use `bootstrap` for work that may fail harmlessly, such as fetching remote setti
 | `registerTool(tool)` | A tool reviewers can call, with a Zod input schema |
 | `onEvent(listener)` | A listener for every review event (telemetry, notifications). A listener that throws is disabled with one warning; the review continues |
 
+A runtime factory receives the model chains, the environment, the declared providers and, when configured, `sampling` (`temperature`, `seed`); a runtime says what it sends in its `sampling` property, listing in `notApplied` what it cannot pass on. A runtime without that property is reported as applying none of it.
+
 Plugins receive only their own settings (`ctx.settings`), validated by an optional `settingsSchema`. Registering a name twice, using a reserved tool name, or registering after `configure` fails with an error naming the plugin.
 
 ## Security

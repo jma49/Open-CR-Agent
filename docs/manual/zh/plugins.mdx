@@ -56,6 +56,8 @@ export default {
 | `registerTool(tool)` | 审查员可以调用的工具，输入用 Zod schema 定义 |
 | `onEvent(listener)` | 审查过程中每个事件的监听器（遥测、通知）。监听器抛出异常时会被停用，并给出一次警告，审查继续进行 |
 
+运行时工厂会收到模型链、环境变量、声明的供应商，配置了的话还有 `sampling`（`temperature`、`seed`）；运行时用自己的 `sampling` 属性说明它实际发送什么，并在 `notApplied` 里列出没法传下去的设置。没有这个属性的运行时会被报告为一项都没应用。
+
 每个插件只能拿到自己的设置（`ctx.settings`），并由可选的 `settingsSchema` 校验。同一个名字重复注册、使用保留的工具名，或在 `configure` 阶段之后再注册，都会报错并指出是哪个插件。
 
 ## 安全

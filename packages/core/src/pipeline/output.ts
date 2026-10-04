@@ -13,6 +13,7 @@ import type { MemoryEntry } from "../memory/memory.js";
 import type { RefutedFinding } from "../verify/verify.js";
 import type { SkippedCell } from "./matrix.js";
 import type { ReviewPreview } from "./preview.js";
+import type { RunProvenance } from "./provenance.js";
 import type { AnchoringSummary, CoverageEntry, ReviewReport, TaskOutcome } from "./report.js";
 
 // The published shape of a review: `--format json` and a session's
@@ -85,6 +86,9 @@ export interface ReportOutput {
   anchoring?: AnchoringSummary;
   // Added in version 1 without a bump, like `anchoring`.
   spendLimit?: ReviewReport["spendLimit"];
+  // Added in version 1 without a bump: the ocra version, the hashes of the
+  // system prompts and of the configuration, and the sampling applied.
+  provenance?: RunProvenance;
   usage: Usage;
   warnings: string[];
 }
@@ -112,6 +116,7 @@ export function toReportOutput(report: ReviewReport): ReportOutput {
   if (report.judgement) output.judgement = report.judgement;
   if (report.anchoring) output.anchoring = report.anchoring;
   if (report.spendLimit) output.spendLimit = report.spendLimit;
+  if (report.provenance) output.provenance = report.provenance;
   if (report.rereview) {
     const r = report.rereview;
     output.rereview = {

@@ -100,6 +100,12 @@ const full: ReviewReport = {
     relocationCalls: 2,
   },
   spendLimit: { usd: 2, reached: "total" },
+  provenance: {
+    ocraVersion: "0.3.0",
+    promptHash: "0123456789abcdef",
+    configHash: "fedcba9876543210",
+    sampling: { temperature: 0, notApplied: ["seed"] },
+  },
   usage,
   warnings: ["w"],
 };

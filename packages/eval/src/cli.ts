@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { errorMessage, proxiedFetch } from "@open-cr-agent/core";
 import { applyLabels, LABELS_FILE, labelsFor, readLabels } from "./adjudicate.js";
@@ -13,10 +13,20 @@ import {
   type SavedSummary,
 } from "./compare.js";
 import { type Dataset, type Instance, loadDataset } from "./dataset.js";
-import { loadGolden, readJson } from "./golden.js";
+import { loadGolden } from "./golden.js";
 import { scoreGolden } from "./golden-score.js";
-import { CachedJudge, judgeConfigFromEnv, MockJudge, OpenAICompatibleJudge } from "./judges.js";
-import type { SemanticJudge } from "./match.js";
+import { CachedJudge, createJudge, type JudgeSetup } from "./judges.js";
+import { summarizeProvenance } from "./provenance.js";
+import {
+  loadRuns,
+  REPEATS_FILE,
+  type Repetition,
+  readRepeats,
+  renderRepeats,
+  repeatRuns,
+  repetitionDir,
+  summarizeRepeats,
+} from "./repeat.js";
 import { type RunInfo, renderMarkdown } from "./report.js";
 import { defaultOcraCommand } from "./reviewer.js";
 import { type InstanceResult, runInstances } from "./runner.js";
@@ -66,6 +76,12 @@ Run:
   --config <file>          Passed to ocra review --config: your own configuration
                            (declared providers, limits) for reviews that run with
                            --no-repo-config
+  --temperature <n>        Passed to ocra review --temperature (default 0)
+  --model-seed <n>         Passed to ocra review --seed (default 1; --seed is
+                           the selection's)
+  --repeat <k>             Review the selection k times (r1/ … rk/ in the run
+                           directory) and report each metric's mean and 95%
+                           confidence interval
   --mock-judge             Offline approximate judge (numbers not comparable)
 
 Models come from OCRA_MODEL_TOP / OCRA_MODEL_STANDARD / OCRA_MODEL_LIGHT.
@@ -115,6 +131,9 @@ const OPTIONS = {
   ultra: { type: "boolean" },
   config: { type: "string" },
   "spread-of": { type: "string" },
+  temperature: { type: "string" },
+  "model-seed": { type: "string" },
+  repeat: { type: "string" },
 } as const;
 
 function parse(argv: string[]) {
@@ -211,51 +230,76 @@ async function run(
       .replace(/[-:]/g, "")
       .replace(/\.\d+Z$/, "Z");
   const runDir = resolve(values.out ?? ".ocra/eval", runId);
-  await mkdir(runDir, { recursive: true });
   const judge = createJudge(values["mock-judge"] === true, env);
+  const repeat = number(values.repeat, "--repeat") ?? 1;
+  if (!Number.isInteger(repeat) || repeat < 1)
+    throw new Error("--repeat must be a whole number from 1");
 
-  const runOptions: Parameters<typeof runInstances>[1] = {
-    runDir,
-    reposDir: values["repos-dir"] ?? join(CACHE_DIR, "repos"),
-    command: defaultOcraCommand(),
-    timeoutMs: (number(values["timeout-minutes"], "--timeout-minutes") ?? 30) * 60_000,
-    log: (message) => err.write(`[ocra-eval] ${message}\n`),
+  // Fixed sampling, so repeated runs differ only by what the provider cannot hold still.
+  const sampling = {
+    temperature: number(values.temperature, "--temperature") ?? 0,
+    seed: number(values["model-seed"], "--model-seed") ?? 1,
   };
-  const maxCost = number(values["max-cost-usd"], "--max-cost-usd");
-  if (maxCost !== undefined) runOptions.maxCostUsd = maxCost;
-  if (values["retry-failed"]) runOptions.retryFailed = true;
-  // The run limit only stops the next PR; this caps each PR's own review.
   const prMaxCost = number(values["pr-max-cost-usd"], "--pr-max-cost-usd");
   const reviewArgs = [
     ...(values.reviewers ? ["--reviewers", values.reviewers] : []),
     ...(values.ultra ? ["--ultra"] : []),
+    // The run limit only stops the next PR; this caps each PR's own review.
     ...(prMaxCost !== undefined ? ["--max-cost-usd", String(prMaxCost)] : []),
     ...(values.config ? ["--config", resolve(values.config)] : []),
+    ...["--temperature", String(sampling.temperature), "--seed", String(sampling.seed)],
   ];
-  if (reviewArgs.length > 0) runOptions.reviewArgs = reviewArgs;
-
-  const results = await runInstances(instances, runOptions);
-  const info: RunInfo = {
-    runId,
-    createdAt: new Date().toISOString(),
-    selection: {
-      dataset: name,
-      ...(name === "golden" ? { goldenDir: resolve(values["golden-dir"] ?? "evals/golden") } : {}),
-      ...select,
-    },
-    models: {
-      top: env.OCRA_MODEL_TOP,
-      standard: env.OCRA_MODEL_STANDARD,
-      light: env.OCRA_MODEL_LIGHT,
-    },
-    judge: judge.description,
-    ...(reviewArgs.length > 0 ? { review: reviewArgs } : {}),
+  const base = {
+    reposDir: values["repos-dir"] ?? join(CACHE_DIR, "repos"),
+    command: defaultOcraCommand(),
+    timeoutMs: (number(values["timeout-minutes"], "--timeout-minutes") ?? 30) * 60_000,
+    log: (message: string) => err.write(`[ocra-eval] ${message}\n`),
+    reviewArgs,
+    ...(values["retry-failed"] ? { retryFailed: true } : {}),
   };
-  await writeFile(
-    join(runDir, "run.json"),
-    `${JSON.stringify({ info, ids: instances.map((i) => i.id) }, null, 2)}\n`,
-  );
-  return writeSummary(runDir, info, instances, results, judge, out);
+  const once = async (dir: string, label: string, maxCostUsd: number | undefined) => {
+    await mkdir(dir, { recursive: true });
+    const results = await runInstances(instances, {
+      ...base,
+      runDir: dir,
+      ...(maxCostUsd === undefined ? {} : { maxCostUsd }),
+    });
+    const info: RunInfo = {
+      runId: label,
+      createdAt: new Date().toISOString(),
+      selection: {
+        dataset: name,
+        ...(name === "golden"
+          ? { goldenDir: resolve(values["golden-dir"] ?? "evals/golden") }
+          : {}),
+        ...select,
+      },
+      models: {
+        top: env.OCRA_MODEL_TOP,
+        standard: env.OCRA_MODEL_STANDARD,
+        light: env.OCRA_MODEL_LIGHT,
+      },
+      judge: judge.description,
+      review: reviewArgs,
+      sampling,
+    };
+    await writeFile(
+      join(dir, "run.json"),
+      `${JSON.stringify({ info, ids: instances.map((i) => i.id) }, null, 2)}\n`,
+    );
+    return writeSummary(dir, info, instances, results, judge, runDir);
+  };
+
+  const maxCost = number(values["max-cost-usd"], "--max-cost-usd");
+  if (repeat === 1) {
+    const { markdown } = await once(runDir, runId, maxCost);
+    out.write(`${markdown}\nWritten to ${runDir}\n`);
+    return 0;
+  }
+  const runs = await repeatRuns(runDir, repeat, maxCost, base.log, async (dir, n, left) => {
+    return (await once(dir, `${runId}/r${n}`, left)).saved;
+  });
+  return writeRepeats(runDir, runId, runs, out);
 }
 
 async function rescore(
@@ -267,6 +311,30 @@ async function rescore(
   const { values, positionals } = parse(argv);
   const runDir = positionals[0];
   if (!runDir) throw new Error("score needs a run directory");
+  const judge = createJudge(values["mock-judge"] === true, env);
+  const repeats = await readRepeats(runDir);
+  if (!repeats) {
+    const { markdown } = await rescoreOne(runDir, runDir, values["golden-dir"], judge);
+    out.write(`${markdown}\nWritten to ${runDir}\n`);
+    return 0;
+  }
+  const runs: Repetition[] = [];
+  for (const [n] of repeats.runs.entries()) {
+    const dir = repetitionDir(runDir, n + 1);
+    runs.push({
+      name: `r${n + 1}`,
+      saved: (await rescoreOne(dir, runDir, values["golden-dir"], judge)).saved,
+    });
+  }
+  return writeRepeats(runDir, basename(resolve(runDir)), runs, out);
+}
+
+async function rescoreOne(
+  runDir: string,
+  cacheDir: string,
+  goldenDirFlag: string | undefined,
+  judge: JudgeSetup,
+): Promise<{ markdown: string; saved: SavedSummary }> {
   const saved = JSON.parse(await readFile(join(runDir, "run.json"), "utf8")) as {
     info: RunInfo;
     ids: string[];
@@ -275,8 +343,8 @@ async function rescore(
   const bad = saved.ids.find((id) => !/^[\w.@-]+$/.test(id) || id.startsWith("."));
   if (bad !== undefined) throw new Error(`run.json lists an invalid id "${bad}"`);
   const savedDir = saved.info.selection.goldenDir;
-  const goldenDir = values["golden-dir"]
-    ? resolve(values["golden-dir"])
+  const goldenDir = goldenDirFlag
+    ? resolve(goldenDirFlag)
     : typeof savedDir === "string"
       ? savedDir
       : undefined;
@@ -296,7 +364,6 @@ async function rescore(
       );
     } catch {}
   }
-  const judge = createJudge(values["mock-judge"] === true, env);
   return writeSummary(
     runDir,
     {
@@ -308,19 +375,20 @@ async function rescore(
     instances,
     results,
     judge,
-    out,
+    cacheDir,
   );
 }
 
+// The judge's cache is shared by the repetitions of a run.
 async function writeSummary(
   runDir: string,
   info: RunInfo,
   instances: readonly Instance[],
   results: readonly InstanceResult[],
   judge: JudgeSetup,
-  out: Output,
-): Promise<number> {
-  const cache = new CachedJudge(judge.judge, join(runDir, judge.cacheFile));
+  cacheDir: string,
+): Promise<{ markdown: string; saved: SavedSummary }> {
+  const cache = new CachedJudge(judge.judge, join(cacheDir, judge.cacheFile));
   await cache.load();
   const summary: SavedSummary["summary"] = await score(instances, results, cache);
   const goldenDir = info.selection.goldenDir;
@@ -331,9 +399,24 @@ async function writeSummary(
     const labels = labelsFor(goldenDir, summary.golden.unadjudicated, await readLabels(runDir));
     await writeFile(join(runDir, LABELS_FILE), `${JSON.stringify(labels, null, 2)}\n`);
   }
+  const provenance = summarizeProvenance(results);
+  if (provenance) summary.provenance = provenance;
   await cache.save();
   const markdown = renderMarkdown(info, summary);
   await writeFile(join(runDir, "summary.json"), `${JSON.stringify({ info, summary }, null, 2)}\n`);
+  await writeFile(join(runDir, "summary.md"), markdown);
+  return { markdown, saved: { info, summary } };
+}
+
+async function writeRepeats(
+  runDir: string,
+  label: string,
+  runs: readonly Repetition[],
+  out: Output,
+): Promise<number> {
+  const summary = summarizeRepeats(runs);
+  const markdown = renderRepeats(label, summary, runs[0]?.saved);
+  await writeFile(join(runDir, REPEATS_FILE), `${JSON.stringify(summary, null, 2)}\n`);
   await writeFile(join(runDir, "summary.md"), markdown);
   out.write(`${markdown}\nWritten to ${runDir}\n`);
   return 0;
@@ -357,50 +440,23 @@ async function compare(argv: string[], out: Output): Promise<number> {
   const { values, positionals } = parse(argv);
   const [baselineDir, runDir] = positionals;
   if (!baselineDir || !runDir) throw new Error("compare needs a baseline run and a run");
-  const load = async (dir: string) => ({
-    summary: (await readJson(join(dir, "summary.json"))) as SavedSummary,
-    ids: ((await readJson(join(dir, "run.json"))) as { ids: string[] }).ids,
-  });
-  const baseline = await load(baselineDir);
-  const run = await load(runDir);
-  const other = values["spread-of"] ? await load(values["spread-of"]) : undefined;
+  const baseline = await loadRuns(baselineDir);
+  const run = await loadRuns(runDir);
+  const other = values["spread-of"] ? await loadRuns(values["spread-of"]) : undefined;
   const same = (a: string[], b: string[]) =>
     a.length === b.length && a.every((id, i) => id === b[i]);
   const warnings = [
     ...(same(baseline.ids, run.ids) ? [] : ["the runs reviewed different PRs"]),
     ...(other && !same(baseline.ids, other.ids) ? ["the baselines reviewed different PRs"] : []),
-    ...comparisonWarnings([baseline.summary, run.summary, ...(other ? [other.summary] : [])]),
+    ...comparisonWarnings([...baseline.summaries, ...run.summaries, ...(other?.summaries ?? [])]),
   ];
   out.write(
-    renderComparison(compareSummaries(baseline.summary, run.summary, other?.summary), warnings),
+    renderComparison(
+      compareSummaries(baseline.summaries, run.summaries, other?.summaries[0]),
+      warnings,
+    ),
   );
   return 0;
-}
-
-interface JudgeSetup {
-  judge: SemanticJudge;
-  cacheFile: string;
-  description: string;
-}
-
-function createJudge(mock: boolean, env: NodeJS.ProcessEnv): JudgeSetup {
-  if (mock) {
-    return {
-      judge: new MockJudge(),
-      cacheFile: "judge-cache.mock.json",
-      description: "mock (word overlap, not comparable)",
-    };
-  }
-  const config = judgeConfigFromEnv(env);
-  if (!config)
-    throw new Error(
-      "No judge configured: set JUDGE_API_KEY or GEMINI_API_KEY, or pass --mock-judge",
-    );
-  return {
-    judge: new OpenAICompatibleJudge(config, proxiedFetch(env)),
-    cacheFile: `judge-cache.${config.model.replace(/[^\w.-]/g, "_")}.json`,
-    description: `${config.model} via ${config.baseUrl}`,
-  };
 }
 
 function number(value: string | undefined, flag: string): number | undefined {

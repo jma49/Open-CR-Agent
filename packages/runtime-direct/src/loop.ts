@@ -6,6 +6,7 @@ import {
   type ModelPrice,
   REVIEW_TOOLS,
   type ReviewContext,
+  type Sampling,
   type ToolDefinition,
   type Usage,
 } from "@open-cr-agent/core";
@@ -25,6 +26,8 @@ export interface LoopInput {
   // done call and no answer.
   resume?: string;
   timeoutMs: number;
+  // Sent with every request.
+  sampling?: Sampling;
   signal: AbortSignal;
   onUsage?: (spent: Usage) => void;
 }
@@ -56,7 +59,12 @@ export async function runLoop(input: LoopInput): Promise<AttemptOutcome> {
   while (outcome.steps < input.maxSteps) {
     const response = await chat(
       input.endpoint,
-      { model: input.model, messages, ...(specs.length > 0 ? { tools: specs } : {}) },
+      {
+        model: input.model,
+        messages,
+        ...(specs.length > 0 ? { tools: specs } : {}),
+        ...input.sampling,
+      },
       input.price,
       signal,
     );

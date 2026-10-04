@@ -2,6 +2,7 @@ import {
   type AgentEvent,
   type AgentRuntime,
   type AgentTaskSpec,
+  type AppliedSampling,
   type CompletionRequest,
   type CompletionResult,
   type CustomProvider,
@@ -40,6 +41,8 @@ interface Target {
 // runtime knows no other address to send code to.
 export class DirectRuntime implements AgentRuntime {
   readonly name = "direct";
+  // The chat completions protocol takes both settings.
+  readonly sampling: AppliedSampling;
   private readonly health = new ModelHealth();
   private readonly tools: readonly ToolDefinition[];
   private readonly fetch: typeof fetch;
@@ -47,6 +50,11 @@ export class DirectRuntime implements AgentRuntime {
   constructor(private readonly options: DirectRuntimeOptions) {
     this.tools = [...reviewTools, ...options.tools];
     this.fetch = options.fetch ?? proxiedFetch(options.env);
+    const { temperature, seed } = options.sampling ?? {};
+    this.sampling = {
+      ...(temperature === undefined ? {} : { temperature }),
+      ...(seed === undefined ? {} : { seed }),
+    };
   }
 
   async *runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent> {
@@ -72,6 +80,7 @@ export class DirectRuntime implements AgentRuntime {
           maxSteps: MAX_AGENT_STEPS,
           resume: RESUME_MESSAGE,
           timeoutMs: spec.timeoutMs,
+          sampling: this.sampling,
           signal,
           onUsage,
         }),
@@ -96,6 +105,7 @@ export class DirectRuntime implements AgentRuntime {
           context: NO_CONTEXT,
           maxSteps: 1,
           timeoutMs: request.timeoutMs,
+          sampling: this.sampling,
           signal,
         }),
     });

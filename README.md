@@ -185,7 +185,7 @@ Assume the reviewed code is hostile; ocra does.
 
 Numbers are published with their limits, and only numbers that were measured. Today: one run on 16 golden cases, with recall the weak point, on one model family; a second model spot-checked the labels. Two identical runs on ten benchmark pull requests differ by 20 points of precision, so the sample cannot yet decide prompt changes, and prompts stay frozen until it can. [Measured quality](docs/manual/en/quality.mdx).
 
-`ocra-eval` replays [AACR-Bench](https://github.com/alibaba/aacr-bench) (200 real pull requests, 1,505 expert-verified comments) and ocra's own golden set, and reports precision, recall, F1, cost and latency. The free `ceiling` command shows what the deterministic stages can reach at all. [Evaluation guide](docs/manual/en/evaluation.mdx).
+`ocra-eval` replays [AACR-Bench](https://github.com/alibaba/aacr-bench) (200 real pull requests, 1,505 expert-verified comments) and ocra's own golden set, and reports precision, recall, F1, cost and latency. Reviews run at a fixed temperature and seed, every report records the ocra version, prompt and configuration hashes and the sampling applied, and `--repeat k` gives each metric a 95% confidence interval, so `compare` calls a change better only when the intervals separate. The free `ceiling` command shows what the deterministic stages can reach at all. [Evaluation guide](docs/manual/en/evaluation.mdx).
 
 ## Where it is going
 

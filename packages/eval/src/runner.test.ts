@@ -39,8 +39,11 @@ if (args[args.indexOf("--from") + 1] === "quota") {
 const finding = { fingerprint: "f", reviewer: "correctness", category: "correctness", severity: "warning",
   verification: "unchecked", file: "src/a.ts", code: "x", title: "Null dereference", body: "user may be missing",
   evidence: [], lines: { start: 10, end: 10 }, inDiff: true, status: "new" };
+const t = args.indexOf("--temperature");
+const provenance = t < 0 ? {} : { provenance: { ocraVersion: "9.9.9", promptHash: "p1", configHash: "c1",
+  sampling: { temperature: Number(args[t + 1]), notApplied: ["seed"] } } };
 writeFileSync(out, JSON.stringify({ version: 1, findings: [finding], tasks: [{ taskId: "correctness-1", status: "completed" }],
-  usage: { inputTokens: 100, outputTokens: 10, reasoningTokens: 0, cachedTokens: 0, costUsd: 0.5 } }));
+  usage: { inputTokens: 100, outputTokens: 10, reasoningTokens: 0, cachedTokens: 0, costUsd: 0.5 }, ...provenance }));
 // Interrupted after one task finished: a partial report and exit 130.
 if (args[args.indexOf("--from") + 1] === "interrupted") process.exit(130);
 `,
@@ -83,6 +86,30 @@ function instance(id: string, baseCommit = "base"): Instance {
 }
 
 describe("runInstances", () => {
+  it("keeps what each review recorded it was made with", async () => {
+    const dir = temp();
+    const options = {
+      runDir: join(dir, "run"),
+      reposDir: dir,
+      command: [process.execPath, fakeOcra(dir)],
+      timeoutMs: 30_000,
+      prepare: async () => dir,
+      log: () => {},
+    };
+    const [sampled] = await runInstances([instance("s@1")], {
+      ...options,
+      reviewArgs: ["--temperature", "0", "--seed", "1"],
+    });
+    expect(sampled?.provenance).toEqual({
+      ocraVersion: "9.9.9",
+      promptHash: "p1",
+      configHash: "c1",
+      sampling: { temperature: 0, notApplied: ["seed"] },
+    });
+    const [plain] = await runInstances([instance("p@1")], options);
+    expect(plain).not.toHaveProperty("provenance");
+  });
+
   it("counts an interrupted or timed-out review as failed, not reviewed", async () => {
     const dir = temp();
     const [result] = await runInstances([instance("x@1", "interrupted")], {

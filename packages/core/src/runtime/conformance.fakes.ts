@@ -30,6 +30,8 @@ export interface SeenRequest {
   stream: boolean;
   messages: { role: string; content?: unknown; tool_call_id?: string; tool_calls?: unknown }[];
   tools: { function: { name: string; parameters: Record<string, unknown> } }[] | undefined;
+  temperature?: number;
+  seed?: number;
 }
 
 export interface Reply {

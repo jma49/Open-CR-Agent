@@ -29,6 +29,7 @@ import type { ReviewArgs } from "./args.js";
 import { type CliConfig, ConfigError } from "./config.js";
 import { renderPlan } from "./plan-render.js";
 import { type Output, ProgressPrinter } from "./progress.js";
+import { configHash, requestedSampling } from "./provenance.js";
 import { renderJson, renderText, safeJson } from "./render.js";
 import { renderSarif } from "./sarif.js";
 import { loadSarifLogs } from "./sarif-input.js";
@@ -139,10 +140,12 @@ export async function reviewCommand(
   }
 
   const sarif = await loadSarifLogs(args.importSarif ?? [], deps.cwd);
+  const sampling = requestedSampling(config, args);
   const runtime = registry.createRuntime(config.runtime, {
     models: config.models,
     env: deps.env,
     providers: config.providers,
+    ...(Object.keys(sampling).length > 0 ? { sampling } : {}),
   });
 
   const progress = new ProgressPrinter(io.err, { heartbeatMs: deps.heartbeatMs, now: deps.now });
@@ -160,6 +163,7 @@ export async function reviewCommand(
       signal: interrupt.signal,
       ...runOptions(config),
       reviewerOverrides: overrides,
+      provenance: { ocraVersion: VERSION, configHash: configHash(config, args), sampling },
       ...(args.maxCostUsd !== undefined ? { maxCostUsd: args.maxCostUsd } : {}),
       ...(args.ultra ? { ultra: true } : {}),
       ...(args.full ? { fullReview: true } : {}),

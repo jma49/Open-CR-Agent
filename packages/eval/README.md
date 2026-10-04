@@ -9,6 +9,8 @@ Run it from a build: `node packages/eval/dist/main.js <command>` (`npm run build
 | Module | What it does |
 |---|---|
 | `cli.ts`, `main.ts` | Commands and flags: `run`, `list`, `ceiling`, `compare`, `adjudicate` |
+| `repeat.ts`, `interval.ts` | `run --repeat k`: the repetitions, their 95% Student t intervals, and reading a run directory of either kind |
+| `provenance.ts` | What the reviews of a run were made with (version, prompt and config hashes, sampling), and the warnings `compare` gives when runs differ in it |
 | `dataset.ts` | Downloads and validates AACR-Bench; turns its rows into `Instance`s, one per pull request |
 | `golden.ts` | Loads and validates `evals/golden/*.json` into the same `Instance` shape, with expectations |
 | `attack.ts` | Adversarial cases: plants hostile text in the case they attack (ADR-0014) |
@@ -35,6 +37,10 @@ Run it from a build: `node packages/eval/dist/main.js <command>` (`npm run build
 | `summary.json`, `summary.md` | Scores, written when the run ends |
 | `adjudication.json` | Golden runs: unlabeled findings to label, then `ocra-eval adjudicate <run-dir>` |
 | `judge-cache.<model>.json` | Judge answers, so rescoring does not ask again |
+
+A run with `--repeat k` holds `k` such runs in `r1/` … `rk/`, with `repeats.json` (each metric's values and interval) and `summary.md` beside them; the judge cache is shared at the top. `compare` and `score` take either kind of directory.
+
+Sampling: `run` passes `--temperature` (default 0) and `--seed` (`--model-seed`, default 1) to every review, records them in `run.json` as `info.sampling`, and copies each report's `provenance` into `instances/<id>.json`; `summary.json` lists the distinct values as `summary.provenance`.
 
 Each review's session (events, prompts' metadata, cost per step) is in the clone it reviewed: `~/.cache/ocra/aacr-bench/repos/<owner>__<repo>/.ocra/sessions/<runId>/`, where `runId` comes from `reports/<id>.json`. Do not match runs to sessions by time.
 

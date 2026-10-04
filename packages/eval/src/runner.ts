@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type {
   AnchoringSummary,
   OutputFinding,
+  RunProvenance,
   TaskOutcome,
   Usage,
   Verdict,
@@ -40,6 +41,9 @@ export interface InstanceResult {
   exitCode?: number;
   // Absent in results written before it was recorded.
   verdict?: Verdict;
+  // What the review was made with (ocra's report); absent before ocra
+  // recorded it.
+  provenance?: RunProvenance;
   error?: string;
 }
 
@@ -170,6 +174,7 @@ async function reviewOne(
   };
   if (report?.anchoring) result.anchoring = report.anchoring;
   if (report) result.verdict = report.verdict;
+  if (report?.provenance) result.provenance = report.provenance;
   if (outcome.error) result.error = outcome.error;
   return result;
 }

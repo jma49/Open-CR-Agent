@@ -86,6 +86,7 @@ try {
 | `signal` | 一个 `AbortSignal`：运行会停下，保留已发现的问题并写出部分报告 |
 | `onEvent` | 在运行过程中接收每个 `ReviewEvent` |
 | `runId` | 在报告、事件和发布的内容里标识这次运行；不传则自动生成。CLI 传入它的会话 id |
+| `provenance` | `{ ocraVersion, configHash, sampling? }`：传入后，报告的 `provenance` 会加上启用的审查员和辅助阶段所发系统提示词的哈希，以及运行时实际应用的采样设置（`sampling` 是你向运行时要求的设置；`stableHash()` 可以给你自己的配置算哈希） |
 
 `bundling`、`grouper`、`relocate` 和 `abortGraceMs` 是调优和测试钩子，不属于约定。
 

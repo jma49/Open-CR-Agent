@@ -133,6 +133,19 @@ const scopeSchema = z.discriminatedUnion("mode", [
 
 const priorList = z.array(outputPriorFindingSchema);
 
+const samplingSchema = z.strictObject({
+  temperature: z.number().optional(),
+  seed: z.int().optional(),
+  notApplied: z.array(z.enum(["temperature", "seed"])).optional(),
+});
+
+const provenanceSchema = z.strictObject({
+  ocraVersion: z.string(),
+  promptHash: z.string(),
+  configHash: z.string(),
+  sampling: samplingSchema,
+});
+
 export const reportOutputSchema = z.strictObject({
   version: z.literal(REPORT_VERSION),
   runId: z.string().optional(),
@@ -163,6 +176,7 @@ export const reportOutputSchema = z.strictObject({
   spendLimit: z
     .strictObject({ usd: z.number(), reached: z.enum(["review", "total"]).optional() })
     .optional(),
+  provenance: provenanceSchema.optional(),
   usage: usageSchema,
   warnings: z.array(z.string()),
 });

@@ -28,6 +28,9 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--ultra` | Passed to `ocra review --ultra`: the recall mode, at about twice the cost; the run record names it |
 | `--config` | Passed to `ocra review --config`: your own configuration file (declared providers, limits) for the reviews, which run with `--no-repo-config` |
 | `--pr-max-cost-usd` | Spend limit per PR, passed to `ocra review --max-cost-usd`; `--max-cost-usd` only stops starting new PRs, so use both to bound a run |
+| `--temperature` | Passed to `ocra review --temperature`; default `0` |
+| `--model-seed` | Passed to `ocra review --seed`; default `1` (`--seed` is the selection's) |
+| `--repeat <k>` | Review the selection `k` times and report the mean and a 95% confidence interval of precision and recall; see [Repeated runs](#repeated-runs) |
 | `--mock-judge` | Offline word-overlap judge for pipeline checks (not comparable) |
 
 When a pull request fails because the model's quota is spent (for example a free-tier daily limit), the run stops starting new ones and marks them `skipped_quota`; run the same command later to resume them.
@@ -107,13 +110,28 @@ node packages/eval/dist/main.js run  --dataset golden --tier adversarial --label
 
 The text is committed on top of the case's head with a fixed identity and date, so every run reviews the same commit, and the clone's working tree, index and refs do not change. `--tier adversarial` runs every attack together with the case it attacks; the other tiers and plain golden runs leave attacks out. `summary.md` then compares each attack with its clean case: expected findings found at or above their minimum severity, the verdict, and findings carrying the canary. Attacks are not counted in the run's other metrics, and their findings are not labeled. Model runs vary, so read differences across attacks and runs, not from a single pair.
 
+## Reproducibility
+
+Every review of a run is made with a fixed sampling: temperature `0` and seed `1` unless `--temperature` and `--model-seed` say otherwise. `run.json` and `summary.json` record what was asked (`info.sampling`), and each review's JSON report records what was applied, which `summary.json` collects as `summary.provenance`: the distinct ocra versions, prompt hashes, configuration hashes and sampling settings of the reviewed pull requests (see the report's [`provenance`](./cli#json-output)). `summary.md` prints them on its Provenance line. More than one value in a run means it was resumed after a rebuild or a change of setup. The OpenCode runtime applies no seed, and some providers ignore one, so a fixed seed does not make a model deterministic; repeated runs measure what is left.
+
+## Repeated runs
+
+```bash
+node packages/eval/dist/main.js run --dataset golden --tier smoke --label baseline --repeat 3 --max-cost-usd 15
+```
+
+`--repeat k` reviews the selection `k` times, one after another, into `r1/` … `rk/` inside the run directory; each is an ordinary run with its own `summary.md`, and rerunning the same label resumes them. `--max-cost-usd` bounds the repetitions together: each gets what the earlier ones left. The run directory's `repeats.json` and `summary.md` give, for precision and recall (and golden precision and recall), each run's value, their mean and a 95% confidence interval of the mean. `ocra-eval score <run-dir>` re-scores every repetition and rewrites them; label a golden run's findings per repetition (`ocra-eval adjudicate <run-dir>/r1`).
+
+The interval is a Student t interval: mean ± t(0.975, k−1) · s / √k, where s is the standard deviation of the k runs' values. It assumes the values vary roughly normally; with three runs t is 4.3, so intervals are wide unless the runs agree. Use at least three runs per side.
+
 ## Comparing runs
 
 ```bash
 node packages/eval/dist/main.js compare .ocra/eval/baseline-a .ocra/eval/change --spread-of .ocra/eval/baseline-b
+node packages/eval/dist/main.js compare .ocra/eval/baseline .ocra/eval/change      # two repeated runs
 ```
 
-Prints each metric of both runs and the difference. Model runs vary, so with `--spread-of` (a second run of the baseline) a difference no larger than the gap between the two baseline runs is reported as `no change`; without it the direction is not judged. It works on AACR-Bench and golden runs, and warns when the runs reviewed different pull requests, were scored by different judges or against different golden cases or labels, reviewed a different number of pull requests, or still have unlabeled findings. Golden numbers depend on the cases and labels at scoring time, so after labeling, re-score every run you compare (`ocra-eval score <run-dir>`).
+Prints each metric of both runs and the difference. Model runs vary. When both runs are repeated runs, precision and recall are compared by their intervals: a change is called `better` or `worse` only when the two 95% intervals do not overlap, and `no change` otherwise; the table shows both intervals and each side's mean. For single runs, with `--spread-of` (a second run of the baseline) a difference no larger than the gap between the two baseline runs is reported as `no change`; without it the direction is not judged. It works on AACR-Bench and golden runs, and warns when the runs reviewed different pull requests, were scored by different judges or against different golden cases or labels, reviewed a different number of pull requests, still have unlabeled findings, or were made with a different ocra version, prompts (`promptHash`), configuration (`configHash`) or sampling, or when one recorded none of that. Golden numbers depend on the cases and labels at scoring time, so after labeling, re-score every run you compare (`ocra-eval score <run-dir>`).
 
 ## Recall ceiling (free)
 

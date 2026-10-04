@@ -152,3 +152,31 @@ describe("openCodeConfig", () => {
     expect(config.agent["ocra-helper"].steps).toBe(HELPER_AGENT_STEPS);
   });
 });
+
+describe("sampling on OpenCode", () => {
+  const tools = { url: "http://127.0.0.1:1/mcp", headers: {} };
+  const gateway = {
+    gateway: { baseUrl: "https://llm.example.com/v1", models: { m1: { input: 1, output: 2 } } },
+  };
+
+  it("sets a configured temperature on both agents and on declared models", () => {
+    const config = openCodeConfig(tools, {}, gateway, { temperature: 0, seed: 3 });
+    expect(config.agent["ocra-reviewer"]).toMatchObject({ temperature: 0 });
+    expect(config.agent["ocra-helper"]).toMatchObject({ temperature: 0 });
+    expect(config.provider?.gateway?.models.m1).toMatchObject({ temperature: true });
+  });
+
+  it("leaves the temperature to OpenCode when none is configured", () => {
+    const config = openCodeConfig(tools, {}, gateway);
+    expect(config.agent["ocra-reviewer"]).not.toHaveProperty("temperature");
+    expect(config.agent["ocra-helper"]).not.toHaveProperty("temperature");
+    expect(config.provider?.gateway?.models.m1).not.toHaveProperty("temperature");
+  });
+
+  it("reports the seed as not applied, since OpenCode has no seed setting", () => {
+    const sampled = (sampling: { temperature?: number; seed?: number }) =>
+      new OpenCodeRuntime({ models: {}, tools: [], env: {}, sampling }).sampling;
+    expect(sampled({ temperature: 0, seed: 3 })).toEqual({ temperature: 0, notApplied: ["seed"] });
+    expect(sampled({})).toEqual({});
+  });
+});

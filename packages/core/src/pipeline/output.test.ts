@@ -84,6 +84,7 @@ describe("output contract", () => {
         relocationCalls: 0,
       },
       spendLimit: { usd: 2, reached: "review" },
+      provenance: { ocraVersion: "v", promptHash: "p", configHash: "c", sampling: {} },
     } as ReviewReport;
     const output = toReportOutput(full);
     expect(Object.keys(output).sort()).toEqual(
@@ -94,6 +95,7 @@ describe("output contract", () => {
         "coverage",
         "findings",
         "judgement",
+        "provenance",
         "refuted",
         "remembered",
         "rereview",
@@ -118,6 +120,9 @@ describe("output contract", () => {
       ["ambiguous", "byMethod", "relocationCalls"].sort(),
     );
     expect(output.spendLimit).toEqual({ usd: 2, reached: "review" });
+    expect(Object.keys(output.provenance ?? {}).sort()).toEqual(
+      ["configHash", "ocraVersion", "promptHash", "sampling"].sort(),
+    );
     expect(Object.keys(output.usage).sort()).toEqual(
       ["cachedTokens", "costUsd", "inputTokens", "outputTokens", "reasoningTokens"].sort(),
     );

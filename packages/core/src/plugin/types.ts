@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { AgentRuntime, ModelTier, ReviewContext, VcsAdapter } from "../contracts.js";
+import type { AgentRuntime, ModelTier, ReviewContext, Sampling, VcsAdapter } from "../contracts.js";
 import type { ReviewEvent } from "../pipeline/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { RepoRule } from "../rules/repo-rules.js";
@@ -14,6 +14,9 @@ export interface RuntimeOptions {
   env: Env;
   // Providers declared in configuration, by id, for model chains to name.
   providers?: Readonly<Record<string, CustomProvider>>;
+  // Sent with every model call the runtime can send it with; the runtime's
+  // `sampling` says what it applied.
+  sampling?: Sampling;
 }
 
 // A model provider reached through an OpenAI-compatible API: a self-hosted

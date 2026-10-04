@@ -66,8 +66,23 @@ export interface CompletionResult {
   usage: Usage;
 }
 
+// Sampling settings for model calls. Unset fields leave the provider's
+// default; a review sets none unless configured, the evaluation sets both.
+export interface Sampling {
+  temperature?: number;
+  seed?: number;
+}
+
+// What a runtime sends with every call: the requested settings it applies,
+// and the names of those it cannot pass on.
+export interface AppliedSampling extends Sampling {
+  notApplied?: (keyof Sampling)[];
+}
+
 export interface AgentRuntime {
   readonly name: string;
+  // Absent: the runtime applies none of the requested sampling settings.
+  readonly sampling?: AppliedSampling;
   runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent>;
   // Throws a CompletionError carrying the usage of failed attempts.
   complete?(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult>;

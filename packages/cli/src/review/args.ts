@@ -32,6 +32,9 @@ export interface ReviewArgs {
   importSarif?: string[];
   // Read this file instead of the repository's .ocra/config.json.
   configFile?: string;
+  // Override the configuration's sampling.
+  temperature?: number;
+  seed?: number;
 }
 
 export class UsageError extends OcraError {
@@ -64,6 +67,8 @@ Options:
                      that fall on the change; repeatable; not with --plan
   --plan             Show files, bundles, review tasks and prompt sizes; call no model
   --ultra            Favor recall: all reviewers at every tier, two samples each (about 2x cost)
+  --temperature <n>  Sampling temperature, 0 to 2 (default: the provider's, or sampling in config)
+  --seed <n>         Sampling seed, where the runtime and provider support one
   --config <file>    Read this configuration file instead of the repository's
                      .ocra/config.json; it applies with --no-repo-config too
   --no-repo-config   Ignore .ocra/config.json and its plugins (for untrusted
@@ -116,6 +121,22 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
       );
     args.maxCostUsd = max;
   }
+  if (values.temperature !== undefined) {
+    const temperature = Number(values.temperature);
+    if (values.temperature.trim() === "" || !(temperature >= 0 && temperature <= 2)) {
+      throw new UsageError(`--temperature must be a number from 0 to 2, got ${values.temperature}`);
+    }
+    args.temperature = temperature;
+  }
+  if (values.seed !== undefined) {
+    const seed = Number(values.seed);
+    if (!/^\d+$/.test(values.seed) || seed > 2 ** 31 - 1) {
+      throw new UsageError(
+        `--seed must be a whole number from 0 to 2147483647, got ${values.seed}`,
+      );
+    }
+    args.seed = seed;
+  }
   if (values.config !== undefined) {
     if (values.config === "") throw new UsageError("--config needs a file");
     args.configFile = values.config;
@@ -152,6 +173,8 @@ function parse(argv: string[]) {
       "max-cost-usd": { type: "string" },
       "import-sarif": { type: "string", multiple: true },
       ultra: { type: "boolean" },
+      temperature: { type: "string" },
+      seed: { type: "string" },
       full: { type: "boolean" },
       plan: { type: "boolean" },
       pr: { type: "string" },
