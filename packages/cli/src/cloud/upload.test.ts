@@ -1,11 +1,11 @@
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SharedFinding } from "@open-cr-agent/cloud-contract";
 import type { ReviewReport } from "@open-cr-agent/core";
-import { describe, expect, it } from "vitest";
+import { scratchRepos } from "@open-cr-agent/test-support";
+import { afterAll, describe, expect, it } from "vitest";
 import { originRepository } from "../repository-id.js";
 import type { CloudDeps } from "./deps.js";
 import { repoHash, uploadOf, uploadReview } from "./upload.js";
@@ -16,12 +16,9 @@ async function hashOf(root: string, credentialsPath: string, salt?: string): Pro
   return repoHash(await originRepository(root), credentialsPath, salt);
 }
 
-function repo(origin?: string): string {
-  const dir = mkdtempSync(join(tmpdir(), "ocra-up-repo-"));
-  execFileSync("git", ["init", "-q", dir]);
-  if (origin) execFileSync("git", ["-C", dir, "remote", "add", "origin", origin]);
-  return dir;
-}
+const repos = scratchRepos("ocra-up-repo-");
+afterAll(repos.removeAll);
+const repo = (origin?: string) => repos.create(origin === undefined ? {} : { origin }).dir;
 
 function cloud(answer: (path: string, init?: RequestInit) => Response) {
   const dir = mkdtempSync(join(tmpdir(), "ocra-up-"));

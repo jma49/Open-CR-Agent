@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import {
   mkdirSync,
   mkdtempSync,
@@ -11,37 +10,15 @@ import {
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { reviewContext } from "@open-cr-agent/core/internal";
+import { scratchRepos } from "@open-cr-agent/test-support";
 import { afterEach, describe, expect, it } from "vitest";
 import { ensureCommits } from "./commits.js";
 import { LocalGitAdapter, type LocalTarget } from "./local-adapter.js";
 
-const repos: string[] = [];
-
-function repo(): {
-  dir: string;
-  run: (...args: string[]) => string;
-  write: (p: string, c: string) => void;
-} {
-  const dir = mkdtempSync(join(tmpdir(), "ocra-local-"));
-  repos.push(dir);
-  const run = (...args: string[]) =>
-    execFileSync("git", args, { cwd: dir, encoding: "utf8" }).trim();
-  run("init", "-q", "-b", "main");
-  run("config", "user.email", "test@example.com");
-  run("config", "user.name", "Test");
-  run("config", "commit.gpgsign", "false");
-  const write = (path: string, content: string) => {
-    mkdirSync(join(dir, path, ".."), { recursive: true });
-    writeFileSync(join(dir, path), content);
-  };
-  return { dir, run, write };
-}
-
-function commitAll(r: ReturnType<typeof repo>, message: string): string {
-  r.run("add", "-A");
-  r.run("commit", "-q", "-m", message);
-  return r.run("rev-parse", "HEAD");
-}
+// Removed after each test besides the repositories: files placed outside them.
+const outsides: string[] = [];
+const scratch = scratchRepos("ocra-local-");
+const repo = () => scratch.create();
 
 async function changes(cwd: string, target: LocalTarget) {
   const diffs = await new LocalGitAdapter({ cwd, target }).getDiff();
@@ -49,7 +26,8 @@ async function changes(cwd: string, target: LocalTarget) {
 }
 
 afterEach(() => {
-  for (const dir of repos.splice(0)) rmSync(dir, { recursive: true, force: true });
+  scratch.removeAll();
+  for (const dir of outsides.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
 describe("LocalGitAdapter workspace mode", () => {
@@ -57,9 +35,9 @@ describe("LocalGitAdapter workspace mode", () => {
     const r = repo();
     r.write("staged.ts", "a\n");
     r.write("unstaged.ts", "a\n");
-    commitAll(r, "init");
+    r.commit("init");
     r.write("staged.ts", "b\n");
-    r.run("add", "staged.ts");
+    r.git("add", "staged.ts");
     r.write("unstaged.ts", "b\n");
     r.write("new dir/untracked.ts", "c\n");
     r.write("ignored.log", "x\n");
@@ -71,20 +49,20 @@ describe("LocalGitAdapter workspace mode", () => {
       ["staged.ts", "modified"],
       ["unstaged.ts", "modified"],
     ]);
-    expect(r.run("status", "--porcelain")).toContain(`?? "new dir/"`);
+    expect(r.git("status", "--porcelain")).toContain(`?? "new dir/"`);
   });
 
   it("sees a same-size edit made in the same second as the index (racy git)", async () => {
     const r = repo();
-    r.run("config", "core.trustctime", "false");
+    r.git("config", "core.trustctime", "false");
     const moment = new Date("2020-01-01T00:00:00Z");
     r.write("same.ts", "a\n");
     utimesSync(join(r.dir, "same.ts"), moment, moment);
     r.write("new.ts", "n\n");
-    commitAll(r, "init");
+    r.commit("init");
     rmSync(join(r.dir, "new.ts"));
     r.write("new.ts", "n\n");
-    r.run("add", "new.ts");
+    r.git("add", "new.ts");
     r.write("same.ts", "b\n");
     utimesSync(join(r.dir, "same.ts"), moment, moment);
     utimesSync(join(r.dir, ".git", "index"), moment, moment);
@@ -96,7 +74,7 @@ describe("LocalGitAdapter workspace mode", () => {
   it("diffs untracked files over 1 MB as binary", async () => {
     const r = repo();
     r.write("a.ts", "a\n");
-    commitAll(r, "init");
+    r.commit("init");
     r.write("dump.sql", "insert into t values (1);\n".repeat(50_000));
     const [dump] = await new LocalGitAdapter({
       cwd: r.dir,
@@ -114,7 +92,7 @@ describe("LocalGitAdapter workspace mode", () => {
   it("reports root-relative paths when run from a subdirectory", async () => {
     const r = repo();
     r.write("pkg/a.ts", "a\n");
-    commitAll(r, "init");
+    r.commit("init");
     r.write("pkg/a.ts", "b\n");
     expect(await changes(join(r.dir, "pkg"), { mode: "workspace" })).toEqual([
       ["pkg/a.ts", "modified"],
@@ -126,9 +104,9 @@ describe("LocalGitAdapter workspace mode", () => {
   it("ignores user diff configuration that changes the output format", async () => {
     const r = repo();
     r.write("a.ts", "a\n");
-    commitAll(r, "init");
-    r.run("config", "diff.noprefix", "true");
-    r.run("config", "diff.mnemonicPrefix", "true");
+    r.commit("init");
+    r.git("config", "diff.noprefix", "true");
+    r.git("config", "diff.mnemonicPrefix", "true");
     r.write("a.ts", "b\n");
     expect(await changes(r.dir, { mode: "workspace" })).toEqual([["a.ts", "modified"]]);
   });
@@ -138,13 +116,13 @@ describe("LocalGitAdapter range mode", () => {
   it("diffs from the merge base so later base commits are excluded", async () => {
     const r = repo();
     r.write("shared.ts", "a\n");
-    commitAll(r, "init");
-    r.run("switch", "-q", "-c", "feature");
+    r.commit("init");
+    r.git("switch", "-q", "-c", "feature");
     r.write("feature.ts", "f\n");
-    commitAll(r, "feat: add feature");
-    r.run("switch", "-q", "main");
+    r.commit("feat: add feature");
+    r.git("switch", "-q", "main");
     r.write("main-only.ts", "m\n");
-    commitAll(r, "main moves on");
+    r.commit("main moves on");
 
     const adapter = new LocalGitAdapter({
       cwd: r.dir,
@@ -160,7 +138,7 @@ describe("LocalGitAdapter range mode", () => {
   it("rejects refs that look like options", async () => {
     const r = repo();
     r.write("a.ts", "a\n");
-    commitAll(r, "init");
+    r.commit("init");
     const adapter = new LocalGitAdapter({
       cwd: r.dir,
       target: { mode: "range", from: "--output=/tmp/pwned", to: "main" },
@@ -173,9 +151,9 @@ describe("LocalGitAdapter commit mode", () => {
   it("diffs a commit against its parent and uses its message", async () => {
     const r = repo();
     r.write("a.ts", "a\n");
-    commitAll(r, "init");
+    r.commit("init");
     r.write("a.ts", "b\n");
-    const sha = commitAll(r, "fix: change a\n\nBecause reasons.");
+    const sha = r.commit("fix: change a\n\nBecause reasons.");
     const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "commit", commit: sha } });
     expect((await adapter.getDiff()).map((d) => d.newPath)).toEqual(["a.ts"]);
     expect(await adapter.getChangeRequest()).toMatchObject({
@@ -188,7 +166,7 @@ describe("LocalGitAdapter commit mode", () => {
   it("diffs a root commit against the empty tree", async () => {
     const r = repo();
     r.write("a.ts", "a\n");
-    const sha = commitAll(r, "init");
+    const sha = r.commit("init");
     expect(await changes(r.dir, { mode: "commit", commit: sha })).toEqual([["a.ts", "added"]]);
   });
 });
@@ -197,7 +175,7 @@ describe("LocalGitAdapter.readFile", () => {
   it("reads the working tree in workspace mode and the head commit otherwise", async () => {
     const r = repo();
     r.write("a.ts", "committed\n");
-    const sha = commitAll(r, "init");
+    const sha = r.commit("init");
     r.write("a.ts", "edited\n");
 
     const workspace = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
@@ -213,7 +191,7 @@ describe("LocalGitAdapter.readFile", () => {
     // A real file next to the repository, so the refusal is what keeps it out.
     const outside = join(r.dir, "..", `${basename(r.dir)}-outside.txt`);
     writeFileSync(outside, "outside\n");
-    repos.push(outside);
+    outsides.push(outside);
     const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
     expect(await adapter.readFile(`../${basename(outside)}`)).toBeUndefined();
     expect(await adapter.readFile("/etc/passwd")).toBeUndefined();
@@ -222,7 +200,7 @@ describe("LocalGitAdapter.readFile", () => {
   it("reads a symlink as its target path, as git stores it, never the target's content", async () => {
     const r = repo();
     const outside = mkdtempSync(join(tmpdir(), "ocra-outside-"));
-    repos.push(outside);
+    outsides.push(outside);
     writeFileSync(join(outside, "secret.txt"), "secret\n");
     symlinkSync(join(outside, "secret.txt"), join(r.dir, "link.txt"));
     const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
@@ -237,7 +215,7 @@ describe("LocalGitAdapter.readFile", () => {
     symlinkSync(".git", join(r.dir, "cfg"));
     mkdirSync(join(r.dir, "docs"));
     symlinkSync("../.env", join(r.dir, "docs", "AGENTS.md"));
-    commitAll(r, "links");
+    r.commit("links");
     const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
     const context = reviewContext(adapter, []);
     expect(await context.readFile("notes.txt")).toBe(".env");
@@ -266,7 +244,7 @@ describe("LocalGitAdapter.searchCode", () => {
   it("searches the working tree, including untracked files, as literal text", async () => {
     const r = repo();
     r.write("a.ts", "call(x);\nother();\n");
-    commitAll(r, "init");
+    r.commit("init");
     r.write("dir/b.ts", "// call(x);\n");
     const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
     expect(await adapter.searchCode("call(x)")).toEqual([
@@ -279,7 +257,7 @@ describe("LocalGitAdapter.searchCode", () => {
   it("searches the reviewed commit rather than the working tree", async () => {
     const r = repo();
     r.write("a.ts", "committed();\n");
-    const sha = commitAll(r, "init");
+    const sha = r.commit("init");
     r.write("a.ts", "edited();\n");
     const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "commit", commit: sha } });
     expect(await adapter.searchCode("committed")).toEqual([
@@ -304,7 +282,7 @@ describe("LocalGitAdapter behind the review context", () => {
     r.write(".gitignore", ".env\n");
     r.write(".env", "API_KEY=supersecret\n");
     r.write("a.ts", "a\n");
-    commitAll(r, "init");
+    r.commit("init");
     r.write("a.ts", "b\n");
     const vcs = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
     const context = reviewContext(vcs, await vcs.getDiff());
@@ -319,15 +297,15 @@ describe("ensureCommits", () => {
   it("fetches missing commits from the remote and names those it cannot find", async () => {
     const upstream = repo();
     upstream.write("a.ts", "a\n");
-    const first = commitAll(upstream, "init");
+    const first = upstream.commit("init");
     upstream.write("a.ts", "b\n");
-    const second = commitAll(upstream, "second");
+    const second = upstream.commit("second");
 
     const clone = repo();
-    clone.run("remote", "add", "origin", upstream.dir);
-    clone.run("fetch", "-q", "origin", first);
+    clone.git("remote", "add", "origin", upstream.dir);
+    clone.git("fetch", "-q", "origin", first);
     await ensureCommits(clone.dir, [first, second]);
-    expect(clone.run("cat-file", "-t", second)).toBe("commit");
+    expect(clone.git("cat-file", "-t", second)).toBe("commit");
 
     await expect(ensureCommits(clone.dir, ["--upload-pack=touch /tmp/x"])).rejects.toThrow(
       "Not commit ids",

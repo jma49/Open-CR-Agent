@@ -1,0 +1,18 @@
+{
+  "name": "@open-cr-agent/test-support",
+  "version": "0.0.0",
+  "private": true,
+  "description": "What the tests of Open-CR-Agent's packages share: scratch git repositories",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.19"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "@open-cr-agent/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  }
+}

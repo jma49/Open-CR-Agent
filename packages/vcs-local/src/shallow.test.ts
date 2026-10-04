@@ -1,7 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { scratchRepo } from "@open-cr-agent/test-support";
 import { afterEach, describe, expect, it } from "vitest";
 import { filesChangedSince } from "./history.js";
 import { LocalGitAdapter } from "./local-adapter.js";
@@ -19,21 +20,13 @@ function git(cwd: string, ...args: string[]): string {
 // which base was then fetched on its own: both commits exist, their history
 // does not, as in a CI checkout without fetch-depth: 0.
 function shallowClone(): { clone: string; base: string; head: string } {
-  const upstream = mkdtempSync(join(tmpdir(), "ocra-upstream-"));
+  const repo = scratchRepo({ prefix: "ocra-upstream-" });
+  const upstream = repo.dir;
   const clone = mkdtempSync(join(tmpdir(), "ocra-shallow-"));
   dirs.push(upstream, clone);
-  git(upstream, "init", "-q", "-b", "main");
-  git(upstream, "config", "user.email", "t@example.com");
-  git(upstream, "config", "user.name", "T");
-  const commit = (content: string) => {
-    writeFileSync(join(upstream, "a.ts"), content);
-    git(upstream, "add", "-A");
-    git(upstream, "commit", "-q", "-m", content);
-    return git(upstream, "rev-parse", "HEAD");
-  };
-  const base = commit("1\n");
-  commit("2\n");
-  const head = commit("3\n");
+  const base = repo.commit("1\n", { "a.ts": "1\n" });
+  repo.commit("2\n", { "a.ts": "2\n" });
+  const head = repo.commit("3\n", { "a.ts": "3\n" });
   rmSync(clone, { recursive: true });
   execFileSync("git", ["clone", "-q", "--depth", "1", `file://${upstream}`, clone]);
   git(clone, "fetch", "-q", "--depth", "1", "origin", base);

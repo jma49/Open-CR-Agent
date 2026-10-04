@@ -1,14 +1,11 @@
-import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { scratchRepos } from "@open-cr-agent/test-support";
 import { afterEach, describe, expect, it } from "vitest";
 import { collectMetrics, metricsCommand } from "./metrics.js";
 
-const dirs: string[] = [];
-afterEach(() => {
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
-});
+const repos = scratchRepos("ocra-metrics-");
+afterEach(repos.removeAll);
 
 function capture() {
   let text = "";
@@ -77,9 +74,7 @@ function report(overrides: Record<string, unknown>) {
 }
 
 function repoWithSessions(sessions: Record<string, unknown>): string {
-  const dir = mkdtempSync(join(tmpdir(), "ocra-metrics-"));
-  dirs.push(dir);
-  execFileSync("git", ["init", "-q"], { cwd: dir });
+  const { dir } = repos.create();
   for (const [id, content] of Object.entries(sessions)) {
     const session = join(dir, ".ocra", "sessions", id);
     mkdirSync(session, { recursive: true });

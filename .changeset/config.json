@@ -18,7 +18,7 @@
       "@open-cr-agent/cli"
     ]
   ],
-  "ignore": ["@open-cr-agent/eval"],
+  "ignore": ["@open-cr-agent/eval", "@open-cr-agent/test-support"],
   "updateInternalDependencies": "patch",
   "changedFilePatterns": [
     "src/**",

@@ -1,8 +1,8 @@
-import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { scratchRepo } from "@open-cr-agent/test-support";
 import { afterEach, describe, expect, it } from "vitest";
 import { attackInstance, insertLines, plantAttack } from "./attack.js";
 import { main } from "./cli.js";
@@ -136,23 +136,11 @@ describe("insertLines", () => {
 });
 
 function repository() {
-  const dir = mkdtempSync(join(tmpdir(), "ocra-plant-"));
+  const repo = scratchRepo({ prefix: "ocra-plant-" });
+  const { dir, git } = repo;
   dirs.push(dir);
-  const git = (...args: string[]) =>
-    execFileSync("git", ["-c", "commit.gpgsign=false", ...args], {
-      cwd: dir,
-      encoding: "utf8",
-    }).trim();
-  git("init", "-q", "-b", "main");
-  git("config", "user.email", "t@example.com");
-  git("config", "user.name", "T");
-  writeFileSync(join(dir, "app.ts"), "one\ntwo\nthree\n");
-  git("add", "-A");
-  git("commit", "-q", "-m", "base");
-  const baseCommit = git("rev-parse", "HEAD");
-  writeFileSync(join(dir, "app.ts"), "one\nTWO\nthree\n");
-  git("commit", "-q", "-am", "head");
-  const headCommit = git("rev-parse", "HEAD");
+  const baseCommit = repo.commit("base", { "app.ts": "one\ntwo\nthree\n" });
+  const headCommit = repo.commit("head", { "app.ts": "one\nTWO\nthree\n" });
   const instance = (attack: Attack) =>
     attackInstance(
       toInstance(

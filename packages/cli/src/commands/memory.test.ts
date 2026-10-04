@@ -1,23 +1,12 @@
-import { execFileSync } from "node:child_process";
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { OutputFinding, ReportOutput } from "@open-cr-agent/core";
+import { scratchRepos } from "@open-cr-agent/test-support";
 import { afterEach, describe, expect, it } from "vitest";
 import { memoryCommand } from "./memory.js";
 
-const dirs: string[] = [];
-afterEach(() => {
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
-});
+const repos = scratchRepos("ocra-memory-");
+afterEach(repos.removeAll);
 
 function capture() {
   let text = "";
@@ -25,9 +14,7 @@ function capture() {
 }
 
 function repoWithSession(): string {
-  const dir = mkdtempSync(join(tmpdir(), "ocra-memory-"));
-  dirs.push(dir);
-  execFileSync("git", ["init", "-q"], { cwd: dir });
+  const { dir } = repos.create();
   const session = join(dir, ".ocra", "sessions", "20260926T000000Z-aaaaaa");
   mkdirSync(session, { recursive: true });
   const finding = (fingerprint: string, title: string): OutputFinding => ({
@@ -103,8 +90,7 @@ describe("ocra memory", () => {
 
   it("never writes memory.json through a planted symbolic link", async () => {
     const dir = repoWithSession();
-    const outside = join(mkdtempSync(join(tmpdir(), "ocra-outside-")), "target.json");
-    dirs.push(dirname(outside));
+    const outside = join(repos.create().dir, "target.json");
     symlinkSync(outside, join(dir, ".ocra", "memory.json"));
     await expect(
       memoryCommand(["add", "abcdef", "--reason", "r"], capture(), dir, new Date()),

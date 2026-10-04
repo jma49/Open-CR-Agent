@@ -1,52 +1,27 @@
-import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import type { AgentEvent, AgentTaskSpec, OcraPlugin } from "@open-cr-agent/core";
+import { scratchRepos } from "@open-cr-agent/test-support";
 
 // A pull request that moves between reviews, shared by the incremental
 // re-review tests and the report golden test.
 
-const dirs: string[] = [];
+const repos = scratchRepos("ocra-incr-");
 // Call from afterEach: removes the repositories made since the last call.
-export function removePullRequests(): void {
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
-}
-
-function repo() {
-  const dir = mkdtempSync(join(tmpdir(), "ocra-incr-"));
-  dirs.push(dir);
-  const git = (...args: string[]) =>
-    execFileSync("git", args, { cwd: dir, encoding: "utf8" }).trim();
-  git("init", "-q", "-b", "main");
-  git("config", "user.email", "test@example.com");
-  git("config", "user.name", "Test");
-  return { dir, git };
-}
-
-function commit(r: ReturnType<typeof repo>, files: Record<string, string>, message: string) {
-  for (const [path, content] of Object.entries(files)) writeFileSync(join(r.dir, path), content);
-  r.git("add", "-A");
-  r.git("commit", "-q", "-m", message);
-  return r.git("rev-parse", "HEAD");
-}
+export const removePullRequests = repos.removeAll;
 
 // A pull request whose head moves between runs, and a GitHub that keeps
 // ocra's summary comment from one run to the next.
 export function movingPullRequest() {
-  const upstream = repo();
-  const base = commit(
-    upstream,
-    { "a.ts": "export const a = 0;\n", "b.ts": "export const b = 0;\n" },
-    "base",
-  );
+  const upstream = repos.create();
+  const base = upstream.commit("base", {
+    "a.ts": "export const a = 0;\n",
+    "b.ts": "export const b = 0;\n",
+  });
   upstream.git("switch", "-q", "-c", "feature");
-  let head = commit(
-    upstream,
-    { "a.ts": "export const a = 1;\n", "b.ts": "export const b = 1;\n" },
-    "one",
-  );
-  const clone = repo();
+  let head = upstream.commit("one", {
+    "a.ts": "export const a = 1;\n",
+    "b.ts": "export const b = 1;\n",
+  });
+  const clone = repos.create();
   clone.git("remote", "add", "origin", upstream.dir);
   clone.git("fetch", "-q", "origin", "main");
   clone.git("checkout", "-q", "FETCH_HEAD");
@@ -97,11 +72,11 @@ export function movingPullRequest() {
     // The summary comment ocra last wrote.
     summary: () => summary,
     push(files: Record<string, string>) {
-      head = commit(upstream, files, "more");
+      head = upstream.commit("more", files);
     },
     forcePush(files: Record<string, string>) {
       upstream.git("reset", "-q", "--hard", base);
-      head = commit(upstream, files, "rewritten");
+      head = upstream.commit("rewritten", files);
     },
   };
 }

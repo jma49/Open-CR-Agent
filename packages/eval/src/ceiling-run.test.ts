@@ -1,8 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { scratchRepo } from "@open-cr-agent/test-support";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { measureCeiling } from "./ceiling-run.js";
 import type { Instance } from "./instance.js";
@@ -24,13 +24,8 @@ afterEach(() => {
 
 describe("measureCeiling", () => {
   it("classifies a PR's annotations with the real CLI and no model", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "ocra-ceiling-"));
+    const { dir, git } = scratchRepo({ prefix: "ocra-ceiling-" });
     dirs.push(dir);
-    const git = (...args: string[]) =>
-      execFileSync("git", args, { cwd: dir, encoding: "utf8" }).trim();
-    git("init", "-q", "-b", "main");
-    git("config", "user.email", "t@example.com");
-    git("config", "user.name", "T");
     writeFileSync(join(dir, "app.ts"), "export const a = 1;\n");
     // Benchmark repositories are third-party code: a plugin in their config
     // must never run on the maintainer's machine.

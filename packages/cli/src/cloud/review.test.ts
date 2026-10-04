@@ -1,8 +1,8 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { scratchRepos } from "@open-cr-agent/test-support";
+import { afterAll, describe, expect, it } from "vitest";
 import { originRepository } from "../repository-id.js";
 import { accountSaltPath } from "./account-salt.js";
 import type { CloudDeps } from "./deps.js";
@@ -26,12 +26,9 @@ async function hashOf(root: string, credentialsPath: string, salt?: string): Pro
   return repoHash(await originRepository(root), credentialsPath, salt);
 }
 
-function repo(origin = "https://github.com/org/repo"): string {
-  const dir = mkdtempSync(join(tmpdir(), "ocra-cr-repo-"));
-  execFileSync("git", ["init", "-q", dir]);
-  execFileSync("git", ["-C", dir, "remote", "add", "origin", origin]);
-  return dir;
-}
+const repos = scratchRepos("ocra-cr-repo-");
+afterAll(repos.removeAll);
+const repo = (origin = "https://github.com/org/repo") => repos.create({ origin }).dir;
 
 function machine(routes: Record<string, () => Response>) {
   const dir = mkdtempSync(join(tmpdir(), "ocra-cr-"));
