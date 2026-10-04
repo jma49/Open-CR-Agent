@@ -98,24 +98,7 @@ jobs:
           # 0 and 1 are reviews that finished (1: a confirmed critical, which
           # a model may report); 2 is an error, 3 an incomplete review.
           case "$EXIT" in 0|1) ;; *) echo "::error::ocra review exited $EXIT"; exit 1 ;; esac
-          # shellcheck disable=SC2016 # JavaScript, not shell, expands ${…} here
-          node --input-type=module -e '
-            import { readFile } from "node:fs/promises";
-            const report = JSON.parse(await readFile(process.env.RUNNER_TEMP + "/report.json", "utf8"));
-            const problems = [];
-            if (report.version !== 1) problems.push(`report version ${report.version}`);
-            const tasks = report.tasks ?? [];
-            if (tasks.length === 0) problems.push("no review task ran");
-            for (const t of tasks) if (t.status !== "completed") problems.push(`task ${t.taskId} ${t.status}: ${t.error ?? ""}`);
-            if (report.usage.costUsd !== 0) problems.push(`cost $${report.usage.costUsd}, expected $0 on the free model`);
-            if (report.usage.inputTokens === 0) problems.push("no tokens reported");
-            const expected = `router/${process.env.MODEL}`;
-            for (const f of report.findings ?? []) {
-              if (f.provenance?.model !== expected) problems.push(`finding ${f.fingerprint} from ${f.provenance?.model}`);
-            }
-            console.log(`${tasks.length} task(s), ${report.findings.length} finding(s), verdict ${report.verdict}, ${report.usage.inputTokens} in / ${report.usage.outputTokens} out tokens, run ${report.runId ?? "n/a"}`);
-            if (problems.length > 0) { console.error(problems.join("\n")); process.exit(1); }
-          '
+          node scripts/live-smoke-check.mjs "$RUNNER_TEMP/report.json"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
