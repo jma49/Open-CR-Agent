@@ -1,10 +1,10 @@
-import { spawn } from "node:child_process";
 import { readFile, rm } from "node:fs/promises";
 import { homedir, hostname } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { errorMessage } from "@open-cr-agent/core/internal";
 import { accountSaltOf, saveAccountSalt } from "./account-salt.js";
+import { openBrowser, signInPage } from "./browser.js";
 import { withFileLock } from "./file-lock.js";
 import { writePrivateFile } from "./private-file.js";
 import { UsageError } from "./review/args.js";
@@ -58,7 +58,7 @@ export function defaultCloudDeps(env: CloudDeps["env"] = process.env): CloudDeps
     fetch: globalThis.fetch,
     now: Date.now,
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-    openBrowser,
+    openBrowser: (url) => openBrowser(url),
     credentialsPath: credentialsPath(env),
     clientName: `${hostname()} (ocra ${VERSION})`,
   };
@@ -95,22 +95,6 @@ function cloudUrl(env: CloudDeps["env"]): string {
     throw new UsageError(`OCRA_CLOUD_URL must use https: ${url}`);
   }
   return url.origin;
-}
-
-function openBrowser(url: string): void {
-  const [cmd, args] =
-    process.platform === "darwin"
-      ? ["open", [url]]
-      : process.platform === "win32"
-        ? ["cmd", ["/c", "start", "", url]]
-        : ["xdg-open", [url]];
-  try {
-    const child = spawn(cmd, args, { stdio: "ignore", detached: true });
-    child.on("error", () => {});
-    child.unref();
-  } catch {
-    // The URL is printed as well; a missing opener is not an error.
-  }
 }
 
 /**
@@ -398,7 +382,11 @@ async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean
         `(or open ${code.verification_uri} and type it)\n\nWaiting for approval...\n`,
     ),
   );
-  if (browser) deps.openBrowser(code.verification_uri_complete);
+  if (browser) {
+    const page = signInPage(code.verification_uri_complete, server);
+    if (page) deps.openBrowser(page);
+    else err.write(`ocra opens only pages on ${server}; open the address above yourself.\n`);
+  }
 
   let interval = (code.interval ?? 5) * 1000;
   const deadline = deps.now() + (code.expires_in ?? 600) * 1000;

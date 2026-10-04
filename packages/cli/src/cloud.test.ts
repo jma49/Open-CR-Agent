@@ -119,6 +119,19 @@ describe("ocra login", () => {
     }
   });
 
+  it("opens only a sign-in page on the server in use, and asks the user to open any other", async () => {
+    for (const page of ["https://elsewhere.test/device", "-https://cloud.test/device"]) {
+      const t = setup({
+        "POST /api/device/code": ok({ ...code, verification_uri_complete: page }),
+        "POST /api/device/token": ok(tokens),
+        "GET /api/me": ok({ login: "octo" }),
+      });
+      expect(await cloudCommand("login", [], t.io.out, t.io.err, t.deps)).toBe(0);
+      expect(t.opened).toEqual([]);
+      expect(t.err.join("")).toContain(`ocra opens only pages on ${SERVER}`);
+    }
+  });
+
   it("keeps the account's salt beside the session, and none when the account answers none", async () => {
     const salt = "5".repeat(64);
     const t = setup({
