@@ -8,8 +8,9 @@ import { loadAccountPlugins } from "./plugins.js";
 
 export interface AccountPlugins {
   plugins: string[];
-  // By plugin name, as in a configuration's pluginSettings; applied only to
-  // plugins the account itself lists and this machine loads.
+  // By package name, as ocra Cloud stores and validates them (the account
+  // names packages, not the plugins they export); applied only to plugins
+  // the account itself lists and this machine loads, under their plugin name.
   pluginSettings: Record<string, unknown>;
 }
 
@@ -72,8 +73,8 @@ export async function accountPlugins(
     }
     taken.add(plugin.name);
     plugins.push(plugin);
-    if (Object.hasOwn(account.pluginSettings, plugin.name)) {
-      settings[plugin.name] = account.pluginSettings[plugin.name];
+    if (Object.hasOwn(account.pluginSettings, name)) {
+      settings[plugin.name] = account.pluginSettings[name];
     }
   }
   return { plugins, settings };

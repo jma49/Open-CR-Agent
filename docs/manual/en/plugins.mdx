@@ -54,7 +54,7 @@ A review loads a plugin your account names only:
 
 A plugin your account names that this machine has not allowed is skipped with one warning naming it and `ocra plugins allow <name>@<version>`. A plugin the repository's configuration already lists loads as the repository's, and one whose plugin name is already taken is skipped. A plugin from the account that fails to load is skipped with a warning; it never fails the review.
 
-The account's `pluginSettings` apply only to the plugins it lists and this machine loads, keyed by plugin name as in the configuration; the configuration's own `pluginSettings` win, and a repository plugin's settings come from the repository alone.
+The account's `pluginSettings` apply only to the plugins it lists and this machine loads, keyed by the npm package name the account lists (for example `@acme/ocra-team-rules`, not the `team-rules` plugin it exports), as ocra Cloud stores them; the plugin then receives them under its own name, as from the configuration; the configuration's own `pluginSettings` win, and a repository plugin's settings come from the repository alone.
 
 ## Lifecycle
 

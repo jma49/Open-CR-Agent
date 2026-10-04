@@ -52,10 +52,12 @@ async function review(
 }
 
 describe("plugins named by the ocra Cloud account (ADR-0027)", () => {
-  it("load only from the machine's allowed directory, with the account's settings for them", async () => {
+  it("load only from the machine's allowed directory, with the account's settings for them by package name", async () => {
     const { prompt, err } = await review(
       preferences(["ocra-plugin-x"], {
-        "acct-plugin": { level: 2 },
+        "ocra-plugin-x": { level: 2 },
+        // The plugin's own name ("acct-plugin") is not how ocra Cloud keys them.
+        "acct-plugin": { level: 9 },
         "repo-plugin": { fromAccount: true },
       }),
       {

@@ -54,7 +54,7 @@ ocra plugins deny ocra-plugin-team-rules
 
 账户列出、但这台机器没有允许的插件会被跳过，并给出一条警告，列出它的名字和 `ocra plugins allow <name>@<version>`。仓库配置已经列出的包按仓库的插件加载；插件名已被占用的会被跳过。来自账户的插件加载失败时会被跳过并给出警告，不会让审查失败。
 
-账户的 `pluginSettings` 只作用于账户自己列出、并且这台机器加载了的插件，和配置中一样按插件名对应；配置自己的 `pluginSettings` 优先，仓库插件的设置只来自仓库。
+账户的 `pluginSettings` 只作用于账户自己列出、并且这台机器加载了的插件，按账户列出的 npm 包名对应（例如 `@acme/ocra-team-rules`，而不是它导出的插件名 `team-rules`），与 ocra Cloud 的存储方式一致；插件随后按自己的插件名收到这些设置，和来自配置的设置一样；配置自己的 `pluginSettings` 优先，仓库插件的设置只来自仓库。
 
 ## 生命周期
 
