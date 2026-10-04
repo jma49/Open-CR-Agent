@@ -6,6 +6,29 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-04
+
+ocra Cloud's first phase on the CLI side: sign in from the terminal, use the model keys stored in your account through its gateway, and see your reviews' counts on the web; nothing changes for a review that does not sign in. Also reasoning effort per tier, reviewer and role (ADR-0025). The Action's tag for this release is `jma49/Open-CR-Agent@v0.4.0`.
+
+### Added
+
+- `ocra login`, `ocra logout` and `ocra whoami` sign in to ocra Cloud (https://app.ocracloud.com, in development) with the OAuth device flow; `OCRA_CLOUD_URL` names another server and `OCRA_CLOUD=off` disables them.
+- While signed in to ocra Cloud, models named `ocra-<provider>/<model>` go through its gateway with the key stored there.
+- While signed in to ocra Cloud, a review sends its counts (never paths, finding text or code; the repository as a locally salted hash); `--no-upload` skips it.
+- While signed in, a repository with no models configured uses the default models chosen on ocra Cloud.
+- Reasoning effort per model tier (`effort`, `OCRA_EFFORT_<TIER>`), per reviewer (`reviewers.<id>.effort`) and per role (`roles.<verifier|judge|helper>.effort`), sent by the `direct` runtime as `reasoning_effort`, or `reasoning.effort` for a provider declared with `"effort": "openrouter"`; a call that sends an effort sends no temperature or seed, and an endpoint that refuses the parameter is asked again without it.
+- The report's provenance lists each agent's tier, effort and whether it was applied (`provenance.agents`), and `ocra review --plan` shows each task's effort.
+- `AgentTaskSpec.effort`, `CompletionRequest.agent` and `effort`, and the optional `AgentRuntime.appliedTo()` let a runtime plugin take the effort and say what it applied.
+
+### Changed
+
+- The project site moved to https://ocracloud.com (the old address redirects); package homepages and the SARIF tool link point there.
+
+### Fixed
+
+- The Action's `verdict` output is empty unless the review completed (exit code 0 or 1); a run that reviewed nothing used to output `approved`.
+- The GitLab setup and the `--mr` error name a token that works on GitLab.com Free: a dedicated account's personal access token, since project access tokens need Premium there.
+
 ## [0.3.0] - 2026-10-03
 
 ocra gets a second runtime that needs no OpenCode (`runtime: direct`), a library entry (`review()`) with a curated, recorded public API, SARIF import, run ids and `ocra metrics`, Action outputs, error codes, and reproducible evaluation. The curated API removes exports from every package's main entry: see Changed and Removed. The GitHub Action is `jma49/Open-CR-Agent@v0.3.0`.
@@ -176,7 +199,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/jma49/Open-CR-Agent/compare/v0.1.1...v0.1.2
