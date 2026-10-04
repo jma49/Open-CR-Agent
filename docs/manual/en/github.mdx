@@ -27,12 +27,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@324c6abae8a145e71392511f3a731db3c6e29fbb # v0.3.0
+      - uses: jma49/Open-CR-Agent@c2fda45c42880d4c8223b185704f7598c889f831 # v0.4.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-The Action is pinned to the commit of the v0.3.0 release, with the version as a comment. A tag can be moved, and a commit fixes the exact code that runs with your model key; `git ls-remote --tags https://github.com/jma49/Open-CR-Agent v0.3.0` prints a release's commit, and Dependabot updates such pins and their comment.
+The Action is pinned to the commit of the v0.4.0 release, with the version as a comment. A tag can be moved, and a commit fixes the exact code that runs with your model key; `git ls-remote --tags https://github.com/jma49/Open-CR-Agent v0.3.0` prints a release's commit, and Dependabot updates such pins and their comment.
 
 From v0.1.1, the Action installs ocra from npm: the `@open-cr-agent/cli` published at the Action's own version, with every dependency at the version the Action's `package-lock.json` pins, install scripts off and, on the npm registry, the registry's signatures checked. It uses them only when each of ocra's own packages has [provenance](./stability#verifying-a-release) showing it was built by this repository's release workflow from the version's tag; otherwise it builds its own source, with a warning. npm never changes a published version. While a version is not on npm yet, in a release's first minutes, the Action builds its own source instead; v0.1.0 always does. So `@main` runs the Action code on `main` with the release `main` names, not unreleased package code, unless `main` has changed the packages' dependencies since that release: then it builds `main`.
 
@@ -63,7 +63,7 @@ Give the step an `id` to read its outputs. They are set whenever ocra ran, also 
 
 ```yaml
       - id: ocra
-        uses: jma49/Open-CR-Agent@324c6abae8a145e71392511f3a731db3c6e29fbb # v0.3.0
+        uses: jma49/Open-CR-Agent@c2fda45c42880d4c8223b185704f7598c889f831 # v0.4.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       - if: ${{ !cancelled() && steps.ocra.outputs.report != '' }}
@@ -90,7 +90,7 @@ Pull requests from forks get no secrets on `pull_request`, so their review stops
 The Action installs OpenCode, the default runtime: with its native binary for the runner's platform, it is 97 of the 108 packages the Action installs and about 165 MB of 175 MB. When every model in the base branch's configuration is on an endpoint you declare and that configuration sets `"runtime": "direct"` ([Choosing the runtime](./providers#choosing-the-runtime)), set `opencode: false`: the install leaves OpenCode out and takes 11 packages. Should the configuration then select `opencode`, the review stops before any model call with exit code `2`, naming the missing package. The input is new in v0.3.0.
 
 ```yaml
-      - uses: jma49/Open-CR-Agent@<commit> # v0.3.0
+      - uses: jma49/Open-CR-Agent@<commit> # v0.4.0
         with:
           opencode: false
         env:
@@ -133,7 +133,7 @@ jobs:
         with:
           fetch-depth: 0
       - id: ocra
-        uses: jma49/Open-CR-Agent@324c6abae8a145e71392511f3a731db3c6e29fbb # v0.3.0
+        uses: jma49/Open-CR-Agent@c2fda45c42880d4c8223b185704f7598c889f831 # v0.4.0
         with:
           sarif: true
         env:
@@ -157,7 +157,7 @@ The same job can hand ocra the results of Semgrep, CodeQL or another analyzer th
 
 ```yaml
       - run: pipx run semgrep scan --config p/default --metrics=off --sarif --output semgrep.sarif
-      - uses: jma49/Open-CR-Agent@324c6abae8a145e71392511f3a731db3c6e29fbb # v0.3.0
+      - uses: jma49/Open-CR-Agent@c2fda45c42880d4c8223b185704f7598c889f831 # v0.4.0
         with:
           args: --import-sarif semgrep.sarif
         env:
@@ -219,7 +219,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@324c6abae8a145e71392511f3a731db3c6e29fbb # v0.3.0
+      - uses: jma49/Open-CR-Agent@c2fda45c42880d4c8223b185704f7598c889f831 # v0.4.0
         with:
           args: --max-cost-usd 2
         env:
@@ -276,7 +276,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@324c6abae8a145e71392511f3a731db3c6e29fbb # v0.3.0
+      - uses: jma49/Open-CR-Agent@c2fda45c42880d4c8223b185704f7598c889f831 # v0.4.0
         with:
           github-token: ${{ steps.app.outputs.token }}
           args: --max-cost-usd 2
