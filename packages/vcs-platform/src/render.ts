@@ -7,6 +7,7 @@ import {
 } from "@open-cr-agent/core";
 import { safeMarkdown } from "./neutralize.js";
 import { type ReviewState, SUMMARY_MARKER, writeState } from "./state.js";
+import { type SuggestionFence, suggestionBlock } from "./suggestion.js";
 
 // GitHub rejects comments over 65,536 characters; GitLab takes 1,000,000,
 // but a summary that long is no use to anyone.
@@ -91,9 +92,11 @@ function location(f: Finding): string {
   return codeSpan(`${f.file}:${start === end ? start : `${start}-${end}`}`);
 }
 
+const TILDE_FENCE = /^ {0,3}~{3,}/m;
+
 export const FINDING_MARKER = /<!-- ocra:finding ([0-9a-f]{16}) -->/;
 
-export function inlineBody(f: Finding): string {
+export function inlineBody(f: Finding, fence: SuggestionFence): string {
   const parts = [
     `<!-- ocra:finding ${f.fingerprint} -->`,
     `${ICON[f.severity]} **${safeMarkdown(f.title)}** · ${f.severity} · ${verification(f)} · ${f.reviewer}${f.lowConfidence ? " · low confidence" : ""}`,
@@ -101,6 +104,10 @@ export function inlineBody(f: Finding): string {
     safeMarkdown(f.body, { startsLine: true }),
   ];
   if (f.suggestion) parts.push("", `**Suggestion:** ${safeMarkdown(f.suggestion)}`);
+  // A `~~~` fence in model text stays text to safeMarkdown, and one left open
+  // would run to the end of the comment and swallow the suggestion.
+  const block = TILDE_FENCE.test(parts.join("\n")) ? undefined : suggestionBlock(f, fence);
+  if (block) parts.push("", block);
   return parts.join("\n");
 }
 

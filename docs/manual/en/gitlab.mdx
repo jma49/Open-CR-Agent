@@ -66,6 +66,7 @@ Models come from the target branch's `.ocra/config.json`, or from `OCRA_MODEL_*`
 - **A thread on each finding** on a line of the diff: on an added line, or on an unchanged line next to the change. A finding GitLab will not place stays in the summary.
 - **One summary note**, updated in place: verdict, summary, findings outside the diff, what was fixed since the last review, and coverage, cost and the run id.
 - **Resolved threads** when the code a finding quoted is gone.
+- **Suggestions you can apply** (planned: no reviewer produces fixes yet, [ADR-0029](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0029-committable-suggestions.md)): when a finding carries a fix, code that replaces the lines it is about, its thread ends with a `suggestion:-N+0` block reaching from the thread's line back to the first fixed line, which you apply from the merge request (**Apply suggestion**). ocra offers one only when the thread covers exactly the fixed lines, at most 100 lines above it, and posts the code exactly as written or not at all, as on [GitHub](./github#committable-suggestions).
 
 Reviewers stay in charge. When someone with the Developer role or higher, other than the merge request's author, resolves one of ocra's threads, or answers it with `/ocra dismiss` or a reply that opens with "won't fix", "by design" or "false positive", the finding is dismissed. Other replies from them reach the judge the next time the finding comes back. A comment someone else edited counts for nothing.
 

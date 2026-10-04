@@ -8,6 +8,7 @@ import type { ChangeRequest } from '@open-cr-agent/core';
 import type { CodeMatch } from '@open-cr-agent/core';
 import type { FileDiff } from '@open-cr-agent/core';
 import type { Finding } from '@open-cr-agent/core';
+import type { LineRange } from '@open-cr-agent/core';
 import type { PriorReview } from '@open-cr-agent/core';
 import type { ReviewReport } from '@open-cr-agent/core';
 import type { VcsAdapter } from '@open-cr-agent/core';
@@ -22,6 +23,12 @@ export interface Bot {
 
 // @public (undocumented)
 export type CodeSource = Pick<VcsAdapter, "getDiff" | "readFile" | "searchCode">;
+
+// @public (undocumented)
+export const githubSuggestion: SuggestionFence;
+
+// @public (undocumented)
+export const gitlabSuggestion: SuggestionFence;
 
 // @public (undocumented)
 export interface History {
@@ -171,12 +178,17 @@ export interface ReviewPlatform {
     // (undocumented)
     resolveThread(id: string): Promise<void>;
     // (undocumented)
+    readonly suggestionFence: SuggestionFence;
+    // (undocumented)
     readonly text: PlatformText;
     // (undocumented)
     threads(): Promise<PlatformThread[]>;
     // (undocumented)
     writeSummary(existing: PlatformComment | undefined, body: string): Promise<void>;
 }
+
+// @public (undocumented)
+export type SuggestionFence = (range: LineRange) => string | undefined;
 
 // (No @packageDocumentation comment for this package)
 

@@ -41,6 +41,9 @@ export interface OutputFinding {
   title: string;
   body: string;
   suggestion?: string;
+  // Added in version 1 without a bump: a replacement for whole lines of the
+  // new file, which platforms offer as a committable suggestion.
+  fix?: { startLine: number; endLine: number; replacement: string };
   evidence: string[];
   // The code the reviewer quoted.
   code: string;
@@ -152,6 +155,13 @@ function outputFinding(f: Finding): OutputFinding {
   };
   if (f.lineRange) output.lines = { start: f.lineRange.start, end: f.lineRange.end };
   if (f.suggestion !== undefined) output.suggestion = f.suggestion;
+  if (f.fix) {
+    output.fix = {
+      startLine: f.fix.startLine,
+      endLine: f.fix.endLine,
+      replacement: f.fix.replacement,
+    };
+  }
   if (f.lowConfidence) output.lowConfidence = true;
   output.provenance =
     f.provenance.model === undefined

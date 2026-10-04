@@ -2,6 +2,7 @@ import type { ReviewReport } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import { finding, HEAD, report } from "./conformance.fakes.js";
 import { inlineBody, renderSummary } from "./render.js";
+import { githubSuggestion } from "./suggestion.js";
 
 const gitlab = { changeRequest: "merge request", authority: "the Developer role or higher" };
 
@@ -50,6 +51,7 @@ describe("inlineBody", () => {
   it("neutralizes commands in every part a model wrote", () => {
     const body = inlineBody(
       finding("b".repeat(16), { title: "/close", body: "/merge", suggestion: "x\n/approve" }),
+      githubSuggestion,
     );
     expect(body).not.toMatch(/^[ \t]*\//m);
   });

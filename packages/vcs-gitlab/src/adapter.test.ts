@@ -84,6 +84,22 @@ describe("GitLabAdapter", () => {
     expect(summary).not.toContain("**Placed**");
   });
 
+  it("offers a finding's fix as a suggestion GitLab can apply, from the thread's line", async () => {
+    const { calls, fetchImpl } = fakeGitLab({});
+    await adapter(fetchImpl).publish(
+      report([
+        finding(A, {
+          lineRange: { start: 2, end: 3 },
+          fix: { startLine: 2, endLine: 3, replacement: "a();\nb();" },
+        }),
+      ]),
+    );
+    const [thread] = bodies(calls, "POST", "/discussions");
+    expect(thread).toMatch(/\n\n```suggestion:-1\+0\na\(\);\nb\(\);\n```$/);
+    const discussion = calls.find((c) => c.method === "POST" && c.path.endsWith("/discussions"));
+    expect(discussion?.body).toMatchObject({ position: { new_line: 3 } });
+  });
+
   it("turns a failed thread into a warning and still writes the summary", async () => {
     const { calls, fetchImpl } = fakeGitLab({}, { discussionStatus: () => 500 });
     const published = await adapter(fetchImpl).publish(

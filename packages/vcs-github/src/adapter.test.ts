@@ -65,6 +65,20 @@ describe("GitHubAdapter", () => {
     ]);
   });
 
+  it("offers a finding's fix as a suggestion GitHub can commit", async () => {
+    const { calls, fetchImpl } = fakeGitHub();
+    const fixed = {
+      ...finding(A, true),
+      fix: { startLine: 3, endLine: 4, replacement: "const ok = true;\nreturn ok;" },
+    };
+    await adapter(fetchImpl).publish(report([fixed]));
+    const review = calls.find((c) => c.path === "/pulls/7/reviews");
+    const [comment] =
+      (review?.body as { comments: { body: string }[] } | undefined)?.comments ?? [];
+    expect(comment).toMatchObject({ start_line: 3, line: 4 });
+    expect(comment?.body).toMatch(/\n\n```suggestion\nconst ok = true;\nreturn ok;\n```$/);
+  });
+
   it("updates its own summary and does not repeat inline comments", async () => {
     const previous = {
       id: 99,

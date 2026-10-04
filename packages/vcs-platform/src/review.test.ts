@@ -11,6 +11,7 @@ import {
 } from "./conformance.fakes.js";
 import type { ReviewPlatform } from "./platform.js";
 import { declinesFinding, PlatformReview } from "./review.js";
+import { githubSuggestion } from "./suggestion.js";
 
 const BOT = "ocra-bot";
 const code = {
@@ -33,6 +34,7 @@ function inMemory(scenario: Scenario) {
   let summary = "";
   const platform: ReviewPlatform = {
     text: { changeRequest: "change request", authority: "write access" },
+    suggestionFence: githubSuggestion,
     bot: async () => ({ login: BOT, is: (login) => login === BOT }),
     changeRequest: async () => ({
       id: "7",

@@ -1,6 +1,7 @@
 import {
   coverageGaps,
   type Finding,
+  type FindingFix,
   type PriorFinding,
   type ReviewReport,
   type Severity,
@@ -33,13 +34,34 @@ interface SarifResult {
   message: SarifMessage;
   locations: {
     physicalLocation: {
-      artifactLocation: { uri: string; uriBaseId: "%SRCROOT%" };
+      artifactLocation: ArtifactLocation;
       region?: { startLine: number; endLine: number };
     };
   }[];
   partialFingerprints: Record<string, string>;
   baselineState?: "new" | "unchanged";
+  fixes?: SarifFix[];
   properties: Record<string, unknown>;
+}
+
+interface SarifRegion {
+  startLine: number;
+  startColumn?: number;
+  endLine: number;
+  endColumn?: number;
+}
+
+interface SarifFix {
+  description: SarifMessage;
+  artifactChanges: {
+    artifactLocation: ArtifactLocation;
+    replacements: { deletedRegion: SarifRegion; insertedContent: { text: string } }[];
+  }[];
+}
+
+interface ArtifactLocation {
+  uri: string;
+  uriBaseId: "%SRCROOT%";
 }
 
 export function renderSarif(report: ReviewReport, version: string): string {
@@ -135,6 +157,7 @@ function fromFinding(f: Finding, index: ReadonlyMap<string, number>): SarifResul
     message: { text: plainText(text) },
     locations: [location(f.file, f.lineRange)],
     partialFingerprints: { "ocra/v1": f.fingerprint },
+    ...(f.fix ? { fixes: [fix(f.file, f.fix)] } : {}),
     properties: {
       reviewer: f.reviewer,
       severity: f.severity,
@@ -164,14 +187,35 @@ function fromPrior(f: PriorFinding, index: ReadonlyMap<string, number>): SarifRe
 function location(file: string, lines?: { start: number; end: number }) {
   return {
     physicalLocation: {
-      // Each segment percent-encoded: a path may hold "#", "?" or spaces,
-      // which a URI would read as a fragment, a query or an error.
-      artifactLocation: {
-        uri: file.split("/").map(encodeURIComponent).join("/"),
-        uriBaseId: "%SRCROOT%" as const,
-      },
+      artifactLocation: artifactLocation(file),
       ...(lines ? { region: { startLine: lines.start, endLine: lines.end } } : {}),
     },
+  };
+}
+
+// Each segment percent-encoded: a path may hold "#", "?" or spaces, which a
+// URI would read as a fragment, a query or an error.
+function artifactLocation(file: string): ArtifactLocation {
+  return { uri: file.split("/").map(encodeURIComponent).join("/"), uriBaseId: "%SRCROOT%" };
+}
+
+// The inserted text is code and goes in as written: it is content to apply,
+// not a message a viewer renders. A region without columns ends before the
+// last line's newline (SARIF 3.30), which a replacement keeps; a deletion
+// runs to the start of the next line instead, so no empty line is left.
+function fix(file: string, f: FindingFix): SarifFix {
+  const deletedRegion: SarifRegion =
+    f.replacement === ""
+      ? { startLine: f.startLine, startColumn: 1, endLine: f.endLine + 1, endColumn: 1 }
+      : { startLine: f.startLine, endLine: f.endLine };
+  return {
+    description: { text: "Replace the lines with the suggested code" },
+    artifactChanges: [
+      {
+        artifactLocation: artifactLocation(file),
+        replacements: [{ deletedRegion, insertedContent: { text: f.replacement } }],
+      },
+    ],
   };
 }
 

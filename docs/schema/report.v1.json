@@ -245,6 +245,30 @@
           "suggestion": {
             "type": "string"
           },
+          "fix": {
+            "type": "object",
+            "properties": {
+              "startLine": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "endLine": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "replacement": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "startLine",
+              "endLine",
+              "replacement"
+            ],
+            "additionalProperties": false
+          },
           "evidence": {
             "type": "array",
             "items": {

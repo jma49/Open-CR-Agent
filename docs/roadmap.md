@@ -112,7 +112,7 @@ This phase's success condition is not a list of interfaces: it is three external
 **Review experience** (from the comparison with CodeRabbit, 2026-10-04; each behind M11's numbers where it touches quality).
 
 1. A public benchmark run (the Martian Code Review Bench) on cheap or free models, published with precision first: low noise is the claim to prove. Folds into M11.
-2. Committable suggestions: a finding whose fix is a local edit carries it in GitHub's suggestion format (GitLab's too), so a reviewer applies it in one click.
+2. Committable suggestions: a finding whose fix is a local edit carries it in GitHub's suggestion format (GitLab's too), so a reviewer applies it in one click. The plumbing landed ([ADR-0029](adr/0029-committable-suggestions.md)): a finding's `fix`, the GitHub and GitLab suggestion blocks, the report and SARIF. Left: producing the fix, which today's suggestion text cannot give safely, so it waits for an evaluated prompt change once prompts unfreeze.
 3. Minimal pull request commands: a maintainer's reply that asks for a re-review or dismisses a finding is acted on, within the trust rules of `vcs-platform` (the author cannot dismiss).
 4. Semgrep bundled as the first analyzer behind SARIF in, off unless configured.
 5. A pull request summary in the summary comment, from the judged findings and the change, not a second free-text pass.

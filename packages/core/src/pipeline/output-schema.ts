@@ -49,6 +49,14 @@ const coverageEntrySchema = z.discriminatedUnion("status", [
 
 const linesSchema = z.strictObject({ start: z.int().positive(), end: z.int().positive() });
 
+const fixSchema = z
+  .strictObject({
+    startLine: z.int().positive(),
+    endLine: z.int().positive(),
+    replacement: z.string(),
+  })
+  .refine((f) => f.endLine >= f.startLine, { message: "endLine is before startLine" });
+
 export const outputFindingSchema = z.strictObject({
   fingerprint: z.string(),
   reviewer: z.string(),
@@ -62,6 +70,7 @@ export const outputFindingSchema = z.strictObject({
   title: z.string(),
   body: z.string(),
   suggestion: z.string().optional(),
+  fix: fixSchema.optional(),
   evidence: z.array(z.string()),
   code: z.string(),
   lowConfidence: z.literal(true).optional(),

@@ -27,6 +27,7 @@ export type {
   FileChangeKind,
   FileDiff,
   Finding,
+  FindingFix,
   FindingProvenance,
   FindingStatus,
   Hunk,

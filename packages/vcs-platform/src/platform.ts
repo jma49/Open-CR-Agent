@@ -1,5 +1,6 @@
 import type { Finding, ReviewReport } from "@open-cr-agent/core";
 import type { PlatformText } from "./render.js";
+import type { SuggestionFence } from "./suggestion.js";
 
 // What ocra needs from a code review platform (GitHub, GitLab) to hold a
 // review conversation: the change request, its comments and threads, who may
@@ -8,6 +9,8 @@ import type { PlatformText } from "./render.js";
 // PlatformReview, so a platform adapter maps its API and nothing more.
 export interface ReviewPlatform {
   readonly text: PlatformText;
+  // How the platform spells a committable suggestion of commented lines.
+  readonly suggestionFence: SuggestionFence;
   // The account ocra posts as.
   bot(): Promise<Bot>;
   changeRequest(): Promise<PlatformChangeRequest>;

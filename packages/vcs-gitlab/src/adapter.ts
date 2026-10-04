@@ -3,6 +3,7 @@ import { errorMessage } from "@open-cr-agent/core/internal";
 import {
   type Bot,
   type CodeSource,
+  gitlabSuggestion,
   type History,
   type InlineFinding,
   type PlatformChangeRequest,
@@ -52,6 +53,7 @@ const UNKNOWN_EDITOR = "(unknown)";
 
 class GitLabPlatform implements ReviewPlatform {
   readonly text = { changeRequest: "merge request", authority: "the Developer role or higher" };
+  readonly suggestionFence = gitlabSuggestion;
   private mergeRequest: Promise<MergeRequest> | undefined;
   private user: Promise<{ id: number; username: string }> | undefined;
   private editors: Promise<Map<number, string | undefined>> | undefined;

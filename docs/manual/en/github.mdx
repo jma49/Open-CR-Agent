@@ -115,6 +115,12 @@ ocra then compares findings with the previous review:
 
 Reviewers stay in charge. If someone with write access to the repository (admin, maintain or write permission) other than the pull request's author resolves one of ocra's threads, or replies `/ocra dismiss`, or replies with a message that opens with a clear decline ("won't fix", "will not fix", "by design", "false positive", "not a bug", "working as intended", "intended behavior") and is not a question, the finding counts as dismissed: it is no longer reported and no longer affects the verdict, unless a later run finds it with a higher severity. The same words elsewhere in a reply ("this is not intended, good catch", "is this by design?") do not count, and neither does "I disagree". Such a reply from someone who could dismiss the finding is shown to the judge whenever the finding is reported again; the judge may drop the finding when the reply gives a specific reason it is wrong, never a confirmed critical finding. The author's own replies are not shown. The author cannot dismiss findings on their own pull request, and a reply someone else edited does not count (anyone with write access can edit any comment), so the check cannot be resolved away. Only findings with an inline thread can be dismissed this way; for others use [`ocra memory`](./cli).
 
+### Committable suggestions
+
+A finding can carry a fix: code that replaces the lines it is about. Its inline comment then ends with a suggestion block, which anyone with write access can commit from the pull request with one click (**Commit suggestion**, or add it to a batch). ocra offers one only when the comment sits on exactly the lines the fix replaces, never for findings in the summary. The code is posted exactly as the fix has it or not at all: a fix holding an HTML comment opener, `/ocra`, a carriage return or a control or bidirectional character, or longer than 20,000 characters, gets no suggestion block; the finding is still posted. Read a suggestion before you commit it: it is a language model's proposal.
+
+**Planned:** no reviewer produces fixes yet; that waits for an evaluated prompt change ([ADR-0029](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0029-committable-suggestions.md)). Until then comments carry the suggestion as text, as before.
+
 ## Code scanning
 
 To see the findings as code scanning alerts as well, write SARIF with the `sarif` input and upload it with GitHub's `upload-sarif` action. Add a permission and a few lines to the workflow above:

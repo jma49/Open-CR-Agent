@@ -16,3 +16,8 @@ export {
   PlatformReview,
   type PlatformReviewOptions,
 } from "./review.js";
+export {
+  githubSuggestion,
+  gitlabSuggestion,
+  type SuggestionFence,
+} from "./suggestion.js";

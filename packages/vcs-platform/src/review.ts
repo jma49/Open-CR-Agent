@@ -256,7 +256,12 @@ export class PlatformReview implements VcsAdapter {
 
     const fresh: InlineFinding[] = report.findings.flatMap((f) => {
       if (alreadyCommented.has(f.fingerprint) || !f.lineRange || !f.anchor.inDiff) return [];
-      return [{ finding: { ...f, lineRange: f.lineRange }, body: inlineBody(f) }];
+      return [
+        {
+          finding: { ...f, lineRange: f.lineRange },
+          body: inlineBody(f, this.platform.suggestionFence),
+        },
+      ];
     });
     const published = await this.platform.publishFindings(report, fresh);
 

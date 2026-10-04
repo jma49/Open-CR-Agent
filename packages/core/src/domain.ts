@@ -49,6 +49,16 @@ export interface FindingProvenance {
   model?: string;
 }
 
+// A replacement for whole lines of the new file, which a platform offers as
+// a committable suggestion (ADR-0029). The replacement is the lines' text
+// joined by "\n", without a trailing newline; empty deletes them. Only a
+// deterministic stage sets it, for exactly the finding's anchored lines.
+export interface FindingFix {
+  startLine: number;
+  endLine: number;
+  replacement: string;
+}
+
 export interface Finding extends ReportedFinding {
   id: string;
   fingerprint: string;
@@ -62,6 +72,7 @@ export interface Finding extends ReportedFinding {
   lowConfidence?: boolean;
   // Absent when the finding is not anchored to lines.
   quote?: QuoteSignature;
+  fix?: FindingFix;
   // Set by Verify; absent before it runs, which counts as "unchecked".
   verification?: Verification;
   // Carried from the earlier review when people replied to this finding.

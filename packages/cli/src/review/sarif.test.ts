@@ -107,6 +107,45 @@ describe("renderSarif", () => {
     });
   });
 
+  it("carries a finding's fix as a replacement of its whole lines, code as written", () => {
+    const replacement = 'for (let i = 0; i <= n; i++) {\n  visit("[x](y) {0}");';
+    const log = sarif({
+      ...report,
+      findings: [
+        finding({ fix: { startLine: 3, endLine: 5, replacement } }),
+        finding({
+          fingerprint: "1".repeat(16),
+          fix: { startLine: 7, endLine: 8, replacement: "" },
+        }),
+        finding({ fingerprint: "2".repeat(16) }),
+      ],
+    });
+    const [withFix, deletion, without] = log.runs[0].results;
+    expect(withFix.fixes).toEqual([
+      {
+        description: { text: "Replace the lines with the suggested code" },
+        artifactChanges: [
+          {
+            artifactLocation: { uri: "src/a.ts", uriBaseId: "%SRCROOT%" },
+            replacements: [
+              {
+                deletedRegion: { startLine: 3, endLine: 5 },
+                insertedContent: { text: replacement },
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+    expect(deletion.fixes[0].artifactChanges[0].replacements).toEqual([
+      {
+        deletedRegion: { startLine: 7, startColumn: 1, endLine: 9, endColumn: 1 },
+        insertedContent: { text: "" },
+      },
+    ]);
+    expect(without.fixes).toBeUndefined();
+  });
+
   it("keeps findings still open from an earlier review, marked unchanged", () => {
     const open = {
       fingerprint: "aaaaaaaaaaaaaaaa",

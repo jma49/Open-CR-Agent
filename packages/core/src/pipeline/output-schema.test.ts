@@ -32,6 +32,7 @@ const finding: Finding = {
   verification: "confirmed",
   lowConfidence: true,
   quote: { lines: 1, hash: "fedcba9876543210" },
+  fix: { startLine: 3, endLine: 3, replacement: "parse(input)" },
 };
 
 const prior = {
@@ -127,6 +128,22 @@ describe("reportOutputSchema", () => {
       reportOutputSchema.safeParse({
         ...output,
         findings: [{ ...output.findings[0], anchor: {} }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("carries a finding's fix and refuses one whose lines run backwards", () => {
+    const output = JSON.parse(JSON.stringify(toReportOutput(full)));
+    expect(output.findings[0].fix).toEqual({
+      startLine: 3,
+      endLine: 3,
+      replacement: "parse(input)",
+    });
+    const backwards = { ...output.findings[0].fix, startLine: 4 };
+    expect(
+      reportOutputSchema.safeParse({
+        ...output,
+        findings: [{ ...output.findings[0], fix: backwards }],
       }).success,
     ).toBe(false);
   });

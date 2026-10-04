@@ -325,6 +325,8 @@ export interface Finding extends ReportedFinding {
     // (undocumented)
     fingerprint: string;
     // (undocumented)
+    fix?: FindingFix;
+    // (undocumented)
     id: string;
     // (undocumented)
     lineRange?: LineRange;
@@ -342,6 +344,16 @@ export interface Finding extends ReportedFinding {
     status: FindingStatus;
     // (undocumented)
     verification?: Verification;
+}
+
+// @public (undocumented)
+export interface FindingFix {
+    // (undocumented)
+    endLine: number;
+    // (undocumented)
+    replacement: string;
+    // (undocumented)
+    startLine: number;
 }
 
 // @public (undocumented)
@@ -491,6 +503,12 @@ export interface OutputFinding {
     file: string;
     // (undocumented)
     fingerprint: string;
+    // (undocumented)
+    fix?: {
+        startLine: number;
+        endLine: number;
+        replacement: string;
+    };
     // (undocumented)
     inDiff: boolean;
     // (undocumented)
@@ -849,6 +867,11 @@ export const reportOutputSchema: z.ZodObject<{
         title: z.ZodString;
         body: z.ZodString;
         suggestion: z.ZodOptional<z.ZodString>;
+        fix: z.ZodOptional<z.ZodObject<{
+            startLine: z.ZodInt;
+            endLine: z.ZodInt;
+            replacement: z.ZodString;
+        }, z.core.$strict>>;
         evidence: z.ZodArray<z.ZodString>;
         code: z.ZodString;
         lowConfidence: z.ZodOptional<z.ZodLiteral<true>>;

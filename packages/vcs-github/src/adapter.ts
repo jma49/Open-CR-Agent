@@ -3,6 +3,7 @@ import { errorMessage } from "@open-cr-agent/core/internal";
 import {
   type Bot,
   type CodeSource,
+  githubSuggestion,
   type History,
   type InlineFinding,
   type PlatformChangeRequest,
@@ -56,6 +57,7 @@ export class GitHubAdapter extends PlatformReview {
 
 class GitHubPlatform implements ReviewPlatform {
   readonly text = { changeRequest: "pull request", authority: "write access" };
+  readonly suggestionFence = githubSuggestion;
   private pullRequest: Promise<PullRequest> | undefined;
   // The REST comments behind the platform's, for their GraphQL node ids.
   private readonly listed = new Map<string, IssueComment>();

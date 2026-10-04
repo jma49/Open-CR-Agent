@@ -115,6 +115,12 @@ Action 默认安装 OpenCode 运行时：连同 runner 平台的原生二进制�
 
 由审查者来做主。如果对仓库有写权限（admin、maintain 或 write 权限）且不是 PR 作者的人 resolve 了 ocra 的评论串，或者回复 `/ocra dismiss`，或者回复以明确的拒绝开头（"won't fix"、"will not fix"、"by design"、"false positive"、"not a bug"、"working as intended"、"intended behavior"）且不是问句，这条问题就算被驳回：之后不再报告，也不再影响结论，除非后续运行发现它的严重程度升高。同样的词出现在回复的其他位置（例如 "this is not intended, good catch"、"is this by design?"）不算驳回，回复 "I disagree" 也不算。这类回复如果来自有资格驳回的人，会在这条问题每次再被报告时交给 Judge；回复给出了具体理由说明问题不成立时，Judge 可以丢弃它，但已确认的 critical 不行。PR 作者自己的回复不会交给 Judge。PR 作者也无法驳回自己 PR 上的问题；被他人编辑过的回复不算数（有写权限的人可以编辑任何评论），因此不能靠 resolve 评论串绕过检查。只有带行内评论串的问题能这样驳回，其他问题请用 [`ocra memory`](./cli)。
 
+### 可提交的建议
+
+一条问题可以带一个修复（fix）：替换它所指那几行的代码。这时它的行内评论末尾会有一个建议块，有写权限的人可以在 PR 里一键提交（**Commit suggestion**，或者加入批量提交）。只有评论正好落在修复要替换的那几行上时，ocra 才会给出建议块；摘要里的问题从不带。代码要么原样发布，要么不发：修复中含有 HTML 注释开头、`/ocra`、回车符、控制字符或双向文本字符，或者超过 20,000 个字符时，不附建议块，问题照常发布。提交前请先读一遍建议：它是语言模型的提议。
+
+**计划中：**目前还没有审查员会产生修复，这要等一次经过评估的提示词修改（[ADR-0029](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0029-committable-suggestions.md)）。在那之前，评论像以前一样以文字形式给出建议。
+
 ## 代码扫描
 
 如果还想把问题显示为代码扫描（code scanning）告警，可以用输入 `sarif` 输出 SARIF，再用 GitHub 的 `upload-sarif` action 上传。在上面的 workflow 里加一个权限和几行配置：
