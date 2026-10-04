@@ -15,6 +15,7 @@ import {
   type ToolDefinition,
 } from "@open-cr-agent/core";
 import {
+  callChain,
   completeWithFailback,
   MAX_AGENT_STEPS,
   ModelHealth,
@@ -75,7 +76,7 @@ export class DirectRuntime implements AgentRuntime {
   }
 
   async *runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent> {
-    const chain = this.options.models[spec.modelTier] ?? [];
+    const chain = callChain(this.options.models, spec.modelTier, spec.models);
     const refused = chain.length === 0 ? noModel(spec.modelTier) : this.unreachable(chain);
     if (refused) {
       yield { type: "error", taskId: spec.taskId, error: refused.message, retryable: false };
@@ -84,6 +85,7 @@ export class DirectRuntime implements AgentRuntime {
     yield* withFailback({
       taskId: spec.taskId,
       tier: spec.modelTier,
+      ...(spec.models?.length ? { agent: spec.reviewer } : {}),
       chain,
       health: this.health,
       signal,
@@ -105,11 +107,12 @@ export class DirectRuntime implements AgentRuntime {
   }
 
   async complete(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult> {
-    const chain = this.options.models[request.tier] ?? [];
+    const chain = callChain(this.options.models, request.tier, request.models);
     const refused = chain.length === 0 ? noModel(request.tier) : this.unreachable(chain);
     if (refused) throw refused;
     return completeWithFailback({
       tier: request.tier,
+      ...(request.models?.length ? { agent: request.agent ?? request.tier } : {}),
       chain,
       health: this.health,
       signal,

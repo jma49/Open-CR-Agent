@@ -49,7 +49,7 @@ describe("effort configuration", () => {
     [{ effort: { huge: "high" } }],
     [{ reviewers: { security: { effort: "extreme" } } }],
     [{ roles: { planner: { effort: "high" } } }],
-    [{ roles: { judge: { effort: "high", models: ["a/b"] } } }],
+    [{ roles: { judge: { effort: "high", temperature: 1 } } }],
     [{ roles: { judge: "high" } }],
   ])("refuses %j", async (config) => {
     await expect(own(config)).rejects.toThrow(".ocra/config.json is invalid");

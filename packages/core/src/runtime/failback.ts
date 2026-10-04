@@ -8,6 +8,8 @@ import { sleep } from "./quota.js";
 export interface FailbackOptions {
   taskId: string;
   tier: ModelTier;
+  // Set when the chain is this agent's own rather than the tier's.
+  agent?: string;
   chain: readonly string[];
   health: ModelHealth;
   signal: AbortSignal;
@@ -79,8 +81,8 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
     type: "error",
     taskId,
     error: lastError
-      ? `every ${options.tier} model failed (${lastError})`
-      : `every ${options.tier} model is out of quota for this run`,
+      ? `every ${chainName(options)} failed (${lastError})`
+      : `every ${chainName(options)} is out of quota for this run`,
     retryable: true,
   };
 }
@@ -145,6 +147,7 @@ function ahead(a: Usage, b: Usage): boolean {
 
 export interface CompleteOptions {
   tier: ModelTier;
+  agent?: string;
   chain: readonly string[];
   health: ModelHealth;
   signal: AbortSignal;
@@ -180,7 +183,13 @@ export async function completeWithFailback(options: CompleteOptions): Promise<Co
     }
   }
   if (!lastError) {
-    throw new CompletionError(`every ${options.tier} model is out of quota for this run`, usage);
+    throw new CompletionError(`every ${chainName(options)} is out of quota for this run`, usage);
   }
-  throw new CompletionError(`every ${options.tier} model failed (${lastError})`, usage);
+  throw new CompletionError(`every ${chainName(options)} failed (${lastError})`, usage);
+}
+
+function chainName(options: { tier: ModelTier; agent?: string }): string {
+  return options.agent === undefined
+    ? `${options.tier} model`
+    : `model of ${options.agent}'s own chain`;
 }

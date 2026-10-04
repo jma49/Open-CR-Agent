@@ -29,7 +29,7 @@ export {
   withoutSecrets,
 } from "./runtime/attempt.js";
 export { completeWithFailback, withFailback } from "./runtime/failback.js";
-export { ModelHealth, parseModel } from "./runtime/models.js";
+export { callChain, ModelHealth, parseModel } from "./runtime/models.js";
 export { parseQuotaError, type QuotaError, sleep } from "./runtime/quota.js";
 export { MAX_READ_LINES, reviewTools } from "./runtime/tools.js";
 export { defaultSelectionPolicy } from "./select/select.js";

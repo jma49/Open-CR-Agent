@@ -1,4 +1,4 @@
-import type { AgentRuntime, Effort, Usage } from "../contracts.js";
+import type { AgentRuntime, Usage } from "../contracts.js";
 import type {
   ChangeRequest,
   Finding,
@@ -8,7 +8,7 @@ import type {
   Verdict,
 } from "../domain.js";
 import { errorMessage, OcraError, usageSpent } from "../errors.js";
-import { agentCall } from "../pipeline/agents.js";
+import { type AgentCallSettings, agentCall } from "../pipeline/agents.js";
 import { parseJsonAnswer } from "../pipeline/helpers.js";
 import { buildJudgePrompt, type JudgeResponse, judgeResponseSchema } from "./prompt.js";
 import { decideVerdict, defaultSummary } from "./verdict.js";
@@ -37,7 +37,7 @@ export interface JudgeOptions {
   tier: RiskTier;
   signal: AbortSignal;
   enabled: boolean;
-  effort?: Effort | undefined;
+  call?: AgentCallSettings | undefined;
   // --ultra: keep what the judge would drop, marked low confidence.
   keepDropped?: boolean;
   // Earlier findings still open but not reported this time; the judge does
@@ -67,7 +67,7 @@ export async function judgeFindings(
     const answer = await complete(
       {
         tier: "top",
-        ...agentCall("judge", options.effort),
+        ...agentCall("judge", options.call),
         system: prompt.system,
         user: prompt.user,
         timeoutMs: JUDGE_TIMEOUT_MS,

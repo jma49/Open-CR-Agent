@@ -198,7 +198,6 @@
       }
     },
     "reviewers": {
-      "default": {},
       "type": "object",
       "propertyNames": {
         "type": "string"
@@ -217,6 +216,22 @@
               "full"
             ]
           },
+          "models": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            ]
+          },
           "effort": {
             "type": "string",
             "enum": [
@@ -232,7 +247,6 @@
       }
     },
     "roles": {
-      "default": {},
       "type": "object",
       "propertyNames": {
         "type": "string",
@@ -245,6 +259,22 @@
       "additionalProperties": {
         "type": "object",
         "properties": {
+          "models": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            ]
+          },
           "effort": {
             "type": "string",
             "enum": [

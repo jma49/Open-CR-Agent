@@ -19,6 +19,7 @@ import {
 } from "@open-cr-agent/core";
 import {
   type AttemptOutcome,
+  callChain,
   completeWithFailback,
   MAX_AGENT_STEPS,
   ModelHealth,
@@ -114,14 +115,10 @@ export class OpenCodeRuntime implements AgentRuntime {
     }
     this.context = spec.context;
 
-    const chain = this.options.models[spec.modelTier] ?? [];
-    if (chain.length === 0) {
-      yield {
-        type: "error",
-        taskId: spec.taskId,
-        retryable: false,
-        error: noModel(spec.modelTier),
-      };
+    const chain = callChain(this.options.models, spec.modelTier, spec.models);
+    const refused = chain.length === 0 ? noModel(spec.modelTier) : this.unprepared(spec.models);
+    if (refused) {
+      yield { type: "error", taskId: spec.taskId, retryable: false, error: refused };
       return;
     }
 
@@ -129,6 +126,7 @@ export class OpenCodeRuntime implements AgentRuntime {
     yield* withFailback({
       taskId: spec.taskId,
       tier: spec.modelTier,
+      ...(spec.models?.length ? { agent: spec.reviewer } : {}),
       chain,
       health: this.health,
       signal,
@@ -152,12 +150,14 @@ export class OpenCodeRuntime implements AgentRuntime {
   }
 
   async complete(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult> {
-    const chain = this.options.models[request.tier] ?? [];
-    if (chain.length === 0) throw new OcraError("CONFIG_INVALID", noModel(request.tier));
+    const chain = callChain(this.options.models, request.tier, request.models);
+    const refused = chain.length === 0 ? noModel(request.tier) : this.unprepared(request.models);
+    if (refused) throw new OcraError("CONFIG_INVALID", refused);
 
     const infra = await this.start();
     return completeWithFailback({
       tier: request.tier,
+      ...(request.models?.length ? { agent: request.agent ?? request.tier } : {}),
       chain,
       health: this.health,
       signal,
@@ -212,6 +212,18 @@ export class OpenCodeRuntime implements AgentRuntime {
     );
   }
 
+  // The server holds the credentials of the providers it started with; an
+  // agent's own chain naming another would fail at OpenCode as "model not
+  // found". The tier chains are always among them.
+  private unprepared(own: readonly string[] | undefined): string | undefined {
+    if (!own?.length) return undefined;
+    const prepared = new Set(providersOf(this.options));
+    const model = own.find((m) => !prepared.has(parseModel(m).providerID));
+    return model === undefined
+      ? undefined
+      : `"${model}" is not among the models the runtime was started with (RuntimeOptions.models or agentModels)`;
+  }
+
   private start(): Promise<Infra> {
     this.infra ??= this.launch();
     return this.infra;
@@ -219,7 +231,7 @@ export class OpenCodeRuntime implements AgentRuntime {
 
   private async launch(): Promise<Infra> {
     const custom = this.options.providers ?? {};
-    const missing = missingCredentials(this.options.env, providersOf(this.options.models), custom);
+    const missing = missingCredentials(this.options.env, providersOf(this.options), custom);
     if (missing.length > 0) throw new OcraError("CONFIG_CREDENTIALS_MISSING", missing.join("; "));
     const root = await mkdtemp(join(tmpdir(), "ocra-opencode-"));
     const dirs = {
@@ -241,7 +253,7 @@ export class OpenCodeRuntime implements AgentRuntime {
       const server = await startOpencodeServer({
         binary: this.options.binary ?? resolveOpencodeBinary(this.options.env),
         cwd: workspace,
-        env: serverEnv(this.options.env, dirs, providersOf(this.options.models), custom),
+        env: serverEnv(this.options.env, dirs, providersOf(this.options), custom),
         config: openCodeConfig(tools, this.helperTools, custom, this.options.sampling),
       });
       started = server;
@@ -259,7 +271,7 @@ export class OpenCodeRuntime implements AgentRuntime {
         rmSync(root, { recursive: true, force: true });
       };
       process.on("exit", onExit);
-      const secrets = credentialValues(this.options.env, providersOf(this.options.models), custom);
+      const secrets = credentialValues(this.options.env, providersOf(this.options), custom);
       return { root, tools, server, client, dispatcher, onExit, secrets };
     } catch (error) {
       await Promise.allSettled([tools.close(), started?.close()]);
@@ -362,9 +374,11 @@ function providerConfig(custom: Readonly<Record<string, CustomProvider>>, temper
   );
 }
 
-function providersOf(models: RuntimeOptions["models"]): string[] {
-  return Object.values(models).flatMap((chain) =>
-    (chain ?? []).map((m) => parseModel(m).providerID),
+// The providers of every chain a call may run on: the tiers' and the
+// agents' own (ADR-0025), so each gets its credentials like a tier's.
+export function providersOf(options: Pick<RuntimeOptions, "models" | "agentModels">): string[] {
+  return [...Object.values(options.models), ...Object.values(options.agentModels ?? {})].flatMap(
+    (chain) => (chain ?? []).map((m) => parseModel(m).providerID),
   );
 }
 

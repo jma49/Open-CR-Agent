@@ -5,7 +5,7 @@ import { MEMORY_PATH, type MemoryEntry, parseMemory } from "../memory/memory.js"
 import { parseRepoRules, REPO_RULES_PATH, type RepoRule } from "../rules/repo-rules.js";
 import { defaultSelectionPolicy, type FileDecision, selectFiles } from "../select/select.js";
 import { triage } from "../triage.js";
-import { roleEffort } from "./agents.js";
+import { roleCall } from "./agents.js";
 import { reviewContext } from "./context.js";
 import { runtimeGrouper } from "./helpers.js";
 import { rank } from "./matrix.js";
@@ -79,7 +79,7 @@ export async function planReview(
   const grouper =
     options.grouper ??
     (options.runtime
-      ? runtimeGrouper(options.runtime, signal, (u) => usage.push(u), roleEffort("helper", options))
+      ? runtimeGrouper(options.runtime, signal, (u) => usage.push(u), roleCall("helper", options))
       : undefined);
   const widened =
     options.reviewOnly && options.priorTier && rank(tier) > rank(options.priorTier)

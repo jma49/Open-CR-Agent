@@ -7,6 +7,7 @@ import type { Finding, PriorReview, Severity } from "../domain.js";
 import { errorMessage, OcraError } from "../errors.js";
 import { judgeFindings } from "../judge/judge.js";
 import { applyMemory, type MemoryEntry } from "../memory/memory.js";
+import type { ModelChains } from "../plugin/types.js";
 import { priorCodePresence } from "../rereview/presence.js";
 import { reconcile, stillOpen } from "../rereview/reconcile.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
@@ -19,7 +20,7 @@ import {
   effortWarnings,
   type RoleSettings,
   resolveAgents,
-  roleEffort,
+  roleCall,
   type TierEfforts,
 } from "./agents.js";
 import { SpendLimitReached, spendTracker } from "./budget.js";
@@ -52,6 +53,10 @@ export interface ReviewOptions {
   // reviewer's own is in reviewerOverrides.
   effort?: TierEfforts;
   roles?: RoleSettings;
+  // The tier chains the runtime was given (RuntimeOptions.models), recorded
+  // per agent in the provenance; a reviewer's or role's own chain is in
+  // reviewerOverrides or roles and goes with its calls.
+  models?: ModelChains;
   rules?: readonly RepoRule[];
   // Where AGENTS.md and .ocra/rules.json are read from. Defaults to the
   // revision under review; pull request reviews pass the trusted base.
@@ -158,7 +163,7 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
             relocationUsage.push(u);
             budget.add(u);
           },
-          roleEffort("helper", options),
+          roleCall("helper", options),
         ));
   // Tasks report spend while they run, so the one that uses up the review
   // share stops every task still running, not only the ones not yet started.
@@ -254,7 +259,7 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
           signal,
           concurrency,
           budget,
-          effort: roleEffort("verifier", options),
+          call: roleCall("verifier", options),
         });
   if (verification.checked > 0) {
     emit({
@@ -271,7 +276,7 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
     changeRequest: plan.changeRequest,
     tier: plan.tier,
     signal,
-    effort: roleEffort("judge", options),
+    call: roleCall("judge", options),
     enabled: judgeWanted && judgeAffordable,
     keepDropped: options.ultra === true,
     carried: stillOpen(reconciled),

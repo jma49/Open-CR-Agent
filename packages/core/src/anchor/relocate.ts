@@ -1,6 +1,6 @@
-import type { AgentRuntime, Effort, Usage } from "../contracts.js";
+import type { AgentRuntime, Usage } from "../contracts.js";
 import { usageSpent } from "../errors.js";
-import { agentCall } from "../pipeline/agents.js";
+import { type AgentCallSettings, agentCall } from "../pipeline/agents.js";
 import { data, join, labelled, section } from "../review/prompt-text.js";
 import type { RelocationRequest } from "./anchor.js";
 
@@ -20,7 +20,7 @@ export function runtimeRelocator(
   runtime: AgentRuntime,
   signal: AbortSignal,
   onUsage: (usage: Usage) => void,
-  effort?: Effort,
+  call?: AgentCallSettings,
 ): ((request: RelocationRequest) => Promise<string | undefined>) | undefined {
   const complete = runtime.complete?.bind(runtime);
   if (!complete) return undefined;
@@ -38,7 +38,7 @@ export function runtimeRelocator(
     const answer = await complete(
       {
         tier: "light",
-        ...agentCall("helper", effort),
+        ...agentCall("helper", call),
         system: RELOCATE_SYSTEM_PROMPT,
         user,
         timeoutMs: RELOCATE_TIMEOUT_MS,

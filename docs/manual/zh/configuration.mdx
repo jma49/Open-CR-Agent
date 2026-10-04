@@ -52,6 +52,20 @@ export OCRA_MODEL_LIGHT="google/gemini-flash-lite-latest"
 export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
 ```
 
+## 按 agent 指定模型
+
+`reviewers.<id>.models` 为单个审查员指定它自己的模型或故障切换链（包括它的审查任务和计划调用），`roles.<role>.models` 为 `verifier`、`judge` 或 `helper`（给文件分组、重新定位引用的代码）指定。写法与层级相同。没有设置的 agent 使用所在层级的模型链，与上文一致；verifier 和 judge 从不沿用审查员的模型链，这样核查始终独立于被核查的内容。
+
+```json
+{
+  "models": { "standard": "google/gemini-3.5-flash", "top": "google/gemini-3.1-pro-preview" },
+  "reviewers": { "security": { "models": ["anthropic/claude-sonnet-5-5", "google/gemini-3.5-flash"] } },
+  "roles": { "helper": { "models": "google/gemini-flash-lite-latest" } }
+}
+```
+
+故障切换、限流暂停和断路器与层级一样按模型计算：同一个模型出现在两条链里时共用一个断路器，一个不可用的模型会被所有用到它的 agent 跳过。审查前的检查也覆盖这些模型链：供应商的 key 必须已设置（`opencode` 运行时会像层级模型一样把它传给 OpenCode），[自行声明的供应商](./providers#你自己的端点)的模型必须在声明里有价格，`ocra-<provider>/` 模型经由 ocra Cloud。不读取 agent 模型链的插件运行时使用层级的模型链。JSON 报告的 `provenance.agents` 在 `models` 中记录每个 agent 实际使用的模型链，`--plan` 显示每个任务的模型链，配置哈希也覆盖它们。
+
 ## 推理强度
 
 当前大多数模型都可以指定回答前推理多少。`effort` 按层级设置，`reviewers.<id>.effort` 设置单个审查员（包括它的审查任务和计划调用），`roles.<role>.effort` 设置 `verifier`（核验）、`judge`（裁决）或 `helper`（辅助调用：给文件分组、重新定位引用的代码）。可选级别为 `none`、`minimal`、`low`、`medium` 和 `high`。每个 agent 先用自己的设置，没有就用它所在层级的设置（审查员按自己的层级，verifier 为 `standard`，judge 为 `top`，helper 为 `light`）；verifier 和 judge 从不沿用审查员的设置。不设置时什么都不发送，使用供应商的默认值。
@@ -104,7 +118,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 
 ## 审查员
 
-`reviewers.<id>` 可以关闭某个审查员，设置它开始运行的风险档位（可以比默认高，也可以更低），或设置它的[推理强度](#推理强度)。风险档位从低到高：`trivial`（改动 ≤10 行）、`lite`（≤100 行）、`full`（更大的改动、超过 20 个文件，或涉及敏感路径：CI workflow，或目录名、文件名中含有 `auth`、`oauth`、`jwt`、`password`、`credential`、`secret`、`login`、`permission`、`acl`、`identity`、`crypto`、`security` 等单词）。
+`reviewers.<id>` 可以关闭某个审查员，设置它开始运行的风险档位（可以比默认高，也可以更低），或设置它的[模型](#按-agent-指定模型)或[推理强度](#推理强度)。风险档位从低到高：`trivial`（改动 ≤10 行）、`lite`（≤100 行）、`full`（更大的改动、超过 20 个文件，或涉及敏感路径：CI workflow，或目录名、文件名中含有 `auth`、`oauth`、`jwt`、`password`、`credential`、`secret`、`login`、`permission`、`acl`、`identity`、`crypto`、`security` 等单词）。
 
 ```json
 { "reviewers": { "correctness": { "minTier": "lite" }, "security": { "enabled": false } } }

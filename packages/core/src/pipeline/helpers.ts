@@ -1,7 +1,7 @@
 import type { FileGrouper } from "../bundle/grouping.js";
-import type { AgentRuntime, Effort, Usage } from "../contracts.js";
+import type { AgentRuntime, Usage } from "../contracts.js";
 import { OcraError, usageSpent } from "../errors.js";
-import { agentCall } from "./agents.js";
+import { type AgentCallSettings, agentCall } from "./agents.js";
 
 export const HELPER_TIMEOUT_MS = 60_000;
 
@@ -11,7 +11,7 @@ export function runtimeGrouper(
   runtime: AgentRuntime,
   signal: AbortSignal,
   onUsage: (usage: Usage) => void,
-  effort?: Effort,
+  call?: AgentCallSettings,
 ): FileGrouper | undefined {
   const complete = runtime.complete?.bind(runtime);
   if (!complete) return undefined;
@@ -20,7 +20,7 @@ export function runtimeGrouper(
       const result = await complete(
         {
           tier: "light",
-          ...agentCall("helper", effort),
+          ...agentCall("helper", call),
           system: prompt.system,
           user: prompt.user,
           timeoutMs: HELPER_TIMEOUT_MS,

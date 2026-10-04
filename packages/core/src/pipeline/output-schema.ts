@@ -142,6 +142,7 @@ const samplingSchema = z.strictObject({
 
 const agentProvenanceSchema = z.strictObject({
   tier: z.enum(["top", "standard", "light"]),
+  models: z.array(z.string()).optional(),
   effort: z.enum(EFFORT_LEVELS).optional(),
   applied: z.boolean().optional(),
   notApplied: z.array(z.enum(["temperature", "seed"])).optional(),

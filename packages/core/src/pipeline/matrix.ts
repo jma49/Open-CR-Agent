@@ -10,8 +10,10 @@ export const RISK_TIERS: readonly RiskTier[] = ["trivial", "lite", "full"];
 export interface ReviewerOverride {
   enabled?: boolean | undefined;
   minTier?: RiskTier | undefined;
-  // Covers the reviewer's review tasks and its plan call.
+  // Both cover the reviewer's review tasks and its plan call; models is its
+  // own failback chain, absent: its tier's.
   effort?: Effort | undefined;
+  models?: readonly string[] | undefined;
 }
 
 export type ReviewerOverrides = Readonly<Record<string, ReviewerOverride>>;

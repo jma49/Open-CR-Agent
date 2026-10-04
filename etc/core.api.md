@@ -41,6 +41,8 @@ export interface AgentProvenance {
     // (undocumented)
     effort?: Effort;
     // (undocumented)
+    models?: string[];
+    // (undocumented)
     notApplied?: (keyof Sampling)[];
     // (undocumented)
     tier: ModelTier;
@@ -74,6 +76,8 @@ export interface AgentTaskSpec {
     context: ReviewContext;
     // (undocumented)
     effort?: Effort;
+    // (undocumented)
+    models?: readonly string[];
     // (undocumented)
     modelTier: ModelTier;
     // (undocumented)
@@ -178,6 +182,8 @@ export interface CompletionRequest {
     agent?: string;
     // (undocumented)
     effort?: Effort;
+    // (undocumented)
+    models?: readonly string[];
     // (undocumented)
     system: string;
     // (undocumented)
@@ -1023,6 +1029,7 @@ export const reportOutputSchema: z.ZodObject<{
                 standard: "standard";
                 top: "top";
             }>;
+            models: z.ZodOptional<z.ZodArray<z.ZodString>>;
             effort: z.ZodOptional<z.ZodEnum<{
                 high: "high";
                 low: "low";
@@ -1093,6 +1100,8 @@ export interface ReviewerOverride {
     enabled?: boolean | undefined;
     // (undocumented)
     minTier?: RiskTier | undefined;
+    // (undocumented)
+    models?: readonly string[] | undefined;
 }
 
 // @public (undocumented)
@@ -1171,6 +1180,8 @@ export interface ReviewOptions {
     maxCostUsd?: number;
     // (undocumented)
     maxTasks?: number;
+    // (undocumented)
+    models?: ModelChains;
     // (undocumented)
     onEvent?: (event: ReviewEvent) => void;
     // (undocumented)
@@ -1285,6 +1296,8 @@ const riskTierSchema: z.ZodEnum<{
 export interface RoleSetting {
     // (undocumented)
     effort?: Effort | undefined;
+    // (undocumented)
+    models?: readonly string[] | undefined;
 }
 
 // @public (undocumented)
@@ -1319,6 +1332,8 @@ export type RuntimeFactory = (options: RuntimeOptions) => AgentRuntime;
 
 // @public (undocumented)
 export interface RuntimeOptions {
+    // (undocumented)
+    agentModels?: Readonly<Record<string, readonly string[]>>;
     // (undocumented)
     env: Env;
     // (undocumented)

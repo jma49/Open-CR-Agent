@@ -1,4 +1,4 @@
-import type { CustomProvider, ModelChains } from "@open-cr-agent/core";
+import type { CustomProvider } from "@open-cr-agent/core";
 import { OcraError } from "@open-cr-agent/core";
 import { type CloudDeps, cloudSession } from "../cloud.js";
 
@@ -16,15 +16,16 @@ const MIN_TOKEN_MS = 35 * 60_000;
 
 type Env = Readonly<Record<string, string | undefined>>;
 
+// chains: every chain of the run, the tiers' and the agents' own.
 export async function withCloudProviders(
-  models: ModelChains,
+  chains: readonly (readonly string[] | undefined)[],
   providers: Readonly<Record<string, CustomProvider>>,
   env: Env,
   deps: CloudDeps | undefined,
   warn: (message: string) => void,
 ): Promise<{ providers: Record<string, CustomProvider>; env: Env }> {
   const wanted = new Map<string, Set<string>>();
-  for (const model of Object.values(models).flat()) {
+  for (const model of chains.flatMap((chain) => chain ?? [])) {
     const slash = model.indexOf("/");
     const id = model.slice(0, slash);
     if (slash < 0 || !id.startsWith(CLOUD_PREFIX) || providers[id]) continue;

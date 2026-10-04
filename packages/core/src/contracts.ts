@@ -34,6 +34,9 @@ export interface AgentTaskSpec {
   modelTier: ModelTier;
   // Absent: the runtime sends no effort.
   effort?: Effort;
+  // The agent's own failback chain (ADR-0025); absent: the tier's. A runtime
+  // that does not read it uses the tier's chain.
+  models?: readonly string[];
   systemPrompt: string;
   userPrompt: string;
   context: ReviewContext;
@@ -68,6 +71,8 @@ export interface CompletionRequest {
   // role "verifier", "judge" or "helper".
   agent?: string;
   effort?: Effort;
+  // The agent's own failback chain; absent: the tier's.
+  models?: readonly string[];
   system: string;
   user: string;
   timeoutMs: number;

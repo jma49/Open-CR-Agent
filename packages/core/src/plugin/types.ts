@@ -10,6 +10,10 @@ export type ModelChains = { [Tier in ModelTier]?: readonly string[] };
 
 export interface RuntimeOptions {
   models: ModelChains;
+  // Agents' own chains by agent id (ADR-0025), which their calls carry: every
+  // model a call may name besides the tier chains, for a runtime that
+  // prepares its providers before the first call.
+  agentModels?: Readonly<Record<string, readonly string[]>>;
   tools: readonly ToolDefinition[];
   env: Env;
   // Providers declared in configuration, by id, for model chains to name.

@@ -27,6 +27,9 @@ export interface RunProvenance {
 
 export interface AgentProvenance {
   tier: ModelTier;
+  // The failback chain its calls used: its own, else its tier's. Absent when
+  // the review was not told the tier chains.
+  models?: string[];
   effort?: Effort;
   // With an effort: whether every call sent it. Absent when the agent made
   // no call that asked for one.
@@ -112,15 +115,16 @@ export function agentProvenance(
   agents: readonly ResolvedAgent[],
   runtime: Pick<AgentRuntime, "appliedTo">,
 ): Record<string, AgentProvenance> {
-  const entries = agents.map(({ id, tier, effort }): [string, AgentProvenance] => {
-    if (effort === undefined) return [id, { tier }];
-    if (!runtime.appliedTo) return [id, { tier, effort, applied: false }];
+  const entries = agents.map(({ id, tier, effort, models }): [string, AgentProvenance] => {
+    const base = { tier, ...(models ? { models: [...models] } : {}) };
+    if (effort === undefined) return [id, base];
+    if (!runtime.appliedTo) return [id, { ...base, effort, applied: false }];
     const applied = runtime.appliedTo(id);
-    if (!applied) return [id, { tier, effort }];
+    if (!applied) return [id, { ...base, effort }];
     return [
       id,
       {
-        tier,
+        ...base,
         effort,
         applied: applied.effort,
         ...(applied.notApplied?.length ? { notApplied: [...applied.notApplied] } : {}),

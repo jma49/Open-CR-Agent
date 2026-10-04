@@ -75,7 +75,7 @@ describe("models through ocra Cloud", () => {
   it("leaves a review without ocra- models alone: no session read, no request", async () => {
     const t = setup(undefined);
     const out = await withCloudProviders(
-      { standard: ["google/gemini-3.5-flash"] },
+      [["google/gemini-3.5-flash"]],
       {},
       { A: "1" },
       t.deps,
@@ -88,10 +88,10 @@ describe("models through ocra Cloud", () => {
   it("declares each named provider as a gateway endpoint with the session's token", async () => {
     const t = setup({});
     const out = await withCloudProviders(
-      {
-        standard: ["ocra-openrouter/qwen/qwen3.8-27b:free", "ocra-deepseek/deepseek-chat"],
-        light: ["ocra-openrouter/liquid/lfm-2.5-2.6b:free"],
-      },
+      [
+        ["ocra-openrouter/qwen/qwen3.8-27b:free", "ocra-deepseek/deepseek-chat"],
+        ["ocra-openrouter/liquid/lfm-2.5-2.6b:free"],
+      ],
       {},
       {},
       t.deps,
@@ -113,13 +113,7 @@ describe("models through ocra Cloud", () => {
 
   it("refreshes a token that would expire during the review", async () => {
     const t = setup({ expires_at: NOW + 10 * 60_000 });
-    const out = await withCloudProviders(
-      { standard: ["ocra-openrouter/m"] },
-      {},
-      {},
-      t.deps,
-      t.warn,
-    );
+    const out = await withCloudProviders([["ocra-openrouter/m"]], {}, {}, t.deps, t.warn);
     expect(out.env[CLOUD_TOKEN_ENV]).toBe("ocra_cli_new");
     expect(t.calls[0]).toBe("POST /api/device/refresh");
   });
@@ -129,7 +123,7 @@ describe("models through ocra Cloud", () => {
     const own = {
       "ocra-mine": { baseUrl: "https://mine.example/v1", models: { m: { input: 1, output: 2 } } },
     };
-    const out = await withCloudProviders({ standard: ["ocra-mine/m"] }, own, {}, t.deps, t.warn);
+    const out = await withCloudProviders([["ocra-mine/m"]], own, {}, t.deps, t.warn);
     expect(out.providers).toEqual(own);
     expect(t.calls).toEqual([]);
   });
@@ -137,33 +131,21 @@ describe("models through ocra Cloud", () => {
   it("asks to sign in, refuses with ocra Cloud off, and names providers without a chat endpoint", async () => {
     const signedOut = setup(undefined);
     const e1 = await failure(
-      withCloudProviders(
-        { standard: ["ocra-openrouter/m"] },
-        {},
-        {},
-        signedOut.deps,
-        signedOut.warn,
-      ),
+      withCloudProviders([["ocra-openrouter/m"]], {}, {}, signedOut.deps, signedOut.warn),
     );
     expect(isOcraError(e1) && e1.code).toBe("CONFIG_CREDENTIALS_MISSING");
     expect(String(e1)).toContain("ocra login");
 
     const off = setup({});
     const e2 = await failure(
-      withCloudProviders(
-        { standard: ["ocra-openrouter/m"] },
-        {},
-        { OCRA_CLOUD: "off" },
-        off.deps,
-        off.warn,
-      ),
+      withCloudProviders([["ocra-openrouter/m"]], {}, { OCRA_CLOUD: "off" }, off.deps, off.warn),
     );
     expect(isOcraError(e2) && e2.code).toBe("CONFIG_INVALID");
     expect(off.calls).toEqual([]);
 
     const t = setup({});
     for (const model of ["ocra-kimi-coding/kimi", "ocra-nope/m"]) {
-      const e = await failure(withCloudProviders({ standard: [model] }, {}, {}, t.deps, t.warn));
+      const e = await failure(withCloudProviders([[model]], {}, {}, t.deps, t.warn));
       expect(isOcraError(e) && e.code).toBe("CONFIG_INVALID");
     }
   });

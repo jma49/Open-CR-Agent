@@ -73,7 +73,10 @@ try {
 | `vcs` | 这次改动的 `VcsAdapter`：diff 和文件从哪里来，`publish` 把审查发到哪里 |
 | `runtime` | 每次运行一个隔离审查任务的 `AgentRuntime` |
 | `reviewers` | 要运行的审查员（默认只有 `correctness`）；可以用注册表里的，也可以是你自己的 `ReviewerDefinition` |
-| `reviewerOverrides` | 按审查员设置 `enabled`、`minTier` |
+| `reviewerOverrides` | 按审查员设置 `enabled`、`minTier`，以及它自己的 `effort` 和 `models` 模型链（[按 agent 指定模型](./configuration#按-agent-指定模型)） |
+| `roles` | 按角色（`verifier`、`judge`、`helper`）设置它自己的 `effort` 和 `models` 模型链 |
+| `effort` | 按模型层级设置的推理强度（[推理强度](./configuration#推理强度)） |
+| `models` | 运行时拿到的层级模型链，让报告的 `provenance.agents` 能记录每个 agent 的模型链；运行时本身通过 `RuntimeOptions.models` 接收它们 |
 | `rules` | 按路径生效的审查规则（`RepoRule[]`），注册表里的加上你自己的 |
 | `readTrusted` | 从哪里读取 `AGENTS.md`、`.ocra/rules.json` 和 `.ocra/memory.json`。默认是被审查的版本；审查 PR 时传入一个读取可信 base 的函数，改动就改不了它们 |
 | `selection` | 审查哪些文件：`include`、`exclude`、`maxPatchChars` |

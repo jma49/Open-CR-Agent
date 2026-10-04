@@ -56,7 +56,7 @@ export default {
 | `registerTool(tool)` | 审查员可以调用的工具，输入用 Zod schema 定义 |
 | `onEvent(listener)` | 审查过程中每个事件的监听器（遥测、通知）。监听器抛出异常时会被停用，并给出一次警告，审查继续进行 |
 
-运行时工厂会收到模型链、环境变量、声明的供应商，配置了的话还有 `sampling`（`temperature`、`seed`）；运行时用自己的 `sampling` 属性说明它实际发送什么，并在 `notApplied` 里列出没法传下去的设置。没有这个属性的运行时会被报告为一项都没应用。任务的 spec 带有它的审查员要求的[推理强度](./configuration#推理强度) `effort`；补全请求带有 `agent`（计划调用对应的审查员，或 `verifier`、`judge`、`helper`）和 `effort`；没有配置推理强度时两者都不存在。会发送推理强度的运行时实现 `appliedTo(agent)`，返回这个 agent 的每次调用是否都发送了它，以及 `notApplied`：这些调用没有发送的采样设置。没有实现它的运行时会被报告为不发送推理强度，运行会给出一次警告。
+运行时工厂会收到模型链、环境变量、声明的供应商，配置了的话还有 `sampling`（`temperature`、`seed`）；运行时用自己的 `sampling` 属性说明它实际发送什么，并在 `notApplied` 里列出没法传下去的设置。没有这个属性的运行时会被报告为一项都没应用。任务的 spec 带有它的审查员要求的[推理强度](./configuration#推理强度) `effort`；补全请求带有 `agent`（计划调用对应的审查员，或 `verifier`、`judge`、`helper`）和 `effort`；没有配置推理强度时两者都不存在。会发送推理强度的运行时实现 `appliedTo(agent)`，返回这个 agent 的每次调用是否都发送了它，以及 `notApplied`：这些调用没有发送的采样设置。没有实现它的运行时会被报告为不发送推理强度，运行会给出一次警告。有[自己的模型链](./configuration#按-agent-指定模型)的 agent 会在任务 spec 和补全请求的 `models` 中带上它，工厂也会在 `agentModels` 中按 agent id 收到所有这样的模型链，供需要在第一次调用前准备供应商的运行时使用；忽略这两者的运行时会用层级的模型链执行这些调用。
 
 每个插件只能拿到自己的设置（`ctx.settings`），并由可选的 `settingsSchema` 校验。同一个名字重复注册、使用保留的工具名，或在 `configure` 阶段之后再注册，都会报错并指出是哪个插件。
 

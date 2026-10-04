@@ -7,7 +7,9 @@ import {
   type ModelTier,
   OcraError,
   type RepoRule,
+  type ReviewerOverrides,
   type RiskTier,
+  type RoleSettings,
   type TierEfforts,
 } from "@open-cr-agent/core";
 import { AGENT_ROLES, EFFORT_LEVELS, RISK_TIERS } from "@open-cr-agent/core/internal";
@@ -122,6 +124,8 @@ const configSchema = z
           .object({
             enabled: z.boolean(),
             minTier: z.enum(RISK_TIERS as [RiskTier, ...RiskTier[]]),
+            // The reviewer's own chain, for its review tasks and plan call.
+            models: modelChain,
             effort,
           })
           .partial()
@@ -131,7 +135,7 @@ const configSchema = z
     roles: z
       .partialRecord(
         z.enum(AGENT_ROLES as [AgentRole, ...AgentRole[]]),
-        z.object({ effort }).partial().strict(),
+        z.object({ models: modelChain, effort }).partial().strict(),
       )
       .default({}),
     pluginSettings: z.record(z.string(), z.unknown()).default({}),
@@ -234,7 +238,10 @@ export async function loadConfig(
     }
     efforts[tier] = level.data;
   }
-  for (const model of unpriced(parsed.providers, models)) {
+  for (const model of unpriced(parsed.providers, [
+    ...Object.values(models),
+    ...Object.values(agentChains(parsed)),
+  ])) {
     options.warn?.(
       `${model} has a price of 0: reported cost and --max-cost-usd do not count its tokens`,
     );
@@ -273,12 +280,28 @@ function toProviders(
   );
 }
 
+// The reviewers' and roles' own chains, by agent id (ADR-0025); a disabled
+// reviewer's is left out, since it makes no call.
+export function agentChains(config: {
+  reviewers: ReviewerOverrides;
+  roles: RoleSettings;
+}): Record<string, readonly string[]> {
+  const chains: Record<string, readonly string[]> = {};
+  for (const [id, setting] of Object.entries(config.reviewers)) {
+    if (setting.models && setting.enabled !== false) chains[id] = setting.models;
+  }
+  for (const [role, setting] of Object.entries(config.roles)) {
+    if (setting?.models) chains[role] = setting.models;
+  }
+  return chains;
+}
+
 // Models of declared providers, named in a chain, priced at 0 per token.
 function unpriced(
   providers: z.infer<typeof configSchema>["providers"],
-  models: ModelChains,
+  chains: readonly (readonly string[] | undefined)[],
 ): string[] {
-  const named = new Set(Object.values(models).flat());
+  const named = new Set(chains.flatMap((chain) => chain ?? []));
   return [...named].filter((model) => {
     const slash = model.indexOf("/");
     const price = providers[model.slice(0, slash)]?.models[model.slice(slash + 1)];

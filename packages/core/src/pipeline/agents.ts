@@ -1,4 +1,5 @@
 import type { AgentRuntime, Effort, ModelTier } from "../contracts.js";
+import type { ModelChains } from "../plugin/types.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { ReviewerOverrides } from "./matrix.js";
 
@@ -25,6 +26,8 @@ export type TierEfforts = { readonly [Tier in ModelTier]?: Effort | undefined };
 
 export interface RoleSetting {
   effort?: Effort | undefined;
+  // The role's own failback chain; absent: its tier's.
+  models?: readonly string[] | undefined;
 }
 
 export type RoleSettings = { readonly [Role in AgentRole]?: RoleSetting | undefined };
@@ -32,6 +35,9 @@ export type RoleSettings = { readonly [Role in AgentRole]?: RoleSetting | undefi
 // The per-agent settings of a review: an agent's own, else its tier's.
 export interface AgentSettings {
   effort?: TierEfforts | undefined;
+  // The tier chains the runtime was given, so an agent's resolved chain can
+  // be recorded; calls never carry them.
+  models?: ModelChains | undefined;
   roles?: RoleSettings | undefined;
   reviewerOverrides?: ReviewerOverrides | undefined;
 }
@@ -40,6 +46,15 @@ export interface ResolvedAgent {
   id: string;
   tier: ModelTier;
   effort?: Effort;
+  // Its own chain, else its tier's when known.
+  models?: readonly string[];
+}
+
+// What an agent's calls carry besides the prompt: its effort, and its own
+// chain when it has one (absent: the runtime uses the tier's).
+export interface AgentCallSettings {
+  effort?: Effort;
+  models?: readonly string[];
 }
 
 // A reviewer's effort covers every call made on its behalf: its review
@@ -55,27 +70,60 @@ export function roleEffort(role: AgentRole, settings: AgentSettings): Effort | u
   return settings.roles?.[role]?.effort ?? settings.effort?.[ROLE_TIERS[role]];
 }
 
+// Like its effort, a reviewer's own chain covers its review tasks and its
+// plan call; the roles have their own and never take a reviewer's.
+export function reviewerCall(
+  reviewer: Pick<ReviewerDefinition, "id" | "modelTier">,
+  settings: AgentSettings,
+): AgentCallSettings {
+  return callSettings(
+    reviewerEffort(reviewer, settings),
+    settings.reviewerOverrides?.[reviewer.id]?.models,
+  );
+}
+
+export function roleCall(role: AgentRole, settings: AgentSettings): AgentCallSettings {
+  return callSettings(roleEffort(role, settings), settings.roles?.[role]?.models);
+}
+
+function callSettings(
+  effort: Effort | undefined,
+  models: readonly string[] | undefined,
+): AgentCallSettings {
+  return {
+    ...(effort === undefined ? {} : { effort }),
+    ...(models?.length ? { models: [...models] } : {}),
+  };
+}
+
 // The enabled reviewers and the roles, each with its tier and effort.
 export function resolveAgents(
   reviewers: readonly ReviewerDefinition[],
   settings: AgentSettings,
 ): ResolvedAgent[] {
-  const agent = (id: string, tier: ModelTier, effort: Effort | undefined): ResolvedAgent =>
-    effort === undefined ? { id, tier } : { id, tier, effort };
+  const agent = (id: string, tier: ModelTier, call: AgentCallSettings): ResolvedAgent => {
+    const models = call.models ?? settings.models?.[tier];
+    return {
+      id,
+      tier,
+      ...(call.effort === undefined ? {} : { effort: call.effort }),
+      ...(models?.length ? { models: [...models] } : {}),
+    };
+  };
   return [
     ...reviewers
       .filter((r) => settings.reviewerOverrides?.[r.id]?.enabled !== false)
-      .map((r) => agent(r.id, r.modelTier, reviewerEffort(r, settings))),
-    ...AGENT_ROLES.map((role) => agent(role, ROLE_TIERS[role], roleEffort(role, settings))),
+      .map((r) => agent(r.id, r.modelTier, reviewerCall(r, settings))),
+    ...AGENT_ROLES.map((role) => agent(role, ROLE_TIERS[role], roleCall(role, settings))),
   ];
 }
 
-// The request fields that name an agent and its effort.
+// The request fields that name an agent, its effort and its own chain.
 export function agentCall(
   agent: string,
-  effort: Effort | undefined,
-): { agent: string; effort?: Effort } {
-  return effort === undefined ? { agent } : { agent, effort };
+  call: AgentCallSettings = {},
+): { agent: string } & AgentCallSettings {
+  return { agent, ...call };
 }
 
 // Said once per run, so a configured effort that never reached a model is

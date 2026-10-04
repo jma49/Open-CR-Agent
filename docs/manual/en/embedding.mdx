@@ -73,7 +73,10 @@ try {
 | `vcs` | The `VcsAdapter` for the change: where the diff and files come from, and where `publish` sends the review |
 | `runtime` | The `AgentRuntime` that runs one isolated review task at a time |
 | `reviewers` | The reviewers to run (default: `correctness` alone); the registry's, or your own `ReviewerDefinition`s |
-| `reviewerOverrides` | Per reviewer: `enabled`, `minTier` |
+| `reviewerOverrides` | Per reviewer: `enabled`, `minTier`, and its own `effort` and `models` chain ([Models per agent](./configuration#models-per-agent)) |
+| `roles` | Per role (`verifier`, `judge`, `helper`): its own `effort` and `models` chain |
+| `effort` | Reasoning effort per model tier ([Effort](./configuration#effort)) |
+| `models` | The tier chains the runtime was given, so the report's `provenance.agents` can record each agent's chain; the runtime itself takes them in `RuntimeOptions.models` |
 | `rules` | Path-scoped review rules (`RepoRule[]`), the registry's plus your own |
 | `readTrusted` | Where `AGENTS.md`, `.ocra/rules.json` and `.ocra/memory.json` are read from. Default: the revision under review; for a pull request, pass a reader of the trusted base so the change cannot rewrite them |
 | `selection` | Which files are reviewed: `include`, `exclude`, `maxPatchChars` |

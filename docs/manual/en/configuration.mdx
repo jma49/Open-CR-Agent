@@ -52,6 +52,20 @@ export OCRA_MODEL_LIGHT="google/gemini-flash-lite-latest"
 export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
 ```
 
+## Models per agent
+
+`reviewers.<id>.models` gives one reviewer its own model or failback chain, for its review tasks and its plan call, and `roles.<role>.models` gives one to the `verifier`, the `judge` or the `helper` calls (grouping files, relocating quotes). They take the same forms as a tier. An agent without one uses its tier's chain, as above; the verifier and the judge never take a reviewer's, so checking stays independent of what was checked.
+
+```json
+{
+  "models": { "standard": "google/gemini-3.5-flash", "top": "google/gemini-3.1-pro-preview" },
+  "reviewers": { "security": { "models": ["anthropic/claude-sonnet-5-5", "google/gemini-3.5-flash"] } },
+  "roles": { "helper": { "models": "google/gemini-flash-lite-latest" } }
+}
+```
+
+Failback, rate-limit pauses and the circuit breaker work as for a tier, per model: a model in two chains shares one circuit, so a model that is down is skipped by every agent that names it. The checks before a review cover these chains too: the provider's key must be set (the `opencode` runtime passes it to OpenCode like a tier's), a model of a [declared provider](./providers#your-own-endpoint) must be priced there, and `ocra-<provider>/` models go through ocra Cloud. A plugin runtime that does not read an agent's chain uses the tier's. The JSON report's `provenance.agents` records each agent's resolved chain under `models`, `--plan` shows each task's chain, and the configuration hash covers them.
+
 ## Effort
 
 Most current models can be told how much to reason before they answer. `effort` sets it per tier, `reviewers.<id>.effort` for one reviewer (its review tasks and its plan call), and `roles.<role>.effort` for the `verifier`, the `judge` or the `helper` calls (grouping files, relocating quotes). Levels are `none`, `minimal`, `low`, `medium` and `high`. An agent takes its own effort, else its tier's (reviewers by their tier, the verifier `standard`, the judge `top`, helpers `light`); the verifier and the judge never take a reviewer's. Unset sends nothing, so the provider's default applies.
@@ -104,7 +118,7 @@ ocra skips binary files, likely secrets (`.env`, keys, certificates, cloud and r
 
 ## Reviewers
 
-`reviewers.<id>` turns a reviewer off, sets the risk tier it starts at (higher or lower than its default), or sets its [effort](#effort). Risk tiers, from lowest: `trivial` (≤10 changed lines), `lite` (≤100), `full` (larger changes, more than 20 files, or a sensitive path: CI workflows, or a directory or file name with a word such as `auth`, `oauth`, `jwt`, `password`, `credential`, `secret`, `login`, `permission`, `acl`, `identity`, `crypto` or `security`).
+`reviewers.<id>` turns a reviewer off, sets the risk tier it starts at (higher or lower than its default), or sets its [models](#models-per-agent) or [effort](#effort). Risk tiers, from lowest: `trivial` (≤10 changed lines), `lite` (≤100), `full` (larger changes, more than 20 files, or a sensitive path: CI workflows, or a directory or file name with a word such as `auth`, `oauth`, `jwt`, `password`, `credential`, `secret`, `login`, `permission`, `acl`, `identity`, `crypto` or `security`).
 
 ```json
 { "reviewers": { "correctness": { "minTier": "lite" }, "security": { "enabled": false } } }

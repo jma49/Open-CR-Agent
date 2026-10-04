@@ -923,6 +923,12 @@
                   "light"
                 ]
               },
+              "models": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
               "effort": {
                 "type": "string",
                 "enum": [

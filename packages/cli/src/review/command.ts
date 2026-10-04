@@ -30,7 +30,7 @@ import { VERSION } from "../version.js";
 import type { ReviewArgs } from "./args.js";
 import { withCloudProviders } from "./cloud-providers.js";
 import { cloudEnabled, defaultModels, repoHash, uploadOf, uploadReview } from "./cloud-upload.js";
-import { type CliConfig, ConfigError } from "./config.js";
+import { agentChains, type CliConfig, ConfigError } from "./config.js";
 import { renderPlan } from "./plan-render.js";
 import { type Output, ProgressPrinter } from "./progress.js";
 import { configHash, requestedSampling } from "./provenance.js";
@@ -136,6 +136,7 @@ export async function reviewCommand(
       reviewerOverrides: overrides,
       effort: config.effort,
       roles: config.roles,
+      models: config.models,
       rules: [...registry.rules, ...config.rules],
       selection: { ...defaultSelectionPolicy, include: config.include, exclude: config.exclude },
       ...(target.readTrusted ? { readTrusted: target.readTrusted } : {}),
@@ -160,9 +161,17 @@ export async function reviewCommand(
       io.err.write("[ocra] No models configured: using your default models from ocra Cloud\n");
     }
   }
-  const cloud = await withCloudProviders(models, config.providers, deps.env, cloudDeps, warn);
+  const agentModels = agentChains({ reviewers: overrides, roles: config.roles });
+  const cloud = await withCloudProviders(
+    [...Object.values(models), ...Object.values(agentModels)],
+    config.providers,
+    deps.env,
+    cloudDeps,
+    warn,
+  );
   const runtime = registry.createRuntime(config.runtime, {
     models,
+    ...(Object.keys(agentModels).length > 0 ? { agentModels } : {}),
     env: cloud.env,
     providers: cloud.providers,
     ...(Object.keys(sampling).length > 0 ? { sampling } : {}),
@@ -183,6 +192,7 @@ export async function reviewCommand(
       runId: session.id,
       signal: interrupt.signal,
       ...runOptions(config),
+      models,
       reviewerOverrides: overrides,
       provenance: { ocraVersion: VERSION, configHash: configHash(config, args), sampling },
       ...(args.maxCostUsd !== undefined ? { maxCostUsd: args.maxCostUsd } : {}),

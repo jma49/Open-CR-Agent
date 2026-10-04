@@ -1,7 +1,7 @@
-import type { AgentRuntime, Effort, ReviewContext, Usage } from "../contracts.js";
+import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
 import type { FileDiff, Finding, Verification } from "../domain.js";
 import { errorMessage, OcraError, usageSpent } from "../errors.js";
-import { agentCall } from "../pipeline/agents.js";
+import { type AgentCallSettings, agentCall } from "../pipeline/agents.js";
 import type { SpendTracker } from "../pipeline/budget.js";
 import { parseJsonAnswer } from "../pipeline/helpers.js";
 import { mapWithConcurrency } from "../pipeline/pool.js";
@@ -38,7 +38,7 @@ export interface VerifyOptions {
   // Files are not sent once the run's spend limit is used up; their findings
   // stay, unchecked.
   budget?: Pick<SpendTracker, "exhausted" | "add">;
-  effort?: Effort | undefined;
+  call?: AgentCallSettings | undefined;
 }
 
 // Precision without losing recall to doubt: a finding is dropped only when
@@ -89,7 +89,7 @@ export async function verifyFindings(
       const answer = await complete(
         {
           tier: "standard",
-          ...agentCall("verifier", options.effort),
+          ...agentCall("verifier", options.call),
           system: prompt.system,
           user: prompt.user,
           timeoutMs: VERIFY_TIMEOUT_MS,
