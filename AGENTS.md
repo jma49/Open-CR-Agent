@@ -125,6 +125,7 @@ The repository is public: anything committed stays readable in history even afte
 - One logical change per commit.
 - **Commits must not include `Co-authored-by` trailers or any other co-author metadata.**
 - **Pull request titles, descriptions and comments must not include AI attribution** such as "Generated with Claude Code" or similar tool footers.
+- **Commits are authored and committed under a person's identity**, never an AI tool's (`noreply@anthropic.com`). Set `user.name`/`user.email` in agent sessions. CI's `commits` job enforces these three rules on every pull request (`scripts/attribution.mjs`).
 
 ## Agile practices
 

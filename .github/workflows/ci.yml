@@ -121,6 +121,13 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: npx --no-install commitlint --from "$BASE" --to "$HEAD" --verbose
+      # No AI author, co-author trailer or tool footer (AGENTS.md). The
+      # description is checked when commits are pushed, not on later edits.
+      - env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: node scripts/attribution.mjs "$BASE" "$HEAD"
 
   # Installs the packed packages like a user would and runs the installed CLI.
   packages:
