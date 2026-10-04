@@ -220,9 +220,8 @@ export async function uploadReview(
         authorization: `Bearer ${session.access_token}`,
         "user-agent": `ocra/${VERSION}`,
       },
-      // The server's contract (ADR-0028): `findings` carries the list
-      // when findings are shared, in place of the counts object.
-      body: JSON.stringify(findings ? { ...upload, findings } : upload),
+      // The counts stay in `findings`; the shared list goes in `findingList`.
+      body: JSON.stringify(findings ? { ...upload, findingList: findings } : upload),
       signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) {

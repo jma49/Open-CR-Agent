@@ -198,13 +198,14 @@ describe("the review upload", () => {
     expect(await repoHash(plain, a.credentialsPath)).not.toBe(onA);
   });
 
-  it("sends the findings in place of the counts object and answers how many were kept", async () => {
+  it("sends the findings beside the counts and answers how many were kept", async () => {
     const ok = cloud(() => Response.json({ id: "x", findings: 1 }));
     const up = uploadOf(report, "local", "f".repeat(64), 1);
     const shared = [{ fingerprint: "fp" } as unknown as SharedFinding];
     expect(await uploadReview(up, ok.deps, () => {}, shared)).toEqual({ findings: 1 });
     const sent = JSON.parse(String(ok.calls[0]?.init?.body));
-    expect(sent.findings).toEqual([{ fingerprint: "fp" }]);
+    expect(sent.findingList).toEqual([{ fingerprint: "fp" }]);
+    expect(sent.findings).toEqual(up.findings);
     expect(sent.reviewers).toEqual(up.reviewers);
   });
 

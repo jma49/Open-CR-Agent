@@ -34,7 +34,7 @@ const leaking: Script = async function* (spec) {
 const sharing = {
   "/api/account/salt": () => Response.json({ salt: SALT }),
   "/api/reviews": (_url: URL, body: unknown) => {
-    const list = (body as { findings?: unknown }).findings;
+    const list = (body as { findingList?: unknown }).findingList;
     return Response.json({ id: "r1", findings: Array.isArray(list) ? list.length : 0 });
   },
 };
@@ -58,7 +58,8 @@ describe("findings in ocra Cloud", () => {
     const err = capture();
     await run(["review"], capture(), err, deps(cwd, leaking, { cloud }, true));
     const sent = calls.find((c) => c.path === "/api/reviews")?.body as Record<string, unknown>;
-    expect(sent.findings).toEqual([
+    expect(sent.findings).toEqual({ critical: 1, warning: 0, suggestion: 0 });
+    expect(sent.findingList).toEqual([
       expect.objectContaining({
         reviewer: "correctness",
         severity: "critical",
