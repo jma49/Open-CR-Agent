@@ -1,4 +1,5 @@
 import type { Usage } from "../contracts.js";
+import { OcraError } from "../errors.js";
 
 // Review tasks may spend this share of the limit; the rest is kept for Verify
 // and Judge, so the run that hits the limit still gets its findings checked.
@@ -10,9 +11,9 @@ import type { Usage } from "../contracts.js";
 export const REVIEW_BUDGET_SHARE = 0.8;
 
 // Why running review tasks were stopped.
-export class SpendLimitReached extends Error {
+export class SpendLimitReached extends OcraError {
   constructor(maxCostUsd: number) {
-    super(`stopped at the spend limit of $${maxCostUsd}`);
+    super("BUDGET_EXHAUSTED", `stopped at the spend limit of $${maxCostUsd}`);
     this.name = "SpendLimitReached";
   }
 }

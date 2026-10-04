@@ -1,6 +1,6 @@
 import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
 import type { FileDiff, Finding, Verification } from "../domain.js";
-import { errorMessage, usageSpent } from "../errors.js";
+import { errorMessage, OcraError, usageSpent } from "../errors.js";
 import type { SpendTracker } from "../pipeline/budget.js";
 import { parseJsonAnswer } from "../pipeline/helpers.js";
 import { mapWithConcurrency } from "../pipeline/pool.js";
@@ -96,7 +96,8 @@ export async function verifyFindings(
       result.usage.push(answer.usage);
       options.budget?.add(answer.usage);
       const parsed = verificationResponseSchema.safeParse(parseJsonAnswer(answer.text));
-      if (!parsed.success) throw new Error("the verifier returned an invalid response");
+      if (!parsed.success)
+        throw new OcraError("RUNTIME_INVALID_OUTPUT", "the verifier returned an invalid response");
       for (const entry of parsed.data) {
         const { index } = entry;
         if (index < 0 || index >= group.length) continue;

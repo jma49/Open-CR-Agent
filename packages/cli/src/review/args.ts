@@ -1,4 +1,5 @@
 import { parseArgs } from "node:util";
+import { OcraError } from "@open-cr-agent/core";
 import type { LocalTarget } from "@open-cr-agent/vcs-local";
 
 export type OutputFormat = "text" | "json" | "sarif";
@@ -33,7 +34,12 @@ export interface ReviewArgs {
   configFile?: string;
 }
 
-export class UsageError extends Error {}
+export class UsageError extends OcraError {
+  constructor(message: string) {
+    super("INPUT_USAGE", message);
+    this.name = "UsageError";
+  }
+}
 
 export const REVIEW_USAGE = `Usage: ocra review [options]
 

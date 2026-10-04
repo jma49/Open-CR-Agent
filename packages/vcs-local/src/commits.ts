@@ -1,3 +1,4 @@
+import { OcraError } from "@open-cr-agent/core";
 import { git } from "./git.js";
 
 const FETCH_TIMEOUT_MS = 5 * 60_000;
@@ -13,7 +14,8 @@ export async function ensureCommits(
 ): Promise<void> {
   // Anything but a commit id could be read by git fetch as an option.
   const invalid = shas.filter((sha) => !/^[0-9a-f]{40}([0-9a-f]{24})?$/.test(sha));
-  if (invalid.length > 0) throw new Error(`Not commit ids: ${invalid.join(", ")}`);
+  if (invalid.length > 0)
+    throw new OcraError("INPUT_INVALID", `Not commit ids: ${invalid.join(", ")}`);
   const missing = async () => {
     const result: string[] = [];
     for (const sha of shas) {
@@ -40,7 +42,8 @@ export async function ensureCommits(
     absent = await missing();
   }
   if (absent.length > 0) {
-    throw new Error(
+    throw new OcraError(
+      "VCS_REF_UNKNOWN",
       `Commits ${absent.join(", ")} are not in this repository and could not be fetched from ${remote}`,
     );
   }

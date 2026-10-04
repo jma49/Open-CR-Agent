@@ -4,6 +4,7 @@ import {
   type CustomProvider,
   type ModelChains,
   type ModelTier,
+  OcraError,
   type RepoRule,
   RISK_TIERS,
   type RiskTier,
@@ -122,7 +123,12 @@ const MODEL_ENV: Record<ModelTier, string> = {
   light: "OCRA_MODEL_LIGHT",
 };
 
-export class ConfigError extends Error {}
+export class ConfigError extends OcraError {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super("CONFIG_INVALID", message, options);
+    this.name = "ConfigError";
+  }
+}
 
 // Without the repository's file, only defaults and environment variables
 // apply: that file can name plugins, and plugins run code.
@@ -204,7 +210,7 @@ function ownFile(file: string): () => Promise<string> {
     try {
       return await readFile(file, "utf8");
     } catch (error) {
-      throw new ConfigError(`cannot read ${file}: ${(error as Error).message}`);
+      throw new ConfigError(`cannot read ${file}: ${(error as Error).message}`, { cause: error });
     }
   };
 }
@@ -229,7 +235,9 @@ async function readConfigFile(
   try {
     data = JSON.parse(text);
   } catch (error) {
-    throw new ConfigError(`${label} is not valid JSON: ${(error as Error).message}`);
+    throw new ConfigError(`${label} is not valid JSON: ${(error as Error).message}`, {
+      cause: error,
+    });
   }
   const local = configSchema.safeParse(data);
   if (!local.success) throw new ConfigError(`${label} is invalid: ${z.prettifyError(local.error)}`);

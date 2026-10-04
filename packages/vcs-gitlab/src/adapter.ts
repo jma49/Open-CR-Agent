@@ -1,4 +1,4 @@
-import { errorMessage, type FileDiff, type ReviewReport } from "@open-cr-agent/core";
+import { errorMessage, type FileDiff, OcraError, type ReviewReport } from "@open-cr-agent/core";
 import {
   type Bot,
   type CodeSource,
@@ -94,7 +94,9 @@ class GitLabPlatform implements ReviewPlatform {
   async editor(comment: PlatformComment): Promise<string | undefined> {
     const editors = await this.noteEditors();
     const id = Number(comment.id);
-    if (!editors.has(id)) throw new Error(`GitLab did not say who last edited note ${id}`);
+    if (!editors.has(id)) {
+      throw new OcraError("VCS_API_FAILED", `GitLab did not say who last edited note ${id}`);
+    }
     return editors.get(id);
   }
 
@@ -193,7 +195,12 @@ class GitLabPlatform implements ReviewPlatform {
 }
 
 function diffRefs(mr: MergeRequest): NonNullable<MergeRequest["diff_refs"]> {
-  if (!mr.diff_refs) throw new Error(`merge request !${mr.iid} has no diff yet; try again shortly`);
+  if (!mr.diff_refs) {
+    throw new OcraError(
+      "VCS_NOT_READY",
+      `merge request !${mr.iid} has no diff yet; try again shortly`,
+    );
+  }
   return mr.diff_refs;
 }
 

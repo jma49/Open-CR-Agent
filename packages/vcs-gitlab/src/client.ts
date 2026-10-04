@@ -1,3 +1,4 @@
+import { OcraError } from "@open-cr-agent/core";
 import { retryDecision } from "@open-cr-agent/vcs-platform";
 import { z } from "zod";
 
@@ -51,12 +52,13 @@ export interface Position {
   old_line?: number;
 }
 
-export class GitLabApiError extends Error {
+export class GitLabApiError extends OcraError {
   constructor(
     readonly status: number,
     message: string,
   ) {
-    super(message);
+    super("VCS_API_FAILED", message);
+    this.name = "GitLabApiError";
   }
 }
 

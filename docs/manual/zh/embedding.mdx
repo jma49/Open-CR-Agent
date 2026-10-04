@@ -100,6 +100,34 @@ try {
 
 事件（`onEvent`）是进度、会话日志和终端输出的来源。它们的形状不是约定：监听者应当容忍新的事件类型和字段。
 
+## 错误
+
+`review()` 只在运行无法开始时 reject：没有审查员、`.ocra/rules.json` 或 `.ocra/memory.json` 无效，或者 VCS 适配器读不到改动。任务开始运行之后，任务失败、辅助调用失败、模型配额用尽和触及花费上限都会记录在报告里（任务结果、覆盖情况、警告），而不是抛出；按上文用 `coverageGaps(report)` 读取它们。
+
+ocra 的各个包抛出的都是 `OcraError`（或它的子类），带有 `code`；`isOcraError(error, code?)` 可以判断，`OCRA_ERROR_CODES` 列出全部代码。如果错误源于另一个错误（JSON 解析错误、读取失败），那个错误就是 `cause`。请按代码分支，不要按消息：消息是给人看的，措辞可能会改。插件提供的适配器或运行时可能抛出它自己的错误，所以调用方也要处理不是 `OcraError` 的错误。
+
+| 代码 | 含义 |
+|---|---|
+| `CONFIG_INVALID` | 无法使用的配置：选项、`.ocra/config.json` 及其 extends、`.ocra/rules.json`、`.ocra/memory.json`、模型名、没有审查员、某个档位没有模型 |
+| `CONFIG_CREDENTIALS_MISSING` | 运行需要的令牌或模型密钥没有设置 |
+| `INPUT_USAGE` | ocra 无法执行的命令行（CLI 的用法错误） |
+| `INPUT_INVALID` | 交给 ocra 却无法读取的输入，例如 SARIF 日志或一组 commit id |
+| `ACCESS_DENIED` | 访问策略拒绝了某个路径：密钥文件、git 内部文件、ocra 写入处的符号链接 |
+| `PLUGIN_INVALID` | 无法加载的插件、重复注册或在启动后注册，或者没有任何插件注册过的名字 |
+| `VCS_GIT_FAILED` | git 命令失败 |
+| `VCS_API_FAILED` | GitHub 或 GitLab API 失败或返回了意外的内容；`GitHubApiError` 和 `GitLabApiError` 带有 HTTP `status` |
+| `VCS_REF_UNKNOWN` | 仓库里没有、也无法拉取的 commit 或 ref |
+| `VCS_NOT_READY` | 平台还没准备好这次改动，例如还没有 diff 的 Merge Request；稍后重试 |
+| `RUNTIME_START_FAILED` | agent 运行时无法启动（没有 OpenCode 可执行文件、服务没有起来） |
+| `RUNTIME_FAILED` | 一次模型调用在它链上的每个模型都失败了（`CompletionError`，带有这些尝试花掉的 `usage`） |
+| `RUNTIME_INVALID_OUTPUT` | 模型的回答不符合预期的 schema |
+| `BUDGET_EXHAUSTED` | 达到了花费上限（`SpendLimitReached`，即正在运行的任务被停止的原因） |
+| `INTERNAL` | 不变量被破坏或对象被误用，例如一个 OpenCode 运行时被用于两次运行：ocra 或其调用方的 bug |
+
+子类保留各自的名字，供 `instanceof` 使用：`@open-cr-agent/core` 的 `CompletionError`、`SpendLimitReached`、`AccessDeniedError`、`SarifError` 和 `PluginError`，`@open-cr-agent/vcs-local` 的 `GitError`，平台适配器的 `GitHubApiError` 和 `GitLabApiError`。ocra 不会把令牌或模型密钥写进错误消息，两种运行时在引用模型供应商的回答之前也会把其中的密钥去掉。
+
+这些代码是一份约定，遵循 [0.x 规则](./stability)：次版本可能新增代码，重命名或删除代码时变更日志会说明。CLI 在以退出码 `2` 结束运行时会打印错误代码，例如 `ocra [CONFIG_INVALID]: .ocra/config.json is invalid: …`。
+
 ## PR 与 Merge Request
 
 `githubPlugin`（`@open-cr-agent/vcs-github`）和 `gitlabPlugin`（`@open-cr-agent/vcs-gitlab`）注册 `github` 和 `gitlab` 适配器。它们 `createVcs` 的选项（仓库、编号、令牌的变量名、是否发布）还没有作为库的约定写入文档；仓库里的 `packages/cli/src/review/target.ts` 展示了 CLI 如何构造它们，包括作为 `readTrusted` 传入的可信 base 读取函数。在本页列出它们之前，请把这些形状当作内部实现。

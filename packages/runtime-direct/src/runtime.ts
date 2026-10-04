@@ -10,6 +10,7 @@ import {
   ModelHealth,
   type ModelPrice,
   type ModelTier,
+  OcraError,
   parseModel,
   proxiedFetch,
   RESUME_MESSAGE,
@@ -52,7 +53,7 @@ export class DirectRuntime implements AgentRuntime {
     const chain = this.options.models[spec.modelTier] ?? [];
     const refused = chain.length === 0 ? noModel(spec.modelTier) : this.unreachable(chain);
     if (refused) {
-      yield { type: "error", taskId: spec.taskId, error: refused, retryable: false };
+      yield { type: "error", taskId: spec.taskId, error: refused.message, retryable: false };
       return;
     }
     yield* withFailback({
@@ -80,7 +81,7 @@ export class DirectRuntime implements AgentRuntime {
   async complete(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult> {
     const chain = this.options.models[request.tier] ?? [];
     const refused = chain.length === 0 ? noModel(request.tier) : this.unreachable(chain);
-    if (refused) throw new Error(refused);
+    if (refused) throw refused;
     return completeWithFailback({
       tier: request.tier,
       chain,
@@ -103,18 +104,27 @@ export class DirectRuntime implements AgentRuntime {
   // Why a chain cannot be served, before any request: a provider the
   // configuration does not declare, a model it gives no price, or a key
   // variable that is not set.
-  private unreachable(chain: readonly string[]): string | undefined {
+  private unreachable(chain: readonly string[]): OcraError | undefined {
     for (const model of chain) {
       const { providerID, modelID } = parseModel(model);
       const provider = this.options.providers?.[providerID];
       if (!provider) {
-        return `"${model}" names no provider declared in configuration; the direct runtime reaches only declared OpenAI-compatible endpoints (use the opencode runtime for ${providerID})`;
+        return new OcraError(
+          "CONFIG_INVALID",
+          `"${model}" names no provider declared in configuration; the direct runtime reaches only declared OpenAI-compatible endpoints (use the opencode runtime for ${providerID})`,
+        );
       }
       if (!provider.models[modelID]) {
-        return `"${model}" has no price in the declaration of provider "${providerID}"`;
+        return new OcraError(
+          "CONFIG_INVALID",
+          `"${model}" has no price in the declaration of provider "${providerID}"`,
+        );
       }
       if (provider.apiKeyEnv && !this.options.env[provider.apiKeyEnv]) {
-        return `No API key for provider "${providerID}": set ${provider.apiKeyEnv}`;
+        return new OcraError(
+          "CONFIG_CREDENTIALS_MISSING",
+          `No API key for provider "${providerID}": set ${provider.apiKeyEnv}`,
+        );
       }
     }
     return undefined;
@@ -143,6 +153,9 @@ const NO_CONTEXT = {
   searchCode: async () => [],
 };
 
-function noModel(tier: ModelTier): string {
-  return `No ${tier} model configured (set OCRA_MODEL_${tier.toUpperCase()} or models.${tier})`;
+function noModel(tier: ModelTier): OcraError {
+  return new OcraError(
+    "CONFIG_INVALID",
+    `No ${tier} model configured (set OCRA_MODEL_${tier.toUpperCase()} or models.${tier})`,
+  );
 }

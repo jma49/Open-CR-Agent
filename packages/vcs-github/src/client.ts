@@ -1,3 +1,4 @@
+import { OcraError } from "@open-cr-agent/core";
 import { MAX_ATTEMPTS, retryDecision } from "@open-cr-agent/vcs-platform";
 import { z } from "zod";
 
@@ -43,12 +44,13 @@ export interface CreateReview {
   comments: ReviewComment[];
 }
 
-export class GitHubApiError extends Error {
+export class GitHubApiError extends OcraError {
   constructor(
     readonly status: number,
     message: string,
   ) {
-    super(message);
+    super("VCS_API_FAILED", message);
+    this.name = "GitHubApiError";
   }
 }
 

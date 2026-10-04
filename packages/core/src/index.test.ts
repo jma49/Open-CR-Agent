@@ -20,6 +20,9 @@ describe("the library entry", () => {
       "docsReviewerPlugin",
       "agentsMdReviewerPlugin",
       "sessionJsonlPlugin",
+      "OcraError",
+      "isOcraError",
+      "OCRA_ERROR_CODES",
     ]) {
       expect(core, name).toHaveProperty(name);
     }

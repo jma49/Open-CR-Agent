@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { OcraError } from "../errors.js";
 
 // The part of SARIF 2.1.0 an import reads. Objects are loose: a log carries
 // far more than this, and none of it is trusted beyond what is checked here.
@@ -62,7 +63,12 @@ export type SarifRun = z.infer<typeof sarifRunSchema>;
 export type SarifResult = z.infer<typeof result>;
 export type SarifRule = z.infer<typeof rule>;
 
-export class SarifError extends Error {}
+export class SarifError extends OcraError {
+  constructor(message: string) {
+    super("INPUT_INVALID", message);
+    this.name = "SarifError";
+  }
+}
 
 export function parseSarifLog(text: string): SarifLog {
   let data: unknown;

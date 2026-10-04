@@ -14,6 +14,7 @@ import {
   MAX_AGENT_STEPS,
   ModelHealth,
   type ModelTier,
+  OcraError,
   parseModel,
   RESUME_MESSAGE,
   REVIEW_TOOLS,
@@ -103,7 +104,7 @@ export class OpenCodeRuntime implements AgentRuntime {
 
   async *runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent> {
     if (this.context && this.context !== spec.context) {
-      throw new Error("An OpenCodeRuntime instance serves a single review run");
+      throw new OcraError("INTERNAL", "An OpenCodeRuntime instance serves a single review run");
     }
     this.context = spec.context;
 
@@ -146,7 +147,7 @@ export class OpenCodeRuntime implements AgentRuntime {
 
   async complete(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult> {
     const chain = this.options.models[request.tier] ?? [];
-    if (chain.length === 0) throw new Error(noModel(request.tier));
+    if (chain.length === 0) throw new OcraError("CONFIG_INVALID", noModel(request.tier));
 
     const infra = await this.start();
     return completeWithFailback({
@@ -213,7 +214,7 @@ export class OpenCodeRuntime implements AgentRuntime {
   private async launch(): Promise<Infra> {
     const custom = this.options.providers ?? {};
     const missing = missingCredentials(this.options.env, providersOf(this.options.models), custom);
-    if (missing.length > 0) throw new Error(missing.join("; "));
+    if (missing.length > 0) throw new OcraError("CONFIG_CREDENTIALS_MISSING", missing.join("; "));
     const root = await mkdtemp(join(tmpdir(), "ocra-opencode-"));
     const dirs = {
       config: join(root, "config"),

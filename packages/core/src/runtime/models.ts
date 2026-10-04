@@ -1,3 +1,4 @@
+import { OcraError } from "../errors.js";
 import { MAX_QUOTA_WAIT_MS, QUOTA_RETRIES, type QuotaError } from "./quota.js";
 
 export interface ModelRef {
@@ -8,7 +9,8 @@ export interface ModelRef {
 export function parseModel(model: string): ModelRef {
   const slash = model.indexOf("/");
   if (slash <= 0 || slash === model.length - 1) {
-    throw new Error(
+    throw new OcraError(
+      "CONFIG_INVALID",
       `Model "${model}" must be written as provider/model, for example google/gemini-flash-lite-latest`,
     );
   }

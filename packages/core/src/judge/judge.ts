@@ -7,7 +7,7 @@ import type {
   Severity,
   Verdict,
 } from "../domain.js";
-import { errorMessage, usageSpent } from "../errors.js";
+import { errorMessage, OcraError, usageSpent } from "../errors.js";
 import { parseJsonAnswer } from "../pipeline/helpers.js";
 import { buildJudgePrompt, type JudgeResponse, judgeResponseSchema } from "./prompt.js";
 import { decideVerdict, defaultSummary } from "./verdict.js";
@@ -68,7 +68,8 @@ export async function judgeFindings(
     );
     usage = [answer.usage];
     const parsed = judgeResponseSchema.safeParse(parseJsonAnswer(answer.text));
-    if (!parsed.success) throw new Error("the judge returned an invalid response");
+    if (!parsed.success)
+      throw new OcraError("RUNTIME_INVALID_OUTPUT", "the judge returned an invalid response");
     response = parsed.data;
   } catch (error) {
     const spent = usageSpent(error);

@@ -4,7 +4,7 @@ import type { BundlePolicy } from "../bundle/bundle.js";
 import type { FileGrouper } from "../bundle/grouping.js";
 import type { AgentRuntime, Usage, VcsAdapter } from "../contracts.js";
 import type { Finding, PriorReview, Severity } from "../domain.js";
-import { errorMessage } from "../errors.js";
+import { errorMessage, OcraError } from "../errors.js";
 import { judgeFindings } from "../judge/judge.js";
 import { applyMemory, type MemoryEntry } from "../memory/memory.js";
 import { priorCodePresence } from "../rereview/presence.js";
@@ -93,7 +93,7 @@ export async function review(options: ReviewOptions): Promise<ReviewReport> {
   const timeout = AbortSignal.timeout(options.runTimeoutMs ?? DEFAULTS.runTimeoutMs);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
   const reviewers = options.reviewers ?? [correctnessReviewer];
-  if (reviewers.length === 0) throw new Error("No reviewer is registered");
+  if (reviewers.length === 0) throw new OcraError("CONFIG_INVALID", "No reviewer is registered");
   const runId = options.runId ?? newRunId();
 
   const prior = await loadPriorReview(options.vcs);

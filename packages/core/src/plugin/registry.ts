@@ -1,5 +1,5 @@
 import type { AgentRuntime, VcsAdapter } from "../contracts.js";
-import { errorMessage } from "../errors.js";
+import { errorMessage, OcraError } from "../errors.js";
 import type { ReviewEvent } from "../pipeline/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { RepoRule } from "../rules/repo-rules.js";
@@ -11,7 +11,12 @@ import type {
   VcsFactory,
 } from "./types.js";
 
-export class PluginError extends Error {}
+export class PluginError extends OcraError {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super("PLUGIN_INVALID", message, options);
+    this.name = "PluginError";
+  }
+}
 
 interface Owned<T> {
   owner: string;

@@ -1,13 +1,59 @@
 import type { Usage } from "./contracts.js";
 
+// Codes are a contract (manual: Embedding, Stability): callers branch on the
+// code, never on the message, so a message may be reworded but a code only
+// changes under the 0.x rule for contracts.
+export const OCRA_ERROR_CODES = [
+  // Configuration: .ocra/config.json, rules, memory, review options, models.
+  "CONFIG_INVALID",
+  "CONFIG_CREDENTIALS_MISSING",
+  // Input given on the command line or in a file passed to ocra.
+  "INPUT_USAGE",
+  "INPUT_INVALID",
+  // The access policy refused a path.
+  "ACCESS_DENIED",
+  "PLUGIN_INVALID",
+  // Where the change comes from.
+  "VCS_GIT_FAILED",
+  "VCS_API_FAILED",
+  "VCS_REF_UNKNOWN",
+  "VCS_NOT_READY",
+  // What runs the models.
+  "RUNTIME_START_FAILED",
+  "RUNTIME_FAILED",
+  "RUNTIME_INVALID_OUTPUT",
+  "BUDGET_EXHAUSTED",
+  // A broken invariant or a misused object: a bug, in ocra or in its caller.
+  "INTERNAL",
+] as const;
+
+export type OcraErrorCode = (typeof OCRA_ERROR_CODES)[number];
+
+export class OcraError extends Error {
+  constructor(
+    readonly code: OcraErrorCode,
+    message: string,
+    options?: { cause?: unknown },
+  ) {
+    super(message, options);
+    this.name = "OcraError";
+  }
+}
+
+export function isOcraError(error: unknown, code?: OcraErrorCode): error is OcraError {
+  return error instanceof OcraError && (code === undefined || error.code === code);
+}
+
 // A helper completion that failed on every model has still spent tokens on
 // the attempts; callers record them so reports and spend limits stay true.
-export class CompletionError extends Error {
+export class CompletionError extends OcraError {
   constructor(
     message: string,
     readonly usage: Usage,
+    options?: { cause?: unknown },
   ) {
-    super(message);
+    super("RUNTIME_FAILED", message, options);
+    this.name = "CompletionError";
   }
 }
 

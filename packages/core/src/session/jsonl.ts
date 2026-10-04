@@ -9,6 +9,7 @@ import {
   writeSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
+import { OcraError } from "../errors.js";
 import { serializeOutput, toReportOutput } from "../pipeline/output.js";
 import type { ReviewEvent } from "../pipeline/report.js";
 import { newRunId } from "../pipeline/run-id.js";
@@ -56,7 +57,10 @@ export class JsonlSessionWriter {
 function refuseSymlink(path: string): void {
   try {
     if (lstatSync(path).isSymbolicLink()) {
-      throw new Error(`Refusing to write the session log through the symbolic link ${path}`);
+      throw new OcraError(
+        "ACCESS_DENIED",
+        `Refusing to write the session log through the symbolic link ${path}`,
+      );
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;

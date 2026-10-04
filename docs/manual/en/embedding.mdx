@@ -100,6 +100,34 @@ A `ReviewReport`: the change, risk tier, verdict and summary, coverage per file,
 
 Events (`onEvent`) are how progress, the session log and the terminal output are produced. Their shapes are not a contract: a listener should tolerate new event types and fields.
 
+## Errors
+
+`review()` rejects only when the run cannot start: no reviewers, an invalid `.ocra/rules.json` or `.ocra/memory.json`, or a change the VCS adapter cannot read. Once tasks run, a failed task, a failed helper call, a model that is out of quota and the spend limit are recorded in the report (task outcomes, coverage, warnings), not thrown; read them with `coverageGaps(report)` as above.
+
+What ocra's packages throw is an `OcraError` (or one of its subclasses) with a `code`; `isOcraError(error, code?)` tells you so, and `OCRA_ERROR_CODES` lists the codes. Where an error has an underlying one (a JSON parse error, a failed read), it is the `cause`. Branch on the code, never on the message: messages are for people and may be reworded. A plugin's adapter or runtime may throw errors of its own, so a caller should handle errors that are not `OcraError` too.
+
+| Code | Meaning |
+|---|---|
+| `CONFIG_INVALID` | Configuration that cannot be used: options, `.ocra/config.json` and what it extends, `.ocra/rules.json`, `.ocra/memory.json`, a model name, no reviewer, no model for a tier |
+| `CONFIG_CREDENTIALS_MISSING` | A token or model key the run needs is not set |
+| `INPUT_USAGE` | A command line ocra cannot run (the CLI's usage errors) |
+| `INPUT_INVALID` | Input given to ocra that it cannot read, such as a SARIF log or a list of commit ids |
+| `ACCESS_DENIED` | The access policy refused a path: a secret, git internals, a symbolic link where ocra writes |
+| `PLUGIN_INVALID` | A plugin that cannot be loaded or registers something twice or after start, or a name no plugin registered |
+| `VCS_GIT_FAILED` | A git command failed |
+| `VCS_API_FAILED` | The GitHub or GitLab API failed or answered something unexpected; `GitHubApiError` and `GitLabApiError` carry the HTTP `status` |
+| `VCS_REF_UNKNOWN` | A commit or ref that is not in the repository and could not be fetched |
+| `VCS_NOT_READY` | The platform has not prepared the change yet, such as a merge request without a diff; try again shortly |
+| `RUNTIME_START_FAILED` | The agent runtime could not start (no OpenCode binary, a server that did not come up) |
+| `RUNTIME_FAILED` | A model call failed on every model of its chain (`CompletionError`, which carries the `usage` the attempts spent) |
+| `RUNTIME_INVALID_OUTPUT` | A model answered something that does not match the expected schema |
+| `BUDGET_EXHAUSTED` | The spend limit was reached (`SpendLimitReached`, the reason running tasks were stopped) |
+| `INTERNAL` | A broken invariant or a misused object, such as one OpenCode runtime used for two runs: a bug in ocra or in its caller |
+
+The subclasses keep their names for `instanceof`: `CompletionError`, `SpendLimitReached`, `AccessDeniedError`, `SarifError` and `PluginError` from `@open-cr-agent/core`, `GitError` from `@open-cr-agent/vcs-local`, `GitHubApiError` and `GitLabApiError` from the platform adapters. ocra puts no token or model key in an error message, and both runtimes redact them from what a model provider answers before quoting it.
+
+The codes are a contract under the [0.x rule](./stability): a minor release may add a code, and the changelog says when one is renamed or removed. The CLI prints the code of an error that ends a run with exit `2`, as in `ocra [CONFIG_INVALID]: .ocra/config.json is invalid: …`.
+
 ## Pull requests and merge requests
 
 `githubPlugin` (`@open-cr-agent/vcs-github`) and `gitlabPlugin` (`@open-cr-agent/vcs-gitlab`) register the `github` and `gitlab` adapters. Their `createVcs` options (the repository, the number, the token's variable, whether to publish) are not documented as a library contract yet; `packages/cli/src/review/target.ts` in the repository shows how the CLI builds them, including the trusted-base reader it passes as `readTrusted`. Treat those shapes as internal until this page lists them.

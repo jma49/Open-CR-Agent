@@ -5,6 +5,7 @@ import {
   type ChangeRequest,
   type CodeMatch,
   type FileDiff,
+  OcraError,
   type PriorReview,
   parseUnifiedDiff,
   type VcsAdapter,
@@ -214,7 +215,8 @@ async function mergeBase(root: string, from: string, to: string): Promise<string
     return (await git(["merge-base", from, to], { cwd: root })).trim();
   } catch (error) {
     if (error instanceof GitError && (await isShallow(root))) {
-      throw new Error(
+      throw new OcraError(
+        "VCS_GIT_FAILED",
         `Cannot find where ${from.slice(0, 7)} and ${to.slice(0, 7)} diverge: ${SHALLOW_HINT}`,
       );
     }
@@ -271,7 +273,7 @@ function request(
 
 async function verifyCommit(root: string, ref: string): Promise<string> {
   const sha = await tryVerifyCommit(root, ref);
-  if (sha === undefined) throw new Error(`Unknown commit: ${ref}`);
+  if (sha === undefined) throw new OcraError("VCS_REF_UNKNOWN", `Unknown commit: ${ref}`);
   return sha;
 }
 

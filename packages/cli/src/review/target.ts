@@ -1,5 +1,10 @@
 import { dirname } from "node:path";
-import type { OcraPlugin, PluginRegistry, VcsAdapter } from "@open-cr-agent/core";
+import {
+  OcraError,
+  type OcraPlugin,
+  type PluginRegistry,
+  type VcsAdapter,
+} from "@open-cr-agent/core";
 import { DEFAULT_BOT_LOGIN, GitHubApi } from "@open-cr-agent/vcs-github";
 import { GitLabApi } from "@open-cr-agent/vcs-gitlab";
 import { ensureCommits, filesChangedSince, LocalGitAdapter } from "@open-cr-agent/vcs-local";
@@ -72,7 +77,12 @@ export async function pullRequestTarget(
   configFile?: string,
 ): Promise<ReviewTarget> {
   const token = env.GITHUB_TOKEN ?? env.GH_TOKEN;
-  if (!token) throw new ConfigError("--pr needs a GitHub token in GITHUB_TOKEN or GH_TOKEN");
+  if (!token) {
+    throw new OcraError(
+      "CONFIG_CREDENTIALS_MISSING",
+      "--pr needs a GitHub token in GITHUB_TOKEN or GH_TOKEN",
+    );
+  }
   const [owner = "", repo = ""] = (pr.repo ?? (await repositoryName(root, env))).split("/");
   const apiOptions = { token, ...(env.GITHUB_API_URL ? { baseUrl: env.GITHUB_API_URL } : {}) };
   const api = new GitHubApi(
@@ -141,7 +151,8 @@ export async function mergeRequestTarget(
 ): Promise<ReviewTarget> {
   const token = env.GITLAB_TOKEN;
   if (!token) {
-    throw new ConfigError(
+    throw new OcraError(
+      "CONFIG_CREDENTIALS_MISSING",
       "--mr needs a GitLab token in GITLAB_TOKEN: a project access token with the api scope and the Developer role (CI_JOB_TOKEN cannot post comments)",
     );
   }
@@ -155,7 +166,12 @@ export async function mergeRequestTarget(
   });
   const merge = await api.getMergeRequest(mr.iid);
   const refs = merge.diff_refs;
-  if (!refs) throw new ConfigError(`merge request !${mr.iid} has no diff yet; try again shortly`);
+  if (!refs) {
+    throw new OcraError(
+      "VCS_NOT_READY",
+      `merge request !${mr.iid} has no diff yet; try again shortly`,
+    );
+  }
   await ensureCommits(
     root,
     [refs.start_sha, refs.head_sha],

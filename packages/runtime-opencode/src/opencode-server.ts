@@ -1,6 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:net";
+import { OcraError } from "@open-cr-agent/core";
 
 export interface OpencodeServer {
   url: string;
@@ -55,7 +56,12 @@ function waitForListening(child: ChildProcess, timeoutMs: number): Promise<strin
     const fail = (message: string) => {
       clearTimeout(timer);
       void stop(child);
-      reject(new Error(`${message}${output.trim() ? `\n${output.trim()}` : ""}`));
+      reject(
+        new OcraError(
+          "RUNTIME_START_FAILED",
+          `${message}${output.trim() ? `\n${output.trim()}` : ""}`,
+        ),
+      );
     };
     const timer = setTimeout(() => fail(`OpenCode did not start within ${timeoutMs}ms`), timeoutMs);
     // Only the tail matters for a startup error message.

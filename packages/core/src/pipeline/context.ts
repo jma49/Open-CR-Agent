@@ -1,9 +1,15 @@
 import { posix } from "node:path";
 import type { CodeMatch, ReviewContext, VcsAdapter } from "../contracts.js";
 import type { FileDiff } from "../domain.js";
+import { OcraError } from "../errors.js";
 import { isSecretPath } from "../select/select.js";
 
-export class AccessDeniedError extends Error {}
+export class AccessDeniedError extends OcraError {
+  constructor(message: string) {
+    super("ACCESS_DENIED", message);
+    this.name = "AccessDeniedError";
+  }
+}
 
 const WINDOWS = process.platform === "win32";
 

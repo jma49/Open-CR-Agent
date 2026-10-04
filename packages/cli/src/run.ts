@@ -1,6 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
-import { errorMessage } from "@open-cr-agent/core";
+import { errorMessage, isOcraError } from "@open-cr-agent/core";
 import { memoryCommand } from "./memory.js";
 import { metricsCommand } from "./metrics.js";
 import { parseReviewArgs, REVIEW_USAGE, UsageError } from "./review/args.js";
@@ -60,7 +60,7 @@ export async function run(
         ? await memoryCommand(rest, out, deps.cwd)
         : await metricsCommand(rest, out, deps.cwd);
     } catch (error) {
-      err.write(`ocra: ${forTerminal(errorMessage(error))}\n`);
+      err.write(failure(error));
       return EXIT.error;
     }
   }
@@ -100,8 +100,14 @@ async function review(argv: string[], out: Output, err: Output, deps: ReviewDeps
     if (error instanceof UsageError) {
       err.write(`${error.message}\n\n${REVIEW_USAGE}`);
     } else {
-      err.write(`ocra: ${forTerminal(errorMessage(error))}\n`);
+      err.write(failure(error));
     }
     return EXIT.error;
   }
+}
+
+// The code is what a script may match on; the message is for people.
+function failure(error: unknown): string {
+  const code = isOcraError(error) ? ` [${error.code}]` : "";
+  return `ocra${code}: ${forTerminal(errorMessage(error))}\n`;
 }

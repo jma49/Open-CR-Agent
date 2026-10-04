@@ -2,6 +2,7 @@ import {
   type AttemptOutcome,
   emptyUsage,
   errorMessage,
+  OcraError,
   parseModel,
   type Usage,
 } from "@open-cr-agent/core";
@@ -73,7 +74,10 @@ export async function promptSession(
 ): Promise<AttemptOutcome> {
   const created = await session.create({ title: input.title }, { signal });
   if (!created.data) {
-    throw new Error(`OpenCode could not create a session: ${JSON.stringify(created.error)}`);
+    throw new OcraError(
+      "RUNTIME_FAILED",
+      `OpenCode could not create a session: ${JSON.stringify(created.error)}`,
+    );
   }
   const sessionID = created.data.id;
   const stop = () => void session.abort({ sessionID }).catch(() => {});

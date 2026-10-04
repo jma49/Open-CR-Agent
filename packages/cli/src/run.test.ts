@@ -180,13 +180,13 @@ describe("ocra review", () => {
 
     const git = capture();
     expect(await run(["review", "--commit", "nope"], capture(), git, deps(cwd, critical))).toBe(2);
-    expect(git.text()).toBe("ocra: Unknown commit: nope\n");
+    expect(git.text()).toBe("ocra [VCS_REF_UNKNOWN]: Unknown commit: nope\n");
 
     mkdirSync(join(cwd, ".ocra"), { recursive: true });
     writeFileSync(join(cwd, ".ocra", "config.json"), '{"concurrency": "high"}');
     const config = capture();
     expect(await run(["review"], capture(), config, deps(cwd, critical))).toBe(2);
-    expect(config.text()).toContain("ocra: .ocra/config.json is invalid");
+    expect(config.text()).toContain("ocra [CONFIG_INVALID]: .ocra/config.json is invalid");
   });
 
   it("loads external plugins from the repository config", async () => {

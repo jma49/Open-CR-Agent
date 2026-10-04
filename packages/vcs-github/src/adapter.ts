@@ -1,4 +1,4 @@
-import { errorMessage, type ReviewReport } from "@open-cr-agent/core";
+import { errorMessage, OcraError, type ReviewReport } from "@open-cr-agent/core";
 import {
   type Bot,
   type CodeSource,
@@ -92,7 +92,8 @@ class GitHubPlatform implements ReviewPlatform {
   // GitHub keeps who edited a comment in GraphQL only, by node id.
   async editor(comment: PlatformComment): Promise<string | undefined> {
     const nodeId = this.listed.get(comment.id)?.node_id;
-    if (!nodeId) throw new Error("the comment has no node id to look up its editor");
+    if (!nodeId)
+      throw new OcraError("VCS_API_FAILED", "the comment has no node id to look up its editor");
     return this.options.api.commentEditor(nodeId);
   }
 

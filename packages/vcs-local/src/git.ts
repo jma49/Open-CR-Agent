@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { OcraError } from "@open-cr-agent/core";
 
 export interface GitOptions {
   cwd: string;
@@ -15,13 +16,17 @@ export interface GitOptions {
 // of a huge repository should fail rather than hang the review.
 export const GIT_TIMEOUT_MS = 10 * 60_000;
 
-export class GitError extends Error {
+export class GitError extends OcraError {
   constructor(
     readonly args: readonly string[],
     readonly exitCode: number | undefined,
     readonly stderr: string,
   ) {
-    super(`git ${args.join(" ")} failed (exit ${exitCode ?? "unknown"}): ${stderr.trim()}`);
+    super(
+      "VCS_GIT_FAILED",
+      `git ${args.join(" ")} failed (exit ${exitCode ?? "unknown"}): ${stderr.trim()}`,
+    );
+    this.name = "GitError";
   }
 }
 

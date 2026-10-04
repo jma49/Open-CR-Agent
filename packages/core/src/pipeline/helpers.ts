@@ -1,6 +1,6 @@
 import type { FileGrouper } from "../bundle/grouping.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
-import { usageSpent } from "../errors.js";
+import { OcraError, usageSpent } from "../errors.js";
 
 export const HELPER_TIMEOUT_MS = 60_000;
 
@@ -34,7 +34,7 @@ export function parseJsonAnswer(text: string): unknown {
   const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(text)?.[1];
   const candidate = (fenced ?? text).trim();
   const start = candidate.search(/[[{]/);
-  if (start < 0) throw new Error("the model answered without JSON");
+  if (start < 0) throw new OcraError("RUNTIME_INVALID_OUTPUT", "the model answered without JSON");
   const end = Math.max(candidate.lastIndexOf("]"), candidate.lastIndexOf("}"));
   return JSON.parse(candidate.slice(start, end + 1));
 }

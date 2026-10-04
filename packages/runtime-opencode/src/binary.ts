@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { closeSync, existsSync, openSync, readFileSync, readSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
-import type { Env } from "@open-cr-agent/core";
+import { type Env, OcraError } from "@open-cr-agent/core";
 
 const PLATFORMS: Record<string, string> = { darwin: "darwin", linux: "linux", win32: "windows" };
 
@@ -42,7 +42,8 @@ export function resolveOpencodeBinary(
   // The script names the binary opencode.exe on every platform.
   const placed = join(dirname(opencodePackage), "bin", "opencode.exe");
   if (isNativeExecutable(placed)) return placed;
-  throw new Error(
+  throw new OcraError(
+    "RUNTIME_START_FAILED",
     `No OpenCode binary for ${platform}-${process.arch}: install without --omit=optional, or set OCRA_OPENCODE_BIN`,
   );
 }
