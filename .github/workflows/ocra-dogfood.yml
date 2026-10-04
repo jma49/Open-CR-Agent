@@ -128,6 +128,9 @@ jobs:
               echo "**No review:** $reason."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+          # The summary is not in the log; a skipped review says why there too,
+          # so a green check that posted nothing explains itself.
+          if [ "$allowed" != true ]; then echo "::notice title=No ocra review::$reason"; fi
 
       # The reservation goes into the ledger before anything can be spent; if
       # it cannot be recorded, the job stops here.
