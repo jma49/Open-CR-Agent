@@ -1,0 +1,224 @@
+# Golden evaluation on what is left of OpenRouter's free requests. The
+# account has 1000 a UTC day, shared by everything that uses the key: the
+# dogfood reviews come first, then the nightly live smoke, and this job takes
+# the rest late in the day. One cycle is `ocra-eval run --dataset golden
+# --tier smoke` under the label free-smoke-<n>; its run directory is kept in
+# the Actions cache from day to day, so a cycle the quota stops resumes the
+# next day (--retry-failed) and a new one starts once every case is reviewed.
+# It stops with HEADROOM requests left for later dogfood reviews. Off unless
+# the repository variable OCRA_EVAL_FREE is "on"; it needs the repository
+# secret OPENROUTER_API_KEY.
+name: free golden eval
+
+on:
+  schedule:
+    - cron: "0 20 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eval-free
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    if: vars.OCRA_EVAL_FREE == 'on'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      # The free model, in this one place; swap it when the preview ends.
+      MODEL: stealth/space-bunny-alpha
+      EVAL_DIR: .ocra/eval
+      # Requests left for the rest of the day when the eval stops, and the
+      # fewest worth starting with (a golden case takes 30 to 210).
+      HEADROOM: "100"
+      START_MIN: "200"
+      # ocra-eval's own test for a quota failure (QUOTA_ERROR in
+      # packages/eval/src/runner.ts): a case it matches is retried, so only
+      # that keeps a cycle open.
+      QUOTA_RE: "out of quota for this run|exceeded your current quota|quota exceeded|resource[_ ]exhausted|rate limit[^)]*per[- ]day"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The free requests left today, from GET /key: not a model request, so
+      # asking costs none. Empty when OpenRouter does not say.
+      - name: Write the helpers
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/free-left.sh" <<'SH'
+          curl -fsS --max-time 20 -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+            https://openrouter.ai/api/v1/key | jq -r '.data.free_model_daily_requests.remaining // empty' || true
+          SH
+          # Prints "<open> <total>": cases of the run directory $1 still to
+          # review (no result, skipped, or lost to the quota) and all cases.
+          cat > "$RUNNER_TEMP/cycle-state.sh" <<'SH'
+          set -euo pipefail
+          dir=$1
+          if [ ! -f "$dir/run.json" ]; then echo "1 0"; exit 0; fi
+          open=0 total=0
+          while read -r id; do
+            if ! [[ "$id" =~ ^[A-Za-z0-9_.@-]+$ ]] || [[ "$id" == .* ]]; then echo "bad id in run.json" >&2; exit 1; fi
+            total=$((total + 1))
+            file="$dir/instances/$id.json"
+            if [ ! -f "$file" ] || jq -e --arg re "$QUOTA_RE" \
+              '(.status | startswith("skipped")) or any(.tasks[]?; (.error // "") | test($re; "i"))' "$file" >/dev/null; then
+              open=$((open + 1))
+            fi
+          done < <(jq -r '.ids[]' "$dir/run.json")
+          echo "$open $total"
+          SH
+
+      - id: probe
+        shell: bash
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$OPENROUTER_API_KEY" ]; then
+            echo "::error::OPENROUTER_API_KEY is not set; add it as a repository secret or switch OCRA_EVAL_FREE off"
+            exit 1
+          fi
+          left=$(bash "$RUNNER_TEMP/free-left.sh")
+          go=true
+          if [[ "$left" =~ ^[0-9]+$ ]] && [ "$left" -lt "$START_MIN" ]; then
+            go=false
+            echo "::notice title=No free eval today::$left free request(s) left, fewer than $START_MIN"
+          fi
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+          echo "Free requests left at the start: ${left:-not reported}." >> "$GITHUB_STEP_SUMMARY"
+
+      - if: steps.probe.outputs.go == 'true'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .ocra/eval
+          key: eval-free-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: eval-free-
+
+      # The cycle in progress, or the next one once every case of it is
+      # reviewed. A finished cycle's directory was uploaded by the run that
+      # finished it, so the cache drops it.
+      - id: cycle
+        if: steps.probe.outputs.go == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$EVAL_DIR"
+          n=$(cat "$EVAL_DIR/free-cycle" 2>/dev/null || echo 1)
+          [[ "$n" =~ ^[1-9][0-9]*$ ]] || n=1
+          read -r open total < <(bash "$RUNNER_TEMP/cycle-state.sh" "$EVAL_DIR/free-smoke-$n")
+          if [ "$open" -eq 0 ]; then
+            rm -rf -- "${EVAL_DIR:?}/free-smoke-$n"
+            n=$((n + 1))
+          fi
+          echo "$n" > "$EVAL_DIR/free-cycle"
+          echo "label=free-smoke-$n" >> "$GITHUB_OUTPUT"
+          if [ "$open" -gt 0 ] && [ "$total" -gt 0 ]; then
+            echo "Cycle free-smoke-$n continues: $open of $total case(s) open." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Cycle free-smoke-$n starts." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - if: steps.probe.outputs.go == 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - if: steps.probe.outputs.go == 'true'
+        run: npm ci
+      - if: steps.probe.outputs.go == 'true'
+        run: npm run build
+
+      # As in nightly-live.yml: the configuration lives outside the reviewed
+      # trees, and ocra-eval reviews with --no-repo-config.
+      - name: Write the configuration
+        if: steps.probe.outputs.go == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -n --arg model "$MODEL" '{
+            runtime: "direct",
+            models: { top: ["router/\($model)"], standard: ["router/\($model)"], light: ["router/\($model)"] },
+            providers: {
+              router: {
+                type: "openai-compatible",
+                baseUrl: "https://openrouter.ai/api/v1",
+                apiKeyEnv: "OPENROUTER_API_KEY",
+                models: { ($model): { input: 0, output: 0 } }
+              }
+            }
+          }' > "$RUNNER_TEMP/ocra-free.json"
+
+      # ocra-eval stops by itself when the quota refuses a case. To leave
+      # HEADROOM requests for the rest of the day, a watcher asks GET /key
+      # every 30 seconds and stops the eval's process group below it; the
+      # case in progress then has no result and runs again next time.
+      - id: eval
+        if: steps.probe.outputs.go == 'true'
+        shell: bash
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          JUDGE_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          JUDGE_BASE_URL: https://openrouter.ai/api/v1
+          LABEL: ${{ steps.cycle.outputs.label }}
+        run: |
+          set -uo pipefail
+          export JUDGE_MODEL="$MODEL"
+          setsid node packages/eval/dist/main.js run --dataset golden --tier smoke \
+            --label "$LABEL" --out "$EVAL_DIR" --retry-failed \
+            --config "$RUNNER_TEMP/ocra-free.json" &
+          pid=$!
+          stopped=""
+          while kill -0 "$pid" 2>/dev/null; do
+            sleep 30
+            left=$(bash "$RUNNER_TEMP/free-left.sh")
+            if [[ "$left" =~ ^[0-9]+$ ]] && [ "$left" -lt "$HEADROOM" ]; then
+              stopped=$left
+              kill -TERM -- "-$pid" 2>/dev/null
+              break
+            fi
+          done
+          wait "$pid"
+          code=$?
+          if [ -n "$stopped" ]; then
+            echo "::notice title=Free eval paused::stopped with $stopped free request(s) left; the cycle resumes on the next run"
+            echo "Stopped with $stopped free request(s) left." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          exit "$code"
+
+      - id: after
+        if: always() && steps.cycle.outputs.label != ''
+        shell: bash
+        env:
+          LABEL: ${{ steps.cycle.outputs.label }}
+        run: |
+          set -euo pipefail
+          dir="$EVAL_DIR/$LABEL"
+          read -r open total < <(bash "$RUNNER_TEMP/cycle-state.sh" "$dir")
+          {
+            echo
+            echo "### $LABEL"
+            echo
+            if [ "$open" -eq 0 ]; then echo "Cycle complete: $total case(s)."; else echo "$open of $total case(s) still open."; fi
+            echo
+            if [ -f "$dir/summary.md" ]; then cat "$dir/summary.md"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "exists=$([ -d "$dir" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - if: always() && steps.after.outputs.exists == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.cycle.outputs.label }}-${{ github.run_id }}
+          path: ${{ env.EVAL_DIR }}/${{ steps.cycle.outputs.label }}
+          retention-days: 90
+          if-no-files-found: warn
+
+      - if: always() && steps.cycle.outputs.label != ''
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .ocra/eval
+          key: eval-free-${{ github.run_id }}-${{ github.run_attempt }}
