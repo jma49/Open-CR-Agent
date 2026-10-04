@@ -1,6 +1,7 @@
 import {
   coverageGaps,
   type Finding,
+  type PriorFinding,
   type ReviewReport,
   type Severity,
   type Verification,
@@ -128,10 +129,29 @@ export function renderSummary({
   text,
   unattributed = 0,
 }: SummaryInput): string {
+  const lines = [
+    ...verdictSection(report, text),
+    ...scopeNote(report),
+    ...incompleteNotes(report, text),
+    ...unattributedNote(unattributed),
+    ...outsideDiff(report.findings, commented),
+    ...memoryNotes(report.remembered),
+    ...rereviewSections(report.rereview),
+    ...coverageAndCost(report),
+  ];
+  const markdown = lines.join("\n");
+  const footer = `\n\n${writeState(state)}`;
+  const room = MAX_SUMMARY_CHARS - footer.length;
+  return (
+    (markdown.length > room ? `${markdown.slice(0, room - 40)}\n\n…(truncated)` : markdown) + footer
+  );
+}
+
+function verdictSection(report: ReviewReport, text: PlatformText): string[] {
   const counts = (["critical", "warning", "suggestion"] as const)
     .map((s) => `${report.findings.filter((f) => f.severity === s).length} ${s}`)
     .join(", ");
-  const lines = [
+  return [
     SUMMARY_MARKER,
     `## ocra review · ${headline(report)}`,
     "",
@@ -140,11 +160,19 @@ export function renderSummary({
     "",
     `**${report.findings.length} finding(s)** (${counts}) · risk tier \`${report.tier}\``,
   ];
+}
+
+function scopeNote(report: ReviewReport): string[] {
   if (report.scope?.mode === "incremental") {
-    lines.push("", `Reviewed only what changed since ${codeSpan(report.scope.since.slice(0, 7))}.`);
-  } else if (report.scope) {
-    lines.push("", `Reviewed every file again: ${safeMarkdown(report.scope.reason)}.`);
+    return ["", `Reviewed only what changed since ${codeSpan(report.scope.since.slice(0, 7))}.`];
   }
+  if (report.scope) return ["", `Reviewed every file again: ${safeMarkdown(report.scope.reason)}.`];
+  return [];
+}
+
+// Unverified criticals that cap the verdict, and what the run did not check.
+function incompleteNotes(report: ReviewReport, text: PlatformText): string[] {
+  const lines: string[] = [];
   // Only true while no confirmed critical blocks, and low-confidence
   // findings do not count at all.
   const unverified =
@@ -175,25 +203,34 @@ export function renderSummary({
       `**Incomplete:** ${notReviewed} selected file(s) were not reviewed${limit}. They are listed under Coverage and cost, and the next review of this ${text.changeRequest} includes them.`,
     );
   }
+  return lines;
+}
 
-  if (unattributed > 0) {
-    lines.push(
-      "",
-      `${unattributed} resolved thread(s) of ocra's did not dismiss their finding: nothing says who resolved them, as when a push resolves outdated threads. To dismiss a finding, answer its thread with \`/ocra dismiss\` or "won't fix".`,
-    );
-  }
+function unattributedNote(unattributed: number): string[] {
+  if (unattributed <= 0) return [];
+  return [
+    "",
+    `${unattributed} resolved thread(s) of ocra's did not dismiss their finding: nothing says who resolved them, as when a push resolves outdated threads. To dismiss a finding, answer its thread with \`/ocra dismiss\` or "won't fix".`,
+  ];
+}
 
-  const inSummary = report.findings.filter((f) => !commented.has(f.fingerprint));
-  if (inSummary.length > 0) {
-    lines.push("", "### Findings outside the diff");
-    for (const f of inSummary) {
-      lines.push(
+function outsideDiff(findings: readonly Finding[], commented: ReadonlySet<string>): string[] {
+  const inSummary = findings.filter((f) => !commented.has(f.fingerprint));
+  if (inSummary.length === 0) return [];
+  return [
+    "",
+    "### Findings outside the diff",
+    ...inSummary.map(
+      (f) =>
         `- ${ICON[f.severity]} ${location(f)} **${safeMarkdown(f.title)}** _(${verification(f)}${f.lowConfidence ? ", low confidence" : ""})_: ${safeMarkdown(f.body.replaceAll("\n", " "))}`,
-      );
-    }
-  }
-  const fromRepository = report.remembered.filter((e) => e.source === "repository").length;
-  const fromAccount = report.remembered.length - fromRepository;
+    ),
+  ];
+}
+
+function memoryNotes(remembered: ReviewReport["remembered"]): string[] {
+  const lines: string[] = [];
+  const fromRepository = remembered.filter((e) => e.source === "repository").length;
+  const fromAccount = remembered.length - fromRepository;
   if (fromRepository > 0) {
     lines.push(
       "",
@@ -208,75 +245,73 @@ export function renderSummary({
       `${fromAccount} finding(s) matched the reviewing account's ocra Cloud memory and are not repeated.`,
     );
   }
-  const rereview = report.rereview;
-  if (rereview && rereview.fixed.length > 0) {
-    lines.push("", "### Fixed since the last review");
-    for (const f of rereview.fixed)
-      lines.push(`- ~~${safeMarkdown(f.title)}~~ ${codeSpan(f.file)}`);
-  }
-  if (rereview && rereview.notReproduced.length > 0) {
-    lines.push(
-      "",
-      "### Not reported this time, code unchanged",
-      "",
-      "Still open and counted in the verdict until the code changes or a reviewer dismisses them.",
-      "",
-    );
-    for (const f of rereview.notReproduced)
-      lines.push(
-        `- ${ICON[f.severity]} ${safeMarkdown(f.title)} ${codeSpan(f.file)} _(${verification(f)})_`,
-      );
-  }
-  if (rereview && rereview.unchanged.length > 0) {
-    lines.push(
-      "",
-      "### Still open in unchanged files",
-      "",
-      "Reported earlier in files not changed since; they count in the verdict.",
-      "",
-    );
-    for (const f of rereview.unchanged)
-      lines.push(
-        `- ${ICON[f.severity]} ${safeMarkdown(f.title)} ${codeSpan(f.file)} _(${verification(f)})_`,
-      );
-  }
-  if (rereview && rereview.dismissed.length > 0) {
-    lines.push("", "### Dismissed by reviewers");
-    for (const f of rereview.dismissed)
-      lines.push(`- ${safeMarkdown(f.title)} ${codeSpan(f.file)}`);
-  }
-  if (rereview && rereview.notRechecked.length > 0) {
-    lines.push(
-      "",
-      "### Not re-checked this time",
-      "",
-      "Their files were not reviewed in this run; they stay open and count in the verdict.",
-      "",
-    );
-    for (const f of rereview.notRechecked)
-      lines.push(
-        `- ${ICON[f.severity]} ${safeMarkdown(f.title)} ${codeSpan(f.file)} _(${verification(f)})_`,
-      );
-  }
+  return lines;
+}
 
+function rereviewSections(rereview: ReviewReport["rereview"]): string[] {
+  if (!rereview) return [];
+  return [
+    ...(rereview.fixed.length > 0
+      ? [
+          "",
+          "### Fixed since the last review",
+          ...rereview.fixed.map((f) => `- ~~${safeMarkdown(f.title)}~~ ${codeSpan(f.file)}`),
+        ]
+      : []),
+    ...openList(
+      "Not reported this time, code unchanged",
+      "Still open and counted in the verdict until the code changes or a reviewer dismisses them.",
+      rereview.notReproduced,
+    ),
+    ...openList(
+      "Still open in unchanged files",
+      "Reported earlier in files not changed since; they count in the verdict.",
+      rereview.unchanged,
+    ),
+    ...(rereview.dismissed.length > 0
+      ? [
+          "",
+          "### Dismissed by reviewers",
+          ...rereview.dismissed.map((f) => `- ${safeMarkdown(f.title)} ${codeSpan(f.file)}`),
+        ]
+      : []),
+    ...openList(
+      "Not re-checked this time",
+      "Their files were not reviewed in this run; they stay open and count in the verdict.",
+      rereview.notRechecked,
+    ),
+  ];
+}
+
+// Earlier findings still open, under a heading that says why.
+function openList(title: string, intro: string, findings: readonly PriorFinding[]): string[] {
+  if (findings.length === 0) return [];
+  return [
+    "",
+    `### ${title}`,
+    "",
+    intro,
+    "",
+    ...findings.map(
+      (f) =>
+        `- ${ICON[f.severity]} ${safeMarkdown(f.title)} ${codeSpan(f.file)} _(${verification(f)})_`,
+    ),
+  ];
+}
+
+function coverageAndCost(report: ReviewReport): string[] {
   const failed = report.coverage.filter((c) => c.status === "failed" || c.status === "unreviewed");
+  const count = (status: string) => report.coverage.filter((c) => c.status === status).length;
   const { costUsd, inputTokens, outputTokens } = report.usage;
-  lines.push(
+  return [
     "",
     "_The verdict is advice from language models that read the change itself, and can be swayed by text in it. Do not use it as a security gate._",
     "",
     "<details><summary>Coverage and cost</summary>",
     "",
-    `${report.coverage.filter((c) => c.status === "reviewed").length} reviewed · ${report.coverage.filter((c) => c.status === "unchanged").length} unchanged since the last review · ${failed.length} not reviewed · ${report.coverage.filter((c) => c.status === "excluded").length} excluded · ${inputTokens} in / ${outputTokens} out tokens · $${costUsd.toFixed(4)}${spendLimitNote(report)} · run ${codeSpan(report.runId)}`,
+    `${count("reviewed")} reviewed · ${count("unchanged")} unchanged since the last review · ${failed.length} not reviewed · ${count("excluded")} excluded · ${inputTokens} in / ${outputTokens} out tokens · $${costUsd.toFixed(4)}${spendLimitNote(report)} · run ${codeSpan(report.runId)}`,
     ...failed.map((c) => `- not reviewed: ${codeSpan(c.path)}`),
     "",
     "</details>",
-  );
-
-  const markdown = lines.join("\n");
-  const footer = `\n\n${writeState(state)}`;
-  const room = MAX_SUMMARY_CHARS - footer.length;
-  return (
-    (markdown.length > room ? `${markdown.slice(0, room - 40)}\n\n…(truncated)` : markdown) + footer
-  );
+  ];
 }
