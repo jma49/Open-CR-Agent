@@ -126,10 +126,10 @@ The repository is public: anything committed stays readable in history even afte
 
 ## Agile practices
 
-- Work is planned as milestones (M1–M4 in the architecture doc) broken into small issues, each deliverable in one PR.
+- Work is planned as milestones in `docs/roadmap.md`, broken into small issues, each deliverable in one PR. When a milestone item lands, update the roadmap's readiness checklist and the README's milestone table in the same PR.
 - Every PR keeps `npm run verify` green; CI enforces it.
 - New behavior ships with tests. Review-quality changes (prompts, rules, stages) must be measured with the eval package before merge.
 - Record significant technical decisions as a new ADR in `docs/adr/` instead of rewriting old ones. Record spike results in `docs/spikes/`.
 - At the start of a session, read `docs/handoff.md`, and `.local/` if it exists: it is git-ignored and holds notes about the maintainer's machine and agent tooling (shell, keys, connectors) that do not belong in public docs. Put such notes there, not in `docs/`.
-- **Update `docs/handoff.md` at the end of every task or batch of work, before reporting it done, without being asked** (current state, environment notes, open questions, next steps; the site's state included). The maintainer should never have to remind you. Add anything that cost real time to understand to `docs/pitfalls.md`.
+- **Update `docs/handoff.md` at the end of every task or batch of work, before reporting it done, without being asked** (current state, maintainer actions, next steps, open questions; the site's state included). The maintainer should never have to remind you. **Rewrite, do not append:** replace what changed, delete what is done or no longer true, keep one list of next steps, and keep the file under about 150 lines; history belongs in git, `CHANGELOG.md` and `docs/audits/`. Add anything that cost real time to understand to `docs/pitfalls.md`.
 - Periodic self-audits (architecture, engineering including security and performance, product) go in `docs/audits/<date>-<topic>.md`; their actionable findings become issues.

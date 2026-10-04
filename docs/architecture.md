@@ -138,7 +138,7 @@ interface OcraPlugin {
 // ConfigureContext: registerVcs, registerRuntime, registerReviewer, registerRules, registerTool, onEvent
 ```
 
-The pipeline owns orchestration. `AgentRuntime` only executes one isolated agent task, so the runtime can be swapped (OpenCode today, see ADR-0003).
+The pipeline owns orchestration. `AgentRuntime` only executes one isolated agent task, so the runtime can be swapped: `runtime-opencode` (OpenCode, ADR-0003) and `runtime-direct` (declared OpenAI-compatible endpoints, ADR-0020), both held to the runtime conformance suite.
 
 ## Resilience
 
