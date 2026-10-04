@@ -7,7 +7,7 @@ import { repoHash } from "../../cloud/upload.js";
 import { allowInstalled, signedInCloud } from "../../plugins/plugins.fakes.js";
 import { pluginsDir } from "../../plugins/store.js";
 import { run } from "../../run.js";
-import { BUILTIN_PLUGINS, type ReviewDeps } from "../review.js";
+import { BUILTIN_PLUGINS } from "../review.js";
 import {
   capture,
   changeRequestFixture,
@@ -15,6 +15,7 @@ import {
   removeFixtures,
 } from "./change-request.fakes.js";
 import { signedIn } from "./cloud.fakes.js";
+import type { ReviewDeps } from "./deps.js";
 import { BUILTIN_RUNTIMES } from "./runtimes.js";
 
 afterEach(removeFixtures);

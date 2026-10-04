@@ -1,8 +1,8 @@
 import { resolve } from "node:path";
 import { defaultSelectionPolicy, previewReview, toPlanOutput } from "@open-cr-agent/core/internal";
 import { EXIT } from "../../io/exit.js";
-import type { ReviewDeps } from "../review.js";
 import type { ReviewArgs } from "./args.js";
+import type { ReviewDeps } from "./deps.js";
 import { inputPriceOf } from "./plan-prices.js";
 import { renderPlan } from "./plan-render.js";
 import { safeJson } from "./render.js";

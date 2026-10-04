@@ -2,7 +2,8 @@ import type { ReviewReport } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { uploadOf } from "../../cloud/upload.js";
 import { run } from "../../run.js";
-import { BUILTIN_PLUGINS, type ReviewDeps } from "../review.js";
+import { BUILTIN_PLUGINS } from "../review.js";
+import type { ReviewDeps } from "./deps.js";
 import { movingPullRequest, removePullRequests, reviewer } from "./incremental.fakes.js";
 
 afterEach(removePullRequests);

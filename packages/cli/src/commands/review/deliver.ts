@@ -1,8 +1,8 @@
 import { join, relative, resolve } from "node:path";
 import { sendToCloud } from "../../cloud/review.js";
 import { VERSION } from "../../version.js";
-import type { ReviewDeps } from "../review.js";
 import type { ReviewArgs } from "./args.js";
+import type { ReviewDeps } from "./deps.js";
 import type { ExecutedRun } from "./execute-run.js";
 import { renderJson, renderText } from "./render.js";
 import type { ResolvedRun, ReviewIo } from "./resolve-run.js";

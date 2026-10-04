@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { run } from "../../run.js";
-import { BUILTIN_PLUGINS, type ReviewDeps } from "../review.js";
+import { BUILTIN_PLUGINS } from "../review.js";
 import {
   capture,
   changeRequestFixture,
@@ -10,6 +10,7 @@ import {
   removeFixtures,
   warningRuntime,
 } from "./change-request.fakes.js";
+import type { ReviewDeps } from "./deps.js";
 import { BUILTIN_RUNTIMES } from "./runtimes.js";
 
 afterEach(removeFixtures);

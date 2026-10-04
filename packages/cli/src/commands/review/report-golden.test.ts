@@ -3,7 +3,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { capture, critical, deps, removeRepos, repoWithChange } from "../../run.fakes.js";
 import { run } from "../../run.js";
 import { VERSION } from "../../version.js";
-import { BUILTIN_PLUGINS, type ReviewDeps } from "../review.js";
+import { BUILTIN_PLUGINS } from "../review.js";
 import {
   changeRequestFixture,
   fakeGitHub,
@@ -11,6 +11,7 @@ import {
   removeFixtures,
   warningRuntime,
 } from "./change-request.fakes.js";
+import type { ReviewDeps } from "./deps.js";
 import { movingPullRequest, removePullRequests, reviewer } from "./incremental.fakes.js";
 
 // The JSON report and the pull or merge request summary of the end-to-end
