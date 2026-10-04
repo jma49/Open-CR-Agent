@@ -20,7 +20,9 @@ export interface VcsAdapter {
   publish(report: ReviewReport): Promise<{ warnings: string[] }>;
 }
 
-export type ModelTier = "top" | "standard" | "light";
+// The model tiers, strongest first.
+export const MODEL_TIERS = ["top", "standard", "light"] as const;
+export type ModelTier = (typeof MODEL_TIERS)[number];
 
 // How much a model reasons before it answers (ADR-0025). Unset leaves the
 // provider's default; "none" asks for no reasoning where a provider can say so.

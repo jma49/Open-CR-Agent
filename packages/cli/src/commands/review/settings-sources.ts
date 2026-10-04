@@ -1,4 +1,4 @@
-import type { ModelTier } from "@open-cr-agent/core";
+import { MODEL_TIERS } from "@open-cr-agent/core";
 import { ACCOUNT_SCALARS } from "../../cloud/settings.js";
 import type { CliConfig } from "../../config/cli-config.js";
 import { forTerminal } from "../../io/terminal.js";
@@ -15,8 +15,6 @@ export interface EffectiveSetting {
   value?: unknown;
   source: SettingSource;
 }
-
-const TIERS: readonly ModelTier[] = ["top", "standard", "light"];
 
 /** file: the configuration before the account's settings; effective: after; filled: what they filled. */
 export function effectiveSettings(
@@ -38,10 +36,10 @@ export function effectiveSettings(
     settings.push(source === "default" ? { key, source } : { key, value, source });
   };
   add("runtime", effective.runtime, file.runtimeSet);
-  for (const tier of TIERS) {
+  for (const tier of MODEL_TIERS) {
     add(`models.${tier}`, effective.models[tier], file.models[tier] !== undefined);
   }
-  for (const tier of TIERS) {
+  for (const tier of MODEL_TIERS) {
     add(`effort.${tier}`, effective.effort[tier], file.effort[tier] !== undefined);
   }
   for (const [id, entry] of Object.entries(effective.reviewers)) {

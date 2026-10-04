@@ -513,6 +513,9 @@ const memoryEntrySchema: z.ZodObject<{
 export type MemorySource = "repository" | "account";
 
 // @public (undocumented)
+export const MODEL_TIERS: readonly ["top", "standard", "light"];
+
+// @public (undocumented)
 export interface ModelAttempts {
     // (undocumented)
     complete(model: string, request: CompletionRequest, signal: AbortSignal): Promise<AttemptOutcome>;
@@ -548,7 +551,7 @@ export interface ModelRef {
 }
 
 // @public (undocumented)
-export type ModelTier = "top" | "standard" | "light";
+export type ModelTier = (typeof MODEL_TIERS)[number];
 
 // @public (undocumented)
 export const OCRA_ERROR_CODES: readonly ["CONFIG_INVALID", "CONFIG_CREDENTIALS_MISSING", "INPUT_USAGE", "INPUT_INVALID", "ACCESS_DENIED", "PLUGIN_INVALID", "VCS_GIT_FAILED", "VCS_API_FAILED", "VCS_REF_UNKNOWN", "VCS_NOT_READY", "CLOUD_API_FAILED", "RUNTIME_START_FAILED", "RUNTIME_FAILED", "RUNTIME_INVALID_OUTPUT", "BUDGET_EXHAUSTED", "INTERNAL"];

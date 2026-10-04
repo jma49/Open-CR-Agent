@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MODEL_TIERS } from "../contracts.js";
 import {
   anchorMethodSchema,
   riskTierSchema,
@@ -151,7 +152,7 @@ const samplingSchema = z.strictObject({
 });
 
 const agentProvenanceSchema = z.strictObject({
-  tier: z.enum(["top", "standard", "light"]),
+  tier: z.enum(MODEL_TIERS),
   models: z.array(z.string()).optional(),
   effort: z.enum(EFFORT_LEVELS).optional(),
   applied: z.boolean().optional(),

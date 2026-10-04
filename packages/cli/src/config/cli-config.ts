@@ -4,6 +4,7 @@ import {
   type AgentRole,
   type CustomProvider,
   EFFORT_LEVELS,
+  MODEL_TIERS,
   type ModelChains,
   type ModelTier,
   OcraError,
@@ -200,17 +201,13 @@ export interface LoadOptions {
   warn?: (message: string) => void;
 }
 
-const MODEL_ENV: Record<ModelTier, string> = {
-  top: "OCRA_MODEL_TOP",
-  standard: "OCRA_MODEL_STANDARD",
-  light: "OCRA_MODEL_LIGHT",
-};
-
-const EFFORT_ENV: Record<ModelTier, string> = {
-  top: "OCRA_EFFORT_TOP",
-  standard: "OCRA_EFFORT_STANDARD",
-  light: "OCRA_EFFORT_LIGHT",
-};
+// OCRA_MODEL_TOP, OCRA_EFFORT_STANDARD and so on.
+const tierEnv = (prefix: string) =>
+  Object.fromEntries(
+    MODEL_TIERS.map((tier) => [tier, `${prefix}_${tier.toUpperCase()}`]),
+  ) as Record<ModelTier, string>;
+const MODEL_ENV = tierEnv("OCRA_MODEL");
+const EFFORT_ENV = tierEnv("OCRA_EFFORT");
 
 export class ConfigError extends OcraError {
   constructor(message: string, options?: { cause?: unknown }) {

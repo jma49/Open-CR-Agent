@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { OcraError } from "@open-cr-agent/core";
+import { MODEL_TIERS, OcraError } from "@open-cr-agent/core";
 import { repoRuleSchema } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 
@@ -12,8 +12,8 @@ const TIMEOUT_MS = 10_000;
 export const remoteConfigSchema = z
   .object({
     $schema: z.string().optional(),
-    models: z.record(z.enum(["top", "standard", "light"]), z.unknown()).optional(),
-    effort: z.partialRecord(z.enum(["top", "standard", "light"]), z.unknown()).optional(),
+    models: z.record(z.enum(MODEL_TIERS), z.unknown()).optional(),
+    effort: z.partialRecord(z.enum(MODEL_TIERS), z.unknown()).optional(),
     concurrency: z.unknown().optional(),
     taskTimeoutMinutes: z.unknown().optional(),
     runTimeoutMinutes: z.unknown().optional(),

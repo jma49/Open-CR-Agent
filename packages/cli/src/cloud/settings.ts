@@ -1,4 +1,4 @@
-import type { ModelTier, SourcedRule } from "@open-cr-agent/core";
+import { MODEL_TIERS, type SourcedRule } from "@open-cr-agent/core";
 import { errorMessage } from "@open-cr-agent/core/internal";
 import type { CliConfig } from "../config/cli-config.js";
 import { type AccountPlugins, parseAccountPlugins } from "../plugins/account.js";
@@ -11,8 +11,6 @@ import type { CloudDeps } from "./deps.js";
 // or role's whole entry, the runtime and each limit. What the configuration
 // sets always wins; include, exclude and rules combine, the repository's
 // first.
-
-const TIERS: readonly ModelTier[] = ["top", "standard", "light"];
 
 // Each set by the configuration or else by the account, whole.
 export const ACCOUNT_SCALARS = [
@@ -81,7 +79,7 @@ export function layerAccountSettings(
   const filled: string[] = [];
   const models = { ...config.models };
   const effort = { ...config.effort };
-  for (const tier of TIERS) {
+  for (const tier of MODEL_TIERS) {
     const chain = account.models?.[tier];
     if (!config.models[tier]?.length && chain) {
       models[tier] = chain;

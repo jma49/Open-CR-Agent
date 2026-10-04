@@ -20,6 +20,7 @@ export type {
   Usage,
   VcsAdapter,
 } from "./contracts.js";
+export { MODEL_TIERS } from "./contracts.js";
 export type {
   AnchorMethod,
   ChangeRequest,
