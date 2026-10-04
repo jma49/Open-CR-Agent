@@ -1,5 +1,5 @@
 import type { OutputFinding } from "@open-cr-agent/core";
-import type { InstanceResult } from "./runner.js";
+import type { InstanceResult } from "./results.js";
 
 export const base = {
   repo: "o/r",

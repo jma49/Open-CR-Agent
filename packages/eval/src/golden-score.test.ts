@@ -228,16 +228,30 @@ describe("labels belong to a claim on the code", () => {
 });
 
 describe("rescoring", () => {
+  const info = {
+    runId: "r",
+    createdAt: "2026-10-04T00:00:00Z",
+    selection: {},
+    models: {},
+    judge: "mock",
+  };
+
   it("refuses a run.json whose ids would leave the run directory", async () => {
     const dir = await mkdtemp(join(tmpdir(), "ocra-rescore-"));
-    await writeFile(
-      join(dir, "run.json"),
-      JSON.stringify({ info: { selection: {} }, ids: ["../../etc/hosts"] }),
-    );
+    await writeFile(join(dir, "run.json"), JSON.stringify({ info, ids: ["../../etc/hosts"] }));
     let text = "";
     const out = { write: (chunk: string) => (text += chunk) };
     expect(await main(["score", dir, "--mock-judge"], out, out)).toBe(2);
     expect(text).toContain('run.json lists an invalid id "../../etc/hosts"');
+  });
+
+  it("refuses a run.json in another shape, saying where", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "ocra-rescore-"));
+    await writeFile(join(dir, "run.json"), JSON.stringify({ info: { selection: {} }, ids: [] }));
+    let text = "";
+    const out = { write: (chunk: string) => (text += chunk) };
+    expect(await main(["score", dir, "--mock-judge"], out, out)).toBe(2);
+    expect(text).toContain("runId");
   });
 });
 

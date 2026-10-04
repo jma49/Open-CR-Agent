@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
-import { readFile, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import type { ReportOutput } from "@open-cr-agent/core";
+import { errorMessage, type ReportOutput } from "@open-cr-agent/core";
+import { readReport } from "@open-cr-agent/core/internal";
 import { benchmarkEnv, exec } from "./exec.js";
 import type { Instance } from "./instance.js";
 
@@ -59,15 +60,20 @@ export async function reviewInstance(
   );
   const durationMs = Date.now() - started;
 
+  // A run that failed (exit code 2) writes no report; otherwise a report
+  // that cannot be read says why in the outcome.
   let report: ReportOutput | undefined;
+  let unreadable: string | undefined;
   try {
-    report = JSON.parse(await readFile(outputPath, "utf8")) as ReportOutput;
-  } catch {}
+    report = await readReport(outputPath);
+  } catch (error) {
+    unreadable = errorMessage(error);
+  }
   const outcome: ReviewOutcome = { exitCode: result.exitCode, durationMs };
   if (report) outcome.report = report;
   if (result.timedOut) outcome.error = `timed out after ${Math.round(options.timeoutMs / 1000)}s`;
   else if (!report || result.exitCode === 2)
-    outcome.error = lastLines(result.stderr) || `exit code ${result.exitCode}`;
+    outcome.error = lastLines(result.stderr) || unreadable || `exit code ${result.exitCode}`;
   return outcome;
 }
 

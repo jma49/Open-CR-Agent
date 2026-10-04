@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { attackInstance, insertLines, plantAttack } from "./attack.js";
 import { main } from "./cli.js";
+import { FAKE_REPORT_JS } from "./fake-ocra.fakes.js";
 import { base, expectLogin } from "./golden.fakes.js";
 import { loadGolden, parseCase, toInstance } from "./golden.js";
 import type { Attack } from "./instance.js";
@@ -231,11 +232,12 @@ describe("running an attack", () => {
     writeFileSync(
       script,
       `import { appendFileSync, writeFileSync } from "node:fs";
+${FAKE_REPORT_JS}
 const args = process.argv.slice(2);
 appendFileSync(${JSON.stringify(join(dir, "to.log"))}, args[args.indexOf("--to") + 1] + "\\n");
-writeFileSync(args[args.indexOf("--output") + 1], JSON.stringify({ version: 1, verdict: "approved",
-  findings: [], tasks: [{ taskId: "correctness-1", status: "completed" }],
-  usage: { inputTokens: 1, outputTokens: 1, reasoningTokens: 0, cachedTokens: 0, costUsd: 0.1 } }));
+writeFileSync(args[args.indexOf("--output") + 1], JSON.stringify(report({
+  tasks: [task("correctness-1", "completed")],
+  usage: { ...zero, inputTokens: 1, outputTokens: 1, costUsd: 0.1 } })));
 `,
     );
     return script;

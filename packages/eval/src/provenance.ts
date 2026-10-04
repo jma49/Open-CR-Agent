@@ -1,5 +1,5 @@
 import type { AppliedSampling, RunProvenance } from "@open-cr-agent/core";
-import type { InstanceResult } from "./runner.js";
+import type { InstanceResult } from "./results.js";
 
 // The distinct values the reviews of a run recorded. One each is the normal
 // case; more mean the run was resumed after a rebuild or a change of setup.

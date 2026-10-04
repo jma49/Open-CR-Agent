@@ -10,6 +10,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import type { OutputFinding, ReportOutput } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { memoryCommand } from "./memory.js";
 
@@ -29,20 +30,41 @@ function repoWithSession(): string {
   execFileSync("git", ["init", "-q"], { cwd: dir });
   const session = join(dir, ".ocra", "sessions", "20260926T000000Z-aaaaaa");
   mkdirSync(session, { recursive: true });
-  const finding = (fingerprint: string, title: string) => ({
+  const finding = (fingerprint: string, title: string): OutputFinding => ({
     fingerprint,
+    reviewer: "correctness",
+    category: "bug",
+    severity: "warning",
+    verification: "unchecked",
     file: "src/a.ts",
+    inDiff: true,
+    status: "new",
     title,
+    body: "",
+    evidence: [],
+    code: "",
   });
-  writeFileSync(
-    join(session, "report.json"),
-    JSON.stringify({
-      findings: [
-        finding("abcdef0123456789", "Unbounded retry"),
-        finding("abcd990000000000", "Other"),
-      ],
-    }),
-  );
+  const report: ReportOutput = {
+    version: 1,
+    changeRequest: { id: "1", title: "t", description: "", baseSha: "b", headSha: "h" },
+    tier: "lite",
+    verdict: "minor_issues",
+    summary: "",
+    coverage: [],
+    findings: [
+      finding("abcdef0123456789", "Unbounded retry"),
+      finding("abcd990000000000", "Other"),
+    ],
+    unverifiedCriticals: 0,
+    refuted: [],
+    remembered: [],
+    tasks: [],
+    skipped: [],
+    bundles: [],
+    usage: { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 },
+    warnings: [],
+  };
+  writeFileSync(join(session, "report.json"), JSON.stringify(report));
   return dir;
 }
 
@@ -106,6 +128,15 @@ describe("ocra memory", () => {
     await expect(memoryCommand(["add", "abcdef"], capture(), dir)).rejects.toThrow("--reason");
     await expect(memoryCommand(["add", "ffffff", "--reason", "r"], capture(), dir)).rejects.toThrow(
       "No finding ffffff",
+    );
+  });
+
+  it("says why a session's report cannot be read", async () => {
+    const dir = repoWithSession();
+    const session = join(dir, ".ocra", "sessions", "20260926T000000Z-aaaaaa");
+    writeFileSync(join(session, "report.json"), JSON.stringify({ findings: [] }));
+    await expect(memoryCommand(["add", "abcdef", "--reason", "r"], capture(), dir)).rejects.toThrow(
+      "is not a version 1 ocra report",
     );
   });
 });

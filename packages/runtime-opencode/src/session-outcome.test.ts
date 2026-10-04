@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type SessionMessage, summarizeSession } from "./session-outcome.js";
+import { parseSessionMessages, type SessionMessage, summarizeSession } from "./session-outcome.js";
 
 const REPORT = "ocra_report_finding";
 
@@ -129,5 +129,27 @@ describe("summarizeSession", () => {
       REPORT,
     );
     expect(outcome.error).toEqual({ message: "API key is missing", retryable: false });
+  });
+});
+
+describe("parseSessionMessages", () => {
+  it("keeps what ocra reads and drops the rest", () => {
+    const messages = parseSessionMessages([
+      {
+        info: { role: "assistant", cost: 0.1, id: "m1", time: { created: 1 } },
+        parts: [{ type: "text", text: "done", id: "p1" }],
+      },
+    ]);
+    expect(messages).toEqual([
+      { info: { role: "assistant", cost: 0.1 }, parts: [{ type: "text", text: "done" }] },
+    ]);
+    expect(parseSessionMessages(undefined)).toEqual([]);
+  });
+
+  it("refuses an answer in another shape instead of reading it as one", () => {
+    expect(() =>
+      parseSessionMessages([{ info: { role: "assistant", cost: "free" }, parts: [] }]),
+    ).toThrow();
+    expect(() => parseSessionMessages({ messages: [] })).toThrow();
   });
 });

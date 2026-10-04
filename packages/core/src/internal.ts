@@ -24,6 +24,7 @@ export {
 export { previewReview, type ReviewPreview } from "./pipeline/preview.js";
 export { stableHash } from "./pipeline/provenance.js";
 export { newRunId } from "./pipeline/run-id.js";
+export { readReport } from "./report/read.js";
 export { isUnsafeCodePoint, serializeOutput } from "./report/serialize.js";
 export { repoRuleSchema } from "./rules/repo-rules.js";
 export { sleep } from "./runtime/quota.js";

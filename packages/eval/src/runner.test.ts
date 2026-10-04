@@ -2,6 +2,7 @@ import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { FAKE_REPORT_JS } from "./fake-ocra.fakes.js";
 import type { Instance } from "./instance.js";
 import { renderMarkdown } from "./report.js";
 import { UnavailableCommitError } from "./repos.js";
@@ -26,22 +27,21 @@ function fakeOcra(dir: string): string {
   writeFileSync(
     script,
     `import { writeFileSync, appendFileSync } from "node:fs";
+${FAKE_REPORT_JS}
 const args = process.argv.slice(2);
 const out = args[args.indexOf("--output") + 1];
 appendFileSync(${JSON.stringify(join(dir, "calls.log"))}, args[args.indexOf("--from") + 1] + "\\n");
 if (args[args.indexOf("--from") + 1] === "fail") { process.stderr.write("boom\\n"); process.exit(2); }
 if (args[args.indexOf("--from") + 1] === "quota") {
-  writeFileSync(out, JSON.stringify({ findings: [], tasks: [{ taskId: "correctness-1", status: "failed",
-    error: "every standard model failed (google/x: You exceeded your current quota, please check your plan)" }],
-    usage: { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 } }));
+  writeFileSync(out, JSON.stringify(report({ tasks: [task("correctness-1", "failed",
+    "every standard model failed (google/x: You exceeded your current quota, please check your plan)")] })));
   process.exit(2);
 }
 if (args[args.indexOf("--from") + 1] === "cut") {
-  writeFileSync(out, JSON.stringify({ version: 1, findings: [], tasks: [
-    { taskId: "performance-1", status: "completed" },
-    { taskId: "correctness-1", status: "failed",
-      error: "every standard model failed (router/m: Rate limit exceeded: free-models-per-day-stealth.)" }],
-    usage: { inputTokens: 50, outputTokens: 5, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 } }));
+  writeFileSync(out, JSON.stringify(report({ tasks: [task("performance-1", "completed"),
+    task("correctness-1", "failed",
+      "every standard model failed (router/m: Rate limit exceeded: free-models-per-day-stealth.)")],
+    usage: { ...zero, inputTokens: 50, outputTokens: 5 } })));
   process.exit(3);
 }
 const finding = { fingerprint: "f", reviewer: "correctness", category: "correctness", severity: "warning",
@@ -50,8 +50,8 @@ const finding = { fingerprint: "f", reviewer: "correctness", category: "correctn
 const t = args.indexOf("--temperature");
 const provenance = t < 0 ? {} : { provenance: { ocraVersion: "9.9.9", promptHash: "p1", configHash: "c1",
   sampling: { temperature: Number(args[t + 1]), notApplied: ["seed"] } } };
-writeFileSync(out, JSON.stringify({ version: 1, findings: [finding], tasks: [{ taskId: "correctness-1", status: "completed" }],
-  usage: { inputTokens: 100, outputTokens: 10, reasoningTokens: 0, cachedTokens: 0, costUsd: 0.5 }, ...provenance }));
+writeFileSync(out, JSON.stringify(report({ findings: [finding], tasks: [task("correctness-1", "completed")],
+  usage: { ...zero, inputTokens: 100, outputTokens: 10, costUsd: 0.5 }, ...provenance })));
 // Interrupted after one task finished: a partial report and exit 130.
 if (args[args.indexOf("--from") + 1] === "interrupted") process.exit(130);
 `,
@@ -181,6 +181,25 @@ describe("runInstances", () => {
 
     await runInstances(instances, { ...options, retryFailed: true });
     expect(calls()).toEqual(["base", "cut", "base", "cut"]);
+  });
+
+  it("runs a PR again whose saved result cannot be read, saying so", async () => {
+    const dir = temp();
+    const logs: string[] = [];
+    const options = {
+      runDir: join(dir, "run"),
+      reposDir: join(dir, "repos"),
+      command: [process.execPath, fakeOcra(dir)],
+      timeoutMs: 30_000,
+      prepare: async () => dir,
+      log: (message: string) => logs.push(message),
+    };
+    await runInstances([instance("a")], options);
+    writeFileSync(join(dir, "run", "instances", "a.json"), '{"id": "a", "stat');
+    const [again] = await runInstances([instance("a")], options);
+    expect(again?.status).toBe("reviewed");
+    expect(readFileSync(join(dir, "calls.log"), "utf8").trim().split("\n")).toHaveLength(2);
+    expect(logs.some((l) => l.startsWith("a: running again:") && l.includes("a.json"))).toBe(true);
   });
 
   it("reviews, records failures, stops at the budget and resumes without repeating work", async () => {

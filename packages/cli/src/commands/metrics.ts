@@ -8,7 +8,7 @@ import { forTerminal } from "../io/terminal.js";
 import { UsageError } from "../io/usage-error.js";
 import {
   listSessions,
-  readReport,
+  readSessionReport,
   SESSIONS_DIR,
   sessionStart,
   sessionsDir,
@@ -109,7 +109,7 @@ export async function collectMetrics(dir: string, since?: Date): Promise<Metrics
   const reports: ReportOutput[] = [];
   let unreadable = 0;
   for (const name of names) {
-    const report = await readReport(join(dir, name));
+    const report = await readSessionReport(join(dir, name));
     if (report) reports.push(report);
     else unreadable += 1;
   }

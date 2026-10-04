@@ -1,25 +1,12 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type {
-  AnchoringSummary,
-  OutputFinding,
-  RunProvenance,
-  TaskOutcome,
-  Usage,
-  Verdict,
-} from "@open-cr-agent/core";
+import type { Usage } from "@open-cr-agent/core";
 import { errorMessage } from "@open-cr-agent/core";
 import { plantAttack } from "./attack.js";
 import type { Instance } from "./instance.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
+import { type InstanceResult, readResult } from "./results.js";
 import { reviewInstance } from "./reviewer.js";
-
-export type InstanceStatus =
-  | "reviewed"
-  | "failed"
-  | "unavailable"
-  | "skipped_budget"
-  | "skipped_quota";
 
 // What ocra's runtime reports when a provider refuses for quota. A free-tier
 // daily limit refuses every later PR too, and each ocra process would first
@@ -27,26 +14,6 @@ export type InstanceStatus =
 // eval sees ocra's report, not the runtime's types.
 const QUOTA_ERROR =
   /out of quota for this run|exceeded your current quota|quota exceeded|resource[_ ]exhausted|rate limit[^)]*per[- ]day/i;
-
-export interface InstanceResult {
-  id: string;
-  status: InstanceStatus;
-  durationMs: number;
-  findings: OutputFinding[];
-  // How ocra anchored the findings; absent in results written before it
-  // was published.
-  anchoring?: AnchoringSummary;
-  usage: Usage;
-  tasks: Pick<TaskOutcome, "taskId" | "status" | "error">[];
-  // The CLI's exit code; 3 means the review was incomplete.
-  exitCode?: number;
-  // Absent in results written before it was recorded.
-  verdict?: Verdict;
-  // What the review was made with (ocra's report); absent before ocra
-  // recorded it.
-  provenance?: RunProvenance;
-  error?: string;
-}
 
 export interface RunOptions {
   runDir: string;
@@ -84,7 +51,11 @@ export async function runInstances(
 
   for (const [n, instance] of instances.entries()) {
     const path = join(dir, `${instance.id}.json`);
-    const previous = await readResult(path);
+    // A result that cannot be read (a run killed while writing it) is run again.
+    const previous = await readResult(path).catch((error: unknown) => {
+      options.log(`${instance.id}: running again: ${errorMessage(error)}`);
+      return undefined;
+    });
     const retry =
       previous?.status === "skipped_budget" ||
       previous?.status === "skipped_quota" ||
@@ -181,14 +152,6 @@ async function reviewOne(
   if (report?.provenance) result.provenance = report.provenance;
   if (outcome.error) result.error = outcome.error;
   return result;
-}
-
-async function readResult(path: string): Promise<InstanceResult | undefined> {
-  try {
-    return JSON.parse(await readFile(path, "utf8")) as InstanceResult;
-  } catch {
-    return undefined;
-  }
 }
 
 function skipped(id: string, status: "skipped_budget" | "skipped_quota"): InstanceResult {

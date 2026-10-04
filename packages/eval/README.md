@@ -19,6 +19,7 @@ Run it from a build: `node packages/eval/dist/main.js <command>` (`npm run build
 | `repos.ts` | Clones and checks out each repository in the cache; `GIT_ENV` keeps LFS and drivers off |
 | `reviewer.ts` | Runs the `ocra` CLI on one instance and reads its JSON report |
 | `runner.ts` | The run loop: resume, quota detection, one `instances/<id>.json` per result |
+| `results.ts` | The schema of an `instances/<id>.json` result, and reading one back to resume or rescore |
 | `match.ts`, `judges.ts` | AACR-Bench scoring: matches findings to reference comments by location, then by an LLM judge |
 | `score.ts`, `metrics.ts` | Precision, recall and the counts behind them |
 | `golden-score.ts`, `attack-score.ts` | Golden and adversarial scoring against expectations and forbidden ranges |

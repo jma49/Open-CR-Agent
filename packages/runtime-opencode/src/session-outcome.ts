@@ -1,21 +1,49 @@
 import { type AttemptOutcome, parseQuotaError, type Usage } from "@open-cr-agent/core";
+import { z } from "zod";
 
-export interface SessionMessage {
-  info: {
-    role: string;
-    cost?: number;
-    tokens?: { input?: number; output?: number; reasoning?: number; cache?: { read?: number } };
-    error?: {
-      name?: string;
-      data?: { message?: string; statusCode?: number; isRetryable?: boolean };
-    };
-  };
-  parts: {
-    type: string;
-    text?: string;
-    tool?: string;
-    state?: { status?: string; input?: unknown };
-  }[];
+// The part of OpenCode's session messages ocra reads, validated rather than
+// cast: the SDK's types are not checked at runtime, and a server of another
+// version could answer in another shape. Unknown fields are dropped.
+const sessionMessageSchema = z.object({
+  info: z.object({
+    role: z.string(),
+    cost: z.number().optional(),
+    tokens: z
+      .object({
+        input: z.number().optional(),
+        output: z.number().optional(),
+        reasoning: z.number().optional(),
+        cache: z.object({ read: z.number().optional() }).optional(),
+      })
+      .optional(),
+    error: z
+      .object({
+        name: z.string().optional(),
+        data: z
+          .object({
+            message: z.string().optional(),
+            statusCode: z.number().optional(),
+            isRetryable: z.boolean().optional(),
+          })
+          .optional(),
+      })
+      .optional(),
+  }),
+  parts: z.array(
+    z.object({
+      type: z.string(),
+      text: z.string().optional(),
+      tool: z.string().optional(),
+      state: z.object({ status: z.string().optional(), input: z.unknown().optional() }).optional(),
+    }),
+  ),
+});
+
+export type SessionMessage = z.output<typeof sessionMessageSchema>;
+
+// Throws when the answer is not a list of messages ocra can read.
+export function parseSessionMessages(data: unknown): SessionMessage[] {
+  return z.array(sessionMessageSchema).parse(data ?? []);
 }
 
 const AUTH_STATUS = new Set([401, 403]);

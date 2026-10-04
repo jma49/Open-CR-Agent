@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Instance } from "./instance.js";
-import type { InstanceResult } from "./runner.js";
+import type { InstanceResult } from "./results.js";
 import { score } from "./score.js";
 
 const instance = (id: string): Instance => ({

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { AttackSummary } from "./attack-score.js";
 import type { GoldenSummary } from "./golden-score.js";
 import { type ProvenanceSummary, renderProvenance } from "./provenance.js";
@@ -9,18 +10,21 @@ export type RunSummary = Summary & {
   provenance?: ProvenanceSummary;
 };
 
-export interface RunInfo {
-  runId: string;
-  createdAt: string;
-  selection: Record<string, unknown>;
-  models: Record<string, string | undefined>;
-  judge: string;
+export const runInfoSchema = z.strictObject({
+  runId: z.string(),
+  createdAt: z.string(),
+  selection: z.record(z.string(), z.unknown()),
+  models: z.record(z.string(), z.string().optional()),
+  judge: z.string(),
   // What every review was passed besides the range and the format.
-  review?: string[];
+  review: z.array(z.string()).exactOptional(),
   // The sampling asked of every review; what each applied is in the
   // summary's provenance.
-  sampling?: { temperature?: number; seed?: number };
-}
+  sampling: z
+    .strictObject({ temperature: z.number().exactOptional(), seed: z.int().exactOptional() })
+    .exactOptional(),
+});
+export type RunInfo = z.output<typeof runInfoSchema>;
 
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 

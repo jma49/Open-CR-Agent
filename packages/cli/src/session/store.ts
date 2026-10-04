@@ -1,7 +1,7 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { type ReportOutput, reportOutputSchema } from "@open-cr-agent/core";
-import { REPORT_FILE } from "@open-cr-agent/core/internal";
+import type { ReportOutput } from "@open-cr-agent/core";
+import { REPORT_FILE, readReport } from "@open-cr-agent/core/internal";
 
 // Where a repository keeps its review sessions: one directory per run, named
 // by the run id, written by core's session log (sessionJsonlPlugin).
@@ -29,14 +29,8 @@ export function sessionStart(id: string): Date | undefined {
   return new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}Z`);
 }
 
-/** A session's version 1 report; undefined when it is missing, unreadable or of another version. */
-export async function readReport(sessionDir: string): Promise<ReportOutput | undefined> {
-  let data: unknown;
-  try {
-    data = JSON.parse(await readFile(reportPath(sessionDir), "utf8"));
-  } catch {
-    return undefined;
-  }
-  const parsed = reportOutputSchema.safeParse(data);
-  return parsed.success ? parsed.data : undefined;
+// A session's version 1 report; undefined when it is missing, unreadable or
+// of another version, which `ocra metrics` counts as unreadable.
+export async function readSessionReport(sessionDir: string): Promise<ReportOutput | undefined> {
+  return readReport(reportPath(sessionDir)).catch(() => undefined);
 }

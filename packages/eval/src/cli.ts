@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { errorMessage, proxiedFetch } from "@open-cr-agent/core";
+import { z } from "zod";
 import { applyLabels, LABELS_FILE, labelsFor, readLabels } from "./adjudicate.js";
 import { scoreAttacks } from "./attack-score.js";
 import { measureCeiling } from "./ceiling-run.js";
@@ -28,9 +29,10 @@ import {
   repetitionDir,
   summarizeRepeats,
 } from "./repeat.js";
-import { type RunInfo, renderMarkdown } from "./report.js";
+import { type RunInfo, renderMarkdown, runInfoSchema } from "./report.js";
+import { type InstanceResult, readResult } from "./results.js";
 import { defaultOcraCommand } from "./reviewer.js";
-import { type InstanceResult, runInstances } from "./runner.js";
+import { runInstances } from "./runner.js";
 import { score } from "./score.js";
 import { type SelectionOptions, selectInstances } from "./select.js";
 
@@ -331,16 +333,16 @@ async function rescore(
   return writeRepeats(runDir, basename(resolve(runDir)), runs, out);
 }
 
+// run.json: what a run was asked for, and the PRs it took, in order.
+const savedRunSchema = z.strictObject({ info: runInfoSchema, ids: z.array(z.string()) });
+
 async function rescoreOne(
   runDir: string,
   cacheDir: string,
   goldenDirFlag: string | undefined,
   judge: JudgeSetup,
 ): Promise<{ markdown: string; saved: SavedSummary }> {
-  const saved = JSON.parse(await readFile(join(runDir, "run.json"), "utf8")) as {
-    info: RunInfo;
-    ids: string[];
-  };
+  const saved = savedRunSchema.parse(JSON.parse(await readFile(join(runDir, "run.json"), "utf8")));
   // run.json is a file on disk like any other: its ids become paths below.
   const bad = saved.ids.find((id) => !/^[\w.@-]+$/.test(id) || id.startsWith("."));
   if (bad !== undefined) throw new Error(`run.json lists an invalid id "${bad}"`);
@@ -358,13 +360,9 @@ async function rescoreOne(
     .filter((i): i is Instance => !!i);
   const results: InstanceResult[] = [];
   for (const id of saved.ids) {
-    try {
-      results.push(
-        JSON.parse(
-          await readFile(join(runDir, "instances", `${id}.json`), "utf8"),
-        ) as InstanceResult,
-      );
-    } catch {}
+    // A PR the run never reached has no result.
+    const result = await readResult(join(runDir, "instances", `${id}.json`));
+    if (result) results.push(result);
   }
   return writeSummary(
     runDir,

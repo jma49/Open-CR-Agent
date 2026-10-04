@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { OutputFinding, Severity } from "@open-cr-agent/core";
 import type { Adjudication, ForbiddenRange, Instance } from "./instance.js";
 import { matchComments, type SemanticJudge } from "./match.js";
-import type { InstanceResult } from "./runner.js";
+import type { InstanceResult } from "./results.js";
 import { toGeneratedComment } from "./score.js";
 
 // A finding as the maintainer sees it when labeling, and as failures list it.

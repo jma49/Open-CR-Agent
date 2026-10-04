@@ -7,6 +7,7 @@ import {
   isNotFound,
   MEMORY_PATH,
   parseMemory,
+  readReport,
   serializeMemory,
 } from "@open-cr-agent/core/internal";
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
@@ -127,9 +128,10 @@ async function newestSession(root: string): Promise<string> {
 }
 
 async function findFinding(reportPath: string, id: string): Promise<OutputFinding> {
-  const report = JSON.parse(await readFile(reportPath, "utf8")) as { findings?: OutputFinding[] };
-  const matches = (report.findings ?? []).filter((f) => f.fingerprint.startsWith(id));
-  if (matches.length === 1) return matches[0] as OutputFinding;
+  const report = await readReport(reportPath);
+  const matches = report.findings.filter((f) => f.fingerprint.startsWith(id));
+  const [only] = matches;
+  if (only && matches.length === 1) return only;
   throw new UsageError(
     matches.length === 0
       ? `No finding ${id} in ${reportPath}`

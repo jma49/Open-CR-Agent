@@ -6,7 +6,7 @@ import {
   renderProvenance,
   summarizeProvenance,
 } from "./provenance.js";
-import type { InstanceResult } from "./runner.js";
+import type { InstanceResult } from "./results.js";
 
 const made: RunProvenance = {
   ocraVersion: "0.3.0",

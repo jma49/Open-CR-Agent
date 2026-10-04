@@ -7,7 +7,7 @@ import { parseCase, toInstance } from "./golden.js";
 import { scoreGolden } from "./golden-score.js";
 import type { Attack } from "./instance.js";
 import { renderMarkdown } from "./report.js";
-import type { InstanceResult } from "./runner.js";
+import type { InstanceResult } from "./results.js";
 import { score } from "./score.js";
 
 const clean = toInstance(parseCase({ ...base, id: "login", expect: [expectLogin] }, "c"));
