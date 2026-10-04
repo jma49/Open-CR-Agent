@@ -1,46 +1,46 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { readFileSync } from "node:fs";
+import { relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { bumpPins, manualPages, pinsIn } from "./manual-pins.mjs";
 import { lockstep, readWorkspaces } from "./release-lib.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const manual = join(root, "docs", "manual");
 
-// Users copy the manual's install lines as they are, so its npm and image
-// pins move with every release: the release PR that bumps the packages
-// bumps these in the same commit. The Action's pin is a commit SHA, known
-// only once the release is tagged, and is updated after it. A prerelease
-// leaves the manual on the last stable release.
-const PINS = [
-  /@open-cr-agent\/[a-z0-9-]+@(\d+\.\d+\.\d+[\w.+-]*)/g,
-  /ghcr\.io\/jma49\/ocra:(\d+\.\d+\.\d+[\w.+-]*)/g,
-];
+const PAGE = `\`\`\`bash
+npm install -g --ignore-scripts @open-cr-agent/cli@0.5.0
+docker run ghcr.io/jma49/ocra:0.5.0 ocra review
+docker pull ghcr.io/jma49/ocra:0.5.0@sha256:<digest>
+\`\`\`
 
-function pages(dir) {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) return pages(path);
-    return entry.name.endsWith(".mdx") ? [path] : [];
-  });
-}
+Since 0.2.0, images run as \`node\`. Use \`ghcr.io/jma49/ocra:<version>\` or \`@open-cr-agent/core\`.
+- uses: jma49/Open-CR-Agent@d3af4e2189007de77dcf17e736855d04be4a491c # v0.5.0
+`;
 
-function pins() {
-  return pages(manual).flatMap((path) => {
-    const text = readFileSync(path, "utf8");
-    return PINS.flatMap((pattern) =>
-      [...text.matchAll(pattern)].map((match) => ({
-        where: `${relative(root, path)}:${text.slice(0, match.index).split("\n").length}`,
-        pin: match[0],
-        version: match[1],
-      })),
+describe("bumpPins", () => {
+  it("moves every package and image pin to the new version and nothing else", () => {
+    const next = bumpPins(PAGE, "0.6.0");
+    expect(next).toBe(
+      PAGE.replace("cli@0.5.0", "cli@0.6.0").replaceAll("ocra:0.5.0", "ocra:0.6.0"),
     );
+    expect(pinsIn(next).map((p) => p.version)).toEqual(["0.6.0", "0.6.0", "0.6.0"]);
+    expect(next).toContain("Since 0.2.0");
+    expect(next).toContain("# v0.5.0");
   });
-}
+
+  it("leaves the manual on the last stable release for a prerelease", () => {
+    expect(bumpPins(PAGE, "0.6.0-rc.1")).toBe(PAGE);
+  });
+});
 
 describe("version pins in the manual", () => {
   const { version } = lockstep(readWorkspaces(root));
-  const found = pins();
+  const found = manualPages(root).flatMap((path) =>
+    pinsIn(readFileSync(path, "utf8")).map((p) => ({
+      ...p,
+      where: `${relative(root, path)}:${p.line}`,
+    })),
+  );
 
   it("are found in both languages", () => {
     expect(found.some((p) => p.where.startsWith("docs/manual/en/"))).toBe(true);

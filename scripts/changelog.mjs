@@ -7,13 +7,15 @@
 // the packages released together, grouped by Keep a Changelog category. So
 // `version` first asks changesets for the plan and moves the entries of the
 // pending changesets into CHANGELOG.md, then has changesets apply the plan,
-// which deletes them, then updates package-lock.json.
+// which deletes them, then updates package-lock.json and moves the
+// manual's version pins (manual-pins.mjs).
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cutRelease, parseFragment, releaseNotes } from "./changelog-lib.mjs";
+import { bumpPins, manualPages } from "./manual-pins.mjs";
 
 const USAGE = `Usage:
   node scripts/changelog.mjs version          (npm run version-packages) version the packages from the
@@ -89,6 +91,13 @@ function versionPackages() {
   console.log(`CHANGELOG.md has a section for ${version} (${date}).`);
   run("npx", ["--no-install", "changeset", "version"]);
   run("npm", ["install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"]);
+  const bumped = manualPages(root).filter((path) => {
+    const text = readFileSync(path, "utf8");
+    const next = bumpPins(text, version);
+    if (next !== text) writeFileSync(path, next);
+    return next !== text;
+  });
+  console.log(`The manual's version pins name ${version} (${bumped.length} page(s) changed).`);
   console.log(
     `\nEvery published package is now ${version}. Review the changes and open a pull request.`,
   );
