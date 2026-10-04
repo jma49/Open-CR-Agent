@@ -62,7 +62,7 @@ export function renderSarif(report: ReviewReport, version: string): string {
         tool: {
           driver: {
             name: "ocra",
-            informationUri: "https://ocra.majincheng.com",
+            informationUri: "https://ocracloud.com",
             version,
             semanticVersion: version,
             rules: categories.map((id) => ({

@@ -2,7 +2,7 @@
 
 `ocra` is the command line of [Open-CR-Agent](https://github.com/jma49/Open-CR-Agent), an open-source multi-agent code reviewer for local changes and GitHub pull requests. Deterministic code selects and bundles the files, matches rules and anchors comments; LLM reviewers make the judgment calls, and a verification pass checks what they report.
 
-This is an early 0.x release: options and output may change between minor versions. What the reviews find and miss is measured on the [quality page](https://ocra.majincheng.com/en/docs/quality).
+This is an early 0.x release: options and output may change between minor versions. What the reviews find and miss is measured on the [quality page](https://ocracloud.com/en/docs/quality).
 
 ## Install
 
@@ -34,8 +34,8 @@ Pull requests can also be reviewed by the GitHub Action: inline comments, one su
 
 ## Documentation
 
-- [Quickstart](https://ocra.majincheng.com/en/docs/quickstart) and the manual, in [English](https://ocra.majincheng.com/en/docs) and [中文](https://ocra.majincheng.com/zh/docs)
-- [GitHub pull requests](https://ocra.majincheng.com/en/docs/github)
+- [Quickstart](https://ocracloud.com/en/docs/quickstart) and the manual, in [English](https://ocracloud.com/en/docs) and [中文](https://ocracloud.com/zh/docs)
+- [GitHub pull requests](https://ocracloud.com/en/docs/github)
 - [Changelog](https://github.com/jma49/Open-CR-Agent/blob/main/CHANGELOG.md) and [issues](https://github.com/jma49/Open-CR-Agent/issues)
 
 ## License

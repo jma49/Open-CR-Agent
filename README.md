@@ -8,7 +8,7 @@ It reviews local changes, GitHub pull requests and GitLab merge requests, runs i
 [![CI](https://github.com/jma49/Open-CR-Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/jma49/Open-CR-Agent/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-> **Status:** early 0.x. The CLI flags, configuration keys, exit codes and report format are [contracts](docs/manual/en/stability.mdx) and change only with notice; prompts and review quality still move. [Measured quality](docs/manual/en/quality.mdx) says what reviews find and miss today, on a small sample. Manual: [ocra.majincheng.com](https://ocra.majincheng.com) ([English](docs/manual/en/index.mdx) · [中文](docs/manual/zh/index.mdx)).
+> **Status:** early 0.x. The CLI flags, configuration keys, exit codes and report format are [contracts](docs/manual/en/stability.mdx) and change only with notice; prompts and review quality still move. [Measured quality](docs/manual/en/quality.mdx) says what reviews find and miss today, on a small sample. Manual: [ocracloud.com](https://ocracloud.com) ([English](docs/manual/en/index.mdx) · [中文](docs/manual/zh/index.mdx)).
 
 ## Why ocra
 
