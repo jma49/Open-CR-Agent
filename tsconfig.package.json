@@ -2,7 +2,9 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "${configDir}/src",
-    "outDir": "${configDir}/dist"
+    "outDir": "${configDir}/dist",
+    "sourceMap": false,
+    "declarationMap": false
   },
   "include": ["${configDir}/src"],
   "exclude": ["${configDir}/src/**/*.test.ts", "${configDir}/src/**/*.fakes.ts"]

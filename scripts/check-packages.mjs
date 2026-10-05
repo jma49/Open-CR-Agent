@@ -37,6 +37,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { errorMessage } from "./lib/error-message.mjs";
 import { pinnedLockfile } from "./lib/pinned-lock.mjs";
 import { readWorkspaces, tarballName } from "./lib/release.mjs";
+import { danglingSourceMaps } from "./lib/source-maps.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 /** @type {(cmd: string, args: string[], cwd: string, extra?: { env?: NodeJS.ProcessEnv }) => string} */
@@ -135,6 +136,18 @@ try {
     }
     // The maps would point at src/, which is not published.
     if (files.some((f) => f.endsWith(".map"))) throw new Error(`${p.json.name} packs source maps`);
+    // Nor may a published file name a map: consumers' bundlers warn for each one.
+    const unpacked = join(work, "unpacked", basename(tarball, ".tgz"));
+    run("mkdir", ["-p", unpacked], work);
+    run("tar", ["-xzf", tarball, "-C", unpacked], work);
+    const dangling = danglingSourceMaps(
+      new Map(files.map((f) => [f, readFileSync(join(unpacked, "package", f), "utf8")])),
+    );
+    if (dangling.length > 0) {
+      throw new Error(
+        `${p.json.name} names source maps it does not publish:\n  ${dangling.slice(0, 5).join("\n  ")}${dangling.length > 5 ? `\n  … and ${dangling.length - 5} more` : ""}`,
+      );
+    }
     for (const required of ["README.md", "LICENSE"]) {
       if (!files.includes(required)) throw new Error(`${p.json.name} packs no ${required}`);
     }
