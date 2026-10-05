@@ -16,8 +16,7 @@ const WORKFLOW_PATH = ".github/workflows/ocra.yml";
 export const INIT_USAGE = `Usage: ocra init [--github [--same-repo-only]] [--provider <name>] [--force]
 
 Set up ocra for this repository: writes ${CONFIG_PATH} with models of the
-provider whose key is in the environment, on the direct runtime. Files that
-exist are kept.
+provider whose key is in the environment. Files that exist are kept.
 
 Options:
   --github           Also write ${WORKFLOW_PATH}: members' pull requests
@@ -64,7 +63,7 @@ export async function initCommand(
   const { keyEnv } = choice.preset;
   const existing =
     config === "written"
-      ? { direct: true, keys: [keyEnv] }
+      ? { direct: choice.preset.runtime === "direct", keys: [keyEnv] }
       : await existingConfig(join(root, CONFIG_PATH));
   const workflow = await writeRepositoryFile(
     root,
@@ -105,16 +104,22 @@ function parse(argv: string[]) {
 
 function configWritten({ preset, found, others }: Choice): string {
   const lines = [
-    `Wrote ${CONFIG_PATH}: ${preset.label} through ${preset.keyEnv}, on the direct runtime.`,
+    `Wrote ${CONFIG_PATH}: ${preset.label} through ${preset.keyEnv}, on the ${RUNTIME_NAME[preset.runtime]}.`,
   ];
   if (found === "environment" && others.length > 0) {
     lines.push(`  Also found ${others.join(", ")}; --provider picks another.`);
   }
+  if (preset.runtime === "opencode") lines.push(`  ${SWITCH_LATER}`);
   if (preset.name === "openrouter") {
     lines.push("  A free preview model: good for trying ocra, not for code you must keep private.");
   }
   return `${lines.join("\n")}\n`;
 }
+
+const RUNTIME_NAME = { opencode: "OpenCode runtime", direct: "direct runtime" } as const;
+
+const SWITCH_LATER =
+  "OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/jma49/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime";
 
 function kept(path: string): string {
   return `Kept ${path}: it exists (--force replaces it).\n`;

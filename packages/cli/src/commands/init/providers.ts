@@ -1,20 +1,27 @@
 import { UsageError } from "../../io/usage-error.js";
 
-// The providers ocra init can set up on its own: each an OpenAI-compatible
-// endpoint the direct runtime calls, with a model per tier and its price.
+// The providers ocra init can set up on its own. A provider runs on the
+// direct runtime only once a review has run live through it that way;
+// until then it runs on OpenCode, the default, which prices its catalog's
+// models itself.
 
-interface Price {
-  input: number;
-  output: number;
-  cachedInput?: number;
+interface Tiers {
+  top: string;
+  standard: string;
+  light: string;
 }
 
-interface Model {
-  id: string;
-  price: Price;
+interface CatalogProvider {
+  runtime: "opencode";
+  name: string;
+  label: string;
+  keyEnv: string;
+  // OpenCode catalog ids, provider/model.
+  models: Tiers;
 }
 
-export interface ProviderPreset {
+interface DirectProvider {
+  runtime: "direct";
   name: string;
   label: string;
   keyEnv: string;
@@ -22,66 +29,54 @@ export interface ProviderPreset {
   // declared provider replaces a known one of the same id.
   id: string;
   baseUrl: string;
-  tiers: { top: Model; standard: Model; light: Model };
+  model: string;
 }
 
-// List prices in US dollars per million tokens, from models.dev on
-// 2026-10-04; the run's reported cost and --max-cost-usd count with them.
-// Gemini 3.1 Pro and the GPT-6 models charge more for a prompt above
-// 200k/272k tokens; a declared price is flat, so such a prompt is counted
-// at the lower price.
-const GEMINI: ProviderPreset = {
+export type ProviderPreset = CatalogProvider | DirectProvider;
+
+const GEMINI: CatalogProvider = {
+  runtime: "opencode",
   name: "gemini",
   label: "Gemini models",
   keyEnv: "GEMINI_API_KEY",
-  id: "gemini-api",
-  baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
-  tiers: {
-    top: { id: "gemini-3.1-pro-preview", price: { input: 2, output: 12, cachedInput: 0.2 } },
-    standard: { id: "gemini-3.5-flash", price: { input: 1.5, output: 9, cachedInput: 0.15 } },
-    light: {
-      id: "gemini-flash-lite-latest",
-      price: { input: 0.3, output: 2.5, cachedInput: 0.03 },
-    },
+  models: {
+    top: "google/gemini-3.1-pro-preview",
+    standard: "google/gemini-3.5-flash",
+    light: "google/gemini-flash-lite-latest",
   },
 };
 
-const ANTHROPIC: ProviderPreset = {
+const ANTHROPIC: CatalogProvider = {
+  runtime: "opencode",
   name: "anthropic",
   label: "Anthropic models",
   keyEnv: "ANTHROPIC_API_KEY",
-  id: "anthropic-api",
-  baseUrl: "https://api.anthropic.com/v1",
-  tiers: {
-    top: { id: "claude-opus-5-5", price: { input: 4, output: 20, cachedInput: 0.2 } },
-    standard: { id: "claude-sonnet-5-5", price: { input: 2, output: 10, cachedInput: 0.2 } },
-    light: { id: "claude-haiku-4-5", price: { input: 1, output: 5, cachedInput: 0.1 } },
+  models: {
+    top: "anthropic/claude-opus-5-5",
+    standard: "anthropic/claude-sonnet-5-5",
+    light: "anthropic/claude-haiku-4-5",
   },
 };
 
-const OPENAI: ProviderPreset = {
+const OPENAI: CatalogProvider = {
+  runtime: "opencode",
   name: "openai",
   label: "OpenAI models",
   keyEnv: "OPENAI_API_KEY",
-  id: "openai-api",
-  baseUrl: "https://api.openai.com/v1",
-  tiers: {
-    top: { id: "gpt-6-sol", price: { input: 2, output: 10, cachedInput: 0.2 } },
-    standard: { id: "gpt-6-sol", price: { input: 2, output: 10, cachedInput: 0.2 } },
-    light: { id: "gpt-6-luna", price: { input: 0.1, output: 0.5, cachedInput: 0.01 } },
-  },
+  models: { top: "openai/gpt-6-sol", standard: "openai/gpt-6-sol", light: "openai/gpt-6-luna" },
 };
 
-// The free preview the project's own reviews run on; a preview can move,
-// which the manual says (Model providers, Free models through OpenRouter).
-const FREE = { id: "stealth/space-bunny-alpha", price: { input: 0, output: 0 } };
-const OPENROUTER: ProviderPreset = {
+// The free preview the project's own reviews run on through the direct
+// runtime; a preview can move, which the manual says (Model providers,
+// Free models through OpenRouter).
+const OPENROUTER: DirectProvider = {
+  runtime: "direct",
   name: "openrouter",
   label: "OpenRouter's free model",
   keyEnv: "OPENROUTER_API_KEY",
   id: "router",
   baseUrl: "https://openrouter.ai/api/v1",
-  tiers: { top: FREE, standard: FREE, light: FREE },
+  model: "stealth/space-bunny-alpha",
 };
 
 // In the order a key found in the environment is preferred: the free model
@@ -120,27 +115,27 @@ function keyList(): string {
 const SCHEMA_URL =
   "https://raw.githubusercontent.com/jma49/Open-CR-Agent/main/docs/schema/config.v1.json";
 
-// The smallest .ocra/config.json that reviews with the preset on the direct
-// runtime: models by tier and the one endpoint they are on.
+// The smallest .ocra/config.json that reviews with the preset: on OpenCode,
+// models by tier; on the direct runtime, also the one endpoint they are on,
+// with the model's price (0, a free model).
 export function configFor(preset: ProviderPreset): string {
-  const { top, standard, light } = preset.tiers;
-  const models = Object.fromEntries([top, standard, light].map((m) => [m.id, m.price]));
-  const config = {
-    $schema: SCHEMA_URL,
-    runtime: "direct",
-    models: {
-      top: `${preset.id}/${top.id}`,
-      standard: `${preset.id}/${standard.id}`,
-      light: `${preset.id}/${light.id}`,
-    },
-    providers: {
-      [preset.id]: {
-        type: "openai-compatible",
-        baseUrl: preset.baseUrl,
-        apiKeyEnv: preset.keyEnv,
-        models,
-      },
-    },
-  };
+  const config =
+    preset.runtime === "opencode"
+      ? { $schema: SCHEMA_URL, models: preset.models }
+      : {
+          $schema: SCHEMA_URL,
+          runtime: "direct",
+          models: Object.fromEntries(
+            ["top", "standard", "light"].map((tier) => [tier, `${preset.id}/${preset.model}`]),
+          ),
+          providers: {
+            [preset.id]: {
+              type: "openai-compatible",
+              baseUrl: preset.baseUrl,
+              apiKeyEnv: preset.keyEnv,
+              models: { [preset.model]: { input: 0, output: 0 } },
+            },
+          },
+        };
   return `${JSON.stringify(config, null, 2)}\n`;
 }

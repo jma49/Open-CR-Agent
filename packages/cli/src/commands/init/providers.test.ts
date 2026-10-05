@@ -54,54 +54,54 @@ describe("chooseProvider", () => {
 });
 
 describe("configFor", () => {
-  it.each(PRESETS.map((p) => [p.name, p] as const))(
-    "%s: a valid configuration on the direct runtime, every model declared and priced",
-    (_, preset) => {
-      const text = configFor(preset);
-      const config = configSchema.parse(JSON.parse(text));
-      expect(config.runtime).toBe("direct");
-      const provider = config.providers?.[preset.id];
-      expect(Object.keys(config.providers ?? {})).toEqual([preset.id]);
-      expect(provider).toMatchObject({ baseUrl: preset.baseUrl, apiKeyEnv: preset.keyEnv });
-      for (const chain of [config.models.top, config.models.standard, config.models.light]) {
-        expect(chain).toHaveLength(1);
-        const [id, model] = (chain?.[0] ?? "").split(/\/(.*)/s);
-        expect(id).toBe(preset.id);
-        expect(provider?.models[model ?? ""]).toBeDefined();
-      }
+  it.each(PRESETS.map((p) => [p.name, p] as const))("%s: a valid configuration", (_, preset) => {
+    configSchema.parse(JSON.parse(configFor(preset)));
+  });
+
+  it.each([
+    [
+      "gemini",
+      "google/gemini-3.1-pro-preview",
+      "google/gemini-3.5-flash",
+      "google/gemini-flash-lite-latest",
+    ],
+    [
+      "anthropic",
+      "anthropic/claude-opus-5-5",
+      "anthropic/claude-sonnet-5-5",
+      "anthropic/claude-haiku-4-5",
+    ],
+    ["openai", "openai/gpt-6-sol", "openai/gpt-6-sol", "openai/gpt-6-luna"],
+  ])(
+    "%s: OpenCode's catalog models on the default runtime, priced by the catalog",
+    (name, top, standard, light) => {
+      const config = JSON.parse(configFor(chooseProvider(name, {}).preset));
+      expect(config).toEqual({
+        $schema:
+          "https://raw.githubusercontent.com/jma49/Open-CR-Agent/main/docs/schema/config.v1.json",
+        models: { top, standard, light },
+      });
     },
   );
 
-  it("writes Gemini's configuration as the manual shows it", () => {
-    expect(JSON.parse(configFor(chooseProvider("gemini", {}).preset))).toEqual({
+  it("puts OpenRouter's free model, the one run live that way, on the direct runtime", () => {
+    expect(JSON.parse(configFor(chooseProvider("openrouter", {}).preset))).toEqual({
       $schema:
         "https://raw.githubusercontent.com/jma49/Open-CR-Agent/main/docs/schema/config.v1.json",
       runtime: "direct",
       models: {
-        top: "gemini-api/gemini-3.1-pro-preview",
-        standard: "gemini-api/gemini-3.5-flash",
-        light: "gemini-api/gemini-flash-lite-latest",
+        top: "router/stealth/space-bunny-alpha",
+        standard: "router/stealth/space-bunny-alpha",
+        light: "router/stealth/space-bunny-alpha",
       },
       providers: {
-        "gemini-api": {
+        router: {
           type: "openai-compatible",
-          baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
-          apiKeyEnv: "GEMINI_API_KEY",
-          models: {
-            "gemini-3.1-pro-preview": { input: 2, output: 12, cachedInput: 0.2 },
-            "gemini-3.5-flash": { input: 1.5, output: 9, cachedInput: 0.15 },
-            "gemini-flash-lite-latest": { input: 0.3, output: 2.5, cachedInput: 0.03 },
-          },
+          baseUrl: "https://openrouter.ai/api/v1",
+          apiKeyEnv: "OPENROUTER_API_KEY",
+          models: { "stealth/space-bunny-alpha": { input: 0, output: 0 } },
         },
       },
-    });
-  });
-
-  it("uses OpenRouter's free model at a price of 0", () => {
-    const config = JSON.parse(configFor(chooseProvider("openrouter", {}).preset));
-    expect(config.models.standard).toBe("router/stealth/space-bunny-alpha");
-    expect(config.providers.router.models).toEqual({
-      "stealth/space-bunny-alpha": { input: 0, output: 0 },
     });
   });
 });

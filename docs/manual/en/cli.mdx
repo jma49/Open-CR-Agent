@@ -21,49 +21,37 @@ ocra init --provider anthropic     # a provider whose key is not in this shell
 | `--provider <name>` | `gemini`, `anthropic`, `openai` or `openrouter`, in place of the key found in the environment |
 | `--force` | Replace the files if they exist. Without it, a file that exists is kept, and ocra init says so |
 
-**The model.** Without `--provider`, ocra init takes the first of `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `OPENROUTER_API_KEY` that is set, and names any other it found. OpenRouter's free model is chosen only when no other key is there. It writes one model per tier, on the provider's OpenAI-compatible endpoint, with its list price per million tokens (from [models.dev](https://models.dev) on 2026-10-04), so the reported cost and `--max-cost-usd` count it:
+**The model.** Without `--provider`, ocra init takes the first of `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `OPENROUTER_API_KEY` that is set, and names any other it found. OpenRouter's free model is chosen only when no other key is there. It writes one model per tier:
 
-| Provider | `top` | `standard` | `light` |
-|---|---|---|---|
-| `gemini` | `gemini-3.1-pro-preview` | `gemini-3.5-flash` | `gemini-flash-lite-latest` |
-| `anthropic` | `claude-opus-5-5` | `claude-sonnet-5-5` | `claude-haiku-4-5` |
-| `openai` | `gpt-6-sol` | `gpt-6-sol` | `gpt-6-luna` |
-| `openrouter` | `stealth/space-bunny-alpha`, free ([a preview](./providers#free-models-through-openrouter)) | the same | the same |
+| Provider | `top` | `standard` | `light` | Runtime |
+|---|---|---|---|---|
+| `gemini` | `google/gemini-3.1-pro-preview` | `google/gemini-3.5-flash` | `google/gemini-flash-lite-latest` | `opencode` |
+| `anthropic` | `anthropic/claude-opus-5-5` | `anthropic/claude-sonnet-5-5` | `anthropic/claude-haiku-4-5` | `opencode` |
+| `openai` | `openai/gpt-6-sol` | `openai/gpt-6-sol` | `openai/gpt-6-luna` | `opencode` |
+| `openrouter` | `router/stealth/space-bunny-alpha`, free ([a preview](./providers#free-models-through-openrouter)) | the same | the same | `direct` |
 
-**The runtime.** The configuration sets `"runtime": "direct"`, which calls only the endpoint it declares; installed without OpenCode, ocra takes about 11 MB instead of 175 MB ([Without OpenCode](./installation#without-opencode)). The workflow passes `opencode: false` to the Action for the same reason. Nothing changes for a configuration ocra init did not write: the default runtime is still `opencode`, and when `--github` keeps an existing configuration that does not set `direct`, the workflow installs OpenCode as before. The direct runtime has reviewed live through OpenRouter; through Gemini's, Anthropic's and OpenAI's OpenAI-compatible endpoints it has not yet.
+**The runtime.** A provider is set up on the `direct` runtime only once reviews have run live through it that way, which today is OpenRouter's free model: the configuration then sets `"runtime": "direct"` and declares the endpoint with a price of 0, and the workflow passes `opencode: false`, so ocra installs in about 11 MB instead of 175 MB. Gemini, Anthropic and OpenAI stay on `opencode`, the default runtime: the configuration names OpenCode catalog models, which OpenCode prices itself, and the workflow installs OpenCode as the Action does by default. ocra init says so in one line, with a link to [Choosing the runtime](./providers#choosing-the-runtime), where moving such a provider to `direct` is described. Nothing changes for a configuration ocra init did not write; when `--github` keeps an existing configuration that does not set `direct`, the workflow installs OpenCode.
 
 For Gemini, the file is:
 
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/jma49/Open-CR-Agent/main/docs/schema/config.v1.json",
-  "runtime": "direct",
   "models": {
-    "top": "gemini-api/gemini-3.1-pro-preview",
-    "standard": "gemini-api/gemini-3.5-flash",
-    "light": "gemini-api/gemini-flash-lite-latest"
-  },
-  "providers": {
-    "gemini-api": {
-      "type": "openai-compatible",
-      "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
-      "apiKeyEnv": "GEMINI_API_KEY",
-      "models": {
-        "gemini-3.1-pro-preview": { "input": 2, "output": 12, "cachedInput": 0.2 },
-        "gemini-3.5-flash": { "input": 1.5, "output": 9, "cachedInput": 0.15 },
-        "gemini-flash-lite-latest": { "input": 0.3, "output": 2.5, "cachedInput": 0.03 }
-      }
-    }
+    "top": "google/gemini-3.1-pro-preview",
+    "standard": "google/gemini-3.5-flash",
+    "light": "google/gemini-flash-lite-latest"
   }
 }
 ```
 
-The key itself is never written: the file names the variable that holds it. Change the models or prices like any [configuration](./configuration).
+The key itself is never written: OpenCode reads it from `GEMINI_API_KEY`, and a declared endpoint names the variable that holds it. Change the models like any [configuration](./configuration).
 
-**The workflow** is the manual's recipe with the provider's key as a secret, `opencode: false`, and `--max-cost-usd 2` for each review. It pins the Action to the commit of the release this version of ocra names, with the version as a comment, like the examples on [GitHub](./github). `ocra init --github` prints the rest:
+**The workflow** is the manual's recipe with the provider's key as a secret and `--max-cost-usd 2` for each review, plus `opencode: false` on the direct runtime. It pins the Action to the commit of the release this version of ocra names, with the version as a comment, like the examples on [GitHub](./github). `ocra init --github` prints the rest:
 
 ```text
-Wrote .ocra/config.json: Gemini models through GEMINI_API_KEY, on the direct runtime.
+Wrote .ocra/config.json: Gemini models through GEMINI_API_KEY, on the OpenCode runtime.
+  OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/jma49/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime
 Wrote .github/workflows/ocra.yml: pull requests from members are reviewed on every push, anyone else's once each time a maintainer adds the ocra-review label.
 
 Next:

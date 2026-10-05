@@ -42,8 +42,9 @@ describe("ocra init", () => {
     expect(result).toEqual({
       code: 0,
       err: "",
-      out: `Wrote .ocra/config.json: Anthropic models through ANTHROPIC_API_KEY, on the direct runtime.
+      out: `Wrote .ocra/config.json: Anthropic models through ANTHROPIC_API_KEY, on the OpenCode runtime.
   Also found OPENROUTER_API_KEY; --provider picks another.
+  OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/jma49/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime
 
 Next:
   ocra review --plan    what a review would cover, without a model call
@@ -51,8 +52,8 @@ Next:
 `,
     });
     const config = JSON.parse(read(dir, CONFIG));
-    expect(config.runtime).toBe("direct");
-    expect(config.models.standard).toBe("anthropic-api/claude-sonnet-5-5");
+    expect(config.runtime).toBeUndefined();
+    expect(config.models.standard).toBe("anthropic/claude-sonnet-5-5");
     expect(read(dir, CONFIG)).not.toContain("secret");
     expect(existsSync(join(dir, WORKFLOW))).toBe(false);
   });
@@ -63,7 +64,10 @@ Next:
     expect(result.out).toContain(
       "Wrote .ocra/config.json: OpenRouter's free model through OPENROUTER_API_KEY, on the direct runtime.\n  A free preview model: good for trying ocra, not for code you must keep private.\n",
     );
-    expect(JSON.parse(read(dir, CONFIG)).models.top).toBe("router/stealth/space-bunny-alpha");
+    expect(result.out).not.toContain("175 MB");
+    const config = JSON.parse(read(dir, CONFIG));
+    expect(config.runtime).toBe("direct");
+    expect(config.models.top).toBe("router/stealth/space-bunny-alpha");
   });
 
   it("keeps an existing configuration unless --force is given", async () => {
@@ -80,7 +84,7 @@ Next:
 
     const forced = await init(dir, ["--force"], { GEMINI_API_KEY: "g" });
     expect(forced.out).toMatch(/^Wrote \.ocra\/config\.json: Gemini models/);
-    expect(JSON.parse(read(dir, CONFIG)).runtime).toBe("direct");
+    expect(JSON.parse(read(dir, CONFIG)).models.top).toBe("google/gemini-3.1-pro-preview");
   });
 
   it("writes the fork-safe workflow with --github and says what to run next", async () => {
@@ -89,7 +93,8 @@ Next:
     expect(result).toEqual({
       code: 0,
       err: "",
-      out: `Wrote .ocra/config.json: Gemini models through GEMINI_API_KEY, on the direct runtime.
+      out: `Wrote .ocra/config.json: Gemini models through GEMINI_API_KEY, on the OpenCode runtime.
+  OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/jma49/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime
 Wrote .github/workflows/ocra.yml: pull requests from members are reviewed on every push, anyone else's once each time a maintainer adds the ocra-review label.
 
 Next:
@@ -103,8 +108,19 @@ Next:
     });
     const workflow = read(dir, WORKFLOW);
     expect(workflow).toContain("pull_request_target:");
-    expect(workflow).toContain("opencode: false");
+    // Gemini runs on OpenCode, so the Action installs it.
+    expect(workflow).not.toContain("opencode:");
     expect(workflow).toContain(`GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}`);
+  });
+
+  it("leaves OpenCode out of the workflow for OpenRouter's free model, on the direct runtime", async () => {
+    const { dir } = repos.create();
+    const result = await init(dir, ["--github"], { OPENROUTER_API_KEY: "sk-or-secret" });
+    expect(result.code).toBe(0);
+    const workflow = read(dir, WORKFLOW);
+    expect(workflow).toContain("          opencode: false\n");
+    expect(workflow).toContain(`OPENROUTER_API_KEY: \${{ secrets.OPENROUTER_API_KEY }}`);
+    expect(workflow).not.toContain("sk-or-secret");
   });
 
   it("writes the pull_request workflow with --same-repo-only, and no label step", async () => {

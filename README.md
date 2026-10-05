@@ -43,7 +43,7 @@ Requires Node.js 22.19 or newer and Git.
 npm install -g @open-cr-agent/cli
 export GEMINI_API_KEY="your-key"     # or ANTHROPIC_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY
 cd your-repository
-ocra init                            # .ocra/config.json for that key, on the direct runtime
+ocra init                            # .ocra/config.json with models for that key
 ocra review                          # review your uncommitted changes
 ocra init --github                   # also .github/workflows/ocra.yml, safe for pull requests from forks
 ```

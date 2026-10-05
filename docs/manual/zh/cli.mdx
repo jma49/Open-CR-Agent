@@ -21,49 +21,37 @@ ocra init --provider anthropic     # 当前 shell 里没有这个供应商的 ke
 | `--provider <name>` | `gemini`、`anthropic`、`openai` 或 `openrouter`，代替从环境里找到的 key |
 | `--force` | 文件已存在时替换它。不加时保留已有文件，并说明保留了 |
 
-**模型。** 不加 `--provider` 时，ocra init 依次查找 `GEMINI_API_KEY`、`ANTHROPIC_API_KEY`、`OPENAI_API_KEY`、`OPENROUTER_API_KEY`，用第一个已设置的，并列出找到的其他 key。只有在没有其他 key 时才会选 OpenRouter 的免费模型。它为每一档写一个模型，走该供应商兼容 OpenAI 的端点，并带上每百万 token 的标价（取自 2026-10-04 的 [models.dev](https://models.dev)），所以报告的花费和 `--max-cost-usd` 都会计入：
+**模型。** 不加 `--provider` 时，ocra init 依次查找 `GEMINI_API_KEY`、`ANTHROPIC_API_KEY`、`OPENAI_API_KEY`、`OPENROUTER_API_KEY`，用第一个已设置的，并列出找到的其他 key。只有在没有其他 key 时才会选 OpenRouter 的免费模型。它为每一档写一个模型：
 
-| 供应商 | `top` | `standard` | `light` |
-|---|---|---|---|
-| `gemini` | `gemini-3.1-pro-preview` | `gemini-3.5-flash` | `gemini-flash-lite-latest` |
-| `anthropic` | `claude-opus-5-5` | `claude-sonnet-5-5` | `claude-haiku-4-5` |
-| `openai` | `gpt-6-sol` | `gpt-6-sol` | `gpt-6-luna` |
-| `openrouter` | `stealth/space-bunny-alpha`，免费（[预览模型](./providers#openrouter-上的免费模型)） | 同左 | 同左 |
+| 供应商 | `top` | `standard` | `light` | 运行时 |
+|---|---|---|---|---|
+| `gemini` | `google/gemini-3.1-pro-preview` | `google/gemini-3.5-flash` | `google/gemini-flash-lite-latest` | `opencode` |
+| `anthropic` | `anthropic/claude-opus-5-5` | `anthropic/claude-sonnet-5-5` | `anthropic/claude-haiku-4-5` | `opencode` |
+| `openai` | `openai/gpt-6-sol` | `openai/gpt-6-sol` | `openai/gpt-6-luna` | `opencode` |
+| `openrouter` | `router/stealth/space-bunny-alpha`，免费（[预览模型](./providers#openrouter-上的免费模型)） | 同左 | 同左 | `direct` |
 
-**运行时。** 配置里设置 `"runtime": "direct"`，只调用它声明的端点；不装 OpenCode 时，ocra 约占 11 MB 而不是 175 MB（[不装 OpenCode](./installation#不装-opencode)）。出于同样的原因，workflow 给 Action 传 `opencode: false`。不是 ocra init 写的配置不受影响：默认运行时仍是 `opencode`；`--github` 保留了一个没有设置 `direct` 的已有配置时，workflow 照旧安装 OpenCode。direct 运行时已经通过 OpenRouter 做过真实审查；通过 Gemini、Anthropic、OpenAI 兼容 OpenAI 的端点还没有。
+**运行时。** 只有已经用 `direct` 运行时真实审查过的供应商才会配置成 `direct`，目前只有 OpenRouter 的免费模型：这时配置设置 `"runtime": "direct"`，以价格 0 声明端点，workflow 传 `opencode: false`，ocra 安装约 11 MB 而不是 175 MB。Gemini、Anthropic 和 OpenAI 仍用默认运行时 `opencode`：配置里写的是 OpenCode 目录中的模型，价格由 OpenCode 自己计算，workflow 照 Action 的默认安装 OpenCode。ocra init 会用一行话说明这一点，并链接到[选择运行时](./providers#选择运行时)，那里介绍了怎样把这类供应商换到 `direct`。不是 ocra init 写的配置不受影响；`--github` 保留了一个没有设置 `direct` 的已有配置时，workflow 会安装 OpenCode。
 
 以 Gemini 为例，写出的文件是：
 
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/jma49/Open-CR-Agent/main/docs/schema/config.v1.json",
-  "runtime": "direct",
   "models": {
-    "top": "gemini-api/gemini-3.1-pro-preview",
-    "standard": "gemini-api/gemini-3.5-flash",
-    "light": "gemini-api/gemini-flash-lite-latest"
-  },
-  "providers": {
-    "gemini-api": {
-      "type": "openai-compatible",
-      "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
-      "apiKeyEnv": "GEMINI_API_KEY",
-      "models": {
-        "gemini-3.1-pro-preview": { "input": 2, "output": 12, "cachedInput": 0.2 },
-        "gemini-3.5-flash": { "input": 1.5, "output": 9, "cachedInput": 0.15 },
-        "gemini-flash-lite-latest": { "input": 0.3, "output": 2.5, "cachedInput": 0.03 }
-      }
-    }
+    "top": "google/gemini-3.1-pro-preview",
+    "standard": "google/gemini-3.5-flash",
+    "light": "google/gemini-flash-lite-latest"
   }
 }
 ```
 
-key 本身从不写入文件：文件里只有保存它的环境变量名。模型和价格可以像其他[配置](./configuration)一样修改。
+key 本身从不写入文件：OpenCode 从 `GEMINI_API_KEY` 读取它，声明的端点只写保存它的环境变量名。模型可以像其他[配置](./configuration)一样修改。
 
-**workflow** 就是手册里的方案，加上作为 secret 的供应商 key、`opencode: false`，以及每次审查的 `--max-cost-usd 2`。它把 Action 固定到这个版本的 ocra 所记录的发布提交上，并以注释写明版本，和 [GitHub](./github) 页面里的示例一样。`ocra init --github` 会打印剩下的步骤：
+**workflow** 就是手册里的方案，加上作为 secret 的供应商 key 和每次审查的 `--max-cost-usd 2`，在 direct 运行时下再加 `opencode: false`。它把 Action 固定到这个版本的 ocra 所记录的发布提交上，并以注释写明版本，和 [GitHub](./github) 页面里的示例一样。`ocra init --github` 会打印剩下的步骤：
 
 ```text
-Wrote .ocra/config.json: Gemini models through GEMINI_API_KEY, on the direct runtime.
+Wrote .ocra/config.json: Gemini models through GEMINI_API_KEY, on the OpenCode runtime.
+  OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/jma49/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime
 Wrote .github/workflows/ocra.yml: pull requests from members are reviewed on every push, anyone else's once each time a maintainer adds the ocra-review label.
 
 Next:
