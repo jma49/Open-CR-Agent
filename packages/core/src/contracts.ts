@@ -44,8 +44,20 @@ export interface ReviewContext {
 export const INCOMPLETE_ENDINGS = ["step_cap", "stopped_early"] as const;
 export type IncompleteEnding = (typeof INCOMPLETE_ENDINGS)[number];
 
+// What one attempt of a review task looked at and answered: the files it
+// read, the literals it searched for and its final text. Kept in the session
+// log, never in the report, so an analysis can tell a file the reviewer never
+// read from one it read and reported nothing on.
+export interface AttemptRecord {
+  model: string;
+  read: string[];
+  searched: string[];
+  text: string;
+}
+
 export type AgentEvent =
-  | { type: "progress"; taskId: string; message: string }
+  // attempt: on the line that sums up a finished attempt.
+  | { type: "progress"; taskId: string; message: string; attempt?: AttemptRecord }
   // model: the one that reported the finding, when the runtime knows it.
   | { type: "finding"; taskId: string; finding: unknown; model?: string }
   | ({ type: "usage"; taskId: string } & Usage)

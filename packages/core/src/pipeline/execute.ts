@@ -82,7 +82,13 @@ export async function runJob(
     },
     options.signal,
     {
-      onProgress: (message) => emit({ type: "task_progress", taskId: job.taskId, message }),
+      onProgress: (message, attempt) =>
+        emit({
+          type: "task_progress",
+          taskId: job.taskId,
+          message,
+          ...(attempt ? { attempt } : {}),
+        }),
       onUsage: options.onUsage,
       category: job.reviewer.category,
       abortGraceMs: options.abortGraceMs,

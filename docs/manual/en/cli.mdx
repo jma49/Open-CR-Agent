@@ -163,7 +163,7 @@ Tested with the log Semgrep 1.178.0 writes; other tools' logs follow the same st
 
 ### Sessions
 
-Every review (not `--plan`) writes `.ocra/sessions/<id>/events.jsonl` (one event per line, appended as the run progresses) and `report.json`. The `<id>` is the run id: the first progress line names it, the JSON report carries it as `runId`, the summary comment shows it under Coverage and cost, and the SARIF log carries it as `automationDetails.id` (`ocra/<id>`), so one run can be found again from any of them. The directory carries its own `.gitignore`, so logs are never committed and never show up as changes in the next review.
+Every review (not `--plan`) writes `.ocra/sessions/<id>/events.jsonl` (one event per line, appended as the run progresses) and `report.json`. The `<id>` is the run id: the first progress line names it, the JSON report carries it as `runId`, the summary comment shows it under Coverage and cost, and the SARIF log carries it as `automationDetails.id` (`ocra/<id>`), so one run can be found again from any of them. The line that sums up each attempt of a review task carries, in its event's `attempt`, the files the reviewer read, what it searched for and its final text (bounded), so you can tell a file it never opened from one it read and found nothing in; none of this goes into the report. The directory carries its own `.gitignore`, so logs are never committed and never show up as changes in the next review.
 
 ## ocra metrics
 

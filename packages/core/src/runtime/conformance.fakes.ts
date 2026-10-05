@@ -354,6 +354,34 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
     );
 
     it(
+      "says in each attempt's summary which files it read, what it searched for and what it answered",
+      async () => {
+        const { runtime } = await start([
+          { toolCalls: [{ name: "read_file", args: { path: FILE } }] },
+          { toolCalls: [{ name: "code_search", args: { literal: "const a" } }] },
+          { toolCalls: [{ name: "read_file", args: { path: FILE, startLine: 2 } }] },
+          { content: "Nothing to report.", toolCalls: [{ name: "task_done", args: {} }] },
+        ]);
+        const events = await collect(
+          runtime.runTask(taskSpec(fakeContext()), new AbortController().signal),
+        );
+        const summaries = events.flatMap((e) =>
+          e.type === "progress" && e.attempt ? [e.attempt] : [],
+        );
+        expect(summaries).toEqual([
+          {
+            model: "local/m1",
+            read: [FILE],
+            searched: ["const a"],
+            // OpenCode takes one more step to hear task_done out.
+            text: expect.stringContaining("Nothing to report."),
+          },
+        ]);
+      },
+      timeout,
+    );
+
+    it(
       "stops on a credential error without trying another model",
       async () => {
         const { endpoint, runtime } = await start(

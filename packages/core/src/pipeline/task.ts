@@ -4,6 +4,7 @@ import type {
   AgentEvent,
   AgentRuntime,
   AgentTaskSpec,
+  AttemptRecord,
   IncompleteEnding,
   Usage,
 } from "../contracts.js";
@@ -27,7 +28,7 @@ export interface TaskResult {
 }
 
 export interface TaskCallbacks {
-  onProgress(message: string): void;
+  onProgress(message: string, attempt?: AttemptRecord): void;
   // Spend as the runtime reports it, so the run's limit can stop the task
   // while it runs.
   onUsage?: ((usage: Usage) => void) | undefined;
@@ -126,7 +127,7 @@ async function collectAfterAbort(
 function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks): boolean {
   switch (event.type) {
     case "progress":
-      callbacks.onProgress(event.message);
+      callbacks.onProgress(event.message, event.attempt);
       return false;
     case "finding": {
       const parsed = reportedFindingSchema.safeParse(

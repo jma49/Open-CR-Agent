@@ -20,6 +20,7 @@ export type {
   AgentTaskSpec,
   AppliedSampling,
   AppliedSettings,
+  AttemptRecord,
   CodeMatch,
   CompletionRequest,
   CompletionResult,
@@ -125,8 +126,10 @@ export type { RuleSet } from "./rules/rule-set.js";
 export {
   type AttemptError,
   type AttemptOutcome,
+  exploredBy,
   MAX_AGENT_STEPS,
   RESUME_MESSAGE,
+  type ToolUse,
   withoutSecrets,
 } from "./runtime/attempt.js";
 export { ChainRunner, type ModelAttempts } from "./runtime/chain-runner.js";

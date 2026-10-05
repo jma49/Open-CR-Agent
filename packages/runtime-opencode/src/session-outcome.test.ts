@@ -48,6 +48,30 @@ describe("summarizeSession", () => {
     expect(outcome.error).toBeUndefined();
   });
 
+  it("records the files a finished read_file call read and what code_search looked for", () => {
+    const tool = (name: string, status: string, input: unknown) => ({
+      type: "tool",
+      tool: `ocra_${name}`,
+      state: { status, input },
+    });
+    const outcome = summarizeSession(
+      [
+        assistant({}, [
+          { type: "step-start" },
+          tool("read_file", "completed", { path: "src/a.ts" }),
+          tool("code_search", "completed", { literal: "parse(" }),
+          tool("read_file", "completed", { path: "src/a.ts", startLine: 300 }),
+          // Refused before it ran: the reviewer never saw this file.
+          tool("read_file", "error", { path: "src/b.ts" }),
+          tool("read_file", "completed", { path: 42 }),
+        ]),
+      ],
+      REPORT,
+      "ocra_",
+    );
+    expect(outcome).toMatchObject({ read: ["src/a.ts"], searched: ["parse("] });
+  });
+
   it("joins the assistant's text answers", () => {
     const outcome = summarizeSession(
       [

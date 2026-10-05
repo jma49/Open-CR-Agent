@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { IncompleteEnding, Usage } from "../contracts.js";
+import type { AttemptRecord, IncompleteEnding, Usage } from "../contracts.js";
 import type {
   AnchorMethod,
   ChangeRequest,
@@ -125,7 +125,8 @@ export type ReviewEvent =
   | { type: "files_bundled"; strategy: string; bundles: number; warnings: string[] }
   | { type: "matrix_planned"; tasks: number; skipped: SkippedCell[] }
   | { type: "task_started"; taskId: string; reviewer: string; bundle: string; files: string[] }
-  | { type: "task_progress"; taskId: string; message: string }
+  // attempt: what a finished attempt read, searched for and answered.
+  | { type: "task_progress"; taskId: string; message: string; attempt?: AttemptRecord }
   | { type: "finding"; taskId: string; finding: Finding }
   // A reported finding the run did not keep: on a file outside the task's
   // bundle. File and title only, so a later analysis can tell what was lost.

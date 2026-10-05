@@ -3,10 +3,12 @@ import {
   addUsage,
   emptyUsage,
   errorMessage,
+  exploredBy,
   type ModelPrice,
   REVIEW_TOOLS,
   type ReviewContext,
   type ToolDefinition,
+  type ToolUse,
   type Usage,
 } from "@open-cr-agent/core";
 import {
@@ -63,6 +65,7 @@ export async function runLoop(input: LoopInput): Promise<AttemptOutcome> {
     usage: emptyUsage(),
   };
   const texts: string[] = [];
+  const uses: ToolUse[] = [];
   let done = false;
   let params = input.params ?? {};
 
@@ -113,14 +116,14 @@ export async function runLoop(input: LoopInput): Promise<AttemptOutcome> {
       messages.push({
         role: "tool",
         tool_call_id: call.id,
-        content: await runTool(tools, call, input.context, outcome),
+        content: await runTool(tools, call, input.context, outcome, uses),
       });
     }
     if (done) break;
   }
   outcome.text = texts.join("\n").trim();
   if (!done && !outcome.error && outcome.steps >= input.maxSteps) outcome.atStepCap = true;
-  return outcome;
+  return { ...outcome, ...exploredBy(uses) };
 }
 
 // A tool's answer, or why it gave none: a wrong call is told to the model,
@@ -130,6 +133,7 @@ async function runTool(
   call: ToolCall,
   context: ReviewContext,
   outcome: AttemptOutcome,
+  uses: ToolUse[],
 ): Promise<string> {
   const tool = tools.get(call.function.name);
   if (!tool) return `Unknown tool: ${call.function.name}`;
@@ -143,6 +147,7 @@ async function runTool(
   if (!parsed.success) {
     return `Invalid arguments: ${parsed.error.issues.map((i) => `${i.path.join(".") || "input"}: ${i.message}`).join("; ")}`;
   }
+  uses.push({ name: tool.name, input: parsed.data });
   if (tool.name === REVIEW_TOOLS.reportFinding) outcome.findings.push(parsed.data);
   try {
     return await tool.execute(parsed.data, context);

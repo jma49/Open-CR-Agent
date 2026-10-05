@@ -19,6 +19,7 @@ export type AgentEvent = {
     type: "progress";
     taskId: string;
     message: string;
+    attempt?: AttemptRecord;
 } | {
     type: "finding";
     taskId: string;
@@ -153,7 +154,11 @@ export interface AttemptOutcome {
     // (undocumented)
     findings: unknown[];
     // (undocumented)
+    read?: string[];
+    // (undocumented)
     resumed?: true;
+    // (undocumented)
+    searched?: string[];
     // (undocumented)
     steps: number;
     // (undocumented)
@@ -162,6 +167,18 @@ export interface AttemptOutcome {
     toolCalls: string[];
     // (undocumented)
     usage: Usage;
+}
+
+// @public (undocumented)
+export interface AttemptRecord {
+    // (undocumented)
+    model: string;
+    // (undocumented)
+    read: string[];
+    // (undocumented)
+    searched: string[];
+    // (undocumented)
+    text: string;
 }
 
 // @public (undocumented)
@@ -368,6 +385,12 @@ const exclusionReasonSchema: z.ZodEnum<{
     too_large: "too_large";
     user_exclude: "user_exclude";
 }>;
+
+// @public (undocumented)
+export function exploredBy(uses: readonly ToolUse[]): {
+    read: string[];
+    searched: string[];
+};
 
 // @public (undocumented)
 export type FileChangeKind = "added" | "modified" | "deleted" | "renamed";
@@ -1270,6 +1293,7 @@ export type ReviewEvent = {
     type: "task_progress";
     taskId: string;
     message: string;
+    attempt?: AttemptRecord;
 } | {
     type: "finding";
     taskId: string;
@@ -1712,6 +1736,14 @@ export interface ToolDefinition<Shape extends z.ZodRawShape = z.ZodRawShape> {
     execute(args: z.infer<z.ZodObject<Shape>>, context: ReviewContext): Promise<string>;
     // (undocumented)
     inputSchema: z.ZodObject<Shape>;
+    // (undocumented)
+    name: string;
+}
+
+// @public (undocumented)
+export interface ToolUse {
+    // (undocumented)
+    input: unknown;
     // (undocumented)
     name: string;
 }

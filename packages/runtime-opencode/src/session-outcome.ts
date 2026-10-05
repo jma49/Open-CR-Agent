@@ -1,4 +1,4 @@
-import { type AttemptOutcome, parseQuotaError, type Usage } from "@open-cr-agent/core";
+import { type AttemptOutcome, exploredBy, parseQuotaError, type Usage } from "@open-cr-agent/core";
 import { z } from "zod";
 
 // The part of OpenCode's session messages ocra reads, validated rather than
@@ -58,12 +58,21 @@ export function summarizeSession(
 ): AttemptOutcome {
   const assistant = messages.filter((m) => m.info.role === "assistant");
   const tools = assistant.flatMap((m) => m.parts.filter((p) => p.type === "tool"));
+  const names = tools.map((p) => (p.tool ?? "unknown").replace(toolPrefix, ""));
   const outcome: AttemptOutcome = {
     findings: tools
       .filter((p) => p.tool === reportTool && p.state?.status === "completed")
       .map((p) => p.state?.input),
     steps: assistant.reduce((n, m) => n + m.parts.filter((p) => p.type === "step-start").length, 0),
-    toolCalls: tools.map((p) => (p.tool ?? "unknown").replace(toolPrefix, "")),
+    toolCalls: names,
+    // A call that did not complete never showed the reviewer anything.
+    ...exploredBy(
+      tools.flatMap((p, i) =>
+        p.state?.status === "completed"
+          ? [{ name: names[i] ?? "unknown", input: p.state.input }]
+          : [],
+      ),
+    ),
     text: assistant
       .flatMap((m) => m.parts.filter((p) => p.type === "text").map((p) => p.text ?? ""))
       .join("\n")

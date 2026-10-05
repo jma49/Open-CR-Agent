@@ -5,6 +5,7 @@ import {
   type AttemptEnding,
   type AttemptOutcome,
   attemptEnding,
+  attemptRecord,
   attemptSummary,
 } from "./attempt.js";
 import type { ModelHealth } from "./models.js";
@@ -55,7 +56,12 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
       const outcome = await running;
       const ended = attemptEnding(outcome);
       yield { type: "usage", taskId, ...live.rest(outcome.usage) };
-      yield { type: "progress", taskId, message: attemptSummary(model, outcome) };
+      yield {
+        type: "progress",
+        taskId,
+        message: attemptSummary(model, outcome),
+        attempt: attemptRecord(model, outcome),
+      };
       for (const finding of outcome.findings) yield { type: "finding", taskId, finding, model };
 
       // A cancelled attempt is neither finished nor the model's fault.
