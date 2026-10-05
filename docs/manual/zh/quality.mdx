@@ -137,3 +137,5 @@ ocra 能找到真实的 bug，到目前为止也很少误报，但它漏掉的�
 ```bash
 node packages/eval/dist/main.js run --dataset golden --tier smoke --label mine --max-cost-usd 20 --pr-max-cost-usd 6
 ```
+
+在 OpenRouter 的免费模型上，加上 `--config <file>`，内容按[OpenRouter 上的免费模型](./providers#openrouter-上的免费模型)的配方写，判定模型的变量按[评测](./evaluation)设置；这样跑不花钱，但一次 smoke 运行需要的请求数超过账号一天的免费配额，所以要用 `--retry-failed` 跨天接着跑。

@@ -137,3 +137,5 @@ The cases and their labels are in [`evals/golden`](https://github.com/jma49/Open
 ```bash
 node packages/eval/dist/main.js run --dataset golden --tier smoke --label mine --max-cost-usd 20 --pr-max-cost-usd 6
 ```
+
+On the free OpenRouter model, add `--config <file>` with the recipe from [Free models through OpenRouter](./providers#free-models-through-openrouter) and the judge variables from [Evaluation](./evaluation); the run costs nothing, but one smoke run takes more requests than the account's free quota for a day, so it resumes across days with `--retry-failed`.
