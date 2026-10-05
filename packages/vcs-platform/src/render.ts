@@ -1,6 +1,10 @@
 import {
+  type CoverageEntry,
   coverageGaps,
   type Finding,
+  type IncompleteEnding,
+  isUnfinished,
+  MAX_AGENT_STEPS,
   type PriorFinding,
   type ReviewReport,
   type Severity,
@@ -193,14 +197,33 @@ function incompleteNotes(report: ReviewReport, text: PlatformText): string[] {
       `**Incomplete:** verification failed or ran out of budget for ${report.unverifiedCriticals} critical finding(s); check them yourself.`,
     );
   }
-  const { notReviewed } = coverageGaps(report);
-  if (notReviewed > 0) {
+  // The CLI's partly-reviewed.ts says the same for a terminal; this one names
+  // the platform and points at the next review.
+  const { notReviewed, incomplete } = coverageGaps(report);
+  const gaps: string[] = [];
+  const missed = notReviewed - incomplete.step_cap - incomplete.stopped_early;
+  if (missed > 0) {
     const limit = report.spendLimit?.reached
       ? `; the spend limit of $${report.spendLimit.usd} was reached`
       : "";
+    gaps.push(`**Incomplete:** ${missed} selected file(s) were not reviewed${limit}.`);
+  }
+  if (incomplete.step_cap > 0) {
+    gaps.push(
+      `**Incomplete:** ${incomplete.step_cap} selected file(s) were only partly reviewed: a reviewer used all ${MAX_AGENT_STEPS} of its steps before it finished them. The step limit is fixed; a smaller ${text.changeRequest} gives each file more of them.`,
+    );
+  }
+  if (incomplete.stopped_early > 0) {
+    gaps.push(
+      `**Incomplete:** ${incomplete.stopped_early} selected file(s) were only partly reviewed: a reviewer stopped with steps left, without saying it had finished them. Run the review again, or use a stronger model if it keeps stopping.`,
+    );
+  }
+  const last = gaps.pop();
+  if (last !== undefined) {
+    for (const gap of gaps) lines.push("", gap);
     lines.push(
       "",
-      `**Incomplete:** ${notReviewed} selected file(s) were not reviewed${limit}. They are listed under Coverage and cost, and the next review of this ${text.changeRequest} includes them.`,
+      `${last} They are listed under Coverage and cost, and the next review of this ${text.changeRequest} includes them.`,
     );
   }
   return lines;
@@ -300,8 +323,9 @@ function openList(title: string, intro: string, findings: readonly PriorFinding[
 }
 
 function coverageAndCost(report: ReviewReport): string[] {
-  const failed = report.coverage.filter((c) => c.status === "failed" || c.status === "unreviewed");
+  const unfinished = report.coverage.filter(isUnfinished);
   const count = (status: string) => report.coverage.filter((c) => c.status === status).length;
+  const partly = count("incomplete");
   const { costUsd, inputTokens, outputTokens } = report.usage;
   return [
     "",
@@ -309,9 +333,18 @@ function coverageAndCost(report: ReviewReport): string[] {
     "",
     "<details><summary>Coverage and cost</summary>",
     "",
-    `${count("reviewed")} reviewed · ${count("unchanged")} unchanged since the last review · ${failed.length} not reviewed · ${count("excluded")} excluded · ${inputTokens} in / ${outputTokens} out tokens · $${costUsd.toFixed(4)}${spendLimitNote(report)} · run ${codeSpan(report.runId)}`,
-    ...failed.map((c) => `- not reviewed: ${codeSpan(c.path)}`),
+    `${count("reviewed")} reviewed${partly > 0 ? ` · ${partly} partly reviewed` : ""} · ${count("unchanged")} unchanged since the last review · ${unfinished.length - partly} not reviewed · ${count("excluded")} excluded · ${inputTokens} in / ${outputTokens} out tokens · $${costUsd.toFixed(4)}${spendLimitNote(report)} · run ${codeSpan(report.runId)}`,
+    ...unfinished.map((c) => `- ${unfinishedLabel(c)}: ${codeSpan(c.path)}`),
     "",
     "</details>",
   ];
+}
+
+const PARTLY: Record<IncompleteEnding, string> = {
+  step_cap: "partly reviewed (out of steps)",
+  stopped_early: "partly reviewed (stopped early)",
+};
+
+function unfinishedLabel(entry: CoverageEntry): string {
+  return entry.status === "incomplete" ? PARTLY[entry.ended] : "not reviewed";
 }

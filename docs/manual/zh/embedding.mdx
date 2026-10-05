@@ -98,7 +98,7 @@ try {
 一个 `ReviewReport`：改动、风险档位、结论和总结、每个文件的覆盖情况、分组、任务、问题、核查否决和 Judge 的决定、与上次审查的对比、用量和警告。读取它时要知道两件事：
 
 - **对外发布的是 `toReportOutput(report)`**，不是报告本身。它是 CLI 写出的带版本号的 JSON，由 `reportOutputSchema` 和公开的 [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json) 描述。它的类型 `ReportOutput` 由 `reportOutputSchema` 推导而来，类型和校验器不会不一致。内部报告里的字段可能会变。
-- **不完整的审查不算通过。** `coverageGaps(report)` 给出有多少选中的文件没被审查、是否什么都没审到；`report.unverifiedCriticals` 是没人能核查的 critical 数量。CLI 的[退出码](./cli)就是由这些算出来的；用审查结果做门禁的程序应当照做，永远不要只看 `verdict` 就当作通过。
+- **不完整的审查不算通过。** `coverageGaps(report)` 给出有多少选中的文件没被审查、是否什么都没审到，并在 `incomplete` 里按任务的结束方式（`step_cap`、`stopped_early`）给出其中只审查了一部分的文件数；`report.unverifiedCriticals` 是没人能核查的 critical 数量。CLI 的[退出码](./cli)就是由这些算出来的；用审查结果做门禁的程序应当照做，永远不要只看 `verdict` 就当作通过。
 
 `vcs.publish(report)` 像 `--publish` 一样按平台的信任规则发布审查，没能发出去的部分以警告返回。
 

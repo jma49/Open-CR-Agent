@@ -68,9 +68,9 @@ function outputChangeRequest(c: ChangeRequest): Output<"changeRequest"> {
 }
 
 function outputCoverage(c: CoverageEntry): Output<"coverage">[number] {
-  return c.status === "excluded"
-    ? { path: c.path, status: c.status, reason: c.reason }
-    : { path: c.path, status: c.status };
+  if (c.status === "excluded") return { path: c.path, status: c.status, reason: c.reason };
+  if (c.status === "incomplete") return { path: c.path, status: c.status, ended: c.ended };
+  return { path: c.path, status: c.status };
 }
 
 function outputFinding(f: Finding): OutputFinding {
@@ -131,6 +131,7 @@ function outputTask(t: TaskOutcome): Output<"tasks">[number] {
     durationMs: t.durationMs,
     usage: outputUsage(t.usage),
     ...(t.error === undefined ? {} : { error: t.error }),
+    ...(t.ended === undefined ? {} : { ended: t.ended }),
   };
 }
 

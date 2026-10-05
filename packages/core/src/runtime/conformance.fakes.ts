@@ -1,6 +1,7 @@
 import { createServer, type Server } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import type { AgentEvent, AgentRuntime, AgentTaskSpec, ReviewContext } from "../contracts.js";
+import { MAX_AGENT_STEPS } from "./attempt.js";
 
 // What every AgentRuntime must do, run against a scripted OpenAI-compatible
 // endpoint on this machine, declared as provider "local" with the models
@@ -317,6 +318,42 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
     );
 
     it(
+      "says a task that used every step without task_done ended at the step cap",
+      async () => {
+        // OpenCode tells an agent on its last step to answer in text only; a
+        // model that obeys ends there, as one that keeps calling tools would
+        // not (it steps past the cap).
+        const { endpoint, runtime } = await start(
+          Array.from(
+            { length: MAX_AGENT_STEPS + 5 },
+            () => (request: SeenRequest) =>
+              JSON.stringify(request.messages).includes("MAXIMUM STEPS")
+                ? { content: "Out of steps." }
+                : { toolCalls: [{ name: "read_file", args: { path: FILE } }] },
+          ),
+        );
+        const events = await collect(
+          runtime.runTask(taskSpec(fakeContext()), new AbortController().signal),
+        );
+        expect(events.at(-1)).toEqual({ type: "done", taskId: "t1", ended: "step_cap" });
+        expect(endpoint.seen.length).toBeGreaterThanOrEqual(MAX_AGENT_STEPS);
+      },
+      timeout,
+    );
+
+    it(
+      "says a task that answered without task_done, steps to spare, stopped early",
+      async () => {
+        const { runtime } = await start([{ content: "Looks fine to me." }]);
+        const events = await collect(
+          runtime.runTask(taskSpec(fakeContext()), new AbortController().signal),
+        );
+        expect(events.at(-1)).toEqual({ type: "done", taskId: "t1", ended: "stopped_early" });
+      },
+      timeout,
+    );
+
+    it(
       "stops on a credential error without trying another model",
       async () => {
         const { endpoint, runtime } = await start(
@@ -338,10 +375,11 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
       "moves to the next model on a daily quota, and the key appears in no event",
       async () => {
         // m1 is out for the day however often a client retries (a short
-        // Retry-After keeps those retries quick); m2 answers.
+        // Retry-After keeps those retries quick); m2 answers. OpenCode's
+        // client retries m1 a dozen times, so the script outlasts that.
         const { endpoint, runtime } = await start(
           Array.from(
-            { length: 12 },
+            { length: 30 },
             () => (request: SeenRequest) =>
               request.model === "m1"
                 ? {

@@ -44,6 +44,10 @@ if (args[args.indexOf("--from") + 1] === "cut") {
     usage: { ...zero, inputTokens: 50, outputTokens: 5 } })));
   process.exit(3);
 }
+if (args[args.indexOf("--from") + 1] === "steps") {
+  writeFileSync(out, JSON.stringify(report({ tasks: [{ ...task("correctness-1", "completed"), ended: "step_cap" }] })));
+  process.exit(3);
+}
 const finding = { fingerprint: "f", reviewer: "correctness", category: "correctness", severity: "warning",
   verification: "unchecked", file: "src/a.ts", code: "x", title: "Null dereference", body: "user may be missing",
   evidence: [], lines: { start: 10, end: 10 }, inDiff: true, status: "new" };
@@ -116,6 +120,21 @@ describe("runInstances", () => {
     });
     const [plain] = await runInstances([instance("p@1")], options);
     expect(plain).not.toHaveProperty("provenance");
+  });
+
+  it("keeps how a task that never called task_done ended (#477)", async () => {
+    const dir = temp();
+    const [result] = await runInstances([instance("s@1", "steps")], {
+      runDir: join(dir, "run"),
+      reposDir: dir,
+      command: [process.execPath, fakeOcra(dir)],
+      timeoutMs: 30_000,
+      prepare: async () => dir,
+      log: () => {},
+    });
+    expect(result?.tasks).toEqual([
+      { taskId: "correctness-1", status: "completed", ended: "step_cap" },
+    ]);
   });
 
   it("counts an interrupted or timed-out review as failed, not reviewed", async () => {

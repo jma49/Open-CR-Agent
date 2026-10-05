@@ -252,6 +252,26 @@ describe("promptSession", () => {
       expect(outcome.resumed).toBeUndefined();
     });
 
+    it.each([
+      ["its only turn used every step", [Array.from({ length: 30 }, () => read)], true],
+      ["its resumed turn used every step", [[read], Array.from({ length: 30 }, () => read)], true],
+      // Each prompt has its own cap: 8 and 22 steps reach 30 between them.
+      [
+        "only its two turns together reach the cap",
+        [Array.from({ length: 8 }, () => read), Array.from({ length: 22 }, () => read)],
+        false,
+      ],
+    ])("says whether it stopped at the step cap when %s (#477)", async (_why, turns, capped) => {
+      const { api } = scripted(turns as SessionMessage[][]);
+      const outcome = await promptSession(
+        api,
+        { ...input, resume },
+        REPORT_TOOL,
+        new AbortController().signal,
+      );
+      expect(outcome.atStepCap === true).toBe(capped);
+    });
+
     it("is not resumed for helper calls, which have no resume options", async () => {
       const { api, sent } = scripted([[read]]);
       await promptSession(api, input, REPORT_TOOL, new AbortController().signal);

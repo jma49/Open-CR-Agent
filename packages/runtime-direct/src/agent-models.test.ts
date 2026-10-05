@@ -79,7 +79,7 @@ describe("DirectRuntime with an agent's own chain", () => {
     const server = await endpoint([down, down, { content: "Reviewed." }, down, down, down, down]);
     const direct = runtime(server.url, ["local/m1"]);
     const events = await collect(direct.runTask(task(["local/m2", "local/m3"]), signal()));
-    expect(events.at(-1)).toEqual({ type: "done", taskId: "t1" });
+    expect(events.at(-1)).toMatchObject({ type: "done", taskId: "t1" });
     expect(server.seen.map((r) => r.model)).toEqual(["m2", "m2", "m3"]);
 
     await expect(direct.complete(call(["local/m2", "local/m3"]), signal())).rejects.toThrow(

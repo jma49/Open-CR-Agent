@@ -8,6 +8,7 @@ import {
 } from "@open-cr-agent/core";
 import { serializeOutput } from "@open-cr-agent/core/internal";
 import { forTerminal } from "../../io/terminal.js";
+import { partlyReviewed, partlyReviewedCount } from "./partly-reviewed.js";
 
 const SEVERITIES: Severity[] = ["critical", "warning", "suggestion"];
 const VERIFICATION: Record<Verification, string> = {
@@ -26,7 +27,7 @@ export const safeJson = serializeOutput;
 
 export function renderText(report: ReviewReport, sessionDir?: string): string {
   const incomplete = report.tasks.filter((t) => t.status !== "completed");
-  const { notReviewed, nothingReviewed } = coverageGaps(report);
+  const { notReviewed, nothingReviewed, incomplete: partly } = coverageGaps(report);
   const lines: string[] = [
     `Review: ${report.changeRequest.title}`,
     coverageLine(report),
@@ -113,12 +114,14 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
       `Incomplete: ${incomplete.length} of ${report.tasks.length} review task(s) did not finish.`,
     );
   }
-  if (notReviewed > 0) {
+  const missed = notReviewed - partlyReviewedCount(partly);
+  if (missed > 0) {
     const limit = report.spendLimit?.reached
       ? `; the spend limit of $${report.spendLimit.usd} was reached`
       : "";
-    lines.push(`Incomplete: ${notReviewed} selected file(s) were not reviewed${limit}.`);
+    lines.push(`Incomplete: ${missed} selected file(s) were not reviewed${limit}.`);
   }
+  for (const line of partlyReviewed(partly)) lines.push(`Incomplete: ${line}`);
   for (const warning of report.warnings) lines.push(`Warning: ${warning}`);
   lines.push(`Run: ${report.runId}${sessionDir ? ` (${sessionDir})` : ""}`);
   return forTerminal(`${lines.join("\n")}\n`);
@@ -142,9 +145,11 @@ function emptyMessage(report: ReviewReport, nothingReviewed: boolean, notReviewe
 function coverageLine(report: ReviewReport): string {
   const count = (status: string) => report.coverage.filter((c) => c.status === status).length;
   const unreviewed = count("unreviewed");
+  const partly = count("incomplete");
   return [
     `Risk tier: ${report.tier}`,
     `${count("reviewed")} reviewed`,
+    ...(partly > 0 ? [`${partly} partly reviewed`] : []),
     `${count("failed")} failed`,
     ...(unreviewed > 0 ? [`${unreviewed} not started`] : []),
     ...(count("unchanged") > 0 ? [`${count("unchanged")} unchanged since the last review`] : []),

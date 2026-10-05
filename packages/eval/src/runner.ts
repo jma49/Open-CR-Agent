@@ -144,6 +144,7 @@ async function reviewOne(
     tasks: (report?.tasks ?? []).map((t) => {
       const task: InstanceResult["tasks"][number] = { taskId: t.taskId, status: t.status };
       if (t.error !== undefined) task.error = t.error;
+      if (t.ended !== undefined) task.ended = t.ended;
       return task;
     }),
   };

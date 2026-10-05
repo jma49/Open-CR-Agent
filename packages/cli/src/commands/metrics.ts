@@ -1,6 +1,11 @@
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import type { ReportOutput, Severity, Verification } from "@open-cr-agent/core";
+import {
+  isUnfinished,
+  type ReportOutput,
+  type Severity,
+  type Verification,
+} from "@open-cr-agent/core";
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
 import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
@@ -157,8 +162,7 @@ function aggregate(
 
   for (const report of reports) {
     byVerdict[report.verdict] = (byVerdict[report.verdict] ?? 0) + 1;
-    if (report.coverage.some((c) => c.status === "failed" || c.status === "unreviewed"))
-      incomplete += 1;
+    if (report.coverage.some(isUnfinished)) incomplete += 1;
     usd += report.usage.costUsd;
     inputTokens += report.usage.inputTokens;
     outputTokens += report.usage.outputTokens;

@@ -25,6 +25,34 @@ describe("renderSummary", () => {
     expect(body).toContain("the next review of this merge request includes them");
   });
 
+  it("names the files a reviewer only partly reviewed, and says why and what to do (#477)", () => {
+    const body = renderSummary({
+      report: {
+        ...report([]),
+        coverage: [
+          { path: "src/long.ts", status: "incomplete", ended: "step_cap" },
+          { path: "src/odd.ts", status: "incomplete", ended: "stopped_early" },
+          { path: "src/ok.ts", status: "reviewed" },
+        ],
+      },
+      commented: new Set(),
+      state: { findings: [] },
+      text: gitlab,
+    });
+    expect(body).toContain(" · incomplete");
+    expect(body).toContain(
+      "**Incomplete:** 1 selected file(s) were only partly reviewed: a reviewer used all 30 of its steps before it finished them. The step limit is fixed; a smaller merge request gives each file more of them.",
+    );
+    expect(body).toContain(
+      "**Incomplete:** 1 selected file(s) were only partly reviewed: a reviewer stopped with steps left, without saying it had finished them.",
+    );
+    expect(body).toContain("- partly reviewed (out of steps): `src/long.ts`");
+    expect(body).toContain("- partly reviewed (stopped early): `src/odd.ts`");
+    expect(body).toContain(
+      "1 reviewed · 2 partly reviewed · 0 unchanged since the last review · 0 not reviewed",
+    );
+  });
+
   it("names which memory hid findings, the repository's or the reviewing account's", () => {
     const entry = { file: "src/a.ts", title: "t", reason: "r" };
     const body = renderSummary({

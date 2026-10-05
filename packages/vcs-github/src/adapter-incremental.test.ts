@@ -97,12 +97,14 @@ describe("GitHubAdapter", () => {
           { path: "src/same.ts", status: "unchanged" },
           // A task the spend limit never started.
           { path: "src/later.ts", status: "unreviewed" },
+          // A task cut off at the step cap (#477).
+          { path: "src/long.ts", status: "incomplete", ended: "step_cap" },
         ],
         spendLimit: { usd: 2, reached: "review" },
       });
       const state = readState(postedSummary(calls));
       expect(state?.head).toBe(head);
-      expect(state?.pending).toEqual(["src/login.ts", "src/later.ts"]);
+      expect(state?.pending).toEqual(["src/login.ts", "src/later.ts", "src/long.ts"]);
       expect(published.warnings).toEqual([]);
     });
 

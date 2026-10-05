@@ -2,6 +2,7 @@ import {
   coverageGaps,
   type Finding,
   type FindingFix,
+  isUnfinished,
   type PriorFinding,
   type ReviewReport,
   type Severity,
@@ -132,9 +133,7 @@ export function sarifLog(report: ReviewReport, version: string) {
           tier: report.tier,
           baseSha: report.changeRequest.baseSha,
           headSha: report.changeRequest.headSha,
-          notReviewed: report.coverage
-            .filter((c) => c.status === "failed" || c.status === "unreviewed")
-            .map((c) => c.path),
+          notReviewed: report.coverage.filter(isUnfinished).map((c) => c.path),
           unverifiedCriticals: report.unverifiedCriticals,
           costUsd: report.usage.costUsd,
         },

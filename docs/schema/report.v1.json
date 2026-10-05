@@ -148,6 +148,31 @@
               },
               "status": {
                 "type": "string",
+                "const": "incomplete"
+              },
+              "ended": {
+                "type": "string",
+                "enum": [
+                  "step_cap",
+                  "stopped_early"
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "status",
+              "ended"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
                 "const": "excluded"
               },
               "reason": {
@@ -749,6 +774,13 @@
           },
           "error": {
             "type": "string"
+          },
+          "ended": {
+            "type": "string",
+            "enum": [
+              "step_cap",
+              "stopped_early"
+            ]
           },
           "findings": {
             "type": "integer",

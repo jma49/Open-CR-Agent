@@ -1,4 +1,4 @@
-import type { Usage } from "../contracts.js";
+import type { IncompleteEnding, Usage } from "../contracts.js";
 import { REVIEW_TOOLS } from "../review/tools.js";
 import type { QuotaError } from "./quota.js";
 
@@ -32,6 +32,10 @@ export interface AttemptOutcome {
   text: string;
   // The agent stopped early and was told once to finish.
   resumed?: true;
+  // Its last turn used every step it was allowed without the done tool. Only
+  // the runtime knows: OpenCode caps each turn, so a resumed session's steps
+  // add up past the cap without either turn reaching it.
+  atStepCap?: true;
   usage: Usage;
   error?: AttemptError;
 }
@@ -58,4 +62,15 @@ export function toolSummary(toolCalls: readonly string[]): string {
   const byUse = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   const finished = names.includes(REVIEW_TOOLS.taskDone) ? "" : "; no task_done";
   return `${toolCalls.length} tool call(s) (${byUse.map(([n, c]) => `${n} ${c}`).join(", ")}${finished})`;
+}
+
+// How an attempt ended. Read before any later turn of the attempt (the
+// wrap-up turn of #470) can call the done tool, so that turn cannot make a
+// cut-off review count as finished.
+export type AttemptEnding = "done" | IncompleteEnding | "error";
+
+export function attemptEnding(outcome: AttemptOutcome): AttemptEnding {
+  if (outcome.error) return "error";
+  if (outcome.toolCalls.includes(REVIEW_TOOLS.taskDone)) return "done";
+  return outcome.atStepCap ? "step_cap" : "stopped_early";
 }

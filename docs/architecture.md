@@ -150,6 +150,7 @@ The pipeline owns orchestration. `AgentRuntime` only executes one isolated agent
 - Circuit breaker per model (closed → open → half-open probe, cooldown doubling up to a limit). Any model error except a credential error fails over to the next model in the tier's chain. A rate limit with a short stated wait pauses that model for every task and retries it; a daily limit, a long or missing wait, or repeated limits take the model out of the chain for the rest of the run.
 - A failed task never fails the run; it is recorded in the coverage manifest.
 - A spend limit keeps a reserve: review tasks stop starting at 80% of it (`REVIEW_BUDGET_SHARE`), Verify and Judge use the rest, and findings left unchecked when it runs out cannot block. Tasks run in plan order, so a limited run finishes whole files and a pull request's next review continues with the rest; tasks the limit never started leave their files unreviewed, and the report says the limit was reached (`spendLimit`, ADR-0015).
+- A review task finishes when its agent calls the done tool. Core reads each attempt's ending from what it reports; a task that ended at the step cap or stopped early leaves its files `incomplete`, and the run exits 3 (ADR-0030).
 
 ## Packages
 

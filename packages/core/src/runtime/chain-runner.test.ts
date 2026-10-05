@@ -7,7 +7,7 @@ import { ChainRunner, type ModelAttempts } from "./chain-runner.js";
 const outcome = (error?: string): AttemptOutcome => ({
   findings: [],
   steps: 1,
-  toolCalls: [],
+  toolCalls: ["task_done"],
   text: "answer",
   usage: { inputTokens: 1, outputTokens: 1, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 },
   ...(error ? { error: { message: error, retryable: true } } : {}),

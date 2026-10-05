@@ -152,6 +152,13 @@ describe("the review upload", () => {
     expect(uploadOf(allReviewed, "local", "f".repeat(64), 1).complete).toBe(true);
     const unverified = reviewReport({ ...allReviewed, unverifiedCriticals: 1 });
     expect(uploadOf(unverified, "local", "f".repeat(64), 1).complete).toBe(false);
+    const partly = reviewReport({
+      ...report,
+      coverage: [{ path: "src/secret.ts", status: "incomplete", ended: "step_cap" }],
+    });
+    const up = uploadOf(partly, "local", "f".repeat(64), 1);
+    expect(up.complete).toBe(false);
+    expect(up.files).toEqual({ reviewed: 0, notReviewed: 1 });
   });
 
   it("counts per reviewer, by verification and by outcome", () => {

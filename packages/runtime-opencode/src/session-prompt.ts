@@ -70,6 +70,16 @@ function stoppedEarly(outcome: AttemptOutcome, resume: ResumeOptions): boolean {
   );
 }
 
+// OpenCode caps each prompt's steps, so the cap ended an attempt when its
+// last turn alone used them all.
+function capped(outcome: AttemptOutcome, lastTurnSteps: number, resume: ResumeOptions) {
+  const atCap =
+    !outcome.error &&
+    !outcome.toolCalls.includes(resume.doneTool) &&
+    lastTurnSteps >= resume.maxSteps;
+  return atCap ? { ...outcome, atStepCap: true as const } : outcome;
+}
+
 type SessionApi = Pick<OpencodeClient["session"], "create" | "prompt" | "messages" | "abort">;
 
 export async function promptSession(
@@ -127,7 +137,8 @@ export async function promptSession(
         },
       };
     }
-    if (!input.resume || !stoppedEarly(outcome, input.resume)) return outcome;
+    if (!input.resume) return outcome;
+    if (!stoppedEarly(outcome, input.resume)) return capped(outcome, outcome.steps, input.resume);
     const again = await session.prompt(
       {
         sessionID,
@@ -146,7 +157,7 @@ export async function promptSession(
       resumed: true,
     };
     if (again.error) resumed.error = { message: JSON.stringify(again.error), retryable: false };
-    return resumed;
+    return capped(resumed, resumed.steps - outcome.steps, input.resume);
   } catch (error) {
     // Aborted or cut off by the transport: OpenCode may still be running the
     // session, spending tokens, so stop it and keep what it already did.

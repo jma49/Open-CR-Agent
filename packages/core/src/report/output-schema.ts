@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { EFFORT_LEVELS } from "../agent/settings.js";
-import { MODEL_TIERS } from "../contracts.js";
+import { INCOMPLETE_ENDINGS, MODEL_TIERS } from "../contracts.js";
 import {
   anchorMethodSchema,
   riskTierSchema,
@@ -47,6 +47,11 @@ const coverageEntrySchema = z.discriminatedUnion("status", [
   z.strictObject({
     path: z.string(),
     status: z.enum(["reviewed", "failed", "unreviewed", "unchanged"]),
+  }),
+  z.strictObject({
+    path: z.string(),
+    status: z.literal("incomplete"),
+    ended: z.enum(INCOMPLETE_ENDINGS),
   }),
   z.strictObject({
     path: z.string(),
@@ -130,6 +135,7 @@ const taskOutcomeSchema = z.strictObject({
   files: z.array(z.string()),
   status: taskStatusSchema,
   error: z.string().exactOptional(),
+  ended: z.enum(INCOMPLETE_ENDINGS).exactOptional(),
   findings: z.int().nonnegative(),
   durationMs: z.number(),
   usage: usageSchema,

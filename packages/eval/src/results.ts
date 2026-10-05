@@ -25,7 +25,11 @@ const instanceResultSchema = z.strictObject({
   // was published.
   anchoring: report.anchoring,
   usage: report.usage,
-  tasks: z.array(report.tasks.element.pick({ taskId: true, status: true, error: true })),
+  // ended: how a task that finished without the done tool ended, so a
+  // missed finding can be traced to a review that ended before it got there.
+  tasks: z.array(
+    report.tasks.element.pick({ taskId: true, status: true, error: true, ended: true }),
+  ),
   // The CLI's exit code; 3 means the review was incomplete.
   exitCode: z.int().exactOptional(),
   // Absent in results written before it was recorded.

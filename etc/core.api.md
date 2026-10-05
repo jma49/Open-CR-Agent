@@ -30,6 +30,7 @@ export type AgentEvent = {
 } & Usage) | {
     type: "done";
     taskId: string;
+    ended?: IncompleteEnding;
 } | {
     type: "error";
     taskId: string;
@@ -145,6 +146,8 @@ export interface AttemptError {
 
 // @public (undocumented)
 export interface AttemptOutcome {
+    // (undocumented)
+    atStepCap?: true;
     // (undocumented)
     error?: AttemptError;
     // (undocumented)
@@ -269,6 +272,10 @@ export type CoverageEntry = {
     status: "reviewed" | "failed" | "unreviewed" | "unchanged";
 } | {
     path: string;
+    status: "incomplete";
+    ended: IncompleteEnding;
+} | {
+    path: string;
     status: "excluded";
     reason: ExclusionReason;
 };
@@ -280,6 +287,7 @@ export function coverageGaps(run: {
 }): {
     notReviewed: number;
     nothingReviewed: boolean;
+    incomplete: Record<IncompleteEnding, number>;
 };
 
 // @public (undocumented)
@@ -460,7 +468,16 @@ export interface Hunk {
 }
 
 // @public (undocumented)
+const INCOMPLETE_ENDINGS: readonly ["step_cap", "stopped_early"];
+
+// @public (undocumented)
+export type IncompleteEnding = (typeof INCOMPLETE_ENDINGS)[number];
+
+// @public (undocumented)
 export function isOcraError(error: unknown, code?: OcraErrorCode): error is OcraError;
+
+// @public (undocumented)
+export function isUnfinished(entry: CoverageEntry): boolean;
 
 // @public (undocumented)
 export interface JudgeDecisions {
@@ -850,6 +867,13 @@ export const reportOutputSchema: z.ZodObject<{
         }>;
     }, z.core.$strict>, z.ZodObject<{
         path: z.ZodString;
+        status: z.ZodLiteral<"incomplete">;
+        ended: z.ZodEnum<{
+            step_cap: "step_cap";
+            stopped_early: "stopped_early";
+        }>;
+    }, z.core.$strict>, z.ZodObject<{
+        path: z.ZodString;
         status: z.ZodLiteral<"excluded">;
         reason: z.ZodEnum<{
             binary: "binary";
@@ -1039,6 +1063,10 @@ export const reportOutputSchema: z.ZodObject<{
             timed_out: "timed_out";
         }>;
         error: z.ZodExactOptional<z.ZodString>;
+        ended: z.ZodExactOptional<z.ZodEnum<{
+            step_cap: "step_cap";
+            stopped_early: "stopped_early";
+        }>>;
         findings: z.ZodInt;
         durationMs: z.ZodNumber;
         usage: z.ZodObject<{
@@ -1639,6 +1667,8 @@ export interface TaskOutcome {
     bundle: string;
     // (undocumented)
     durationMs: number;
+    // (undocumented)
+    ended?: IncompleteEnding;
     // (undocumented)
     error?: string;
     // (undocumented)

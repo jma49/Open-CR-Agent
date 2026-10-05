@@ -7,7 +7,7 @@ import type {
   ReviewReport,
   VcsAdapter,
 } from "@open-cr-agent/core";
-import { errorMessage } from "@open-cr-agent/core";
+import { errorMessage, isUnfinished } from "@open-cr-agent/core";
 import type {
   Bot,
   InlineFinding,
@@ -294,9 +294,7 @@ export class PlatformReview implements VcsAdapter {
         })),
       ...quiet.filter((f) => !current.has(f.fingerprint)),
     ];
-    const pending = report.coverage
-      .filter((c) => c.status === "failed" || c.status === "unreviewed")
-      .map((c) => c.path);
+    const pending = report.coverage.filter(isUnfinished).map((c) => c.path);
     const tracked = new Set(state.map((f) => f.fingerprint));
     const untracked = [...commented].filter((fp) => !tracked.has(fp));
     const unattributed = await this.unattributedResolutions(current);

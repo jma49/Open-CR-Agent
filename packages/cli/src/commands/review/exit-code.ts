@@ -2,6 +2,7 @@ import { coverageGaps, type ReviewReport } from "@open-cr-agent/core";
 import { EXIT } from "../../io/exit.js";
 import type { Output } from "../../io/output.js";
 import { forTerminal } from "../../io/terminal.js";
+import { partlyReviewed, partlyReviewedCount } from "./partly-reviewed.js";
 
 export function exitCode(report: ReviewReport, err: Output): number {
   if (report.tasks.length > 0 && report.tasks.every((t) => t.status !== "completed")) {
@@ -11,11 +12,13 @@ export function exitCode(report: ReviewReport, err: Output): number {
   // Incomplete comes first, even over a blocking verdict: the action lets
   // exit 1 pass unless fail-on-concerns is set, and a review that missed
   // files or could not check a critical finding must never pass.
-  const { notReviewed } = coverageGaps(report);
+  const { notReviewed, incomplete } = coverageGaps(report);
   if (notReviewed > 0) {
-    err.write(
-      `[ocra] ${notReviewed} selected file(s) were not reviewed; the review is incomplete.\n`,
-    );
+    const missed = notReviewed - partlyReviewedCount(incomplete);
+    if (missed > 0) {
+      err.write(`[ocra] ${missed} selected file(s) were not reviewed; the review is incomplete.\n`);
+    }
+    for (const line of partlyReviewed(incomplete)) err.write(`[ocra] ${line}\n`);
     return EXIT.incomplete;
   }
   if (report.unverifiedCriticals > 0) {

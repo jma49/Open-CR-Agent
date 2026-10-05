@@ -12,7 +12,11 @@ describe("coverageGaps", () => {
         ],
         tasks: [{ status: "failed" }],
       }),
-    ).toEqual({ notReviewed: 2, nothingReviewed: true });
+    ).toEqual({
+      notReviewed: 2,
+      nothingReviewed: true,
+      incomplete: { step_cap: 0, stopped_early: 0 },
+    });
     expect(
       coverageGaps({
         coverage: [
@@ -21,7 +25,7 @@ describe("coverageGaps", () => {
         ],
         tasks: [{ status: "failed" }, { status: "completed" }],
       }),
-    ).toEqual({ notReviewed: 1, nothingReviewed: false });
+    ).toMatchObject({ notReviewed: 1, nothingReviewed: false });
   });
 
   it("counts files an earlier review covered as reviewed (#208)", () => {
@@ -33,7 +37,7 @@ describe("coverageGaps", () => {
         ],
         tasks: [{ status: "failed" }],
       }),
-    ).toEqual({ notReviewed: 1, nothingReviewed: false });
+    ).toMatchObject({ notReviewed: 1, nothingReviewed: false });
   });
 
   it("counts a reviewer that finished its tasks, even when another failed on the same files (#263)", () => {
@@ -42,6 +46,24 @@ describe("coverageGaps", () => {
         coverage: [{ path: "a.ts", status: "failed" }],
         tasks: [{ status: "completed" }, { status: "failed" }],
       }),
-    ).toEqual({ notReviewed: 1, nothingReviewed: false });
+    ).toMatchObject({ notReviewed: 1, nothingReviewed: false });
+  });
+
+  it("counts files only partly reviewed as not reviewed, by how their task ended", () => {
+    expect(
+      coverageGaps({
+        coverage: [
+          { path: "a.ts", status: "incomplete", ended: "step_cap" },
+          { path: "b.ts", status: "incomplete", ended: "step_cap" },
+          { path: "c.ts", status: "incomplete", ended: "stopped_early" },
+          { path: "d.ts", status: "reviewed" },
+        ],
+        tasks: [{ status: "completed" }],
+      }),
+    ).toEqual({
+      notReviewed: 3,
+      nothingReviewed: false,
+      incomplete: { step_cap: 2, stopped_early: 1 },
+    });
   });
 });

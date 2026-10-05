@@ -119,6 +119,7 @@ export async function runLoop(input: LoopInput): Promise<AttemptOutcome> {
     if (done) break;
   }
   outcome.text = texts.join("\n").trim();
+  if (!done && !outcome.error && outcome.steps >= input.maxSteps) outcome.atStepCap = true;
   return outcome;
 }
 

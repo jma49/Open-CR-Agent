@@ -1,6 +1,12 @@
 import { SpendLimitReached } from "../agent/budget.js";
 import { addUsage, emptyUsage } from "../agent/usage.js";
-import type { AgentEvent, AgentRuntime, AgentTaskSpec, Usage } from "../contracts.js";
+import type {
+  AgentEvent,
+  AgentRuntime,
+  AgentTaskSpec,
+  IncompleteEnding,
+  Usage,
+} from "../contracts.js";
 import { type ReportedFinding, reportedFindingSchema } from "../domain.js";
 import { errorMessage } from "../errors.js";
 import type { TaskStatus } from "../report/report.js";
@@ -13,6 +19,8 @@ export interface TaskFinding {
 export interface TaskResult {
   status: TaskStatus;
   error?: string;
+  // The task finished without its agent calling the done tool.
+  ended?: IncompleteEnding;
   findings: TaskFinding[];
   usage: Usage;
   warnings: string[];
@@ -102,7 +110,9 @@ async function collectAfterAbort(
       const event = await untilAborted(next, grace);
       if (event.done) return undefined;
       const { value } = event;
-      if (value.type === "usage" || value.type === "finding") handle(value, result, callbacks);
+      if (value.type === "usage" || value.type === "finding" || value.type === "done") {
+        handle(value, result, callbacks);
+      }
       if (value.type === "done" || value.type === "error") return value.type;
       next = iterator.next();
     }
@@ -141,6 +151,7 @@ function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks)
       return false;
     }
     case "done":
+      if (event.ended) result.ended = event.ended;
       return true;
     case "error":
       result.status = "failed";

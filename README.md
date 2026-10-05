@@ -124,7 +124,7 @@ Each run writes `events.jsonl` and `report.json` under `.ocra/sessions/`. `--for
 | `0` | Review finished |
 | `1` | A critical finding the verifier confirmed (verdict `significant_concerns`) |
 | `2` | Usage error, or no review task completed |
-| `3` | Review incomplete: some files were not reviewed (a failed task, a spend limit) |
+| `3` | Review incomplete: some files were not reviewed, or only partly (a failed task, a spend limit, a reviewer that ran out of steps) |
 | `130` | Interrupted |
 
 CI must never read an incomplete review as a pass; that is what `3` is for. The verdict is advice from models that read the change, which can be swayed by text in it: do not use it as a security gate.

@@ -1,6 +1,6 @@
 # ADR-0015: Under a spend limit, finish files in plan order, and say what the limit left
 
-- Status: accepted
+- Status: accepted; decision 2 revised by ADR-0030
 - Date: 2026-09-30
 
 ## Context

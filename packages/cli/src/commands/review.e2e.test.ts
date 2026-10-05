@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { ChainRunner, emptyUsage, MAX_AGENT_STEPS } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   capture,
@@ -276,6 +277,42 @@ describe("ocra review", () => {
     };
     const err = capture();
     expect(await run(["review"], capture(), err, deps(cwd, halfFails))).toBe(3);
+  });
+
+  it("exits 3 and says what to do when a reviewer ran out of steps (#477)", async () => {
+    const cwd = repoWithChange();
+    // Every attempt reads files until the step cap, through the ChainRunner
+    // the real runtimes use, and never calls task_done.
+    const chains = new ChainRunner(
+      { top: ["p/m"], standard: ["p/m"], light: ["p/m"] },
+      {
+        task: async () => ({
+          findings: [],
+          steps: MAX_AGENT_STEPS,
+          toolCalls: Array.from({ length: MAX_AGENT_STEPS }, () => "read_file"),
+          text: "",
+          atStepCap: true,
+          usage: emptyUsage(),
+        }),
+        complete: async () => ({
+          findings: [],
+          steps: 1,
+          toolCalls: [],
+          text: "",
+          usage: emptyUsage(),
+        }),
+      },
+    );
+    const cutOff: Script = (spec) => chains.runTask(spec, new AbortController().signal);
+    const out = capture();
+    const err = capture();
+    expect(await run(["review"], out, err, deps(cwd, cutOff))).toBe(3);
+    expect(out.text()).toContain("0 reviewed · 1 partly reviewed");
+    expect(err.text()).toContain(
+      "[ocra] 1 selected file(s) were only partly reviewed, so the review is incomplete: a reviewer used all 30 of its steps before it finished them. The step limit is fixed; review a smaller change to give each file more of them.",
+    );
+    expect(err.text()).not.toContain("were not reviewed");
+    expect(out.text()).not.toContain("Nothing was reviewed");
   });
 
   it("exits 3, not 1, when a blocking review is also incomplete", async () => {

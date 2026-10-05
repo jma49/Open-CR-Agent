@@ -9,7 +9,7 @@ const usage = { inputTokens: 1, outputTokens: 1, reasoningTokens: 0, cachedToken
 const answer = (text: string): AttemptOutcome => ({
   findings: [],
   steps: 1,
-  toolCalls: [],
+  toolCalls: ["task_done"],
   text,
   usage,
 });
