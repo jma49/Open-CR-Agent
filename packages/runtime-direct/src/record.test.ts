@@ -3,13 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentEvent, AgentTaskSpec, Env } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { collect, fakeContext } from "../../core/src/runtime/conformance.fakes.js";
 import {
-  collect,
   type FakeEndpoint,
-  fakeContext,
   type Reply,
   scriptedEndpoint,
-} from "../../core/src/runtime/conformance.fakes.js";
+} from "../../core/src/runtime/scripted-endpoint.fakes.js";
 import { RECORD_DIR_ENV, recordingFetch } from "./record.js";
 import { type ReplayEndpoint, replayEndpoint } from "./replay.fakes.js";
 import { DirectRuntime } from "./runtime.js";
@@ -269,13 +268,20 @@ describe("the recorded fixture of a task that stops early", () => {
     await record(STOPPED_EARLY, [
       { toolCalls: [{ name: "read_file", args: { path: "src/a.ts" } }] },
       { content: "The change looks correct; nothing to report." },
+      // The wrap-up turn.
+      { toolCalls: [{ name: "task_done", args: {} }] },
     ]);
   });
 
   it("replays to a task that ended without task_done", async () => {
     const { server, events } = await replay(STOPPED_EARLY);
     expect(server.misses).toEqual([]);
-    expect(events.at(-1)).toEqual({ type: "done", taskId: "t1", ended: "stopped_early" });
+    expect(events.at(-1)).toEqual({
+      type: "done",
+      taskId: "t1",
+      ended: "stopped_early",
+      wrapUp: { findings: 0 },
+    });
     expect(events.some((e) => e.type === "finding")).toBe(false);
   });
 });

@@ -1,12 +1,11 @@
 import type { AgentTaskSpec, CompletionRequest, Effort } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
+import { collect, fakeContext } from "../../core/src/runtime/conformance.fakes.js";
 import {
-  collect,
   type FakeEndpoint,
-  fakeContext,
   type Reply,
   scriptedEndpoint,
-} from "../../core/src/runtime/conformance.fakes.js";
+} from "../../core/src/runtime/scripted-endpoint.fakes.js";
 import { DirectRuntime } from "./runtime.js";
 
 const endpoints: FakeEndpoint[] = [];

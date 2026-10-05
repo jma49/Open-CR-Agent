@@ -32,6 +32,9 @@ export type AgentEvent = {
     type: "done";
     taskId: string;
     ended?: IncompleteEnding;
+    wrapUp?: {
+        findings: number;
+    };
 } | {
     type: "error";
     taskId: string;
@@ -171,6 +174,8 @@ export interface AttemptOutcome {
     unreadMessages?: number;
     // (undocumented)
     usage: Usage;
+    // (undocumented)
+    wrappedUp?: WrapUpOutcome;
 }
 
 // @public (undocumented)
@@ -585,7 +590,7 @@ export interface ModelAttempts {
     // (undocumented)
     refuse?(chain: readonly string[], own: boolean): OcraError | undefined;
     // (undocumented)
-    task(model: string, spec: AgentTaskSpec, signal: AbortSignal, onUsage: (spent: Usage) => void): Promise<AttemptOutcome>;
+    task(model: string, spec: AgentTaskSpec, signal: AbortSignal, onUsage: (spent: Usage) => void): Promise<TaskAttempt>;
 }
 
 // @public (undocumented)
@@ -1119,6 +1124,9 @@ export const reportOutputSchema: z.ZodObject<{
             costUsd: z.ZodNumber;
         }, z.core.$strict>;
         reusedFrom: z.ZodExactOptional<z.ZodString>;
+        wrapUp: z.ZodExactOptional<z.ZodObject<{
+            findings: z.ZodInt;
+        }, z.core.$strict>>;
     }, z.core.$strict>>;
     skipped: z.ZodArray<z.ZodObject<{
         reviewer: z.ZodString;
@@ -1741,6 +1749,12 @@ export class SpendLimitReached extends OcraError {
 export function startPlugins(plugins: readonly OcraPlugin[], options?: PluginHostOptions): Promise<PluginRegistry>;
 
 // @public (undocumented)
+export interface TaskAttempt extends AttemptOutcome {
+    // (undocumented)
+    wrapUp?(): Promise<AttemptOutcome>;
+}
+
+// @public (undocumented)
 export interface TaskFinding {
     // (undocumented)
     model?: string;
@@ -1772,6 +1786,10 @@ export interface TaskOutcome {
     taskId: string;
     // (undocumented)
     usage: Usage;
+    // (undocumented)
+    wrapUp?: {
+        findings: number;
+    };
 }
 
 // @public (undocumented)
@@ -1876,6 +1894,23 @@ const verificationSchema: z.ZodEnum<{
 
 // @public (undocumented)
 export function withoutSecrets(text: string, secrets: readonly string[]): string;
+
+// @public (undocumented)
+export const WRAP_UP_MESSAGE: string;
+
+// @public (undocumented)
+export const WRAP_UP_STEPS = 2;
+
+// @public (undocumented)
+export const WRAP_UP_TOOLS: readonly ["report_finding", "task_done"];
+
+// @public (undocumented)
+export interface WrapUpOutcome {
+    // (undocumented)
+    error?: string;
+    // (undocumented)
+    findings: number;
+}
 
 // (No @packageDocumentation comment for this package)
 

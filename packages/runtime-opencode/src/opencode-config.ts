@@ -4,12 +4,17 @@ import {
   MAX_AGENT_STEPS,
   OcraError,
   type Sampling,
+  WRAP_UP_STEPS,
+  WRAP_UP_TOOLS,
 } from "@open-cr-agent/core";
 import type { ToolServer } from "./tool-server.js";
 
 export const MCP_SERVER = "ocra";
 export const REVIEW_AGENT = "ocra-reviewer";
 export const HELPER_AGENT = "ocra-helper";
+// A review's wrap-up turn (WRAP_UP_MESSAGE): its own agent, since OpenCode
+// caps steps per agent, not per prompt.
+export const WRAP_UP_AGENT = "ocra-wrap-up";
 // The same agents without the configured temperature, for calls that send
 // an effort (ADR-0025): OpenCode sets sampling per agent.
 export const WITHOUT_SAMPLING = "-effort";
@@ -41,6 +46,14 @@ export const OPENCODE_BUILTIN_TOOLS = [
   "apply_patch",
 ] as const;
 export const DISABLED_BUILTINS = Object.fromEntries(OPENCODE_BUILTIN_TOOLS.map((t) => [t, false]));
+
+// The helper's tools (every one off) with only the reporting tools on.
+export function wrapUpTools(helperTools: Record<string, boolean>): Record<string, boolean> {
+  return {
+    ...helperTools,
+    ...Object.fromEntries(WRAP_UP_TOOLS.map((t) => [`${MCP_SERVER}_${t}`, true])),
+  };
+}
 
 // OpenCode 1.18.32 takes a temperature per agent and sends it when the
 // model's catalog entry says the model accepts one; a model declared in
@@ -74,6 +87,13 @@ export function openCodeConfig(
       prompt: HELPER_AGENT_PROMPT,
       steps: HELPER_AGENT_STEPS,
       tools: helperTools,
+      permission,
+    },
+    [WRAP_UP_AGENT]: {
+      mode: "primary",
+      prompt: REVIEW_AGENT_PROMPT,
+      steps: WRAP_UP_STEPS,
+      tools: wrapUpTools(helperTools),
       permission,
     },
   };

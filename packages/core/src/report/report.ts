@@ -112,6 +112,10 @@ export interface TaskOutcome {
   // The earlier run this task's result was taken from (--resume): its usage
   // is what that run paid, and this run paid nothing for it.
   reusedFrom?: string;
+  // Its agent ended without the done tool and was given one more turn, with
+  // only the reporting tools, to report what it had confirmed; findings: how
+  // many it reported in that turn.
+  wrapUp?: { findings: number };
 }
 
 export interface ReviewReport {

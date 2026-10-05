@@ -134,6 +134,7 @@ function outputTask(t: TaskOutcome): Output<"tasks">[number] {
     ...(t.error === undefined ? {} : { error: t.error }),
     ...(t.ended === undefined ? {} : { ended: t.ended }),
     ...(t.reusedFrom === undefined ? {} : { reusedFrom: t.reusedFrom }),
+    ...(t.wrapUp === undefined ? {} : { wrapUp: { findings: t.wrapUp.findings } }),
   };
 }
 

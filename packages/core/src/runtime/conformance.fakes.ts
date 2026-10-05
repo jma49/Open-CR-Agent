@@ -1,7 +1,12 @@
-import { createServer, type Server } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import type { AgentEvent, AgentRuntime, AgentTaskSpec, ReviewContext } from "../contracts.js";
-import { MAX_AGENT_STEPS } from "./attempt.js";
+import { MAX_AGENT_STEPS, WRAP_UP_MESSAGE, WRAP_UP_STEPS } from "./attempt.js";
+import {
+  type FakeEndpoint,
+  type Reply,
+  type SeenRequest,
+  scriptedEndpoint,
+} from "./scripted-endpoint.fakes.js";
 
 // What every AgentRuntime must do, run against a scripted OpenAI-compatible
 // endpoint on this machine, declared as provider "local" with the models
@@ -23,201 +28,6 @@ export interface RuntimeFixture {
   runtime(baseUrl: string, chain: readonly string[]): AgentRuntime;
   // How long one scenario may take; a runtime that starts a process needs more.
   timeoutMs?: number;
-}
-
-export interface SeenRequest {
-  authorization: string | undefined;
-  model: string;
-  stream: boolean;
-  messages: { role: string; content?: unknown; tool_call_id?: string; tool_calls?: unknown }[];
-  tools: { function: { name: string; parameters: Record<string, unknown> } }[] | undefined;
-  temperature?: number;
-  seed?: number;
-  reasoning_effort?: string;
-  reasoning?: { effort: string };
-}
-
-export interface Reply {
-  content?: string;
-  // Tool names as the review tools define them; the endpoint uses the name
-  // the request offered that ends with it, so a runtime's prefix is fine.
-  // `extra` is added to the call as sent, as Gemini adds `extra_content`.
-  toolCalls?: { name: string; args: unknown; extra?: object }[];
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    cached_tokens?: number;
-    reasoning_tokens?: number;
-  };
-  // An error instead of a completion.
-  status?: number;
-  body?: string;
-  retryAfter?: number;
-  // Hold the answer, so that a test can abort meanwhile.
-  delayMs?: number;
-  // An answer sent as is, as a recorded endpoint gave it.
-  raw?: { status: number; body: string };
-}
-
-export interface FakeEndpoint {
-  url: string;
-  seen: SeenRequest[];
-  close(): Promise<void>;
-}
-
-// Answers a test scripts, one per request, in order; after the script, text
-// and no tools. A function instead of a list answers every request. Streams
-// when asked to, as OpenCode's client does.
-export async function scriptedEndpoint(
-  script:
-    | readonly (Reply | ((request: SeenRequest) => Reply))[]
-    | ((request: SeenRequest) => Reply),
-): Promise<FakeEndpoint> {
-  const seen: SeenRequest[] = [];
-  const replies = typeof script === "function" ? [] : [...script];
-  const server: Server = createServer((req, res) => {
-    let body = "";
-    req.on("data", (chunk) => {
-      body += chunk;
-    });
-    req.on("end", () => {
-      if (req.method !== "POST" || !req.url?.endsWith("/chat/completions")) {
-        res.writeHead(404).end("not found");
-        return;
-      }
-      const parsed = JSON.parse(body) as Omit<SeenRequest, "authorization" | "stream"> & {
-        stream?: boolean;
-      };
-      const request: SeenRequest = {
-        ...parsed,
-        stream: parsed.stream === true,
-        authorization: req.headers.authorization,
-      };
-      seen.push(request);
-      const next =
-        typeof script === "function" ? script : (replies.shift() ?? { content: "Done." });
-      const reply = typeof next === "function" ? next(request) : next;
-      const answer = () => {
-        if (reply.raw) {
-          res
-            .writeHead(reply.raw.status, { "content-type": "application/json" })
-            .end(reply.raw.body);
-          return;
-        }
-        if (reply.status !== undefined) {
-          const headers: Record<string, string> = { "content-type": "application/json" };
-          if (reply.retryAfter !== undefined) headers["retry-after"] = String(reply.retryAfter);
-          res
-            .writeHead(reply.status, headers)
-            .end(reply.body ?? `{"error":{"message":"status ${reply.status}"}}`);
-          return;
-        }
-        const completion = completionOf(request, reply, `call-${seen.length}`);
-        if (request.stream) streamed(res, completion);
-        else
-          res
-            .writeHead(200, { "content-type": "application/json" })
-            .end(JSON.stringify(completion));
-      };
-      if (reply.delayMs) setTimeout(answer, reply.delayMs).unref();
-      else answer();
-    });
-  });
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const address = server.address();
-  const port = typeof address === "object" && address ? address.port : 0;
-  return {
-    url: `http://127.0.0.1:${port}/v1`,
-    seen,
-    close: () =>
-      new Promise((resolve) => {
-        server.closeAllConnections();
-        server.close(() => resolve());
-      }),
-  };
-}
-
-interface Completion {
-  id: string;
-  object: "chat.completion";
-  created: number;
-  model: string;
-  choices: {
-    index: 0;
-    message: {
-      role: "assistant";
-      content: string | null;
-      tool_calls?: {
-        id: string;
-        type: "function";
-        function: { name: string; arguments: string };
-      }[];
-    };
-    finish_reason: "stop" | "tool_calls";
-  }[];
-  usage: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-    prompt_tokens_details: { cached_tokens: number };
-    completion_tokens_details: { reasoning_tokens: number };
-  };
-}
-
-function completionOf(request: SeenRequest, reply: Reply, callId: string): Completion {
-  const offered = request.tools?.map((t) => t.function.name) ?? [];
-  const toolCalls = reply.toolCalls?.map((call, i) => ({
-    id: `${callId}-${i}`,
-    type: "function" as const,
-    function: {
-      name: offered.find((n) => n === call.name || n.endsWith(`_${call.name}`)) ?? call.name,
-      arguments: JSON.stringify(call.args),
-    },
-    ...call.extra,
-  }));
-  const usage = reply.usage ?? { prompt_tokens: 100, completion_tokens: 10 };
-  return {
-    id: callId,
-    object: "chat.completion",
-    created: 1,
-    model: request.model,
-    choices: [
-      {
-        index: 0,
-        message: {
-          role: "assistant",
-          content: reply.content ?? null,
-          ...(toolCalls ? { tool_calls: toolCalls } : {}),
-        },
-        finish_reason: toolCalls ? "tool_calls" : "stop",
-      },
-    ],
-    usage: {
-      prompt_tokens: usage.prompt_tokens,
-      completion_tokens: usage.completion_tokens,
-      total_tokens: usage.prompt_tokens + usage.completion_tokens,
-      prompt_tokens_details: { cached_tokens: usage.cached_tokens ?? 0 },
-      completion_tokens_details: { reasoning_tokens: usage.reasoning_tokens ?? 0 },
-    },
-  };
-}
-
-function streamed(res: import("node:http").ServerResponse, completion: Completion): void {
-  const choice = completion.choices[0] as Completion["choices"][0];
-  const chunk = (delta: object, finish: string | null, extra: object = {}) =>
-    `data: ${JSON.stringify({ id: completion.id, object: "chat.completion.chunk", created: 1, model: completion.model, choices: [{ index: 0, delta, finish_reason: finish }], ...extra })}\n\n`;
-  res.writeHead(200, { "content-type": "text/event-stream" });
-  res.write(chunk({ role: "assistant", content: choice.message.content ?? "" }, null));
-  if (choice.message.tool_calls) {
-    res.write(
-      chunk(
-        { tool_calls: choice.message.tool_calls.map((call, index) => ({ index, ...call })) },
-        null,
-      ),
-    );
-  }
-  res.write(chunk({}, choice.finish_reason, { usage: completion.usage }));
-  res.end("data: [DONE]\n\n");
 }
 
 const FILE = "src/a.ts";
@@ -349,7 +159,7 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
         const events = await collect(
           runtime.runTask(taskSpec(fakeContext()), new AbortController().signal),
         );
-        expect(events.at(-1)).toEqual({ type: "done", taskId: "t1", ended: "step_cap" });
+        expect(events.at(-1)).toMatchObject({ type: "done", taskId: "t1", ended: "step_cap" });
         expect(endpoint.seen.length).toBeGreaterThanOrEqual(MAX_AGENT_STEPS);
       },
       timeout,
@@ -362,7 +172,70 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
         const events = await collect(
           runtime.runTask(taskSpec(fakeContext()), new AbortController().signal),
         );
-        expect(events.at(-1)).toEqual({ type: "done", taskId: "t1", ended: "stopped_early" });
+        expect(events.at(-1)).toMatchObject({ type: "done", taskId: "t1", ended: "stopped_early" });
+      },
+      timeout,
+    );
+
+    it(
+      "gives a review that reaches the step cap one turn with only the reporting tools, and keeps what it reports",
+      async () => {
+        // Reads on every step but the last, where it answers in text, as a
+        // model told it is out of steps does; once only the reporting tools
+        // are left, reports, then answers in text.
+        const offers = (request: SeenRequest, tool: string) =>
+          (request.tools ?? []).some((t) => t.function.name.endsWith(tool));
+        let reads = 0;
+        let reported = false;
+        const reader = (request: SeenRequest): Reply => {
+          if (offers(request, "read_file")) {
+            reads += 1;
+            return reads < MAX_AGENT_STEPS
+              ? { toolCalls: [{ name: "read_file", args: { path: FILE } }] }
+              : { content: "Out of steps." };
+          }
+          if (reported || !offers(request, "report_finding")) return { content: "Reported." };
+          reported = true;
+          return {
+            toolCalls: [
+              { name: "report_finding", args: FINDING },
+              { name: "task_done", args: {} },
+            ],
+          };
+        };
+        const { endpoint, runtime } = await start(
+          Array.from({ length: MAX_AGENT_STEPS + 5 }, () => reader),
+        );
+        const events = await collect(
+          runtime.runTask(taskSpec(fakeContext()), new AbortController().signal),
+        );
+
+        const turn = endpoint.seen.findIndex(
+          (r) => !offers(r, "read_file") && offers(r, "report_finding"),
+        );
+        expect(turn).toBe(MAX_AGENT_STEPS);
+        const wrapUp = endpoint.seen.slice(turn);
+        expect(wrapUp.length).toBeLessThanOrEqual(WRAP_UP_STEPS);
+        const reporting = ["report_finding", "task_done"];
+        const offered = (wrapUp[0]?.tools ?? []).map(
+          (t) => reporting.find((n) => t.function.name.endsWith(n)) ?? t.function.name,
+        );
+        expect(offered.sort()).toEqual(reporting);
+        // The same conversation: what the agent read is still in it.
+        expect(JSON.stringify(wrapUp[0]?.messages)).toContain(WRAP_UP_MESSAGE);
+        expect(JSON.stringify(wrapUp[0]?.messages)).toContain("1: const a = 1;");
+        expect(events.filter((e) => e.type === "finding")).toEqual([
+          { type: "finding", taskId: "t1", finding: FINDING, model: "local/m1" },
+        ]);
+        // The turn's task_done does not finish the review: its files stay
+        // only partly reviewed (ADR-0030 #5).
+        expect(events.at(-1)).toEqual({
+          type: "done",
+          taskId: "t1",
+          ended: "step_cap",
+          wrapUp: { findings: 1 },
+        });
+        expect(costOf(events)).toBeCloseTo(endpoint.seen.length * (100 * 3e-6 + 10 * 15e-6), 10);
       },
       timeout,
     );

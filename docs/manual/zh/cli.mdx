@@ -144,7 +144,7 @@ ocra review [options]
 
 这个格式是一份约定（`"version": 1`）：后续版本只会新增可选字段和取值集合里的新值，否则就会改版本号。遇到不认识的覆盖状态时，当作没有审查。
 
-**每条问题**包含 `fingerprint`（多次运行间保持稳定；`ocra memory add` 接受它的前缀）、`reviewer`、`category`、`severity`、`verification`（`confirmed`、`uncertain` 或 `unchecked`）、`file`、`lines`（`{ start, end }`，没能对应到行时不存在）、`inDiff`、`status`（`new`，或之前报过时为 `unfixed`）、`title`、`body`、可选的 `suggestion`、可选的 `fix`（`{ startLine, endLine, replacement }`，作为[可提交的建议](./github#可提交的建议)给出；目前还没有审查员会产生它）、`evidence`、`code`（引用的代码）、`--ultra` 下的 `lowConfidence`、Verify 判断问题在这次改动之前就已存在时的 `preExisting`，以及 `provenance`（它的 `task`，已知时还有 `model`）。`tasks` 里的每个任务带有 `usage`（token 和花费；一条问题的花费就是其任务的花费）；没有调用完成工具就结束的任务还带有 `ended`：它的文件只算审查了一部分。
+**每条问题**包含 `fingerprint`（多次运行间保持稳定；`ocra memory add` 接受它的前缀）、`reviewer`、`category`、`severity`、`verification`（`confirmed`、`uncertain` 或 `unchecked`）、`file`、`lines`（`{ start, end }`，没能对应到行时不存在）、`inDiff`、`status`（`new`，或之前报过时为 `unfixed`）、`title`、`body`、可选的 `suggestion`、可选的 `fix`（`{ startLine, endLine, replacement }`，作为[可提交的建议](./github#可提交的建议)给出；目前还没有审查员会产生它）、`evidence`、`code`（引用的代码）、`--ultra` 下的 `lowConfidence`、Verify 判断问题在这次改动之前就已存在时的 `preExisting`，以及 `provenance`（它的 `task`，已知时还有 `model`）。`tasks` 里的每个任务带有 `usage`（token 和花费；一条问题的花费就是其任务的花费）；没有调用完成工具就结束的任务还带有 `ended`：它的文件只算审查了一部分。审查员随后得到了[收尾的一轮](./how-it-works)的任务还带有 `wrapUp`（`{ findings }`，它在那一轮报告的问题数），它的文件仍然只算审查了一部分。
 
 **报告的 `provenance`** 记录：
 
