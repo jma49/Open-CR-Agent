@@ -3,6 +3,80 @@ title: CLI reference
 description: Commands, options, output and exit codes.
 ---
 
+## ocra init
+
+Sets ocra up for the repository you are in: it writes `.ocra/config.json`, and with `--github` the workflow `.github/workflows/ocra.yml`, then prints what is left to do. It calls no model and no network service, and never runs `gh` or `git` for you.
+
+```bash
+ocra init                          # .ocra/config.json for the key in your environment
+ocra init --github                 # also the GitHub workflow, safe for pull requests from forks
+ocra init --github --same-repo-only
+ocra init --provider anthropic     # a provider whose key is not in this shell
+```
+
+| Option | Meaning |
+|---|---|
+| `--github` | Also write `.github/workflows/ocra.yml`: the [fork recipe](./github#pull-requests-from-forks) on `pull_request_target`. Members' and collaborators' pull requests are reviewed on every push, anyone else's once each time a maintainer adds the `ocra-review` label; only the base branch is checked out and nothing from the pull request runs |
+| `--same-repo-only` | With `--github`, the plain [`pull_request` workflow](./github#github-action) instead. Pull requests from forks get no secrets there and are not reviewed, which on a project that takes outside contributions is most of them |
+| `--provider <name>` | `gemini`, `anthropic`, `openai` or `openrouter`, in place of the key found in the environment |
+| `--force` | Replace the files if they exist. Without it, a file that exists is kept, and ocra init says so |
+
+**The model.** Without `--provider`, ocra init takes the first of `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `OPENROUTER_API_KEY` that is set, and names any other it found. OpenRouter's free model is chosen only when no other key is there. It writes one model per tier, on the provider's OpenAI-compatible endpoint, with its list price per million tokens (from [models.dev](https://models.dev) on 2026-10-04), so the reported cost and `--max-cost-usd` count it:
+
+| Provider | `top` | `standard` | `light` |
+|---|---|---|---|
+| `gemini` | `gemini-3.1-pro-preview` | `gemini-3.5-flash` | `gemini-flash-lite-latest` |
+| `anthropic` | `claude-opus-5-5` | `claude-sonnet-5-5` | `claude-haiku-4-5` |
+| `openai` | `gpt-6-sol` | `gpt-6-sol` | `gpt-6-luna` |
+| `openrouter` | `stealth/space-bunny-alpha`, free ([a preview](./providers#free-models-through-openrouter)) | the same | the same |
+
+**The runtime.** The configuration sets `"runtime": "direct"`, which calls only the endpoint it declares; installed without OpenCode, ocra takes about 11 MB instead of 175 MB ([Without OpenCode](./installation#without-opencode)). The workflow passes `opencode: false` to the Action for the same reason. Nothing changes for a configuration ocra init did not write: the default runtime is still `opencode`, and when `--github` keeps an existing configuration that does not set `direct`, the workflow installs OpenCode as before. The direct runtime has reviewed live through OpenRouter; through Gemini's, Anthropic's and OpenAI's OpenAI-compatible endpoints it has not yet.
+
+For Gemini, the file is:
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/jma49/Open-CR-Agent/main/docs/schema/config.v1.json",
+  "runtime": "direct",
+  "models": {
+    "top": "gemini-api/gemini-3.1-pro-preview",
+    "standard": "gemini-api/gemini-3.5-flash",
+    "light": "gemini-api/gemini-flash-lite-latest"
+  },
+  "providers": {
+    "gemini-api": {
+      "type": "openai-compatible",
+      "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "apiKeyEnv": "GEMINI_API_KEY",
+      "models": {
+        "gemini-3.1-pro-preview": { "input": 2, "output": 12, "cachedInput": 0.2 },
+        "gemini-3.5-flash": { "input": 1.5, "output": 9, "cachedInput": 0.15 },
+        "gemini-flash-lite-latest": { "input": 0.3, "output": 2.5, "cachedInput": 0.03 }
+      }
+    }
+  }
+}
+```
+
+The key itself is never written: the file names the variable that holds it. Change the models or prices like any [configuration](./configuration).
+
+**The workflow** is the manual's recipe with the provider's key as a secret, `opencode: false`, and `--max-cost-usd 2` for each review. It pins the Action to the commit of the release this version of ocra names, with the version as a comment, like the examples on [GitHub](./github). `ocra init --github` prints the rest:
+
+```text
+Wrote .ocra/config.json: Gemini models through GEMINI_API_KEY, on the direct runtime.
+Wrote .github/workflows/ocra.yml: pull requests from members are reviewed on every push, anyone else's once each time a maintainer adds the ocra-review label.
+
+Next:
+  1. Store the key as a repository secret (gh asks for its value):
+       gh secret set GEMINI_API_KEY
+  2. Create the label that starts a review of an outside pull request:
+       gh label create ocra-review --description "Review this pull request with ocra"
+  3. Commit .ocra/config.json and .github/workflows/ocra.yml, and merge them into the default branch:
+       ocra reads its configuration from a pull request's base branch.
+```
+
+In a private repository, remove `persist-credentials: false` from the workflow, as its comment says. ocra init writes into the repository's root from any directory inside it, refuses to write through a symbolic link, and exits `2` with nothing written when it finds no key and no `--provider` was given, or outside a Git repository.
+
 ## ocra review
 
 Reviews code changes in the current Git repository.

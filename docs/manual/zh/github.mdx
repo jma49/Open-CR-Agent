@@ -5,7 +5,7 @@ description: 用 GitHub Action 或 ocra review --pr 审查 Pull Request。
 
 ## GitHub Action
 
-在需要审查的仓库里添加一个 workflow：
+`ocra init --github` 会写好下文[来自 fork 的 PR](#来自-fork-的-pr) 用的 workflow，加 `--same-repo-only` 时写这一个，并用上你的供应商的 key（[ocra init](./cli#ocra-init)）。手动配置时，在需要审查的仓库里添加一个 workflow：
 
 ```yaml
 name: ocra

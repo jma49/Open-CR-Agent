@@ -97,7 +97,7 @@ The milestones below keep their lists; the order of work is the one above.
 2. **A run id** through logs, comments, the report and the session file; the event schema versioned and published. The run id landed (the session id, in the report as `runId`, in the progress output, the summary comment and the SARIF log); the event schema is still internal.
 3. Minimal metrics an operations team can scrape from session files: runs, cost, findings, dismissals, acceptance rate, per reviewer. Landed as `ocra metrics` (text and versioned JSON over the sessions' `report.json`).
 
-**M13 — Use** (people, not code; the focus from 2026-10-05). Three external teams on the Action or the GitLab job, reviewing their real pull requests, with their dismissals and replies feeding the golden set; the three-maintainer conversations from M8. If no team will run it, the next phase starts with the product layer, not the control plane.
+**M13 — Use** (people, not code; the focus from 2026-10-05). Three external teams on the Action or the GitLab job, reviewing their real pull requests, with their dismissals and replies feeding the golden set; the three-maintainer conversations from M8. If no team will run it, the next phase starts with the product layer, not the control plane. Landed: `ocra init`, a one-command setup that writes the configuration for the key in the environment and, with `--github`, the fork-safe workflow.
 
 **M14 — ocra Cloud** ([ADR-0024](adr/0024-ocra-cloud.md); frozen from 2026-10-05: running, security fixes only, decided again at the six-week checkpoint). Open core plus an optional hosted service on the published packages, in its own private repository.
 

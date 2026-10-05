@@ -3,6 +3,22 @@ title: 快速上手
 description: 五分钟完成第一次审查。
 ---
 
+## 五分钟配置
+
+shell 里有模型 key 时，`ocra init` 会替你写好配置：
+
+```bash
+npm install -g @open-cr-agent/cli
+export GEMINI_API_KEY="你的 key"     # 或 ANTHROPIC_API_KEY、OPENAI_API_KEY、OPENROUTER_API_KEY
+cd your-repository
+ocra init                            # 写入 .ocra/config.json，并说明选了什么
+ocra review                          # 审查未提交的改动
+```
+
+还要在 GitHub 上审查 PR 的话，运行 `ocra init --github`：它还会写入 `.github/workflows/ocra.yml`（可安全审查来自 fork 的 PR），并打印要运行的两条 `gh` 命令（设置 secret、创建 `ocra-review` 标签）。它从不替换已有文件。它写了什么、为什么这样写，见 [ocra init](./cli#ocra-init)。
+
+下面的步骤是手动完成同样的事，可以用 OpenCode 支持的任何供应商。
+
 <Steps>
 
 <Step>

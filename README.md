@@ -37,6 +37,19 @@ The full design: [architecture](docs/architecture.md) and the [decision records]
 
 Requires Node.js 22.19 or newer and Git.
 
+**Five-minute setup.** With a model key in your shell, `ocra init` writes the configuration:
+
+```bash
+npm install -g @open-cr-agent/cli
+export GEMINI_API_KEY="your-key"     # or ANTHROPIC_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY
+cd your-repository
+ocra init                            # .ocra/config.json for that key, on the direct runtime
+ocra review                          # review your uncommitted changes
+ocra init --github                   # also .github/workflows/ocra.yml, safe for pull requests from forks
+```
+
+`ocra init` never replaces a file that exists (`--force` does), and prints the next steps, such as the `gh secret set` and `gh label create ocra-review` commands for the workflow ([ocra init](docs/manual/en/cli.mdx#ocra-init)). Or set it up by hand:
+
 ```bash
 npm install -g @open-cr-agent/cli
 export GEMINI_API_KEY="your-key"       # any provider OpenCode supports; see Model providers
@@ -198,7 +211,7 @@ ocra's long-term position is the engine other review agents are built on, not an
 | M5–M6 | A quality number that can decide changes; recall without losing precision | paused until model credit |
 | M10 | Contracts: a Finding specification, a public `review()` entry, a second runtime with a conformance suite, SARIF in | mostly built; the rest paused |
 | M14 | ocra Cloud ([ADR-0024](docs/adr/0024-ocra-cloud.md)): login, your own key behind a model gateway, a web view of reviews, account configuration and opt-in findings | Phase 1 built (0.5.0); frozen while users and recall come first |
-| M11–M13 | Evidence (a nightly live test, per-reviewer numbers), operability (organization policy, run ids, metrics), external use | now: external use and recall (M11, M13); operability paused |
+| M11–M13 | Evidence (a nightly live test, per-reviewer numbers), operability (organization policy, run ids, metrics), external use | now: external use and recall (M11, M13), with `ocra init` for a one-command setup; operability paused |
 
 The plan, the reasoning and what is deliberately not built: [roadmap](docs/roadmap.md).
 
