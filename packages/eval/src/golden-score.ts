@@ -45,6 +45,21 @@ export interface GoldenSummary {
   relabeled: (GoldenFinding & { labeledTitle: string })[];
   // Runs scored against different case files are not comparable.
   casesHash: string;
+  // By case id, so runs that reviewed different cases can be compared on
+  // the ones they share (trend.ts). Absent in summaries written before it.
+  cases?: Record<string, GoldenCaseScore>;
+}
+
+export interface GoldenCaseScore {
+  expected: number;
+  // Expected findings found at or above their severity: recall's numerator.
+  found: number;
+  reported: number;
+  // Matched or labeled valid: precision's numerator.
+  right: number;
+  // Each expected finding, in the case's order, and whether it was found
+  // at or above its severity.
+  claims: { concern: string; found: boolean }[];
 }
 
 const RANK: Record<Severity, number> = { suggestion: 0, warning: 1, critical: 2 };
@@ -76,6 +91,7 @@ export async function scoreGolden(
     relabeled: [],
     casesHash: casesHash(instances),
   };
+  const cases: Record<string, GoldenCaseScore> = {};
   const { counts } = summary;
   for (const instance of instances) {
     const result = byId.get(instance.id);
@@ -87,7 +103,19 @@ export async function scoreGolden(
     counts.reported += findings.length;
     counts.matched += found.size;
     counts.correct += matched.size;
-    counts.underrated += found.size - foundAtSeverity(instance, found);
+    const atSeverity = foundAtSeverity(instance, found);
+    counts.underrated += found.size - atSeverity;
+    const caseScore: GoldenCaseScore = {
+      expected: instance.references.length,
+      found: atSeverity,
+      reported: findings.length,
+      right: matched.size,
+      claims: instance.references.map((reference, k) => ({
+        concern: reference.note,
+        found: atRequiredSeverity(instance, k, found.get(k)),
+      })),
+    };
+    cases[instance.id] = caseScore;
     for (const [index, finding] of findings.entries()) {
       if (matched.has(index)) continue;
       const golden = toGoldenFinding(instance.id, finding);
@@ -108,12 +136,15 @@ export async function scoreGolden(
           reason: forbidden?.reason ?? "the case has no issue",
         });
       }
-      if (label === "valid") counts.valid += 1;
-      else if (label === "invalid") counts.invalid += 1;
+      if (label === "valid") {
+        counts.valid += 1;
+        caseScore.right += 1;
+      } else if (label === "invalid") counts.invalid += 1;
       else if (forbidden) counts.forbidden += 1;
       else summary.unadjudicated.push(golden);
     }
   }
+  summary.cases = cases;
   counts.unadjudicated = summary.unadjudicated.length;
   summary.precision = ratio(counts.correct + counts.valid, counts.reported);
   summary.recall = ratio(counts.matched - counts.underrated, counts.expected);
@@ -184,11 +215,13 @@ export function foundAtSeverity(
   found: ReadonlyMap<number, OutputFinding>,
 ): number {
   let count = 0;
-  for (const [k, finding] of found) {
-    const required = instance.golden?.minSeverity[k] ?? "suggestion";
-    if (RANK[finding.severity] >= RANK[required]) count += 1;
-  }
+  for (const [k, finding] of found) if (atRequiredSeverity(instance, k, finding)) count += 1;
   return count;
+}
+
+function atRequiredSeverity(instance: Instance, k: number, finding?: OutputFinding): boolean {
+  const required = instance.golden?.minSeverity[k] ?? "suggestion";
+  return finding !== undefined && RANK[finding.severity] >= RANK[required];
 }
 
 function casesHash(instances: readonly Instance[]): string {

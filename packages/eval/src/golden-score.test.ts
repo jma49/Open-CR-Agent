@@ -54,6 +54,15 @@ describe("scoreGolden", () => {
     expect(summary.recall).toBe(1);
     expect(summary.unadjudicated.map((f) => f.fingerprint)).toEqual(["0000000000000005"]);
     expect(summary.failures).toEqual([]);
+    expect(summary.cases).toEqual({
+      login: {
+        expected: 1,
+        found: 1,
+        reported: 5,
+        right: 2,
+        claims: [{ concern: expectLogin.concern, found: true }],
+      },
+    });
   });
 
   it("fails a critical finding in a forbidden range or on a clean case", async () => {
@@ -101,6 +110,9 @@ describe("golden scoring edge cases", () => {
     expect(summary.counts).toMatchObject({ matched: 1, underrated: 1 });
     expect(summary.precision).toBe(1);
     expect(summary.recall).toBe(0);
+    expect(summary.cases).toMatchObject({
+      login: { found: 0, right: 1, claims: [{ found: false }] },
+    });
   });
 
   it("fails only unmatched, unlabeled criticals in a forbidden range or on a clean case", async () => {

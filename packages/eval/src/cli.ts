@@ -7,6 +7,7 @@ import { list } from "./commands/list.js";
 import type { Output } from "./commands/options.js";
 import { run } from "./commands/run.js";
 import { rescore } from "./commands/score.js";
+import { trend } from "./commands/trend.js";
 
 const USAGE = `Usage: ocra-eval <command> [options]
 
@@ -18,6 +19,11 @@ Commands:
   adjudicate <run-dir> Record the labels typed into a golden run's adjudication.json in its cases
   compare <baseline-run> <run> [--spread-of <second-baseline-run>]
                        Difference per metric; within the baselines' spread it is "no change"
+  trend <runs-dir> [--series <a,b>]
+                       Golden runs over time, per series (label without its
+                       trailing -<n>): recall, precision and wrap-up turns per
+                       run, mean and spread, and each expected finding's hit
+                       rate, on the cases common to the runs compared
   golden-import --from aacr
                        Write unverified golden case candidates from AACR-Bench
                        PRs with 1-3 in-scope issues on changed lines, spread
@@ -78,6 +84,7 @@ export async function main(
     if (command === "score") return await rescore(rest, out, err, env);
     if (command === "adjudicate") return await adjudicate(rest, out);
     if (command === "compare") return await compare(rest, out);
+    if (command === "trend") return await trend(rest, out, err);
     if (command === "golden-import") return await goldenImport(rest, out, err);
     out.write(USAGE);
     return command === undefined || command === "--help" || command === "-h" ? 0 : 2;

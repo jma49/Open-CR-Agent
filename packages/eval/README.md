@@ -9,7 +9,7 @@ Run it from a build: `node packages/eval/dist/main.js <command>` (`npm run build
 | Module | What it does |
 |---|---|
 | `cli.ts`, `main.ts` | The usage text and which command runs |
-| `commands/*.ts` | One file per command (`list`, `ceiling`, `run`, `score`, `adjudicate`, `compare`, `golden-import`); `options.ts` holds the flags and selection they share, `summary.ts` writes a run's summary |
+| `commands/*.ts` | One file per command (`list`, `ceiling`, `run`, `score`, `adjudicate`, `compare`, `trend`, `golden-import`); `options.ts` holds the flags and selection they share, `summary.ts` writes a run's summary |
 | `repeat.ts`, `interval.ts` | `run --repeat k`: the repetitions, their 95% Student t intervals, and reading a run directory of either kind |
 | `provenance.ts` | What the reviews of a run were made with (version, prompt and config hashes, sampling), and the warnings `compare` gives when runs differ in it |
 | `instance.ts` | The case model every module shares: `Instance`, its reference comments, golden expectations and attack |
@@ -28,6 +28,7 @@ Run it from a build: `node packages/eval/dist/main.js <command>` (`npm run build
 | `ceiling.ts`, `ceiling-run.ts` | The recall ceiling of the deterministic stages, without a model |
 | `golden-import.ts` | `golden-import --from aacr`: picks AACR-Bench pull requests whose in-scope comments the ceiling reaches and writes unverified case candidates |
 | `compare.ts`, `report.ts` | Side-by-side comparison of runs; the `summary.md` of one run |
+| `trend.ts`, `trend-load.ts` | `trend`: many golden runs grouped into series by label, compared on the cases they share (per-case scores in `summary.json`, wrap-up turns from `reports/`) |
 
 ## A run on disk
 
