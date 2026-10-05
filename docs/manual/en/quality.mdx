@@ -29,7 +29,7 @@ On the golden cases, a finding matches an expected issue when it is in the same 
 
 AACR-Bench uses the benchmark's own matching: same file and side of the diff, at most one line apart, then the judge model. Its precision is matches over findings, without labels.
 
-Every run used Gemini on Vertex AI: `gemini-3.5-flash` for the reviewers and verification (`gemini-3.5-flash-lite` as failback), `gemini-3.1-pro-preview` for the judge step, `gemini-3.5-flash-lite` for light tasks, and `gemini-flash-lite-latest` to decide matches when scoring. Costs are ocra's own accounting: token counts at the models' list prices.
+Every run until 2026-10-01 used Gemini on Vertex AI: `gemini-3.5-flash` for the reviewers and verification (`gemini-3.5-flash-lite` as failback), `gemini-3.1-pro-preview` for the judge step, `gemini-3.5-flash-lite` for light tasks, and `gemini-flash-lite-latest` to decide matches when scoring. Two later runs used a free model for every step ([On a free model](#on-a-free-model)). Costs are ocra's own accounting: token counts at the models' list prices.
 
 ## Golden cases
 
@@ -69,6 +69,27 @@ All runs on those 8 cases, scored against today's cases and labels so that they 
 
 Both configurations that ran twice found about the same number of issues each time (6 and 6, 7 and 8), and their precision differed by one finding. Two runs cannot show the real spread, so treat a difference of one or two issues between configurations as noise.
 
+### On a free model
+
+Two runs of the smoke tier as it is today (10 cases, 18 expected issues) on Space Bunny Alpha (`stealth/space-bunny-alpha`), an anonymous free preview on OpenRouter, reached as a declared OpenAI-compatible endpoint. The free key reaches no other model, so every tier, the verification and judge steps and the scoring judge all ran on it. ocra was `main` as of 2026-10-02 ([`c997e07`](https://github.com/jma49/Open-CR-Agent/commit/c997e079dbc37298022c8c3837b67afe64411b89)) with its default settings. OpenRouter's free models share 1000 requests a day per account and a smoke case takes 30 to 250 of them, so each run stretched from 2026-10-02 to 2026-10-04.
+
+| Run | Found | Precision | Findings | Unlabeled | Seconds per change (median) |
+|---|---|---|---|---|---|
+| A | 6/18 (33%)³ | 9/17 (53%) | 17 | 8 | 231 |
+| B | 6/18 (33%)³ | 9/13 (69%) | 13 | 4 | 247 |
+
+³ One more expected issue was found below the severity its case asks for.
+
+Both runs found the same seven issues: FreeCAD's declarations out of step with their definitions, ASP.NET Core's monitor container left on the public image, Keycloak's priority fallthrough, RAGFlow's import of a name the module does not export and its missing translation keys, the `.gitignore` ocra's docs promised, and the helper registered as a plugin. Both missed the same eleven: all five Ollama issues (neither run reported anything on that change), the Elasticsearch issue, the git index copy, and four of the five in the coverage-gaps change. Neither run reported a critical finding where a case says findings are wrong; the change with no issue got one suggestion in each run. Precision differs by four findings on the same seven hits: the 8 and 4 unlabeled findings count as wrong until checked against the code, and three of them recur in both runs (a read cache without a bound, a FreeCAD comment naming a removed parameter, the manual's example output).
+
+Three caveats on top of the [Limits](#limits) below:
+
+- **The matches were decided by Space Bunny itself**, not by `gemini-flash-lite-latest`, so these rows compare with each other, not with the Gemini rows above.
+- **The coverage-gaps change was reviewed in part.** In both runs the daily quota refused some of its tasks (12 of 19 in A, 9 of 18 in B) and the review finished incomplete; its four misses are partly code no reviewer read.
+- **Two tasks in A and one in B hit the 10-minute task limit** on the index-copy change.
+
+Cost was $0 at the model's price of 0. Each run sent 15 to 18 million input tokens, 88% of them cached prompt, and about half a million output tokens; a change took 231 and 247 seconds at the median, 992 and 803 at the 90th percentile.
+
 ## AACR-Bench
 
 Ten pull requests (`--seed 1 --limit 10 --max-change-lines 300`: at most 300 changed lines each, 44 annotated issues), with two configurations run twice each on 2026-09-28, before the current configuration:
@@ -99,7 +120,7 @@ Cost grows with the size of the change and with the reviewers its risk tier runs
 - **Small.** 8 changes and 16 expected issues, of which only 4 were written independently of ocra's own findings. The current configuration ran once, and the full tier has not run.
 - **Not independent.** The cases and labels are the project's own. The labels so far were made by an AI agent working on ocra, which checked each finding against the code and recorded its reason. A second model (Claude Fable 5.1), not told the labels, re-judged 5 of the 11 labels recorded by then against the code and agreed with all 5; no person outside the project has reviewed them. Recent changes, the 30-step limit among them, were chosen on these cases, which flatters the current configuration.
 - **A model decides matches.** Whether a finding describes an expected issue is decided by `gemini-flash-lite-latest`. Its answers are cached, so scoring the same run again gives the same result, but another judge could decide differently.
-- **One model family.** Every run used Gemini on Vertex AI. Other models will score differently.
+- **Two model families, not comparable.** The runs until 2026-10-01 used Gemini on Vertex AI; the two free-model runs used Space Bunny Alpha for every step, the scoring judge included, so their rows compare only with each other. Other models will score differently.
 - **Runs vary.** Two runs of the same configuration differed by one finding in precision.
 - **Recall is the weak point.** ocra missed more than half of the expected issues here, most of them rated as suggestions, and on AACR-Bench it matched under 10% of the annotated issues.
 - **Changes since the last run are not measured**, among them that a review agent which stops before finishing its files is now asked once to continue.
