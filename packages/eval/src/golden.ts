@@ -11,7 +11,7 @@ import { ATTACK_CHANNELS, ATTACK_GOALS, type Instance, type ReferenceComment } f
 
 // Golden cases name ocra's reviewers; scoring and the ceiling speak
 // AACR-Bench's category names.
-const REFERENCE_CATEGORY = {
+export const REFERENCE_CATEGORY = {
   correctness: "Code Defect",
   security: "Security Vulnerability",
   performance: "Performance",

@@ -2,6 +2,7 @@ import { errorMessage } from "@open-cr-agent/core";
 import { adjudicate } from "./commands/adjudicate.js";
 import { ceiling } from "./commands/ceiling.js";
 import { compare } from "./commands/compare.js";
+import { goldenImport } from "./commands/golden-import.js";
 import { list } from "./commands/list.js";
 import type { Output } from "./commands/options.js";
 import { run } from "./commands/run.js";
@@ -17,6 +18,12 @@ Commands:
   adjudicate <run-dir> Record the labels typed into a golden run's adjudication.json in its cases
   compare <baseline-run> <run> [--spread-of <second-baseline-run>]
                        Difference per metric; within the baselines' spread it is "no change"
+  golden-import --from aacr
+                       Write unverified golden case candidates from AACR-Bench
+                       PRs with 1-3 in-scope issues on changed lines, spread
+                       across languages (free, no model; --limit default 50,
+                       --max-change-lines default 300, --out default
+                       .ocra/eval/aacr-golden-candidates)
 
 Selection:
   --limit <n>              Number of PRs (default: all eligible)
@@ -71,6 +78,7 @@ export async function main(
     if (command === "score") return await rescore(rest, out, err, env);
     if (command === "adjudicate") return await adjudicate(rest, out);
     if (command === "compare") return await compare(rest, out);
+    if (command === "golden-import") return await goldenImport(rest, out, err);
     out.write(USAGE);
     return command === undefined || command === "--help" || command === "-h" ? 0 : 2;
   } catch (error) {

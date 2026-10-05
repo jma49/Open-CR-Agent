@@ -39,34 +39,9 @@ export async function measureCeiling(
       continue;
     }
     try {
-      const dir = await (options.prepare ?? prepareRepository)(options.reposDir, instance);
-      const preview = await plan(dir, instance, options.command);
-      const diff = await exec(
-        "git",
-        [
-          "-c",
-          "core.quotepath=true",
-          "diff",
-          "--no-color",
-          "--no-ext-diff",
-          "--no-textconv",
-          "--find-renames",
-          "--src-prefix=a/",
-          "--dst-prefix=b/",
-          "--end-of-options",
-          `${instance.baseCommit}...${instance.headCommit}`,
-          "--",
-        ],
-        { cwd: dir },
-      );
-      if (diff.exitCode !== 0) throw new Error(`git diff failed: ${diff.stderr.trim()}`);
-      const files = parseUnifiedDiff(diff.stdout);
-      const untouched = untouchedPaths(instance, new Set(files.map((f) => f.newPath)));
-      if (untouched.length > 0) {
-        throw new Error(`the case names files the change does not touch: ${untouched.join(", ")}`);
-      }
-      reaches.push(...classifyReferences(instance, preview, files));
-      tiers.push(preview.tier);
+      const classified = await classifyChange(instance, options);
+      reaches.push(...classified.reaches);
+      tiers.push(classified.tier);
       options.log(`${label}: ${instance.references.length} issue(s) classified`);
     } catch (error) {
       const kind = error instanceof UnavailableCommitError ? "unavailable" : "failed";
@@ -83,6 +58,47 @@ export async function measureCeiling(
   );
   await writeFile(join(options.outDir, "ceiling.md"), markdown);
   return markdown;
+}
+
+export interface ClassifiedChange {
+  // The clone the change was classified in, checked out at the head.
+  dir: string;
+  // One per reference of the instance, in their order.
+  reaches: ReferenceReach[];
+  tier: RiskTier;
+}
+
+export async function classifyChange(
+  instance: Instance,
+  options: Pick<CeilingOptions, "reposDir" | "command" | "prepare">,
+): Promise<ClassifiedChange> {
+  const dir = await (options.prepare ?? prepareRepository)(options.reposDir, instance);
+  const preview = await plan(dir, instance, options.command);
+  const diff = await exec(
+    "git",
+    [
+      "-c",
+      "core.quotepath=true",
+      "diff",
+      "--no-color",
+      "--no-ext-diff",
+      "--no-textconv",
+      "--find-renames",
+      "--src-prefix=a/",
+      "--dst-prefix=b/",
+      "--end-of-options",
+      `${instance.baseCommit}...${instance.headCommit}`,
+      "--",
+    ],
+    { cwd: dir },
+  );
+  if (diff.exitCode !== 0) throw new Error(`git diff failed: ${diff.stderr.trim()}`);
+  const files = parseUnifiedDiff(diff.stdout);
+  const untouched = untouchedPaths(instance, new Set(files.map((f) => f.newPath)));
+  if (untouched.length > 0) {
+    throw new Error(`the case names files the change does not touch: ${untouched.join(", ")}`);
+  }
+  return { dir, reaches: classifyReferences(instance, preview, files), tier: preview.tier };
 }
 
 async function plan(

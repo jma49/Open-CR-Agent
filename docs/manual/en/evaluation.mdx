@@ -60,6 +60,18 @@ A case is one JSON file named after its `id`, validated when it loads:
 
 Paths must stay inside the repository, and `ceiling` refuses a case naming a file the change does not touch; run it after adding or editing cases, since `run` does not check. `--tier smoke` selects the smoke tier, `--tier full` every case, and `--tier adversarial` the attacks with the cases they attack (below); `--golden-dir` reads cases from another directory. `--max-change-lines` does not apply to golden cases.
 
+### Candidates from AACR-Bench
+
+`golden-import` picks AACR-Bench pull requests and writes them as case files, without a model:
+
+```bash
+node packages/eval/dist/main.js golden-import --from aacr --limit 50   # free
+```
+
+It takes pull requests with one to three comments in ocra's scope (`Code Defect`, `Security Vulnerability`, `Performance`; maintainability and readability are left out, as in `ceiling`), all on the new side, in at most `--max-change-lines` changed lines (default 300), and not already in `--golden-dir`. Each one is cloned and planned as `ceiling` does, and kept only if every such comment is reachable. Languages take turns, so a `--limit` spreads across them; `--seed` and `--languages` work as in a selection. Cases go to `--out` (default `.ocra/eval/aacr-golden-candidates`, which must hold no cases yet) with a `summary.md` of counts by language, category and severity.
+
+A candidate is not a golden case yet. Its expectations restate human review comments, not confirmed bugs, so `source.ref` names the dataset rows and says the case is not hand-checked, every `minSeverity` is `suggestion`, and there is no `forbid`. Check each one against the code at `head`, set severities, add `forbid` ranges and a licence, rename it, and only then move it to `evals/golden/`.
+
 ### Golden scoring and labels
 
 A golden run adds its own metrics to `summary.md`. A finding that matches an `expect` entry counts as correct. One that does not is counted by its label:

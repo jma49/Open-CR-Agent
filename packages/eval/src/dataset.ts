@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { z } from "zod";
-import type { Instance } from "./instance.js";
+import type { Instance, ReferenceComment } from "./instance.js";
 
 export const DATASET_URL =
   "https://huggingface.co/datasets/Alibaba-Aone/aacr-bench/resolve/main/dataset.json";
@@ -28,6 +28,13 @@ export async function loadDataset(
   cachePath: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<Instance[]> {
+  return toInstances(await loadRecords(cachePath, fetchImpl));
+}
+
+export async function loadRecords(
+  cachePath: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<DatasetRecord[]> {
   let text: string;
   try {
     text = await readFile(cachePath, "utf8");
@@ -38,7 +45,7 @@ export async function loadDataset(
     await mkdir(dirname(cachePath), { recursive: true });
     await writeFile(cachePath, text);
   }
-  return toInstances(parseRecords(JSON.parse(text)));
+  return parseRecords(JSON.parse(text));
 }
 
 export type DatasetRecord = z.infer<typeof recordSchema>;
@@ -52,33 +59,40 @@ export function parseRecords(data: unknown): DatasetRecord[] {
 export function toInstances(records: readonly DatasetRecord[]): Instance[] {
   const byPr = new Map<string, Instance>();
   for (const r of records) {
-    const repo = new URL(r.pr_url).pathname.split("/").slice(1, 3).join("/");
     let instance = byPr.get(r.pr_url);
     if (!instance) {
-      instance = {
-        id: `${repo.replace("/", "__")}@${r.pr_target_commit.slice(0, 7)}`,
-        repo,
-        prUrl: r.pr_url,
-        language: r.project_main_language,
-        prCategory: r.pr_category,
-        baseCommit: r.pr_source_commit,
-        headCommit: r.pr_target_commit,
-        changeLines: r.pr_change_line_count,
-        references: [],
-      };
+      instance = prInstance(r);
       byPr.set(r.pr_url, instance);
     }
-    if (r.label === 1) {
-      instance.references.push({
-        path: r.path,
-        side: r.side,
-        fromLine: r.from_line,
-        toLine: r.to_line,
-        note: r.note,
-        category: r.category,
-        context: r.context,
-      });
-    }
+    if (r.label === 1) instance.references.push(toReference(r));
   }
   return [...byPr.values()].sort((a, b) => a.id.localeCompare(b.id));
+}
+
+// The pull request a row belongs to, without its references.
+export function prInstance(r: DatasetRecord): Instance {
+  const repo = new URL(r.pr_url).pathname.split("/").slice(1, 3).join("/");
+  return {
+    id: `${repo.replace("/", "__")}@${r.pr_target_commit.slice(0, 7)}`,
+    repo,
+    prUrl: r.pr_url,
+    language: r.project_main_language,
+    prCategory: r.pr_category,
+    baseCommit: r.pr_source_commit,
+    headCommit: r.pr_target_commit,
+    changeLines: r.pr_change_line_count,
+    references: [],
+  };
+}
+
+export function toReference(r: DatasetRecord): ReferenceComment {
+  return {
+    path: r.path,
+    side: r.side,
+    fromLine: r.from_line,
+    toLine: r.to_line,
+    note: r.note,
+    category: r.category,
+    context: r.context,
+  };
 }

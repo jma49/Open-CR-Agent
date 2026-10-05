@@ -4,7 +4,7 @@ ocra's own evaluation cases (ADR-0011, `docs/adr/0011-golden-eval-set.md`), one 
 
 ## Adding a case
 
-From AACR-Bench (the dataset's fields are in `packages/eval/README.md`; note that `pr_source_commit` is the base):
+From AACR-Bench, `ocra-eval golden-import --from aacr` writes unverified candidates that follow steps 1–3 below (manual, Candidates from AACR-Bench); check and finish them by hand. By hand (the dataset's fields are in `packages/eval/README.md`; note that `pr_source_commit` is the base):
 
 1. Find the pull request in `~/.cache/ocra/aacr-bench/dataset.json` by `pr_url`, or by the first 7 characters of `pr_target_commit` (the instance id is `<owner>__<repo>@<those 7>`). `node packages/eval/dist/main.js list --ids <instance id>` confirms it loads.
 2. In the clone (`~/.cache/ocra/aacr-bench/repos/<owner>__<repo>`), set `head` to `pr_target_commit` and `base` to `git merge-base <pr_source_commit> <head>`, as full commit ids. The source commit can be ahead of the merge base, and a case's diff is `base..head`.

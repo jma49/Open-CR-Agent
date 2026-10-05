@@ -53,7 +53,7 @@ function withCleanCases(picked: readonly Instance[], all: readonly Instance[]): 
 }
 
 // Seeded so that a subset baseline can be rerun on exactly the same PRs.
-function shuffle<T>(items: readonly T[], seed: number): T[] {
+export function shuffle<T>(items: readonly T[], seed: number): T[] {
   const result = [...items];
   let state = seed >>> 0 || 1;
   const next = () => {

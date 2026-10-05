@@ -25,6 +25,11 @@ const REACHABILITY_ORDER: readonly Reachability[] = [
 
 // Findings ocra deliberately does not report, whatever the model sees.
 const OUT_OF_SCOPE = new Set(["Maintainability and Readability"]);
+
+export function isOutOfScope(category: string): boolean {
+  return OUT_OF_SCOPE.has(category);
+}
+
 // Categories that only a specialist reviewer is asked to look for.
 const DOMAIN_REVIEWER: Record<string, string> = {
   "Security Vulnerability": "security",
@@ -62,7 +67,7 @@ export function classifyReferences(
     if (!selected.has(ref.path)) return { ...base, reach: "not_in_change" };
     const reviewers = reviewersByFile.get(ref.path);
     if (!reviewers || reviewers.size === 0) return { ...base, reach: "no_reviewer" };
-    if (OUT_OF_SCOPE.has(ref.category)) return { ...base, reach: "out_of_scope" };
+    if (isOutOfScope(ref.category)) return { ...base, reach: "out_of_scope" };
     const domain = DOMAIN_REVIEWER[ref.category];
     if (domain && !reviewers.has(domain)) {
       return { ...base, reach: "no_domain_reviewer", detail: domain };

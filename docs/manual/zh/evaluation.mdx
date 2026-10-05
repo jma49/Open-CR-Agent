@@ -60,6 +60,18 @@ node packages/eval/dist/main.js ceiling --dataset golden                 # 免�
 
 路径必须在仓库内；如果用例指向的文件不在这次改动里，`ceiling` 会拒绝它；新增或修改用例后先跑一次 `ceiling`，因为 `run` 不做这项检查。`--tier smoke` 只选 smoke 档，`--tier full` 选全部用例，`--tier adversarial` 选攻击用例以及它们所攻击的用例（见下文）；`--golden-dir` 可以从其他目录读取用例。`--max-change-lines` 对黄金用例不起作用。
 
+### 从 AACR-Bench 生成候选用例
+
+`golden-import` 从 AACR-Bench 中挑选拉取请求并写成用例文件，不调用模型：
+
+```bash
+node packages/eval/dist/main.js golden-import --from aacr --limit 50   # 免费
+```
+
+它只取这样的拉取请求：有一到三条属于 ocra 范围的评论（`Code Defect`、`Security Vulnerability`、`Performance`；可维护性与可读性不算，与 `ceiling` 一致），且都在新版本一侧；改动行数不超过 `--max-change-lines`（默认 300）；不在 `--golden-dir` 中。每个拉取请求会像 `ceiling` 那样克隆并规划，只有每条这类评论都可达时才保留。各语言轮流入选，因此 `--limit` 会分散到不同语言；`--seed` 和 `--languages` 与选择参数含义相同。用例写入 `--out`（默认 `.ocra/eval/aacr-golden-candidates`，其中不能已有用例），并附带按语言、类别和严重级别计数的 `summary.md`。
+
+候选还不是黄金用例。它的期望只是复述人工评审评论，而不是已确认的缺陷，所以 `source.ref` 写明数据集行号并注明未经人工核对，每个 `minSeverity` 都是 `suggestion`，也没有 `forbid`。请对照 `head` 处的代码逐条核对，设置严重级别，补充 `forbid` 范围和许可证，重新命名，然后再移入 `evals/golden/`。
+
 ### 黄金集计分与标注
 
 黄金集的运行会在 `summary.md` 里加上自己的指标。命中 `expect` 的问题算正确；没命中的按标注计：

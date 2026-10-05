@@ -38,6 +38,7 @@ const OPTIONS = {
   temperature: { type: "string" },
   "model-seed": { type: "string" },
   repeat: { type: "string" },
+  from: { type: "string" },
 } as const;
 
 export function parse(argv: string[]) {
