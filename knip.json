@@ -9,7 +9,8 @@
     },
     "packages/*": {
       "entry": ["src/**/*.test.ts"],
-      "project": ["src/**/*.ts"]
+      "project": ["src/**/*.ts"],
+      "ignoreBinaries": ["actionlint"]
     },
     "packages/runtime-opencode": {
       "entry": ["src/**/*.test.ts"],

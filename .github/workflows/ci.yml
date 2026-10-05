@@ -74,6 +74,8 @@ jobs:
           echo "$SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
           tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
           "$RUNNER_TEMP/actionlint" -color
+          # The workflows ocra init writes (kept by its test).
+          "$RUNNER_TEMP/actionlint" -color packages/cli/src/commands/init/__snapshots__/*.yml
       - name: zizmor
         run: pipx run zizmor==1.30.1 --offline --format github .
       - name: shellcheck

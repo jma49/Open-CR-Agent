@@ -2,6 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { errorMessage, isOcraError } from "@open-cr-agent/core";
 import { defaultCloudDeps } from "./cloud/deps.js";
+import { INIT_USAGE, initCommand } from "./commands/init.js";
 import { LOGIN_USAGE, loginCommand } from "./commands/login.js";
 import { memoryCommand } from "./commands/memory.js";
 import { metricsCommand } from "./commands/metrics.js";
@@ -21,6 +22,7 @@ import { VERSION } from "./version.js";
 const USAGE = `Usage: ocra <command> [options]
 
 Commands:
+  init        Set up ocra for this repository, and its GitHub workflow with --github
   review      Review code changes (run "ocra review --help" for options)
   memory      Remember findings the team accepts (run "ocra memory --help")
   metrics     Counts over past reviews: runs, cost, findings, per reviewer (run "ocra metrics --help")
@@ -69,6 +71,15 @@ export async function run(
 ): Promise<number> {
   const [command, ...rest] = argv;
   if (command === "review") return review(rest, out, err, deps);
+  if (command === "init") {
+    try {
+      return await initCommand(rest, out, { cwd: deps.cwd, env: deps.env });
+    } catch (error) {
+      if (error instanceof UsageError) err.write(`${error.message}\n\n${INIT_USAGE}`);
+      else err.write(failure(error));
+      return EXIT.error;
+    }
+  }
   if (command === "memory" || command === "metrics") {
     try {
       return command === "memory"
