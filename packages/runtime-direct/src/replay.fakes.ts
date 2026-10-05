@@ -1,6 +1,9 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type FakeEndpoint, scriptedEndpoint } from "../../core/src/runtime/conformance.fakes.js";
+import {
+  type FakeEndpoint,
+  scriptedEndpoint,
+} from "../../core/src/runtime/scripted-endpoint.fakes.js";
 import { exchangeKey, type Recording, recordingSchema } from "./record.js";
 
 export interface ReplayEndpoint extends FakeEndpoint {

@@ -1,12 +1,11 @@
 import type { AgentTaskSpec, CompletionRequest } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
+import { collect, fakeContext } from "../../core/src/runtime/conformance.fakes.js";
 import {
-  collect,
   type FakeEndpoint,
-  fakeContext,
   type Reply,
   scriptedEndpoint,
-} from "../../core/src/runtime/conformance.fakes.js";
+} from "../../core/src/runtime/scripted-endpoint.fakes.js";
 import { DirectRuntime } from "./runtime.js";
 
 const endpoints: FakeEndpoint[] = [];
@@ -57,10 +56,11 @@ function call(models?: string[]): CompletionRequest {
 
 const signal = () => new AbortController().signal;
 const down: Reply = { status: 500 };
+const reviewed: Reply = { content: "Reviewed.", toolCalls: [{ name: "task_done", args: {} }] };
 
 describe("DirectRuntime with an agent's own chain", () => {
   it("runs a task and a completion on the agent's chain instead of the tier's", async () => {
-    const server = await endpoint([{ content: "Reviewed." }, { content: "yes" }]);
+    const server = await endpoint([reviewed, { content: "yes" }]);
     const direct = runtime(server.url, ["local/m1"]);
     await collect(direct.runTask(task(["local/m2"]), signal()));
     await direct.complete(call(["local/m3"]), signal());
@@ -68,7 +68,7 @@ describe("DirectRuntime with an agent's own chain", () => {
   });
 
   it("keeps the tier's chain for a call that carries none", async () => {
-    const server = await endpoint([{ content: "Reviewed." }, { content: "yes" }]);
+    const server = await endpoint([reviewed, { content: "yes" }]);
     const direct = runtime(server.url, ["local/m1"]);
     await collect(direct.runTask(task(), signal()));
     await direct.complete(call(), signal());
@@ -76,7 +76,7 @@ describe("DirectRuntime with an agent's own chain", () => {
   });
 
   it("fails over within the agent's chain and names it when every model failed", async () => {
-    const server = await endpoint([down, down, { content: "Reviewed." }, down, down, down, down]);
+    const server = await endpoint([down, down, reviewed, down, down, down, down]);
     const direct = runtime(server.url, ["local/m1"]);
     const events = await collect(direct.runTask(task(["local/m2", "local/m3"]), signal()));
     expect(events.at(-1)).toMatchObject({ type: "done", taskId: "t1" });

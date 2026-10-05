@@ -20,6 +20,8 @@ export interface TaskResult {
   findings: TaskFinding[];
   usage: Usage;
   warnings: string[];
+  // The runtime gave the task's attempt its wrap-up turn.
+  wrapUp?: { findings: number };
 }
 
 export interface TaskCallbacks {
@@ -148,6 +150,7 @@ function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks)
     }
     case "done":
       if (event.ended) result.ended = event.ended;
+      if (event.wrapUp) result.wrapUp = { findings: event.wrapUp.findings };
       return true;
     case "error":
       result.status = "failed";

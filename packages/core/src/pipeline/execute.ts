@@ -118,6 +118,7 @@ export async function runJob(
   };
   if (result.error !== undefined) outcome.error = result.error;
   if (result.ended !== undefined) outcome.ended = result.ended;
+  if (result.wrapUp) outcome.wrapUp = result.wrapUp;
   // A task cut off before it finished (ADR-0030) is reviewed again, not reused.
   if (result.status === "completed" && result.ended === undefined) {
     emit({ type: "task_reported", taskId: job.taskId, key, findings: result.findings });

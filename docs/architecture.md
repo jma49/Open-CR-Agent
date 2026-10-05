@@ -130,7 +130,7 @@ interface OcraPlugin {
 // ConfigureContext: registerVcs, registerRuntime, registerReviewer, registerRules, registerTool, onEvent
 ```
 
-The pipeline owns orchestration; a runtime executes one isolated task. `runtime-opencode` (ADR-0003) and `runtime-direct` (ADR-0020) both pass the runtime conformance suite. Neither implements failback: each gives core's `ChainRunner` single-model attempts (`ModelAttempts`), and the runner handles chains, model health and failover for any runtime. The rest a runtime needs (review tools, step cap, quota parsing, redaction) is public in core; neither runtime imports `core/internal`.
+The pipeline owns orchestration; a runtime executes one isolated task. `runtime-opencode` (ADR-0003) and `runtime-direct` (ADR-0020) both pass the runtime conformance suite. Neither implements failback: each gives core's `ChainRunner` single-model attempts (`ModelAttempts`), and the runner handles chains, model health and failover for any runtime. The rest a runtime needs (review tools, step cap, quota parsing, redaction) is public in core; neither runtime imports `core/internal`. The runner also decides when a review attempt that ended without `task_done` gets its wrap-up turn (one more turn with only the reporting tools); the runtime only continues its own conversation (`TaskAttempt.wrapUp`).
 
 ## Resilience
 
