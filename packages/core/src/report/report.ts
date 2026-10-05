@@ -111,6 +111,15 @@ export type ReviewEvent =
   | { type: "task_started"; taskId: string; reviewer: string; bundle: string; files: string[] }
   | { type: "task_progress"; taskId: string; message: string }
   | { type: "finding"; taskId: string; finding: Finding }
+  // A reported finding the run did not keep: on a file outside the task's
+  // bundle. File and title only, so a later analysis can tell what was lost.
+  | {
+      type: "finding_dropped";
+      taskId: string;
+      reason: "outside_bundle";
+      file: string;
+      title: string;
+    }
   | { type: "task_finished"; outcome: TaskOutcome }
   | { type: "verification_finished"; checked: number; refuted: RefutedFinding[] }
   | { type: "judge_finished"; verdict: Verdict; judgement?: JudgeDecisions }

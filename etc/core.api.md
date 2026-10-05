@@ -1247,6 +1247,12 @@ export type ReviewEvent = {
     taskId: string;
     finding: Finding;
 } | {
+    type: "finding_dropped";
+    taskId: string;
+    reason: "outside_bundle";
+    file: string;
+    title: string;
+} | {
     type: "task_finished";
     outcome: TaskOutcome;
 } | {

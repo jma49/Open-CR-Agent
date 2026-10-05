@@ -183,6 +183,13 @@ async function anchorFindings(
     if (anchor.warning) warnings.push(`${job.taskId}: ${anchor.warning}`);
     if (!bundleFiles.has(anchor.file)) {
       outside += 1;
+      options.emit({
+        type: "finding_dropped",
+        taskId: job.taskId,
+        reason: "outside_bundle",
+        file: anchor.file,
+        title: reported.title,
+      });
       continue;
     }
     const content = anchor.lineRange

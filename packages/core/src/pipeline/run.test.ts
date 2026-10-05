@@ -423,7 +423,7 @@ describe("review", () => {
         yield {
           type: "finding",
           taskId: spec.taskId,
-          finding: finding("src/b.ts", "const b = 1;"),
+          finding: finding("src/b.ts", "const b = 1;", { title: "Elsewhere", body: "secret" }),
         };
         yield {
           type: "finding",
@@ -433,11 +433,26 @@ describe("review", () => {
       }
       yield { type: "done", taskId: spec.taskId };
     });
-    const report = await review({ vcs: vcs({}, diff), runtime: rt });
+    const events: ReviewEvent[] = [];
+    const report = await review({
+      vcs: vcs({}, diff),
+      runtime: rt,
+      onEvent: (e) => events.push(e),
+    });
     expect(report.findings.map((f) => f.file)).toEqual(["src/a.ts"]);
     expect(report.warnings).toContain(
       "correctness-1: dropped 1 finding(s) on files outside its bundle",
     );
+    // The session log says what was dropped: its file and title, nothing more.
+    expect(events.filter((e) => e.type === "finding_dropped")).toEqual([
+      {
+        type: "finding_dropped",
+        taskId: "correctness-1",
+        reason: "outside_bundle",
+        file: "src/b.ts",
+        title: "Elsewhere",
+      },
+    ]);
   });
 
   it("reads the reviewed revision through the task context", async () => {
