@@ -1,6 +1,6 @@
-import { constants, existsSync } from "node:fs";
-import { lstat, mkdir, open, readFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import type { MemoryEntry, OutputFinding } from "@open-cr-agent/core";
 import {
@@ -13,6 +13,7 @@ import {
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
 import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
+import { writeRepositoryFile } from "../io/repository-file.js";
 import { forTerminal } from "../io/terminal.js";
 import { UsageError } from "../io/usage-error.js";
 import { listSessions, reportPath, SESSIONS_DIR, sessionsDir } from "../session/store.js";
@@ -79,34 +80,15 @@ export async function memoryCommand(
     reason: values.reason.trim(),
     added: now.toISOString().slice(0, 10),
   };
-  await writeRepositoryFile(root, MEMORY_PATH, serializeMemory([...memory, entry]));
+  await writeRepositoryFile(root, MEMORY_PATH, serializeMemory([...memory, entry]), {
+    replace: true,
+  });
   out.write(
     forTerminal(
       `Remembered ${finding.fingerprint.slice(0, 8)}: ${finding.title}\nCommit ${MEMORY_PATH} to share it.\n`,
     ),
   );
   return EXIT.ok;
-}
-
-// The repository may be someone else's clone: a planted symlink at
-// .ocra/memory.json, or at .ocra, must not make ocra write elsewhere.
-async function writeRepositoryFile(root: string, path: string, content: string): Promise<void> {
-  const target = join(root, path);
-  for (const p of [dirname(target), target]) {
-    const stat = await lstat(p).catch(() => undefined);
-    if (stat?.isSymbolicLink())
-      throw new UsageError(`Refusing to write through the symbolic link ${p}`);
-  }
-  await mkdir(dirname(target), { recursive: true });
-  const handle = await open(
-    target,
-    constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW,
-  );
-  try {
-    await handle.writeFile(content);
-  } finally {
-    await handle.close();
-  }
 }
 
 async function readMemory(root: string): Promise<MemoryEntry[]> {
