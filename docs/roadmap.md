@@ -71,20 +71,17 @@ Stages are inserted into, not replaced: whoever swaps Verify or Judge gets a pip
 
 When the direction's standing credit line exists, M5 and M6 fold into M11 below.
 
-### Now: prove the reference reviewer, extract the engine
+### Now: users and recall (from 2026-10-05, six weeks)
 
-The roadmap sets no deadlines: each phase starts when the one before it has shown what it set out to show, and ships piece by piece as each item lands. Getting ocra in front of users comes first: M13 starts now, alongside M10–M12, and nothing waits for the contracts to be complete.
+Decided by the maintainer on 2026-10-05: for six weeks the project is judged on two numbers only, **external users** and **recall**. Everything else waits.
 
-This phase's success condition is not a list of interfaces: it is three external teams running ocra on their real pull requests, and a per-reviewer precision number published from a golden set large enough to see a five-point change. Everything else serves those two.
+- **Users (M13):** 20 candidate open-source repositories (outside contributors, many pull requests, no AI reviewer yet), each offered a setup pull request and watched through its first ten reviews; `ocra init` to make the setup one command. Target: three external repositories running ocra for two weeks or more. Before inviting anyone, settle who pays for their model calls: the free model's shared daily pool cannot carry three busy repositories.
+- **Recall (M11):** first establish the run-to-run noise of the golden score (the same configuration three times), find from saved runs where expected issues are lost (never raised, or dropped by Verify, Judge or a severity filter), and grow the golden set from AACR-Bench's in-scope issues; then one change at a time, measured against that noise.
+- **Paused:** the rest of M10 (the reviewer entity, sinks) and M12. **ocra Cloud (M14) is frozen**: it keeps running and gets security fixes, no new features, no paid plan.
+- **Checkpoint at week six:** with users and better recall, decide what Cloud should become (the candidate is a hosted GitHub App for reviewing open-source fork pull requests); with no takers after 20 invitations, find out why before building more.
 
-**M10 — Contracts** (no credit). The engine becomes something a program, not only a shell, can call, and its shared model becomes a specification.
+The milestones below keep their lists; the order of work is the one above.
 
-1. **Finding specification v1**: provenance, lifecycle and anchoring fixed; a published JSON Schema; the JSON report versioned against it. Landed as ADR-0018 (provenance per finding, usage per task, the schema generated and tested); the session log stays internal, as the stability page says.
-2. **SARIF in**: external findings mapped into `Finding` once, with Semgrep as the first analyzer and the first use of the Analyzer contract. Landed as ADR-0019 (`--import-sarif`; ocra runs no tool; the log is the Analyzer contract until a second source appears).
-3. **A public `review()` entry** in `core` with a curated export surface, a contract page in the manual and a deprecation policy; the CLI becomes its first caller. `core`'s `export *` surface is replaced by the curated one. Landed: `review()` and the Embedding page (the contract and its 0.x rule on the stability page), and the curated export surface: named main entries for every published package, `./internal` entries for what the packages share, and API reports in `etc/` checked in CI.
-4. **A second `AgentRuntime`**, a direct SDK tool loop that does not go through OpenCode, and with it the runtime conformance suite: no write, no shell, no outbound network but the model endpoint. It also removes OpenCode's catalog fetch and npm plugin install from review time. Landed as ADR-0020 (`runtime-direct`, declared endpoints only; the shared loop logic in core; the suite runs against both runtimes).
-5. **Reviewer as an entity**: scope, tool set and output schema declared, not only a prompt and a tier; finding processors at the two insertion points. Design proposed in ADR-0021: the per-reviewer tool set can land now; processors land with their first customer (M12 policy, the adversarial canary check); one output schema until a second shape exists.
-6. **Sinks**: SARIF and the platform behind one contract, so a report can go to more than one place in a run.
 7. Carried over from 0.2.0: #289 (the GitHub setup people with push access cannot change, end to end), #290 (the separate GitLab reviewer project); the live GitLab check ran on GitLab.com Free on 2026-10-04. #288 landed in #302.
 
 **M11 — Evidence** (a standing credit line: cents a run for the nightly test, tens of dollars for golden runs; the free OpenRouter model covers what it can).
@@ -94,15 +91,15 @@ This phase's success condition is not a list of interfaces: it is three external
 3. M5 and M6 as written above, under that evidence.
 4. Only then: prompts, rules and reviewers unfreeze, one change at a time, each measured.
 
-**M12 — Operability** (no credit).
+**M12 — Operability** (no credit; paused 2026-10-05).
 
 1. **Organization policy**: a central configuration the reviewed repository cannot override (allowed models, spend limits, mandatory reviewers, excluded paths), with a documented precedence over remote and repository configuration. Design proposed in ADR-0022 (`OCRA_POLICY`, caps over every layer, fails closed, reported).
 2. **A run id** through logs, comments, the report and the session file; the event schema versioned and published. The run id landed (the session id, in the report as `runId`, in the progress output, the summary comment and the SARIF log); the event schema is still internal.
 3. Minimal metrics an operations team can scrape from session files: runs, cost, findings, dismissals, acceptance rate, per reviewer. Landed as `ocra metrics` (text and versioned JSON over the sessions' `report.json`).
 
-**M13 — Use** (people, not code; starts now). Three external teams on the Action or the GitLab job, reviewing their real pull requests, with their dismissals and replies feeding the golden set; the three-maintainer conversations from M8. If no team will run it, the next phase starts with the product layer, not the control plane.
+**M13 — Use** (people, not code; the focus from 2026-10-05). Three external teams on the Action or the GitLab job, reviewing their real pull requests, with their dismissals and replies feeding the golden set; the three-maintainer conversations from M8. If no team will run it, the next phase starts with the product layer, not the control plane.
 
-**M14 — ocra Cloud** (moved to Now on 2026-10-04, [ADR-0024](adr/0024-ocra-cloud.md); the main line). Open core plus an optional hosted service on the published packages, in its own private repository.
+**M14 — ocra Cloud** ([ADR-0024](adr/0024-ocra-cloud.md); frozen from 2026-10-05: running, security fixes only, decided again at the six-week checkpoint). Open core plus an optional hosted service on the published packages, in its own private repository.
 
 1. **Phase 1, the MVP:** sign-in with GitHub and `ocra login` (device flow); the user's own key stored encrypted in the cloud and used only by an allowlisted model gateway that logs no bodies; zero configuration when logged in; metadata-only upload after a review, content opt-in; a web view of reviews, statistics, keys and sessions; a public data policy. Built and live at https://app.ocracloud.com and released with 0.4.0 and 0.5.0: `ocra login/logout/whoami`, `ocra-<provider>/<model>` through the gateway, the counts upload with `--no-upload`, account configuration layered under the repository's ([ADR-0027](adr/0027-account-configuration.md)), findings shared only when the account opts in, with account memory ([ADR-0028](adr/0028-findings-upload-and-cloud-memory.md)). Left: the first external users (M13).
 2. **Models and reasoning effort per agent** ([ADR-0025](adr/0025-per-agent-models-and-effort.md)), in `.ocra/config.json` or as ocra Cloud account defaults under the repository's settings. Landed: effort per tier, reviewer and role (#349); per-agent model chains on both runtimes; a per-agent input cost estimate in `--plan`; the OpenCode effort mapping; the web's Agents page. Next: a policy cap on effort.

@@ -196,9 +196,9 @@ ocra's long-term position is the engine other review agents are built on, not an
 | M1–M4 | Pipeline, reviewers, GitHub, incremental re-review, failover, memory | built |
 | M7–M9 | On npm with provenance; untrusted-PR hardening; GitLab, SARIF, container image, declared providers (0.2.0) | built |
 | M5–M6 | A quality number that can decide changes; recall without losing precision | paused until model credit |
-| M10 | Contracts: a Finding specification, a public `review()` entry, a second runtime with a conformance suite, SARIF in | mostly built; the reviewer entity and sinks remain |
-| M14 | ocra Cloud ([ADR-0024](docs/adr/0024-ocra-cloud.md)): login, your own key behind a model gateway, a web view of reviews, account configuration and opt-in findings; then a hosted GitHub App | Phase 1 built and released (0.5.0); Phase 2 deferred |
-| M11–M13 | Evidence (a nightly live test, per-reviewer numbers), operability (organization policy, run ids, metrics), external use | in progress; external use starts now |
+| M10 | Contracts: a Finding specification, a public `review()` entry, a second runtime with a conformance suite, SARIF in | mostly built; the rest paused |
+| M14 | ocra Cloud ([ADR-0024](docs/adr/0024-ocra-cloud.md)): login, your own key behind a model gateway, a web view of reviews, account configuration and opt-in findings | Phase 1 built (0.5.0); frozen while users and recall come first |
+| M11–M13 | Evidence (a nightly live test, per-reviewer numbers), operability (organization policy, run ids, metrics), external use | now: external use and recall (M11, M13); operability paused |
 
 The plan, the reasoning and what is deliberately not built: [roadmap](docs/roadmap.md).
 
