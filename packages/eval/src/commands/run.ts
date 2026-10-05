@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { createJudge } from "../judges.js";
+import { ocraBuild } from "../ocra-build.js";
 import { repeatRuns } from "../repeat.js";
 import type { RunInfo } from "../report.js";
 import { defaultOcraCommand } from "../reviewer.js";
@@ -61,6 +62,7 @@ export async function run(
     reviewArgs,
     ...(values["retry-failed"] ? { retryFailed: true } : {}),
   };
+  const build = await ocraBuild();
   const once = async (dir: string, label: string, maxCostUsd: number | undefined) => {
     await mkdir(dir, { recursive: true });
     const results = await runInstances(instances, {
@@ -86,6 +88,7 @@ export async function run(
       judge: judge.description,
       review: reviewArgs,
       sampling,
+      ocra: build,
     };
     await writeFile(
       join(dir, "run.json"),

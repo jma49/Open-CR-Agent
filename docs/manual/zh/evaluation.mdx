@@ -124,7 +124,7 @@ node packages/eval/dist/main.js run  --dataset golden --tier adversarial --label
 
 ## 可复现性
 
-一次运行里的每次审查都用固定的采样设置：温度 `0`、种子 `1`，除非用 `--temperature` 和 `--model-seed` 另行指定。`run.json` 和 `summary.json` 记录要求的设置（`info.sampling`）；每次审查的 JSON 报告记录实际应用的设置，`summary.json` 把它们汇总为 `summary.provenance`：被审查的 PR 用到的不同 ocra 版本、提示词哈希、配置哈希和采样设置（见报告的 [`provenance`](./cli#json-输出)）。`summary.md` 在 Provenance 一行里列出它们。同一次运行里出现多个值，说明它在重新构建或改了设置之后被接着跑过。OpenCode 运行时不应用种子，有些供应商也会忽略种子，所以固定种子并不能让模型变成确定性的；剩下的波动由重复运行来衡量。
+一次运行里的每次审查都用固定的采样设置：温度 `0`、种子 `1`，除非用 `--temperature` 和 `--model-seed` 另行指定。`run.json` 和 `summary.json` 记录要求的设置（`info.sampling`）；`run.json` 还记录运行的是哪个 ocra（`info.ocra`）：它的版本、构建它的检出所在的提交以及该检出是否有未提交的改动，还有审查 agent 的步数上限，`summary.md` 在 `ocra` 一行打印这些信息；每次审查的 JSON 报告记录实际应用的设置，`summary.json` 把它们汇总为 `summary.provenance`：被审查的 PR 用到的不同 ocra 版本、提示词哈希、配置哈希和采样设置（见报告的 [`provenance`](./cli#json-输出)）。`summary.md` 在 Provenance 一行里列出它们。同一次运行里出现多个值，说明它在重新构建或改了设置之后被接着跑过。OpenCode 运行时不应用种子，有些供应商也会忽略种子，所以固定种子并不能让模型变成确定性的；剩下的波动由重复运行来衡量。
 
 ## 重复运行
 

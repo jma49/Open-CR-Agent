@@ -18,12 +18,15 @@ export interface ReviewOutcome {
 // entry is dist/index.js for users but src/index.ts under the tests' source
 // condition, and either way sits one level below the package root.
 export function defaultOcraCommand(): string[] {
-  const entry = createRequire(import.meta.url).resolve("@open-cr-agent/cli");
-  const root = dirname(dirname(entry));
+  const root = ocraCliRoot();
   const { bin } = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
     bin: { ocra: string };
   };
   return [process.execPath, join(root, bin.ocra)];
+}
+
+export function ocraCliRoot(): string {
+  return dirname(dirname(createRequire(import.meta.url).resolve("@open-cr-agent/cli")));
 }
 
 // Runs the real CLI as a black box, like the official adapters for other

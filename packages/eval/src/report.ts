@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { AttackSummary } from "./attack-score.js";
 import type { GoldenSummary } from "./golden-score.js";
+import { ocraBuildSchema, renderBuild } from "./ocra-build.js";
 import { type ProvenanceSummary, renderProvenance } from "./provenance.js";
 import type { Summary } from "./score.js";
 
@@ -23,6 +24,7 @@ export const runInfoSchema = z.strictObject({
   sampling: z
     .strictObject({ temperature: z.number().exactOptional(), seed: z.int().exactOptional() })
     .exactOptional(),
+  ocra: ocraBuildSchema.exactOptional(),
 });
 export type RunInfo = z.output<typeof runInfoSchema>;
 
@@ -38,6 +40,7 @@ export function renderMarkdown(info: RunInfo, summary: RunSummary): string {
     `- Models: ${JSON.stringify(info.models)}`,
     `- Judge: ${info.judge}`,
     ...(info.review ? [`- Review flags: ${info.review.join(" ")}`] : []),
+    ...(info.ocra ? [`- ocra: ${renderBuild(info.ocra)}`] : []),
     `- Provenance: ${renderProvenance(summary.provenance)}`,
     `- Instances: ${summary.instances.reviewed} reviewed, ${summary.instances.failed} failed, ${summary.instances.unavailable} unavailable in the dataset, ${summary.instances.skippedBudget} skipped for budget, ${summary.instances.skippedQuota} skipped for spent quota (of ${summary.instances.selected})`,
     "",
