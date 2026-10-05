@@ -127,6 +127,11 @@ export {
   type AttemptOutcome,
   MAX_AGENT_STEPS,
   RESUME_MESSAGE,
+  type TaskAttempt,
+  WRAP_UP_MESSAGE,
+  WRAP_UP_STEPS,
+  WRAP_UP_TOOLS,
+  type WrapUpOutcome,
   withoutSecrets,
 } from "./runtime/attempt.js";
 export { ChainRunner, type ModelAttempts } from "./runtime/chain-runner.js";

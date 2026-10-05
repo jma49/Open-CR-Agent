@@ -16,6 +16,18 @@ export const MAX_AGENT_STEPS = 30;
 // starting over.
 export const RESUME_MESSAGE = `You stopped before finishing the review. Continue with the files in <ocra_review_files> you have not reviewed yet, report each confirmed issue with ${REVIEW_TOOLS.reportFinding}, and call ${REVIEW_TOOLS.taskDone} when every file is done.`;
 
+// A review that ends without the done tool, at the step cap or after
+// stopping early, has often read the code and reached a conclusion it never
+// reported (on its last step OpenCode tells it to answer in text only). One
+// more turn in the same conversation, with only these tools, keeps what it
+// confirmed.
+export const WRAP_UP_TOOLS = [REVIEW_TOOLS.reportFinding, REVIEW_TOOLS.taskDone] as const;
+export const WRAP_UP_MESSAGE = `You have no steps left to read more code. Report each issue you have already confirmed with ${REVIEW_TOOLS.reportFinding}, then call ${REVIEW_TOOLS.taskDone}. Do not report anything you have not confirmed.`;
+// The turn is one request in which the agent reports. It gets two: OpenCode
+// tells an agent to answer in text only on its last step, and Gemini rejects
+// a request that ends with a model turn (#66).
+export const WRAP_UP_STEPS = 2;
+
 // Text with every secret replaced: a provider's error may echo the request's
 // headers, and a progress line or session file must not carry the key.
 export function withoutSecrets(text: string, secrets: readonly string[]): string {
@@ -36,8 +48,27 @@ export interface AttemptOutcome {
   // the runtime knows: OpenCode caps each turn, so a resumed session's steps
   // add up past the cap without either turn reaching it.
   atStepCap?: true;
+  // The attempt ended without the done tool and was given the wrap-up turn.
+  wrappedUp?: WrapUpOutcome;
   usage: Usage;
   error?: AttemptError;
+}
+
+export interface WrapUpOutcome {
+  // Findings the agent reported in the turn.
+  findings: number;
+  // Why the turn failed; the attempt still counts as it did before it.
+  error?: string;
+}
+
+// One attempt of a review task. A runtime that can continue the attempt's
+// conversation offers wrapUp: the wrap-up turn (WRAP_UP_MESSAGE, only
+// WRAP_UP_TOOLS, at most WRAP_UP_STEPS requests) under the attempt's signal,
+// reporting spend through the attempt's onUsage. It resolves to the
+// attempt's outcome so far, the turn included; the ChainRunner decides
+// whether it runs.
+export interface TaskAttempt extends AttemptOutcome {
+  wrapUp?(): Promise<AttemptOutcome>;
 }
 
 export interface AttemptError {
@@ -51,7 +82,13 @@ export interface AttemptError {
 export function attemptSummary(model: string, outcome: AttemptOutcome): string {
   const { inputTokens, outputTokens, reasoningTokens, costUsd } = outcome.usage;
   const resumed = outcome.resumed ? ", resumed after stopping early" : "";
-  return `${model}: ${outcome.steps} step(s), ${toolSummary(outcome.toolCalls)}${resumed}, ${inputTokens} in / ${outputTokens} out / ${reasoningTokens} reasoning tokens, $${costUsd.toFixed(4)}`;
+  return `${model}: ${outcome.steps} step(s), ${toolSummary(outcome.toolCalls)}${resumed}${wrapUpSummary(outcome.wrappedUp)}, ${inputTokens} in / ${outputTokens} out / ${reasoningTokens} reasoning tokens, $${costUsd.toFixed(4)}`;
+}
+
+function wrapUpSummary(wrapUp: WrapUpOutcome | undefined): string {
+  if (!wrapUp) return "";
+  const failed = wrapUp.error === undefined ? "" : `, then failed: ${wrapUp.error}`;
+  return `, wrap-up turn reported ${wrapUp.findings} finding(s)${failed}`;
 }
 
 export function toolSummary(toolCalls: readonly string[]): string {

@@ -75,6 +75,10 @@ export interface TaskOutcome {
   // What the task spent, its share of a plan call included; a finding's
   // cost is its task's.
   usage: Usage;
+  // Its agent ended without the done tool and was given one more turn, with
+  // only the reporting tools, to report what it had confirmed; findings: how
+  // many it reported in that turn.
+  wrapUp?: { findings: number };
 }
 
 export interface ReviewReport {

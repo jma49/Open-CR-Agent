@@ -196,18 +196,24 @@ describe("promptSession", () => {
     // Each prompt appends the turns it produced to the session.
     function scripted(turns: SessionMessage[][]) {
       const sent: string[] = [];
+      const bodies: { agent: string; tools: Record<string, boolean> }[] = [];
       const messages: SessionMessage[] = [];
       const api = {
         create: async () => ({ data: { id: "s1" } }),
-        prompt: async (body: { parts: { text: string }[] }) => {
+        prompt: async (body: {
+          agent: string;
+          tools: Record<string, boolean>;
+          parts: { text: string }[];
+        }) => {
           sent.push(body.parts[0]?.text ?? "");
+          bodies.push({ agent: body.agent, tools: body.tools });
           messages.push(...(turns.shift() ?? []));
           return { data: {} };
         },
         messages: async () => ({ data: messages }),
         abort: async () => ({ data: true }),
       } as never;
-      return { api, sent };
+      return { api, sent, bodies };
     }
 
     it("is told once to finish, and both turns count", async () => {
@@ -276,6 +282,65 @@ describe("promptSession", () => {
       const { api, sent } = scripted([[read]]);
       await promptSession(api, input, REPORT_TOOL, new AbortController().signal);
       expect(sent).toHaveLength(1);
+    });
+
+    describe("and is given the wrap-up turn", () => {
+      const wrapUp = {
+        agent: "wrap",
+        tools: { ocra_read_file: false, ocra_report_finding: true },
+        message: "Report what you confirmed.",
+      };
+
+      it("continues the same session with the turn's agent and tools, and counts both turns", async () => {
+        const capped = Array.from({ length: 30 }, () => read);
+        const { api, sent, bodies } = scripted([[...capped, report("first")], [report("late")]]);
+        const attempt = await promptSession(
+          api,
+          { ...input, resume, wrapUp },
+          REPORT_TOOL,
+          new AbortController().signal,
+        );
+        expect(attempt.findings).toEqual([{ title: "first" }]);
+        const after = await attempt.wrapUp?.();
+        expect(sent).toEqual(["u", "Report what you confirmed."]);
+        expect(bodies[1]).toEqual({ agent: "wrap", tools: wrapUp.tools });
+        expect(after?.findings).toEqual([{ title: "first" }, { title: "late" }]);
+        expect(after?.steps).toBe(32);
+        // What the first turn returned stays as it was.
+        expect(attempt.findings).toEqual([{ title: "first" }]);
+      });
+
+      it("keeps that the agent was resumed", async () => {
+        const { api } = scripted([[read], [read], [report("late")]]);
+        const attempt = await promptSession(
+          api,
+          { ...input, resume, wrapUp },
+          REPORT_TOOL,
+          new AbortController().signal,
+        );
+        expect((await attempt.wrapUp?.())?.resumed).toBe(true);
+      });
+
+      it("is not offered for helper calls", async () => {
+        const { api } = scripted([[read]]);
+        const attempt = await promptSession(api, input, REPORT_TOOL, new AbortController().signal);
+        expect(attempt.wrapUp).toBeUndefined();
+      });
+
+      it("is not sent once the task is cancelled", async () => {
+        const controller = new AbortController();
+        const { api, sent } = scripted([[read], [read], [report("late")]]);
+        const attempt = await promptSession(
+          api,
+          { ...input, resume, wrapUp },
+          REPORT_TOOL,
+          controller.signal,
+        );
+        controller.abort();
+        const after = await attempt.wrapUp?.();
+        expect(sent).toHaveLength(2);
+        expect(after?.error).toEqual({ message: "cancelled", retryable: false });
+      });
     });
   });
 });

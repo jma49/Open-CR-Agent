@@ -4,6 +4,8 @@ import {
   MAX_AGENT_STEPS,
   RESUME_MESSAGE,
   type ReviewContext,
+  WRAP_UP_MESSAGE,
+  WRAP_UP_STEPS,
 } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -191,7 +193,7 @@ describe("DirectRuntime.runTask", () => {
     ).toMatchObject({ message: expect.stringContaining("resumed after stopping early") });
   });
 
-  it("stops at the step cap", async () => {
+  it("stops at the step cap, and a wrap-up turn that asks for code tools gets none", async () => {
     const server = await endpoint(
       Array.from({ length: MAX_AGENT_STEPS + 5 }, () => ({
         toolCalls: [{ name: "read_file", args: { path: "src/a.ts" } }],
@@ -200,11 +202,29 @@ describe("DirectRuntime.runTask", () => {
     const events = await collect(
       runtime(server.url).runTask(spec(context()), new AbortController().signal),
     );
-    expect(server.seen).toHaveLength(MAX_AGENT_STEPS);
-    expect(events.at(-1)?.type).toBe("done");
+    expect(server.seen).toHaveLength(MAX_AGENT_STEPS + WRAP_UP_STEPS);
+    for (const request of server.seen.slice(MAX_AGENT_STEPS)) {
+      expect(request.tools?.map((t) => t.function.name)).toEqual(["report_finding", "task_done"]);
+    }
+    expect(server.seen[MAX_AGENT_STEPS]?.messages.at(-1)).toEqual({
+      role: "user",
+      content: WRAP_UP_MESSAGE,
+    });
+    expect(server.seen.at(-1)?.messages.at(-1)).toMatchObject({
+      role: "tool",
+      content: "Unknown tool: read_file",
+    });
+    expect(events.at(-1)).toEqual({
+      type: "done",
+      taskId: "t1",
+      ended: "step_cap",
+      wrapUp: { findings: 0 },
+    });
     expect(
       events.find((e) => e.type === "progress" && e.message.includes("step(s)")),
-    ).toMatchObject({ message: expect.stringContaining("no task_done") });
+    ).toMatchObject({
+      message: expect.stringContaining("no task_done), wrap-up turn reported 0 finding(s)"),
+    });
   });
 
   it("moves to the next model on a daily quota and keeps the key out of what it says", async () => {

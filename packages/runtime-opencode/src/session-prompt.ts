@@ -4,6 +4,7 @@ import {
   errorMessage,
   OcraError,
   parseModel,
+  type TaskAttempt,
   type Usage,
 } from "@open-cr-agent/core";
 import type { OpencodeClient } from "@opencode-ai/sdk/v2";
@@ -50,11 +51,23 @@ export interface PromptInput {
   // Review agents only: when the agent stops early (no done tool, no answer,
   // steps left), the same session is told once to finish.
   resume?: ResumeOptions;
+  // Review agents only: the turn the attempt offers as TaskAttempt.wrapUp,
+  // in the same session.
+  wrapUp?: Turn;
 }
 
 interface ResumeOptions {
   doneTool: string;
   maxSteps: number;
+  message: string;
+}
+
+// One prompt in a session: the agent (which sets the step cap) and variant
+// it runs with, the tools it is offered, and what it is told.
+interface Turn {
+  agent: string;
+  variant?: string;
+  tools: Record<string, boolean>;
   message: string;
 }
 
@@ -88,7 +101,7 @@ export async function promptSession(
   reportTool: string,
   signal: AbortSignal,
   activity: ActivityOptions = {},
-): Promise<AttemptOutcome> {
+): Promise<TaskAttempt> {
   const created = await session.create({ title: input.title }, { signal });
   if (!created.data) {
     throw new OcraError(
@@ -96,8 +109,59 @@ export async function promptSession(
       `OpenCode could not create a session: ${JSON.stringify(created.error)}`,
     );
   }
-  const sessionID = created.data.id;
+  const opened: OpenSession = {
+    session,
+    sessionID: created.data.id,
+    input,
+    reportTool,
+    signal,
+    activity,
+  };
+  const turn = (t: Turn) => runTurn(opened, t);
+  const review = {
+    agent: input.agent,
+    ...(input.variant ? { variant: input.variant } : {}),
+    tools: input.tools,
+  };
+  let outcome = await turn({ ...review, message: input.user });
+  let lastTurnFrom = 0;
+  if (!outcome.error && input.resume && stoppedEarly(outcome, input.resume)) {
+    lastTurnFrom = outcome.steps;
+    // Both turns are in the session: their findings and their spend.
+    outcome = { ...(await turn({ ...review, message: input.resume.message })), resumed: true };
+  }
+  if (input.resume) outcome = capped(outcome, outcome.steps - lastTurnFrom, input.resume);
+  const { wrapUp } = input;
+  if (!wrapUp) return outcome;
+  const resumed = outcome.resumed;
+  return {
+    ...outcome,
+    wrapUp: async () => ({ ...(await turn(wrapUp)), ...(resumed ? { resumed } : {}) }),
+  };
+}
+
+interface OpenSession {
+  session: SessionApi;
+  sessionID: string;
+  input: PromptInput;
+  reportTool: string;
+  signal: AbortSignal;
+  activity: ActivityOptions;
+}
+
+// Sends one turn and returns what the whole session has come to, every
+// earlier turn included.
+async function runTurn(
+  { session, sessionID, input, reportTool, signal, activity }: OpenSession,
+  turn: Turn,
+): Promise<AttemptOutcome> {
   const stop = () => void session.abort({ sessionID }).catch(() => {});
+  if (signal.aborted) {
+    return {
+      ...(await harvest(session, sessionID, reportTool, input.toolPrefix)),
+      error: { message: "cancelled", retryable: false },
+    };
+  }
   signal.addEventListener("abort", stop, { once: true });
   const silence = watchActivity(session, sessionID, activity);
   const attempt = AbortSignal.any([signal, silence.signal]);
@@ -105,12 +169,12 @@ export async function promptSession(
     const response = await session.prompt(
       {
         sessionID,
-        agent: input.agent,
+        agent: turn.agent,
         model: parseModel(input.model),
-        ...(input.variant ? { variant: input.variant } : {}),
+        ...(turn.variant ? { variant: turn.variant } : {}),
         system: input.system,
-        tools: input.tools,
-        parts: [{ type: "text", text: input.user }],
+        tools: turn.tools,
+        parts: [{ type: "text", text: turn.message }],
       },
       { signal: attempt },
     );
@@ -122,10 +186,9 @@ export async function promptSession(
         error: { message: JSON.stringify(response.error), retryable: false },
       };
     }
-    let outcome: AttemptOutcome;
     try {
       const messages = await session.messages({ sessionID }, { signal: attempt });
-      outcome = summarizeSession(parseSessionMessages(messages.data), reportTool, input.toolPrefix);
+      return summarizeSession(parseSessionMessages(messages.data), reportTool, input.toolPrefix);
     } catch (error) {
       // The session finished; running it again on the next model would pay
       // twice. Keep what one more read gets, and do not retry.
@@ -137,27 +200,6 @@ export async function promptSession(
         },
       };
     }
-    if (!input.resume) return outcome;
-    if (!stoppedEarly(outcome, input.resume)) return capped(outcome, outcome.steps, input.resume);
-    const again = await session.prompt(
-      {
-        sessionID,
-        agent: input.agent,
-        model: parseModel(input.model),
-        ...(input.variant ? { variant: input.variant } : {}),
-        system: input.system,
-        tools: input.tools,
-        parts: [{ type: "text", text: input.resume.message }],
-      },
-      { signal: attempt },
-    );
-    // Both turns are in the session: their findings and their spend.
-    const resumed: AttemptOutcome = {
-      ...(await harvest(session, sessionID, reportTool, input.toolPrefix)),
-      resumed: true,
-    };
-    if (again.error) resumed.error = { message: JSON.stringify(again.error), retryable: false };
-    return capped(resumed, resumed.steps - outcome.steps, input.resume);
   } catch (error) {
     // Aborted or cut off by the transport: OpenCode may still be running the
     // session, spending tokens, so stop it and keep what it already did.

@@ -6,9 +6,12 @@ import {
   type AttemptOutcome,
   attemptEnding,
   attemptSummary,
+  type TaskAttempt,
+  type WrapUpOutcome,
 } from "./attempt.js";
 import type { ModelHealth } from "./models.js";
 import { sleep } from "./quota.js";
+import { outcomeOf, pendingWrapUp, wrapUp } from "./wrap-up.js";
 
 export interface FailbackOptions {
   taskId: string;
@@ -19,7 +22,7 @@ export interface FailbackOptions {
   health: ModelHealth;
   signal: AbortSignal;
   // onUsage receives what the attempt has spent so far, as it grows.
-  attempt(model: string, onUsage: (spent: Usage) => void): Promise<AttemptOutcome>;
+  attempt(model: string, onUsage: (spent: Usage) => void): Promise<TaskAttempt>;
 }
 
 // Findings from a failed attempt are still emitted: the pipeline deduplicates
@@ -44,17 +47,23 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
       // Spend is reported while the attempt runs, so a run's spend limit
       // can stop it; the finished attempt's total settles the rest.
       const live = new LiveUsage();
-      const running = options.attempt(model, (spent) => live.observe(spent));
-      const finished = running.then(
-        () => false,
-        () => false,
+      const attempt = yield* whileRunning(
+        taskId,
+        live,
+        options.attempt(model, (spent) => live.observe(spent)),
       );
-      while (await Promise.race([finished, live.changed().then(() => true)])) {
-        yield { type: "usage", taskId, ...live.take() };
-      }
-      const outcome = await running;
+      yield { type: "usage", taskId, ...live.rest(attempt.usage) };
+      let outcome = outcomeOf(attempt);
+      // Read before the wrap-up turn, whose done tool reports what the agent
+      // had confirmed and reads nothing more: its files stay partly reviewed.
       const ended = attemptEnding(outcome);
-      yield { type: "usage", taskId, ...live.rest(outcome.usage) };
+      // Decided after the attempt's spend was handed over, so a spend limit
+      // it reached has already aborted the signal.
+      const turn = pendingWrapUp(attempt, ended, signal);
+      if (turn) {
+        outcome = yield* whileRunning(taskId, live, wrapUp(outcome, turn));
+        yield { type: "usage", taskId, ...live.rest(outcome.usage) };
+      }
       yield { type: "progress", taskId, message: attemptSummary(model, outcome) };
       for (const finding of outcome.findings) yield { type: "finding", taskId, finding, model };
 
@@ -62,7 +71,7 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
       if (signal.aborted) return;
       if (!outcome.error) {
         health.recordSuccess(model);
-        yield doneEvent(taskId, ended);
+        yield doneEvent(taskId, ended, outcome.wrappedUp);
         return;
       }
       if (!outcome.error.retryable) {
@@ -93,10 +102,33 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
   };
 }
 
-function doneEvent(taskId: string, ended: AttemptEnding): AgentEvent {
-  return ended === "step_cap" || ended === "stopped_early"
-    ? { type: "done", taskId, ended }
-    : { type: "done", taskId };
+function doneEvent(
+  taskId: string,
+  ended: AttemptEnding,
+  wrappedUp: WrapUpOutcome | undefined,
+): AgentEvent {
+  return {
+    type: "done",
+    taskId,
+    ...(ended === "step_cap" || ended === "stopped_early" ? { ended } : {}),
+    ...(wrappedUp ? { wrapUp: { findings: wrappedUp.findings } } : {}),
+  };
+}
+
+// Yields the spend that grows while `running` runs, then returns its result.
+async function* whileRunning<T>(
+  taskId: string,
+  live: LiveUsage,
+  running: Promise<T>,
+): AsyncGenerator<AgentEvent, T> {
+  const finished = running.then(
+    () => false,
+    () => false,
+  );
+  while (await Promise.race([finished, live.changed().then(() => true)])) {
+    yield { type: "usage", taskId, ...live.take() };
+  }
+  return await running;
 }
 
 // Hands out what an attempt has spent in increments, each what grew since the

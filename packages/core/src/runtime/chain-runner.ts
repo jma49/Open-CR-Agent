@@ -8,7 +8,7 @@ import type {
   Usage,
 } from "../contracts.js";
 import { OcraError } from "../errors.js";
-import type { AttemptOutcome } from "./attempt.js";
+import type { AttemptOutcome, TaskAttempt } from "./attempt.js";
 import { completeWithFailback, withFailback } from "./failback.js";
 import { callChain, ModelHealth } from "./models.js";
 
@@ -20,13 +20,15 @@ export interface ModelAttempts {
   // Awaited once a call is accepted, before its first attempt: starting a
   // server, say. What it throws, the call throws.
   ready?(): Promise<void>;
-  // onUsage receives what the attempt has spent so far, as it grows.
+  // onUsage receives what the attempt has spent so far, as it grows. An
+  // attempt that offers wrapUp gets the wrap-up turn when it ends without
+  // the done tool (TaskAttempt).
   task(
     model: string,
     spec: AgentTaskSpec,
     signal: AbortSignal,
     onUsage: (spent: Usage) => void,
-  ): Promise<AttemptOutcome>;
+  ): Promise<TaskAttempt>;
   complete(model: string, request: CompletionRequest, signal: AbortSignal): Promise<AttemptOutcome>;
 }
 
