@@ -21,7 +21,9 @@ import {
   type ReviewContext,
   type RuntimeOptions,
   reviewTools,
+  type TaskAttempt,
   type Usage,
+  WRAP_UP_MESSAGE,
   withoutSecrets,
 } from "@open-cr-agent/core";
 import { createOpencodeClient, type OpencodeClient } from "@opencode-ai/sdk/v2";
@@ -36,6 +38,8 @@ import {
   openCodeSampling,
   REVIEW_AGENT,
   WITHOUT_SAMPLING,
+  WRAP_UP_AGENT,
+  wrapUpTools,
 } from "./opencode-config.js";
 import { type OpencodeServer, startOpencodeServer } from "./opencode-server.js";
 import { credentialValues, missingCredentials, serverEnv } from "./server-env.js";
@@ -126,7 +130,7 @@ export class OpenCodeRuntime implements AgentRuntime {
     spec: AgentTaskSpec,
     signal: AbortSignal,
     onUsage: (spent: Usage) => void,
-  ): Promise<AttemptOutcome> {
+  ): Promise<TaskAttempt> {
     const infra = await this.start();
     return this.prompt(
       infra,
@@ -139,6 +143,11 @@ export class OpenCodeRuntime implements AgentRuntime {
         tools: DISABLED_BUILTINS,
         toolPrefix: `${MCP_SERVER}_`,
         resume: REVIEW_RESUME,
+        wrapUp: {
+          ...this.effortCall(infra, WRAP_UP_AGENT, spec.reviewer, spec.effort, model),
+          tools: wrapUpTools(this.helperTools),
+          message: WRAP_UP_MESSAGE,
+        },
       },
       signal,
       onUsage,
@@ -193,19 +202,20 @@ export class OpenCodeRuntime implements AgentRuntime {
     };
   }
 
-  private prompt(
+  private async prompt(
     infra: Infra,
     input: PromptInput,
     signal: AbortSignal,
     onUsage?: (spent: Usage) => void,
-  ): Promise<AttemptOutcome> {
-    return promptSession(
+  ): Promise<TaskAttempt> {
+    const attempt = await promptSession(
       infra.client.session,
       input,
       `${MCP_SERVER}_${REVIEW_TOOLS.reportFinding}`,
       signal,
       onUsage ? { onUsage } : {},
-    ).then((outcome) =>
+    );
+    const redacted = (outcome: AttemptOutcome): AttemptOutcome =>
       outcome.error
         ? {
             ...outcome,
@@ -214,8 +224,12 @@ export class OpenCodeRuntime implements AgentRuntime {
               message: withoutSecrets(outcome.error.message, infra.secrets),
             },
           }
-        : outcome,
-    );
+        : outcome;
+    const { wrapUp } = attempt;
+    return {
+      ...redacted(attempt),
+      ...(wrapUp ? { wrapUp: async () => redacted(await wrapUp()) } : {}),
+    };
   }
 
   // The server holds the credentials of the providers it started with; an

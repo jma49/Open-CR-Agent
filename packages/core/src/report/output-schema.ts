@@ -139,6 +139,8 @@ const taskOutcomeSchema = z.strictObject({
   findings: z.int().nonnegative(),
   durationMs: z.number(),
   usage: usageSchema,
+  // The agent ended without task_done and was given the wrap-up turn.
+  wrapUp: z.strictObject({ findings: z.int().nonnegative() }).exactOptional(),
 });
 
 export const skippedCellSchema = z.strictObject({

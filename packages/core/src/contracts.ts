@@ -50,8 +50,9 @@ export type AgentEvent =
   | { type: "finding"; taskId: string; finding: unknown; model?: string }
   | ({ type: "usage"; taskId: string } & Usage)
   // ended: absent when the agent called the done tool; otherwise how it
-  // stopped without it, so its files count as only partly reviewed.
-  | { type: "done"; taskId: string; ended?: IncompleteEnding }
+  // stopped without it, so its files count as only partly reviewed. wrapUp:
+  // such an attempt was given one more turn to report what it had confirmed.
+  | { type: "done"; taskId: string; ended?: IncompleteEnding; wrapUp?: { findings: number } }
   | { type: "error"; taskId: string; error: string; retryable: boolean };
 
 export interface Usage {

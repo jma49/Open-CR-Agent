@@ -18,8 +18,12 @@ import {
   RESUME_MESSAGE,
   type RuntimeOptions,
   reviewTools,
+  type TaskAttempt,
   type ToolDefinition,
   type Usage,
+  WRAP_UP_MESSAGE,
+  WRAP_UP_STEPS,
+  WRAP_UP_TOOLS,
 } from "@open-cr-agent/core";
 import { EffortLedger } from "./effort.js";
 import { runLoop } from "./loop.js";
@@ -92,7 +96,7 @@ export class DirectRuntime implements AgentRuntime {
     spec: AgentTaskSpec,
     signal: AbortSignal,
     onUsage: (spent: Usage) => void,
-  ): Promise<AttemptOutcome> {
+  ): Promise<TaskAttempt> {
     return runLoop({
       ...this.target(model),
       ...this.call({ agent: spec.reviewer, effort: spec.effort, model }),
@@ -102,6 +106,7 @@ export class DirectRuntime implements AgentRuntime {
       context: spec.context,
       maxSteps: MAX_AGENT_STEPS,
       resume: RESUME_MESSAGE,
+      wrapUp: { message: WRAP_UP_MESSAGE, tools: WRAP_UP_TOOLS, steps: WRAP_UP_STEPS },
       timeoutMs: spec.timeoutMs,
       signal,
       onUsage,

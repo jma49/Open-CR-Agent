@@ -103,6 +103,7 @@ export async function runJob(
   };
   if (result.error !== undefined) outcome.error = result.error;
   if (result.ended !== undefined) outcome.ended = result.ended;
+  if (result.wrapUp) outcome.wrapUp = result.wrapUp;
   emit({ type: "task_finished", outcome });
   return { outcome, findings: anchored.findings, usage, warnings };
 }

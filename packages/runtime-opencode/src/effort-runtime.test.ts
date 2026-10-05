@@ -125,7 +125,8 @@ describe("openCodeConfig with a temperature", () => {
     expect(agents["ocra-reviewer-effort"]).toMatchObject({ mode: "primary" });
     expect(agents["ocra-reviewer-effort"]).not.toHaveProperty("temperature");
     expect(agents["ocra-helper-effort"]).not.toHaveProperty("temperature");
+    expect(agents["ocra-wrap-up-effort"]).not.toHaveProperty("temperature");
     const plain = openCodeConfig({ url: "http://127.0.0.1:1/mcp", headers: {} }, {});
-    expect(Object.keys(plain.agent)).toEqual(["ocra-reviewer", "ocra-helper"]);
+    expect(Object.keys(plain.agent)).toEqual(["ocra-reviewer", "ocra-helper", "ocra-wrap-up"]);
   });
 });

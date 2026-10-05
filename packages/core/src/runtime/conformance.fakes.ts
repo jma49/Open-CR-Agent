@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import type { AgentEvent, AgentRuntime, AgentTaskSpec, ReviewContext } from "../contracts.js";
-import { MAX_AGENT_STEPS } from "./attempt.js";
+import { MAX_AGENT_STEPS, WRAP_UP_MESSAGE, WRAP_UP_STEPS } from "./attempt.js";
 
 // What every AgentRuntime must do, run against a scripted OpenAI-compatible
 // endpoint on this machine, declared as provider "local" with the models
@@ -335,7 +335,7 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
         const events = await collect(
           runtime.runTask(taskSpec(fakeContext()), new AbortController().signal),
         );
-        expect(events.at(-1)).toEqual({ type: "done", taskId: "t1", ended: "step_cap" });
+        expect(events.at(-1)).toMatchObject({ type: "done", taskId: "t1", ended: "step_cap" });
         expect(endpoint.seen.length).toBeGreaterThanOrEqual(MAX_AGENT_STEPS);
       },
       timeout,
@@ -348,7 +348,70 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
         const events = await collect(
           runtime.runTask(taskSpec(fakeContext()), new AbortController().signal),
         );
-        expect(events.at(-1)).toEqual({ type: "done", taskId: "t1", ended: "stopped_early" });
+        expect(events.at(-1)).toMatchObject({ type: "done", taskId: "t1", ended: "stopped_early" });
+      },
+      timeout,
+    );
+
+    it(
+      "gives a review that reaches the step cap one turn with only the reporting tools, and keeps what it reports",
+      async () => {
+        // Reads on every step but the last, where it answers in text, as a
+        // model told it is out of steps does; once only the reporting tools
+        // are left, reports, then answers in text.
+        const offers = (request: SeenRequest, tool: string) =>
+          (request.tools ?? []).some((t) => t.function.name.endsWith(tool));
+        let reads = 0;
+        let reported = false;
+        const reader = (request: SeenRequest): Reply => {
+          if (offers(request, "read_file")) {
+            reads += 1;
+            return reads < MAX_AGENT_STEPS
+              ? { toolCalls: [{ name: "read_file", args: { path: FILE } }] }
+              : { content: "Out of steps." };
+          }
+          if (reported || !offers(request, "report_finding")) return { content: "Reported." };
+          reported = true;
+          return {
+            toolCalls: [
+              { name: "report_finding", args: FINDING },
+              { name: "task_done", args: {} },
+            ],
+          };
+        };
+        const { endpoint, runtime } = await start(
+          Array.from({ length: MAX_AGENT_STEPS + 5 }, () => reader),
+        );
+        const events = await collect(
+          runtime.runTask(taskSpec(fakeContext()), new AbortController().signal),
+        );
+
+        const turn = endpoint.seen.findIndex(
+          (r) => !offers(r, "read_file") && offers(r, "report_finding"),
+        );
+        expect(turn).toBe(MAX_AGENT_STEPS);
+        const wrapUp = endpoint.seen.slice(turn);
+        expect(wrapUp.length).toBeLessThanOrEqual(WRAP_UP_STEPS);
+        const reporting = ["report_finding", "task_done"];
+        const offered = (wrapUp[0]?.tools ?? []).map(
+          (t) => reporting.find((n) => t.function.name.endsWith(n)) ?? t.function.name,
+        );
+        expect(offered.sort()).toEqual(reporting);
+        // The same conversation: what the agent read is still in it.
+        expect(JSON.stringify(wrapUp[0]?.messages)).toContain(WRAP_UP_MESSAGE);
+        expect(JSON.stringify(wrapUp[0]?.messages)).toContain("1: const a = 1;");
+        expect(events.filter((e) => e.type === "finding")).toEqual([
+          { type: "finding", taskId: "t1", finding: FINDING, model: "local/m1" },
+        ]);
+        // The turn's task_done does not finish the review: its files stay
+        // only partly reviewed (ADR-0030 #5).
+        expect(events.at(-1)).toEqual({
+          type: "done",
+          taskId: "t1",
+          ended: "step_cap",
+          wrapUp: { findings: 1 },
+        });
+        expect(costOf(events)).toBeCloseTo(endpoint.seen.length * (100 * 3e-6 + 10 * 15e-6), 10);
       },
       timeout,
     );
