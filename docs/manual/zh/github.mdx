@@ -32,7 +32,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-这里把 Action 固定到 v0.5.0 发布版本的提交，并在注释里写明版本号。tag 可以被移动，固定到提交才能确保带着你的模型 key 运行的代码确定不变；`git ls-remote --tags https://github.com/jma49/Open-CR-Agent v0.3.0` 会打印某个版本对应的提交，Dependabot 也会更新这种固定方式及其注释。
+这里把 Action 固定到 v0.6.0 发布版本的提交，并在注释里写明版本号。tag 可以被移动，固定到提交才能确保带着你的模型 key 运行的代码确定不变；`git ls-remote --tags https://github.com/jma49/Open-CR-Agent v0.3.0` 会打印某个版本对应的提交，Dependabot 也会更新这种固定方式及其注释。
 
 从 v0.1.1 起，Action 从 npm 安装 ocra：安装与 Action 自身版本号相同的 `@open-cr-agent/cli`，每个依赖都固定在 Action 的 `package-lock.json` 锁定的版本，不运行安装脚本，使用 npm 官方源时还会校验源的签名。只有当 ocra 自己的每个包都带有 [provenance](./stability#校验发布版本)，证明它由本仓库的发布 workflow 从该版本的标签构建时，才会使用这些包；否则改为从自身源码构建，并给出警告。npm 上已发布的版本不会再改变。某个版本还没发布到 npm 时（发布后的最初几分钟），Action 改为从自身源码构建；v0.1.0 始终从源码构建。所以 `@main` 运行的是 `main` 上的 Action 代码，加上 `main` 所写版本号对应的发布版，而不是尚未发布的包代码；只有 `main` 在那次发布之后改了包的依赖时，才会构建 `main`。
 
@@ -90,7 +90,7 @@ jobs:
 Action 默认安装 OpenCode 运行时：连同 runner 平台的原生二进制文件，它占 Action 所装 108 个包中的 97 个，175 MB 中的约 165 MB。如果 base 分支配置里的模型都在你声明的端点上，并且配置设了 `"runtime": "direct"`（见[选择运行时](./providers#选择运行时)），请设置 `opencode: false`：安装会略去 OpenCode，只装 11 个包。此时如果配置选的是 `opencode`，评审会在调用任何模型之前以退出码 `2` 停下，并说明缺了哪个包。这个输入是 v0.3.0 新增的。
 
 ```yaml
-      - uses: jma49/Open-CR-Agent@<commit> # v0.5.0
+      - uses: jma49/Open-CR-Agent@<commit> # v0.6.0
         with:
           opencode: false
         env:
