@@ -8,7 +8,8 @@
 // `version` first asks changesets for the plan and moves the entries of the
 // pending changesets into CHANGELOG.md, then has changesets apply the plan,
 // which deletes them, then updates package-lock.json and moves the
-// manual's version pins (lib/manual-pins.mjs).
+// manual's version pins (lib/manual-pins.mjs). After the release is tagged,
+// `action-pin` moves the Action's pin to the tag's commit.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,12 +17,15 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cutRelease, parseFragment, releaseNotes } from "./lib/changelog.mjs";
 import { errorMessage } from "./lib/error-message.mjs";
-import { bumpPins, manualPages } from "./lib/manual-pins.mjs";
+import { actionPinFiles, bumpActionPins, bumpPins, manualPages } from "./lib/manual-pins.mjs";
 
 const USAGE = `Usage:
   node scripts/changelog.mjs version          (npm run version-packages) version the packages from the
                                               pending changesets, with a CHANGELOG.md section for it
-  node scripts/changelog.mjs notes <x.y.z>    print that version's section, the GitHub release notes`;
+  node scripts/changelog.mjs notes <x.y.z>    print that version's section, the GitHub release notes
+  node scripts/changelog.mjs action-pin <x.y.z>
+                                              pin the Action to the commit of the tag v<x.y.z> in the
+                                              manual, the README, the dogfood workflow and ocra init`;
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const changelogPath = join(root, "CHANGELOG.md");
@@ -126,7 +130,31 @@ function notes(version) {
   process.stdout.write(`${body}\n`);
 }
 
+/** @param {string} version */
+function actionPin(version) {
+  const tag = spawnSync(
+    "git",
+    ["rev-parse", "--verify", "--quiet", "--end-of-options", `v${version}^{commit}`],
+    { cwd: root, encoding: "utf8" },
+  );
+  if (tag.status !== 0) stop(`changelog: no tag v${version} here; git fetch --tags first`);
+  const commit = tag.stdout.trim();
+  let changed;
+  try {
+    changed = actionPinFiles(root).filter((path) => {
+      const text = readFileSync(path, "utf8");
+      const next = bumpActionPins(text, commit, version);
+      if (next !== text) writeFileSync(path, next);
+      return next !== text;
+    });
+  } catch (error) {
+    stop(`changelog: ${errorMessage(error)}`);
+  }
+  console.log(`The Action is pinned to v${version} (${commit}) in ${changed.length} file(s).`);
+}
+
 const [command, ...args] = process.argv.slice(2);
 if (command === "version" && args.length === 0) versionPackages();
 else if (command === "notes" && args.length === 1) notes(/** @type {string} */ (args[0]));
+else if (command === "action-pin" && args.length === 1) actionPin(/** @type {string} */ (args[0]));
 else stop(USAGE, 2);

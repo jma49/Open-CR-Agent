@@ -2,7 +2,15 @@ import { readFileSync } from "node:fs";
 import { relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { bumpPins, manualPages, pinsIn } from "./manual-pins.mjs";
+import {
+  ACTION_TEMPLATE,
+  actionPinFiles,
+  actionPinsIn,
+  bumpActionPins,
+  bumpPins,
+  manualPages,
+  pinsIn,
+} from "./manual-pins.mjs";
 import { lockstep, readWorkspaces } from "./release.mjs";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
@@ -50,5 +58,58 @@ describe("version pins in the manual", () => {
   it.skipIf(version.includes("-"))(`all name the packages' version, ${version}`, () => {
     const stale = found.filter((p) => p.version !== version).map((p) => `${p.where} ${p.pin}`);
     expect(stale).toEqual([]);
+  });
+});
+
+const OLD = "d3af4e2189007de77dcf17e736855d04be4a491c";
+const NEW = "82a3f1183a3177e9efa401d87eb95dea495ef619";
+
+describe("bumpActionPins", () => {
+  it("moves every Action pin and its version comment, and keeps a placeholder a placeholder", () => {
+    const text = `- uses: jma49/Open-CR-Agent@${OLD} # v0.5.0
+- uses: jma49/Open-CR-Agent@<commit> # v0.5.0
+- uses: actions/checkout@v7 # v0.5.0
+"jma49/Open-CR-Agent@${OLD} # v0.5.0";
+`;
+    expect(bumpActionPins(text, NEW, "0.6.0")).toBe(
+      text.replaceAll(OLD, NEW).replace(/(Open-CR-Agent@\S+) # v0\.5\.0/g, "$1 # v0.6.0"),
+    );
+    expect(actionPinsIn(bumpActionPins(text, NEW, "0.6.0"))).toEqual([
+      { commit: NEW, version: "0.6.0", line: 1 },
+      { commit: "<commit>", version: "0.6.0", line: 2 },
+      { commit: NEW, version: "0.6.0", line: 4 },
+    ]);
+  });
+
+  it("refuses what is not a full commit id or a version", () => {
+    expect(() => bumpActionPins("", "82a3f11", "0.6.0")).toThrow(/full commit/);
+    expect(() => bumpActionPins("", NEW, "v0.6.0")).toThrow(/version/);
+  });
+});
+
+describe("the Action's pin", () => {
+  const found = actionPinFiles(root).flatMap((path) =>
+    actionPinsIn(readFileSync(path, "utf8")).map((p) => ({
+      ...p,
+      where: `${relative(root, path)}:${p.line}`,
+    })),
+  );
+
+  it("is written once in the template of ocra init, and in both languages of the manual", () => {
+    expect(found.filter((p) => p.where.startsWith(`${ACTION_TEMPLATE}:`))).toHaveLength(1);
+    expect(found.some((p) => p.where.startsWith("docs/manual/en/"))).toBe(true);
+    expect(found.some((p) => p.where.startsWith("docs/manual/zh/"))).toBe(true);
+  });
+
+  it("names one commit and one version everywhere", () => {
+    const template = found.find((p) => p.where.startsWith(`${ACTION_TEMPLATE}:`));
+    const differ = found
+      .filter(
+        (p) =>
+          p.version !== template?.version ||
+          (p.commit !== "<commit>" && p.commit !== template?.commit),
+      )
+      .map((p) => `${p.where} ${p.commit} # v${p.version}`);
+    expect(differ).toEqual([]);
   });
 });
