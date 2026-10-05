@@ -1,19 +1,67 @@
-# Golden evaluation on what is left of OpenRouter's free requests. The
-# account has 1000 a UTC day, shared by everything that uses the key: the
-# dogfood reviews come first, then the nightly live smoke, and this job takes
-# the rest late in the day. One cycle is `ocra-eval run --dataset golden
-# --tier smoke` under the label free-smoke-<n>; its run directory is kept in
-# the Actions cache from day to day, so a cycle the quota stops resumes the
-# next day (--retry-failed) and a new one starts once every case is reviewed.
-# It stops with HEADROOM requests left for later dogfood reviews. Off unless
-# the repository variable OCRA_EVAL_FREE is "on"; it needs the repository
-# secret OPENROUTER_API_KEY.
+# Golden evaluation on OpenRouter's free models, as many requests a day as
+# the quota allows. The stealth free models share one pool of about 1000
+# requests a UTC day per account, with the dogfood reviews and the nightly
+# live smoke of this repository; it resets at 00:00 UTC. This job runs right
+# after the reset (01:00) and again at 20:00 for what is left, and stops with
+# RESERVE requests left (repository variable OCRA_EVAL_FREE_RESERVE, default
+# 150) so that day's pull request reviews still run. It does not start with
+# fewer than RESERVE + MIN_RUN left: a golden case takes 30 to 210 requests,
+# and a case the watcher stops runs again from the start next time.
+#
+# Lanes. Each run evaluates one lane: a model and a ref of this repository.
+# Scheduled runs take the lanes in .github/eval-free-lanes.json, one further
+# along each run, so with two lanes the 01:00 run (most of the day) alternates
+# daily and the 20:00 run takes the other one; a lane whose branch is gone is
+# passed over. A dispatch names its lane: model (default the file's first),
+# ref (default main) and tier (default smoke). A lane's cycles are labeled
+# free-<model>@<ref>-<tier>-<n>, so lanes never mix, and ocra-eval trend
+# groups them by that label without -<n>. One cycle is `ocra-eval run` over
+# the tier; its run directory stays in the Actions cache from run to run, so
+# a cycle the quota stops resumes the next time (--retry-failed), and a new
+# one starts once every case is reviewed. A finished cycle is uploaded as an
+# artifact for 90 days (scripts/eval-free-download.sh fetches them all for
+# trend). There is no per-PR cost cap: the model costs $0, and a cap only cut
+# tasks short.
+#
+# What runs. This workflow's own checkout supplies the tooling (the quota
+# probe, the cycle state, the golden cases and the scorer); the lane's ref is
+# checked out beside it, built, and its CLI and ocra-eval review. The run is
+# then scored again with this checkout's ocra-eval, so every lane is scored by
+# the same code against the same cases, with the judge model recorded in the
+# summary. The judge is the lane's model through OpenRouter unless the
+# repository variable OCRA_EVAL_JUDGE_MODEL names another.
+#
+# Trust. The job holds the OpenRouter key and runs the code of the ref it
+# evaluates, so that ref is never taken from a pull request: a scheduled run
+# reads it from the lanes file on the default branch, and a dispatch, which
+# needs write access to this repository, from its input. Either way it must be
+# a branch of this repository (checked with ls-remote): no refs/pull/…, no
+# fork, no option. This workflow has no pull_request trigger, and must never
+# get one.
+#
+# Off unless the repository variable OCRA_EVAL_FREE is "on"; it needs the
+# repository secret OPENROUTER_API_KEY.
 name: free golden eval
 
 on:
   schedule:
+    - cron: "0 1 * * *"
     - cron: "0 20 * * *"
   workflow_dispatch:
+    inputs:
+      model:
+        description: OpenRouter model (empty for the first lane's in .github/eval-free-lanes.json)
+        type: string
+        default: ""
+      ref:
+        description: Branch of this repository to evaluate
+        type: string
+        default: main
+      tier:
+        description: Golden tier
+        type: choice
+        options: [smoke, full, adversarial]
+        default: smoke
 
 permissions:
   contents: read
@@ -28,13 +76,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 300
     env:
-      # The free model, in this one place; swap it when the preview ends.
-      MODEL: stealth/space-bunny-alpha
-      EVAL_DIR: .ocra/eval
-      # Requests left for the rest of the day when the eval stops, and the
-      # fewest worth starting with (a golden case takes 30 to 210).
-      HEADROOM: "100"
-      START_MIN: "200"
+      EVAL_DIR: ${{ github.workspace }}/.ocra/eval
+      UNDER_TEST: ${{ github.workspace }}/under-test
+      RESERVE: ${{ vars.OCRA_EVAL_FREE_RESERVE || '150' }}
+      MIN_RUN: "100"
       # ocra-eval's own test for a quota failure (QUOTA_ERROR in
       # packages/eval/src/runner.ts): a case it matches is retried, so only
       # that keeps a cycle open.
@@ -44,9 +89,47 @@ jobs:
         with:
           persist-credentials: false
 
+      - id: lane
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          INPUT_MODEL: ${{ inputs.model }}
+          INPUT_REF: ${{ inputs.ref }}
+          INPUT_TIER: ${{ inputs.tier }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = workflow_dispatch ]; then
+            lanes=$(node scripts/eval-lane.mjs dispatch "$INPUT_MODEL" "$INPUT_REF" "$INPUT_TIER")
+          else
+            slot=1
+            if [ "$SCHEDULE" = "0 1 * * *" ]; then slot=0; fi
+            lanes=$(node scripts/eval-lane.mjs schedule "$slot")
+          fi
+          picked=""
+          while IFS=$'\t' read -r model ref tier series; do
+            if git ls-remote --exit-code --heads "https://github.com/$GITHUB_REPOSITORY.git" "refs/heads/$ref" > /dev/null; then
+              picked=yes
+              break
+            fi
+            echo "::warning title=Lane passed over::$ref is not a branch of $GITHUB_REPOSITORY; remove its lane from .github/eval-free-lanes.json"
+          done <<< "$lanes"
+          if [ -z "$picked" ]; then
+            echo "::error::no lane to evaluate"
+            exit 1
+          fi
+          {
+            echo "model=$model"
+            echo "ref=$ref"
+            echo "tier=$tier"
+            echo "series=$series"
+          } >> "$GITHUB_OUTPUT"
+          echo "Lane: \`$model\` on \`$ref\`, $tier tier ($series)." >> "$GITHUB_STEP_SUMMARY"
+
       - id: probe
         shell: bash
         env:
+          MODEL: ${{ steps.lane.outputs.model }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           set -euo pipefail
@@ -54,14 +137,18 @@ jobs:
             echo "::error::OPENROUTER_API_KEY is not set; add it as a repository secret or switch OCRA_EVAL_FREE off"
             exit 1
           fi
+          if ! [[ "$RESERVE" =~ ^[0-9]+$ ]]; then
+            echo "::error::OCRA_EVAL_FREE_RESERVE must be a number of requests"
+            exit 1
+          fi
           left=$(node scripts/free-quota.mjs "$MODEL")
           go=true
-          if [[ "$left" =~ ^[0-9]+$ ]] && [ "$left" -lt "$START_MIN" ]; then
+          if [[ "$left" =~ ^[0-9]+$ ]] && [ "$left" -lt $((RESERVE + MIN_RUN)) ]; then
             go=false
-            echo "::notice title=No free eval today::$left free request(s) left, fewer than $START_MIN"
+            echo "::notice title=No free eval now::$left free request(s) left, fewer than $((RESERVE + MIN_RUN))"
           fi
           echo "go=$go" >> "$GITHUB_OUTPUT"
-          echo "Free requests left at the start: ${left:-not reported}." >> "$GITHUB_STEP_SUMMARY"
+          echo "Free requests left at the start: ${left:-not reported}; reserve $RESERVE." >> "$GITHUB_STEP_SUMMARY"
 
       - if: steps.probe.outputs.go == 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -70,40 +157,60 @@ jobs:
           key: eval-free-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: eval-free-
 
-      # The cycle in progress, or the next one once every case of it is
-      # reviewed. A finished cycle's directory was uploaded by the run that
+      # The lane's cycle in progress, or its next one once every case of it
+      # is reviewed. A finished cycle's directory was uploaded by the run that
       # finished it, so the cache drops it.
       - id: cycle
         if: steps.probe.outputs.go == 'true'
         shell: bash
+        env:
+          SERIES: ${{ steps.lane.outputs.series }}
         run: |
           set -euo pipefail
           mkdir -p "$EVAL_DIR"
-          n=$(cat "$EVAL_DIR/free-cycle" 2>/dev/null || echo 1)
+          counter="$EVAL_DIR/$SERIES.cycle"
+          n=$(cat "$counter" 2>/dev/null || echo 1)
           [[ "$n" =~ ^[1-9][0-9]*$ ]] || n=1
-          read -r open total < <(node scripts/eval-cycle.mjs "$EVAL_DIR/free-smoke-$n")
+          read -r open total < <(node scripts/eval-cycle.mjs "$EVAL_DIR/$SERIES-$n")
           if [ "$open" -eq 0 ]; then
-            rm -rf -- "${EVAL_DIR:?}/free-smoke-$n"
+            rm -rf -- "${EVAL_DIR:?}/$SERIES-$n"
             n=$((n + 1))
           fi
-          echo "$n" > "$EVAL_DIR/free-cycle"
-          echo "label=free-smoke-$n" >> "$GITHUB_OUTPUT"
+          echo "$n" > "$counter"
+          echo "label=$SERIES-$n" >> "$GITHUB_OUTPUT"
           if [ "$open" -gt 0 ] && [ "$total" -gt 0 ]; then
-            echo "Cycle free-smoke-$n continues: $open of $total case(s) open." >> "$GITHUB_STEP_SUMMARY"
+            echo "Cycle $SERIES-$n continues: $open of $total case(s) open." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Cycle free-smoke-$n starts." >> "$GITHUB_STEP_SUMMARY"
+            echo "Cycle $SERIES-$n starts." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - if: steps.probe.outputs.go == 'true'
-        uses: ./.github/actions/setup
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.lane.outputs.ref }}
+          path: under-test
+          persist-credentials: false
+
       - if: steps.probe.outputs.go == 'true'
-        run: npm run build
+        uses: ./.github/actions/setup
+      - name: Build the tooling and the ref under test
+        if: steps.probe.outputs.go == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build
+          cd "$UNDER_TEST"
+          npm ci
+          npm run build
+          echo "Under test: \`$(git rev-parse HEAD)\`." >> "$GITHUB_STEP_SUMMARY"
 
       # As in nightly-live.yml: the configuration lives outside the reviewed
       # trees, and ocra-eval reviews with --no-repo-config.
       - name: Write the configuration
         if: steps.probe.outputs.go == 'true'
         shell: bash
+        env:
+          MODEL: ${{ steps.lane.outputs.model }}
         run: |
           set -euo pipefail
           jq -n --arg model "$MODEL" '{
@@ -119,16 +226,39 @@ jobs:
             }
           }' > "$RUNNER_TEMP/ocra-free.json"
 
-      # The eval, stopped with HEADROOM requests left (see the script).
+      # The eval, stopped with RESERVE requests left (see the script).
       - id: eval
         if: steps.probe.outputs.go == 'true'
         shell: bash
         env:
+          MODEL: ${{ steps.lane.outputs.model }}
+          TIER: ${{ steps.lane.outputs.tier }}
+          LABEL: ${{ steps.cycle.outputs.label }}
+          EVAL_ROOT: ${{ github.workspace }}/under-test
+          GOLDEN_DIR: ${{ github.workspace }}/evals/golden
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           JUDGE_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           JUDGE_BASE_URL: https://openrouter.ai/api/v1
-          LABEL: ${{ steps.cycle.outputs.label }}
+          JUDGE_MODEL: ${{ vars.OCRA_EVAL_JUDGE_MODEL || steps.lane.outputs.model }}
         run: bash scripts/eval-free-run.sh
+
+      # Every lane scored by this checkout's ocra-eval. The judge's answers are
+      # cached in the run directory, so this asks only what the run did not.
+      # A spent quota can fail it; the next run scores again.
+      - name: Score with this workflow's ocra-eval
+        if: always() && steps.cycle.outputs.label != ''
+        continue-on-error: true
+        shell: bash
+        env:
+          LABEL: ${{ steps.cycle.outputs.label }}
+          JUDGE_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          JUDGE_BASE_URL: https://openrouter.ai/api/v1
+          JUDGE_MODEL: ${{ vars.OCRA_EVAL_JUDGE_MODEL || steps.lane.outputs.model }}
+        run: |
+          set -euo pipefail
+          if [ -f "$EVAL_DIR/$LABEL/run.json" ]; then
+            node packages/eval/dist/main.js score "$EVAL_DIR/$LABEL" > /dev/null
+          fi
 
       - id: after
         if: always() && steps.cycle.outputs.label != ''
@@ -147,15 +277,15 @@ jobs:
             echo
             if [ -f "$dir/summary.md" ]; then cat "$dir/summary.md"; fi
           } >> "$GITHUB_STEP_SUMMARY"
-          echo "exists=$([ -d "$dir" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "finished=$([ -d "$dir" ] && [ "$open" -eq 0 ] && [ "$total" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
-      - if: always() && steps.after.outputs.exists == 'true'
+      - if: always() && steps.after.outputs.finished == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ steps.cycle.outputs.label }}-${{ github.run_id }}
           path: ${{ env.EVAL_DIR }}/${{ steps.cycle.outputs.label }}
           retention-days: 90
-          if-no-files-found: warn
+          if-no-files-found: error
 
       - if: always() && steps.cycle.outputs.label != ''
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

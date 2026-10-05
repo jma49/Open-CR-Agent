@@ -145,6 +145,25 @@ node packages/eval/dist/main.js compare .ocra/eval/baseline .ocra/eval/change   
 
 逐项列出两次运行的指标和差值。模型每次运行都有波动。两边都是重复运行时，精确率和召回率按区间比较：只有两个 95% 区间不重叠时才判为 `better` 或 `worse`，否则为 `no change`；表格会列出两边的区间和均值。单次运行时，加上 `--spread-of`（基线的第二次运行），差值不超过两次基线之间差距的会报告为 `no change`；不加时不判断方向。AACR-Bench 和黄金集的运行都能比较；两次运行审查的 PR 不同、评分用的 judge 不同、用的黄金用例或标注不同、审查成功的 PR 数不同、还有未标注的问题，或者用了不同的 ocra 版本、提示词（`promptHash`）、配置（`configHash`）或采样设置，又或者其中一次没有记录这些时，都会给出警告。黄金集的数字取决于评分时的用例和标注，所以标注之后，要把参与比较的每次运行都重新评分（`ocra-eval score <run-dir>`）。
 
+## 多次运行的趋势
+
+```bash
+node packages/eval/dist/main.js trend .ocra/eval
+node packages/eval/dist/main.js trend .ocra/eval --series free-stealth-space-bunny-alpha@main-smoke,free-stealth-space-bunny-alpha@feat-review-wrap-up-turn-smoke
+```
+
+读取一个目录下的所有黄金集运行（任何含 `run.json` 的目录，最多向下四层，所以运行目录和下载下来的 artifact 文件夹都可以），并按系列分组：运行的系列是去掉末尾 `-<n>` 的标签，所以 `nightly-1`、`nightly-2`、`nightly-3` 是同一个系列，重复运行的 `r1/` … `rk/` 归入它的标签。`--series` 只保留列出的系列。每个系列输出：
+
+- 每次运行的黄金召回率和精确率、所用提交，以及在保存的报告记录了收尾轮次时（`tasks[].wrapUp`），审查任务的收尾轮次和这些轮次报告的问题数；
+- 各次运行召回率和精确率的均值、标准差和范围：同一配置在运行之间的波动；
+- 有多个系列时，所有系列在共同用例上的对比，以及这些用例里每个预期问题被各系列的多少次运行在要求的严重级别上找到。
+
+运行常常不完整（被额度停下的运行、失败的用例），用例集也会增加，所以每个数字都只在所涉及运行的共同用例上计算；被排除的用例会列出来，每次运行在自己全部用例上的数字留在最后一列。同一次运行读到两次（两次下载里的同一标签）只算一次。按用例的分数由这个版本的 `ocra-eval run` 和 `score` 写进 `summary.json`；更早的运行会列出但没有数字，用 `ocra-eval score <run-dir>` 重新评分之后才有。同一系列的运行用了不同的 judge，或者针对不同的用例或标注评分时，会给出警告。
+
+### 每日免费评估（本仓库）
+
+仓库的 `eval-free.yml` 工作流在 OpenRouter 的免费模型上运行黄金用例。这些模型不收费，但共用每天的请求额度（stealth 模型每个 UTC 日约 1000 次，00:00 UTC 重置；一个黄金用例要 30 到 210 次）。它在重置后的 01:00 UTC 运行，20:00 UTC 再用剩下的额度运行一次，并为当天的拉取请求审查留出一部分请求（仓库变量 `OCRA_EVAL_FREE_RESERVE`，默认 150）。每次运行评估一条通道，即一个模型加仓库的一个分支：定时运行轮流使用 `.github/eval-free-lanes.json` 里的通道，`workflow_dispatch` 则指定一条（`model`、`ref`、`tier`）。一条通道的运行标签为 `free-<model>@<branch>-<tier>-<n>`，跨天续跑直到每个用例都审查过，并由工作流自己的 `ocra-eval` 按默认分支的用例评分；judge 用通道的模型，除非 `OCRA_EVAL_JUDGE_MODEL` 另行指定。因为这个任务持有 OpenRouter 密钥，分支只来自那个文件或手动触发，从不来自拉取请求。每次完成的运行作为工作流 artifact 保留 90 天；`scripts/eval-free-download.sh [dir] [pattern]` 用 `gh` 下载它们并输出趋势。
+
 ## 召回率上限（免费）
 
 ```bash

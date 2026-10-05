@@ -1,0 +1,10 @@
+{
+  "lanes": [
+    { "model": "stealth/space-bunny-alpha", "ref": "main" },
+    {
+      "model": "stealth/space-bunny-alpha",
+      "ref": "feat/review-wrap-up-turn",
+      "until": "PR #470 is merged or closed; then delete this entry"
+    }
+  ]
+}

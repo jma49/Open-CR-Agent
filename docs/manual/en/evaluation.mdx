@@ -145,6 +145,25 @@ node packages/eval/dist/main.js compare .ocra/eval/baseline .ocra/eval/change   
 
 Prints each metric of both runs and the difference. Model runs vary. When both runs are repeated runs, precision and recall are compared by their intervals: a change is called `better` or `worse` only when the two 95% intervals do not overlap, and `no change` otherwise; the table shows both intervals and each side's mean. For single runs, with `--spread-of` (a second run of the baseline) a difference no larger than the gap between the two baseline runs is reported as `no change`; without it the direction is not judged. It works on AACR-Bench and golden runs, and warns when the runs reviewed different pull requests, were scored by different judges or against different golden cases or labels, reviewed a different number of pull requests, still have unlabeled findings, or were made with a different ocra version, prompts (`promptHash`), configuration (`configHash`) or sampling, or when one recorded none of that. Golden numbers depend on the cases and labels at scoring time, so after labeling, re-score every run you compare (`ocra-eval score <run-dir>`).
 
+## Trends across runs
+
+```bash
+node packages/eval/dist/main.js trend .ocra/eval
+node packages/eval/dist/main.js trend .ocra/eval --series free-stealth-space-bunny-alpha@main-smoke,free-stealth-space-bunny-alpha@feat-review-wrap-up-turn-smoke
+```
+
+Reads every golden run under a directory (any directory with `run.json`, at most four levels down, so both a runs directory and a folder of downloaded artifacts work) and groups them into series: a run's series is its label without a trailing `-<n>`, so `nightly-1`, `nightly-2` and `nightly-3` are one series, and a repeated run's `r1/` … `rk/` belong to its label. `--series` keeps only the series named. For each series it prints:
+
+- each run's golden recall and precision, its commit, and, when its saved reports record them (`tasks[].wrapUp`), the wrap-up turns of its review tasks and the findings reported in them;
+- the mean, the standard deviation and the range of recall and precision over the runs: the run-to-run noise of one setup;
+- with more than one series, each series again on the cases common to all of them, and for every expected finding of those cases, how many runs of each series found it at its severity.
+
+Runs are often partial (a run the quota stopped, cases that failed) and the case set grows, so every number is computed on the cases common to the runs it covers; the cases left out are named, and each run's own numbers over all its cases stay in the last column. A run read twice (the same label in two downloads) counts once. Per-case scores are written to `summary.json` by this version of `ocra-eval run` and `score`; an older run is listed without numbers until you re-score it with `ocra-eval score <run-dir>`. The output warns when the runs of a series were scored by different judges or against different cases or labels.
+
+### The daily free evaluation (this repository)
+
+The repository's `eval-free.yml` workflow runs the golden tiers on OpenRouter's free models, which cost nothing but share a daily request quota (about 1000 requests a UTC day for the stealth models, reset at 00:00 UTC; a golden case takes 30 to 210). It runs at 01:00 UTC, right after the reset, and again at 20:00 UTC on what is left, and stops with a reserve of requests left for the day's pull request reviews (the repository variable `OCRA_EVAL_FREE_RESERVE`, default 150). Each run evaluates one lane, a model and a branch of the repository: the scheduled runs take turns over the lanes in `.github/eval-free-lanes.json`, and `workflow_dispatch` names one (`model`, `ref`, `tier`). A lane's runs are labeled `free-<model>@<branch>-<tier>-<n>`, resume across days until every case is reviewed, and are scored by the workflow's own `ocra-eval` against the default branch's cases, with the lane's model as the judge unless `OCRA_EVAL_JUDGE_MODEL` names another. The branch is only ever taken from that file or a dispatch, never from a pull request, since the job holds the OpenRouter key. Each finished run is kept as a workflow artifact for 90 days; `scripts/eval-free-download.sh [dir] [pattern]` downloads them with `gh` and prints their trend.
+
 ## Recall ceiling (free)
 
 ```bash
