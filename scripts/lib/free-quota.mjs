@@ -49,6 +49,24 @@ export function probeLine(response, headers, left) {
   return `Free model probe: ${status}; ${limits}left: ${left ?? "not reported"}`;
 }
 
+/**
+ * The error a workflow fails with when the probe's answer means no review on
+ * the model can run at all, rather than that today's quota is spent: the
+ * model is gone (OpenRouter withdraws free models without notice) or it is
+ * zero-priced but served only to accounts with credits. Undefined otherwise.
+ * @param {string} model
+ * @param {{ status: number } | undefined} response
+ */
+export function probeFailure(model, response) {
+  if (response?.status === 404) {
+    return `::error title=Free model gone::OpenRouter no longer serves ${model} (HTTP 404); replace it with a current free model`;
+  }
+  if (response?.status === 402) {
+    return `::error title=Free model needs credits::${model} needs OpenRouter credits on the account (HTTP 402 Payment Required)`;
+  }
+  return undefined;
+}
+
 /** @param {string} model */
 export function probeRequest(model) {
   return { model, max_tokens: 1, messages: [{ role: "user", content: "ok" }] };

@@ -1,5 +1,7 @@
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { freeRequestsLeft, probeLine, probeRequest } from "./free-quota.mjs";
+import { freeRequestsLeft, probeFailure, probeLine, probeRequest } from "./free-quota.mjs";
 
 describe("freeRequestsLeft", () => {
   it("reads the rate-limit header", () => {
@@ -42,6 +44,57 @@ describe("probeLine", () => {
     expect(probeLine(undefined, new Headers(), undefined)).toBe(
       "Free model probe: no answer; left: not reported",
     );
+  });
+});
+
+describe("probeFailure", () => {
+  it("names a model OpenRouter no longer serves", () => {
+    expect(probeFailure("vendor/gone:free", { status: 404 })).toBe(
+      "::error title=Free model gone::OpenRouter no longer serves vendor/gone:free (HTTP 404); replace it with a current free model",
+    );
+  });
+
+  it("names a zero-price model that needs credits on the account", () => {
+    expect(probeFailure("vendor/paid-pool", { status: 402 })).toBe(
+      "::error title=Free model needs credits::vendor/paid-pool needs OpenRouter credits on the account (HTTP 402 Payment Required)",
+    );
+  });
+
+  it("lets every other answer through, a spent quota and no answer included", () => {
+    for (const status of [200, 429, 500]) expect(probeFailure("m/x", { status })).toBeUndefined();
+    expect(probeFailure("m/x", undefined)).toBeUndefined();
+  });
+});
+
+// The script with fetch answering FAKE_STATUS, so no request leaves the test.
+const FAKE_FETCH = `data:text/javascript,globalThis.fetch = async () => new Response("{}", { status: Number(process.env.FAKE_STATUS), headers: { "x-ratelimit-remaining": "9" } });`;
+/** @param {number} status */
+function runProbe(status) {
+  const script = fileURLToPath(new URL("../free-quota.mjs", import.meta.url));
+  return spawnSync(process.execPath, ["--import", FAKE_FETCH, script, "vendor/m:free"], {
+    encoding: "utf8",
+    env: { PATH: process.env.PATH, OPENROUTER_API_KEY: "k", FAKE_STATUS: String(status) },
+  });
+}
+
+describe("the probe script", () => {
+  it("fails, naming the model, when OpenRouter no longer serves it or wants credits", () => {
+    for (const [status, says] of [
+      [404, "OpenRouter no longer serves vendor/m:free"],
+      [402, "vendor/m:free needs OpenRouter credits"],
+    ]) {
+      const run = runProbe(Number(status));
+      expect(run.status, String(status)).toBe(1);
+      expect(run.stderr).toContain(`::error title=`);
+      expect(run.stderr).toContain(says);
+      expect(run.stdout).toBe("");
+    }
+  });
+
+  it("prints the count of an answer that has one", () => {
+    const run = runProbe(200);
+    expect(run.status).toBe(0);
+    expect(run.stdout).toBe("9\n");
   });
 });
 

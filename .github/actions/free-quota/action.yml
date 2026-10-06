@@ -1,7 +1,8 @@
 # OpenRouter's free requests left today (scripts/free-quota.mjs), for a
 # workflow that runs in another repository's checkout: the dogfood workflow
 # uses this action at main, which brings the script along. Spends one free
-# request; without a key it asks nothing and the count is empty.
+# request; without a key it asks nothing and the count is empty. Fails, naming
+# the model, when OpenRouter no longer serves it (404) or wants credits (402).
 name: OpenRouter free requests left
 description: One probe request to OpenRouter's free model; the count it reports, or empty.
 inputs:

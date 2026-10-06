@@ -2,10 +2,11 @@
 // to the free model: its rate-limit headers, or the 429 that refuses it. Each
 // probe spends one request. GET /key's free_model_daily_requests is another
 // pool (limit 50) that these requests do not count against. Prints the count,
-// or nothing when OpenRouter does not say; logs the probe on stderr.
+// or nothing when OpenRouter does not say; logs the probe on stderr. Exits 1
+// with a workflow error when the model is gone (404) or needs credits (402).
 //
 //   OPENROUTER_API_KEY=… node scripts/free-quota.mjs <model>
-import { freeRequestsLeft, probeLine, probeRequest } from "./lib/free-quota.mjs";
+import { freeRequestsLeft, probeFailure, probeLine, probeRequest } from "./lib/free-quota.mjs";
 
 const model = process.argv[2];
 const key = process.env.OPENROUTER_API_KEY;
@@ -31,4 +32,9 @@ try {
 }
 const left = freeRequestsLeft(headers, body);
 console.error(probeLine(response, headers, left));
+const failure = probeFailure(model, response);
+if (failure) {
+  console.error(failure);
+  process.exit(1);
+}
 if (left !== undefined) console.log(left);
