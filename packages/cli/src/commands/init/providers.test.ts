@@ -84,22 +84,22 @@ describe("configFor", () => {
     },
   );
 
-  it("puts OpenRouter's free model, the one run live that way, on the direct runtime", () => {
+  it("puts OpenRouter's free router on the direct runtime, priced at 0", () => {
     expect(JSON.parse(configFor(chooseProvider("openrouter", {}).preset))).toEqual({
       $schema:
         "https://raw.githubusercontent.com/jma49/Open-CR-Agent/main/docs/schema/config.v1.json",
       runtime: "direct",
       models: {
-        top: "router/stealth/space-bunny-alpha",
-        standard: "router/stealth/space-bunny-alpha",
-        light: "router/stealth/space-bunny-alpha",
+        top: "router/openrouter/free",
+        standard: "router/openrouter/free",
+        light: "router/openrouter/free",
       },
       providers: {
         router: {
           type: "openai-compatible",
           baseUrl: "https://openrouter.ai/api/v1",
           apiKeyEnv: "OPENROUTER_API_KEY",
-          models: { "stealth/space-bunny-alpha": { input: 0, output: 0 } },
+          models: { "openrouter/free": { input: 0, output: 0 } },
         },
       },
     });

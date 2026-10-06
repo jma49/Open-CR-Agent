@@ -66,17 +66,18 @@ const OPENAI: CatalogProvider = {
   models: { top: "openai/gpt-6-sol", standard: "openai/gpt-6-sol", light: "openai/gpt-6-luna" },
 };
 
-// The free preview the project's own reviews run on through the direct
-// runtime; a preview can move, which the manual says (Model providers,
-// Free models through OpenRouter).
+// OpenRouter's router over its free models, not one free model: a free
+// model can be withdrawn overnight (stealth/space-bunny-alpha was), and a
+// written config must not break when that happens. The manual says so
+// (Model providers, Free models through OpenRouter).
 const OPENROUTER: DirectProvider = {
   runtime: "direct",
   name: "openrouter",
-  label: "OpenRouter's free model",
+  label: "OpenRouter's free router",
   keyEnv: "OPENROUTER_API_KEY",
   id: "router",
   baseUrl: "https://openrouter.ai/api/v1",
-  model: "stealth/space-bunny-alpha",
+  model: "openrouter/free",
 };
 
 // In the order a key found in the environment is preferred: the free model

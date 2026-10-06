@@ -111,7 +111,10 @@ function configWritten({ preset, found, others }: Choice): string {
   }
   if (preset.runtime === "opencode") lines.push(`  ${SWITCH_LATER}`);
   if (preset.name === "openrouter") {
-    lines.push("  A free preview model: good for trying ocra, not for code you must keep private.");
+    lines.push(
+      "  The router picks among OpenRouter's free models, so quality varies: good for trying ocra, not for code you must keep private.",
+      "  Without credits on the account, OpenRouter allows few free requests a day; a large review may stop part way.",
+    );
   }
   return `${lines.join("\n")}\n`;
 }

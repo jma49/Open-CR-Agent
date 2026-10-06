@@ -21,16 +21,18 @@ ocra init --provider anthropic     # a provider whose key is not in this shell
 | `--provider <name>` | `gemini`, `anthropic`, `openai` or `openrouter`, in place of the key found in the environment |
 | `--force` | Replace the files if they exist. Without it, a file that exists is kept, and ocra init says so |
 
-**The model.** Without `--provider`, ocra init takes the first of `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `OPENROUTER_API_KEY` that is set, and names any other it found. OpenRouter's free model is chosen only when no other key is there. It writes one model per tier:
+**The model.** Without `--provider`, ocra init takes the first of `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `OPENROUTER_API_KEY` that is set, and names any other it found. OpenRouter's free models are chosen only when no other key is there. It writes one model per tier:
 
 | Provider | `top` | `standard` | `light` | Runtime |
 |---|---|---|---|---|
 | `gemini` | `google/gemini-3.1-pro-preview` | `google/gemini-3.5-flash` | `google/gemini-flash-lite-latest` | `opencode` |
 | `anthropic` | `anthropic/claude-opus-5-5` | `anthropic/claude-sonnet-5-5` | `anthropic/claude-haiku-4-5` | `opencode` |
 | `openai` | `openai/gpt-6-sol` | `openai/gpt-6-sol` | `openai/gpt-6-luna` | `opencode` |
-| `openrouter` | `router/stealth/space-bunny-alpha`, free ([a preview](./providers#free-models-through-openrouter)) | the same | the same | `direct` |
+| `openrouter` | `router/openrouter/free`, OpenRouter's router over its [free models](./providers#free-models-through-openrouter) | the same | the same | `direct` |
 
-**The runtime.** A provider is set up on the `direct` runtime only once reviews have run live through it that way, which today is OpenRouter's free model: the configuration then sets `"runtime": "direct"` and declares the endpoint with a price of 0, and the workflow passes `opencode: false`, so ocra installs in about 11 MB instead of 175 MB. Gemini, Anthropic and OpenAI stay on `opencode`, the default runtime: the configuration names OpenCode catalog models, which OpenCode prices itself, and the workflow installs OpenCode as the Action does by default. ocra init says so in one line, with a link to [Choosing the runtime](./providers#choosing-the-runtime), where moving such a provider to `direct` is described. Nothing changes for a configuration ocra init did not write; when `--github` keeps an existing configuration that does not set `direct`, the workflow installs OpenCode.
+For OpenRouter, ocra init adds two lines: the router picks among OpenRouter's free models, so quality varies, and it is not for code you must keep private; and without credits on the account OpenRouter allows few free requests a day, so a large review may stop part way.
+
+**The runtime.** A provider is set up on the `direct` runtime only once reviews have run live through it that way, which today is OpenRouter: the configuration then sets `"runtime": "direct"` and declares the endpoint with a price of 0, and the workflow passes `opencode: false`, so ocra installs in about 11 MB instead of 175 MB. Gemini, Anthropic and OpenAI stay on `opencode`, the default runtime: the configuration names OpenCode catalog models, which OpenCode prices itself, and the workflow installs OpenCode as the Action does by default. ocra init says so in one line, with a link to [Choosing the runtime](./providers#choosing-the-runtime), where moving such a provider to `direct` is described. Nothing changes for a configuration ocra init did not write; when `--github` keeps an existing configuration that does not set `direct`, the workflow installs OpenCode.
 
 For Gemini, the file is:
 

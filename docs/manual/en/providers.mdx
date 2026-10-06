@@ -56,36 +56,38 @@ A self-hosted server (vLLM, Ollama, LM Studio) or a company gateway that speaks 
 - **Every model has a price** in US dollars per million tokens: `input`, `output`, and optionally `cachedInput`. ocra uses them for the reported cost and for `--max-cost-usd`. A price of 0 is allowed, for a server on your own hardware; the run then warns that the model is unpriced and that the spend limit does not count it.
 - A shared configuration named by `extends` may declare providers too, but only when it is pinned with `#sha256=`: unpinned, whoever serves the file could send your code to an endpoint of their choosing. ocra ignores an unpinned file that declares providers, with a warning that gives the pin to add once you have checked the file. The repository's declaration of the same id wins. In pull and merge requests, providers come from the base commit, like the rest of the configuration.
 
-This has been tested in CI against a fake OpenAI-compatible server with the real OpenCode binary: the key goes where it should, the price is counted, and nothing else on the network is needed. Against a live server it has run on OpenRouter (the free model below, 2026-10-02): the key reached it, tool calls worked, and the price of 0 was reported.
+This has been tested in CI against a fake OpenAI-compatible server with the real OpenCode binary: the key goes where it should, the price is counted, and nothing else on the network is needed. Against a live server it has run on OpenRouter (a free model, 2026-10-02): the key reached it, tool calls worked, and the price of 0 was reported.
 
 ## Free models through OpenRouter
 
-A model offered at no charge, such as a stealth preview on [OpenRouter](https://openrouter.ai), is used like any OpenAI-compatible endpoint: declare the endpoint with a price of 0 for the model, under the id OpenRouter lists it by, and name it as `<endpoint id>/<model id>`:
+A model offered at no charge on [OpenRouter](https://openrouter.ai) is used like any OpenAI-compatible endpoint: declare the endpoint with a price of 0 for the model, under the id OpenRouter lists it by, and name it as `<endpoint id>/<model id>`. This is what [`ocra init`](./cli#ocra-init) writes for an OpenRouter key, with `openrouter/free`, OpenRouter's router that sends each request to one of its free models:
 
 ```json
 {
   "models": {
-    "top": "router/stealth/space-bunny-alpha",
-    "standard": "router/stealth/space-bunny-alpha",
-    "light": "router/stealth/space-bunny-alpha"
+    "top": "router/openrouter/free",
+    "standard": "router/openrouter/free",
+    "light": "router/openrouter/free"
   },
   "providers": {
     "router": {
       "type": "openai-compatible",
       "baseUrl": "https://openrouter.ai/api/v1",
       "apiKeyEnv": "OPENROUTER_API_KEY",
-      "models": { "stealth/space-bunny-alpha": { "input": 0, "output": 0 } }
+      "models": { "openrouter/free": { "input": 0, "output": 0 } }
     }
   }
 }
 ```
 
-- A price of 0 is taken literally: the run warns that the model's tokens are not counted by `--max-cost-usd`, and reports a cost of $0, which is what the preview costs; tokens are still reported.
+- A price of 0 is taken literally: the run warns that the model's tokens are not counted by `--max-cost-usd`, and reports a cost of $0, which is what a free model costs; tokens are still reported.
 - Keep the file outside the reviewed repository and pass it with [`--config`](./cli) when the review runs with `--no-repo-config`, as the evaluation harness does.
-- The evaluation's judge can use the same endpoint: `JUDGE_API_KEY`, `JUDGE_BASE_URL=https://openrouter.ai/api/v1` and `JUDGE_MODEL=stealth/space-bunny-alpha`.
-- A preview is a preview: the model, its limits and its price can change without notice, and an anonymous model says nothing about what it keeps. Use it to evaluate, not on code you must keep private.
+- The evaluation's judge can use the same endpoint: `JUDGE_API_KEY`, `JUDGE_BASE_URL=https://openrouter.ai/api/v1` and `JUDGE_MODEL=openrouter/free`.
+- The router picks a different free model from request to request, so the quality of a review varies with it. To compare runs, name one free model instead (its id ends in `:free`, for example `nvidia/nemotron-3-ultra-550b-a55b:free`), and check its page, since OpenRouter withdraws free models without notice: a withdrawn model answers HTTP 404, and the review fails.
+- Without credits on the account, OpenRouter allows few free requests a day (about 50, shared by its `:free` models); a review takes 30 to 70 requests per task, so a large one may stop part way. Some zero-price models without `:free` are served only to accounts with credits, and answer HTTP 402 otherwise.
+- Free models, their limits and their prices can change without notice, and a free model's provider may keep what it is sent. Use them to try ocra, not on code you must keep private.
 
-The model id is the one OpenRouter's API example showed on 2026-10-02 (`stealth/space-bunny-alpha`); check the model's page, since a preview can move. The declared-endpoint path works without OpenCode's pricing catalog; the catalog form, `openrouter/<model>`, needs the catalog reachable and the model in it, and fails at once otherwise. Reviews have run through OpenRouter this way since 2026-10-02.
+This repository's own CI (the dogfood reviews, the nightly live check and the daily free evaluation) pins `nvidia/nemotron-3-ultra-550b-a55b:free` rather than the router, so its results compare from day to day. The declared-endpoint path works without OpenCode's pricing catalog; the catalog form, `openrouter/<model>`, needs the catalog reachable and the model in it, and fails at once otherwise. Reviews have run through OpenRouter this way since 2026-10-02.
 
 ## Choosing the runtime
 

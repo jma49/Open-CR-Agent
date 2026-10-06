@@ -58,16 +58,18 @@ Next:
     expect(existsSync(join(dir, WORKFLOW))).toBe(false);
   });
 
-  it("uses OpenRouter's free model only without another key, and says what it is", async () => {
+  it("uses OpenRouter's free router only without another key, and says what it is", async () => {
     const { dir } = repos.create();
     const result = await init(dir, [], { OPENROUTER_API_KEY: "sk-or-secret" });
     expect(result.out).toContain(
-      "Wrote .ocra/config.json: OpenRouter's free model through OPENROUTER_API_KEY, on the direct runtime.\n  A free preview model: good for trying ocra, not for code you must keep private.\n",
+      "Wrote .ocra/config.json: OpenRouter's free router through OPENROUTER_API_KEY, on the direct runtime.\n" +
+        "  The router picks among OpenRouter's free models, so quality varies: good for trying ocra, not for code you must keep private.\n" +
+        "  Without credits on the account, OpenRouter allows few free requests a day; a large review may stop part way.\n",
     );
     expect(result.out).not.toContain("175 MB");
     const config = JSON.parse(read(dir, CONFIG));
     expect(config.runtime).toBe("direct");
-    expect(config.models.top).toBe("router/stealth/space-bunny-alpha");
+    expect(config.models.top).toBe("router/openrouter/free");
   });
 
   it("keeps an existing configuration unless --force is given", async () => {

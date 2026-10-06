@@ -28,9 +28,11 @@ ocra init --provider anthropic     # 当前 shell 里没有这个供应商的 ke
 | `gemini` | `google/gemini-3.1-pro-preview` | `google/gemini-3.5-flash` | `google/gemini-flash-lite-latest` | `opencode` |
 | `anthropic` | `anthropic/claude-opus-5-5` | `anthropic/claude-sonnet-5-5` | `anthropic/claude-haiku-4-5` | `opencode` |
 | `openai` | `openai/gpt-6-sol` | `openai/gpt-6-sol` | `openai/gpt-6-luna` | `opencode` |
-| `openrouter` | `router/stealth/space-bunny-alpha`，免费（[预览模型](./providers#openrouter-上的免费模型)） | 同左 | 同左 | `direct` |
+| `openrouter` | `router/openrouter/free`，OpenRouter 在其[免费模型](./providers#openrouter-上的免费模型)之间挑选的路由 | 同左 | 同左 | `direct` |
 
-**运行时。** 只有已经用 `direct` 运行时真实审查过的供应商才会配置成 `direct`，目前只有 OpenRouter 的免费模型：这时配置设置 `"runtime": "direct"`，以价格 0 声明端点，workflow 传 `opencode: false`，ocra 安装约 11 MB 而不是 175 MB。Gemini、Anthropic 和 OpenAI 仍用默认运行时 `opencode`：配置里写的是 OpenCode 目录中的模型，价格由 OpenCode 自己计算，workflow 照 Action 的默认安装 OpenCode。ocra init 会用一行话说明这一点，并链接到[选择运行时](./providers#选择运行时)，那里介绍了怎样把这类供应商换到 `direct`。不是 ocra init 写的配置不受影响；`--github` 保留了一个没有设置 `direct` 的已有配置时，workflow 会安装 OpenCode。
+对 OpenRouter，ocra init 会多输出两行：路由在 OpenRouter 的免费模型之间挑选，所以质量不稳定，也不适合必须保密的代码；账号没有充值时，OpenRouter 每天只给很少的免费请求，大的审查可能中途停下。
+
+**运行时。** 只有已经用 `direct` 运行时真实审查过的供应商才会配置成 `direct`，目前只有 OpenRouter：这时配置设置 `"runtime": "direct"`，以价格 0 声明端点，workflow 传 `opencode: false`，ocra 安装约 11 MB 而不是 175 MB。Gemini、Anthropic 和 OpenAI 仍用默认运行时 `opencode`：配置里写的是 OpenCode 目录中的模型，价格由 OpenCode 自己计算，workflow 照 Action 的默认安装 OpenCode。ocra init 会用一行话说明这一点，并链接到[选择运行时](./providers#选择运行时)，那里介绍了怎样把这类供应商换到 `direct`。不是 ocra init 写的配置不受影响；`--github` 保留了一个没有设置 `direct` 的已有配置时，workflow 会安装 OpenCode。
 
 以 Gemini 为例，写出的文件是：
 

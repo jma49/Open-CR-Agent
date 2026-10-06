@@ -56,36 +56,38 @@ OpenCode 自带了与目录里几乎所有供应商通信的代码。只有少�
 - **每个模型都要有价格**，单位是每百万 token 多少美元：`input`、`output`，以及可选的 `cachedInput`。ocra 用它们计算报告里的花费和 `--max-cost-usd`。价格可以写 0，适合跑在你自己硬件上的服务；这时运行会警告该模型没有定价，花费上限也不会计入它。
 - 通过 `extends` 引用的共享配置也可以声明供应商，但必须用 `#sha256=` 固定内容：不固定的话，提供这个文件的人就能把你的代码发到他选的端点。声明了供应商却没有固定的共享文件会被忽略，并给出警告，警告里写着检查过文件之后要加的固定值。仓库里同 id 的声明优先。审查 PR 和 Merge Request 时，供应商和其他配置一样来自 base 提交。
 
-这项功能已经在 CI 里用真实的 OpenCode 二进制文件对一个模拟的 OpenAI 兼容服务测试过：密钥发往该去的地方，价格被计入，而且不需要访问网络上的其他地址。对真实服务的运行已经在 OpenRouter 上完成（下文的免费模型，2026-10-02）：密钥送达、工具调用正常、价格按 0 计入。
+这项功能已经在 CI 里用真实的 OpenCode 二进制文件对一个模拟的 OpenAI 兼容服务测试过：密钥发往该去的地方，价格被计入，而且不需要访问网络上的其他地址。对真实服务的运行已经在 OpenRouter 上完成（一个免费模型，2026-10-02）：密钥送达、工具调用正常、价格按 0 计入。
 
 ## OpenRouter 上的免费模型
 
-免费提供的模型，比如 [OpenRouter](https://openrouter.ai) 上的匿名预览模型，用法和任何 OpenAI 兼容端点一样：声明端点，把该模型的价格写成 0（模型 id 按 OpenRouter 列出的写），然后以 `<端点 id>/<模型 id>` 的形式引用：
+[OpenRouter](https://openrouter.ai) 上免费提供的模型，用法和任何 OpenAI 兼容端点一样：声明端点，把该模型的价格写成 0（模型 id 按 OpenRouter 列出的写），然后以 `<端点 id>/<模型 id>` 的形式引用。对 OpenRouter 的 key，[`ocra init`](./cli#ocra-init) 写的就是这样的配置，模型是 `openrouter/free`：OpenRouter 的路由，把每次请求交给它的某个免费模型：
 
 ```json
 {
   "models": {
-    "top": "router/stealth/space-bunny-alpha",
-    "standard": "router/stealth/space-bunny-alpha",
-    "light": "router/stealth/space-bunny-alpha"
+    "top": "router/openrouter/free",
+    "standard": "router/openrouter/free",
+    "light": "router/openrouter/free"
   },
   "providers": {
     "router": {
       "type": "openai-compatible",
       "baseUrl": "https://openrouter.ai/api/v1",
       "apiKeyEnv": "OPENROUTER_API_KEY",
-      "models": { "stealth/space-bunny-alpha": { "input": 0, "output": 0 } }
+      "models": { "openrouter/free": { "input": 0, "output": 0 } }
     }
   }
 }
 ```
 
-- 价格 0 按字面理解：运行会警告这个模型的 token 不计入 `--max-cost-usd`，报告的花费是 $0，这正是预览期的价格；token 数照常报告。
+- 价格 0 按字面理解：运行会警告这个模型的 token 不计入 `--max-cost-usd`，报告的花费是 $0，这正是免费模型的价格；token 数照常报告。
 - 把这个文件放在被审查仓库之外，审查带着 `--no-repo-config` 运行时用 [`--config`](./cli) 传入，评测工具就是这么用的。
-- 评测的判定模型也可以用同一个端点：`JUDGE_API_KEY`、`JUDGE_BASE_URL=https://openrouter.ai/api/v1`、`JUDGE_MODEL=stealth/space-bunny-alpha`。
-- 预览就是预览：模型、限额和价格随时可能变，匿名模型也不说明它保留什么。拿它做评测，别拿它审查必须保密的代码。
+- 评测的判定模型也可以用同一个端点：`JUDGE_API_KEY`、`JUDGE_BASE_URL=https://openrouter.ai/api/v1`、`JUDGE_MODEL=openrouter/free`。
+- 路由每次请求可能选不同的免费模型，所以审查质量会随之变化。要让运行之间可比，就指定一个免费模型（id 以 `:free` 结尾，例如 `nvidia/nemotron-3-ultra-550b-a55b:free`），并到它的页面核对，因为 OpenRouter 会不经通知下架免费模型：下架的模型返回 HTTP 404，审查失败。
+- 账号没有充值时，OpenRouter 每天只给很少的免费请求（约 50 次，由各个 `:free` 模型共用）；一个审查任务要 30 到 70 次请求，所以大的审查可能中途停下。有些不带 `:free` 的零价格模型只服务充值过的账号，否则返回 HTTP 402。
+- 免费模型、它们的限额和价格随时可能变，免费模型的提供方也可能保留发给它的内容。拿它们试用 ocra，别拿它们审查必须保密的代码。
 
-模型 id 是 OpenRouter 的 API 示例在 2026-10-02 给出的（`stealth/space-bunny-alpha`）；预览模型可能变动，请到模型页面核对。声明端点这条路不需要 OpenCode 的价格目录；目录形式的 `openrouter/<模型>` 需要能访问目录且模型在目录里，否则立刻失败。自 2026-10-02 起，已有审查这样经过 OpenRouter 运行。
+本仓库自己的 CI（dogfood 审查、每晚的真实模型检查和每日免费评估）固定使用 `nvidia/nemotron-3-ultra-550b-a55b:free` 而不是路由，让结果每天之间可比。声明端点这条路不需要 OpenCode 的价格目录；目录形式的 `openrouter/<模型>` 需要能访问目录且模型在目录里，否则立刻失败。自 2026-10-02 起，已有审查这样经过 OpenRouter 运行。
 
 ## 选择运行时
 
