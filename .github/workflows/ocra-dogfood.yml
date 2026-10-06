@@ -79,8 +79,9 @@ jobs:
       # quota probe fails the job by name when OpenRouter withdraws it.
       FREE_MODEL: nvidia/nemotron-3-ultra-550b-a55b:free
       # Review tasks one review may start on the free model: a task takes 30
-      # to 70 requests, so a review stays within a few hundred of the day's
-      # 1000. Files past the cap are reported as not reviewed.
+      # to 70 requests, more than the day's pool of about 50 without credits,
+      # so a review may stop part way; files past the cap are reported as not
+      # reviewed.
       FREE_MAX_TASKS: "8"
       # Requests the day must have left before a review starts.
       FREE_MIN_REQUESTS: "40"

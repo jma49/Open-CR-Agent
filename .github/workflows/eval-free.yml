@@ -7,7 +7,10 @@
 # RESERVE requests left (repository variable OCRA_EVAL_FREE_RESERVE, default
 # 150) so that day's pull request reviews still run. It does not start with
 # fewer than RESERVE + MIN_RUN left: a golden case takes 30 to 210 requests,
-# and a case the watcher stops runs again from the start next time.
+# and a case the watcher stops runs again from the start next time. On
+# 2026-10-06 the :free models' answers carried no count, so this gate did not
+# apply and the watcher stopped runs when the quota was spent; were a count of
+# about 50 reported, no run would start until RESERVE is lowered.
 #
 # Lanes. Each run evaluates one lane: a model and a ref of this repository.
 # Scheduled runs take the lanes in .github/eval-free-lanes.json, one further

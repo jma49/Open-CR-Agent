@@ -66,9 +66,9 @@ const OPENAI: CatalogProvider = {
   models: { top: "openai/gpt-6-sol", standard: "openai/gpt-6-sol", light: "openai/gpt-6-luna" },
 };
 
-// OpenRouter's router over its free models, not one free model: a free
-// model can be withdrawn overnight (stealth/space-bunny-alpha was), and a
-// written config must not break when that happens. The manual says so
+// OpenRouter's router over its free models, not one free model: OpenRouter
+// withdraws free models without notice, and a written config must not break
+// when that happens. The manual says so
 // (Model providers, Free models through OpenRouter).
 const OPENROUTER: DirectProvider = {
   runtime: "direct",
