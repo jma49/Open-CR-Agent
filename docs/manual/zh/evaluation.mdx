@@ -149,7 +149,7 @@ node packages/eval/dist/main.js compare .ocra/eval/baseline .ocra/eval/change   
 
 ```bash
 node packages/eval/dist/main.js trend .ocra/eval
-node packages/eval/dist/main.js trend .ocra/eval --series free-stealth-space-bunny-alpha@main-smoke,free-stealth-space-bunny-alpha@feat-review-wrap-up-turn-smoke
+node packages/eval/dist/main.js trend .ocra/eval --series free-nvidia-nemotron-3-ultra-550b-a55b-free@main-smoke,free-thinkingmachines-inkling-free@main-smoke
 ```
 
 读取一个目录下的所有黄金集运行（任何含 `run.json` 的目录，最多向下四层，所以运行目录和下载下来的 artifact 文件夹都可以），并按系列分组：运行的系列是去掉末尾 `-<n>` 的标签，所以 `nightly-1`、`nightly-2`、`nightly-3` 是同一个系列，重复运行的 `r1/` … `rk/` 归入它的标签。`--series` 只保留列出的系列。每个系列输出：
@@ -162,7 +162,7 @@ node packages/eval/dist/main.js trend .ocra/eval --series free-stealth-space-bun
 
 ### 每日免费评估（本仓库）
 
-仓库的 `eval-free.yml` 工作流在 OpenRouter 的免费模型上运行黄金用例。这些模型不收费，但共用每天的请求额度（stealth 模型每个 UTC 日约 1000 次，00:00 UTC 重置；一个黄金用例要 30 到 210 次）。它在重置后的 01:00 UTC 运行，20:00 UTC 再用剩下的额度运行一次，并为当天的拉取请求审查留出一部分请求（仓库变量 `OCRA_EVAL_FREE_RESERVE`，默认 150）。每次运行评估一条通道，即一个模型加仓库的一个分支：定时运行轮流使用 `.github/eval-free-lanes.json` 里的通道，`workflow_dispatch` 则指定一条（`model`、`ref`、`tier`）。一条通道的运行标签为 `free-<model>@<branch>-<tier>-<n>`，跨天续跑直到每个用例都审查过，并由工作流自己的 `ocra-eval` 按默认分支的用例评分；judge 用通道的模型，除非 `OCRA_EVAL_JUDGE_MODEL` 另行指定。因为这个任务持有 OpenRouter 密钥，分支只来自那个文件或手动触发，从不来自拉取请求。每次完成的运行作为工作流 artifact 保留 90 天；`scripts/eval-free-download.sh [dir] [pattern]` 用 `gh` 下载它们并输出趋势。
+仓库的 `eval-free.yml` 工作流在 OpenRouter 的免费模型上运行黄金用例。这些模型不收费，但共用每天的请求额度（账号没有充值时，`:free` 模型每个 UTC 日约 50 次，00:00 UTC 重置；一个黄金用例要 30 到 210 次，所以一条通道每天大约完成一个用例）。它在重置后的 01:00 UTC 运行，20:00 UTC 再用剩下的额度运行一次，并为当天的拉取请求审查留出一部分请求（仓库变量 `OCRA_EVAL_FREE_RESERVE`，默认 150）。每次运行评估一条通道，即一个模型加仓库的一个分支：定时运行轮流使用 `.github/eval-free-lanes.json` 里的通道（目前是 `main` 和一个待测分支上的 `nvidia/nemotron-3-ultra-550b-a55b:free`，以及 `main` 上的 `thinkingmachines/inkling:free`，所以结果按模型分开），`workflow_dispatch` 则指定一条（`model`、`ref`、`tier`）。一条通道的运行标签为 `free-<model>@<branch>-<tier>-<n>`，跨天续跑直到每个用例都审查过，并由工作流自己的 `ocra-eval` 按默认分支的用例评分；judge 用通道的模型，除非 `OCRA_EVAL_JUDGE_MODEL` 另行指定。因为这个任务持有 OpenRouter 密钥，分支只来自那个文件或手动触发，从不来自拉取请求。通道的模型被 OpenRouter 下架（HTTP 404）或只对充值账号提供（HTTP 402）时，运行会失败，错误信息写明是哪个模型。每次完成的运行作为工作流 artifact 保留 90 天；`scripts/eval-free-download.sh [dir] [pattern]` 用 `gh` 下载它们并输出趋势。
 
 ## 召回率上限（免费）
 

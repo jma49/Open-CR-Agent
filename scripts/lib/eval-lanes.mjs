@@ -74,9 +74,9 @@ export function seriesName(lane) {
 
 /**
  * The lanes in the order a scheduled run tries them: each run starts one
- * further along, by day and by the run's slot in the day, so with two lanes
- * the early run (which gets most of the day's requests) alternates daily
- * and the late run takes the other one.
+ * further along, by day and by the run's slot in the day: the early run
+ * (which gets most of the day's requests) takes each lane in turn, one a
+ * day, and the late run the lane after it.
  * @param {readonly Lane[]} lanes
  * @param {Date} now
  * @param {number} slot 0 for the run after the reset, 1 for the late one

@@ -10,8 +10,8 @@
 # With model-source "openrouter" a caller reviews on OpenRouter's free model
 # instead, through the direct runtime and the caller's OPENROUTER_API_KEY: no
 # Google credential, no dollar ledger (the model costs $0), and a task cap in
-# place of the budget, since the limit there is the account's 1000 free
-# requests a UTC day. The configuration is written here, outside the
+# place of the budget, since the limit there is the pool the account's :free
+# models share (about 50 requests a UTC day without credits on it). The configuration is written here, outside the
 # checkout, and passed with --config: nothing in it comes from the pull
 # request.
 name: ocra dogfood
@@ -75,8 +75,9 @@ jobs:
       CAP_USD: "2"
       DAILY_USD: "2"
       SOURCE: ${{ inputs.model-source }}
-      # The free model, in this one place; swap it when the preview ends.
-      FREE_MODEL: stealth/space-bunny-alpha
+      # The free model, pinned in this one place so reviews compare; the
+      # quota probe fails the job by name when OpenRouter withdraws it.
+      FREE_MODEL: nvidia/nemotron-3-ultra-550b-a55b:free
       # Review tasks one review may start on the free model: a task takes 30
       # to 70 requests, so a review stays within a few hundred of the day's
       # 1000. Files past the cap are reported as not reviewed.

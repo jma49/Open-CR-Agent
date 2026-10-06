@@ -1,7 +1,8 @@
 # Golden evaluation on OpenRouter's free models, as many requests a day as
-# the quota allows. The stealth free models share one pool of about 1000
-# requests a UTC day per account, with the dogfood reviews and the nightly
-# live smoke of this repository; it resets at 00:00 UTC. This job runs right
+# the quota allows. The :free models share one pool per account, with the
+# dogfood reviews and the nightly live smoke of this repository; without
+# credits on the account it is about 50 requests a UTC day, so a lane
+# finishes about one case a day. It resets at 00:00 UTC. This job runs right
 # after the reset (01:00) and again at 20:00 for what is left, and stops with
 # RESERVE requests left (repository variable OCRA_EVAL_FREE_RESERVE, default
 # 150) so that day's pull request reviews still run. It does not start with
@@ -10,9 +11,9 @@
 #
 # Lanes. Each run evaluates one lane: a model and a ref of this repository.
 # Scheduled runs take the lanes in .github/eval-free-lanes.json, one further
-# along each run, so with two lanes the 01:00 run (most of the day) alternates
-# daily and the 20:00 run takes the other one; a lane whose branch is gone is
-# passed over. A dispatch names its lane: model (default the file's first),
+# along each run: the 01:00 run (most of the day) takes each lane in turn,
+# one a day, and the 20:00 run the lane after it; a lane whose branch is gone
+# is passed over. Lanes name one model each, so results are per model. A dispatch names its lane: model (default the file's first),
 # ref (default main) and tier (default smoke). A lane's cycles are labeled
 # free-<model>@<ref>-<tier>-<n>, so lanes never mix, and ocra-eval trend
 # groups them by that label without -<n>. One cycle is `ocra-eval run` over
@@ -141,6 +142,8 @@ jobs:
             echo "::error::OCRA_EVAL_FREE_RESERVE must be a number of requests"
             exit 1
           fi
+          # Fails the run, naming the model, when OpenRouter no longer
+          # serves it (404) or serves it only with credits (402).
           left=$(node scripts/free-quota.mjs "$MODEL")
           go=true
           if [[ "$left" =~ ^[0-9]+$ ]] && [ "$left" -lt $((RESERVE + MIN_RUN)) ]; then

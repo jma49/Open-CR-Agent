@@ -71,7 +71,7 @@ AACR-Bench 用基准自己的匹配规则：同一文件、diff 的同一侧、�
 
 ### 在免费模型上
 
-在 Space Bunny Alpha（`stealth/space-bunny-alpha`，OpenRouter 上一个匿名的免费预览模型）上，把今天的 smoke 档（10 个用例、18 个预期问题）跑了两次，模型通过声明的 OpenAI 兼容端点接入。免费密钥只能用这一个模型，所以三个档位、核查和裁决步骤、计分时的判定模型全都是它。ocra 的版本是 2026-10-02 的 `main`（[`c997e07`](https://github.com/jma49/Open-CR-Agent/commit/c997e079dbc37298022c8c3837b67afe64411b89)），默认设置。OpenRouter 的免费模型每个账号每天共用 1000 次请求，一个 smoke 用例要用 30 到 250 次，所以每次运行都从 2026-10-02 拖到了 2026-10-04。
+在 Space Bunny Alpha（`stealth/space-bunny-alpha`，OpenRouter 上一个匿名的免费预览模型）上，把今天的 smoke 档（10 个用例、18 个预期问题）跑了两次，模型通过声明的 OpenAI 兼容端点接入。免费密钥只能用这一个模型，所以三个档位、核查和裁决步骤、计分时的判定模型全都是它。ocra 的版本是 2026-10-02 的 `main`（[`c997e07`](https://github.com/jma49/Open-CR-Agent/commit/c997e079dbc37298022c8c3837b67afe64411b89)），默认设置。OpenRouter 的免费模型每个账号每天共用 1000 次请求，一个 smoke 用例要用 30 到 250 次，所以每次运行都从 2026-10-02 拖到了 2026-10-04。OpenRouter 在 2026-10-06 下架了这个模型，所以这两次运行无法在它上面重复。
 
 | 运行 | 找到 | 精确率 | 报出 | 未标注 | 每个改动耗时（中位数，秒） |
 |---|---|---|---|---|---|

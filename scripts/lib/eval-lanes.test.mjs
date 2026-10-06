@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { checkLane, laneLine, parseLanes, rotation, seriesName } from "./eval-lanes.mjs";
 
-const bunny = "stealth/space-bunny-alpha";
+const nemotron = "nvidia/nemotron-3-ultra-550b-a55b:free";
 
 describe("the lanes file", () => {
   it("parses, and names each lane's series apart", () => {
@@ -11,14 +11,18 @@ describe("the lanes file", () => {
         readFileSync(new URL("../../.github/eval-free-lanes.json", import.meta.url), "utf8"),
       ),
     );
-    expect(lanes[0]).toEqual({ model: bunny, ref: "main", tier: "smoke" });
+    expect(lanes.map((lane) => `${lane.model}@${lane.ref}`)).toEqual([
+      `${nemotron}@main`,
+      `${nemotron}@feat/review-wrap-up-turn`,
+      "thinkingmachines/inkling:free@main",
+    ]);
     const series = lanes.map(seriesName);
     expect(new Set(series).size).toBe(lanes.length);
   });
 
   it("refuses an empty list and lanes without a model or ref", () => {
     expect(() => parseLanes({ lanes: [] })).toThrow("no lanes");
-    expect(() => parseLanes({ lanes: [{ model: bunny }] })).toThrow("a model and a ref");
+    expect(() => parseLanes({ lanes: [{ model: nemotron }] })).toThrow("a model and a ref");
   });
 });
 
@@ -45,14 +49,14 @@ describe("checkLane", () => {
       "main;id",
       "",
     ]) {
-      expect(() => checkLane(bunny, ref, "smoke"), ref).toThrow("not a branch name");
+      expect(() => checkLane(nemotron, ref, "smoke"), ref).toThrow("not a branch name");
     }
   });
 
   it("refuses other models and tiers", () => {
     expect(() => checkLane("no-vendor", "main", "smoke")).toThrow("not an OpenRouter model");
     expect(() => checkLane("a/b c", "main", "smoke")).toThrow("not an OpenRouter model");
-    expect(() => checkLane(bunny, "main", "huge")).toThrow("tier must be");
+    expect(() => checkLane(nemotron, "main", "huge")).toThrow("tier must be");
   });
 });
 
@@ -67,7 +71,7 @@ describe("series and lines", () => {
 });
 
 describe("rotation", () => {
-  const lanes = ["a", "b"].map((ref) => ({ model: bunny, ref, tier: "smoke" }));
+  const lanes = ["a", "b"].map((ref) => ({ model: nemotron, ref, tier: "smoke" }));
   /** @param {number} n */
   const day = (n) => new Date(Date.UTC(2026, 9, 5 + n, 1));
   /** @param {number} n @param {number} slot */
@@ -87,5 +91,14 @@ describe("rotation", () => {
         .sort(),
     ).toEqual(["a", "b"]);
     expect(rotation(lanes.slice(0, 1), day(3), 1)).toEqual(lanes.slice(0, 1));
+  });
+
+  it("with three lanes, starts each day's early run on another lane and the late run on the next", () => {
+    const three = ["a", "b", "c"].map((ref) => ({ model: nemotron, ref, tier: "smoke" }));
+    /** @param {number} n @param {number} slot */
+    const firstOf = (n, slot) => rotation(three, day(n), slot)[0]?.ref;
+    expect([0, 1, 2].map((n) => firstOf(n, 0)).sort()).toEqual(["a", "b", "c"]);
+    expect([0, 1, 2].map((n) => firstOf(n, 1)).sort()).toEqual(["a", "b", "c"]);
+    for (const n of [0, 1, 2]) expect(firstOf(n, 1)).toBe(firstOf(n + 1, 0));
   });
 });

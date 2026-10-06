@@ -5,7 +5,10 @@
 # and the run cost nothing. It needs the maintainer's key as the repository
 # secret OPENROUTER_API_KEY and the repository variable OCRA_LIVE_SMOKE set to
 # "on"; without the switch it does not run. About 50 model requests a night,
-# of OpenRouter's 1000 free requests a day per account.
+# from the pool OpenRouter's :free models share per account (about 50 a day
+# without credits on it, so a night's run can take the whole day's pool).
+# The model is pinned so nights compare; scripts/free-quota.mjs fails the
+# eval and dogfood runs by name when OpenRouter withdraws it.
 name: nightly live smoke
 
 on:
@@ -25,7 +28,7 @@ jobs:
       # ocra-steps-clean in evals/golden: seven files, sixteen lines, no known issue.
       BASE: 2ca6dd360e26a4165703c8d4e114ab2da917b93e
       HEAD: 696d0c844a0d418364d7ffaba7dc6d9506303b11
-      MODEL: stealth/space-bunny-alpha
+      MODEL: nvidia/nemotron-3-ultra-550b-a55b:free
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

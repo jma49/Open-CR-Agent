@@ -1,10 +1,11 @@
 {
   "lanes": [
-    { "model": "stealth/space-bunny-alpha", "ref": "main" },
+    { "model": "nvidia/nemotron-3-ultra-550b-a55b:free", "ref": "main" },
     {
-      "model": "stealth/space-bunny-alpha",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
       "ref": "feat/review-wrap-up-turn",
       "until": "PR #470 is merged or closed; then delete this entry"
-    }
+    },
+    { "model": "thinkingmachines/inkling:free", "ref": "main" }
   ]
 }
