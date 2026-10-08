@@ -8,6 +8,7 @@
       "!**/*.tsbuildinfo",
       "!evals/golden/*.json",
       "!docs/schema/*.json",
+      "!docs/images/*.svg",
       "!**/__snapshots__"
     ]
   },

@@ -1,0 +1,341 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "ocra review architecture",
+    "locale": "en",
+    "output": "architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/jma49/Open-CR-Agent.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "6010ff735d0d7a14be47c384daa4da4f3c847ad5"
+    }
+  },
+  "components": [
+    {
+      "id": "platforms",
+      "type": "external",
+      "label": "Code host",
+      "sublabel": "GitHub \u00b7 GitLab \u00b7 local git",
+      "pos": [40, 40],
+      "size": [190, 64],
+      "sources": [
+        {
+          "path": "packages/vcs-github/src/adapter.ts",
+          "line": 46
+        },
+        {
+          "path": "packages/vcs-gitlab/src/adapter.ts",
+          "line": 44
+        },
+        {
+          "path": "packages/vcs-local/src/local-adapter.ts",
+          "line": 58
+        }
+      ]
+    },
+    {
+      "id": "vcs",
+      "type": "backend",
+      "label": "VcsAdapter",
+      "sublabel": "vcs-github \u00b7 vcs-gitlab \u00b7 vcs-local",
+      "pos": [340, 40],
+      "size": [190, 64],
+      "sources": [
+        {
+          "path": "packages/core/src/vcs.ts",
+          "line": 8,
+          "end_line": 15
+        },
+        {
+          "path": "packages/vcs-platform/src/review.ts",
+          "line": 66
+        }
+      ]
+    },
+    {
+      "id": "models",
+      "type": "external",
+      "label": "Model providers",
+      "sublabel": "OpenAI-compatible \u00b7 OpenCode",
+      "pos": [1210, 40],
+      "size": [190, 64],
+      "sources": [
+        {
+          "path": "packages/runtime-direct/src/openai.ts",
+          "line": 174
+        },
+        {
+          "path": "packages/runtime-opencode/src/runtime.ts",
+          "line": 27
+        }
+      ]
+    },
+    {
+      "id": "dev",
+      "type": "external",
+      "label": "Developer / CI",
+      "sublabel": "terminal \u00b7 GitHub Action",
+      "icon": "person",
+      "pos": [40, 210],
+      "size": [190, 64]
+    },
+    {
+      "id": "cli",
+      "type": "frontend",
+      "label": "ocra CLI",
+      "sublabel": "@open-cr-agent/cli",
+      "pos": [340, 210],
+      "size": [190, 64],
+      "sources": [
+        {
+          "path": "packages/cli/src/commands/review.ts",
+          "line": 35,
+          "end_line": 47
+        }
+      ]
+    },
+    {
+      "id": "plan",
+      "type": "backend",
+      "label": "Plan",
+      "sublabel": "Ingest \u00b7 Select \u00b7 Triage \u00b7 Bundle",
+      "tag": "core \u00b7 code",
+      "pos": [670, 210],
+      "size": [190, 64],
+      "sources": [
+        {
+          "path": "packages/core/src/pipeline/plan.ts",
+          "line": 65,
+          "end_line": 75
+        }
+      ]
+    },
+    {
+      "id": "execute",
+      "type": "backend",
+      "label": "Execute",
+      "sublabel": "Matrix \u00b7 agent tasks \u00b7 Anchor",
+      "tag": "core \u00b7 LLM agents",
+      "pos": [940, 210],
+      "size": [190, 64],
+      "sources": [
+        {
+          "path": "packages/core/src/pipeline/execute-stage.ts",
+          "line": 38,
+          "end_line": 55
+        },
+        {
+          "path": "packages/core/src/pipeline/task.ts",
+          "line": 57
+        }
+      ]
+    },
+    {
+      "id": "runtime",
+      "type": "backend",
+      "label": "AgentRuntime",
+      "sublabel": "runtime-direct \u00b7 runtime-opencode",
+      "tag": "ChainRunner failback",
+      "pos": [1210, 210],
+      "size": [190, 64],
+      "sources": [
+        {
+          "path": "packages/runtime-direct/src/runtime.ts",
+          "line": 50,
+          "end_line": 87
+        },
+        {
+          "path": "packages/runtime-opencode/src/runtime.ts",
+          "line": 69,
+          "end_line": 111
+        },
+        {
+          "path": "packages/core/src/runtime/chain-runner.ts",
+          "line": 38
+        }
+      ]
+    },
+    {
+      "id": "filter",
+      "type": "backend",
+      "label": "Filter",
+      "sublabel": "memory \u00b7 dismissals \u00b7 re-review",
+      "tag": "core \u00b7 code",
+      "pos": [940, 380],
+      "size": [190, 64],
+      "sources": [
+        {
+          "path": "packages/core/src/pipeline/filter-stage.ts",
+          "line": 24
+        }
+      ]
+    },
+    {
+      "id": "check",
+      "type": "backend",
+      "label": "Verify + Judge",
+      "sublabel": "fact-check \u00b7 dedupe \u00b7 severity",
+      "tag": "core \u00b7 LLM",
+      "pos": [670, 380],
+      "size": [190, 64],
+      "sources": [
+        {
+          "path": "packages/core/src/pipeline/check-stage.ts",
+          "line": 19,
+          "end_line": 29
+        },
+        {
+          "path": "packages/core/src/verify/verify.ts",
+          "line": 58
+        },
+        {
+          "path": "packages/core/src/judge/judge.ts",
+          "line": 61
+        }
+      ]
+    },
+    {
+      "id": "report",
+      "type": "backend",
+      "label": "Report",
+      "sublabel": "verdict \u00b7 JSON \u00b7 SARIF",
+      "tag": "core \u00b7 code",
+      "pos": [340, 380],
+      "size": [190, 64],
+      "sources": [
+        {
+          "path": "packages/core/src/pipeline/assemble-report.ts",
+          "line": 25
+        },
+        {
+          "path": "packages/core/src/pipeline/run.ts",
+          "line": 52,
+          "end_line": 58
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "run-review",
+      "from": "dev",
+      "to": "cli",
+      "label": "ocra review",
+      "variant": "emphasis"
+    },
+    {
+      "id": "start-pipeline",
+      "from": "cli",
+      "to": "plan",
+      "label": "reviewWithHooks",
+      "variant": "emphasis"
+    },
+    {
+      "id": "read-change",
+      "from": "plan",
+      "to": "vcs",
+      "label": "getDiff \u00b7 readFile"
+    },
+    {
+      "id": "plan-to-execute",
+      "from": "plan",
+      "to": "execute",
+      "label": "bundles"
+    },
+    {
+      "id": "run-task",
+      "from": "execute",
+      "to": "runtime",
+      "label": "runTask"
+    },
+    {
+      "id": "call-model",
+      "from": "runtime",
+      "to": "models",
+      "label": "HTTPS",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "execute-to-filter",
+      "from": "execute",
+      "to": "filter",
+      "label": "findings",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "filter-to-check",
+      "from": "filter",
+      "to": "check"
+    },
+    {
+      "id": "check-model",
+      "from": "check",
+      "to": "runtime",
+      "label": "complete()",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "via": [[765, 500], [1305, 500]]
+    },
+    {
+      "id": "check-to-report",
+      "from": "check",
+      "to": "report",
+      "label": "judged findings"
+    },
+    {
+      "id": "report-to-cli",
+      "from": "report",
+      "to": "cli",
+      "label": "ReviewReport",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "publish",
+      "from": "cli",
+      "to": "vcs",
+      "label": "publish",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "host-api",
+      "from": "vcs",
+      "to": "platforms",
+      "label": "REST / git"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Code around the model",
+      "items": [
+        "Select, bundle, matrix, anchor, filter and the verdict are code",
+        "Models only review, verify and judge",
+        "Findings anchor by quoted code, never by model line numbers"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Plugins",
+      "items": [
+        "Reviewers, runtimes and VCS adapters are plugins",
+        "Runtimes share core's ChainRunner: failback and circuit breakers"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Session and Cloud",
+      "items": [
+        "events.jsonl and report.json under .ocra/sessions",
+        "Signed in to ocra Cloud: the report is uploaded"
+      ]
+    }
+  ]
+}

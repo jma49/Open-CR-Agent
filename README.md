@@ -24,6 +24,12 @@ Most review bots are `diff → model → comment`. ocra puts code around the mod
 
 ## How it works
 
+<!-- Drawn with archify (github.com/tt-a1i/archify) from docs/images/architecture.archify.json; export both SVG themes from its viewer after a change. -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/architecture-dark.svg">
+  <img alt="ocra review architecture: the CLI runs core's pipeline (Plan, Execute, Filter, Verify + Judge, Report), which reads the change through a VcsAdapter, runs agent tasks through an AgentRuntime against model providers, and publishes the report back to the code host" src="docs/images/architecture-light.svg">
+</picture>
+
 ```
  Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Filter → Verify → Judge → Publish
  └─────────── deterministic ─────────────┘   └─ LLM ─┘  └ code ┘  └ code ┘  └ LLM ┘  └ LLM ┘  └ code ┘
