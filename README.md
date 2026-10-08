@@ -37,6 +37,12 @@ Most review bots are `diff → model → comment`. ocra puts code around the mod
 
 Five reviewers ship today, each a plugin with its own scope and model tier: `correctness`, `security`, `performance`, `docs` and `agents-md`. Reviewers run as isolated agent tasks, one per (bundle, reviewer) cell, and submit findings through a typed tool, never as free text. Models fail over along a chain with a circuit breaker per model; a failed task becomes a coverage gap in the report, not a failed run.
 
+<!-- Drawn with archify from docs/images/agents.archify.json, like the diagram above. -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/agents-dark.svg">
+  <img alt="ocra's agents: a light-model bundler groups the change, the review matrix starts one isolated read-only agent task per bundle and reviewer (correctness, security and performance on the standard tier, docs and agents-md on the light tier), their findings are anchored by code with a light relocator, a standard-tier verifier fact-checks them per file, a top-tier judge deduplicates and calibrates them, and code computes the verdict" src="docs/images/agents-light.svg">
+</picture>
+
 The full design: [architecture](docs/architecture.md) and the [decision records](docs/adr/).
 
 ## Quickstart

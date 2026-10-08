@@ -1,0 +1,370 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "ocra multi-agent review",
+    "locale": "en",
+    "output": "agents.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/jma49/Open-CR-Agent.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "ad9dfbae766ca039f7441649dc93a2b054fd1ab5"
+    },
+    "legend": {
+      "entries": {
+        "frontend": {
+          "label": "LLM agent or call"
+        },
+        "backend": {
+          "label": "Deterministic code"
+        },
+        "external": {
+          "label": "Input"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "change",
+      "type": "external",
+      "label": "Change set",
+      "sublabel": "selected files \u00b7 risk tier",
+      "pos": [40, 266],
+      "size": [170, 64],
+      "sources": [
+        {
+          "path": "packages/core/src/pipeline/plan.ts",
+          "line": 65,
+          "end_line": 75
+        }
+      ]
+    },
+    {
+      "id": "bundler",
+      "type": "frontend",
+      "label": "Bundler",
+      "sublabel": "light model \u00b7 large changes",
+      "pos": [280, 266],
+      "size": [180, 64],
+      "sources": [
+        {
+          "path": "packages/core/src/bundle/bundle.ts",
+          "line": 37
+        },
+        {
+          "path": "packages/core/src/bundle/runtime-grouper.ts",
+          "line": 11,
+          "end_line": 23
+        }
+      ]
+    },
+    {
+      "id": "matrix",
+      "type": "backend",
+      "label": "Review matrix",
+      "sublabel": "one runTask per cell",
+      "pos": [530, 243],
+      "size": [180, 110],
+      "sources": [
+        {
+          "path": "packages/core/src/pipeline/matrix.ts",
+          "line": 103
+        },
+        {
+          "path": "packages/core/src/pipeline/execute-stage.ts",
+          "line": 44,
+          "end_line": 63
+        }
+      ]
+    },
+    {
+      "id": "correctness",
+      "type": "frontend",
+      "label": "correctness",
+      "sublabel": "standard tier",
+      "pos": [800, 110],
+      "size": [190, 56],
+      "sources": [
+        {
+          "path": "packages/core/src/review/reviewers/correctness.ts",
+          "line": 47
+        }
+      ]
+    },
+    {
+      "id": "security",
+      "type": "frontend",
+      "label": "security",
+      "sublabel": "standard tier",
+      "pos": [800, 190],
+      "size": [190, 56],
+      "sources": [
+        {
+          "path": "packages/core/src/review/reviewers/security.ts",
+          "line": 50
+        }
+      ]
+    },
+    {
+      "id": "performance",
+      "type": "frontend",
+      "label": "performance",
+      "sublabel": "standard tier",
+      "pos": [800, 270],
+      "size": [190, 56],
+      "sources": [
+        {
+          "path": "packages/core/src/review/reviewers/performance.ts",
+          "line": 49
+        }
+      ]
+    },
+    {
+      "id": "docs",
+      "type": "frontend",
+      "label": "docs",
+      "sublabel": "light tier",
+      "pos": [800, 350],
+      "size": [190, 56],
+      "sources": [
+        {
+          "path": "packages/core/src/review/reviewers/docs.ts",
+          "line": 46
+        }
+      ]
+    },
+    {
+      "id": "agentsmd",
+      "type": "frontend",
+      "label": "agents-md",
+      "sublabel": "light tier \u00b7 AGENTS.md repos",
+      "pos": [800, 430],
+      "size": [190, 56],
+      "sources": [
+        {
+          "path": "packages/core/src/review/reviewers/agents-md.ts",
+          "line": 44
+        }
+      ]
+    },
+    {
+      "id": "anchor",
+      "type": "backend",
+      "label": "Anchor",
+      "sublabel": "report_finding \u2192 quote match",
+      "pos": [1120, 243],
+      "size": [190, 110],
+      "sources": [
+        {
+          "path": "packages/core/src/anchor/anchor.ts",
+          "line": 30
+        },
+        {
+          "path": "packages/core/src/anchor/relocate.ts",
+          "line": 19,
+          "end_line": 40
+        }
+      ],
+      "tag": "light relocator"
+    },
+    {
+      "id": "verifier",
+      "type": "frontend",
+      "label": "Verifier",
+      "sublabel": "standard \u00b7 per file, parallel",
+      "pos": [1120, 580],
+      "size": [190, 64],
+      "sources": [
+        {
+          "path": "packages/core/src/verify/verify.ts",
+          "line": 46
+        },
+        {
+          "path": "packages/core/src/verify/verify.ts",
+          "line": 66,
+          "end_line": 91
+        }
+      ]
+    },
+    {
+      "id": "judge",
+      "type": "frontend",
+      "label": "Judge",
+      "sublabel": "top tier \u00b7 dedupe \u00b7 severity",
+      "pos": [800, 580],
+      "size": [190, 64],
+      "sources": [
+        {
+          "path": "packages/core/src/judge/judge.ts",
+          "line": 49,
+          "end_line": 70
+        }
+      ]
+    },
+    {
+      "id": "verdict",
+      "type": "backend",
+      "label": "Verdict",
+      "sublabel": "rubric in code",
+      "pos": [530, 580],
+      "size": [180, 64],
+      "sources": [
+        {
+          "path": "packages/core/src/judge/verdict.ts",
+          "line": 14
+        },
+        {
+          "path": "packages/core/src/judge/judge.ts",
+          "line": 56
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "isolated agent tasks \u00b7 read-only tools",
+      "wraps": ["correctness", "security", "performance", "docs", "agentsmd"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "to-bundler",
+      "from": "change",
+      "to": "bundler",
+      "label": "files"
+    },
+    {
+      "id": "to-matrix",
+      "from": "bundler",
+      "to": "matrix",
+      "label": "bundles"
+    },
+    {
+      "id": "cell-correctness",
+      "from": "matrix",
+      "to": "correctness",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "cell-security",
+      "from": "matrix",
+      "to": "security",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "cell-performance",
+      "from": "matrix",
+      "to": "performance",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "cell-docs",
+      "from": "matrix",
+      "to": "docs",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "cell-agentsmd",
+      "from": "matrix",
+      "to": "agentsmd",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "found-correctness",
+      "from": "correctness",
+      "to": "anchor",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "found-security",
+      "from": "security",
+      "to": "anchor",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "found-performance",
+      "from": "performance",
+      "to": "anchor",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "found-docs",
+      "from": "docs",
+      "to": "anchor",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "found-agentsmd",
+      "from": "agentsmd",
+      "to": "anchor",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "to-verifier",
+      "from": "anchor",
+      "to": "verifier",
+      "label": "anchored findings",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "to-judge",
+      "from": "verifier",
+      "to": "judge",
+      "label": "kept"
+    },
+    {
+      "id": "to-verdict",
+      "from": "judge",
+      "to": "verdict",
+      "label": "judged"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Reviewer agents",
+      "items": [
+        "One task per bundle \u00d7 reviewer cell, run in parallel (4 at a time by default)",
+        "Tools: read_file, read_diff, code_search, report_finding, task_done",
+        "No shell, no web; findings only through report_finding",
+        "Large bundles, or every task under --ultra, get a plan-phase checklist first; --ultra also samples each cell twice"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Model tiers",
+      "items": [
+        "top: Judge",
+        "standard: correctness, security, performance, Verifier",
+        "light: Bundler, docs, agents-md, relocation",
+        "Each tier is a chain of models with failback and circuit breakers"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Code decides",
+      "items": [
+        "Which reviewer runs on which bundle",
+        "Where a finding lands (quoted code, never model line numbers)",
+        "The verdict, from the judged findings"
+      ]
+    }
+  ]
+}
