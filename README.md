@@ -1,5 +1,7 @@
 # Open-CR-Agent
 
+English · [简体中文](README.zh-CN.md)
+
 **ocra** is an open-source code review engine. Deterministic code decides what to review, how to split it, which rules apply and where a comment lands; isolated LLM agents make only the judgment calls, and everything they say is fact-checked, deduplicated and anchored before anyone reads it.
 
 It reviews local changes, GitHub pull requests and GitLab merge requests, runs inside your CI with your own model keys, and is built to be run on pull requests you do not trust.
@@ -24,10 +26,10 @@ Most review bots are `diff → model → comment`. ocra puts code around the mod
 
 ## How it works
 
-<!-- Drawn with archify (github.com/tt-a1i/archify) from docs/images/architecture.archify.json; export both SVG themes from its viewer after a change. -->
+<!-- Diagrams: scripts/lib/diagrams.mjs, both languages; regenerate with node scripts/diagrams.mjs. -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/architecture-dark.svg">
-  <img alt="ocra review architecture: the CLI runs core's pipeline (Plan, Execute, Filter, Verify + Judge, Report), which reads the change through a VcsAdapter, runs agent tasks through an AgentRuntime against model providers, and publishes the report back to the code host" src="docs/images/architecture-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/system-en-dark.svg">
+  <img alt="ocra system overview: a developer terminal, GitHub Actions, GitLab CI or ocra-eval starts the cli, which runs core (pipeline, ReviewContext, findings, spend limit); core reads and publishes through VcsAdapter packages (vcs-platform, vcs-github, vcs-gitlab, vcs-local) to the GitHub or GitLab API, and calls model providers through an AgentRuntime (runtime-direct or runtime-opencode, both with ChainRunner failback); signing in to ocra Cloud is optional" src="docs/images/system-en-light.svg">
 </picture>
 
 ```
@@ -37,10 +39,9 @@ Most review bots are `diff → model → comment`. ocra puts code around the mod
 
 Five reviewers ship today, each a plugin with its own scope and model tier: `correctness`, `security`, `performance`, `docs` and `agents-md`. Reviewers run as isolated agent tasks, one per (bundle, reviewer) cell, and submit findings through a typed tool, never as free text. Models fail over along a chain with a circuit breaker per model; a failed task becomes a coverage gap in the report, not a failed run.
 
-<!-- Drawn with archify from docs/images/agents.archify.json, like the diagram above. -->
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/agents-dark.svg">
-  <img alt="ocra's agents: a light-model bundler groups the change, the review matrix starts one isolated read-only agent task per bundle and reviewer (correctness, security and performance on the standard tier, docs and agents-md on the light tier), their findings are anchored by code with a light relocator, a standard-tier verifier fact-checks them per file, a top-tier judge deduplicates and calibrates them, and code computes the verdict" src="docs/images/agents-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/agents-en-dark.svg">
+  <img alt="ocra's agents: a light-model bundler groups the change, the review matrix starts one isolated read-only agent task per bundle and reviewer (correctness, security and performance on the standard tier, docs and agents-md on the light tier), their findings are anchored by code with a light relocator, a standard-tier verifier fact-checks them per file, a top-tier judge deduplicates and calibrates them, and code computes the verdict" src="docs/images/agents-en-light.svg">
 </picture>
 
 The full design: [architecture](docs/architecture.md) and the [decision records](docs/adr/).
