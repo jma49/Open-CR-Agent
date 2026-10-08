@@ -156,6 +156,31 @@ describe("DirectRuntime.runTask", () => {
     expect(toolMessages[2]?.content).toContain("src/a.ts:1");
   });
 
+  it("sends each tool call back as the endpoint wrote it, with Gemini's thought signature", async () => {
+    // Vertex AI refuses a call without its type, and Gemini 3 one without
+    // the signature it attached.
+    const signature = { google: { thought_signature: "sig-1" } };
+    const server = await endpoint([
+      {
+        toolCalls: [
+          { name: "read_file", args: { path: "src/a.ts" }, extra: { extra_content: signature } },
+        ],
+      },
+      { content: "Reviewed.", toolCalls: [{ name: "task_done", args: {} }] },
+    ]);
+    await collect(runtime(server.url).runTask(spec(context()), new AbortController().signal));
+
+    const replayed = server.seen[1]?.messages.find((m) => m.role === "assistant");
+    expect(replayed?.tool_calls).toEqual([
+      {
+        id: expect.any(String),
+        type: "function",
+        function: { name: "read_file", arguments: JSON.stringify({ path: "src/a.ts" }) },
+        extra_content: signature,
+      },
+    ]);
+  });
+
   it("tells the model about a wrong call instead of ending the attempt", async () => {
     const server = await endpoint([
       { toolCalls: [{ name: "report_finding", args: { file: "src/a.ts" } }] },

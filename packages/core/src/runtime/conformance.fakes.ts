@@ -41,7 +41,8 @@ export interface Reply {
   content?: string;
   // Tool names as the review tools define them; the endpoint uses the name
   // the request offered that ends with it, so a runtime's prefix is fine.
-  toolCalls?: { name: string; args: unknown }[];
+  // `extra` is added to the call as sent, as Gemini adds `extra_content`.
+  toolCalls?: { name: string; args: unknown; extra?: object }[];
   usage?: {
     prompt_tokens: number;
     completion_tokens: number;
@@ -160,6 +161,7 @@ function completionOf(request: SeenRequest, reply: Reply, callId: string): Compl
       name: offered.find((n) => n === call.name || n.endsWith(`_${call.name}`)) ?? call.name,
       arguments: JSON.stringify(call.args),
     },
+    ...call.extra,
   }));
   const usage = reply.usage ?? { prompt_tokens: 100, completion_tokens: 10 };
   return {

@@ -13,11 +13,17 @@ import { z } from "zod";
 
 // The subset of the OpenAI chat completions protocol the loop needs: one
 // choice, its text and tool calls, and the token counts. Anything else an
-// endpoint adds is dropped at this boundary.
-const toolCallSchema = z.object({
-  id: z.string(),
-  function: z.object({ name: z.string(), arguments: z.string() }),
-});
+// endpoint adds is dropped at this boundary, except a tool call's
+// `extra_content`: Gemini 3 puts its thought signature there and refuses the
+// next request unless the call comes back with it.
+const toolCallSchema = z
+  .object({
+    id: z.string(),
+    function: z.object({ name: z.string(), arguments: z.string() }),
+    extra_content: z.record(z.string(), z.unknown()).optional(),
+  })
+  // A call goes back with its type, which Vertex AI requires.
+  .transform((call) => ({ ...call, type: "function" as const }));
 const choiceSchema = z.object({
   message: z.object({
     content: z.string().nullable().optional(),
@@ -41,7 +47,7 @@ const errorBodySchema = z.object({
   error: z.object({ message: z.string(), code: z.number().optional() }),
 });
 
-export type ToolCall = z.infer<typeof toolCallSchema>;
+export type ToolCall = z.output<typeof toolCallSchema>;
 
 export type ChatMessage =
   | { role: "system" | "user"; content: string }
