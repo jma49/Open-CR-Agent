@@ -1,4 +1,4 @@
-import { appendFileSync, mkdtempSync, rmSync } from "node:fs";
+import { appendFileSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -54,13 +54,6 @@ describe("readResumedRun", () => {
     expect(run.tasks[0]?.findings.map((f) => f.reported.file)).toEqual(["src/a.ts"]);
   });
 
-  it("still reads the tasks of a run killed before its report", async () => {
-    const root = await loggedRun("r2", false);
-    const run = await readResumedRun(root, "r2");
-    expect(run.bundles).toEqual([]);
-    expect(run.tasks).toHaveLength(1);
-  });
-
   it("skips lines that are not valid task events", async () => {
     const root = await loggedRun("r3");
     const log = join(root, "r3", EVENTS_FILE);
@@ -77,6 +70,35 @@ describe("readResumedRun", () => {
     );
     const run = await readResumedRun(root, "r3");
     expect(run.tasks.map((t) => t.outcome.taskId)).toEqual(["correctness-1"]);
+  });
+
+  it("reads the tasks and bundles of a run killed before its report", async () => {
+    const root = await loggedRun("r5", false);
+    const run = await readResumedRun(root, "r5");
+    expect(run.bundles.map((b) => b.files)).toEqual([["src/a.ts"], ["src/b.ts"]]);
+    expect(run.tasks).toHaveLength(1);
+  });
+
+  it("bounds what a hand-written session brings in, as a live task's findings are", async () => {
+    const root = await loggedRun("r6");
+    const log = join(root, "r6", EVENTS_FILE);
+    const big = finding("src/a.ts", "const a = 1;", { title: "x".repeat(5000) });
+    const forged = {
+      type: "task_reported",
+      taskId: "correctness-1",
+      key: "k",
+      findings: Array.from({ length: 80 }, () => ({ reported: big })),
+    };
+    appendFileSync(log, `${JSON.stringify(forged)}\n`);
+    const [task] = (await readResumedRun(root, "r6")).tasks;
+    expect(task?.findings).toHaveLength(50);
+    expect(task?.findings[0]?.reported.title.length).toBeLessThan(5000);
+  });
+
+  it("refuses a session that is a symbolic link", async () => {
+    const root = await loggedRun("r7");
+    symlinkSync(join(root, "r7"), join(root, "linked"));
+    await expect(readResumedRun(root, "linked")).rejects.toMatchObject({ code: "ACCESS_DENIED" });
   });
 
   it("refuses a run id that is a path, and a run without a session", async () => {

@@ -1302,6 +1302,10 @@ export type ReviewEvent = {
     type: "files_bundled";
     strategy: string;
     bundles: number;
+    groups: {
+        label: string;
+        files: string[];
+    }[];
     warnings: string[];
 } | {
     type: "matrix_planned";

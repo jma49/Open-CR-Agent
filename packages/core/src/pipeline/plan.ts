@@ -113,6 +113,7 @@ export async function planReview(
     type: "files_bundled",
     strategy: bundled.strategy,
     bundles: bundled.bundles.length,
+    groups: bundled.bundles.map((b) => ({ label: b.label, files: b.files.map((f) => f.newPath) })),
     warnings: bundled.warnings,
   });
 

@@ -88,6 +88,31 @@ describe("resuming an earlier run", () => {
     expect(second.warnings.filter((w) => w.includes("resumed"))).toEqual([]);
   });
 
+  it("reviews again a task cut off before it finished", async () => {
+    const events: ReviewEvent[] = [];
+    await reviewWithHooks({
+      vcs: vcs({}, twoFiles),
+      runtime: runtime(async function* (spec) {
+        if (spec.taskId === "correctness-2") {
+          yield { type: "error", taskId: spec.taskId, error: "quota exceeded", retryable: true };
+          return;
+        }
+        yield { type: "done", taskId: spec.taskId, ended: "step_cap" };
+      }),
+      onEvent: (e) => events.push(e),
+      ...perFile,
+    });
+    const rt = reviewing();
+    const second = await reviewWithHooks({
+      vcs: vcs({}, twoFiles),
+      runtime: rt,
+      resume: resumedFrom("first", events),
+      ...perFile,
+    });
+    expect(rt.specs.map((s) => s.taskId)).toEqual(["correctness-1", "correctness-2"]);
+    expect(second.coverage.map((c) => c.status)).toEqual(["reviewed", "reviewed"]);
+  });
+
   it("names the run that paid for a task reused twice", async () => {
     const first = await firstRun();
     const events: ReviewEvent[] = [];

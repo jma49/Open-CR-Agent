@@ -96,7 +96,7 @@ ocra review [options]
 | `--reviewers <ids>` | 只运行这些审查员，用逗号分隔（例如 `security`） |
 | `--temperature <n>` | 采样温度，0 到 2；覆盖 `sampling.temperature`（[配置](./configuration#执行参数)） |
 | `--seed <n>` | 采样种子，运行时和供应商支持时才生效（`opencode` 不支持）；覆盖 `sampling.seed` |
-| `--resume <run-id>` | 重试同一审查的一次早先运行，已经完成的部分不再付费：输入没变（同样的提交、配置、提示词、ocra 版本和采样）的已完成任务直接复用，只运行剩下的。读取[会话](#会话) `.ocra/sessions/<run-id>`；不能复用的任务照常运行，并有一条警告说明数量。复用的任务在 [JSON 输出](#json-输出)里带 `reusedFrom`；本次运行的 `usage` 只算本次实际花费。不能和 `--plan` 一起用 |
+| `--resume <run-id>` | 重试同一审查的一次早先运行，已经完成的部分不再付费：输入没变（同样的提交、配置、提示词、ocra 版本和采样）的已完成任务直接复用，只运行剩下的；失败的任务和中途被截断（部分审查）的任务会重新运行。读取[会话](#会话) `.ocra/sessions/<run-id>`；不能复用的任务照常运行，并有一条警告说明数量。复用的任务在 [JSON 输出](#json-输出)里带 `reusedFrom`；本次运行的 `usage` 只算本次实际花费。不能和 `--plan` 一起用 |
 | `--config <文件>` | 用这个配置文件代替 `.ocra/config.json`（与 `--pr` 或 `--mr` 一起用时代替 base 分支的那份）；和 `--no-repo-config` 一起用也生效。见[配置](./configuration) |
 | `--no-repo-config` | 用于不信任的代码：忽略 `.ocra/config.json` 及其插件（与 `--pr` 一起用时，base 分支的也忽略）；模型从 `OCRA_MODEL_*` 或 `--config` 读取；memory、rules 和 `AGENTS.md` 从 `--from` 所在的提交读取，否则不使用 |
 | `-h, --help` | 显示帮助 |

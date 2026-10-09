@@ -126,7 +126,15 @@ export interface ReviewReport {
 export type ReviewEvent =
   | { type: "run_started"; runId: string; changeRequest: ChangeRequest }
   | { type: "files_selected"; selected: number; excluded: number; tier: RiskTier }
-  | { type: "files_bundled"; strategy: string; bundles: number; warnings: string[] }
+  // groups: each bundle's files, so a run resumed after this one was killed
+  // keeps its bundles (ADR-0031).
+  | {
+      type: "files_bundled";
+      strategy: string;
+      bundles: number;
+      groups: { label: string; files: string[] }[];
+      warnings: string[];
+    }
   | { type: "matrix_planned"; tasks: number; skipped: SkippedCell[] }
   | { type: "task_started"; taskId: string; reviewer: string; bundle: string; files: string[] }
   // attempt: what a finished attempt read, searched for and answered.

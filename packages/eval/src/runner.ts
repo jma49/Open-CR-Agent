@@ -88,12 +88,13 @@ export async function runInstances(
       join(options.runDir, "reports", `${instance.id}.json`),
       previous,
     );
-    // A resumed review's usage includes the attempt it resumed, which this
+    // A review that reused tasks counts the attempt it resumed in its usage,
+    // which this invocation did not pay.
     // invocation did not pay.
-    const paid = result.usage.costUsd - (resumed ? (previous?.usage.costUsd ?? 0) : 0);
+    const paid = result.usage.costUsd - (resumed?.reused ? (previous?.usage.costUsd ?? 0) : 0);
     spent += paid;
     options.log(
-      `${label}: ${result.status} in ${(result.durationMs / 1000).toFixed(0)}s, ${result.findings.length} finding(s), $${paid.toFixed(4)}${resumed ? ` (resumed ${resumed}; this PR $${result.usage.costUsd.toFixed(4)})` : ""} (total $${spent.toFixed(4)})${result.error ? ` — ${result.error.split("\n").at(-1)}` : ""}`,
+      `${label}: ${result.status} in ${(result.durationMs / 1000).toFixed(0)}s, ${result.findings.length} finding(s), $${paid.toFixed(4)}${resumed ? ` (resumed ${resumed.runId}, ${resumed.reused} task(s) reused; this PR $${result.usage.costUsd.toFixed(4)})` : ""} (total $${spent.toFixed(4)})${result.error ? ` — ${result.error.split("\n").at(-1)}` : ""}`,
     );
     await writeFile(path, `${JSON.stringify(result, null, 2)}\n`);
     results.push(result);
@@ -109,8 +110,9 @@ export async function runInstances(
 
 interface Reviewed {
   result: InstanceResult;
-  // The run id of the earlier attempt this review resumed.
-  resumed?: string;
+  // The earlier attempt this review resumed, and how many of its tasks it
+  // could reuse: none when their inputs changed (a new ocra build, say).
+  resumed?: { runId: string; reused: number };
 }
 
 async function reviewOne(
@@ -143,7 +145,9 @@ async function reviewOne(
   const resumed = await resumableRun(repoDir, previous);
   // A log left by an earlier attempt at this PR is not this review's, unless
   // this review continues it: then the new log is appended, so the funnel
-  // still sees what the reused tasks read.
+  // still sees what the reused tasks read. It then holds both attempts'
+  // events: the funnel's stages tolerate that (a finding reported twice is
+  // still one), but what attempt 1's other tasks raised also counts.
   if (!resumed) await rm(logPath, { force: true });
   const outcome = await reviewInstance(repoDir, target, reportPath, {
     command: options.command,
@@ -151,6 +155,7 @@ async function reviewOne(
     reviewArgs: [...(options.reviewArgs ?? []), ...(resumed ? ["--resume", resumed] : [])],
   });
   const report = outcome.report;
+  const reused = report?.tasks.filter((t) => t.reusedFrom !== undefined).length ?? 0;
   if (report?.runId) {
     await keepSessionLog(repoDir, report.runId, logPath, resumed !== undefined).catch(
       (error: unknown) => {
@@ -169,7 +174,7 @@ async function reviewOne(
     durationMs: outcome.durationMs,
     findings: report?.findings ?? [],
     usage:
-      resumed && previous
+      reused > 0 && previous
         ? addUsage(previous.usage, report?.usage ?? NO_USAGE)
         : (report?.usage ?? NO_USAGE),
     tasks: (report?.tasks ?? []).map((t) => {
@@ -184,7 +189,7 @@ async function reviewOne(
   if (report?.provenance) result.provenance = report.provenance;
   if (outcome.error) result.error = outcome.error;
   if (report?.runId) result.runId = report.runId;
-  return resumed ? { result, resumed } : { result };
+  return resumed ? { result, resumed: { runId: resumed, reused } } : { result };
 }
 
 async function resumableRun(

@@ -49,7 +49,7 @@ if (args[args.indexOf("--from") + 1] === "resumable") {
   writeFileSync(".ocra/sessions/" + runId + "/events.jsonl", '{"type":"run_started","runId":"' + runId + '"}\\n');
   const tasks = resume < 0
     ? [task("performance-1", "completed"), task("correctness-1", "failed", "out of quota for this run")]
-    : [task("performance-1", "completed"), task("correctness-1", "completed")];
+    : [{ ...task("performance-1", "completed"), reusedFrom: "run-1" }, task("correctness-1", "completed")];
   writeFileSync(out, JSON.stringify(report({ runId, tasks,
     usage: { ...zero, costUsd: resume < 0 ? 0.3 : 0.2 } })));
   process.exit(resume < 0 ? 3 : 0);
@@ -267,7 +267,9 @@ describe("runInstances", () => {
     expect(retried).toMatchObject({ status: "reviewed", runId: "run-2" });
     // What the PR cost in all: the attempt resumed and the one that resumed it.
     expect(retried?.usage.costUsd).toBeCloseTo(0.5);
-    expect(logs.join("\n")).toContain("$0.2000 (resumed run-1; this PR $0.5000) (total $0.2000)");
+    expect(logs.join("\n")).toContain(
+      "$0.2000 (resumed run-1, 1 task(s) reused; this PR $0.5000) (total $0.2000)",
+    );
     // The funnel reads both attempts' session logs.
     const events = readFileSync(join(dir, "run", "events", "a.jsonl"), "utf8");
     expect(events).toContain('"runId":"run-1"');
