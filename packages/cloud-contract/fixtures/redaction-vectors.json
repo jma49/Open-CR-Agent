@@ -65,7 +65,11 @@
     {
       "line": "client.auth(\"key_v1_0123456789abcdef0123456789abcdef0123456789abcdef\")",
       "secret": "0123456789abcdef0123456789abcdef"
-    }
+    },
+    { "line": "SECRET_KEY=django-insecure-x1y2z3", "secret": "x1y2z3" },
+    { "line": "secret_key_base: 9f8e7d-Base", "secret": "9f8e7d-Base" },
+    { "line": "passphrase: s3cr3t-Pass", "secret": "s3cr3t-Pass" },
+    { "line": "DB_PASSWORD=s3cret1; export DB_PASSWORD", "secret": "s3cret1" }
   ],
   "keep": [
     "const total = items.reduce((n, i) => n + i.price, 0);",
@@ -89,6 +93,14 @@
     "password: ${{ secrets.DB_PASSWORD }}",
     "PASSWORD=$DB_PASSWORD",
     "Bearer authentication sends the token in a header.",
-    "git branch -u origin/main"
+    "git branch -u origin/main",
+    "Add basic error-handling around the fetch call.",
+    "This is basic TypeScript; the cast is unnecessary.",
+    "Use Basic Authentication here instead of a query parameter.",
+    "Bearer TokenValidation is skipped",
+    "docker run --rm --user \"$(id -u):$(id -g)\" --volume \"$PWD:/repo\" ocra:ci review --plan",
+    "--volume $PWD:/repo",
+    "docker run -u 1000:1000 image",
+    "curl -u user:$PASS https://example.com"
   ]
 }

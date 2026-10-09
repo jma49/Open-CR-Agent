@@ -30,15 +30,19 @@ const PATTERNS: readonly RegExp[] = [
 const USERINFO = /(?<=[a-z0-9+.-])(:\/\/[^\s:/@]*:)([^\s/@]+)@/gi;
 
 // Basic auth on a command line: curl -u user:password, --user user:password.
+// Not a reference ($PASS), and not a uid:gid (docker run -u 1000:1000).
 const USER_FLAG =
-  /(?<![^\s"'`])((?:-u|--user)(?:[ \t]+|=)?["']?[^\s:"'`]{0,64}:)([^\s"'`]{1,256})/g;
+  /(?<![^\s"'`])((?:-u|--user)(?:[ \t]+|=)?["']?)([^\s:"'`()]{0,64}):([^\s"'`$][^\s"'`]{0,255})/g;
+const isUidGid = (user: string, value: string) => /^\d+$/.test(user) && /^\d+$/.test(value);
 
-// An HTTP credential however short: Bearer …, Basic …. A lowercase word
-// after the scheme is prose ("Bearer authentication") and stays.
-const AUTH_SCHEME = /\b(Bearer|Basic)([ \t]+)([A-Za-z0-9._~+/-]{8,}=*)/gi;
+// An HTTP credential however short: Bearer …, Basic …, capitalised as in a
+// header. A word after the scheme is prose ("Basic error-handling",
+// "Bearer TokenValidation") and stays.
+const AUTH_SCHEME = /\b(Bearer|Basic)([ \t]+)([A-Za-z0-9._~+/-]{8,}=*)/g;
+const isWord = (s: string) => /^[A-Z]?[a-z]+(?:[-A-Z][a-z]+)*$/.test(s);
 
 const SECRET_NAME =
-  "(?:passw(?:or)?d|pwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|credentials?)";
+  "(?:passw(?:or)?d|passphrase|pwd|secret[_-]?key(?:[_-]?base)?|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|credentials?)";
 
 // A quoted value assigned to a name that says it is secret:
 // password = "…", "apiKey": "…", DB_PASSWORD: '…'; also one whose closing
@@ -54,9 +58,10 @@ const BARE_VALUE = "[^\\s\"'`$%&*!|<>=#~:{[(@\\\\-][^\\s\"'`]{0,255}";
 // a query string. The value ends at the next space or quote.
 const BARE_ENV = new RegExp(`(${SECRET_NAME}=)(?=(${BARE_VALUE}))\\2(?![^\\s"'\`])`, "gi");
 // NAME: value or NAME = value ending its line (YAML, .env, .ini,
-// .properties), or before a comment or a closing quote.
+// .properties), or before a comment or a closing quote. The spaces after
+// it are bounded: several overlapping values may reach the same run.
 const BARE_LINE = new RegExp(
-  `(${SECRET_NAME}["']?[ \\t]*[:=][ \\t]*)(?=(${BARE_VALUE}))\\2(?=["'\`]|[ \\t]*(?:[\\r\\n]|$)|[ \\t]+#)`,
+  `(${SECRET_NAME}["']?[ \\t]*[:=][ \\t]*)(?=(${BARE_VALUE}))\\2(?=["'\`]|[ \\t]{0,64}(?:[\\r\\n]|$)|[ \\t]{1,64}#)`,
   "gi",
 );
 // An unquoted value that reads as code: a call, an index or a generic; the
@@ -66,6 +71,11 @@ const BARE_LINE = new RegExp(
 const CODE_VALUE =
   /[([<]|[;,):}\]]$|^[A-Za-z_]+[?!]?$|^[A-Za-z_$][\w$]*(?:\??\.[A-Za-z_$][\w$]*)+$/;
 const isBareSecret = (value: string) => value.length >= 4 && !CODE_VALUE.test(value);
+// A name after `$` is a reference ($PWD, $DB_PASSWORD), not an assignment.
+// Checked on a match, not in the pattern, which would look back from every
+// position of the text.
+const isReference = (text: string, at: number) =>
+  /\$\w{0,64}$/.test(text.slice(Math.max(0, at - 65), at));
 
 // A long hex run with letters and digits: a key or token in hex. Bounded by
 // anything but a letter or digit, so a run after `_` (dop_v1_…), which `\b`
@@ -94,19 +104,27 @@ export function redact(text: string): { text: string; redacted: boolean } {
   let out = text;
   for (const p of PATTERNS) out = out.replace(p, REDACTED);
   out = out.replace(USERINFO, (_m, head: string) => `${head}${REDACTED}@`);
-  out = out.replace(USER_FLAG, (_m, head: string) => `${head}${REDACTED}`);
+  out = out.replace(USER_FLAG, (m, flag: string, user: string, value: string) =>
+    isUidGid(user, value) ? m : `${flag}${user}:${REDACTED}`,
+  );
   out = out.replace(AUTH_SCHEME, (m, scheme: string, space: string, value: string) =>
-    /^[a-z]+$/.test(value) ? m : `${scheme}${space}${REDACTED}`,
+    isWord(value) ? m : `${scheme}${space}${REDACTED}`,
   );
   out = out.replace(
     QUOTED,
     (_m, head: string, open: string, _value: string, close: string) =>
       `${head}${open}${REDACTED}${close}`,
   );
-  for (const bare of [BARE_ENV, BARE_LINE])
-    out = out.replace(bare, (m, head: string, value: string) =>
-      isBareSecret(value) ? `${head}${REDACTED}` : m,
-    );
+  // NAME=value is shell or .env, where a `;` or `,` after the value ends a
+  // command rather than marking code.
+  out = out.replace(BARE_ENV, (m, head: string, value: string, at: number, all: string) => {
+    const end = /[;,]$/.test(value) ? value.slice(-1) : "";
+    const secret = isBareSecret(value.slice(0, value.length - end.length));
+    return secret && !isReference(all, at) ? `${head}${REDACTED}${end}` : m;
+  });
+  out = out.replace(BARE_LINE, (m, head: string, value: string, at: number, all: string) =>
+    isBareSecret(value) && !isReference(all, at) ? `${head}${REDACTED}` : m,
+  );
   out = out.replace(HEX, (m) => (isHexKey(m) ? REDACTED : m));
   out = out.replace(LONG_RUN, (m) => (looksRandom(m) ? REDACTED : m));
   return { text: out, redacted: out !== text };

@@ -98,6 +98,9 @@ describe("what redact costs", () => {
     "token = 'a",
     "password=_",
     "pwd:a",
+    "credentials:",
+    "Basic aB",
+    " -u 1:1",
     "<pwd://",
     "Bearer a-",
     "sk-a-",
@@ -108,13 +111,18 @@ describe("what redact costs", () => {
   it("is linear in its input: 100k characters of any crafted run take under 200 ms", {
     timeout: 300_000,
   }, () => {
-    for (const unit of UNITS) {
-      const text = unit.repeat(Math.ceil(SIZE / unit.length)).slice(0, SIZE);
+    const run = (unit: string, size = SIZE) =>
+      unit.repeat(Math.ceil(size / unit.length)).slice(0, size);
+    // Values that overlap, all reaching one long run of spaces.
+    const crafted = [
+      ...UNITS.map((unit) => run(unit)),
+      `${run("pwd:a", SIZE / 2)}${run(" ", SIZE / 2)}x`,
+    ];
+    for (const text of crafted)
       expect(
         fastest(200, () => redact(text)),
-        unit,
+        text.slice(0, 40),
       ).toBeLessThan(200);
-    }
   });
 });
 
