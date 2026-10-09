@@ -59,6 +59,32 @@ describe("incremental re-review of a pull request", () => {
     expect(forced.scope).toEqual({ mode: "full", reason: "a full review was requested" });
   });
 
+  it("plans what the next review would cover, and says so", async () => {
+    const f = movingPullRequest();
+    await review(f, reviewer());
+    f.push({ "b.ts": "export const b = 1;\nexport const c = 2;\n" });
+    const plan = async (...extra: string[]) => {
+      const out = { text: "", write: (c: string) => (out.text += c) };
+      const deps: ReviewDeps = {
+        cwd: f.clone,
+        env: { GITHUB_TOKEN: "t" },
+        builtinPlugins: BUILTIN_PLUGINS,
+        runtimes: {},
+        now: Date.now,
+        heartbeatMs: 60_000,
+        fetch: f.fetchImpl,
+      };
+      await run(["review", "--pr", "7", "--repo", "o/r", "--plan", ...extra], out, out, deps);
+      return out.text;
+    };
+    const json = JSON.parse(await plan("--format", "json"));
+    expect(json.scope).toMatchObject({ mode: "incremental" });
+    expect(json.tasks.map((t: { files: string[] }) => t.files)).toEqual([["b.ts"]]);
+    expect(await plan()).toMatch(/^Reviews only what changed since [0-9a-f]{7}\.$/m);
+    const full = JSON.parse(await plan("--full", "--format", "json"));
+    expect(full.scope).toEqual({ mode: "full", reason: "a full review was requested" });
+  });
+
   it("credits a fix to the reviewer of the finding the earlier review published", async () => {
     const f = movingPullRequest();
     const first = await review(f, reviewer());

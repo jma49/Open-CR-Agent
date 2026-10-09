@@ -72,4 +72,40 @@ describe("previewReview", () => {
     expect(preview.tasks.map((t) => t.taskId)).toEqual(["correctness-1", "correctness-1b"]);
     expect(preview.groupingSkipped).toBe(false);
   });
+
+  // The run reviews only what changed since its prior review; the plan of
+  // the same change request says and does the same.
+  it("plans only what changed since the prior review, as the run does", async () => {
+    const withPrior = (prior: Awaited<ReturnType<VcsAdapter["getPriorReview"]>>): VcsAdapter => ({
+      ...vcs(["src/a.ts", "src/b.ts"]),
+      getPriorReview: async () => prior,
+    });
+    const incremental = await previewReview({
+      vcs: withPrior({ findings: [], changedSince: { head: "h0", files: ["src/b.ts"] } }),
+    });
+    expect(incremental.scope).toEqual({ mode: "incremental", since: "h0" });
+    expect(incremental.selected).toEqual(["src/a.ts", "src/b.ts"]);
+    expect(incremental.tasks.map((t) => t.files)).toEqual([["src/b.ts"]]);
+
+    const full = await previewReview({
+      vcs: withPrior({ findings: [], changedSince: { head: "h0", files: ["src/b.ts"] } }),
+      mode: { full: true },
+    });
+    expect(full.scope).toEqual({ mode: "full", reason: "a full review was requested" });
+    expect(full.tasks.flatMap((t) => t.files)).toEqual(["src/a.ts", "src/b.ts"]);
+  });
+
+  it("warns and plans everything when the prior review cannot be read", async () => {
+    const preview = await previewReview({
+      vcs: {
+        ...vcs(["src/a.ts"]),
+        getPriorReview: async () => {
+          throw new Error("rate limited");
+        },
+      },
+    });
+    expect(preview.scope).toBeUndefined();
+    expect(preview.warnings).toContain("could not load the previous review: rate limited");
+    expect(preview.tasks.flatMap((t) => t.files)).toEqual(["src/a.ts"]);
+  });
 });

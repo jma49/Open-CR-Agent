@@ -1,7 +1,7 @@
 import { effortWarnings, resolveAgents } from "../agent/settings.js";
 import { addUsage, emptyUsage, unpricedCalls } from "../agent/usage.js";
 import type { Usage } from "../contracts.js";
-import type { Finding, PriorReview, Severity } from "../domain.js";
+import type { Finding, Severity } from "../domain.js";
 import { type ReviewReport, summarizeAnchoring } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { CheckStage } from "./check-stage.js";
@@ -12,8 +12,6 @@ import { runProvenance } from "./provenance.js";
 export interface RunFacts {
   runId: string;
   reviewers: readonly ReviewerDefinition[];
-  prior: { review?: PriorReview; warning?: string };
-  scopeNote?: NonNullable<ReviewReport["scope"]> | undefined;
 }
 
 export interface Stages {
@@ -43,17 +41,12 @@ export function assembleReport(run: RunFacts, stages: Stages, context: StageCont
       plan.repoRules,
     );
   }
-  if (run.prior.review) {
+  if (plan.prior.review) {
     const { fixed, notReproduced, notRechecked, unchanged, dismissed } = filtered.reconciled;
     report.rereview = { fixed, notReproduced, notRechecked, unchanged, dismissed };
   }
-  if (plan.widened) {
-    report.scope = {
-      mode: "full",
-      reason: `the risk tier rose from ${plan.widened.from} to ${plan.widened.to}, which adds reviewers`,
-    };
-  } else if (run.scopeNote) report.scope = run.scopeNote;
-  if (run.prior.warning) report.warnings.push(run.prior.warning);
+  if (plan.scope) report.scope = plan.scope;
+  if (plan.prior.warning) report.warnings.push(plan.prior.warning);
   return report;
 }
 

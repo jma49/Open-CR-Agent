@@ -1,20 +1,24 @@
-import { type AgentCallSettings, type AgentSettings, reviewerCall } from "../agent/settings.js";
+import {
+  type AgentCallSettings,
+  type AgentSettings,
+  chainOf,
+  reviewerCall,
+} from "../agent/settings.js";
 import { addUsage, emptyUsage } from "../agent/usage.js";
 import { type AnchorContext, anchorFinding } from "../anchor/anchor.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
 import type { Finding, TaskFinding } from "../domain.js";
 import type { MatrixCell } from "../matrix/matrix.js";
-import { memoryFor } from "../memory/memory.js";
 import type { ReviewEvent, TaskOutcome } from "../report/report.js";
 import { findCallers } from "../review/impact.js";
 import { planBundle } from "../review/plan-phase.js";
-import { buildReviewPrompt, type ReviewPrompt, type ReviewPromptInput } from "../review/prompt.js";
-import { resolveRules } from "../rules/resolve.js";
+import { buildReviewPrompt, type ReviewPrompt } from "../review/prompt.js";
 import { toFinding } from "./findings.js";
 import type { ReviewPlan } from "./plan.js";
 import { stableHash } from "./provenance.js";
 import type { ReusePool } from "./resume.js";
 import { executeTask } from "./task.js";
+import { type TaskPrompt, taskPrompt } from "./task-prompt.js";
 
 export interface JobResult {
   outcome: TaskOutcome;
@@ -46,21 +50,11 @@ export interface ExecuteOptions {
 
 type PlannedBundle = Awaited<ReturnType<typeof planBundle>>;
 
-// In default mode only bundles large enough that a reviewer's 30 steps may
-// not cover them get a plan phase; --ultra plans every task.
-const PLAN_MIN_FILES = 5;
-const PLAN_MIN_PATCH_CHARS = 40_000;
-
-export function isLargeBundle(files: readonly { patch: string }[]): boolean {
-  const chars = files.reduce((sum, f) => sum + f.patch.length, 0);
-  return files.length >= PLAN_MIN_FILES || chars >= PLAN_MIN_PATCH_CHARS;
-}
-
 // The key of a cell's inputs (taskKey), under which its answer is reported
 // and an earlier run's answer is reused.
 export function jobKey(job: MatrixCell, plan: ReviewPlan, options: ExecuteOptions): string {
   const call = reviewerCall(job.reviewer, options.agents ?? {});
-  return taskKey(job, plan, buildReviewPrompt(promptInput(job, plan)), call, options);
+  return taskKey(job, plan, taskPrompt(job, plan, options.ultra === true).prompt, call, options);
 }
 
 // Runs one (bundle, reviewer) cell and anchors what it reports.
@@ -73,8 +67,8 @@ export async function runJob(
   const { emit } = options;
   const files = job.bundle.files.map((f) => f.newPath);
   const call = reviewerCall(job.reviewer, options.agents ?? {});
-  const input = promptInput(job, plan);
-  const prepared = await preparePrompt(job, plan, options, call, input);
+  const task = taskPrompt(job, plan, options.ultra === true);
+  const prepared = await preparePrompt(job, plan, options, call, task);
   emit({
     type: "task_started",
     taskId: job.taskId,
@@ -132,20 +126,6 @@ export async function runJob(
   return { outcome, findings: anchored.findings, usage, warnings };
 }
 
-// The task's review prompt before a plan phase or callers are added.
-function promptInput(job: MatrixCell, plan: ReviewPlan): ReviewPromptInput {
-  const files = job.bundle.files.map((f) => f.newPath);
-  return {
-    reviewer: job.reviewer,
-    changeRequest: plan.changeRequest,
-    changedFiles: plan.selected,
-    bundle: job.bundle.files,
-    rules: resolveRules(files, plan.repoRules, job.reviewer.rules),
-    guidelines: plan.guidelines,
-    accepted: memoryFor(files, plan.memory),
-  };
-}
-
 // Everything a task's answer depends on, so an earlier answer is reused only
 // for the same question: the prompt (instructions, change, bundle, rules,
 // guidelines, memory), the commits (the code around the change, which the
@@ -164,7 +144,7 @@ function taskKey(
     prompt: { system: prompt.system, user: prompt.user },
     commits: { base: baseSha, head: headSha },
     tier: job.reviewer.modelTier,
-    chain: call.models ?? options.agents?.models?.[job.reviewer.modelTier],
+    chain: chainOf(call, job.reviewer.modelTier, options.agents ?? {}),
     effort: call.effort,
     ultra: options.ultra === true,
     inputs: options.keyInputs,
@@ -225,26 +205,17 @@ async function preparePrompt(
   plan: ReviewPlan,
   options: ExecuteOptions,
   call: AgentCallSettings,
-  input: ReviewPromptInput,
+  task: TaskPrompt,
 ): Promise<PreparedPrompt> {
-  if (!options.ultra && !isLargeBundle(job.bundle.files)) {
-    return { prompt: buildReviewPrompt(input), usage: [], warnings: [] };
-  }
+  const { planCall } = task;
+  if (!planCall) return { prompt: task.prompt, usage: [], warnings: [] };
   const callers = options.ultra ? await findCallers(job.bundle.files, plan.context) : [];
-  const key = `${job.reviewer.id}\0${job.bundle.label}`;
-  const shared = options.plans?.get(key);
+  const shared = options.plans?.get(planCall.key);
   const planning =
-    shared ??
-    planBundle(
-      options.runtime,
-      job.reviewer,
-      buildReviewPrompt({ ...input, forPlanning: true }),
-      options.signal,
-      call,
-    );
-  if (!shared) options.plans?.set(key, planning);
+    shared ?? planBundle(options.runtime, job.reviewer, planCall.prompt, options.signal, call);
+  if (!shared) options.plans?.set(planCall.key, planning);
   const planned = await planning;
-  const prompt = buildReviewPrompt({ ...input, callers, plan: planned.plan });
+  const prompt = buildReviewPrompt({ ...task.input, callers, plan: planned.plan });
   // The sample that made the call pays for it and reports its warning.
   if (shared) return { prompt, usage: [], warnings: [] };
   for (const usage of planned.usage) options.onUsage?.(usage);

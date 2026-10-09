@@ -155,7 +155,7 @@ const anchoringSummarySchema = z.strictObject({
   relocationCalls: z.int().nonnegative(),
 });
 
-const scopeSchema = z.discriminatedUnion("mode", [
+export const scopeSchema = z.discriminatedUnion("mode", [
   z.strictObject({ mode: z.literal("incremental"), since: z.string() }),
   z.strictObject({ mode: z.literal("full"), reason: z.string() }),
 ]);

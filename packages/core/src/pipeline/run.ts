@@ -1,9 +1,7 @@
 import { spendLimit } from "../agent/spend-limit.js";
-import type { PriorReview } from "../domain.js";
-import { errorMessage, OcraError } from "../errors.js";
+import { OcraError } from "../errors.js";
 import type { ReviewReport } from "../report/report.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
-import type { VcsAdapter } from "../vcs.js";
 import { assembleReport } from "./assemble-report.js";
 import { checkStage } from "./check-stage.js";
 import { executeStage, type StageContext } from "./execute-stage.js";
@@ -29,20 +27,7 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
   if (reviewers.length === 0) throw new OcraError("CONFIG_INVALID", "No reviewer is registered");
   const runId = options.identity?.runId ?? newRunId();
 
-  const prior = await loadPriorReview(options.vcs);
-  const scope = reviewScope(prior.review, settings.full);
-  const plan = await planReview(
-    scope.only
-      ? {
-          ...options,
-          runId,
-          reviewOnly: scope.only,
-          ...(prior.review?.tier ? { priorTier: prior.review.tier } : {}),
-        }
-      : { ...options, runId },
-    emit,
-    signal,
-  );
+  const plan = await planReview({ ...options, runId, full: settings.full }, emit, signal);
   const context: StageContext = {
     options,
     settings,
@@ -52,43 +37,9 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
     emit,
   };
   const executed = await executeStage(reviewers, context);
-  const filtered = await filterStage(executed, prior.review, context);
+  const filtered = await filterStage(executed, plan.prior.review, context);
   const checked = await checkStage(filtered, context);
-  const report = assembleReport(
-    { runId, reviewers, prior, scopeNote: scope.note },
-    { executed, filtered, checked },
-    context,
-  );
+  const report = assembleReport({ runId, reviewers }, { executed, filtered, checked }, context);
   emit({ type: "run_finished", report });
   return report;
-}
-
-// Review only what changed since the earlier review when the platform can
-// tell; otherwise everything, with the reason in the report.
-function reviewScope(
-  review: PriorReview | undefined,
-  full: boolean,
-): { only?: ReadonlySet<string>; note?: NonNullable<ReviewReport["scope"]> } {
-  if (!review) return {};
-  if (full) return { note: { mode: "full", reason: "a full review was requested" } };
-  if (review.changedSince) {
-    return {
-      only: new Set(review.changedSince.files),
-      note: { mode: "incremental", since: review.changedSince.head },
-    };
-  }
-  const reason = review.fullReviewReason ?? "the platform cannot tell what changed since";
-  return { note: { mode: "full", reason } };
-}
-
-// A missing earlier review only costs the comparison, never the review.
-async function loadPriorReview(
-  vcs: VcsAdapter,
-): Promise<{ review?: PriorReview; warning?: string }> {
-  try {
-    const review = await vcs.getPriorReview();
-    return review ? { review } : {};
-  } catch (error) {
-    return { warning: `could not load the previous review: ${errorMessage(error)}` };
-  }
 }

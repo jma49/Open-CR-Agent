@@ -1,16 +1,13 @@
-import { reviewerCall } from "../agent/settings.js";
+import { chainOf, reviewerCall } from "../agent/settings.js";
 import { defaultBundlePolicy } from "../bundle/bundle.js";
 import type { Effort } from "../contracts.js";
 import type { ChangeRequest, RiskTier } from "../domain.js";
 import { planTasks, type SkippedCell } from "../matrix/matrix.js";
-import { memoryFor } from "../memory/memory.js";
-import { buildReviewPrompt } from "../review/prompt.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
-import { resolveRules } from "../rules/resolve.js";
 import type { FileDecision } from "../select/select.js";
-import { isLargeBundle } from "./execute.js";
 import { type ReviewOptions, runSettings } from "./options.js";
-import { type PlanOptions, planReview } from "./plan.js";
+import { type PlanOptions, planReview, type ReviewPlan } from "./plan.js";
+import { taskPrompt } from "./task-prompt.js";
 
 export interface PreviewTask {
   taskId: string;
@@ -45,6 +42,9 @@ type InputCost =
 export interface ReviewPreview {
   changeRequest: ChangeRequest;
   tier: RiskTier;
+  // As the run decides it: with a prior review, only what changed since it
+  // when the platform can tell, else every file and why.
+  scope?: NonNullable<ReviewPlan["scope"]>;
   selected: string[];
   excluded: { path: string; reason: Exclude<FileDecision, { selected: true }>["reason"] }[];
   bundles: { label: string; files: string[] }[];
@@ -75,7 +75,11 @@ export type PreviewOptions = Omit<PlanOptions, "runtime"> &
 // files, which tasks, and how large each first prompt is.
 export async function previewReview(options: PreviewOptions): Promise<ReviewPreview> {
   const settings = runSettings(options);
-  const plan = await planReview(options, () => {}, new AbortController().signal);
+  const plan = await planReview(
+    { ...options, full: settings.full },
+    () => {},
+    new AbortController().signal,
+  );
   const reviewers = options.reviewers ?? [correctnessReviewer];
   const planned = planTasks(plan.bundles, reviewers, plan.tier, options.reviewerOverrides, {
     ultra: settings.ultra,
@@ -86,32 +90,22 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
 
   const plannedBundles = new Set<string>();
   const tasks = cells.map((cell): PreviewTask => {
-    const files = cell.bundle.files.map((f) => f.newPath);
-    const input = {
-      reviewer: cell.reviewer,
-      changeRequest: plan.changeRequest,
-      changedFiles: plan.selected,
-      bundle: cell.bundle.files,
-      rules: resolveRules(files, plan.repoRules, cell.reviewer.rules),
-      guidelines: plan.guidelines,
-      accepted: memoryFor(files, plan.memory),
-    };
-    const prompt = buildReviewPrompt(input);
+    const prepared = taskPrompt(cell, plan, settings.ultra);
     const task: PreviewTask = {
       taskId: cell.taskId,
       reviewer: cell.reviewer.id,
       bundle: cell.bundle.label,
-      files,
-      promptTokens: tokens(prompt),
+      files: cell.bundle.files.map((f) => f.newPath),
+      promptTokens: tokens(prepared.prompt),
     };
     const call = reviewerCall(cell.reviewer, options);
     if (call.effort !== undefined) task.effort = call.effort;
-    const models = call.models ?? options.models?.[cell.reviewer.modelTier];
+    const models = chainOf(call, cell.reviewer.modelTier, options);
     if (models?.length) task.models = [...models];
-    const key = `${cell.reviewer.id}\0${cell.bundle.label}`;
-    if ((settings.ultra || isLargeBundle(cell.bundle.files)) && !plannedBundles.has(key)) {
-      plannedBundles.add(key);
-      task.planPromptTokens = tokens(buildReviewPrompt({ ...input, forPlanning: true }));
+    const { planCall } = prepared;
+    if (planCall && !plannedBundles.has(planCall.key)) {
+      plannedBundles.add(planCall.key);
+      task.planPromptTokens = tokens(planCall.prompt);
     }
     const first = task.models?.[0];
     if (first !== undefined && options.inputPrice) {
@@ -128,6 +122,7 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
   return {
     changeRequest: plan.changeRequest,
     tier: plan.tier,
+    ...(plan.scope ? { scope: plan.scope } : {}),
     selected: plan.selected.map((d) => d.newPath),
     excluded: plan.decisions.flatMap((d) =>
       d.selected ? [] : [{ path: d.diff.newPath, reason: d.reason }],
@@ -141,6 +136,7 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
     planCalls: tasks.filter((t) => t.planPromptTokens !== undefined).length,
     ...(tasks.some((t) => t.inputCost) ? { inputCost: totalInputCost(tasks) } : {}),
     warnings: [
+      ...(plan.prior.warning ? [plan.prior.warning] : []),
       ...plan.warnings,
       ...(planned.limited?.length
         ? [
