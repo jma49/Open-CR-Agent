@@ -191,27 +191,64 @@ jobs:
           OCRA_MAIN: ${{ steps.install.outputs.main }}
           OCRA_SOURCE: ${{ steps.install.outputs.source }}
         run: node scripts/check-action-install.mjs
-      # The Action's outputs, from a session report laid out as ocra writes
-      # it (a review needs a model).
-      - id: outputs
+      # The Action's review step (scripts/action-review.sh, as action.yml
+      # runs it) against a fake ocra: a review needs a model. On every
+      # runner, so Windows paths, the exit-code mapping and the outputs are
+      # exercised where the Action runs.
+      - name: Fake ocra
         run: |
-          node scripts/action-outputs.mjs --before
-          session=.ocra/sessions/20991231T235959Z-abcdef
-          mkdir -p "$session"
-          printf '{"version":1,"runId":"20991231T235959Z-abcdef","verdict":"approved","findings":[]}\n' > "$session/report.json"
-          OCRA_EXIT_CODE=0 node scripts/action-outputs.mjs
+          cat > "$RUNNER_TEMP/fake-ocra.mjs" <<'EOF'
+          import { mkdirSync, writeFileSync } from "node:fs";
+          const args = process.argv.slice(2);
+          writeFileSync(process.env.FAKE_ARGS, JSON.stringify(args));
+          const dir = `.ocra/sessions/${process.env.FAKE_SESSION}`;
+          mkdirSync(dir, { recursive: true });
+          const report = { version: 1, runId: process.env.FAKE_SESSION, verdict: "minor_issues", findings: [{}] };
+          writeFileSync(`${dir}/report.json`, JSON.stringify(report));
+          const output = args.indexOf("--output");
+          if (output >= 0) writeFileSync(args[output + 1], "{}");
+          process.exit(Number(process.env.FAKE_EXIT));
+          EOF
+      - id: review
+        env:
+          GITHUB_ACTION_PATH: ${{ github.workspace }}
+          OCRA_MAIN: ${{ runner.temp }}/fake-ocra.mjs
+          OCRA_PR: "7"
+          OCRA_ARGS: --max-cost-usd 2
+          OCRA_SARIF: "true"
+          FAKE_ARGS: ${{ runner.temp }}/fake-args.json
+          FAKE_SESSION: 20991231T235959Z-abcde1
+          FAKE_EXIT: "1"
+        run: bash "$GITHUB_ACTION_PATH/scripts/action-review.sh"
       - env:
-          EXIT_CODE: ${{ steps.outputs.outputs.exit-code }}
-          RUN_ID: ${{ steps.outputs.outputs.run-id }}
-          VERDICT: ${{ steps.outputs.outputs.verdict }}
-          FINDINGS: ${{ steps.outputs.outputs.findings }}
-          REPORT: ${{ steps.outputs.outputs.report }}
+          EXIT_CODE: ${{ steps.review.outputs.exit-code }}
+          RUN_ID: ${{ steps.review.outputs.run-id }}
+          VERDICT: ${{ steps.review.outputs.verdict }}
+          FINDINGS: ${{ steps.review.outputs.findings }}
+          REPORT: ${{ steps.review.outputs.report }}
+          SARIF: ${{ steps.review.outputs.sarif }}
         run: |
-          test "$EXIT_CODE" = 0
-          test "$RUN_ID" = 20991231T235959Z-abcdef
-          test "$VERDICT" = approved
-          test "$FINDINGS" = 0
-          grep -q '"verdict":"approved"' "$REPORT"
+          test "$EXIT_CODE" = 1
+          test "$RUN_ID" = 20991231T235959Z-abcde1
+          test "$VERDICT" = minor_issues
+          test "$FINDINGS" = 1
+          grep -q '"verdict":"minor_issues"' "$REPORT"
+          test -f "$SARIF"
+          grep -q '"--pr","7","--publish","--max-cost-usd","2","--format","sarif"' "$RUNNER_TEMP/fake-args.json"
+      # Concerns fail the step when fail-on-concerns is set.
+      - env:
+          GITHUB_ACTION_PATH: ${{ github.workspace }}
+          OCRA_MAIN: ${{ runner.temp }}/fake-ocra.mjs
+          OCRA_PR: "7"
+          OCRA_FAIL_ON_CONCERNS: "true"
+          FAKE_ARGS: ${{ runner.temp }}/fake-args.json
+          FAKE_SESSION: 20991231T235959Z-abcde2
+          FAKE_EXIT: "1"
+        run: |
+          code=0
+          GITHUB_OUTPUT="$RUNNER_TEMP/concerns-output" bash "$GITHUB_ACTION_PATH/scripts/action-review.sh" || code=$?
+          test "$code" = 1
+          grep -q '^exit-code=1$' "$RUNNER_TEMP/concerns-output"
 
   # The container image, built from this commit rather than from npm (its
   # version may not be published yet), then run as a user would.
