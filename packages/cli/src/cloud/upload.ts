@@ -1,14 +1,9 @@
 import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
-import type {
-  ReviewerCounts,
-  ReviewSource,
-  ReviewUpload,
-  SharedFinding,
-} from "@open-cr-agent/cloud-contract";
-import { coverageGaps, type ReviewReport, type Verification } from "@open-cr-agent/core";
-import { verificationSchema } from "@open-cr-agent/core/internal";
+import type { ReviewSource, ReviewUpload, SharedFinding } from "@open-cr-agent/cloud-contract";
+import { coverageGaps, isIncompleteReview, type ReviewReport } from "@open-cr-agent/core";
 import { machineSecret } from "../io/private-file.js";
+import { reviewerOutcomes } from "../reviewer-outcomes.js";
 import { VERSION } from "../version.js";
 import { CloudClient, CloudError, sessionLostReason } from "./client.js";
 import { readCredentials } from "./credentials.js";
@@ -37,9 +32,7 @@ export function uploadOf(
     source,
     tier: report.tier,
     verdict: report.verdict,
-    // As the exit code reads it: a review that missed files or could not
-    // verify a critical finding is incomplete.
-    complete: gaps.notReviewed === 0 && report.unverifiedCriticals === 0,
+    complete: !isIncompleteReview(report),
     findings: {
       critical: severity("critical"),
       warning: severity("warning"),
@@ -64,62 +57,12 @@ export function uploadOf(
   };
 }
 
-// Counted as `ocra metrics` counts one report: a failed or timed-out task is
-// failed, a finding without a verification is unchecked, a dismissal outranks
-// a fix, and a fixed or dismissed finding is attributed to the reviewer the
-// earlier review recorded for it, else to the reviewer of a finding with its
-// fingerprint in this report, else to none.
+// Counted as `ocra metrics` counts reports (reviewer-outcomes.ts).
 function perReviewer(
   report: ReviewReport,
 ): Required<Pick<ReviewUpload, "reviewers" | "verification" | "outcomes">> {
-  const reviewers = new Map<string, ReviewerCounts>();
-  const of = (id: string): ReviewerCounts => {
-    let r = reviewers.get(id);
-    if (!r) {
-      r = {
-        tasks: 0,
-        failedTasks: 0,
-        findings: { critical: 0, warning: 0, suggestion: 0 },
-        costUsd: 0,
-        fixed: 0,
-        dismissed: 0,
-      };
-      reviewers.set(id, r);
-    }
-    return r;
-  };
-  for (const task of report.tasks) {
-    const r = of(task.reviewer);
-    r.tasks += 1;
-    if (task.status === "failed" || task.status === "timed_out") r.failedTasks += 1;
-    // A reused task's usage is what the earlier run paid; this run paid nothing for it.
-    if (task.reusedFrom === undefined) r.costUsd += task.usage.costUsd;
-  }
-  const verification = Object.fromEntries(verificationSchema.options.map((v) => [v, 0])) as Record<
-    Verification,
-    number
-  >;
-  for (const finding of report.findings) {
-    of(finding.reviewer).findings[finding.severity] += 1;
-    verification[finding.verification ?? "unchecked"] += 1;
-  }
-  // reconcile keeps fixed and dismissed findings out of report.findings, so
-  // only the reviewer the earlier review recorded can be credited.
-  const dismissed = new Map(
-    (report.rereview?.dismissed ?? []).map((f) => [f.fingerprint, f.reviewer]),
-  );
-  const fixed = new Map(
-    (report.rereview?.fixed ?? [])
-      .filter((f) => !dismissed.has(f.fingerprint))
-      .map((f) => [f.fingerprint, f.reviewer]),
-  );
-  for (const reviewer of fixed.values()) if (reviewer) of(reviewer).fixed += 1;
-  for (const reviewer of dismissed.values()) if (reviewer) of(reviewer).dismissed += 1;
-  return {
-    reviewers: Object.fromEntries([...reviewers].sort(([a], [b]) => a.localeCompare(b))),
-    verification,
-    outcomes: { fixed: fixed.size, dismissed: dismissed.size },
-  };
+  const { reviewers, verification, fixed, dismissed } = reviewerOutcomes([report]);
+  return { reviewers, verification, outcomes: { fixed, dismissed } };
 }
 
 /** This machine's random salt, kept beside the credentials, made on first use. */

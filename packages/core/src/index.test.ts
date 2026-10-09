@@ -13,6 +13,8 @@ describe("the library entry", () => {
       "reportOutputSchema",
       "reportJsonSchema",
       "coverageGaps",
+      "isIncompleteReview",
+      "isBlocking",
       "parseSarifLog",
       "correctnessReviewerPlugin",
       "securityReviewerPlugin",

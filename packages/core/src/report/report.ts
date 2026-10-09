@@ -58,6 +58,39 @@ export function coverageGaps(run: {
   return { notReviewed, nothingReviewed: notReviewed > 0 && !reviewed, incomplete };
 }
 
+// An incomplete review: it left an unfinished file or a critical finding
+// Verify could not check, so its result must never be read as a pass. The
+// exit code (3), SARIF, the pull request summary, the ocra Cloud upload and
+// `ocra metrics` all read it from here.
+export function isIncompleteReview(run: {
+  coverage: readonly CoverageEntry[];
+  unverifiedCriticals: number;
+}): boolean {
+  return run.coverage.some(isUnfinished) || run.unverifiedCriticals > 0;
+}
+
+// A verdict that fails the run and requests changes: significant concerns
+// that no one entitled to has overridden for this head commit.
+export function isBlocking(run: {
+  verdict: Verdict;
+  changeRequest: { override?: unknown };
+}): boolean {
+  return run.verdict === "significant_concerns" && run.changeRequest.override === undefined;
+}
+
+// Critical findings that only cap the verdict at minor issues: none is
+// confirmed, so none blocks. Zero while a confirmed one blocks, and
+// low-confidence findings do not count toward the verdict at all.
+export function unconfirmedCriticals(run: {
+  verdict: Verdict;
+  findings: readonly Pick<Finding, "severity" | "verification" | "lowConfidence">[];
+}): number {
+  if (run.verdict === "significant_concerns") return 0;
+  return run.findings.filter(
+    (f) => f.severity === "critical" && f.verification !== "confirmed" && !f.lowConfidence,
+  ).length;
+}
+
 export const taskStatusSchema = z.enum(["completed", "failed", "timed_out", "cancelled"]);
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
 

@@ -501,6 +501,20 @@ const INCOMPLETE_ENDINGS: readonly ["step_cap", "stopped_early"];
 export type IncompleteEnding = (typeof INCOMPLETE_ENDINGS)[number];
 
 // @public (undocumented)
+export function isBlocking(run: {
+    verdict: Verdict;
+    changeRequest: {
+        override?: unknown;
+    };
+}): boolean;
+
+// @public (undocumented)
+export function isIncompleteReview(run: {
+    coverage: readonly CoverageEntry[];
+    unverifiedCriticals: number;
+}): boolean;
+
+// @public (undocumented)
 export function isOcraError(error: unknown, code?: OcraErrorCode): error is OcraError;
 
 // @public (undocumented)

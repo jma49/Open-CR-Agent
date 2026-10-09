@@ -6,7 +6,7 @@ import {
   toReportOutput,
   type Verification,
 } from "@open-cr-agent/core";
-import { serializeOutput } from "@open-cr-agent/core/internal";
+import { serializeOutput, unconfirmedCriticals } from "@open-cr-agent/core/internal";
 import { forTerminal } from "../../io/terminal.js";
 import { partlyReviewed, partlyReviewedCount } from "./partly-reviewed.js";
 
@@ -52,14 +52,7 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
   if (override && report.verdict === "significant_concerns") {
     lines.push(`Overridden by ${override.by}: ${override.reason}`);
   }
-  // Only true while no confirmed critical blocks, and low-confidence
-  // findings do not count at all.
-  const unverified =
-    report.verdict === "significant_concerns"
-      ? 0
-      : report.findings.filter(
-          (f) => f.severity === "critical" && f.verification !== "confirmed" && !f.lowConfidence,
-        ).length;
+  const unverified = unconfirmedCriticals(report);
   if (unverified > 0) {
     lines.push(
       `${unverified} critical finding(s) are not verified, so the verdict is at most minor issues.`,

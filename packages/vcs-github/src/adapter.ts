@@ -1,4 +1,4 @@
-import { errorMessage, OcraError, type ReviewReport } from "@open-cr-agent/core";
+import { errorMessage, isBlocking, OcraError, type ReviewReport } from "@open-cr-agent/core";
 import {
   type Bot,
   type CodeSource,
@@ -148,8 +148,7 @@ class GitHubPlatform implements ReviewPlatform {
     const { number } = this.options.pullRequest;
     const bot = await this.bot();
     // An override lets the commit pass, so it lifts the request too.
-    const blocking =
-      report.verdict === "significant_concerns" && report.changeRequest.override === undefined;
+    const blocking = isBlocking(report);
     let active: number[];
     try {
       active = (await this.options.api.listReviews(number))

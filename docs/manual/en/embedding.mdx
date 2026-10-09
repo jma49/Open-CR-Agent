@@ -10,7 +10,8 @@ The `ocra` command is one caller of `review()` in `@open-cr-agent/core`; your bo
 ```ts
 import {
   correctnessReviewerPlugin,
-  coverageGaps,
+  isBlocking,
+  isIncompleteReview,
   review,
   securityReviewerPlugin,
   sessionJsonlPlugin,
@@ -54,9 +55,9 @@ try {
     limits: { maxCostUsd: 2 },
     onEvent: (event) => registry.emit(event),
   });
-  const { notReviewed, nothingReviewed } = coverageGaps(report);
   console.log(JSON.stringify(toReportOutput(report)));
-  if (nothingReviewed || notReviewed > 0) process.exitCode = 3;
+  if (isIncompleteReview(report)) process.exitCode = 3;
+  else if (isBlocking(report)) process.exitCode = 1;
 } finally {
   await runtime.dispose?.();
 }
@@ -97,7 +98,7 @@ These `ReviewOptions` fields are a contract under the [0.x rule](./stability): a
 A `ReviewReport`, with the content of the [JSON report](./cli#json-output).
 
 - **Publish `toReportOutput(report)`**, not the report: it is the versioned JSON the CLI writes, typed `ReportOutput` and validated by `reportOutputSchema` (from which the type is derived) and the [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json). The internal report's fields may change.
-- **An incomplete review is not a pass.** `coverageGaps(report)` gives how many selected files were not reviewed, whether nothing was, and in `incomplete` how many were partly reviewed, by how their task ended (`step_cap`, `stopped_early`); `report.unverifiedCriticals` counts critical findings nobody could check. Gate on these as the CLI's [exit codes](./cli#exit-codes) do, never on `verdict` alone.
+- **An incomplete review is not a pass.** `isIncompleteReview(report)` is true when the review left a selected file unfinished or a critical finding nobody could check, which is when the CLI exits 3; `isBlocking(report)` is true for a verdict that fails the run (exit 1): `significant_concerns` nobody overrode. Gate on these as the CLI's [exit codes](./cli#exit-codes) do, never on `verdict` alone. For the details, `coverageGaps(report)` gives how many selected files were not reviewed, whether nothing was, and in `incomplete` how many were partly reviewed, by how their task ended (`step_cap`, `stopped_early`); `report.unverifiedCriticals` counts the critical findings nobody could check.
 
 `vcs.publish(report)` posts the review as `--publish` does, under the platform's trust rules, and returns what it could not post as warnings.
 
@@ -146,7 +147,7 @@ Your program is the trust boundary. Load only plugins you trust, never ones the 
 
 The main entry of each package is its public API, a contract under the [0.x rule](./stability):
 
-- **`@open-cr-agent/core`**: `review()` and `ReviewOptions`; what it returns (`ReviewReport`, `Finding` and the types they are made of), `coverageGaps()`, `toReportOutput()` with `ReportOutput`, `reportOutputSchema`, `reportJsonSchema()` and `REPORT_VERSION`; `parseSarifLog()`; the plugin interface (`OcraPlugin` and its contexts, `startPlugins()`, `PluginRegistry`, the built-in reviewer plugins and `sessionJsonlPlugin`); the contracts a plugin implements (`VcsAdapter`, `AgentRuntime` and the types they use, `ToolDefinition`, `ReviewerDefinition`, `RepoRule`); what a runtime builds on (`ChainRunner` with `ModelAttempts`, `AttemptOutcome`, `QuotaError`, the review tools, the step cap and the other helpers [Plugins](./plugins) lists); and the [error model](#errors).
+- **`@open-cr-agent/core`**: `review()` and `ReviewOptions`; what it returns (`ReviewReport`, `Finding` and the types they are made of), `coverageGaps()`, `isIncompleteReview()`, `isBlocking()`, `toReportOutput()` with `ReportOutput`, `reportOutputSchema`, `reportJsonSchema()` and `REPORT_VERSION`; `parseSarifLog()`; the plugin interface (`OcraPlugin` and its contexts, `startPlugins()`, `PluginRegistry`, the built-in reviewer plugins and `sessionJsonlPlugin`); the contracts a plugin implements (`VcsAdapter`, `AgentRuntime` and the types they use, `ToolDefinition`, `ReviewerDefinition`, `RepoRule`); what a runtime builds on (`ChainRunner` with `ModelAttempts`, `AttemptOutcome`, `QuotaError`, the review tools, the step cap and the other helpers [Plugins](./plugins) lists); and the [error model](#errors).
 - **`@open-cr-agent/vcs-local`**: `localGitPlugin`, `LocalTarget`, `LocalGitOptions` and `GitError`. **`vcs-github`** and **`vcs-gitlab`**: `githubPlugin` and `gitlabPlugin`, `resolveGitHubTarget` and `resolveGitLabTarget` with `GitHubSettings` and `GitLabSettings`, and their API errors. **`runtime-opencode`** and **`runtime-direct`**: `opencodeRuntimePlugin` and `directRuntimePlugin`.
 - **`@open-cr-agent/cli`**: `run(argv)`, the `ocra` command with its arguments (no node or script path), writing to stdout and stderr and resolving to the [exit code](./cli).
 - **`@open-cr-agent/vcs-platform`** is what ocra's platform adapters share; it is not a contract yet.
