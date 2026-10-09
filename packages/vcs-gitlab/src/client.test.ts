@@ -36,6 +36,22 @@ const note = (id: number) => ({
 });
 
 describe("GitLabApi", () => {
+  it("sends nothing once the caller aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    let sent = 0;
+    const client = new GitLabApi(1, {
+      token: "glpat-secret",
+      fetch: (async () => {
+        sent += 1;
+        return json({ id: 1, username: "u" });
+      }) as unknown as typeof fetch,
+      signal: controller.signal,
+    });
+    await expect(client.currentUser()).rejects.toBe(controller.signal.reason);
+    expect(sent).toBe(0);
+  });
+
   it("addresses a project by its encoded path and reads every page", async () => {
     const full = Array.from({ length: 100 }, (_, i) => note(i + 1));
     const { client, urls } = api([json(full), json([note(101)])]);

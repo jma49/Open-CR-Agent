@@ -73,6 +73,8 @@ export interface GitLabApiOptions {
   baseUrl?: string;
   fetch?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
+  // Stops every request and every wait before a retry.
+  signal?: AbortSignal;
 }
 
 const PER_PAGE = 100;
@@ -127,6 +129,7 @@ export class GitLabApi {
       headers: { Accept: "application/json", Authorization: `Bearer ${options.token}` },
       fetch: options.fetch ?? fetch,
       sleep: options.sleep,
+      signal: options.signal,
       timeoutMs: () => REQUEST_TIMEOUT_MS,
       toError: (status, message) => new GitLabApiError(status, message),
     };

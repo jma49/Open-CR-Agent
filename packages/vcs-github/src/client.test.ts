@@ -108,6 +108,32 @@ describe("GitHubApi GraphQL", () => {
     expect(calls).toHaveLength(2);
   });
 
+  it("stops waiting out a GraphQL rate limit once the caller aborts", async () => {
+    const limited = new Response(
+      JSON.stringify({ errors: [{ type: "RATE_LIMITED", message: "API rate limit exceeded" }] }),
+      { status: 200 },
+    );
+    const controller = new AbortController();
+    const client = new GitHubApi(
+      { owner: "o", repo: "r" },
+      {
+        token: "t",
+        fetch: (async () => limited) as unknown as typeof fetch,
+        signal: controller.signal,
+      },
+    );
+    const listed = client.listReviewThreads(7).then(
+      () => "answered",
+      (error: unknown) => (error === controller.signal.reason ? "aborted" : error),
+    );
+    setTimeout(() => controller.abort(), 20);
+    const outcome = await Promise.race([
+      listed,
+      new Promise((resolve) => setTimeout(() => resolve("still waiting"), 500)),
+    ]);
+    expect(outcome).toBe("aborted");
+  });
+
   it("reads a long thread's latest replies too, without repeating the overlap", async () => {
     const c = (id: string, body: string) => ({
       id,

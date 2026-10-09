@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { type PlatformApi, type PlatformCall, sendWithRetry } from "./http.js";
 
-function request(answers: Array<Response | Error>, overrides: Partial<PlatformCall> = {}) {
+function request(
+  answers: Array<Response | Error>,
+  overrides: Partial<PlatformCall> = {},
+  setup: Partial<PlatformApi> = {},
+) {
   const seen: RequestInit[] = [];
   const waits: number[] = [];
   const fetch = async (_url: string | URL | Request, init?: RequestInit) => {
@@ -20,6 +24,7 @@ function request(answers: Array<Response | Error>, overrides: Partial<PlatformCa
     },
     timeoutMs: () => 1_000,
     toError: (status, message) => Object.assign(new Error(message), { status }),
+    ...setup,
   };
   const call: PlatformCall = { method: "GET", url: "https://forge.test/api/x", path: "/x?page=2" };
   return { send: () => sendWithRetry(api, { ...call, ...overrides }), seen, waits };
@@ -75,5 +80,65 @@ describe("sendWithRetry", () => {
       status: 404,
       message: `Forge GET /x failed with 404: ${"x".repeat(500)}`,
     });
+  });
+
+  it("reads a refusal's answer only up to a bound", async () => {
+    const chunk = new Uint8Array(16 * 1024).fill(120);
+    let sent = 0;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent >= 8 * 1024 * 1024) return controller.close();
+        sent += chunk.byteLength;
+        controller.enqueue(chunk);
+      },
+    });
+    const { send } = request([new Response(endless, { status: 404 })]);
+    await expect(send()).rejects.toMatchObject({ status: 404 });
+    expect(sent).toBeLessThanOrEqual(128 * 1024);
+  });
+
+  it("still finds a rate limit named past the quoted part of a refusal", async () => {
+    const { send } = request([
+      new Response(`${"x".repeat(600)} secondary rate limit`, { status: 403 }),
+      Response.json({}),
+    ]);
+    expect(await send()).toEqual({});
+  });
+
+  it("stops waiting for a retry once the caller aborts", async () => {
+    const controller = new AbortController();
+    const limited = new Response("slow down", { status: 429, headers: { "retry-after": "5" } });
+    const { send } = request(
+      [limited, Response.json({})],
+      {},
+      {
+        sleep: undefined,
+        signal: controller.signal,
+      },
+    );
+    const sent = send().then(
+      () => "answered",
+      (error: unknown) => (error === controller.signal.reason ? "aborted" : error),
+    );
+    setTimeout(() => controller.abort(), 20);
+    const outcome = await Promise.race([
+      sent,
+      new Promise((resolve) => setTimeout(() => resolve("still waiting"), 500)),
+    ]);
+    expect(outcome).toBe("aborted");
+  });
+
+  it("sends nothing more once the caller aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const { send, seen } = request(
+      [new Error("reset"), Response.json({})],
+      {},
+      {
+        signal: controller.signal,
+      },
+    );
+    await expect(send()).rejects.toBe(controller.signal.reason);
+    expect(seen).toHaveLength(0);
   });
 });

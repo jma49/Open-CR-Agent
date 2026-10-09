@@ -65,6 +65,8 @@ export interface GitHubApiOptions {
   baseUrl?: string;
   fetch?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
+  // Stops every request and every wait before a retry.
+  signal?: AbortSignal;
 }
 
 const reviewSchema = z.object({
@@ -171,6 +173,7 @@ export class GitHubApi {
       },
       fetch: options.fetch ?? fetch,
       sleep: options.sleep,
+      signal: options.signal,
       // Creating a review with many inline comments can take GitHub a while,
       // and a POST that timed out after GitHub acted cannot be repeated.
       timeoutMs: (method, path) =>
@@ -308,7 +311,8 @@ export class GitHubApi {
   // GraphQL reports its rate limit as an error in a 200 response, which the
   // HTTP retry does not see; it is retried here the same bounded way.
   private async graphql(query: string, variables: Record<string, unknown>): Promise<unknown> {
-    const sleep = this.options.sleep ?? ((ms: number) => wait(ms));
+    const { signal } = this.options;
+    const sleep = this.options.sleep ?? ((ms: number) => wait(ms, undefined, { signal }));
     let result: GraphqlResult;
     for (let attempt = 1; ; attempt += 1) {
       result = graphqlResultSchema.parse(
@@ -324,7 +328,11 @@ export class GitHubApi {
       );
       const limited = result.errors?.some((e) => e.type === "RATE_LIMITED");
       if (!limited || attempt >= MAX_ATTEMPTS) break;
-      await sleep(1_000 * 2 ** attempt);
+      try {
+        await sleep(1_000 * 2 ** attempt);
+      } finally {
+        signal?.throwIfAborted();
+      }
     }
     if (result.errors?.length) {
       throw new GitHubApiError(
