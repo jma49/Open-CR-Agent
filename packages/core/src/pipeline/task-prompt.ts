@@ -17,8 +17,9 @@ export interface TaskPrompt {
   // The first prompt, before a plan phase or callers.
   prompt: ReviewPrompt;
   // The plan phase's call, when the task has one: one per reviewer and
-  // bundle (key), shared by --ultra's two samples.
-  planCall?: { key: string; prompt: ReviewPrompt };
+  // bundle (key), shared by --ultra's two samples, so its prompt is built
+  // only by the call that runs it.
+  planCall?: { key: string; prompt: () => ReviewPrompt };
 }
 
 // What one task of the matrix sends: the run builds its prompt from this and
@@ -41,7 +42,7 @@ export function taskPrompt(cell: MatrixCell, plan: ReviewPlan, ultra: boolean): 
     prompt,
     planCall: {
       key: `${cell.reviewer.id}\0${cell.bundle.label}`,
-      prompt: buildReviewPrompt({ ...input, forPlanning: true }),
+      prompt: () => buildReviewPrompt({ ...input, forPlanning: true }),
     },
   };
 }

@@ -64,8 +64,8 @@ export interface ReviewPreview {
 
 // A review's options without the runtime; the preview reads what decides
 // the files and the tasks.
-export type PreviewOptions = Omit<PlanOptions, "runtime"> &
-  Omit<ReviewOptions, "vcs" | "runtime"> & {
+export type PreviewOptions = Omit<PlanOptions, "runtime" | "full"> &
+  Omit<ReviewOptions, "vcs" | "runtime" | "full"> & {
     // A model's input price in US dollars per million tokens: 0 when it is
     // unpriced, undefined when only the runtime's catalog knows it.
     inputPrice?: (model: string) => number | undefined;
@@ -105,7 +105,7 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
     const { planCall } = prepared;
     if (planCall && !plannedBundles.has(planCall.key)) {
       plannedBundles.add(planCall.key);
-      task.planPromptTokens = tokens(planCall.prompt);
+      task.planPromptTokens = tokens(planCall.prompt());
     }
     const first = task.models?.[0];
     if (first !== undefined && options.inputPrice) {

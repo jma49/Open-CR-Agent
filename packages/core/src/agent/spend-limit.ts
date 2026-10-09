@@ -22,7 +22,6 @@ export class SpendLimitReached extends OcraError {
 // stages ask it before they spend. Without a limit everything is allowed and
 // nothing is reported.
 export interface SpendLimit {
-  readonly usd: number | undefined;
   // Review tasks and their plan calls run under it: aborted with
   // SpendLimitReached once their own spend uses up the review share, so the
   // task that does stops every task still running.
@@ -50,7 +49,6 @@ export function spendLimit(
   const stop = new AbortController();
   const over = (share: number) => maxCostUsd !== undefined && spent >= maxCostUsd * share;
   return {
-    usd: maxCostUsd,
     reviewSignal: stop.signal,
     chargeReview(usage) {
       spent += usage.costUsd;

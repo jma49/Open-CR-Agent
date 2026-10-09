@@ -73,7 +73,7 @@ export function isIncompleteReview(run: {
 // that no one entitled to has overridden for this head commit.
 export function isBlocking(run: {
   verdict: Verdict;
-  changeRequest: { override?: unknown };
+  changeRequest: Pick<ChangeRequest, "override">;
 }): boolean {
   return run.verdict === "significant_concerns" && run.changeRequest.override === undefined;
 }

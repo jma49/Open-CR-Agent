@@ -212,7 +212,7 @@ async function preparePrompt(
   const callers = options.ultra ? await findCallers(job.bundle.files, plan.context) : [];
   const shared = options.plans?.get(planCall.key);
   const planning =
-    shared ?? planBundle(options.runtime, job.reviewer, planCall.prompt, options.signal, call);
+    shared ?? planBundle(options.runtime, job.reviewer, planCall.prompt(), options.signal, call);
   if (!shared) options.plans?.set(planCall.key, planning);
   const planned = await planning;
   const prompt = buildReviewPrompt({ ...task.input, callers, plan: planned.plan });

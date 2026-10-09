@@ -91,7 +91,7 @@ describe("core's layers", () => {
   });
 
   // Within a layer the stages may use each other, but not both ways.
-  it("have no cycle between directories", () => {
+  it("have no cycle between units", () => {
     const cycles: string[] = [];
     const reaches = (start: string, goal: string, seen = new Set<string>()): boolean => {
       for (const next of edges.get(start)?.keys() ?? []) {

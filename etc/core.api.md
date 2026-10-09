@@ -503,9 +503,7 @@ export type IncompleteEnding = (typeof INCOMPLETE_ENDINGS)[number];
 // @public (undocumented)
 export function isBlocking(run: {
     verdict: Verdict;
-    changeRequest: {
-        override?: unknown;
-    };
+    changeRequest: Pick<ChangeRequest, "override">;
 }): boolean;
 
 // @public (undocumented)
