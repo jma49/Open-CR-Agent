@@ -2,7 +2,6 @@
 // check against. Not a contract: any release may change it.
 export {
   type PlatformApi,
-  type PlatformCall,
   pageInfoSchema,
   sendWithRetry,
 } from "./http.js";

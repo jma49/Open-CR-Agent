@@ -1,0 +1,37 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // Reports an unused export of an entry, so one behind src/internal.ts is
+  // found. A package's public API (src/index.ts) serves callers outside this
+  // repository, and ocra-cloud consumes cloud-contract as a whole.
+  "includeEntryExports": true,
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.mjs", "scripts/lib/*.test.mjs"],
+      "project": ["scripts/**/*.mjs", "*.ts"],
+      "ignoreDependencies": ["@arethetypeswrong/cli", "@changesets/config", "publint"],
+      "ignoreBinaries": ["jq"]
+    },
+    "packages/*": {
+      "entry": ["src/**/*.test.ts"],
+      "project": ["src/**/*.ts"],
+      "ignoreBinaries": ["actionlint"],
+      "ignoreIssues": {
+        "src/index.ts": ["exports", "types"]
+      }
+    },
+    "packages/runtime-opencode": {
+      "entry": ["src/**/*.test.ts"],
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["opencode-ai"],
+      "ignoreIssues": {
+        "src/index.ts": ["exports", "types"]
+      }
+    },
+    "packages/cloud-contract": {
+      "entry": ["src/**/*.test.ts"],
+      "project": ["src/**/*.ts"],
+      "ignoreBinaries": ["actionlint"],
+      "includeEntryExports": false
+    }
+  }
+}

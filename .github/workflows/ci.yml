@@ -28,7 +28,7 @@ jobs:
       - run: npm run typecheck
       # The public API of each package against its report in etc/.
       - run: npm run check:api
-      # Unused files, exports and dependencies (knip.json).
+      # Unused files, exports and dependencies (knip.jsonc).
       - run: npm run knip
       # Coverage is reported, not gated.
       - run: npm run test:coverage
