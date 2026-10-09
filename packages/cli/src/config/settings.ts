@@ -20,7 +20,7 @@ export type Settings = FileSettings & {
 
 type SettingSource = "shared" | "file" | "env" | "account" | "flag";
 
-export type LayerSettings = { [K in keyof Settings]?: Settings[K] };
+type LayerSettings = { [K in keyof Settings]?: Settings[K] };
 
 export interface SettingsLayer {
   source: SettingSource;
@@ -102,18 +102,24 @@ const MERGE: {
   extends: { merge: "replace", from: ["file"] },
 };
 
+// Each setting of a schema optional (absent, never undefined) and without
+// its default.
+type WithoutDefaults<S extends z.ZodRawShape> = {
+  [K in keyof S]: z.ZodExactOptional<S[K] extends z.ZodDefault<infer T> ? T : S[K]>;
+};
+
+function withoutDefaults<S extends z.ZodRawShape>(shape: S): WithoutDefaults<S> {
+  return Object.fromEntries(
+    Object.entries(shape).map(([key, schema]) => [
+      key,
+      z.exactOptional(schema instanceof z.ZodDefault ? schema.unwrap() : schema),
+    ]),
+  ) as WithoutDefaults<S>;
+}
+
 // The configuration file's schema without its defaults, so a layer holds
 // only what it sets; unknown keys are refused as in the file.
-export const layerSchema = z
-  .object(
-    Object.fromEntries(
-      Object.entries(configSchema.shape).map(([key, schema]) => [
-        key,
-        (schema instanceof z.ZodDefault ? schema.unwrap() : schema).optional(),
-      ]),
-    ),
-  )
-  .strict() as unknown as z.ZodType<Omit<LayerSettings, "rules" | "ultra">>;
+export const layerSchema = z.object(withoutDefaults(configSchema.shape)).strict();
 
 /** The layers, earliest first, over ocra's defaults, and where each setting came from. */
 export function resolveSettings(layers: readonly SettingsLayer[]): {

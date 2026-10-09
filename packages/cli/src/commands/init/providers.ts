@@ -1,3 +1,4 @@
+import { MODEL_TIERS } from "@open-cr-agent/core";
 import { UsageError } from "../../io/usage-error.js";
 
 // The providers ocra init can set up on its own. A provider runs on the
@@ -127,7 +128,7 @@ export function configFor(preset: ProviderPreset): string {
           $schema: SCHEMA_URL,
           runtime: "direct",
           models: Object.fromEntries(
-            ["top", "standard", "light"].map((tier) => [tier, `${preset.id}/${preset.model}`]),
+            MODEL_TIERS.map((tier) => [tier, `${preset.id}/${preset.model}`]),
           ),
           providers: {
             [preset.id]: {
