@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Rules for humans and AI agents working on Open-CR-Agent (`ocra`). This file is a living document: add a rule here whenever a review surfaces a convention worth keeping.
+Rules for humans and AI agents working on Open-CR-Agent (`ocra`). Only what this project does differently from good general practice is written here; add a rule only for a convention a review keeps surfacing.
 
 ## Project
 
@@ -21,27 +21,24 @@ Open-CR-Agent is an open-source multi-agent code review system. Deterministic en
 | `@open-cr-agent/cloud-contract` | The wire contract with ocra Cloud: Zod schemas, limits, vocabularies, error codes, the redaction pass and its test vectors |
 | `@open-cr-agent/cli` | The `ocra` command |
 | `@open-cr-agent/eval` | Benchmark replay (AACR-Bench) and quality metrics |
+| `@open-cr-agent/test-support` | Private: what the packages' tests share (scratch git repositories) |
 
 `core` depends on nothing inside the repo. Adapters depend only on `core`, and platform adapters also on `vcs-platform`, where the rules of the review conversation live once (ADR-0016). Only `cli` wires concrete adapters together. `cloud-contract` depends only on Zod, so ocra Cloud can use it as is.
 
 ## Core engineering principles
 
-1. **Architecture and domain first.** Plan toward the ideal architecture: make business goals, domain boundaries, module responsibilities, dependency direction and data flow explicit, and reach a design that fits the domain, is maintainable and can evolve before writing code. Never sacrifice the overall design for short-term convenience. The design must be complete; the implementation must be restrained: no speculative abstractions, introduce an abstraction only when the second real use case appears, implement a single scenario directly.
-2. **Elegant modules.** Modules have high cohesion and low coupling and hide internal complexity behind small, stable interfaces, so responsibilities, names, dependencies and extension points read naturally. Split code by single responsibility. **No source file may exceed 500 lines**, tests included; refactor module boundaries before a file approaches the limit. Shared test fakes go in a `*.fakes.ts` file next to the tests (excluded from the build by the package's `tsconfig.json`).
-3. **Clear boundaries and data flow.** Protocol models (VCS APIs, LLM I/O), domain models, persistence models and presentation models (CLI output, PR comments) must not leak into each other. Validate and convert data independently at every boundary. Never share mutable state across layers.
-4. **Security and isolation by default.** Design every feature for multi-repository, multi-user operation with explicit authentication, authorization and data-isolation boundaries. Apply least privilege (tokens, agent tool permissions). Treat all external input as untrusted, including diffs, PR titles and bodies, repository files and LLM output, and defend against prompt injection. Secrets never appear in code, logs, prompts or responses.
-5. **Design for concurrency and failure.** Consider idempotency, race conditions, transaction boundaries, timeouts, cancellation, retries, backpressure and resource cleanup up front. Never mask problems with unbounded retries, swallowed errors or implicitly shared state.
-6. **Complete user experience.** Every user-facing surface (CLI output, PR comments, a future session viewer) controls its cost and asynchronous state and covers loading, empty, error, retry, feedback and accessibility states.
-7. **Reuse stable domain semantics.** Prefer existing modules and capabilities, but do not abstract early just because code looks alike; when duplication is deliberate, comment why the copies evolve independently or why abstraction is deferred. Before adding a dependency, check whether existing dependencies (root `package.json` and `packages/` workspaces) already cover the need, and read their docs and type definitions before assuming a library lacks a feature. When a new dependency is needed, prefer mature, well-maintained libraries and never re-implement generic functionality.
-8. **Preserve context for future maintainers.** Code, comments, tests and architecture docs are how we collaborate across time. Non-obvious design decisions, compatibility constraints, known defects and workarounds must record the reason, scope, risk and removal condition. Link technical debt to a tracked issue, sync key architecture decisions to an ADR, and never leave a `TODO` without context.
-9. **Verifiable, observable, reversible changes.** Every change keeps behavior testable, runtime state observable and failures diagnosable, with backward compatibility and a rollback path considered. Errors and logs keep diagnostic context without leaking sensitive data.
-10. **Delete rather than keep compatibility.** When refactoring internal paths, delete obsolete implementations directly; do not add compatibility layers, deprecated shims or dual-write logic. Compatibility of external contracts (CLI flags, config file format, plugin interfaces, published package APIs, session file format) is evaluated separately against the contract, as a contractual obligation rather than a reason to keep old code.
+1. **Design complete, implement restrained.** Make domain boundaries, dependency direction and data flow explicit before coding; add an abstraction only when its second real use case appears.
+2. **Small modules.** **No source file may exceed 500 lines**, tests included (`scripts/file-size.e2e.test.mjs`); refactor boundaries before a file nears it. Shared test fakes go in a `*.fakes.ts` file next to the tests (kept out of the build by `tsconfig.package.json`).
+3. **Models do not leak across layers.** Protocol (VCS APIs, LLM I/O), domain, persistence and presentation models are converted and validated at every boundary; no mutable state is shared across layers.
+4. **Reuse before adding.** Check the existing dependencies (root `package.json`, `packages/`) and their docs before adding one; never re-implement a generic library. Deliberate duplication gets a comment saying why.
+5. **Leave the why behind.** Workarounds and known defects record reason, scope and removal condition; debt links an issue, decisions an ADR; no `TODO` without context.
+6. **Delete rather than keep compatibility** on internal paths: no shims or dual writes. External contracts (CLI flags, config format, plugin interfaces, published APIs, session files) are weighed against the contract.
 
-> **Change checklist:** run `npm run verify` before every commit. Prompt, rule or stage changes also need an eval run before merge. Larger changes update `README.md` in the same PR (see User manual). A change to the JSON report or to `.ocra/config.json` updates its schema (`npm run schema`); the tests say when they differ.
+> **Change checklist:** run `npm run verify` before every commit. Prompt, rule or stage changes also need an eval run before merge: `ocra-eval compare` of a baseline and the change on the golden smoke tier (manual, Evaluation), with no metric `worse`, linked in the PR. Larger changes update `README.md` in the same PR (see User manual). A change to the JSON report or to `.ocra/config.json` updates its schema (`npm run schema`); the tests say when they differ.
 
 ## Engineering best practices
 
-Concrete rules behind the principles above, from the project's self-audits. Known traps are collected in `pitfalls.md` in the maintainers' private notes (`jma49/ocra-internal`, cloned next to this checkout as `../ocra-internal`); read it before touching the runtime, git or eval code, and add to it when something bites.
+Concrete rules behind the principles above, from the project's self-audits. Maintainers: read `../ocra-internal/pitfalls.md` before touching the runtime, git or eval code, and add to it when something bites.
 
 ### Security
 
@@ -93,7 +90,7 @@ Concrete rules behind the principles above, from the project's self-audits. Know
 - The manual describes what exists today. Planned features are marked as planned; never document behavior that is not implemented.
 - `docs/architecture.md` and `docs/adr/` are for contributors; the manual is for users.
 - **`README.md` is the front door and must match the project.** Every larger change updates it in the same PR: a milestone item landing, a new command, flag or exit code, a new platform, runtime or reviewer, a change of direction or roadmap, a release, a changed security property or quality number. Check its pitch, the quickstart, the contract table, the security model, the quality paragraph and the milestone table against what now exists; it describes today, never a plan, except in "Where it is going", which mirrors `docs/roadmap.md`.
-- Merging a manual change to `main` does not redeploy the site: check it on a local build of the site repository, and deploy only when the maintainer asks, with `VERCEL_SCOPE=<team> npm run deploy` in the site repository (deploys its committed HEAD through a logged-in Vercel CLI; one build per run). Vercel's Git deployments and deploy hooks are both off.
+- Merging a manual change to `main` does not redeploy the site: check it on a local build of the site repository, then deploy the site as Working with agents says (`VERCEL_SCOPE=<team> npm run deploy` there; one build per run). Vercel's Git deployments and deploy hooks are both off.
 
 ## Git workflow
 
@@ -108,17 +105,19 @@ Concrete rules behind the principles above, from the project's self-audits. Know
 
 ## Working with agents
 
-Mirrored word for word in the AGENTS.md of ocra, ocra-cloud and ocra-site: change all three together.
+Mirrored word for word in the AGENTS.md of ocra, ocra-cloud and ocra-site: change all three together. Each repository's AGENTS check compares this section's SHA-256 with the one it expects and keeps the file under 150 lines.
 
 - **One owner per issue queue, one worktree per session.** Never edit a checkout another session is using.
-- **The maintainer runs production:** deploys, production database writes and secret-store changes. Prepare the exact command and a dry-run result, then hand off.
+- **Agents deploy ocra-site and ocra-cloud,** only committed `origin/main` with green CI, from a clean temporary worktree, with the repository's `npm run deploy`. Before a deploy that applies D1 migrations, record a Time Travel bookmark (`npx wrangler d1 time-travel info ocra-cloud`). Afterwards check the live result and report what went out: commit, migrations, bookmark.
+- **The maintainer keeps** secret-store changes, account, billing and plan settings, and production database writes outside migrations: prepare the exact command, then hand off.
 - **A critical Dependabot alert is a P0:** fix or pin it the same day.
 - **Validate what you act on, after normalising it** (`new URL()`, path resolution), never only the raw input.
 - **Uniqueness and currency live in the database** (`UNIQUE`, `ON CONFLICT`, compare-and-set), never in check-then-write code.
-- **A fix's test fails on the old code on an assertion,** not on a module the fix adds (`scripts/fails-without.sh` refuses that).
+- **A fix's test fails on the old code on an assertion,** not on a module the fix adds (in ocra, `scripts/fails-without.sh` refuses that).
 - **Shapes the CLI and ocra Cloud share live in `@open-cr-agent/cloud-contract`;** never retype them.
 - **Show only what exists:** mocks, demos and the landing use shipped behaviour and recorded or synthetic data, never the maintainer's accounts, numbers, keys or budget.
-- **Keep AGENTS.md under 150 lines:** a rule names the check that enforces it; stories go to `../ocra-internal/pitfalls.md`.
+- **Private notes are for maintainers** with access to `jma49/ocra-internal` (`../ocra-internal`): `git pull --rebase` before editing it, commit and push right after, rebase on a conflict. A session without write access puts its handoff in its final report instead.
+- **Keep AGENTS.md under 150 lines:** a rule a check enforces names that check; stories go to `../ocra-internal/pitfalls.md`.
 
 ## Repository hygiene
 
@@ -137,14 +136,13 @@ The repository is public: anything committed stays readable in history even afte
   - Types: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
 - Subject: imperative mood, lowercase start, no trailing period, at most 72 characters.
 - Body (optional): wrap at 72 characters, explain *what* and *why*, not *how*. One logical change per commit.
-- **No AI attribution anywhere:** commits are authored and committed under a person's identity (never `noreply@anthropic.com`; set `user.name`/`user.email` in agent sessions), carry no `Co-authored-by` or other co-author metadata, and pull request titles, descriptions and comments carry no tool footer such as "Generated with Claude Code" (the `/triage` disclaimer on an issue is disclosure, not attribution). CI's `commits` job enforces this (`scripts/attribution.mjs`).
+- **No AI attribution anywhere:** commits are authored and committed under a person's identity (never `noreply@anthropic.com`; set `user.name`/`user.email` in agent sessions), carry no `Co-authored-by` or other co-author metadata, and pull request titles, descriptions and comments carry no tool footer such as "Generated with Claude Code" (the `/triage` disclaimer on an issue is disclosure, not attribution). CI's `commits` job checks commits and the pull request description (`scripts/attribution.mjs`); titles and comments are on you.
 
 ## Agile practices
 
 - Work is planned as milestones in `docs/roadmap.md`, broken into small issues, each deliverable in one PR. When a milestone item lands, update the roadmap's readiness checklist and the README's milestone table in the same PR.
-- New behavior ships with tests. Review-quality changes (prompts, rules, stages) must be measured with the eval package before merge.
 - Record significant technical decisions as a new ADR in `docs/adr/` instead of rewriting old ones. Record spike results in `docs/spikes/`.
 - **Working notes are private.** The handoff, the pitfalls, the pending checks, the release runbook and the audits live in the maintainers' private notes (`jma49/ocra-internal`, cloned next to this checkout as `../ocra-internal`), not in this public repository. Never commit them, or details of the maintainer's accounts, keys, budget or machines, here.
-- At the start of a session, read `../ocra-internal/handoff.md` (clone `jma49/ocra-internal` there if it is missing), and `.local/` if it exists: it is git-ignored and holds notes about the maintainer's machine and agent tooling (shell, keys, connectors) that do not belong in public docs. Put such notes there, not in `docs/`.
-- **Update `../ocra-internal/handoff.md` at the end of every task or batch of work, before reporting it done, without being asked** (current state, maintainer actions, next steps, open questions; the site's state included). The maintainer should never have to remind you. **Rewrite, do not append:** replace what changed, delete what is done or no longer true, keep one list of next steps, and keep the file under about 150 lines; history belongs in git, `CHANGELOG.md` and the private repository's `audits/`. Add anything that cost real time to understand to its `pitfalls.md`. Commit and push those changes in that repository.
+- At the start of a session, maintainers read `../ocra-internal/handoff.md` (clone `jma49/ocra-internal` there if it is missing); anyone reads `.local/` if it exists: it is git-ignored and holds notes about the maintainer's machine and agent tooling (shell, keys, connectors) that do not belong in public docs. Put such notes there, not in `docs/`.
+- **Update `../ocra-internal/handoff.md` at the end of every task or batch of work, before reporting it done, without being asked** (current state, maintainer actions, next steps, open questions; the site's state included), as Working with agents says. **Rewrite, do not append:** replace what changed, delete what is done or no longer true, keep one list of next steps, and keep the file under about 150 lines; history belongs in git, `CHANGELOG.md` and the private repository's `audits/`. Add anything that cost real time to understand to its `pitfalls.md`.
 - Periodic self-audits (architecture, engineering including security and performance, product) go in the private repository's `audits/<date>-<topic>.md`; their actionable findings become issues here.
