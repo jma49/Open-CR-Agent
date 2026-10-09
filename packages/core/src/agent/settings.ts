@@ -109,13 +109,22 @@ function callSettings(
   };
 }
 
+// An agent's failback chain: its own, else its tier's when known.
+export function chainOf(
+  call: AgentCallSettings,
+  tier: ModelTier,
+  settings: AgentSettings,
+): readonly string[] | undefined {
+  return call.models ?? settings.models?.[tier];
+}
+
 // The enabled reviewers and the roles, each with its tier and effort.
 export function resolveAgents(
   reviewers: readonly ReviewerAgent[],
   settings: AgentSettings,
 ): ResolvedAgent[] {
   const agent = (id: string, tier: ModelTier, call: AgentCallSettings): ResolvedAgent => {
-    const models = call.models ?? settings.models?.[tier];
+    const models = chainOf(call, tier, settings);
     return {
       id,
       tier,

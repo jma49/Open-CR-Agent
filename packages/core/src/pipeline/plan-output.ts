@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { EFFORT_LEVELS } from "../agent/settings.js";
 import { riskTierSchema } from "../domain.js";
-import { changeRequestSchema, skippedCellSchema } from "../report/output-schema.js";
+import { changeRequestSchema, scopeSchema, skippedCellSchema } from "../report/output-schema.js";
 import { exclusionReasonSchema } from "../select/select.js";
 import type { PreviewTask, ReviewPreview } from "./preview.js";
 
@@ -33,6 +33,8 @@ export const planOutputSchema = z.strictObject({
   version: z.literal(PLAN_VERSION),
   changeRequest: changeRequestSchema,
   tier: riskTierSchema,
+  // Added in version 1 without a bump, like planCalls: the report's scope.
+  scope: scopeSchema.exactOptional(),
   selected: z.array(z.string()),
   excluded: z.array(z.strictObject({ path: z.string(), reason: exclusionReasonSchema })),
   bundles: z.array(z.strictObject({ label: z.string(), files: z.array(z.string()) })),
@@ -70,6 +72,7 @@ export function toPlanOutput(preview: ReviewPreview): PlanOutput {
       ...(c.override ? { override: { by: c.override.by, reason: c.override.reason } } : {}),
     },
     tier: preview.tier,
+    ...(preview.scope ? { scope: planScope(preview.scope) } : {}),
     selected: [...preview.selected],
     excluded: preview.excluded.map((e) => ({ path: e.path, reason: e.reason })),
     bundles: preview.bundles.map((b) => ({ label: b.label, files: [...b.files] })),
@@ -116,4 +119,10 @@ function planTask(t: PreviewTask): PlanTask {
         }
       : {}),
   };
+}
+
+function planScope(scope: NonNullable<ReviewPreview["scope"]>): NonNullable<PlanOutput["scope"]> {
+  return scope.mode === "incremental"
+    ? { mode: "incremental", since: scope.since }
+    : { mode: "full", reason: scope.reason };
 }

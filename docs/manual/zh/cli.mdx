@@ -90,7 +90,7 @@ ocra review [options]
 | `--publish` | 配合 `--pr` 或 `--mr`：把评审发布到 PR 或 Merge Request |
 | `--full` | 配合 `--pr` 或 `--mr`：审查所有文件，而不是只审查上次评审之后改动过的文件 |
 | `--max-cost-usd <n>` | 本次运行的花费上限。达到 80% 时仍在运行的审查任务停止，已找到的问题保留；这些任务的文件算作未审查（退出码 `3`），已经审完的任务除外。剩下的部分留给核查和裁决；再用完时，剩余问题标为*未核查*，不会拦下改动。任务大约每 10 秒报告一次花费，所以每个任务最多超出这段时间的花费加上正在进行的一步。任务按分组逐个运行，所以受限的运行会审完一部分文件；使用 `--pr` 时，下一次审查接着审剩下的 |
-| `--plan` | 免费，不调用模型：显示会审查和排除的文件、分组、审查任务和每个首轮提示词的大小（含 `--ultra` 下或 5 个文件以上的分组所做的规划调用）。任务的模型链已知时，按链上第一个模型的价格估算这些提示词的输入花费，逐个任务并给出总计：[自行声明的供应商](./providers#你自己的端点)用声明的价格，价格为 0 或经由 ocra Cloud 时显示 `input unpriced`，其余显示 `input price unknown`。输出、后续轮次、核查和裁决不做估算。跳过 light 模型分组，所以较大的改动按每个文件一组显示（超过 20 个文件时按目录）。和 `--pr` 一起用时按全量审查规划。不写会话日志 |
+| `--plan` | 免费，不调用模型：显示会审查和排除的文件、分组、审查任务和每个首轮提示词的大小（含 `--ultra` 下或 5 个文件以上的分组所做的规划调用）。任务的模型链已知时，按链上第一个模型的价格估算这些提示词的输入花费，逐个任务并给出总计：[自行声明的供应商](./providers#你自己的端点)用声明的价格，价格为 0 或经由 ocra Cloud 时显示 `input unpriced`，其余显示 `input price unknown`。输出、后续轮次、核查和裁决不做估算。跳过 light 模型分组，所以较大的改动按每个文件一组显示（超过 20 个文件时按目录）。和 `--pr` 或 `--mr` 一起用时，按审查实际会覆盖的范围规划：能判断时只规划自上次审查以来改动的部分，和审查本身一样，并会说明（`--full` 则规划全部）。不写会话日志 |
 | `--import-sarif <文件>` | 把分析工具（Semgrep、CodeQL 等）的 SARIF 2.1.0 日志里的结果加入审查，可以重复使用。见 [SARIF 输入](#sarif-输入)。不能和 `--plan` 一起用 |
 | `--ultra` | 以成本换召回率，见[模式](./how-it-works#模式) |
 | `--reviewers <ids>` | 只运行这些审查员，用逗号分隔（例如 `security`） |
@@ -158,7 +158,7 @@ ocra review [options]
 
 报告的 [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json)（draft 2020-12）由代码生成并经测试核对；`@open-cr-agent/core` 的 `reportJsonSchema()` 返回它。
 
-**`--plan` 的 JSON** 同样带版本号，有自己的 [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/plan.v1.json)：变更信息、风险档位、选中和排除的文件、分组、各任务（估算的提示词大小、`models`、设置了时的 `effort`、模型链已知时的 `inputCost`：`model` 为链上第一个模型，`status` 为带 `usd` 的 `priced`、`unpriced` 或 `unknown`）、被跳过的组合、`groupingSkipped`、`promptTokens`（总计）、有任务带估算时的 `inputCost`（已定价任务的 `usd` 之和及各状态的任务数）、警告信息、`settings`（每项的 `key`、`value`（默认值时不存在）和 `source`），以及读取了账户设置时的 `accountSettings`。
+**`--plan` 的 JSON** 同样带版本号，有自己的 [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/plan.v1.json)：变更信息、风险档位、有上次审查时的 `scope`（`incremental` 带 `since`，或 `full` 带 `reason`，和报告中的一样）、选中和排除的文件、分组、各任务（估算的提示词大小、`models`、设置了时的 `effort`、模型链已知时的 `inputCost`：`model` 为链上第一个模型，`status` 为带 `usd` 的 `priced`、`unpriced` 或 `unknown`）、被跳过的组合、`groupingSkipped`、`promptTokens`（总计）、有任务带估算时的 `inputCost`（已定价任务的 `usd` 之和及各状态的任务数）、警告信息、`settings`（每项的 `key`、`value`（默认值时不存在）和 `source`），以及读取了账户设置时的 `accountSettings`。
 
 ### SARIF 输出
 

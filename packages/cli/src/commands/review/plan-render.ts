@@ -8,6 +8,11 @@ export function renderPlan(preview: ReviewPreview): string {
     `Plan: ${preview.changeRequest.title}`,
     `Risk tier: ${preview.tier} · ${preview.selected.length} selected · ${preview.excluded.length} excluded`,
   ];
+  if (preview.scope?.mode === "incremental") {
+    lines.push(`Reviews only what changed since ${preview.scope.since.slice(0, 7)}.`);
+  } else if (preview.scope) {
+    lines.push(`Reviews every file again: ${preview.scope.reason}.`);
+  }
   if (preview.excluded.length > 0) {
     lines.push("", "Excluded:");
     for (const e of preview.excluded) lines.push(`  ${e.path}  (${e.reason.replaceAll("_", " ")})`);

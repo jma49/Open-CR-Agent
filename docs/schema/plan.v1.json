@@ -61,6 +61,44 @@
         "full"
       ]
     },
+    "scope": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "incremental"
+            },
+            "since": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mode",
+            "since"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "full"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "mode",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
     "selected": {
       "type": "array",
       "items": {
