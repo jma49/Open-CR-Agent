@@ -88,8 +88,10 @@ async function acquire(
  * being removed; undefined when no lock can be made there at all. Windows
  * keeps a removed file while a handle to it is open (another process
  * reading it) and refuses to create it again with EPERM until then, where
- * the file itself can no longer be seen (lstat fails with EPERM too); a
- * file that cannot be created in a directory, lstat finds absent.
+ * the file itself can no longer be seen (lstat fails with EPERM too). Found
+ * absent, it was either removed in full since the refusal or never there,
+ * in a directory that takes no new file: a file of a name no one else uses
+ * tells which.
  */
 async function whyNotMade(
   path: string,
@@ -97,10 +99,24 @@ async function whyNotMade(
 ): Promise<"lock" | "removing" | undefined> {
   if (code === "EEXIST") return "lock";
   if (process.platform !== "win32" || code !== "EPERM") return undefined;
-  return lstat(path).then(
+  const seen = await lstat(path).then(
     () => "lock" as const,
-    (error: unknown) => (errnoCode(error) === "ENOENT" ? undefined : ("removing" as const)),
+    (error: unknown) =>
+      errnoCode(error) === "ENOENT" ? ("absent" as const) : ("removing" as const),
   );
+  if (seen !== "absent") return seen;
+  return (await canCreateBeside(path)) ? "removing" : undefined;
+}
+
+async function canCreateBeside(path: string): Promise<boolean> {
+  const probe = `${path}.${randomBytes(8).toString("hex")}.probe`;
+  try {
+    await writeFile(probe, "", { flag: "wx", mode: 0o600 });
+  } catch {
+    return false;
+  }
+  await rm(probe, { force: true }).catch(() => {});
+  return true;
 }
 
 /** The lock at `path`; undefined when it is gone. */
