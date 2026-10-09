@@ -145,7 +145,8 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 |---|---|
 | `runtime`（`opencode` 或 `direct`）、`models.<tier>`、`effort.<tier>`、`reviewers.<id>`、`roles.<role>` | 只补充配置没有写的部分；配置中某个审查员或角色的条目整体优先 |
 | `concurrency`、`taskTimeoutMinutes`、`runTimeoutMinutes`、`maxCostUsd`、`maxTasks`、`verify`、`judge`、`sampling` | 只在配置没有设置时生效（`sampling` 算一个整体）：账户可以给没有上限的运行加上限，但不能放宽限制 |
-| `include`、`exclude` | 合并：先是配置中的模式，再是账户的 |
+| `include` | 合并：先是配置中的模式，再是账户的 |
+| `exclude` | 只在配置没有设置时生效：账户排除的文件既不审查，也不算作未审查，所以配置里写了 `exclude`（哪怕是 `[]`）就不再采用账户的 |
 | `rules` | 追加在仓库规则和共享规则之后：最多 50 条，格式与 [`.ocra/rules.json`](./rules) 的条目相同，每条规则最多 2,000 个字符，以同样的方式嵌入提示词 |
 
 每个键都按本文件的 schema 校验；不符合的、或当前版本不认识的键会被忽略，并给出点名它的警告，其余照常生效。模型必须是 `ocra-<provider>/<model>`，经由 ocra Cloud 使用其中保存的 key。账户永远不能设置 `providers`、`extends`、`github`（`botLogin` 决定信任谁的评论）或插件：ocra 会忽略并给出警告。

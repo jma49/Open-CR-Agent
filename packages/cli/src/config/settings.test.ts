@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layerSchema, listSettings, resolveSettings } from "./settings.js";
+import { layerSchema, listSettings, resolveSettings, type SettingsLayer } from "./settings.js";
 
 describe("resolveSettings", () => {
   it("applies ocra's defaults and records no source for them", () => {
@@ -55,17 +55,36 @@ describe("resolveSettings", () => {
       maxTasks: 2,
       concurrency: 3,
       runtime: "direct",
-      exclude: ["a/**", "b/**"],
+      exclude: ["a/**"],
       reviewers: { docs: {}, security: { effort: "high" } },
     });
     expect(sources).toEqual({
       maxTasks: ["file"],
       concurrency: ["account"],
       runtime: ["account"],
-      exclude: ["file", "account"],
+      exclude: ["file"],
       "reviewers.docs": ["file"],
       "reviewers.security": ["account"],
     });
+  });
+
+  it("keeps the account's exclusions out once the repository lists its own, an empty list included", () => {
+    const account: SettingsLayer = {
+      source: "account",
+      under: true,
+      settings: { exclude: ["**"] },
+    };
+    for (const exclude of [[], ["gen/**"]]) {
+      const { settings, sources } = resolveSettings([
+        { source: "file", settings: { exclude } },
+        account,
+      ]);
+      expect(settings.exclude).toEqual(exclude);
+      expect(sources).toEqual({ exclude: ["file"] });
+    }
+    const shared = resolveSettings([{ source: "shared", settings: { exclude: [] } }, account]);
+    expect(shared.settings.exclude).toEqual([]);
+    expect(resolveSettings([account]).settings.exclude).toEqual(["**"]);
   });
 
   it("refuses a setting its layer may not set", () => {

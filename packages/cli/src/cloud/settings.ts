@@ -61,7 +61,8 @@ export async function fetchAccountSettings(
 
 /**
  * The account's settings as the layer under the configuration: they fill
- * what it leaves out, and add to its include, exclude and rules.
+ * what it leaves out, add to its include and rules, and give the exclude
+ * list only when it sets none.
  */
 export function accountLayer(account: AccountSettings): SettingsLayer {
   const { version: _, rules, ultra, ...settings } = account;

@@ -80,7 +80,7 @@ describe("--plan's settings and sources (golden)", () => {
     const { cwd, extra } = layered();
     const text = await plan([], extra, cwd);
     expect(text.err).toMatchInlineSnapshot(`
-      "[ocra] From your ocra Cloud settings: runtime, models.light, effort.standard, reviewers.security, roles.verifier, concurrency, exclude, rules, ultra
+      "[ocra] From your ocra Cloud settings: runtime, models.light, effort.standard, reviewers.security, roles.verifier, concurrency, rules, ultra
       "
     `);
     expect(settingsOf(text.out)).toMatchInlineSnapshot(`
@@ -101,7 +101,7 @@ describe("--plan's settings and sources (golden)", () => {
         maxCostUsd          3  (shared)
         maxTasks            2  (file)
         include             ["**/*.ts"]  (file)
-        exclude             ["vendor/**","**/*.md"]  (shared+account)
+        exclude             ["vendor/**"]  (shared)
         rules               [{"path":"**","source":"shared"},{"path":"**/*.ts","source":"account"}]  (shared+account)
         ultra               true  (account)
         default: taskTimeoutMinutes, runTimeoutMinutes, verify, judge, sampling
@@ -137,7 +137,7 @@ describe("--plan's settings and sources (golden)", () => {
           "{"key":"judge","source":"default"}",
           "{"key":"sampling","source":"default"}",
           "{"key":"include","value":["**/*.ts"],"source":"file"}",
-          "{"key":"exclude","value":["vendor/**","**/*.md"],"source":"shared+account"}",
+          "{"key":"exclude","value":["vendor/**"],"source":"shared"}",
           "{"key":"rules","value":[{"path":"**","source":"shared"},{"path":"**/*.ts","source":"account"}],"source":"shared+account"}",
           "{"key":"ultra","value":true,"source":"account"}",
         ],

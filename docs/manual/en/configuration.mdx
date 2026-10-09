@@ -145,7 +145,8 @@ Signed in to [ocra Cloud](./cli#ocra-login-ocra-logout-ocra-whoami), `ocra revie
 |---|---|
 | `runtime` (`opencode` or `direct`), `models.<tier>`, `effort.<tier>`, `reviewers.<id>`, `roles.<role>` | Only where the configuration leaves it out; a reviewer's or role's entry in the configuration wins whole |
 | `concurrency`, `taskTimeoutMinutes`, `runTimeoutMinutes`, `maxCostUsd`, `maxTasks`, `verify`, `judge`, `sampling` | Only when the configuration does not set it (`sampling` as one setting): the account can bound an unbounded run, never loosen a limit |
-| `include`, `exclude` | Combined: the configuration's patterns, then the account's |
+| `include` | Combined: the configuration's patterns, then the account's |
+| `exclude` | Only when the configuration sets none: a file the account excludes is neither reviewed nor counted as unreviewed, so an `exclude` in the configuration, even `[]`, keeps the account's out |
 | `rules` | Added after the repository's and the shared ones: at most 50, each like an [`.ocra/rules.json`](./rules) entry with a rule of at most 2,000 characters, embedded in the prompt the same way |
 
 Each key is checked against this file's schema; one that fails, or that this version does not know, is ignored with a warning naming it, and the rest apply. Models must be `ocra-<provider>/<model>`, which go through ocra Cloud with the keys stored there. The account can never set `providers`, `extends`, `github` (`botLogin` decides whose comments are trusted) or plugins: ocra ignores them with a warning.

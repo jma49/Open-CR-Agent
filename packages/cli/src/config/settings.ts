@@ -41,7 +41,12 @@ type Merge =
   // Each entry of a map on its own, the last layer's whole.
   | "entries"
   // Each layer's values after the ones before.
-  | "concat";
+  | "concat"
+  // As concat, but a layer under the others adds nothing to a list one of
+  // them set, an empty one included: what the account excludes is never
+  // reviewed nor counted as a gap, so a repository that lists its own
+  // exclusions keeps the account from hiding files.
+  | "concat-unless-set";
 
 // How --plan lists a setting: always (as ocra's default when no layer set
 // it), or only once a layer set it; a map's entries one by one, the given
@@ -83,7 +88,7 @@ const MERGE: {
   judge: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   sampling: { merge: "replace", from: ["file", "account"], plan: ALWAYS },
   include: { merge: "concat", from: NOT_ENV, plan: ALWAYS },
-  exclude: { merge: "concat", from: NOT_ENV, plan: ALWAYS },
+  exclude: { merge: "concat-unless-set", from: NOT_ENV, plan: ALWAYS },
   rules: {
     merge: "concat",
     from: ["shared", "account"],
@@ -153,6 +158,10 @@ export function resolveSettings(layers: readonly SettingsLayer[]): {
         }
         merged[key] = entries;
       } else {
+        if (rule.merge === "concat-unless-set") {
+          if (under && sources[key]) continue;
+          if (!under) record(key, source);
+        }
         const current = merged[key] as unknown[];
         const added = under
           ? (value as unknown[]).filter((v) => !current.some((c) => isDeepStrictEqual(c, v)))
