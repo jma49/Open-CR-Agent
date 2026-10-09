@@ -9,7 +9,8 @@
       "!evals/golden/*.json",
       "!docs/schema/*.json",
       "!docs/images/*.svg",
-      "!**/__snapshots__"
+      "!**/__snapshots__",
+      "!packages/runtime-direct/src/recordings"
     ]
   },
   "formatter": {

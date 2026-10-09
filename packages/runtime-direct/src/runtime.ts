@@ -24,6 +24,7 @@ import {
 import { EffortLedger } from "./effort.js";
 import { runLoop } from "./loop.js";
 import type { Endpoint } from "./openai.js";
+import { RECORD_DIR_ENV, recordingFetch } from "./record.js";
 
 export interface DirectRuntimeOptions extends RuntimeOptions {
   // Tests point this at a server of their own; otherwise requests honor the
@@ -61,7 +62,7 @@ export class DirectRuntime implements AgentRuntime {
   constructor(options: DirectRuntimeOptions) {
     this.options = options;
     this.tools = [...reviewTools, ...options.tools];
-    this.fetch = options.fetch ?? proxiedFetch(options.env);
+    this.fetch = this.recorded(options.fetch ?? proxiedFetch(options.env));
     const { temperature, seed } = options.sampling ?? {};
     this.sampling = {
       ...(temperature === undefined ? {} : { temperature }),
@@ -73,6 +74,17 @@ export class DirectRuntime implements AgentRuntime {
       task: (model, spec, signal, onUsage) => this.attemptTask(model, spec, signal, onUsage),
       complete: (model, request, signal) => this.attemptCompletion(model, request, signal),
     });
+  }
+
+  // Every exchange goes to the recording directory when one is set, with the
+  // keys of all declared providers taken out.
+  private recorded(base: typeof fetch): typeof fetch {
+    const dir = this.options.env[RECORD_DIR_ENV];
+    if (!dir) return base;
+    const keys = Object.values(this.options.providers ?? {}).flatMap((p) =>
+      p.apiKeyEnv && this.options.env[p.apiKeyEnv] ? [this.options.env[p.apiKeyEnv] as string] : [],
+    );
+    return recordingFetch(base, dir, keys);
   }
 
   appliedTo(agent: string): AppliedSettings | undefined {

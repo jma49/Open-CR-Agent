@@ -55,6 +55,8 @@ export interface Reply {
   retryAfter?: number;
   // Hold the answer, so that a test can abort meanwhile.
   delayMs?: number;
+  // An answer sent as is, as a recorded endpoint gave it.
+  raw?: { status: number; body: string };
 }
 
 export interface FakeEndpoint {
@@ -64,12 +66,15 @@ export interface FakeEndpoint {
 }
 
 // Answers a test scripts, one per request, in order; after the script, text
-// and no tools. Streams when asked to, as OpenCode's client does.
+// and no tools. A function instead of a list answers every request. Streams
+// when asked to, as OpenCode's client does.
 export async function scriptedEndpoint(
-  script: readonly (Reply | ((request: SeenRequest) => Reply))[],
+  script:
+    | readonly (Reply | ((request: SeenRequest) => Reply))[]
+    | ((request: SeenRequest) => Reply),
 ): Promise<FakeEndpoint> {
   const seen: SeenRequest[] = [];
-  const replies = [...script];
+  const replies = typeof script === "function" ? [] : [...script];
   const server: Server = createServer((req, res) => {
     let body = "";
     req.on("data", (chunk) => {
@@ -89,9 +94,16 @@ export async function scriptedEndpoint(
         authorization: req.headers.authorization,
       };
       seen.push(request);
-      const next = replies.shift() ?? { content: "Done." };
+      const next =
+        typeof script === "function" ? script : (replies.shift() ?? { content: "Done." });
       const reply = typeof next === "function" ? next(request) : next;
       const answer = () => {
+        if (reply.raw) {
+          res
+            .writeHead(reply.raw.status, { "content-type": "application/json" })
+            .end(reply.raw.body);
+          return;
+        }
         if (reply.status !== undefined) {
           const headers: Record<string, string> = { "content-type": "application/json" };
           if (reply.retryAfter !== undefined) headers["retry-after"] = String(reply.retryAfter);
