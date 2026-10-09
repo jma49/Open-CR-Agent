@@ -84,7 +84,7 @@ A free model on [OpenRouter](https://openrouter.ai) is declared like any endpoin
 - With `--no-repo-config`, as in the evaluation harness, keep the file outside the reviewed repository and pass it with [`--config`](./cli).
 - The evaluation's judge can use the same endpoint: `JUDGE_API_KEY`, `JUDGE_BASE_URL=https://openrouter.ai/api/v1` and `JUDGE_MODEL=openrouter/free`.
 - The router picks a different model per request, so review quality varies. To compare runs, name one free model (its id ends in `:free`, such as `nvidia/nemotron-3-ultra-550b-a55b:free`, which this repository's CI pins); OpenRouter withdraws free models without notice, and a withdrawn one answers HTTP 404, failing the review.
-- Without credits, OpenRouter allows about 50 free requests a day across its `:free` models; a review takes 30 to 70 requests per task, so a large one may stop part way. Some zero-price models without `:free` need credits and answer HTTP 402 otherwise.
+- Without credits, OpenRouter allows about 50 free requests a day across its `:free` models, and 1000 once the account has bought at least $10 of credits; a review takes 30 to 70 requests per task, so a large one may stop part way. Some zero-price models without `:free` need credits and answer HTTP 402 otherwise.
 - Free models, limits and prices change without notice, and a free model's provider may keep what it is sent. Use them to try ocra, not on code you must keep private.
 
 The declared endpoint works without OpenCode's pricing catalog; the catalog form, `openrouter/<model>`, needs the catalog reachable and the model in it, and fails at once otherwise.
