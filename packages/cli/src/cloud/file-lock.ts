@@ -58,16 +58,21 @@ async function acquire(
   let told = false;
   for (;;) {
     const mine = JSON.stringify({ token, at: Date.now(), pid: process.pid, host: HOST });
+    let found: "lock" | "removing";
     try {
       await writeFile(path, mine, { flag: "wx", mode: 0o600 });
       return mine;
     } catch (error) {
+      const how = await whyNotMade(path, errnoCode(error));
       // A lock that cannot be made at all (a read-only directory) is no lock.
-      if (errnoCode(error) !== "EEXIST") return undefined;
+      if (how === undefined) return undefined;
+      found = how;
     }
-    const held = await readLock(path);
-    if (held === undefined) continue;
-    if (isStale(held, timing) && (await removeLock(path, held.key, timing))) continue;
+    if (found === "lock") {
+      const held = await readLock(path);
+      if (held === undefined) continue;
+      if (isStale(held, timing) && (await removeLock(path, held.key, timing))) continue;
+    }
     const waited = Date.now() - started;
     if (waited >= timing.waitMs) return undefined;
     if (!told && waited >= timing.noticeMs) {
@@ -76,6 +81,26 @@ async function acquire(
     }
     await sleep(timing.pollMs);
   }
+}
+
+/**
+ * Why the lock file could not be made: another lock is there, or one is
+ * being removed; undefined when no lock can be made there at all. Windows
+ * keeps a removed file while a handle to it is open (another process
+ * reading it) and refuses to create it again with EPERM until then, where
+ * the file itself can no longer be seen (lstat fails with EPERM too); a
+ * file that cannot be created in a directory, lstat finds absent.
+ */
+async function whyNotMade(
+  path: string,
+  code: string | undefined,
+): Promise<"lock" | "removing" | undefined> {
+  if (code === "EEXIST") return "lock";
+  if (process.platform !== "win32" || code !== "EPERM") return undefined;
+  return lstat(path).then(
+    () => "lock" as const,
+    (error: unknown) => (errnoCode(error) === "ENOENT" ? undefined : ("removing" as const)),
+  );
 }
 
 /** The lock at `path`; undefined when it is gone. */
