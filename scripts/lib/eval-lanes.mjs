@@ -88,9 +88,31 @@ export function rotation(lanes, now, slot) {
 }
 
 /**
- * One line per lane for the workflow: model, ref, tier and series, tab-separated.
+ * The first lane whose branch exists, in order, and the lanes passed over
+ * before it because theirs does not.
+ * @param {readonly Lane[]} lanes
+ * @param {(ref: string) => Promise<boolean>} branchExists
+ * @returns {Promise<{ lane: Lane | undefined, passedOver: Lane[] }>}
+ */
+export async function pickLane(lanes, branchExists) {
+  const passedOver = [];
+  for (const lane of lanes) {
+    if (await branchExists(lane.ref)) return { lane, passedOver };
+    passedOver.push(lane);
+  }
+  return { lane: undefined, passedOver };
+}
+
+/**
+ * The step outputs of a lane, one name=value line each; a checked lane holds
+ * no newline.
  * @param {Lane} lane
  */
-export function laneLine(lane) {
-  return [lane.model, lane.ref, lane.tier, seriesName(lane)].join("\t");
+export function laneOutputs(lane) {
+  return [
+    `model=${lane.model}`,
+    `ref=${lane.ref}`,
+    `tier=${lane.tier}`,
+    `series=${seriesName(lane)}`,
+  ].join("\n");
 }

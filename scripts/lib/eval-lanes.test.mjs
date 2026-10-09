@@ -1,6 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { checkLane, laneLine, parseLanes, rotation, seriesName } from "./eval-lanes.mjs";
+import {
+  checkLane,
+  laneOutputs,
+  parseLanes,
+  pickLane,
+  rotation,
+  seriesName,
+} from "./eval-lanes.mjs";
 
 const nemotron = "nvidia/nemotron-3-ultra-550b-a55b:free";
 
@@ -60,13 +67,34 @@ describe("checkLane", () => {
   });
 });
 
-describe("series and lines", () => {
+describe("series and outputs", () => {
   it("encodes model, ref and tier in a label part without @ in the slugs", () => {
     const lane = { model: "vendor/m-1.5:free", ref: "feat/x_y", tier: "smoke" };
     expect(seriesName(lane)).toBe("free-vendor-m-1-5-free@feat-x-y-smoke");
-    expect(laneLine(lane)).toBe(
-      "vendor/m-1.5:free\tfeat/x_y\tsmoke\tfree-vendor-m-1-5-free@feat-x-y-smoke",
+    expect(laneOutputs(lane)).toBe(
+      "model=vendor/m-1.5:free\nref=feat/x_y\ntier=smoke\nseries=free-vendor-m-1-5-free@feat-x-y-smoke",
     );
+  });
+});
+
+describe("pickLane", () => {
+  const lanes = ["gone", "main", "next"].map((ref) => ({ model: nemotron, ref, tier: "smoke" }));
+
+  it("takes the first lane whose branch exists and names those passed over", async () => {
+    const asked = /** @type {string[]} */ ([]);
+    const picked = await pickLane(lanes, async (ref) => {
+      asked.push(ref);
+      return ref !== "gone";
+    });
+    expect(picked).toEqual({ lane: lanes[1], passedOver: [lanes[0]] });
+    expect(asked).toEqual(["gone", "main"]);
+  });
+
+  it("picks none when no branch exists", async () => {
+    expect(await pickLane(lanes, async () => false)).toEqual({
+      lane: undefined,
+      passedOver: lanes,
+    });
   });
 });
 

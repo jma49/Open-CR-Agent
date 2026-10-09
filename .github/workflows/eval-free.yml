@@ -101,34 +101,17 @@ jobs:
           INPUT_MODEL: ${{ inputs.model }}
           INPUT_REF: ${{ inputs.ref }}
           INPUT_TIER: ${{ inputs.tier }}
+        # Picks the lane, checks its branch exists here, and writes the
+        # outputs and the job summary.
         run: |
           set -euo pipefail
           if [ "$EVENT" = workflow_dispatch ]; then
-            lanes=$(node scripts/eval-lane.mjs dispatch "$INPUT_MODEL" "$INPUT_REF" "$INPUT_TIER")
+            node scripts/eval-lane.mjs dispatch "$INPUT_MODEL" "$INPUT_REF" "$INPUT_TIER"
+          elif [ "$SCHEDULE" = "0 1 * * *" ]; then
+            node scripts/eval-lane.mjs schedule 0
           else
-            slot=1
-            if [ "$SCHEDULE" = "0 1 * * *" ]; then slot=0; fi
-            lanes=$(node scripts/eval-lane.mjs schedule "$slot")
+            node scripts/eval-lane.mjs schedule 1
           fi
-          picked=""
-          while IFS=$'\t' read -r model ref tier series; do
-            if git ls-remote --exit-code --heads "https://github.com/$GITHUB_REPOSITORY.git" "refs/heads/$ref" > /dev/null; then
-              picked=yes
-              break
-            fi
-            echo "::warning title=Lane passed over::$ref is not a branch of $GITHUB_REPOSITORY; remove its lane from .github/eval-free-lanes.json"
-          done <<< "$lanes"
-          if [ -z "$picked" ]; then
-            echo "::error::no lane to evaluate"
-            exit 1
-          fi
-          {
-            echo "model=$model"
-            echo "ref=$ref"
-            echo "tier=$tier"
-            echo "series=$series"
-          } >> "$GITHUB_OUTPUT"
-          echo "Lane: \`$model\` on \`$ref\`, $tier tier ($series)." >> "$GITHUB_STEP_SUMMARY"
 
       - id: probe
         shell: bash
