@@ -6,6 +6,7 @@ import {
   type Severity,
   type Verification,
 } from "@open-cr-agent/core";
+import { serializeOutput } from "@open-cr-agent/core/internal";
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
 import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
@@ -94,7 +95,7 @@ export async function metricsCommand(argv: string[], out: Output, cwd: string): 
     : sessionsDir(await findRepositoryRoot(cwd));
 
   const metrics = await collectMetrics(dir, since);
-  out.write(format === "json" ? `${JSON.stringify(metrics, null, 2)}\n` : renderMetrics(metrics));
+  out.write(format === "json" ? `${serializeOutput(metrics)}\n` : renderMetrics(metrics));
   return EXIT.ok;
 }
 

@@ -283,6 +283,17 @@ describe("ocra metrics", () => {
     });
   });
 
+  it("escapes C1 and bidirectional controls from session strings in its JSON", async () => {
+    const planted = "sec\u009b2J‮urity";
+    const dir = repoWithSessions({
+      "20261001T100000Z-000001": report({ tasks: [task("t-1", planted, 0.1)] }),
+    });
+    const out = capture();
+    await metricsCommand(["--format", "json"], out, dir);
+    expect(out.text()).not.toMatch(/[\u0080-\u009f‪-‮]/);
+    expect(Object.keys(JSON.parse(out.text()).reviewers)).toEqual([planted]);
+  });
+
   it("reports an empty directory as no runs, and refuses a bad date or format", async () => {
     const dir = repoWithSessions({});
     const out = capture();
