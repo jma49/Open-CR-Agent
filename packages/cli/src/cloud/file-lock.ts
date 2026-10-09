@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
-import { lstat, readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
+import { basename, dirname } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { errnoCode } from "@open-cr-agent/core/internal";
 
@@ -63,7 +64,7 @@ async function acquire(
       await writeFile(path, mine, { flag: "wx", mode: 0o600 });
       return mine;
     } catch (error) {
-      const how = await whyNotMade(path, errnoCode(error));
+      const how = await whyNotMade(path, errnoCode(error), timing);
       // A lock that cannot be made at all (a read-only directory) is no lock.
       if (how === undefined) return undefined;
       found = how;
@@ -96,6 +97,7 @@ async function acquire(
 async function whyNotMade(
   path: string,
   code: string | undefined,
+  timing: LockTiming,
 ): Promise<"lock" | "removing" | undefined> {
   if (code === "EEXIST") return "lock";
   if (process.platform !== "win32" || code !== "EPERM") return undefined;
@@ -105,10 +107,10 @@ async function whyNotMade(
       errnoCode(error) === "ENOENT" ? ("absent" as const) : ("removing" as const),
   );
   if (seen !== "absent") return seen;
-  return (await canCreateBeside(path)) ? "removing" : undefined;
+  return (await canCreateBeside(path, timing)) ? "removing" : undefined;
 }
 
-async function canCreateBeside(path: string): Promise<boolean> {
+async function canCreateBeside(path: string, timing: LockTiming): Promise<boolean> {
   const probe = `${path}.${randomBytes(8).toString("hex")}.probe`;
   try {
     await writeFile(probe, "", { flag: "wx", mode: 0o600 });
@@ -116,7 +118,24 @@ async function canCreateBeside(path: string): Promise<boolean> {
     return false;
   }
   await rm(probe, { force: true }).catch(() => {});
+  await removeStaleProbes(path, timing);
   return true;
+}
+
+const PROBE_SUFFIX = /^\.[0-9a-f]{16}\.probe$/;
+
+/** Probes left by a process that died between making and removing one; each later probe sweeps them. */
+async function removeStaleProbes(path: string, timing: LockTiming): Promise<void> {
+  const lock = basename(path);
+  const names = await readdir(dirname(path)).catch(() => []);
+  for (const name of names) {
+    if (!name.startsWith(lock) || !PROBE_SUFFIX.test(name.slice(lock.length))) continue;
+    const probe = `${path}${name.slice(lock.length)}`;
+    const left = await lstat(probe).catch(() => undefined);
+    if (left?.isFile() && Math.abs(Date.now() - left.mtimeMs) > timing.staleMs) {
+      await rm(probe, { force: true }).catch(() => {});
+    }
+  }
 }
 
 /** The lock at `path`; undefined when it is gone. */

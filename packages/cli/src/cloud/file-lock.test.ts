@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -39,6 +39,21 @@ describe("withFileLock on Windows", () => {
     const heldInside = await withFileLock(path, async () => existsSync(path), QUICK);
     expect(heldInside).toBe(true);
     expect(readdirSync(dirname(path))).toEqual([]);
+  });
+
+  it("removes a probe a killed process left beside the lock, once it is stale", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "ocra-lock-"));
+    const path = join(dir, "x.lock");
+    const left = `${path}.${"a".repeat(16)}.probe`;
+    const inUse = `${path}.${"b".repeat(16)}.probe`;
+    writeFileSync(left, "");
+    writeFileSync(inUse, "");
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60_000);
+    utimesSync(left, tenMinutesAgo, tenMinutesAgo);
+    let refusals = 1;
+    refused.create = (file) => file === path && refusals-- > 0;
+    await withFileLock(path, async () => {}, QUICK);
+    expect(readdirSync(dir)).toEqual(["x.lock.bbbbbbbbbbbbbbbb.probe"]);
   });
 
   it("goes on at once without a lock where no file can be made", async () => {
