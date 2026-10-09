@@ -173,6 +173,58 @@ describe("prepareCloudReview", () => {
     },
   );
 
+  // Windows ignores the mode, and root writes anyway.
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "runs a signed-in review when the config directory cannot be written",
+    async () => {
+      const root = repo();
+      const unwritable = async (m: ReturnType<typeof machine>) => {
+        const dir = dirname(m.credentialsPath);
+        const warnings: string[] = [];
+        chmodSync(dir, 0o500);
+        try {
+          const ready = await prepareCloudReview(root, m.deps, (w) => warnings.push(w));
+          return { ready, warnings };
+        } finally {
+          chmodSync(dir, 0o700);
+        }
+      };
+      const notKept = /could not keep your ocra Cloud account's salt/;
+
+      // A sharing account: the answer's salt serves this review.
+      const shared = machine(sharing);
+      const kept = await unwritable(shared);
+      expect(kept.ready).toMatchObject({
+        repoHash: await hashOf(root, shared.credentialsPath, SALT),
+        shareFindings: true,
+      });
+      expect(kept.ready?.memory).toHaveLength(1);
+      expect(kept.warnings).toEqual([expect.stringMatching(notKept)]);
+
+      // An account that answers no salt: this machine's, while account-salt
+      // stays behind.
+      const off = machine({ "/api/account/salt": () => Response.json({ salt: null }) });
+      writeFileSync(join(dirname(off.credentialsPath), "upload-salt"), `${"6".repeat(64)}\n`);
+      writeFileSync(accountSaltPath(off.credentialsPath), `${SALT}\n`);
+      const stale = await unwritable(off);
+      expect(stale.ready).toMatchObject({
+        repoHash: await hashOf(root, off.credentialsPath),
+        shareFindings: false,
+      });
+      expect(stale.warnings).toEqual([expect.stringMatching(notKept)]);
+
+      // No salt to hash with: nothing goes to ocra Cloud.
+      for (const answer of [
+        () => Response.json({ salt: null }),
+        () => new Response("", { status: 500 }),
+      ]) {
+        const none = await unwritable(machine({ "/api/account/salt": answer }));
+        expect(none.ready).toBeUndefined();
+        expect(none.warnings.at(-1)).toMatch(/cannot be made.*sends nothing to ocra Cloud/);
+      }
+    },
+  );
+
   it("hashes one repository alike whatever form its origin URL takes", async () => {
     const m = machine(sharing);
     const forms = [

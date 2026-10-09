@@ -38,28 +38,40 @@ async function createPrivateFile(path: string, text: string): Promise<boolean> {
   }
 }
 
-/** The file holding a machine secret exists but cannot be read. */
-export class UnreadableSecretError extends Error {}
+/** The file holding a machine secret cannot be read, or none can be made. */
+export class MachineSecretError extends Error {}
 
 /**
  * A random secret of this machine's user (32 bytes as hex) kept in the file,
  * made on first use. Two first uses at once agree on the one made first; a
  * file that holds no such secret is replaced. One that cannot be read (owned
  * by another user, say, after `sudo ocra`) may hold the secret still in use,
- * so it is left as it is: UnreadableSecretError.
+ * so it is left as it is: MachineSecretError, as when no file can be written
+ * (a read-only config directory).
  */
 export async function machineSecret(path: string): Promise<string> {
   const existing = await readSecret(path);
   if (existing !== "invalid") {
     if (existing) return existing;
     const fresh = randomBytes(32).toString("hex");
-    if (await createPrivateFile(path, `${fresh}\n`)) return fresh;
-    const made = await readSecret(path);
-    if (made && made !== "invalid") return made;
+    if (await made(path, () => createPrivateFile(path, `${fresh}\n`))) return fresh;
+    const other = await readSecret(path);
+    if (other && other !== "invalid") return other;
   }
   const fresh = randomBytes(32).toString("hex");
-  await writePrivateFile(path, `${fresh}\n`);
+  await made(path, () => writePrivateFile(path, `${fresh}\n`));
   return fresh;
+}
+
+async function made<T>(path: string, write: () => Promise<T>): Promise<T> {
+  try {
+    return await write();
+  } catch (error) {
+    throw new MachineSecretError(
+      `${path} cannot be made (${errnoCode(error) ?? errorMessage(error)})`,
+      { cause: error },
+    );
+  }
 }
 
 async function readSecret(path: string): Promise<string | "invalid" | undefined> {
@@ -68,7 +80,7 @@ async function readSecret(path: string): Promise<string | "invalid" | undefined>
     text = await readFile(path, "utf8");
   } catch (error) {
     if (isNotFound(error)) return undefined;
-    throw new UnreadableSecretError(
+    throw new MachineSecretError(
       `${path} cannot be read (${errnoCode(error) ?? errorMessage(error)}); it was left as it is`,
       { cause: error },
     );

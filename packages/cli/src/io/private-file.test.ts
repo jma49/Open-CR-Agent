@@ -2,7 +2,7 @@ import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { machineSecret, UnreadableSecretError } from "./private-file.js";
+import { MachineSecretError, machineSecret } from "./private-file.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -40,7 +40,7 @@ describe("machineSecret", () => {
     async () => {
       const path = secretFile(`${SECRET}\n`);
       chmodSync(path, 0o000);
-      await expect(machineSecret(path)).rejects.toThrow(UnreadableSecretError);
+      await expect(machineSecret(path)).rejects.toThrow(MachineSecretError);
       chmodSync(path, 0o600);
       expect(readFileSync(path, "utf8")).toBe(`${SECRET}\n`);
     },

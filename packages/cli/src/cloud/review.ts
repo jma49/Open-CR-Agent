@@ -1,7 +1,7 @@
 import type { ReviewSource } from "@open-cr-agent/cloud-contract";
 import { errorMessage, type MemoryEntry, type ReviewReport } from "@open-cr-agent/core";
 import type { Output } from "../io/output.js";
-import { UnreadableSecretError } from "../io/private-file.js";
+import { MachineSecretError } from "../io/private-file.js";
 import { originRepository } from "../repository-id.js";
 import { readAccountSalt, saveAccountSalt } from "./account-salt.js";
 import { CloudClient, type CloudSessionLost, sessionLostReason } from "./client.js";
@@ -33,9 +33,10 @@ export function sessionLostWarning(
 }
 
 /**
- * Undefined when the saved session is gone or this machine's salt cannot be
- * read; a failure to reach ocra Cloud is one warning. The repository is the
- * pull or merge request's when given, else origin's.
+ * Undefined when the saved session is gone or no salt can be had (this
+ * machine's cannot be read or made); a failure to reach ocra Cloud is one
+ * warning. The repository is the pull or merge request's when given, else
+ * origin's.
  */
 export async function prepareCloudReview(
   root: string,
@@ -47,7 +48,7 @@ export async function prepareCloudReview(
     return await prepare(root, deps, warn, repository);
   } catch (error) {
     // A hash under another salt would count the repository as a new one.
-    if (!(error instanceof UnreadableSecretError)) throw error;
+    if (!(error instanceof MachineSecretError)) throw error;
     warn(`${error.message}; this review sends nothing to ocra Cloud`);
     return undefined;
   }
@@ -80,7 +81,7 @@ async function prepare(
     );
     return { repoHash: hash, shareFindings: false, memory: [] };
   }
-  await saveAccountSalt(deps.credentialsPath, salt);
+  await keepAccountSalt(deps.credentialsPath, salt, warn);
   const hash = await repoHash(id, deps.credentialsPath, salt ?? undefined);
   if (salt === null) {
     // Memory is keyed by the account's hash, which only a sharing account has.
@@ -96,6 +97,22 @@ async function prepare(
     shareFindings: true,
     memory: await fetchAccountMemory(deps, hash, warn),
   };
+}
+
+// A copy for the reviews that cannot reach ocra Cloud; without it this
+// review still has the answer's salt, so only those hash differently.
+async function keepAccountSalt(
+  credentialsPath: string,
+  salt: string | null,
+  warn: (message: string) => void,
+): Promise<void> {
+  try {
+    await saveAccountSalt(credentialsPath, salt);
+  } catch (error) {
+    warn(
+      `could not keep your ocra Cloud account's salt (${errorMessage(error)}); a review that cannot reach ocra Cloud may count this repository as another`,
+    );
+  }
 }
 
 /** Sends the counts, and the findings when the account shares them. */
