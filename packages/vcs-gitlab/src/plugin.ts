@@ -5,6 +5,7 @@ import {
   commitIdSchema,
   fetchSchema,
   historySchema,
+  signalSchema,
 } from "@open-cr-agent/vcs-platform";
 import { z } from "zod";
 import { GitLabAdapter } from "./adapter.js";
@@ -17,6 +18,7 @@ const optionsSchema = z.object({
   token: z.string().min(1),
   apiUrl: z.string().url().optional(),
   fetch: fetchSchema.optional(),
+  signal: signalSchema.optional(),
   code: codeSourceSchema,
   snapshot: changeRequestSchema.extend({ mergeBaseSha: commitIdSchema }).optional(),
   history: historySchema.optional(),
@@ -31,6 +33,7 @@ export const gitlabPlugin: OcraPlugin = {
         token: options.token,
         ...(options.apiUrl ? { baseUrl: options.apiUrl } : {}),
         ...(options.fetch ? { fetch: options.fetch } : {}),
+        ...(options.signal ? { signal: options.signal } : {}),
       });
       return new GitLabAdapter({
         iid: options.iid,

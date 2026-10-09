@@ -27,12 +27,14 @@ export async function resolveGitHubTarget(
   const [owner = "", repo = ""] = (ref.repository ?? (await repositoryName(options))).split("/");
   const apiUrl = env.GITHUB_API_URL;
   const fetchImpl = options.fetch;
+  const signal = options.signal ? { signal: options.signal } : {};
   const api = new GitHubApi(
     { owner, repo },
     {
       token,
       ...(apiUrl ? { baseUrl: apiUrl } : {}),
       ...(fetchImpl ? { fetch: fetchImpl } : {}),
+      ...signal,
     },
   );
   const pull = await api.getPullRequest(ref.number);
@@ -55,6 +57,7 @@ export async function resolveGitHubTarget(
         snapshot: pullRequestOf(pull, { owner, repo }),
         history: local.history,
         ...(fetchImpl ? { fetch: fetchImpl } : {}),
+        ...signal,
       }),
   };
 }

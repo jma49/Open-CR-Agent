@@ -7,6 +7,7 @@ export {
   commitIdSchema,
   fetchSchema,
   historySchema,
+  signalSchema,
 } from "./options.js";
 export type {
   Bot,

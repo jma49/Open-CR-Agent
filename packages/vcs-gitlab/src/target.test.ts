@@ -66,7 +66,8 @@ describe("resolveGitLabTarget", () => {
 
   it("gives the adapter the merge request as ocra reads it", async () => {
     const { options: o } = options({ GITLAB_TOKEN: "t", CI_PROJECT_ID: "42" }, undefined);
-    const target = await resolveGitLabTarget(o);
+    const signal = new AbortController().signal;
+    const target = await resolveGitLabTarget({ ...o, signal });
     let created: unknown;
     target.createVcs(
       {
@@ -88,6 +89,7 @@ describe("resolveGitLabTarget", () => {
     expect(created).toMatchObject({
       project: 42,
       iid: 7,
+      signal,
       snapshot: {
         id: "g/p!7",
         baseSha: BASE,

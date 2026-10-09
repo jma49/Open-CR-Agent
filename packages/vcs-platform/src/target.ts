@@ -17,6 +17,9 @@ export interface ResolveTargetOptions {
   origin(): Promise<string | undefined>;
   warn(message: string): void;
   fetch?: typeof fetch;
+  // The run's interrupt: it ends the platform client's requests and its
+  // waits between retries, here and in the adapter made from the target.
+  signal?: AbortSignal;
 }
 
 // Where the adapter reads the code under review and the repository's
