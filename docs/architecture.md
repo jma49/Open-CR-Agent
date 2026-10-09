@@ -36,7 +36,7 @@ This page is for contributors; anything marked **(planned)** is not implemented.
 
 `reviewWithHooks` (`pipeline/run.ts`) only sequences them: `planReview` (1–4), `executeStage` (5–7, one `runJob` per cell), `filterStage` (8), `checkStage` (9–10), then `assembleReport`. Each stage returns its own warnings and usage, listed in stage order in the report; the spend tracker and the run's signal are the only shared state.
 
-Core's modules form layers with no import cycle, type imports included: `contracts.ts` and `domain.ts`; `agent/` (what every model call shares); the stages (`select/`, `bundle/`, `review/`, `verify/`, `judge/`, `anchor/`, …); `report/`; `pipeline/` on top. `vcs.ts` holds `VcsAdapter`, which publishes the report and so sits above it. `ReportOutput` is derived from `reportOutputSchema`, and `toReportOutput` copies domain values field by field, so a domain field never reaches the JSON report by accident.
+Core's modules form layers, type imports included, and no two directories import each other: `contracts.ts`, `domain.ts` and the utilities; `agent/` (what every model call shares); the stages (`select/`, `bundle/`, `review/`, `matrix/`, `verify/`, `judge/`, `anchor/`, …); `report/`; what reads a report (`rereview/`, and `vcs.ts`, whose `VcsAdapter` publishes it); `pipeline/`; then `session/`, `plugin/` and `runtime/`, which plug into a run. `core/src/layers.test.ts` holds the map and fails on an import that goes up a layer or closes a cycle. `ReportOutput` is derived from `reportOutputSchema`, and `toReportOutput` copies domain values field by field, so a domain field never reaches the JSON report by accident.
 
 ## Reviewers
 

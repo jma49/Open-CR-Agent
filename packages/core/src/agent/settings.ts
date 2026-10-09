@@ -1,6 +1,5 @@
 import type { AgentRuntime, Effort, ModelChains, ModelTier } from "../contracts.js";
 import type { RiskTier } from "../domain.js";
-import type { ReviewerDefinition } from "../review/reviewer.js";
 
 export const EFFORT_LEVELS = [
   "none",
@@ -52,6 +51,13 @@ export interface AgentSettings {
   reviewerOverrides?: ReviewerOverrides | undefined;
 }
 
+// What settings need of a reviewer. Reviewers are defined above this layer
+// (review/), so the agent settings name only these two fields.
+interface ReviewerAgent {
+  id: string;
+  modelTier: ModelTier;
+}
+
 export interface ResolvedAgent {
   id: string;
   tier: ModelTier;
@@ -70,7 +76,7 @@ export interface AgentCallSettings {
 // A reviewer's effort covers every call made on its behalf: its review
 // tasks and its plan call.
 export function reviewerEffort(
-  reviewer: Pick<ReviewerDefinition, "id" | "modelTier">,
+  reviewer: ReviewerAgent,
   settings: AgentSettings,
 ): Effort | undefined {
   return settings.reviewerOverrides?.[reviewer.id]?.effort ?? settings.effort?.[reviewer.modelTier];
@@ -82,10 +88,7 @@ export function roleEffort(role: AgentRole, settings: AgentSettings): Effort | u
 
 // Like its effort, a reviewer's own chain covers its review tasks and its
 // plan call; the roles have their own and never take a reviewer's.
-export function reviewerCall(
-  reviewer: Pick<ReviewerDefinition, "id" | "modelTier">,
-  settings: AgentSettings,
-): AgentCallSettings {
+export function reviewerCall(reviewer: ReviewerAgent, settings: AgentSettings): AgentCallSettings {
   return callSettings(
     reviewerEffort(reviewer, settings),
     settings.reviewerOverrides?.[reviewer.id]?.models,
@@ -108,7 +111,7 @@ function callSettings(
 
 // The enabled reviewers and the roles, each with its tier and effort.
 export function resolveAgents(
-  reviewers: readonly ReviewerDefinition[],
+  reviewers: readonly ReviewerAgent[],
   settings: AgentSettings,
 ): ResolvedAgent[] {
   const agent = (id: string, tier: ModelTier, call: AgentCallSettings): ResolvedAgent => {

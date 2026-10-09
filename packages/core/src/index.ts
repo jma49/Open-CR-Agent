@@ -64,10 +64,10 @@ export {
   type OcraErrorCode,
 } from "./errors.js";
 export type { JudgeDecisions } from "./judge/judge.js";
+export type { SkippedCell, SkipReason } from "./matrix/matrix.js";
 export type { MemoryEntry, MemorySource, RememberedEntry } from "./memory/memory.js";
 export { type ProxyEnv, proxiedFetch } from "./net/proxied-fetch.js";
 export { AccessDeniedError } from "./pipeline/context.js";
-export type { SkippedCell, SkipReason } from "./pipeline/matrix.js";
 export type {
   ReviewLimits,
   ReviewMode,

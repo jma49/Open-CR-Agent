@@ -2,13 +2,13 @@ import { reviewerCall } from "../agent/settings.js";
 import { defaultBundlePolicy } from "../bundle/bundle.js";
 import type { Effort } from "../contracts.js";
 import type { ChangeRequest, RiskTier } from "../domain.js";
+import { planTasks, type SkippedCell } from "../matrix/matrix.js";
 import { memoryFor } from "../memory/memory.js";
 import { buildReviewPrompt } from "../review/prompt.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import { resolveRules } from "../rules/resolve.js";
 import type { FileDecision } from "../select/select.js";
 import { isLargeBundle } from "./execute.js";
-import { planTasks, type SkippedCell } from "./matrix.js";
 import type { ReviewOptions } from "./options.js";
 import { type PlanOptions, planReview } from "./plan.js";
 
