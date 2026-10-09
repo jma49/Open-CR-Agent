@@ -1,6 +1,6 @@
 // The GitHub workflows ocra init writes: the manual's recipes (GitHub pull
-// requests), with the key of the chosen provider and without OpenCode,
-// since ocra init sets the direct runtime.
+// requests), with the key of the chosen provider, and without OpenCode when
+// the chosen preset runs on the direct runtime.
 
 // The Action as the manual pins it: the release's commit and its version.
 // `node scripts/changelog.mjs action-pin <version>` moves this line with the

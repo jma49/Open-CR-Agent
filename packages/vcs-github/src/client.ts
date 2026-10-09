@@ -30,7 +30,6 @@ const commentSchema = z.object({
     .transform((b) => b ?? ""),
   user: z.object({ login: z.string(), type: z.string() }).nullable(),
   node_id: z.string().optional(),
-  author_association: z.string().optional(),
 });
 export type IssueComment = z.infer<typeof commentSchema>;
 
@@ -91,7 +90,7 @@ export interface ReviewThread {
   resolvedBy: string | undefined;
   // In order; the first carries ocra's finding marker. `editor` is set when
   // someone edited the comment after posting it.
-  comments: { author: string; association: string; body: string; editor?: string }[];
+  comments: { author: string; body: string; editor?: string }[];
 }
 
 const REVIEW_THREADS_QUERY = `query($owner: String!, $repo: String!, $number: Int!, $after: String) {
@@ -99,7 +98,7 @@ const REVIEW_THREADS_QUERY = `query($owner: String!, $repo: String!, $number: In
     pullRequest(number: $number) {
       reviewThreads(first: 100, after: $after) {
         pageInfo { hasNextPage endCursor }
-        nodes { id isResolved resolvedBy { login } comments(first: 30) { nodes { id body authorAssociation author { login } editor { login } } } latest: comments(last: 30) { nodes { id body authorAssociation author { login } editor { login } } } }
+        nodes { id isResolved resolvedBy { login } comments(first: 30) { nodes { id body author { login } editor { login } } } latest: comments(last: 30) { nodes { id body author { login } editor { login } } } }
       }
     }
   }
@@ -116,7 +115,6 @@ const threadCommentsSchema = z.object({
     z.object({
       id: z.string().optional(),
       body: z.string(),
-      authorAssociation: z.string().default("NONE"),
       author: z.object({ login: z.string() }).nullable(),
       editor: z.object({ login: z.string() }).nullable().optional(),
     }),
@@ -202,7 +200,6 @@ export class GitHubApi {
           resolvedBy: node.resolvedBy?.login,
           comments: mergeComments(node.comments.nodes, node.latest?.nodes ?? []).map((c) => ({
             author: c.author?.login ?? "",
-            association: c.authorAssociation,
             body: c.body,
             ...(c.editor ? { editor: c.editor.login } : {}),
           })),
