@@ -16,9 +16,10 @@ updates:
       - dependency-name: opencode-ai
       - dependency-name: "@opencode-ai/sdk"
       # The types of the oldest Node.js line ocra supports (engines: 22.19),
-      # so code cannot use an API that line lacks.
+      # so code cannot use an API that line lacks: a minor (22.20) is a newer
+      # Node.js too. Patches only, moved with engines by hand.
       - dependency-name: "@types/node"
-        update-types: ["version-update:semver-major"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
     groups:
       minor-and-patch:
         update-types: [minor, patch]
