@@ -45,14 +45,14 @@ export function compareClaims(
   const all = [...baselines, ...runs];
   const cases = all.map((s) => s.summary.golden?.cases);
   if (cases.some((c) => c === undefined || Object.keys(c).length === 0)) return undefined;
-  const hashes = new Set(all.map((s) => s.summary.golden?.casesHash));
-  if (hashes.size > 1) {
-    return {
-      differing: [],
-      claims: 0,
-      refused: "the runs were scored against different golden cases or labels",
-    };
-  }
+  const hashes = all.map((s) => s.summary.golden?.casesHash);
+  // Without a hash, nothing shows the runs were scored against the same cases.
+  const refused = hashes.some((h) => h === undefined)
+    ? "some runs were scored before the golden cases were hashed"
+    : new Set(hashes).size > 1
+      ? "the runs were scored against different golden cases or labels"
+      : undefined;
+  if (refused) return { differing: [], claims: 0, refused };
   const scored = cases as Record<string, GoldenCaseScore>[];
   const common = Object.keys(scored[0] ?? {})
     .filter((id) => scored.every((c) => id in c))

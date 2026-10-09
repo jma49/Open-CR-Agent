@@ -69,6 +69,15 @@ describe("compareClaims", () => {
     expect(compareClaims([run([true])], [run([true], "h2")])?.refused).toMatch(/different golden/);
   });
 
+  it("refuses to pair runs whose golden cases were not hashed", () => {
+    const unhashed = (found: boolean[]): SavedSummary => {
+      const saved = run(found);
+      if (saved.summary.golden) delete (saved.summary.golden as { casesHash?: string }).casesHash;
+      return saved;
+    };
+    expect(compareClaims([unhashed([true])], [unhashed([false])])?.refused).toMatch(/hashed/);
+  });
+
   it("does nothing without per-case scores", () => {
     const old = { summary: { golden: { casesHash: "h1" } } } as unknown as SavedSummary;
     expect(compareClaims([old], [old])).toBeUndefined();
