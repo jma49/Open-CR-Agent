@@ -76,8 +76,10 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
       `Verification dropped ${refuted.length} finding(s) the code disproves (see the JSON report).`,
     );
   }
+  // Entries without a source (older reports, other adapters) are not
+  // attributed to either memory.
   const fromRepository = report.remembered.filter((e) => e.source === "repository").length;
-  const fromAccount = report.remembered.length - fromRepository;
+  const fromAccount = report.remembered.filter((e) => e.source === "account").length;
   if (fromRepository > 0) {
     lines.push(
       `${fromRepository} finding(s) matched the repository's memory and were not reported.`,

@@ -209,6 +209,17 @@ describe("renderText", () => {
     expect(text).toContain("1 finding(s) matched your ocra Cloud memory and were not reported.");
   });
 
+  it("does not attribute a memory entry without a source to ocra Cloud", () => {
+    const text = renderText({
+      ...base,
+      // As a report written before entries had a source has it.
+      remembered: [
+        { fingerprint: "1".repeat(16), file: "a.ts", title: "t", reason: "r" },
+      ] as ReviewReport["remembered"],
+    });
+    expect(text).not.toContain("ocra Cloud memory");
+  });
+
   it("never claims a clean result when nothing was reviewed", () => {
     const failed: ReviewReport = {
       ...base,
