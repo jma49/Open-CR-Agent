@@ -76,32 +76,53 @@ export class ConfigError extends OcraError {
 }
 
 // Without the repository's file, only defaults and environment variables
-// apply: that file can name plugins, and plugins run code.
+// apply: that file can name plugins, and plugins run code. The run's
+// configuration, without an account or flags.
 export async function loadConfig(
   root: string,
   env: Readonly<Record<string, string | undefined>>,
   options: LoadOptions = { repository: true },
 ): Promise<CliConfig> {
-  return (await loadConfigLayers(root, env, options)).config;
+  const { layers } = await loadConfigLayers(root, env, options);
+  return resolveRunConfig({ target: layers }, options.warn).config;
 }
 
-/** The configuration's layers, and what they resolve to on their own. */
+/**
+ * The configuration's own layers (a shared configuration, the file, the
+ * environment), and what they resolve to before the account's settings
+ * and the flags join them; the run's checks wait for those.
+ */
 export async function loadConfigLayers(
   root: string,
   env: Readonly<Record<string, string | undefined>>,
   options: LoadOptions = { repository: true },
 ): Promise<{ config: CliConfig; layers: SettingsLayer[] }> {
   const layers = await configLayers(root, env, options);
-  const { config } = resolveConfig(layers);
+  return { config: resolveConfig(layers).config, layers };
+}
+
+// The run's configuration from all its layers, earliest first: the
+// configuration's own, the account's settings (which only fill what those
+// leave out), then the command's --ultra. What needs the final settings is
+// checked here, after the last layer, so a chain the account adds is
+// checked like the repository's.
+export function resolveRunConfig(
+  from: { target: readonly SettingsLayer[]; account?: SettingsLayer; ultra?: boolean },
+  warn?: (message: string) => void,
+): ResolvedConfig {
+  const resolved = resolveConfig([
+    ...from.target,
+    ...(from.account ? [from.account] : []),
+    ...(from.ultra ? [{ source: "flag" as const, settings: { ultra: true } }] : []),
+  ]);
+  const { config } = resolved;
   for (const model of unpriced(config.providers, [
     ...Object.values(config.models),
     ...Object.values(agentChains(config)),
   ])) {
-    options.warn?.(
-      `${model} has a price of 0: reported cost and --max-cost-usd do not count its tokens`,
-    );
+    warn?.(`${model} has a price of 0: reported cost and --max-cost-usd do not count its tokens`);
   }
-  return { config, layers };
+  return resolved;
 }
 
 export function resolveConfig(layers: readonly SettingsLayer[]): ResolvedConfig {
