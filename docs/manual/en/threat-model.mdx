@@ -62,7 +62,7 @@ This applies only while you are signed in (`ocra login`) and `OCRA_CLOUD` is not
 |---|---|
 | ocra Cloud, or whoever compromises it | Your account's settings, rules, plugin names and memory as the CLI fetches them; calls to `ocra-<provider>/<model>` models, which pass its gateway with your stored keys; the counts, and shared findings, the CLI sends |
 | Someone holding your terminal's session token | Model calls through the gateway with your stored keys, up to the account's daily cap |
-| Someone holding your browser session | Your settings, rules, plugin names and memory, and replacing or deleting your stored keys |
+| Someone holding your browser session | Your settings, rules, plugin names and memory, whether findings are shared, deleting your stored keys, and adding a key for a provider that has none. Replacing a stored key, deleting the account, and turning sharing off together with deleting the shared findings need a sign-in within the last 15 minutes. A browser session ends after 7 days unused, and 30 days after sign-in at the latest. |
 
 | They try to | What stops it |
 |---|---|
