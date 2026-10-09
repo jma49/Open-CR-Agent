@@ -99,21 +99,19 @@ function perReviewer(
     Verification,
     number
   >;
-  const reviewerOf = new Map<string, string>();
   for (const finding of report.findings) {
     of(finding.reviewer).findings[finding.severity] += 1;
     verification[finding.verification ?? "unchecked"] += 1;
-    if (!reviewerOf.has(finding.fingerprint)) reviewerOf.set(finding.fingerprint, finding.reviewer);
   }
-  const outcomeReviewer = (f: { fingerprint: string; reviewer?: string }) =>
-    f.reviewer ?? reviewerOf.get(f.fingerprint);
+  // reconcile keeps fixed and dismissed findings out of report.findings, so
+  // only the reviewer the earlier review recorded can be credited.
   const dismissed = new Map(
-    (report.rereview?.dismissed ?? []).map((f) => [f.fingerprint, outcomeReviewer(f)]),
+    (report.rereview?.dismissed ?? []).map((f) => [f.fingerprint, f.reviewer]),
   );
   const fixed = new Map(
     (report.rereview?.fixed ?? [])
       .filter((f) => !dismissed.has(f.fingerprint))
-      .map((f) => [f.fingerprint, outcomeReviewer(f)]),
+      .map((f) => [f.fingerprint, f.reviewer]),
   );
   for (const reviewer of fixed.values()) if (reviewer) of(reviewer).fixed += 1;
   for (const reviewer of dismissed.values()) if (reviewer) of(reviewer).dismissed += 1;

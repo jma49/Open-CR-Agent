@@ -27,6 +27,7 @@ export { stableHash } from "./pipeline/provenance.js";
 export { newRunId } from "./pipeline/run-id.js";
 export { readReport } from "./report/read.js";
 export { isUnsafeCodePoint, serializeOutput } from "./report/serialize.js";
+export { reconcile } from "./rereview/reconcile.js";
 export { repoRuleSchema } from "./rules/repo-rules.js";
 export { REPORT_FILE } from "./session/jsonl.js";
 export { readResumedRun } from "./session/resume-read.js";
