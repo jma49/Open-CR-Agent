@@ -81,6 +81,8 @@ const SUGGESTION_INFO = /^suggestion|[&\\]/i;
 // a paragraph or of setext headings. Text is cut at GitHub's limit on a
 // comment and at a number of lines no finding needs, and a line nests at most
 // MAX_DEPTH containers; after them, a zero-width space makes the rest text.
+// The cut runs before the parse, so it also lands in such a line inside a
+// fence or an indented block (quoted Markdown), where it is harmless.
 const MAX_CHARS = 65_536;
 const MAX_LINES = 2_000;
 const MAX_DEPTH = 16;
