@@ -283,7 +283,7 @@ function rereviewSections(rereview: ReviewReport["rereview"]): string[] {
       : []),
     ...openList(
       "Not reported this time, code unchanged",
-      "Still open and counted in the verdict until the code changes or a reviewer dismisses them.",
+      "Still open and counted in the verdict until the code changes or a maintainer dismisses them.",
       rereview.notReproduced,
     ),
     ...openList(
@@ -294,7 +294,7 @@ function rereviewSections(rereview: ReviewReport["rereview"]): string[] {
     ...(rereview.dismissed.length > 0
       ? [
           "",
-          "### Dismissed by reviewers",
+          "### Dismissed by maintainers",
           ...rereview.dismissed.map((f) => `- ${safeMarkdown(f.title)} ${codeSpan(f.file)}`),
         ]
       : []),

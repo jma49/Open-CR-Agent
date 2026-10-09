@@ -15,7 +15,7 @@ GitLab 支持是 0.2.0 新增的。除了针对模拟 GitLab API 的测试，它
 
 1. **为 ocra 创建令牌**，权限范围选 **`api`**，角色为 **Developer**：
    - GitLab Premium、Ultimate 以及自建 GitLab：用**项目访问令牌**（Settings → Access tokens），它自带一个 bot 用户；
-   - GitLab.com 免费版没有项目访问令牌：用一个专用账号（比如 `ocra-review-bot`，项目里的 Developer）的**个人访问令牌**。不要用你自己的：ocra 会以你的身份发言，而 Merge Request 的作者从不算审查者，你在自己的 Merge Request 上就无法驳回或放行。
+   - GitLab.com 免费版没有项目访问令牌：用一个专用账号（比如 `ocra-review-bot`，项目里的 Developer）的**个人访问令牌**。不要用你自己的：ocra 会以你的身份发言，而 Merge Request 的作者从不算维护者，你在自己的 Merge Request 上就无法驳回或放行。
 
    ocra 要发评论和讨论串、解决自己的讨论串，并通过 GraphQL 读取评论最后由谁编辑。`CI_JOB_TOKEN` 不能发评论。
 2. **把它加为 masked 的 CI/CD 变量 `GITLAB_TOKEN`。**不要设为 protected，否则来自未受保护分支的 Merge Request 流水线读不到它。于是项目的每条流水线都能读到它：角色保持在 Developer，并设置过期时间（[谁掌控流水线](#谁掌控流水线)）。
@@ -65,7 +65,7 @@ ocra-review:
 - **解决讨论串**：问题引用的代码已经不在时。
 - **可以应用的建议**（计划中：目前还没有审查员会产生修复，[ADR-0029](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0029-committable-suggestions.md)）：问题的修复会在讨论串末尾放一个 `suggestion:-N+0` 块，从讨论串所在行往上覆盖到第一行被修复的代码（**Apply suggestion**）；只在讨论串正好覆盖被修复的行、往上不超过 100 行时给出，代码要么原样发布，要么不发，和 [GitHub](./github#可提交的建议) 一样。
 
-审查者说了算。Developer 及以上角色、且不是作者的人，解决 ocra 的讨论串，或者用 `/ocra dismiss`、以"won't fix""by design""false positive"开头的回复答复它，就驳回了这个问题。他们的其他回复会在问题再次出现时交给 Judge。被别人编辑过的评论一律不算数。
+维护者说了算。这里的维护者指 Developer 及以上角色、且不是作者的人，不限于 GitLab 的 Maintainer 角色；他们解决 ocra 的讨论串，或者用 `/ocra dismiss`、以"won't fix""by design""false positive"开头的回复答复它，就驳回了这个问题。他们的其他回复会在问题再次出现时交给 Judge。被别人编辑过的评论一律不算数。
 
 如果项目开启了推送时自动解决过时的讨论串（Settings → Merge requests），GitLab 会把推送者记为解决者，于是任何一次推送都会被当成驳回。在这样的项目里，以及 GitLab 没有给出这项设置时，解决 ocra 的讨论串不会驳回任何问题，请改为回复它。ocra 每次运行都会读取这项设置，已解决的讨论串没有驳回问题时摘要会说明。
 

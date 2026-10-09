@@ -115,7 +115,7 @@ jobs:
 - 这次没被报告、而代码没变的问题列为**本次未复现**：模型运行有波动，所以它保持打开，按原严重程度计入结论，直到代码被修改或被驳回。同样的代码得到同样的结论。
 - 所在文件这次没被审查的问题列为**未重新检查**，保持打开。
 
-由审查者来做主。有写权限（admin、maintain 或 write）且不是 PR 作者的人，resolve 评论串、回复 `/ocra dismiss`，或者回复以明确的拒绝开头（"won't fix"、"will not fix"、"by design"、"false positive"、"not a bug"、"working as intended"、"intended behavior"）且不是问句，就驳回了这条问题。被驳回的问题不再计入，除非之后的运行以更高严重程度发现它。这些词出现在回复其他位置（"this is not intended, good catch"、"is this by design?"）不算，"I disagree" 也不算。这些人的其他回复会在问题再次出现时交给 Judge；Judge 可以凭具体理由丢弃它，但已确认的 critical 不行。作者的回复不会交给 Judge，也不能驳回；被别人编辑过的回复不算数。没有行内评论串的问题，请用 [`ocra memory`](./cli) 驳回。
+由维护者来做主。维护者，即有写权限（admin、maintain 或 write）且不是 PR 作者的人，resolve 评论串、回复 `/ocra dismiss`，或者回复以明确的拒绝开头（"won't fix"、"will not fix"、"by design"、"false positive"、"not a bug"、"working as intended"、"intended behavior"）且不是问句，就驳回了这条问题。被驳回的问题在这个 PR 里不再计入，除非之后的运行以更高严重程度发现它。这些词出现在回复其他位置（"this is not intended, good catch"、"is this by design?"）不算，"I disagree" 也不算。这些人的其他回复会在问题再次出现时交给 Judge；Judge 可以凭具体理由丢弃它，但已确认的 critical 不行。作者的回复不会交给 Judge，也不能驳回；被别人编辑过的回复不算数。没有行内评论串的问题无法驳回，改用 [`ocra memory`](./cli#ocra-memory) 让它静默：`.ocra/memory.json` 进入 base 分支后，不论严重程度，每个 PR 都不再报告它。
 
 ### 可提交的建议
 

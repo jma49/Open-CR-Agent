@@ -15,7 +15,7 @@ GitLab support is new in 0.2.0. Beyond tests against a fake GitLab API, it was c
 
 1. **Create a token for ocra** with the **`api`** scope and the **Developer** role:
    - on GitLab Premium or Ultimate, and on self-managed GitLab, a **project access token** (Settings → Access tokens), which gets a bot user of its own;
-   - on GitLab.com Free, which has no project access tokens, a **personal access token** of a dedicated account (for example `ocra-review-bot`, a Developer on the project). Not your own: ocra would post as you, and since a merge request's author is never a reviewer, you would lose your dismissals and overrides on your own merge requests.
+   - on GitLab.com Free, which has no project access tokens, a **personal access token** of a dedicated account (for example `ocra-review-bot`, a Developer on the project). Not your own: ocra would post as you, and since a merge request's author never counts as a maintainer, you would lose your dismissals and overrides on your own merge requests.
 
    ocra posts notes and threads, resolves its threads, and reads through GraphQL who last edited a comment. `CI_JOB_TOKEN` cannot post comments.
 2. **Add it as a masked CI/CD variable `GITLAB_TOKEN`.** Leave it unprotected, or pipelines for merge requests from unprotected branches cannot read it. Every pipeline of the project can then read it: keep the role at Developer and set an expiry date ([who controls the pipeline](#who-controls-the-pipeline)).
@@ -65,7 +65,7 @@ ocra-review:
 - **Resolved threads** when the code a finding quoted is gone.
 - **Suggestions you can apply** (planned: no reviewer produces fixes yet, [ADR-0029](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0029-committable-suggestions.md)): a finding's fix ends its thread with a `suggestion:-N+0` block from the thread's line back to the first fixed line (**Apply suggestion**), only when the thread covers exactly the fixed lines, at most 100 lines above it, and with the code exactly as written or not at all, as on [GitHub](./github#committable-suggestions).
 
-Reviewers stay in charge. Someone with the Developer role or higher, other than the author, dismisses a finding by resolving its thread or answering with `/ocra dismiss` or a reply opening with "won't fix", "by design" or "false positive". Their other replies reach the judge when the finding comes back. A comment someone else edited counts for nothing.
+Maintainers stay in charge. A maintainer here is anyone with the Developer role or higher other than the author, not only GitLab's Maintainer role; they dismiss a finding by resolving its thread or answering with `/ocra dismiss` or a reply opening with "won't fix", "by design" or "false positive". Their other replies reach the judge when the finding comes back. A comment someone else edited counts for nothing.
 
 If the project resolves outdated threads on push (Settings → Merge requests), GitLab records whoever pushed as the resolver, so any push would count as a dismissal. There, and whenever GitLab does not report the setting, resolving ocra's thread dismisses nothing: answer it instead. ocra reads the setting on every run, and the summary says when a resolved thread did not dismiss its finding.
 

@@ -18,7 +18,7 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Fi
 | **Matrix** | Pick which reviewer runs on which bundle from the risk tier and each reviewer's scope. Skipped pairs are listed in the report. |
 | **Execute** | Run each planned (bundle, reviewer) pair as an isolated agent task with read-only tools. |
 | **Anchor** | Resolve every finding's quoted code to exact lines. |
-| **Filter** | Drop findings the repository's memory accepts or a reviewer dismissed, and compare with the previous review of the same pull request, before spending a model call on them. |
+| **Filter** | Drop findings the repository's memory accepts or a maintainer dismissed, and compare with the previous review of the same pull request, before spending a model call on them. |
 | **Verify** | A standard-tier model checks each file's findings against its diff and surrounding code. A finding is dropped only when the code proves it wrong; doubt or a failed check keeps it. Drops are listed in the report with the reason. |
 | **Judge** | One top-tier call sees every finding: merges the same root cause across reviewers, drops speculation and nitpicks, recalibrates severity and writes a short summary, with a reason for each change in the report. |
 

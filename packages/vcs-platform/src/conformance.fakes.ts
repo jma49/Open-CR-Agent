@@ -166,7 +166,7 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
       );
     });
 
-    it("dismisses what a reviewer resolved or declined, never the author or an outsider", async () => {
+    it("dismisses what a maintainer resolved or declined, never the author or an outsider", async () => {
       const thread = (fingerprint: string, extra: object) => ({
         comments: [{ author: OCRA, body: marker(fingerprint) }],
         ...extra,
@@ -196,7 +196,7 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
       }
     });
 
-    it("hands a reviewer's reply to the judge, but not an edited one", async () => {
+    it("hands a maintainer's reply to the judge, but not an edited one", async () => {
       const { review } = fixture.conversation({
         comments: [{ author: OCRA, body: summaryWith([A, B]) }],
         threads: [

@@ -203,11 +203,11 @@ export class PlatformReview implements VcsAdapter {
     };
   }
 
-  // A thread of ocra's that a reviewer resolved, or answered with a clear
-  // "won't fix", dismisses its finding. A reviewer is someone with write
+  // A thread of ocra's that a maintainer resolved, or answered with a clear
+  // "won't fix", dismisses its finding. A maintainer is someone with write
   // access other than the change request's author, in a comment nobody else
   // edited: otherwise the author could resolve or argue a finding away. Any
-  // other reply from a reviewer dismisses nothing, but the judge weighs it
+  // other reply from a maintainer dismisses nothing, but the judge weighs it
   // when the finding comes back (and cannot drop a confirmed critical for
   // it). Replies are collected for every thread of ocra's, not only tracked
   // findings, so a finding a reply argued away does not return without it.
@@ -218,7 +218,7 @@ export class PlatformReview implements VcsAdapter {
     const commented = new Set(findings.filter((f) => f.commented).map((f) => f.fingerprint));
     const author = (await this.changeRequest()).author;
     const bot = await this.bot();
-    const reviewer = async (login: string | undefined) =>
+    const maintainer = async (login: string | undefined) =>
       login !== undefined && login !== author && !bot.is(login) && (await this.canWrite(login));
     const threads = await this.threads().catch(() => []);
     const dismissed = new Set<string>();
@@ -230,12 +230,12 @@ export class PlatformReview implements VcsAdapter {
       let declined = false;
       for (const r of thread.comments.slice(1)) {
         const own = r.editor === undefined || r.editor === r.author;
-        if (!own || !(await reviewer(r.author))) continue;
+        if (!own || !(await maintainer(r.author))) continue;
         if (declinesFinding(r.body)) declined = true;
         else if (r.body.trim() !== "") said.push(r.body.trim().slice(0, MAX_REPLY_CHARS));
       }
       if (commented.has(fingerprint)) {
-        const resolved = thread.resolved && (await reviewer(thread.resolvedBy));
+        const resolved = thread.resolved && (await maintainer(thread.resolvedBy));
         if (resolved || declined) {
           dismissed.add(fingerprint);
           continue;

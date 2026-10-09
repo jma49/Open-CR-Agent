@@ -73,6 +73,34 @@ describe("renderSummary", () => {
       "2 finding(s) matched the reviewing account's ocra Cloud memory and are not repeated.",
     );
   });
+
+  it("credits dismissals to maintainers, since reviewers are ocra's agents", () => {
+    const prior = {
+      fingerprint: "f".repeat(16),
+      title: "t",
+      file: "src/a.ts",
+      severity: "warning" as const,
+      commented: true,
+    };
+    const body = renderSummary({
+      report: {
+        ...report([]),
+        rereview: {
+          fixed: [],
+          notReproduced: [{ ...prior, fingerprint: "e".repeat(16) }],
+          notRechecked: [],
+          unchanged: [],
+          dismissed: [prior],
+        },
+      },
+      commented: new Set(),
+      state: { findings: [] },
+      text: gitlab,
+    });
+    expect(body).toContain("### Dismissed by maintainers");
+    expect(body).toContain("until the code changes or a maintainer dismisses them.");
+    expect(body).not.toContain("reviewer dismisses");
+  });
 });
 
 describe("inlineBody", () => {
