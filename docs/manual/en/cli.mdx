@@ -96,6 +96,7 @@ ocra review [options]
 | `--reviewers <ids>` | Run only these reviewers, comma-separated (for example `security`) |
 | `--temperature <n>` | Sampling temperature, 0 to 2; overrides `sampling.temperature` ([Configuration](./configuration#execution)) |
 | `--seed <n>` | Sampling seed where runtime and provider support one (not `opencode`); overrides `sampling.seed` |
+| `--resume <run-id>` | Retry an earlier run of this review without paying again for what it finished: its completed tasks are reused when their inputs are unchanged (same commits, configuration, prompts, ocra version and sampling), and only the rest run. Reads [the session](#sessions) `.ocra/sessions/<run-id>`; a task that cannot be reused runs and a warning says how many. Reused tasks show `reusedFrom` in the [JSON output](#json-output); the run's `usage` is only what it paid. Not with `--plan` |
 | `--config <file>` | Use this configuration file instead of `.ocra/config.json` (the base branch's with `--pr` or `--mr`); it applies with `--no-repo-config` too. See [Configuration](./configuration) |
 | `--no-repo-config` | For code you do not trust: ignore `.ocra/config.json` and its plugins (with `--pr`, the base branch's too); models come from `OCRA_MODEL_*` or `--config`; memory, rules and `AGENTS.md` from the `--from` commit, or none |
 | `-h, --help` | Show help |

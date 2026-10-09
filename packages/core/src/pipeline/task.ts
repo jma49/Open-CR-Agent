@@ -8,14 +8,9 @@ import type {
   IncompleteEnding,
   Usage,
 } from "../contracts.js";
-import { type ReportedFinding, reportedFindingSchema } from "../domain.js";
+import { type ReportedFinding, reportedFindingSchema, type TaskFinding } from "../domain.js";
 import { errorMessage } from "../errors.js";
 import type { TaskStatus } from "../report/report.js";
-
-export interface TaskFinding {
-  reported: ReportedFinding;
-  model?: string;
-}
 
 export interface TaskResult {
   status: TaskStatus;

@@ -51,6 +51,7 @@ export type {
   ReportedFinding,
   RiskTier,
   Severity,
+  TaskFinding,
   Verdict,
   Verification,
 } from "./domain.js";
@@ -75,6 +76,7 @@ export type {
   RunIdentity,
 } from "./pipeline/options.js";
 export type { ProvenanceInput } from "./pipeline/provenance.js";
+export type { ResumedRun, ResumedTask } from "./pipeline/resume.js";
 export { review } from "./pipeline/run.js";
 export {
   agentsMdReviewerPlugin,

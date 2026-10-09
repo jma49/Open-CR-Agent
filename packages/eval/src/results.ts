@@ -19,6 +19,9 @@ const instanceStatusSchema = z.enum([
 const instanceResultSchema = z.strictObject({
   id: z.string(),
   status: instanceStatusSchema,
+  // The review's run id, so a retry can resume it (ocra review --resume);
+  // absent when the review wrote no report, and in older results.
+  runId: z.string().exactOptional(),
   durationMs: z.number(),
   findings: report.findings,
   // How ocra anchored the findings; absent in results written before it

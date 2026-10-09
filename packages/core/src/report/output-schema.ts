@@ -128,7 +128,7 @@ const judgeDecisionsSchema = z.strictObject({
   ),
 });
 
-const taskOutcomeSchema = z.strictObject({
+export const taskOutcomeSchema = z.strictObject({
   taskId: z.string(),
   reviewer: z.string(),
   bundle: z.string(),
@@ -139,6 +139,8 @@ const taskOutcomeSchema = z.strictObject({
   findings: z.int().nonnegative(),
   durationMs: z.number(),
   usage: usageSchema,
+  // Taken from this earlier run (--resume): usage is what that run paid.
+  reusedFrom: z.string().exactOptional(),
 });
 
 export const skippedCellSchema = z.strictObject({

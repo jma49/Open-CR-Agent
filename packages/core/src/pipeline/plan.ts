@@ -16,6 +16,7 @@ import { triage } from "../triage.js";
 import { reviewContext } from "./context.js";
 import { rank } from "./matrix.js";
 import type { ReviewHooks, ReviewOptions } from "./options.js";
+import { resumedBundles } from "./resume.js";
 import { newRunId } from "./run-id.js";
 
 const GUIDELINES_PATH = "AGENTS.md";
@@ -51,6 +52,7 @@ export type PlanOptions = Pick<
   | "grouper"
   | "effort"
   | "roles"
+  | "resume"
 > & {
   // Absent for a plan preview, which nobody looks up again.
   runId?: string;
@@ -103,7 +105,10 @@ export async function planReview(
     ? selected.filter((d) => only.has(d.newPath) || only.has(d.oldPath))
     : selected;
   const unchanged = new Set(selected.filter((d) => !inScope.includes(d)).map((d) => d.newPath));
-  const bundled = await bundleFiles(inScope, options.bundling ?? defaultBundlePolicy, grouper);
+  const resumed = options.resume && resumedBundles(options.resume, inScope);
+  const bundled = resumed
+    ? { bundles: resumed, strategy: "resumed", warnings: [] }
+    : await bundleFiles(inScope, options.bundling ?? defaultBundlePolicy, grouper);
   emit({
     type: "files_bundled",
     strategy: bundled.strategy,

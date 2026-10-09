@@ -74,6 +74,9 @@ function describe(event: ReviewEvent): string | undefined {
     case "task_finished": {
       const { outcome } = event;
       const seconds = (outcome.durationMs / 1000).toFixed(1);
+      if (outcome.reusedFrom !== undefined) {
+        return `${outcome.taskId} reused from ${outcome.reusedFrom} · ${outcome.findings} finding(s)`;
+      }
       return outcome.status === "completed"
         ? `${outcome.taskId} completed in ${seconds}s · ${outcome.findings} finding(s)`
         : `${outcome.taskId} ${outcome.status.replace("_", " ")} after ${seconds}s: ${outcome.error ?? "unknown error"}`;

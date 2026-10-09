@@ -11,6 +11,7 @@ import { type ExecuteOptions, type JobResult, runJob } from "./execute.js";
 import { DEFAULT_MAX_TASKS, type MatrixCell, planTasks, type ReviewMatrix } from "./matrix.js";
 import { MAX_TIMER_MS, REVIEW_DEFAULTS, type ReviewHooks, type ReviewOptions } from "./options.js";
 import type { ReviewPlan } from "./plan.js";
+import { reusePool } from "./resume.js";
 
 export interface StageContext {
   options: ReviewOptions & ReviewHooks;
@@ -56,6 +57,9 @@ export async function executeStage(
   const relocations: Usage[] = [];
   const spendLimit = new AbortController();
   const execute = executeOptions(context, relocations, spendLimit);
+  const resume = options.resume;
+  const pool = reusePool(resume);
+  if (resume) execute.reuse = { pool, runId: resume.runId };
   const notStarted = new Set<string>();
   let unaffordable = 0;
   const results = await mapWithConcurrency(
@@ -80,6 +84,7 @@ export async function executeStage(
       `spend limit of $${options.limits?.maxCostUsd} reached: ${unaffordable} review task(s) did not start; their files are reported as not reviewed`,
     );
   }
+  if (resume) warnings.push(...resumeWarnings(resume.runId, pool.unused()));
   warnings.push(...results.flatMap((r) => r.warnings));
   return {
     matrix,
@@ -115,6 +120,7 @@ function executeOptions(
     ultra: options.mode?.ultra === true,
     plans: new Map(),
     agents: options,
+    keyInputs: keyInputs(options),
     emit,
     // Tasks report spend while they run, so the one that uses up the review
     // share stops every task still running, not only the ones not yet started.
@@ -126,6 +132,22 @@ function executeOptions(
     },
     signal: AbortSignal.any([signal, spendLimit.signal]),
   };
+}
+
+// The caller's build and sampling: an earlier run made with another ocra or
+// other sampling settings answered a different question.
+function keyInputs({ identity }: ReviewOptions): unknown {
+  const provenance = identity?.provenance;
+  return provenance && { ocraVersion: provenance.ocraVersion, sampling: provenance.sampling };
+}
+
+// Reused tasks are named in report.tasks (reusedFrom); only what could not be
+// reused is worth a warning.
+function resumeWarnings(runId: string, unused: number): string[] {
+  if (unused === 0) return [];
+  return [
+    `resumed run ${runId}: ${unused} completed task(s) not reused, their inputs changed (commits, configuration, prompts or ocra version)`,
+  ];
 }
 
 function relocatorOf(

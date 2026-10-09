@@ -23,7 +23,7 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--out`, `--repos-dir` | Runs directory (default `.ocra/eval`) and clone cache (default `~/.cache/ocra/aacr-bench/repos`) |
 | `--timeout-minutes` | Timeout per PR (default 30) |
 | `--max-cost-usd` | Stop starting new PRs once review spend reaches the cap |
-| `--retry-failed` | Review again PRs that failed, or lost tasks to a spent quota, in an earlier attempt |
+| `--retry-failed` | Review again PRs that failed, or lost tasks to a spent quota, in an earlier attempt; when that attempt's session is still in the clone, with `ocra review --resume`, so only its unfinished tasks run. The PR's `usage` is then both attempts' |
 | `--reviewers` | Passed to `ocra review --reviewers`, for comparing reviewer sets |
 | `--ultra` | Passed to `ocra review --ultra` (recall mode, about twice the cost); recorded in the run |
 | `--config` | Passed to `ocra review --config`: your configuration file (declared providers, limits) |

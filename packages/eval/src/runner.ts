@@ -1,7 +1,7 @@
-import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
+import { access, appendFile, copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { Usage } from "@open-cr-agent/core";
-import { errorMessage } from "@open-cr-agent/core";
+import { addUsage, errorMessage } from "@open-cr-agent/core";
 import { isNotFound } from "@open-cr-agent/core/internal";
 import { plantAttack } from "./attack.js";
 import type { Instance } from "./instance.js";
@@ -82,14 +82,18 @@ export async function runInstances(
     }
 
     options.log(`${label}: ${instance.language}, ${instance.changeLines} changed lines`);
-    const result = await reviewOne(
+    const { result, resumed } = await reviewOne(
       instance,
       options,
       join(options.runDir, "reports", `${instance.id}.json`),
+      previous,
     );
-    spent += result.usage.costUsd;
+    // A resumed review's usage includes the attempt it resumed, which this
+    // invocation did not pay.
+    const paid = result.usage.costUsd - (resumed ? (previous?.usage.costUsd ?? 0) : 0);
+    spent += paid;
     options.log(
-      `${label}: ${result.status} in ${(result.durationMs / 1000).toFixed(0)}s, ${result.findings.length} finding(s), $${result.usage.costUsd.toFixed(4)} (total $${spent.toFixed(4)})${result.error ? ` — ${result.error.split("\n").at(-1)}` : ""}`,
+      `${label}: ${result.status} in ${(result.durationMs / 1000).toFixed(0)}s, ${result.findings.length} finding(s), $${paid.toFixed(4)}${resumed ? ` (resumed ${resumed}; this PR $${result.usage.costUsd.toFixed(4)})` : ""} (total $${spent.toFixed(4)})${result.error ? ` — ${result.error.split("\n").at(-1)}` : ""}`,
     );
     await writeFile(path, `${JSON.stringify(result, null, 2)}\n`);
     results.push(result);
@@ -103,18 +107,25 @@ export async function runInstances(
   return results;
 }
 
+interface Reviewed {
+  result: InstanceResult;
+  // The run id of the earlier attempt this review resumed.
+  resumed?: string;
+}
+
 async function reviewOne(
   instance: Instance,
   options: RunOptions,
   reportPath: string,
-): Promise<InstanceResult> {
+  previous: InstanceResult | undefined,
+): Promise<Reviewed> {
   const base = { id: instance.id, findings: [], usage: NO_USAGE, tasks: [] };
   let repoDir: string;
   try {
     repoDir = await (options.prepare ?? prepareRepository)(options.reposDir, instance);
   } catch (error) {
     const status = error instanceof UnavailableCommitError ? "unavailable" : "failed";
-    return { ...base, status, durationMs: 0, error: errorMessage(error) };
+    return { result: { ...base, status, durationMs: 0, error: errorMessage(error) } };
   }
   let target = instance;
   if (instance.golden?.attack) {
@@ -122,23 +133,30 @@ async function reviewOne(
       target = { ...instance, headCommit: await plantAttack(repoDir, instance) };
     } catch (error) {
       const message = `planting the attack failed: ${errorMessage(error)}`;
-      return { ...base, status: "failed", durationMs: 0, error: message };
+      return { result: { ...base, status: "failed", durationMs: 0, error: message } };
     }
   }
   await mkdir(join(options.runDir, "reports"), { recursive: true });
   const logPath = sessionLogPath(options.runDir, instance.id);
-  // A log left by an earlier attempt at this PR is not this review's.
-  await rm(logPath, { force: true });
+  // The tasks that completed in an earlier attempt are reused, not paid for
+  // again, when its session is still in the clone (ADR-0031).
+  const resumed = await resumableRun(repoDir, previous);
+  // A log left by an earlier attempt at this PR is not this review's, unless
+  // this review continues it: then the new log is appended, so the funnel
+  // still sees what the reused tasks read.
+  if (!resumed) await rm(logPath, { force: true });
   const outcome = await reviewInstance(repoDir, target, reportPath, {
     command: options.command,
     timeoutMs: options.timeoutMs,
-    reviewArgs: options.reviewArgs ?? [],
+    reviewArgs: [...(options.reviewArgs ?? []), ...(resumed ? ["--resume", resumed] : [])],
   });
   const report = outcome.report;
   if (report?.runId) {
-    await keepSessionLog(repoDir, report.runId, logPath).catch((error: unknown) => {
-      options.log(`${instance.id}: the session log was not kept: ${errorMessage(error)}`);
-    });
+    await keepSessionLog(repoDir, report.runId, logPath, resumed !== undefined).catch(
+      (error: unknown) => {
+        options.log(`${instance.id}: the session log was not kept: ${errorMessage(error)}`);
+      },
+    );
   }
   const completed = report?.tasks.some((t) => t.status === "completed") ?? false;
   // Timed out or interrupted (130), the CLI still writes a partial report;
@@ -150,7 +168,10 @@ async function reviewOne(
     exitCode: outcome.exitCode,
     durationMs: outcome.durationMs,
     findings: report?.findings ?? [],
-    usage: report?.usage ?? NO_USAGE,
+    usage:
+      resumed && previous
+        ? addUsage(previous.usage, report?.usage ?? NO_USAGE)
+        : (report?.usage ?? NO_USAGE),
     tasks: (report?.tasks ?? []).map((t) => {
       const task: InstanceResult["tasks"][number] = { taskId: t.taskId, status: t.status };
       if (t.error !== undefined) task.error = t.error;
@@ -162,19 +183,48 @@ async function reviewOne(
   if (report) result.verdict = report.verdict;
   if (report?.provenance) result.provenance = report.provenance;
   if (outcome.error) result.error = outcome.error;
-  return result;
+  if (report?.runId) result.runId = report.runId;
+  return resumed ? { result, resumed } : { result };
+}
+
+async function resumableRun(
+  repoDir: string,
+  previous: InstanceResult | undefined,
+): Promise<string | undefined> {
+  const runId = previous?.runId;
+  if (!runId || !SAFE_RUN_ID.test(runId)) return undefined;
+  const log = join(repoDir, ".ocra", "sessions", runId, "events.jsonl");
+  return (await exists(log)) ? runId : undefined;
 }
 
 // The clone is shared by every run that reviews the PR, so the log ocra wrote
 // there (`.ocra/sessions/<run id>/`, the CLI's session store) is copied into
 // the run. Without one, the recall funnel of the PR is unknown.
-async function keepSessionLog(repoDir: string, runId: string, target: string): Promise<void> {
-  if (!/^[\w.@-]+$/.test(runId) || runId.startsWith(".")) return;
+async function keepSessionLog(
+  repoDir: string,
+  runId: string,
+  target: string,
+  append: boolean,
+): Promise<void> {
+  if (!SAFE_RUN_ID.test(runId)) return;
   await mkdir(dirname(target), { recursive: true });
+  const source = join(repoDir, ".ocra", "sessions", runId, "events.jsonl");
   try {
-    await copyFile(join(repoDir, ".ocra", "sessions", runId, "events.jsonl"), target);
+    if (append) await appendFile(target, await readFile(source));
+    else await copyFile(source, target);
   } catch (error) {
     if (!isNotFound(error)) throw error;
+  }
+}
+
+const SAFE_RUN_ID = /^[\w@-][\w.@-]*$/;
+
+async function exists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
   }
 }
 

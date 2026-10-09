@@ -23,7 +23,7 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--out`、`--repos-dir` | 运行结果目录（默认 `.ocra/eval`）和克隆缓存（默认 `~/.cache/ocra/aacr-bench/repos`） |
 | `--timeout-minutes` | 每个 PR 的超时时间（默认 30） |
 | `--max-cost-usd` | 审查花费达到上限后，不再开始新的 PR |
-| `--retry-failed` | 重新审查之前失败、或因配额用尽而丢了任务的 PR |
+| `--retry-failed` | 重新审查之前失败、或因配额用尽而丢了任务的 PR；那次尝试的会话还在克隆里时，用 `ocra review --resume` 接着跑，只运行没完成的任务。这时该 PR 的 `usage` 是两次尝试之和 |
 | `--reviewers` | 透传给 `ocra review --reviewers`，用来比较不同的审查员组合 |
 | `--ultra` | 透传给 `ocra review --ultra`（召回模式，花费约两倍）；运行记录会注明 |
 | `--config` | 透传给 `ocra review --config`：你的配置文件（声明的供应商、各种上限） |

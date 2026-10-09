@@ -80,6 +80,7 @@ describe("review", () => {
       "task_started",
       "task_progress",
       "finding",
+      "task_reported",
       "task_finished",
       "judge_finished",
       "run_finished",

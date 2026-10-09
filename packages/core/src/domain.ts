@@ -26,6 +26,12 @@ export const reportedFindingSchema = z.object({
 });
 export type ReportedFinding = z.infer<typeof reportedFindingSchema>;
 
+// A finding as a review task reported it, with the model that answered.
+export interface TaskFinding {
+  reported: ReportedFinding;
+  model?: string;
+}
+
 export const anchorMethodSchema = z.enum(["hunk", "file", "cross_file", "relocated", "file_level"]);
 export type AnchorMethod = z.infer<typeof anchorMethodSchema>;
 

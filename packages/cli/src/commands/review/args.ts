@@ -38,6 +38,8 @@ export interface ReviewArgs {
   // Override the configuration's sampling.
   temperature?: number;
   seed?: number;
+  // An earlier run of this review whose completed tasks are reused.
+  resume?: string;
 }
 
 export const REVIEW_USAGE = `Usage: ocra review [options]
@@ -69,6 +71,9 @@ Options:
                      .ocra/config.json; it applies with --no-repo-config too
   --no-repo-config   Ignore .ocra/config.json and its plugins (for untrusted
                      code); models come from OCRA_MODEL_* variables or --config
+  --resume <run-id>  Reuse the completed tasks of an earlier run of this review
+                     (its session in .ocra/sessions) whose inputs are unchanged;
+                     only the rest run and are paid for; not with --plan
   --no-upload        When signed in to ocra Cloud, send nothing about this
                      review: no counts, per-reviewer counts or findings
   -h, --help         Show help
@@ -144,6 +149,11 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
     if (values.plan) throw new UsageError("--import-sarif is not used by --plan");
     args.importSarif = values["import-sarif"];
   }
+  if (values.resume !== undefined) {
+    if (values.resume === "") throw new UsageError("--resume needs a run id");
+    if (values.plan) throw new UsageError("--resume is not used by --plan");
+    args.resume = values.resume;
+  }
   if (values.reviewers !== undefined) {
     const ids = values.reviewers
       .split(",")
@@ -175,6 +185,7 @@ function parse(argv: string[]) {
       ultra: { type: "boolean" },
       temperature: { type: "string" },
       seed: { type: "string" },
+      resume: { type: "string" },
       full: { type: "boolean" },
       plan: { type: "boolean" },
       pr: { type: "string" },

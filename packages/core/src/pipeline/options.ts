@@ -11,6 +11,7 @@ import type { SarifLog } from "../sarif/schema.js";
 import type { SelectionPolicy } from "../select/select.js";
 import type { VcsAdapter } from "../vcs.js";
 import type { ProvenanceInput } from "./provenance.js";
+import type { ResumedRun } from "./resume.js";
 
 export interface ReviewOptions {
   vcs: VcsAdapter;
@@ -40,6 +41,9 @@ export interface ReviewOptions {
   stages?: ReviewStages;
   mode?: ReviewMode;
   identity?: RunIdentity;
+  // An earlier run of this review: its completed tasks whose inputs have not
+  // changed are reused, not run and paid for again (ADR-0031).
+  resume?: ResumedRun;
   // SARIF logs of external analyzers; their results on the change join the
   // findings (pipeline/imports.ts).
   sarif?: readonly SarifLog[];

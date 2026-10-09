@@ -1,18 +1,20 @@
 import { type AgentCallSettings, type AgentSettings, reviewerCall } from "../agent/settings.js";
-import { addUsage } from "../agent/usage.js";
+import { addUsage, emptyUsage } from "../agent/usage.js";
 import { type AnchorContext, anchorFinding } from "../anchor/anchor.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
-import type { Finding } from "../domain.js";
+import type { Finding, TaskFinding } from "../domain.js";
 import { memoryFor } from "../memory/memory.js";
 import type { ReviewEvent, TaskOutcome } from "../report/report.js";
 import { findCallers } from "../review/impact.js";
 import { planBundle } from "../review/plan-phase.js";
-import { buildReviewPrompt, type ReviewPrompt } from "../review/prompt.js";
+import { buildReviewPrompt, type ReviewPrompt, type ReviewPromptInput } from "../review/prompt.js";
 import { resolveRules } from "../rules/resolve.js";
 import { toFinding } from "./findings.js";
 import type { MatrixCell } from "./matrix.js";
 import type { ReviewPlan } from "./plan.js";
-import { executeTask, type TaskFinding } from "./task.js";
+import { stableHash } from "./provenance.js";
+import type { ResumedTask, ReusePool } from "./resume.js";
+import { executeTask } from "./task.js";
 
 export interface JobResult {
   outcome: TaskOutcome;
@@ -36,6 +38,10 @@ export interface ExecuteOptions {
   onUsage?: ((usage: Usage) => void) | undefined;
   signal: AbortSignal;
   agents?: AgentSettings;
+  // Completed tasks of an earlier run (--resume) and that run's id.
+  reuse?: { pool: ReusePool; runId: string };
+  // What else a task's answer depends on: the ocra build and the sampling.
+  keyInputs?: unknown;
 }
 
 type PlannedBundle = Awaited<ReturnType<typeof planBundle>>;
@@ -59,7 +65,13 @@ export async function runJob(
   const { emit } = options;
   const files = job.bundle.files.map((f) => f.newPath);
   const call = reviewerCall(job.reviewer, options.agents ?? {});
-  const prepared = await preparePrompt(job, plan, options, call);
+  const input = promptInput(job, plan);
+  const key = taskKey(job, buildReviewPrompt(input), call, options);
+  const earlier = options.reuse?.pool.take(key);
+  if (earlier && options.reuse) {
+    return reuseJob(job, plan, options, { key, earlier, runId: options.reuse.runId });
+  }
+  const prepared = await preparePrompt(job, plan, options, call, input);
   emit({
     type: "task_started",
     taskId: job.taskId,
@@ -109,8 +121,81 @@ export async function runJob(
   };
   if (result.error !== undefined) outcome.error = result.error;
   if (result.ended !== undefined) outcome.ended = result.ended;
+  if (result.status === "completed") {
+    emit({ type: "task_reported", taskId: job.taskId, key, findings: result.findings });
+  }
   emit({ type: "task_finished", outcome });
   return { outcome, findings: anchored.findings, usage, warnings };
+}
+
+// The task's review prompt before a plan phase or callers are added.
+function promptInput(job: MatrixCell, plan: ReviewPlan): ReviewPromptInput {
+  const files = job.bundle.files.map((f) => f.newPath);
+  return {
+    reviewer: job.reviewer,
+    changeRequest: plan.changeRequest,
+    changedFiles: plan.selected,
+    bundle: job.bundle.files,
+    rules: resolveRules(files, plan.repoRules, job.reviewer.rules),
+    guidelines: plan.guidelines,
+    accepted: memoryFor(files, plan.memory),
+  };
+}
+
+// Everything a task's answer depends on, so an earlier answer is reused only
+// for the same question: the prompt (instructions, change, bundle, rules,
+// guidelines, memory), the model chain and effort, --ultra (which adds a plan
+// phase and callers, both derived from the same inputs), and the caller's
+// build and sampling.
+function taskKey(
+  job: MatrixCell,
+  prompt: ReviewPrompt,
+  call: AgentCallSettings,
+  options: ExecuteOptions,
+): string {
+  return stableHash({
+    prompt: { system: prompt.system, user: prompt.user },
+    tier: job.reviewer.modelTier,
+    chain: call.models ?? options.agents?.models?.[job.reviewer.modelTier],
+    effort: call.effort,
+    ultra: options.ultra === true,
+    inputs: options.keyInputs,
+  });
+}
+
+// A cell an earlier run already answered: its reported findings are anchored
+// again (the change is the same, so they land where they did) and it costs
+// nothing; its outcome says where it came from.
+async function reuseJob(
+  job: MatrixCell,
+  plan: ReviewPlan,
+  options: ExecuteOptions,
+  { key, earlier, runId }: { key: string; earlier: ResumedTask; runId: string },
+): Promise<JobResult> {
+  const { emit } = options;
+  const files = job.bundle.files.map((f) => f.newPath);
+  emit({
+    type: "task_started",
+    taskId: job.taskId,
+    reviewer: job.reviewer.id,
+    bundle: job.bundle.label,
+    files,
+  });
+  const anchored = await anchorFindings(job, plan, options, earlier.findings);
+  emit({ type: "task_reported", taskId: job.taskId, key, findings: [...earlier.findings] });
+  const { error: _error, ...prior } = earlier.outcome;
+  const outcome: TaskOutcome = {
+    ...prior,
+    taskId: job.taskId,
+    reviewer: job.reviewer.id,
+    bundle: job.bundle.label,
+    files,
+    status: "completed",
+    findings: anchored.findings.length,
+    reusedFrom: earlier.outcome.reusedFrom ?? runId,
+  };
+  emit({ type: "task_finished", outcome });
+  return { outcome, findings: anchored.findings, usage: emptyUsage(), warnings: anchored.warnings };
 }
 
 interface PreparedPrompt {
@@ -127,17 +212,8 @@ async function preparePrompt(
   plan: ReviewPlan,
   options: ExecuteOptions,
   call: AgentCallSettings,
+  input: ReviewPromptInput,
 ): Promise<PreparedPrompt> {
-  const files = job.bundle.files.map((f) => f.newPath);
-  const input = {
-    reviewer: job.reviewer,
-    changeRequest: plan.changeRequest,
-    changedFiles: plan.selected,
-    bundle: job.bundle.files,
-    rules: resolveRules(files, plan.repoRules, job.reviewer.rules),
-    guidelines: plan.guidelines,
-    accepted: memoryFor(files, plan.memory),
-  };
   if (!options.ultra && !isLargeBundle(job.bundle.files)) {
     return { prompt: buildReviewPrompt(input), usage: [], warnings: [] };
   }

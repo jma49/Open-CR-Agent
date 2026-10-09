@@ -1099,6 +1099,7 @@ export const reportOutputSchema: z.ZodObject<{
             cachedTokens: z.ZodNumber;
             costUsd: z.ZodNumber;
         }, z.core.$strict>;
+        reusedFrom: z.ZodExactOptional<z.ZodString>;
     }, z.core.$strict>>;
     skipped: z.ZodArray<z.ZodObject<{
         reviewer: z.ZodString;
@@ -1200,6 +1201,29 @@ const repoRuleSchema: z.ZodObject<{
 
 // @public (undocumented)
 export const RESUME_MESSAGE: string;
+
+// @public (undocumented)
+export interface ResumedRun {
+    // (undocumented)
+    bundles: readonly {
+        label: string;
+        files: readonly string[];
+    }[];
+    // (undocumented)
+    runId: string;
+    // (undocumented)
+    tasks: readonly ResumedTask[];
+}
+
+// @public (undocumented)
+export interface ResumedTask {
+    // (undocumented)
+    findings: readonly TaskFinding[];
+    // (undocumented)
+    key: string;
+    // (undocumented)
+    outcome: TaskOutcome;
+}
 
 // @public (undocumented)
 export function review(options: ReviewOptions): Promise<ReviewReport>;
@@ -1305,6 +1329,11 @@ export type ReviewEvent = {
     file: string;
     title: string;
 } | {
+    type: "task_reported";
+    taskId: string;
+    key: string;
+    findings: TaskFinding[];
+} | {
     type: "task_finished";
     outcome: TaskOutcome;
 } | {
@@ -1360,6 +1389,8 @@ export interface ReviewOptions {
     onEvent?: (event: ReviewEvent) => void;
     // (undocumented)
     readTrusted?: (path: string) => Promise<string | undefined>;
+    // (undocumented)
+    resume?: ResumedRun;
     // (undocumented)
     reviewerOverrides?: ReviewerOverrides;
     // (undocumented)
@@ -1686,6 +1717,14 @@ export class SpendLimitReached extends OcraError {
 export function startPlugins(plugins: readonly OcraPlugin[], options?: PluginHostOptions): Promise<PluginRegistry>;
 
 // @public (undocumented)
+export interface TaskFinding {
+    // (undocumented)
+    model?: string;
+    // (undocumented)
+    reported: ReportedFinding;
+}
+
+// @public (undocumented)
 export interface TaskOutcome {
     // (undocumented)
     bundle: string;
@@ -1699,6 +1738,8 @@ export interface TaskOutcome {
     files: string[];
     // (undocumented)
     findings: number;
+    // (undocumented)
+    reusedFrom?: string;
     // (undocumented)
     reviewer: string;
     // (undocumented)

@@ -30,3 +30,4 @@ export { readReport } from "./report/read.js";
 export { isUnsafeCodePoint, serializeOutput } from "./report/serialize.js";
 export { repoRuleSchema } from "./rules/repo-rules.js";
 export { REPORT_FILE } from "./session/jsonl.js";
+export { readResumedRun } from "./session/resume-read.js";
