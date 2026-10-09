@@ -180,4 +180,46 @@ describe("resuming an earlier run", () => {
     expect(second.bundles).toEqual(first.report.bundles);
     expect(rt.specs.map((s) => s.taskId)).toEqual(["correctness-2"]);
   });
+
+  it("does not reuse a task made for other commits, even when the change reads the same", async () => {
+    const first = await firstRun();
+    const rebased = vcs({}, twoFiles);
+    rebased.getChangeRequest = async () => ({
+      id: "1",
+      title: "t",
+      description: "d",
+      baseSha: "b2",
+      headSha: "h2",
+    });
+    const rt = reviewing();
+    await reviewWithHooks({ vcs: rebased, runtime: rt, resume: first.resume, ...perFile });
+    expect(rt.specs.map((s) => s.taskId)).toEqual(["correctness-1", "correctness-2"]);
+  });
+
+  it("reuses completed tasks after the spend limit keeps new ones from starting", async () => {
+    const threeFiles = [twoFiles, patch("src/c.ts", "const c = 3;")].join("\n");
+    const events: ReviewEvent[] = [];
+    await reviewWithHooks({
+      vcs: vcs({}, threeFiles),
+      runtime: reviewing(["correctness-1"]),
+      identity: { runId: "first" },
+      onEvent: (e) => events.push(e),
+      ...perFile,
+    });
+    const rt = reviewing();
+    // Task -1 runs first and spends the review share; -2 and -3 cost nothing.
+    const second = await reviewWithHooks({
+      vcs: vcs({}, threeFiles),
+      runtime: rt,
+      resume: resumedFrom("first", events),
+      limits: { maxCostUsd: 0.01, concurrency: 1 },
+      ...perFile,
+    });
+    expect(rt.specs.map((s) => s.taskId)).toEqual(["correctness-1"]);
+    expect(second.tasks.slice(1).map((t) => [t.taskId, t.status, t.reusedFrom])).toEqual([
+      ["correctness-2", "completed", "first"],
+      ["correctness-3", "completed", "first"],
+    ]);
+    expect(second.warnings.filter((w) => w.includes("spend limit"))).toEqual([]);
+  });
 });

@@ -13,7 +13,7 @@ import { toFinding } from "./findings.js";
 import type { MatrixCell } from "./matrix.js";
 import type { ReviewPlan } from "./plan.js";
 import { stableHash } from "./provenance.js";
-import type { ResumedTask, ReusePool } from "./resume.js";
+import type { ReusePool } from "./resume.js";
 import { executeTask } from "./task.js";
 
 export interface JobResult {
@@ -56,21 +56,24 @@ export function isLargeBundle(files: readonly { patch: string }[]): boolean {
   return files.length >= PLAN_MIN_FILES || chars >= PLAN_MIN_PATCH_CHARS;
 }
 
+// The key of a cell's inputs (taskKey), under which its answer is reported
+// and an earlier run's answer is reused.
+export function jobKey(job: MatrixCell, plan: ReviewPlan, options: ExecuteOptions): string {
+  const call = reviewerCall(job.reviewer, options.agents ?? {});
+  return taskKey(job, plan, buildReviewPrompt(promptInput(job, plan)), call, options);
+}
+
 // Runs one (bundle, reviewer) cell and anchors what it reports.
 export async function runJob(
   job: MatrixCell,
   plan: ReviewPlan,
   options: ExecuteOptions,
+  key: string,
 ): Promise<JobResult> {
   const { emit } = options;
   const files = job.bundle.files.map((f) => f.newPath);
   const call = reviewerCall(job.reviewer, options.agents ?? {});
   const input = promptInput(job, plan);
-  const key = taskKey(job, buildReviewPrompt(input), call, options);
-  const earlier = options.reuse?.pool.take(key);
-  if (earlier && options.reuse) {
-    return reuseJob(job, plan, options, { key, earlier, runId: options.reuse.runId });
-  }
   const prepared = await preparePrompt(job, plan, options, call, input);
   emit({
     type: "task_started",
@@ -145,17 +148,21 @@ function promptInput(job: MatrixCell, plan: ReviewPlan): ReviewPromptInput {
 
 // Everything a task's answer depends on, so an earlier answer is reused only
 // for the same question: the prompt (instructions, change, bundle, rules,
-// guidelines, memory), the model chain and effort, --ultra (which adds a plan
-// phase and callers, both derived from the same inputs), and the caller's
-// build and sampling.
+// guidelines, memory), the commits (the code around the change, which the
+// reviewer reads but the prompt does not hold), the model chain and effort,
+// --ultra (which adds a plan phase and callers, both derived from the same
+// inputs), and the caller's build and sampling.
 function taskKey(
   job: MatrixCell,
+  plan: ReviewPlan,
   prompt: ReviewPrompt,
   call: AgentCallSettings,
   options: ExecuteOptions,
 ): string {
+  const { baseSha, headSha } = plan.changeRequest;
   return stableHash({
     prompt: { system: prompt.system, user: prompt.user },
+    commits: { base: baseSha, head: headSha },
     tier: job.reviewer.modelTier,
     chain: call.models ?? options.agents?.models?.[job.reviewer.modelTier],
     effort: call.effort,
@@ -164,15 +171,20 @@ function taskKey(
   });
 }
 
-// A cell an earlier run already answered: its reported findings are anchored
-// again (the change is the same, so they land where they did) and it costs
-// nothing; its outcome says where it came from.
-async function reuseJob(
+// A cell an earlier run already answered, when the reuse pool holds an answer
+// under its key: the reported findings are anchored again (the change is the
+// same, so they land where they did) and it costs nothing, so the stage takes
+// it before the spend limit; its outcome says where it came from. Undefined
+// when the cell has to run.
+export async function reuseJob(
   job: MatrixCell,
   plan: ReviewPlan,
   options: ExecuteOptions,
-  { key, earlier, runId }: { key: string; earlier: ResumedTask; runId: string },
-): Promise<JobResult> {
+  key: string,
+): Promise<JobResult | undefined> {
+  const earlier = options.reuse?.pool.take(key);
+  if (!earlier || !options.reuse) return undefined;
+  const { runId } = options.reuse;
   const { emit } = options;
   const files = job.bundle.files.map((f) => f.newPath);
   emit({
