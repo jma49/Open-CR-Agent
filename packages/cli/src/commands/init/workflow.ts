@@ -44,6 +44,21 @@ function step(lines: readonly string[], indent: string): string[] {
   return [`${indent}- ${first}`, ...rest.map((line) => `${indent}  ${line}`)];
 }
 
+const ONE_REVIEW = "    # One review per pull request at a time: a new push cancels the older run.";
+
+// The fork-safe job's condition, in its if: and in its concurrency group.
+const GATE = [
+  `(github.event.action == 'labeled' && github.event.label.name == '${REVIEW_LABEL}') ||`,
+  "(github.event.action != 'labeled' &&",
+  `  contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))`,
+];
+
+function parenthesized(lines: readonly string[]): string[] {
+  return lines.map(
+    (line, i) => `${i === 0 ? "(" : " "}${line}${i === lines.length - 1 ? ")" : ""}`,
+  );
+}
+
 function sameRepo(action: readonly string[]): string[] {
   return [
     "name: ocra",
@@ -53,13 +68,12 @@ function sameRepo(action: readonly string[]): string[] {
     "  contents: read",
     "  pull-requests: write",
     "",
-    "# One review per pull request at a time: a new push cancels the older run.",
-    "concurrency:",
-    `  group: ocra-${expr("github.event.pull_request.number")}`,
-    "  cancel-in-progress: true",
-    "",
     "jobs:",
     "  review:",
+    ONE_REVIEW,
+    "    concurrency:",
+    `      group: ocra-${expr("github.event.pull_request.number")}`,
+    "      cancel-in-progress: true",
     "    runs-on: ubuntu-latest",
     "    steps:",
     "      - uses: actions/checkout@v7",
@@ -80,18 +94,21 @@ function forkSafe(action: readonly string[]): string[] {
     "  contents: read",
     "  pull-requests: write",
     "",
-    "concurrency:",
-    `  group: ocra-${expr("github.event.pull_request.number")}`,
-    "  cancel-in-progress: true",
-    "",
     "jobs:",
     "  review:",
     "    # Members and collaborators: every push. Anyone else: one review each",
     `    # time a maintainer adds the ${REVIEW_LABEL} label.`,
     "    if: >-",
-    `      (github.event.action == 'labeled' && github.event.label.name == '${REVIEW_LABEL}') ||`,
-    "      (github.event.action != 'labeled' &&",
-    `        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))`,
+    ...GATE.map((line) => `      ${line}`),
+    ONE_REVIEW,
+    "    # The key repeats the if:, so a run the if: skips gets a group of its",
+    "    # own and cannot cancel the review in progress.",
+    "    concurrency:",
+    "      group: >-",
+    `        ocra-${expr("github.event.pull_request.number")}-\${{`,
+    ...parenthesized(GATE).map((line) => `          ${line}`),
+    "          && 'review' || github.run_id }}",
+    "      cancel-in-progress: true",
     "    runs-on: ubuntu-latest",
     "    steps:",
     "      # The base branch. Nothing from the pull request is checked out.",

@@ -15,13 +15,12 @@ permissions:
   contents: read
   pull-requests: write
 
-# One review per pull request at a time: a new push cancels the older run.
-concurrency:
-  group: ocra-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   review:
+    # One review per pull request at a time: a new push cancels the older run.
+    concurrency:
+      group: ocra-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -207,10 +206,6 @@ permissions:
   contents: read
   pull-requests: write
 
-concurrency:
-  group: ocra-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   review:
     # Members and collaborators: every push. Anyone else: one review each
@@ -219,6 +214,17 @@ jobs:
       (github.event.action == 'labeled' && github.event.label.name == 'ocra-review') ||
       (github.event.action != 'labeled' &&
         contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
+    # One review per pull request at a time: a new push cancels the older run.
+    # The key repeats the if:, so a run the if: skips gets a group of its
+    # own and cannot cancel the review in progress.
+    concurrency:
+      group: >-
+        ocra-${{ github.event.pull_request.number }}-${{
+          ((github.event.action == 'labeled' && github.event.label.name == 'ocra-review') ||
+           (github.event.action != 'labeled' &&
+             contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)))
+          && 'review' || github.run_id }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
       # The base branch. Nothing from the pull request is checked out.
@@ -236,7 +242,8 @@ jobs:
 GitHub 提醒慎用 `pull_request_target`，是因为构建 PR 代码的 job 会带着你的 secret 运行这些代码。ocra 不运行 PR 里的任何东西（[威胁模型](./threat-model)）；workflow 也要保持这一点：
 
 - **不要在这里检出、安装、构建或测试 PR：**不要写 `ref: ${{ github.event.pull_request.head.sha }}`，不要安装依赖，不要跑测试。这些放到单独的 `pull_request` workflow 里，fork 的 PR 在那里拿不到 secret。
-- **保留 `if:` 门槛。**任何人都能开 PR，而每次审查都要花钱：外部贡献者的 PR 在维护者每加一次标签时审查一次（下次先移除标签再加上）。`--max-cost-usd` 限制每次审查的花费。
+- **保留 `if:` 门槛。**任何人都能开 PR，而每次审查都要花钱：外部贡献者的 PR 在维护者每加一次标签时审查一次（下次先移除标签再加上）。外部作者在带标签的审查进行中 push，这次运行会被跳过，那次审查继续进行；要审查新的 head，重新加上标签。`--max-cost-usd` 限制每次审查的花费。
+- **把条件留在 concurrency 组名里，改的时候两处一起改。**被 `if:` 跳过的运行（比如加了无关的标签）进入自己的组，不会取消正在进行的审查。
 - **使用只用于这些审查的模型 key**，并在供应商那里设置花费上限。
 - **按提交固定 Action。**
 
@@ -259,16 +266,23 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ocra-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   review:
     if: >-
       (github.event.action == 'labeled' && github.event.label.name == 'ocra-review') ||
       (github.event.action != 'labeled' &&
         contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
+    # 每个 PR 同一时间只有一次审查：新的 push 会取消较早的运行。
+    # 组名重复了 if: 的条件，被 if: 跳过的运行进入自己的组，
+    # 不会取消正在进行的审查。
+    concurrency:
+      group: >-
+        ocra-${{ github.event.pull_request.number }}-${{
+          ((github.event.action == 'labeled' && github.event.label.name == 'ocra-review') ||
+           (github.event.action != 'labeled' &&
+             contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)))
+          && 'review' || github.run_id }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     # 它的 secret 只给在默认分支上运行的任务。
     environment: ocra-review

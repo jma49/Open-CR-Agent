@@ -81,11 +81,11 @@ on:
 permissions:
   contents: read
   pull-requests: write
-concurrency:
-  group: ocra-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
 jobs:
   review:
+    concurrency:
+      group: ocra-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

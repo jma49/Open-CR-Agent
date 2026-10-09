@@ -9,10 +9,6 @@ permissions:
   contents: read
   pull-requests: write
 
-concurrency:
-  group: ocra-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   review:
     # Members and collaborators: every push. Anyone else: one review each
@@ -21,6 +17,17 @@ jobs:
       (github.event.action == 'labeled' && github.event.label.name == 'ocra-review') ||
       (github.event.action != 'labeled' &&
         contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
+    # One review per pull request at a time: a new push cancels the older run.
+    # The key repeats the if:, so a run the if: skips gets a group of its
+    # own and cannot cancel the review in progress.
+    concurrency:
+      group: >-
+        ocra-${{ github.event.pull_request.number }}-${{
+          ((github.event.action == 'labeled' && github.event.label.name == 'ocra-review') ||
+           (github.event.action != 'labeled' &&
+             contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)))
+          && 'review' || github.run_id }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
       # The base branch. Nothing from the pull request is checked out.

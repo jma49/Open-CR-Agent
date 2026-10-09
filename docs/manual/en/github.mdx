@@ -15,13 +15,12 @@ permissions:
   contents: read
   pull-requests: write
 
-# One review per pull request at a time: a new push cancels the older run.
-concurrency:
-  group: ocra-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   review:
+    # One review per pull request at a time: a new push cancels the older run.
+    concurrency:
+      group: ocra-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -207,10 +206,6 @@ permissions:
   contents: read
   pull-requests: write
 
-concurrency:
-  group: ocra-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   review:
     # Members and collaborators: every push. Anyone else: one review each
@@ -219,6 +214,17 @@ jobs:
       (github.event.action == 'labeled' && github.event.label.name == 'ocra-review') ||
       (github.event.action != 'labeled' &&
         contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
+    # One review per pull request at a time: a new push cancels the older run.
+    # The key repeats the if:, so a run the if: skips gets a group of its
+    # own and cannot cancel the review in progress.
+    concurrency:
+      group: >-
+        ocra-${{ github.event.pull_request.number }}-${{
+          ((github.event.action == 'labeled' && github.event.label.name == 'ocra-review') ||
+           (github.event.action != 'labeled' &&
+             contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)))
+          && 'review' || github.run_id }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
       # The base branch. Nothing from the pull request is checked out.
@@ -236,7 +242,8 @@ jobs:
 GitHub warns against `pull_request_target` because a job that builds the pull request's code runs it with your secrets. ocra runs nothing from the pull request ([Threat model](./threat-model)); keep the workflow that way:
 
 - **Never check out, install, build or test the pull request here:** no `ref: ${{ github.event.pull_request.head.sha }}`, no dependency install, no test run. Do those in a separate `pull_request` workflow, which gets no secrets for forks.
-- **Keep the `if:` gate.** Anyone can open a pull request, and every review costs money: an outsider's pull request is reviewed once each time a maintainer adds the label (remove and re-add it for the next review). `--max-cost-usd` caps each review.
+- **Keep the `if:` gate.** Anyone can open a pull request, and every review costs money: an outsider's pull request is reviewed once each time a maintainer adds the label (remove and re-add it for the next review). An outside author's push during a labelled review is skipped and leaves that review running; re-add the label to review the new head. `--max-cost-usd` caps each review.
+- **Keep the condition in the concurrency group, and change both together.** A run the `if:` skips, such as one for an unrelated label, gets a group of its own, so it cannot cancel the review in progress.
 - **Use a model key that serves only these reviews**, with a spending limit at the provider.
 - **Pin the Action by commit.**
 
@@ -259,16 +266,23 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ocra-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   review:
     if: >-
       (github.event.action == 'labeled' && github.event.label.name == 'ocra-review') ||
       (github.event.action != 'labeled' &&
         contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
+    # One review per pull request at a time: a new push cancels the older run.
+    # The key repeats the if:, so a run the if: skips gets a group of its
+    # own and cannot cancel the review in progress.
+    concurrency:
+      group: >-
+        ocra-${{ github.event.pull_request.number }}-${{
+          ((github.event.action == 'labeled' && github.event.label.name == 'ocra-review') ||
+           (github.event.action != 'labeled' &&
+             contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)))
+          && 'review' || github.run_id }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     # Its secrets reach only jobs that run on the default branch.
     environment: ocra-review

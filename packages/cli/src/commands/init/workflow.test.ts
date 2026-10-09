@@ -32,6 +32,34 @@ const ADDED: Record<WorkflowKind, string[]> = {
   ],
 };
 
+function topLevelKeys(workflow: string): string[] {
+  return workflow
+    .split("\n")
+    .filter((line) => /^[a-z]/.test(line))
+    .map((line) => line.slice(0, line.indexOf(":")));
+}
+
+// The first value of that key, a folded block (>-) included, with each run of
+// whitespace as one space, as GitHub reads an expression.
+function keyValue(workflow: string, key: string): string {
+  const lines = workflow.split("\n");
+  const at = lines.findIndex((line) => line.trimStart().startsWith(`${key}: `));
+  expect(at, key).toBeGreaterThanOrEqual(0);
+  const line = lines[at] ?? "";
+  const value = line.slice(line.indexOf(":") + 2);
+  if (value !== ">-") return value;
+  const indent = line.length - line.trimStart().length;
+  const block = lines.slice(at + 1);
+  const end = block.findIndex((l) => l.length - l.trimStart().length <= indent);
+  return block
+    .slice(0, end < 0 ? undefined : end)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const PULL_REQUEST = `ocra-\${{ github.event.pull_request.number }}`;
+
 function without(text: string, lines: readonly string[]): string {
   const rest = text.split("\n");
   for (const line of lines) {
@@ -54,6 +82,29 @@ describe("workflowFor", () => {
     const workflow = workflowFor({ kind: "same-repo", keyEnv: "GEMINI_API_KEY", direct: false });
     expect(without(workflow, ADDED["same-repo"])).toBe(recipe("## GitHub Action"));
     expect(workflow).not.toContain("pull_request_target");
+  });
+
+  it.each(["fork-safe", "same-repo"] as const)(
+    "%s: one review per pull request at a time, from the review job",
+    (kind) => {
+      const workflow = workflowFor({ kind, keyEnv: "GEMINI_API_KEY", direct: false });
+      expect(topLevelKeys(workflow)).toEqual(["name", "on", "permissions", "jobs"]);
+      expect(workflow).toContain("\n    concurrency:\n      group: ");
+      expect(keyValue(workflow, "group").startsWith(PULL_REQUEST)).toBe(true);
+      expect(keyValue(workflow, "cancel-in-progress")).toBe("true");
+    },
+  );
+
+  // An unrelated label, or an outside author's push during a labelled
+  // review, starts a run the if: skips; in the review's group it would
+  // cancel the review.
+  it("gives a run its if: skips a concurrency group of its own", () => {
+    const workflow = workflowFor({ kind: "fork-safe", keyEnv: "GEMINI_API_KEY", direct: false });
+    const condition = keyValue(workflow, "if");
+    expect(condition).toContain("github.event.label.name == 'ocra-review'");
+    expect(keyValue(workflow, "group")).toBe(
+      `${PULL_REQUEST}-\${{ (${condition}) && 'review' || github.run_id }}`,
+    );
   });
 
   it("pins the Action as the manual does", () => {
