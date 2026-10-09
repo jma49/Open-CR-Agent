@@ -6,7 +6,13 @@
 // with a workflow error when the model is gone (404) or needs credits (402).
 //
 //   OPENROUTER_API_KEY=… node scripts/free-quota.mjs <model>
-import { freeRequestsLeft, probeFailure, probeLine, probeRequest } from "./lib/free-quota.mjs";
+import {
+  freeRequestsLeft,
+  probeBody,
+  probeFailure,
+  probeLine,
+  probeRequest,
+} from "./lib/free-quota.mjs";
 
 const model = process.argv[2];
 const key = process.env.OPENROUTER_API_KEY;
@@ -26,7 +32,7 @@ try {
     signal: AbortSignal.timeout(30_000),
   });
   headers = response.headers;
-  body = await response.text();
+  body = await probeBody(response);
 } catch {
   // No answer: the count stays unknown, as when OpenRouter does not say.
 }

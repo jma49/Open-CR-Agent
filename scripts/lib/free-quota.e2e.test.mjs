@@ -68,10 +68,15 @@ describe("probeFailure", () => {
 
 // The script with fetch answering FAKE_STATUS, so no request leaves the test.
 const FAKE_FETCH = `data:text/javascript,globalThis.fetch = async () => new Response("{}", { status: Number(process.env.FAKE_STATUS), headers: { "x-ratelimit-remaining": "9" } });`;
-/** @param {number} status */
-function runProbe(status) {
+// fetch answering a 429 of 8 MB that counts what was read of it.
+const LONG_ANSWER = `data:text/javascript,let sent = 0; process.on("exit", () => process.stderr.write("sent " + sent + "\\n")); const chunk = new Uint8Array(16384).fill(32); globalThis.fetch = async () => new Response(new ReadableStream({ pull(c) { if (sent >= 8388608) return c.close(); sent += chunk.length; c.enqueue(chunk); } }), { status: 429 });`;
+/**
+ * @param {number} status
+ * @param {string} fake
+ */
+function runProbe(status, fake = FAKE_FETCH) {
   const script = fileURLToPath(new URL("../free-quota.mjs", import.meta.url));
-  return spawnSync(process.execPath, ["--import", FAKE_FETCH, script, "vendor/m:free"], {
+  return spawnSync(process.execPath, ["--import", fake, script, "vendor/m:free"], {
     encoding: "utf8",
     env: { PATH: process.env.PATH, OPENROUTER_API_KEY: "k", FAKE_STATUS: String(status) },
   });
@@ -89,6 +94,13 @@ describe("the probe script", () => {
       expect(run.stderr).toContain(says);
       expect(run.stdout).toBe("");
     }
+  });
+
+  it("reads no more than 64 KB of the answer", () => {
+    const run = runProbe(429, LONG_ANSWER);
+    expect(run.status).toBe(0);
+    const sent = Number(/sent (\d+)/.exec(run.stderr)?.[1]);
+    expect(sent).toBeLessThanOrEqual(128 * 1024);
   });
 
   it("prints the count of an answer that has one", () => {

@@ -67,6 +67,36 @@ export function probeFailure(model, response) {
   return undefined;
 }
 
+// The probe needs the error a 429 carries, which is short; the rest of an
+// answer is never downloaded. vcs-platform's http.ts reads refusals the same
+// way: a script cannot import a workspace package's TypeScript.
+const MAX_PROBE_BYTES = 64 * 1024;
+
+/**
+ * The answer's first 64 KB as text.
+ * @param {Response} response
+ * @returns {Promise<string>}
+ */
+export async function probeBody(response) {
+  const reader = response.body?.getReader();
+  if (!reader) return "";
+  const decoder = new TextDecoder();
+  let text = "";
+  let left = MAX_PROBE_BYTES;
+  try {
+    while (left > 0) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = value.subarray(0, left);
+      left -= chunk.byteLength;
+      text += decoder.decode(chunk, { stream: true });
+    }
+    return text + decoder.decode();
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+}
+
 /** @param {string} model */
 export function probeRequest(model) {
   return { model, max_tokens: 1, messages: [{ role: "user", content: "ok" }] };
