@@ -59,8 +59,12 @@ export type ProviderId = (typeof PROVIDER_IDS)[number];
 // later works without a new client.
 export const PROVIDER_ID = /^[a-z][a-z0-9-]{0,39}$/;
 export const MODEL_ID = /^[\w./:@-]{1,200}$/;
-/** A path the gateway forwards, as GET /api/providers lists it. */
-export const GATEWAY_PATH = /^\/[\w./-]+$/;
+/**
+ * A path the gateway forwards, as GET /api/providers lists it: plain
+ * segments, none of them `.` or `..`, which a URL would resolve out of the
+ * provider's prefix to another endpoint of the server.
+ */
+export const GATEWAY_PATH = /^(?:\/(?!\.\.?(?:\/|$))[\w.-]+)+$/;
 
 export const CLOUD_PREFIX = "ocra-";
 
