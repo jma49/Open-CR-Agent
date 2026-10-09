@@ -70,7 +70,7 @@ ocra plugins deny ocra-plugin-team-rules
 
 | 方法 | 提供的能力 |
 |---|---|
-| `registerVcs(name, factory)` | 代码托管平台适配器 |
+| `registerVcs(name, factory)` | 代码托管平台适配器，仅用于[嵌入](./embedding)：`ocra` 命令只审查本地 git、GitHub 和 GitLab，不会按名字选用插件注册的适配器 |
 | `registerRuntime(name, factory)` | agent 运行时 |
 | `registerReviewer(definition)` | 有自己提示词和模型层级的审查员 |
 | `registerRules(rules)` | 按路径生效的审查规则 |
