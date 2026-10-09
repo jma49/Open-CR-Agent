@@ -194,6 +194,34 @@ describe("account data settings (ADR-0027)", () => {
   });
 });
 
+describe("checks of the run's configuration", () => {
+  // A provider the configuration declares wins over ocra Cloud's of the
+  // same name, so the account's chain reaches the declared, unpriced model.
+  it("warns about an unpriced model that only the account's chain names", async () => {
+    const cwd = repoWithChange();
+    mkdirSync(join(cwd, ".ocra"), { recursive: true });
+    writeFileSync(
+      join(cwd, ".ocra", "config.json"),
+      JSON.stringify({
+        providers: {
+          "ocra-lab": {
+            type: "openai-compatible",
+            baseUrl: "https://lab.example/v1",
+            models: { free: { input: 0, output: 0 } },
+          },
+        },
+      }),
+    );
+    const { cloud } = signedIn({}, { ...PREFERENCES, models: { light: ["ocra-lab/free"] } });
+    const err = capture();
+    await run(["review", "--plan"], capture(), err, deps(cwd, critical, { cloud }));
+    expect(err.text()).toContain("From your ocra Cloud settings: models.light");
+    expect(err.text()).toContain(
+      "ocra-lab/free has a price of 0: reported cost and --max-cost-usd do not count its tokens",
+    );
+  });
+});
+
 describe("ultra as an account default", () => {
   const ULTRA = { ...PREFERENCES, settings: { ultra: true } };
 
