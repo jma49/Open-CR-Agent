@@ -8,8 +8,8 @@ import {
   verdictSchema,
   verificationSchema,
 } from "../domain.js";
+import { skipReasonSchema } from "../matrix/matrix.js";
 import { memoryEntrySchema } from "../memory/memory.js";
-import { skipReasonSchema } from "../pipeline/matrix.js";
 import { exclusionReasonSchema } from "../select/select.js";
 import { taskStatusSchema } from "./report.js";
 

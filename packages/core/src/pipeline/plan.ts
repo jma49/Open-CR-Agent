@@ -3,6 +3,7 @@ import { type Bundle, bundleFiles, defaultBundlePolicy } from "../bundle/bundle.
 import { runtimeGrouper } from "../bundle/runtime-grouper.js";
 import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
 import type { ChangeRequest, FileDiff, RiskTier } from "../domain.js";
+import { rank } from "../matrix/matrix.js";
 import { MEMORY_PATH, mergeMemory, parseMemory, type RememberedEntry } from "../memory/memory.js";
 import type { ReviewEvent } from "../report/report.js";
 import {
@@ -19,7 +20,6 @@ import {
 } from "../select/select.js";
 import { triage } from "../triage.js";
 import { reviewContext } from "./context.js";
-import { rank } from "./matrix.js";
 import type { ReviewHooks, ReviewOptions } from "./options.js";
 import { resumedBundles } from "./resume.js";
 import { newRunId } from "./run-id.js";

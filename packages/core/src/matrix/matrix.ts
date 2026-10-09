@@ -2,10 +2,8 @@ import picomatch from "picomatch";
 import { z } from "zod";
 import type { ReviewerOverrides } from "../agent/settings.js";
 import type { Bundle } from "../bundle/bundle.js";
-import type { RiskTier } from "../domain.js";
+import { RISK_TIERS, type RiskTier } from "../domain.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
-
-export const RISK_TIERS: readonly RiskTier[] = ["trivial", "lite", "full"];
 
 export interface MatrixCell {
   taskId: string;

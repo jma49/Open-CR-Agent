@@ -5,10 +5,15 @@ import { emptyUsage } from "../agent/usage.js";
 import type { AnchorContext, RelocationRequest } from "../anchor/anchor.js";
 import { runtimeRelocator } from "../anchor/relocate.js";
 import type { Usage } from "../contracts.js";
+import {
+  DEFAULT_MAX_TASKS,
+  type MatrixCell,
+  planTasks,
+  type ReviewMatrix,
+} from "../matrix/matrix.js";
 import type { ReviewEvent, TaskOutcome } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { type ExecuteOptions, type JobResult, jobKey, reuseJob, runJob } from "./execute.js";
-import { DEFAULT_MAX_TASKS, type MatrixCell, planTasks, type ReviewMatrix } from "./matrix.js";
 import { MAX_TIMER_MS, REVIEW_DEFAULTS, type ReviewHooks, type ReviewOptions } from "./options.js";
 import type { ReviewPlan } from "./plan.js";
 import { reusePool } from "./resume.js";

@@ -125,6 +125,8 @@ export interface ChangeRequest {
 
 export const riskTierSchema = z.enum(["trivial", "lite", "full"]);
 export type RiskTier = z.infer<typeof riskTierSchema>;
+// Lowest first: the matrix ranks tiers by their place here.
+export const RISK_TIERS = riskTierSchema.options;
 
 export const verdictSchema = z.enum([
   "approved",

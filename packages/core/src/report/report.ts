@@ -10,8 +10,8 @@ import type {
   Verdict,
 } from "../domain.js";
 import type { JudgeDecisions } from "../judge/judge.js";
+import type { SkippedCell } from "../matrix/matrix.js";
 import type { RememberedEntry } from "../memory/memory.js";
-import type { SkippedCell } from "../pipeline/matrix.js";
 import type { ExclusionReason } from "../select/select.js";
 import type { RefutedFinding } from "../verify/verify.js";
 import type { RunProvenance } from "./provenance.js";

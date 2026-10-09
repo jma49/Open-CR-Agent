@@ -1,9 +1,9 @@
 import { at } from "../at.js";
 import type { IncompleteEnding } from "../contracts.js";
+import type { MatrixCell } from "../matrix/matrix.js";
 import type { CoverageEntry } from "../report/report.js";
 import type { FileDecision } from "../select/select.js";
 import type { JobResult } from "./execute.js";
-import type { MatrixCell } from "./matrix.js";
 
 // How far one reviewer got with a file, best first: under --ultra one sample
 // that called the done tool is enough. Ranked by how actionable it is, a cut-
