@@ -1,5 +1,5 @@
 # The dogfood workflow's scripted steps (ocra-dogfood.yml), one shell file
-# each next to this file, tested by scripts/dogfood-workflow.test.mjs. The
+# each next to this file, tested by scripts/dogfood-workflow.e2e.test.mjs. The
 # workflow runs in its callers' repositories with no checkout of this one and
 # uses this action at main, the ref it runs from itself: a pull request's
 # copy of a script never runs there. Each script reads the environment the

@@ -163,7 +163,7 @@ describe.skipIf(!hasBash)("dogfood budget guard", () => {
 });
 
 describe.skipIf(!hasBash || !hasJq)("dogfood guard on the free model", () => {
-  // The free-quota step's count (scripts/lib/free-quota.test.mjs reads it
+  // The free-quota step's count (scripts/lib/free-quota.e2e.test.mjs reads it
   // from OpenRouter's answers).
   it("allows a review without a ledger while the day has requests left", () => {
     const { status, outputs, summary } = runGuard({

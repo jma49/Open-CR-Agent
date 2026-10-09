@@ -14,7 +14,8 @@ export default defineConfig({
     // runner slows the rest too.
     testTimeout: 20_000,
     // A test file that starts a child process (git, the built CLI, OpenCode)
-    // is named *.e2e.test.ts and runs in the e2e project. `npm test`, and so
+    // is named *.e2e.test.ts (*.e2e.test.mjs in scripts/) and runs in the e2e
+    // project (scripts/test-split.test.mjs). `npm test`, and so
     // CI, runs both projects; `npm run test:unit` is the fast loop.
     projects: [
       {
@@ -22,14 +23,14 @@ export default defineConfig({
         test: {
           name: "unit",
           include: ["packages/*/src/**/*.test.ts", "scripts/**/*.test.mjs"],
-          exclude: ["**/*.e2e.test.ts", "**/node_modules/**"],
+          exclude: ["**/*.e2e.test.ts", "**/*.e2e.test.mjs", "**/node_modules/**"],
         },
       },
       {
         extends: true,
         test: {
           name: "e2e",
-          include: ["packages/*/src/**/*.e2e.test.ts"],
+          include: ["packages/*/src/**/*.e2e.test.ts", "scripts/**/*.e2e.test.mjs"],
         },
       },
     ],

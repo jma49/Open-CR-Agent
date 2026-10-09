@@ -7,7 +7,7 @@ Rules for humans and AI agents working on Open-CR-Agent (`ocra`). This file is a
 Open-CR-Agent is an open-source multi-agent code review system. Deterministic engineering (file selection, bundling, rule matching, anchoring) wraps LLM agents that only make judgment calls. See [docs/architecture.md](docs/architecture.md) and the decision records in [docs/adr/](docs/adr/).
 
 - TypeScript (ESM, strict), Node >= 22.19, npm workspaces under `packages/`
-- `npm run verify` runs Biome (`check`), `typecheck`, the API reports (`check:api`), `knip` and every test. `npm run test:unit` is the fast loop; a test that spawns processes or real git is a `*.e2e.test.ts`
+- `npm run verify` runs Biome (`check`), `typecheck`, the API reports (`check:api`), `knip` and every test. `npm run test:unit` is the fast loop; a test that spawns processes or real git is a `*.e2e.test.ts` (`*.e2e.test.mjs` in `scripts/`; `scripts/test-split.test.mjs`)
 
 | Package | Responsibility |
 |---|---|
