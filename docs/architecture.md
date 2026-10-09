@@ -61,6 +61,7 @@ Finding {
   file, existingCode, lineRange?,  // lineRange is computed by Anchor, never by the LLM
   title, body, suggestion?, evidence[],
   quote?: { lines, hash },    // normalized anchored lines, to tell later whether the code is still there
+  fix?: { startLine, endLine, replacement },  // a committable suggestion (ADR-0029); no stage sets it yet
   verification?: 'confirmed' | 'uncertain' | 'unchecked',  // set by Verify
   status: 'new' | 'unfixed'    // fixed and dismissed earlier findings: report.rereview
 }

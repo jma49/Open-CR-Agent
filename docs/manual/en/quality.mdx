@@ -71,7 +71,7 @@ Both configurations that ran twice found about the same number each time (6 and 
 
 ### On a free model
 
-Two runs of today's smoke tier (10 cases, 18 expected issues) on Space Bunny Alpha (`stealth/space-bunny-alpha`), an anonymous free preview on OpenRouter reached as a declared OpenAI-compatible endpoint. The free key reaches no other model, so every tier, verification, the judge and the scoring judge ran on it. ocra was `main` as of 2026-10-02 ([`c997e07`](https://github.com/jma49/Open-CR-Agent/commit/c997e079dbc37298022c8c3837b67afe64411b89)) with default settings. OpenRouter's free models share 1000 requests a day per account and a smoke case takes 30 to 250, so each run stretched from 2026-10-02 to 2026-10-04. OpenRouter withdrew the model on 2026-10-06, so these runs cannot be repeated.
+Two runs of today's smoke tier (10 cases, 18 expected issues) on Space Bunny Alpha (`stealth/space-bunny-alpha`), an anonymous free preview on OpenRouter reached as a declared OpenAI-compatible endpoint. The free key reaches no other model, so every tier, verification, the judge and the scoring judge ran on it. ocra was `main` as of 2026-10-02 ([`c997e07`](https://github.com/jma49/Open-CR-Agent/commit/c997e079dbc37298022c8c3837b67afe64411b89)) with default settings. OpenRouter's free models share one daily quota per account (1000 requests once the account has bought at least $10 of credits, about 50 without; see [Providers](./providers#free-models-through-openrouter)) and a smoke case takes 30 to 250, so even at 1000 a day each run stretched from 2026-10-02 to 2026-10-04. OpenRouter withdrew the model on 2026-10-06, so these runs cannot be repeated.
 
 | Run | Found | Precision | Findings | Unlabeled | Seconds per change (median) |
 |---|---|---|---|---|---|

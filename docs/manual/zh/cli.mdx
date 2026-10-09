@@ -5,7 +5,7 @@ description: 命令、参数、输出与退出码。
 
 ## ocra init
 
-为当前所在的仓库写入 `.ocra/config.json`（加 `--github` 时再写入 `.github/workflows/ocra.yml`），然后打印剩下要做的事。它不调用任何模型或网络服务，也不会运行 `gh` 或 `git`。
+为当前所在的仓库写入 `.ocra/config.json`（加 `--github` 时再写入 `.github/workflows/ocra.yml`），然后打印剩下要做的事。它不调用任何模型或网络服务，不会运行 `gh`，运行 `git` 也只是为了找到仓库根目录（`git rev-parse --show-toplevel`）。
 
 ```bash
 ocra init                          # 按环境里的 key 写 .ocra/config.json

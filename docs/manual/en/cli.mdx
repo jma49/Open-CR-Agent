@@ -5,7 +5,7 @@ description: Commands, options, output and exit codes.
 
 ## ocra init
 
-Writes `.ocra/config.json` for the repository you are in (with `--github`, also `.github/workflows/ocra.yml`) and prints what is left to do. It calls no model or network service and never runs `gh` or `git`.
+Writes `.ocra/config.json` for the repository you are in (with `--github`, also `.github/workflows/ocra.yml`) and prints what is left to do. It calls no model or network service, never runs `gh`, and runs `git` only to find the repository's root (`git rev-parse --show-toplevel`).
 
 ```bash
 ocra init                          # .ocra/config.json for the key in your environment
