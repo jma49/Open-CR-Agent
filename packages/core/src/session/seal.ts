@@ -12,6 +12,11 @@ const SEALED = /,"seal":"([0-9a-f]{64})"\}$/;
 
 /** The serialized JSON object with its seal as a last field. */
 export function sealLine(key: string, runId: string, line: string): string {
+  // The seal goes in before the closing brace; any other line would come out
+  // as something unsealLine, and every JSON reader, rejects.
+  if (!line.startsWith("{") || !line.endsWith("}")) {
+    throw new Error("sealLine: the line is not a serialized JSON object");
+  }
   return `${line.slice(0, -1)},"seal":"${mac(key, runId, line).toString("hex")}"}`;
 }
 
