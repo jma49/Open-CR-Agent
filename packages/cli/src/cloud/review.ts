@@ -71,16 +71,14 @@ async function prepare(
   } catch (error) {
     // The salt kept from the last answer, else this machine's, still groups
     // the counts. Whether the account still shares findings is unknown, so
-    // none is sent and the account's memory is not applied.
+    // none is sent and the account's memory is not applied. Hashed before
+    // the warning: without a salt this review sends nothing, said once.
+    const kept = await readAccountSalt(deps.credentialsPath);
+    const hash = await repoHash(id, deps.credentialsPath, kept);
     warn(
       `could not read your ocra Cloud account (${errorMessage(error)}); this review sends no findings and applies no account memory`,
     );
-    const kept = await readAccountSalt(deps.credentialsPath);
-    return {
-      repoHash: await repoHash(id, deps.credentialsPath, kept),
-      shareFindings: false,
-      memory: [],
-    };
+    return { repoHash: hash, shareFindings: false, memory: [] };
   }
   await saveAccountSalt(deps.credentialsPath, salt);
   const hash = await repoHash(id, deps.credentialsPath, salt ?? undefined);

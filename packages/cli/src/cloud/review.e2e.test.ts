@@ -135,21 +135,28 @@ describe("prepareCloudReview", () => {
 
   // Windows ignores the mode, and root reads the file anyway.
   it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
-    "sends nothing, and keeps this machine's salt, when it cannot read that salt",
+    "sends nothing, and keeps this machine's salt, when it cannot read that salt, said once",
     async () => {
-      const m = machine({ "/api/account/salt": () => Response.json({ salt: null }) });
-      const path = join(dirname(m.credentialsPath), "upload-salt");
-      writeFileSync(path, `${SALT}\n`, { mode: 0o000 });
-      const warnings: string[] = [];
-      try {
-        expect(await prepareCloudReview(repo(), m.deps, (w) => warnings.push(w))).toBeUndefined();
-      } finally {
-        chmodSync(path, 0o600);
+      // The account shares no findings, or cannot be reached.
+      const answers = [
+        () => Response.json({ salt: null }),
+        () => new Response("", { status: 500 }),
+      ];
+      for (const answer of answers) {
+        const m = machine({ "/api/account/salt": answer });
+        const path = join(dirname(m.credentialsPath), "upload-salt");
+        writeFileSync(path, `${SALT}\n`, { mode: 0o000 });
+        const warnings: string[] = [];
+        try {
+          expect(await prepareCloudReview(repo(), m.deps, (w) => warnings.push(w))).toBeUndefined();
+        } finally {
+          chmodSync(path, 0o600);
+        }
+        expect(readFileSync(path, "utf8")).toBe(`${SALT}\n`);
+        expect(warnings).toEqual([
+          expect.stringMatching(/cannot be read.*sends nothing to ocra Cloud/),
+        ]);
       }
-      expect(readFileSync(path, "utf8")).toBe(`${SALT}\n`);
-      expect(warnings).toEqual([
-        expect.stringMatching(/cannot be read.*sends nothing to ocra Cloud/),
-      ]);
     },
   );
 
