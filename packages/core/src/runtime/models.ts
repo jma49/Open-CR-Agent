@@ -125,16 +125,20 @@ export class ModelHealth {
   // limit, a long stated wait, or too many waits in a row mean the model is
   // out of quota for the rest of the run. Vertex AI's shared quota answers
   // 429 without a wait when it is busy, so a missing wait backs off instead.
+  // Tasks running at once are refused together: a limit that arrives while
+  // the model is paused joins that pause rather than counting another wait,
+  // and only a wait it states can lengthen the pause.
   recordQuota(model: string, quota: QuotaError): "wait" | "out_of_quota" {
+    const now = this.now();
     const state = this.quotas.get(model) ?? { waits: 0, pausedUntil: 0 };
-    const wait = quota.retryAfterMs ?? UNSTATED_QUOTA_WAIT_MS * 2 ** state.waits;
-    if (quota.daily || wait > MAX_QUOTA_WAIT_MS || state.waits >= QUOTA_RETRIES) {
+    const joins = state.pausedUntil > now;
+    const waits = joins ? state.waits : state.waits + 1;
+    const wait = quota.retryAfterMs ?? (joins ? 0 : UNSTATED_QUOTA_WAIT_MS * 2 ** (waits - 1));
+    if (quota.daily || wait > MAX_QUOTA_WAIT_MS || waits > QUOTA_RETRIES) {
       this.outOfQuota.add(model);
       return "out_of_quota";
     }
-    state.waits += 1;
-    state.pausedUntil = Math.max(state.pausedUntil, this.now() + wait);
-    this.quotas.set(model, state);
+    this.quotas.set(model, { waits, pausedUntil: Math.max(state.pausedUntil, now + wait) });
     return "wait";
   }
 }

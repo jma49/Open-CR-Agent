@@ -85,7 +85,7 @@ Whole lines are matched first. Part of a line counts only when it is at least 12
 - A per-task and a whole-run timeout, enforced even if a model stops responding. A task with no progress for five minutes (no new step, text or tool call) is stopped earlier and handed to the next model in the chain.
 - A failed task never fails the run; its files are reported as `failed`.
 - Model failback chains per tier, with a circuit breaker per model (open after repeated failures, half-open probe after a cooldown).
-- Rate limits with a short retry-after (up to 90 seconds) pause that model for every task, then retry; one without a retry-after pauses it for 15, 30, then 60 seconds. A daily limit, a longer wait, or a fourth limit in a row takes the model out of the chain for the rest of the run.
+- Rate limits with a short retry-after (up to 90 seconds) pause that model for every task, then retry; one without a retry-after pauses it for 15, 30, then 60 seconds. Limits that arrive during a pause count as that pause. A daily limit, a longer wait, or a limit after three pauses in a row takes the model out of the chain for the rest of the run.
 - Every review agent is capped at 30 steps, since each step resends the conversation; most tasks finish in about 15.
 - An agent that stops early (no done signal, no answer, steps to spare) is told once, in the same session, to finish its remaining files; the progress line says "resumed after stopping early".
 - A task that ends without the done signal (all 30 steps used, or stopped again) does not count as a review: its files are reported as partly reviewed (`incomplete`), the run exits `3`, and the next review of the pull or merge request includes them.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentEvent } from "../contracts.js";
 import type { AttemptOutcome } from "./attempt.js";
-import { withFailback } from "./failback.js";
+import { completeWithFailback, withFailback } from "./failback.js";
 import { ModelHealth } from "./models.js";
 import { MAX_QUOTA_WAIT_MS, parseQuotaError, QUOTA_RETRIES, sleep } from "./quota.js";
 
@@ -43,6 +43,7 @@ describe("ModelHealth quota", () => {
     expect(health.pausedFor("a")).toBe(0);
     for (let i = 1; i < QUOTA_RETRIES; i += 1) {
       expect(health.recordQuota("a", { retryAfterMs: 1, daily: false })).toBe("wait");
+      now += 1;
     }
     expect(health.recordQuota("a", { retryAfterMs: 1, daily: false })).toBe("out_of_quota");
     expect(health.order(["a", "b"])).toEqual(["b"]);
@@ -59,15 +60,51 @@ describe("ModelHealth quota", () => {
 
   // Vertex AI's shared quota answers a busy moment with a bare 429.
   it("backs off on a limit without a stated wait, then gives up", () => {
-    const now = 0;
+    let now = 0;
     const health = new ModelHealth({ now: () => now });
     const waits: number[] = [];
     for (let i = 0; i < QUOTA_RETRIES; i += 1) {
       expect(health.recordQuota("a", { daily: false })).toBe("wait");
       waits.push(health.pausedFor("a"));
+      now += health.pausedFor("a");
     }
     expect(waits).toEqual([15_000, 30_000, 60_000]);
     expect(health.recordQuota("a", { daily: false })).toBe("out_of_quota");
+  });
+
+  // Tasks running at once send their requests together and are refused
+  // together; the default concurrency is four.
+  it("counts the limits of one burst as one wait", () => {
+    let now = 0;
+    const health = new ModelHealth({ now: () => now });
+    const waits: number[] = [];
+    for (let burst = 0; burst < QUOTA_RETRIES; burst += 1) {
+      for (let request = 0; request < 4; request += 1) {
+        expect(health.recordQuota("a", { daily: false })).toBe("wait");
+      }
+      waits.push(health.pausedFor("a"));
+      now += health.pausedFor("a");
+    }
+    expect(waits).toEqual([15_000, 30_000, 60_000]);
+    expect(health.recordQuota("a", { daily: false })).toBe("out_of_quota");
+  });
+
+  it("keeps the pause a burst began when more limits without a wait arrive", () => {
+    let now = 0;
+    const health = new ModelHealth({ now: () => now });
+    health.recordQuota("a", { daily: false });
+    now = 10_000;
+    expect(health.recordQuota("a", { daily: false })).toBe("wait");
+    expect(health.pausedFor("a")).toBe(5_000);
+  });
+
+  it("lets a limit during a pause lengthen it to the wait it states", () => {
+    const health = new ModelHealth({ now: () => 0 });
+    for (const retryAfterMs of [5_000, 20_000, 10_000, 1_000]) {
+      expect(health.recordQuota("a", { retryAfterMs, daily: false })).toBe("wait");
+    }
+    expect(health.pausedFor("a")).toBe(20_000);
+    expect(health.recordQuota("a", { daily: true })).toBe("out_of_quota");
   });
 
   it("forgets the waits after a success", () => {
@@ -96,6 +133,7 @@ describe("withFailback on rate limits", () => {
     outcomes: Record<string, AttemptOutcome[]>,
     chain: string[],
     health: ModelHealth,
+    onEvent: (event: AgentEvent) => void = () => {},
   ) {
     const attempted: string[] = [];
     const events: AgentEvent[] = [];
@@ -111,6 +149,7 @@ describe("withFailback on rate limits", () => {
       },
     })) {
       events.push(event);
+      onEvent(event);
     }
     return { attempted, events };
   }
@@ -145,6 +184,72 @@ describe("withFailback on rate limits", () => {
 
     const fallback = await run({}, ["a", "b"], health);
     expect(fallback.attempted).toEqual(["b"]);
+  });
+
+  // Another task's request runs into the daily limit while this one waits.
+  it("moves on from a paused model that another task found out of quota", async () => {
+    const health = new ModelHealth();
+    health.recordQuota("a", { retryAfterMs: 20, daily: false });
+    const result = await run({}, ["a", "b"], health, (event) => {
+      if (event.type === "progress" && /rate limited/.test(event.message)) {
+        health.recordQuota("a", { daily: true });
+      }
+    });
+    expect(result.attempted).toEqual(["b"]);
+    expect(result.events.at(-1)).toMatchObject({ type: "done" });
+  });
+
+  // Each task must wait for the pause as the other's limit left it, or the
+  // two take turns lengthening it and the model is never given up.
+  it("gives up on a model that stays limited for tasks refused a little apart", async () => {
+    const health = new ModelHealth();
+    let refusals = 0;
+    const task = async (firstLatencyMs: number) => {
+      const attempted: string[] = [];
+      const events: AgentEvent[] = [];
+      for await (const event of withFailback({
+        taskId: "t",
+        tier: "standard",
+        chain: ["a", "b"],
+        health,
+        signal: new AbortController().signal,
+        attempt: async (model) => {
+          attempted.push(model);
+          if (model === "b") return ok;
+          const latency = attempted.length === 1 ? firstLatencyMs : 5;
+          await new Promise((resolve) => setTimeout(resolve, latency));
+          refusals += 1;
+          // Bounded, so a version that never gives up on "a" ends.
+          return refusals > 20 ? ok : limited("quota exceeded. Please retry in 0.1s.");
+        },
+      })) {
+        events.push(event);
+      }
+      return attempted;
+    };
+    const [first, second] = await Promise.all([task(5), task(45)]);
+    expect(first.at(-1)).toBe("b");
+    expect(second.at(-1)).toBe("b");
+    expect(refusals).toBeLessThanOrEqual(2 * (QUOTA_RETRIES + 1));
+  });
+
+  it("answers a call from the next model when the paused one runs out of quota", async () => {
+    const health = new ModelHealth();
+    health.recordQuota("a", { retryAfterMs: 20, daily: false });
+    const attempted: string[] = [];
+    const answer = completeWithFailback({
+      tier: "light",
+      chain: ["a", "b"],
+      health,
+      signal: new AbortController().signal,
+      attempt: async (model) => {
+        attempted.push(model);
+        return { ...ok, text: model };
+      },
+    });
+    health.recordQuota("a", { daily: true });
+    expect((await answer).text).toBe("b");
+    expect(attempted).toEqual(["b"]);
   });
 });
 

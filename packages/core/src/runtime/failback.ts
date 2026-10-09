@@ -38,9 +38,11 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
           taskId,
           message: `${model} is rate limited; waiting ${Math.ceil(pause / 1000)}s`,
         };
-        await sleep(pause, signal);
+        await pauseOver(health, model, signal);
         if (signal.aborted) return;
       }
+      // Another task may have found it out of quota since the chain was read.
+      if (health.isOutOfQuota(model)) break;
       yield { type: "progress", taskId, message: `reviewing with ${model}` };
       // Spend is reported while the attempt runs, so a run's spend limit
       // can stop it; the finished attempt's total settles the rest.
@@ -195,8 +197,9 @@ export async function completeWithFailback(options: CompleteOptions): Promise<Co
   let lastError = "";
   for (const model of health.order(options.chain)) {
     for (;;) {
-      await sleep(health.pausedFor(model), signal);
+      await pauseOver(health, model, signal);
       if (signal.aborted) throw new CompletionError("cancelled", usage);
+      if (health.isOutOfQuota(model)) break;
       const outcome = await options.attempt(model);
       usage = addUsage(usage, outcome.usage);
       if (!outcome.error) {
@@ -218,6 +221,17 @@ export async function completeWithFailback(options: CompleteOptions): Promise<Co
     throw new CompletionError(`every ${chainName(options)} is out of quota for this run`, usage);
   }
   throw new CompletionError(`every ${chainName(options)} failed (${lastError})`, usage);
+}
+
+// Waits until the model's pause ends as it stands on waking, not as it stood
+// on falling asleep: another task's limit may have lengthened it, and a
+// request sent inside it would only join it again.
+async function pauseOver(health: ModelHealth, model: string, signal: AbortSignal): Promise<void> {
+  for (;;) {
+    const pause = health.pausedFor(model);
+    if (pause <= 0 || signal.aborted || health.isOutOfQuota(model)) return;
+    await sleep(pause, signal);
+  }
 }
 
 function chainName(options: { tier: ModelTier; agent?: string }): string {
