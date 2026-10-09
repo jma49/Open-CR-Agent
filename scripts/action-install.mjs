@@ -22,7 +22,7 @@ import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { opencodeFlags } from "./lib/action-install.mjs";
+import { npmCommand, opencodeFlags } from "./lib/action-install.mjs";
 import { errorMessage } from "./lib/error-message.mjs";
 import { pinnedLockfile } from "./lib/pinned-lock.mjs";
 import { provenanceProblems } from "./lib/provenance.mjs";
@@ -57,17 +57,6 @@ const CACHE = ["--cache", join(temp, "ocra-npm-cache")];
 const INSTALL_FLAGS = [...CACHE, "--ignore-scripts", "--no-audit", "--no-fund", "--loglevel=error"];
 const started = Date.now();
 
-// How to start npm: a .cmd shim on Windows, which Node starts only through a
-// shell and then as one command line, with an argument holding a space (a
-// runner under "C:\Program Files") quoted; a Windows path cannot hold the
-// quote itself.
-/** @param {string[]} args */
-function npmCommand(args) {
-  if (process.platform !== "win32") return { file: "npm", args, shell: false };
-  const line = ["npm", ...args].map((arg) => (/\s/.test(arg) ? `"${arg}"` : arg)).join(" ");
-  return { file: line, args: [], shell: true };
-}
-
 /**
  * @param {string[]} args
  * @param {string} cwd
@@ -76,7 +65,6 @@ function npm(args, cwd, capture = false) {
   const command = npmCommand(args);
   const result = spawnSync(command.file, command.args, {
     cwd,
-    shell: command.shell,
     encoding: "utf8",
     stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
   });
@@ -141,7 +129,6 @@ function published(name, version) {
     const command = npmCommand(["view", `${name}@${version}`, "--json", ...CACHE]);
     const child = spawn(command.file, command.args, {
       cwd: root,
-      shell: command.shell,
       stdio: ["ignore", "pipe", "ignore"],
     });
     let out = "";
