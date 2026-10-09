@@ -1,7 +1,7 @@
 {
   "name": "@open-cr-agent/cli",
   "version": "0.6.0",
-  "description": "ocra: open-source multi-agent code review for local changes and GitHub pull requests",
+  "description": "ocra: open-source AI code review built for pull requests you do not trust, for local changes, GitHub and GitLab",
   "keywords": [
     "code-review",
     "cli",

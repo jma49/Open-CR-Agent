@@ -1,29 +1,22 @@
 ---
 title: Introduction
-description: Open-CR-Agent (ocra) is an open-source, multi-agent code review system that favors precision over noise.
+description: ocra is open-source AI code review built for pull requests you do not trust, and it stays quiet unless a finding holds up.
 ---
 
-**Open-CR-Agent** (`ocra`) reviews code changes with a pipeline of deterministic stages around a small number of LLM agents. Code handles what must not go wrong (which files to review, how to group them, where a comment lands); models handle judgment.
+**ocra** reviews local changes, GitHub pull requests and GitLab merge requests in your CI with your own model key. It assumes the change it reads may be written by an attacker, and it stays quiet unless a finding quotes the code it means and holds up on a second read.
 
 ## Why ocra
 
-- **Precision first.** Every reviewer states what it must *not* flag, and findings that fail validation never reach you.
-- **Comments land on the right line.** Models quote the code; ocra resolves the quote to lines, so no line number is made up.
-- **Plugins all the way down.** VCS platforms, agent runtimes, reviewers, rule packs, tools and listeners are all plugins.
-- **Any model, with failback.** Configure a chain of models per tier; overloads move to the next model, short rate limits are waited out, and a model out of quota is dropped for the run.
-- **Transparent cost.** Every run reports input, output, reasoning and cached tokens and the cost of each attempt.
+- **Hostile pull requests are the design case.** Agents get read-only tools and no shell, untrusted text stays data, and on pull requests nothing from the reviewed tree runs. See [Security](/docs/security).
+- **A second read before any comment.** A verifier drops what the code disproves and a judge merges duplicates; the verdict is computed in code. Every reviewer also states what it must *not* flag.
+- **Reviewers by domain and by file group.** Correctness, security, performance, docs and `AGENTS.md` reviewers each run as an isolated task on a group of related files, and a tested planner decides which reviewer reads which group.
+- **Findings follow the code.** Models quote the code; ocra resolves the quote to lines, so no line number is made up. On the next push a finding is fixed only when that code is gone, and only a maintainer can dismiss it.
+- **Any model, with failback, and a bounded bill.** Each tier is a chain of models; overloads move to the next one. A spend limit stops starting tasks, and every run reports tokens and the cost of each attempt.
 - **Measured, not guessed.** ocra is evaluated on its own golden cases and on the AACR-Bench benchmark, and [the results](/docs/quality) are published with their limits.
 
 ## Status
 
-ocra is an early 0.x release: options and output may still change between minor versions.
-
-| Milestone | Scope | Status |
-|---|---|---|
-| M1 | Local CLI, selection, bundling, anchoring, correctness reviewer, OpenCode runtime, plugins, evaluation | Done |
-| M2 | Specialized reviewers, review matrix, verification and judging, risk tiers | Done |
-| M3 | GitHub Action with inline comments and incremental re-review | Done; not yet exercised on a live repository |
-| M4 | Circuit breakers, remote configuration, long-term review memory, `--ultra` mode | Done |
+ocra is an early 0.x release. CLI flags, configuration keys, exit codes and the report format are [contracts](/docs/stability) and change only with notice; prompts and review quality still move.
 
 ## Where to next
 

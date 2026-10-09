@@ -1,6 +1,6 @@
 # @open-cr-agent/cli
 
-`ocra` is the command line of [Open-CR-Agent](https://github.com/jma49/Open-CR-Agent), an open-source multi-agent code reviewer for local changes, GitHub pull requests and GitLab merge requests. Code selects and bundles files, matches rules and anchors comments; LLM reviewers make the judgment calls, and a verification pass checks them.
+`ocra` is the command line of [Open-CR-Agent](https://github.com/jma49/Open-CR-Agent), open-source AI code review built for pull requests you do not trust. It reviews local changes, GitHub pull requests and GitLab merge requests with your own model key; a verifier and a judge check every finding before it is posted, and comments are anchored by the code they quote.
 
 Early 0.x: options and output may change between minor versions. What reviews find and miss is on the [quality page](https://ocracloud.com/en/docs/quality).
 

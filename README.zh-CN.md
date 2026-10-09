@@ -1,10 +1,8 @@
-# Open-CR-Agent
+# ocra
 
 [English](README.md) · 简体中文
 
-**ocra** 是一个开源的代码审查引擎。审哪些文件、怎么分组、哪些规则适用、评论落在哪一行，由确定性的代码决定；隔离运行的大模型 agent 只负责需要判断的事，而它们说的每一句话都会先经过核查、去重和行号定位，然后才交到人手里。
-
-它审查本地改动、GitHub Pull Request 和 GitLab Merge Request，用你自己的模型 key 在你的 CI 里运行，专为你不信任的 PR 而设计。
+**ocra** 是一个开源的 AI 代码审查工具，专为你不信任的 PR 而设计。它审查本地改动、GitHub Pull Request 和 GitLab Merge Request，用你自己的模型 key 在你的 CI 里运行；一条问题只有引用了它所指的代码、并经得起第二遍核查，才会被说出来，否则它保持安静。
 
 [![npm](https://img.shields.io/npm/v/@open-cr-agent/cli?label=npm)](https://www.npmjs.com/package/@open-cr-agent/cli)
 [![CI](https://github.com/jma49/Open-CR-Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/jma49/Open-CR-Agent/actions/workflows/ci.yml)
@@ -14,15 +12,12 @@
 
 ## 为什么选择 ocra
 
-大多数审查机器人都是 `diff → 模型 → 评论`。ocra 在每个出错代价高昂的环节都用代码把模型围起来：
-
-- **模型看到什么，由代码决定。** 文件选择、风险分档、分组、规则匹配和审查矩阵都是带测试的纯函数。
-- **问题由它引用的代码锚定，**从不依赖模型编造的行号。有歧义的引用降为文件级评论，并计入报告。
-- **问题先核查、再裁决。** 核查员丢掉被 diff 证伪的问题；Judge 去重并校准严重程度；结论由代码算出。
-- **复审是增量的。** 只有问题所指的代码不在了才算已修复；维护者可以驳回它，PR 作者不能。
-- **成本有上限。** 花费上限一到就不再启动新任务，报告列出没审到的文件，下一次审查接着审。每次模型调用都报告 token 和费用。
-- **不信任的 PR 是设计的出发点。** 见[安全模型](#安全模型)。
-- **结构化输出。** 带版本号的 JSON 报告（[schema](docs/schema/report.v1.json)）；[SARIF 2.1.0](docs/manual/zh/github.mdx) 可输出给代码扫描，也可从 Semgrep、CodeQL 等分析器导入；还有记录成本、token 和延迟的会话日志。
+- **恶意 PR 是设计的出发点。** diff、PR 描述、`AGENTS.md` 都可能出自攻击者之手。agent 只有只读工具、没有 shell；审查 PR（包括来自 fork 的 PR）时，被审代码树里的任何东西都不会运行。见[安全模型](#安全模型)。
+- **评论之前先过第二遍。** 核查员丢掉被代码证伪的问题，Judge 合并重复并校准严重程度，结论由代码而不是模型算出。什么都不报也是正常结果。
+- **按审查方向、也按文件分组。** correctness、security、performance、docs 和 `AGENTS.md` 审查员各自作为隔离任务，审查一组相关文件；由带测试的规划器决定哪个审查员读哪一组，成本不会随"组数 × 审查员数"增长。
+- **问题跟着代码走。** 评论由它引用的代码锚定，从不依赖模型编造的行号。只有问题所指的代码不在了才算已修复；维护者可以驳回它，PR 作者不能。
+- **成本有上限，也有账可查。** 花费上限一到就不再启动新任务，报告列出没审到的内容，下一次审查接着审。每次模型调用都报告 token 和费用。
+- **可嵌入，可度量。** 带版本号的 JSON 报告（[schema](docs/schema/report.v1.json)）；[SARIF 2.1.0](docs/manual/zh/github.mdx) 可输出给代码扫描，也可从 Semgrep、CodeQL 等分析器导入；公开的 `review()` 入口；质量数字连同局限一起公开。
 
 ## 工作原理
 
@@ -237,13 +232,18 @@ npm run verify                            # Biome、类型检查和测试（不�
 
 规则：[AGENTS.md](AGENTS.md)。发布：[CHANGELOG.md](CHANGELOG.md)。
 
+## ocra 与 OpenCodeReview
+
+ocra 建立在两份公开的设计之上：[Cloudflare 的 AI 代码审查](https://blog.cloudflare.com/ai-code-review/)（带"不该报什么"规则的专项审查员、负责裁决的协调者、风险分档、模型降级、增量复审）和阿里巴巴的 [OpenCodeReview](https://github.com/alibaba/open-code-review)（确定性的文件选择、语义分组、按文件类型的规则、事实核查过滤、按代码片段定位、覆盖清单）。两者都值得一读。与 OpenCodeReview 相比（截至 2026 年 10 月）：
+
+- **ocra 多了什么：** 在文件分组之上再按审查方向分工，并有核查员和 Judge；针对恶意 PR 的威胁模型，包括带 secret 审查来自 fork 的 PR；复审时问题的状态跟着代码走；花费上限及其未审内容报告；可供嵌入的契约（`review()`、`VcsAdapter`、`AgentRuntime`、SARIF 输入与输出）。
+- **OpenCodeReview 更合适的场景：** 它能在 Claude Code、Cursor、Codex 等编程 agent 里运行，可以直接用它们的模型而无需自己的 key；以单个二进制文件发布；支持 Gerrit 和 GitFlic CI；并经过了阿里巴巴规模的使用。ocra 的质量数字仍来自小样本。
+
 ## 贡献与安全
 
 - [CONTRIBUTING.md](CONTRIBUTING.md)：什么贡献最有帮助、如何搭建环境，以及在有额度衡量之前哪些部分保持冻结。
 - [SECURITY.md](SECURITY.md)：请私下报告漏洞，不要发公开 issue。
 - [行为准则](CODE_OF_CONDUCT.md)。
-
-灵感来自 [Cloudflare 的 AI 代码审查](https://blog.cloudflare.com/ai-code-review/)和 [Alibaba OpenCodeReview](https://github.com/alibaba/open-code-review)。
 
 ## 许可证
 

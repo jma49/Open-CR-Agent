@@ -1,10 +1,8 @@
-# Open-CR-Agent
+# ocra
 
 English · [简体中文](README.zh-CN.md)
 
-**ocra** is an open-source code review engine. Deterministic code decides what to review, how to split it, which rules apply and where a comment lands; isolated LLM agents make only the judgment calls, and everything they say is fact-checked, deduplicated and anchored before anyone reads it.
-
-It reviews local changes, GitHub pull requests and GitLab merge requests, runs in your CI with your own model keys, and is built for pull requests you do not trust.
+**ocra** is open-source AI code review built for pull requests you do not trust. It reviews local changes, GitHub pull requests and GitLab merge requests in your CI with your own model key, and it stays quiet unless a finding quotes the code it means and holds up on a second read.
 
 [![npm](https://img.shields.io/npm/v/@open-cr-agent/cli?label=npm)](https://www.npmjs.com/package/@open-cr-agent/cli)
 [![CI](https://github.com/jma49/Open-CR-Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/jma49/Open-CR-Agent/actions/workflows/ci.yml)
@@ -14,15 +12,12 @@ It reviews local changes, GitHub pull requests and GitLab merge requests, runs i
 
 ## Why ocra
 
-Most review bots are `diff → model → comment`. ocra puts code around the model wherever a mistake would be expensive:
-
-- **Code decides what the model sees.** Selection, risk tiering, bundling, rule matching and the reviewer matrix are tested pure functions.
-- **Findings are anchored by the code they quote,** never a model-made line number. An ambiguous quote becomes a file-level comment, counted in the report.
-- **Findings are fact-checked and judged.** A verifier drops what the diff disproves; a judge deduplicates and calibrates severity; code computes the verdict.
-- **Re-reviews are incremental.** A finding is fixed only when the code it pointed at is gone; a maintainer can dismiss it, the pull request's author cannot.
-- **Cost is bounded.** A spend limit stops starting tasks, the report names unreviewed files, and the next review continues with them. Every model call reports tokens and dollars.
-- **Untrusted pull requests are the design case.** See [Security model](#security-model).
-- **Structured output.** A versioned JSON report ([schema](docs/schema/report.v1.json)), [SARIF 2.1.0](docs/manual/en/github.mdx) out for code scanning and in from Semgrep, CodeQL and other analyzers, and a session log with cost, tokens and latency.
+- **Hostile pull requests are the design case.** A diff, a pull request description or an `AGENTS.md` may be written by an attacker. Agents get read-only tools and no shell, and on pull requests, forks included, nothing from the reviewed tree runs. See [Security model](#security-model).
+- **A second read before any comment.** A verifier drops what the code disproves, a judge merges duplicates and calibrates severity, and code, not a model, computes the verdict. Reporting nothing is a valid outcome.
+- **Reviewers by domain and by file group.** Correctness, security, performance, docs and `AGENTS.md` reviewers each run as an isolated task on a group of related files. A tested planner decides which reviewer reads which group, so cost does not grow as groups × reviewers.
+- **Findings follow the code across pushes.** A comment is anchored by the code it quotes, never by a line number a model made up. A finding is fixed only when that code is gone; a maintainer can dismiss it, the pull request's author cannot.
+- **Cost is bounded and accounted for.** A spend limit stops starting tasks, the report names what was left unreviewed, and the next review continues there. Every model call reports tokens and dollars.
+- **Built to be embedded and measured.** A versioned JSON report ([schema](docs/schema/report.v1.json)), [SARIF 2.1.0](docs/manual/en/github.mdx) out for code scanning and in from Semgrep, CodeQL and other analyzers, a public `review()` entry, and quality numbers published with their limits.
 
 ## How it works
 
@@ -238,13 +233,18 @@ npm run verify                            # Biome, type check and tests (no mode
 
 Rules: [AGENTS.md](AGENTS.md). Releases: [CHANGELOG.md](CHANGELOG.md).
 
+## ocra and OpenCodeReview
+
+ocra builds on two published designs: [Cloudflare's AI code review](https://blog.cloudflare.com/ai-code-review/) (domain reviewers with "what not to flag" rules, a judging coordinator, risk tiers, model failback, incremental re-review) and Alibaba's [OpenCodeReview](https://github.com/alibaba/open-code-review) (deterministic file selection, semantic bundling, per-file-type rules, a fact-check filter, snippet anchoring, coverage manifests). Both are worth reading. Compared with OpenCodeReview, as of October 2026:
+
+- **What ocra adds:** reviewers by domain on top of file groups, with a verifier and a judge; a threat model for hostile pull requests, including forks reviewed with secrets; re-reviews in which a finding's state follows its code; a spend limit that reports what it left; and contracts for embedding (`review()`, `VcsAdapter`, `AgentRuntime`, SARIF in and out).
+- **Where OpenCodeReview fits better:** it runs inside coding agents such as Claude Code, Cursor and Codex and can use their model without a key of its own, ships as a single binary, supports Gerrit and GitFlic CI, and has been used at Alibaba's scale. ocra's quality numbers still come from small samples.
+
 ## Contributing and security
 
 - [CONTRIBUTING.md](CONTRIBUTING.md): what helps most, setup, and what is frozen until there is credit to measure it.
 - [SECURITY.md](SECURITY.md): report vulnerabilities privately, never in a public issue.
 - [Code of conduct](CODE_OF_CONDUCT.md).
-
-Inspired by [Cloudflare's AI code review](https://blog.cloudflare.com/ai-code-review/) and [Alibaba OpenCodeReview](https://github.com/alibaba/open-code-review).
 
 ## License
 
