@@ -127,7 +127,8 @@ describe("a call for the account", () => {
       { path: "/api/device/refresh", auth: null },
       { path: "/api/preferences", auth: "Bearer ocra_cli_a2" },
     ]);
-    expect(m.saved().access_token).toBe("ocra_cli_a2");
+    // How long a renewed token lives, for the next run to tell whether renewing helps.
+    expect(m.saved()).toMatchObject({ access_token: "ocra_cli_a2", lifetime_ms: 3_600_000 });
   });
 
   it("retries no more than once, and answers revoked when the refresh is refused", async () => {
@@ -171,6 +172,7 @@ describe("ocra login", () => {
       expect(m.saved()).toMatchObject({
         access_token: "ocra_cli_a2",
         refresh_token: "ocra_ref_r2",
+        lifetime_ms: 3_600_000,
       });
       expect(out.at(-1)).toMatch(
         /^Signed in; the login is unknown \(.+\): ocra whoami asks again\.\n$/,

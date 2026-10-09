@@ -154,7 +154,7 @@ export class CloudClient {
     const { deps } = this;
     const lasts = (c: Credentials, ms: number) =>
       c.access_token !== rejected && c.expires_at - deps.now() > ms;
-    const live = (c: Credentials) => lasts(c, minValidityMs);
+    const live = (c: Credentials) => lasts(c, renewable(c, minValidityMs));
     const saved = await readCredentials(deps.credentialsPath);
     if (!saved) return { kind: "signed-out" };
     if (live(saved)) return { kind: "ok", credentials: saved };
@@ -295,6 +295,7 @@ export class CloudClient {
       access_token: t.access_token,
       refresh_token: t.refresh_token,
       expires_at: this.deps.now() + t.expires_in * 1000,
+      lifetime_ms: t.expires_in * 1000,
     };
     // Saved only over the pair it replaces: the file may hold another
     // session by now, from a process that did not take the lock.
@@ -336,6 +337,14 @@ export class CloudClient {
       throw new CloudError(errorMessage(error), { cause: error });
     }
   }
+}
+
+// A renewal gives a token that lives about `lifetime_ms`: asking for more
+// than one that new has left would rotate the pair at every call and still
+// fall short, so a token that has lived less than a tenth of its life is as
+// good as a renewed one.
+function renewable(c: Credentials, minValidityMs: number): number {
+  return c.lifetime_ms === undefined ? minValidityMs : Math.min(minValidityMs, 0.9 * c.lifetime_ms);
 }
 
 /**

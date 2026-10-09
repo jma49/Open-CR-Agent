@@ -161,6 +161,34 @@ describe("models through ocra Cloud", () => {
     );
   });
 
+  it("renews the token for a long run only when a new one would last longer", async () => {
+    const twoHours = { timeoutMs: 120 * 60_000, keyReadPerCall: false };
+    const fresh = setup({ expires_at: NOW + 58 * 60_000, lifetime_ms: 3_600_000 });
+    const kept = await withCloudProviders(
+      [["ocra-openrouter/m"]],
+      {},
+      {},
+      fresh.deps,
+      fresh.warn,
+      twoHours,
+    );
+    expect(fresh.calls).toEqual(["GET /api/providers"]);
+    expect(kept.env[CLOUD_TOKEN_ENV]).toBe("ocra_cli_live");
+    expect(fresh.warnings.join("\n")).toContain("the token lasts 58");
+
+    const older = setup({ expires_at: NOW + 40 * 60_000, lifetime_ms: 3_600_000 });
+    const renewed = await withCloudProviders(
+      [["ocra-openrouter/m"]],
+      {},
+      {},
+      older.deps,
+      older.warn,
+      twoHours,
+    );
+    expect(older.calls[0]).toBe("POST /api/device/refresh");
+    expect(renewed.env[CLOUD_TOKEN_ENV]).toBe("ocra_cli_new");
+  });
+
   it("hands a runtime that reads the token at each call the renewed one", async () => {
     const t = setup({});
     const out = await withCloudProviders([["ocra-openrouter/m"]], {}, {}, t.deps, t.warn, {

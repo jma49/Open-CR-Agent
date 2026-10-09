@@ -145,6 +145,7 @@ async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean
         access_token: t.access_token,
         refresh_token: t.refresh_token,
         expires_at: deps.now() + t.expires_in * 1000,
+        lifetime_ms: t.expires_in * 1000,
       };
       await client.saveSession(credentials);
       // Best effort: each signed-in review asks again.

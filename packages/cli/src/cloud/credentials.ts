@@ -10,6 +10,8 @@ export type Credentials = {
   refresh_token: string;
   /** Epoch milliseconds when the access token expires. */
   expires_at: number;
+  /** How long an access token lives from its issue, as the server last said. */
+  lifetime_ms?: number;
 };
 
 export function credentialsHint(): string {
@@ -61,7 +63,9 @@ export async function loadCredentials(
   ) {
     return "unreadable";
   }
-  return c as Credentials;
+  // Only an estimate of what a renewal gives; without it, renewal is tried.
+  const { lifetime_ms, ...session } = c as Credentials;
+  return typeof lifetime_ms === "number" && lifetime_ms > 0 ? { ...session, lifetime_ms } : session;
 }
 
 export async function writeCredentials(path: string, c: Credentials): Promise<void> {
