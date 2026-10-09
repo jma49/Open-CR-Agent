@@ -1,3 +1,4 @@
+import { errorMessage } from "@open-cr-agent/core";
 import { MAX_TIMER_MS } from "@open-cr-agent/core/internal";
 import { CloudClient, sessionLostReason } from "./client.js";
 import type { Credentials } from "./credentials.js";
@@ -63,7 +64,7 @@ export class GatewayToken {
       }
       reason = session.kind === "signed-out" ? "you signed out" : sessionLostReason(session);
     } catch (error) {
-      reason = error instanceof Error ? error.message : "error";
+      reason = errorMessage(error);
     }
     if (!this.failing) {
       this.warn(

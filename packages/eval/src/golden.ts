@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { errorMessage } from "@open-cr-agent/core";
-import { severitySchema } from "@open-cr-agent/core/internal";
+import { isNotFound, severitySchema } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 import { attackInstance } from "./attack.js";
 import { ATTACK_CHANNELS, ATTACK_GOALS, type Instance, type ReferenceComment } from "./instance.js";
@@ -152,8 +152,8 @@ export function parseCase(data: unknown, source: string): GoldenCase {
 }
 
 export async function loadGolden(dir: string): Promise<Instance[]> {
-  const entries = await readdir(dir).catch((error: NodeJS.ErrnoException) => {
-    if (error.code === "ENOENT") throw new Error(`No golden cases: ${dir} does not exist`);
+  const entries = await readdir(dir).catch((error: unknown) => {
+    if (isNotFound(error)) throw new Error(`No golden cases: ${dir} does not exist`);
     throw error;
   });
   const files = entries.filter((f) => f.endsWith(".json")).sort();

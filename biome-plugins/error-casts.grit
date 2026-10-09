@@ -6,10 +6,13 @@ or {
   `$value as Error` as $cast where {
     register_diagnostic(span=$cast, message="Read an error's message with errorMessage() from @open-cr-agent/core, not a cast to Error.")
   },
-  `$value instanceof Error ? $value.message : String($value)` as $copy where {
+  `$value as Error | undefined` as $cast where {
+    register_diagnostic(span=$cast, message="Read an error's message with errorMessage() from @open-cr-agent/core, not a cast to Error.")
+  },
+  `$value instanceof Error ? $value.message : $fallback` as $copy where {
     register_diagnostic(span=$copy, message="Use errorMessage() from @open-cr-agent/core.")
   },
-  `$value as NodeJS.ErrnoException` as $cast where {
-    register_diagnostic(span=$cast, message="Read an error's code with errnoCode() or isNotFound() from @open-cr-agent/core/internal, not a cast to NodeJS.ErrnoException.")
+  `NodeJS.ErrnoException` as $type where {
+    register_diagnostic(span=$type, message="Read an error's code with errnoCode() or isNotFound() from @open-cr-agent/core/internal, not the type NodeJS.ErrnoException.")
   }
 }

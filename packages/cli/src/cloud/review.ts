@@ -1,5 +1,5 @@
 import type { ReviewSource } from "@open-cr-agent/cloud-contract";
-import type { MemoryEntry, ReviewReport } from "@open-cr-agent/core";
+import { errorMessage, type MemoryEntry, type ReviewReport } from "@open-cr-agent/core";
 import type { Output } from "../io/output.js";
 import { originRepository } from "../repository-id.js";
 import { readAccountSalt, saveAccountSalt } from "./account-salt.js";
@@ -56,7 +56,7 @@ export async function prepareCloudReview(
     // the counts. Whether the account still shares findings is unknown, so
     // none is sent and the account's memory is not applied.
     warn(
-      `could not read your ocra Cloud account (${error instanceof Error ? error.message : "error"}); this review sends no findings and applies no account memory`,
+      `could not read your ocra Cloud account (${errorMessage(error)}); this review sends no findings and applies no account memory`,
     );
     const kept = await readAccountSalt(deps.credentialsPath);
     return {

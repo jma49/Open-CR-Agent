@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { OcraError } from "@open-cr-agent/core";
+import { errnoCode } from "@open-cr-agent/core/internal";
 
 export interface GitOptions {
   cwd: string;
@@ -72,8 +73,8 @@ export function git(args: readonly string[], options: GitOptions): Promise<strin
     // outcome, so a broken pipe on our side carries no information. Which
     // error that is depends on timing and platform (EPIPE, or ENOTCONN on
     // macOS when the pipe closed before the write).
-    child.stdin?.on("error", (error: NodeJS.ErrnoException) => {
-      if (!CLOSED_PIPE.has(error.code ?? "")) reject(error);
+    child.stdin?.on("error", (error) => {
+      if (!CLOSED_PIPE.has(errnoCode(error) ?? "")) reject(error);
     });
     if (options.input === undefined) child.stdin?.end();
     else child.stdin?.end(options.input);

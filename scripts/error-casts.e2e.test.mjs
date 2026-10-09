@@ -39,6 +39,21 @@ describe("the error-casts Biome plugin", () => {
       "export const f = (e: unknown) => (e instanceof Error ? e.message : String(e));\n",
       "errorMessage()",
     ],
+    [
+      "a cast to Error or undefined",
+      "export const f = (e: unknown) => (e as Error | undefined)?.message;\n",
+      "errorMessage()",
+    ],
+    [
+      "a parameter typed NodeJS.ErrnoException",
+      'export const f = (p: Promise<void>) => p.catch((e: NodeJS.ErrnoException) => e.code === "EEXIST");\n',
+      "errnoCode()",
+    ],
+    [
+      "a copy of errorMessage with another fallback",
+      'export const f = (e: unknown) => (e instanceof Error ? e.message : "error");\n',
+      "errorMessage()",
+    ],
   ])("fails %s", (_, source, helper) => {
     const result = lint("bad.ts", source);
     expect(result.status).not.toBe(0);

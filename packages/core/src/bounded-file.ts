@@ -1,6 +1,6 @@
 import { constants } from "node:fs";
 import { lstat, open } from "node:fs/promises";
-import { OcraError } from "./errors.js";
+import { errnoCode, OcraError } from "./errors.js";
 
 const CHUNK_BYTES = 1024 * 1024;
 
@@ -21,8 +21,9 @@ export async function readBoundedFile(
   const flags =
     constants.O_RDONLY | constants.O_NONBLOCK | (followLinks ? 0 : constants.O_NOFOLLOW);
   if (!followLinks && (await lstat(path)).isSymbolicLink()) throw linked(path);
-  const handle = await open(path, flags).catch((error: NodeJS.ErrnoException) => {
-    throw error.code === "ELOOP" || error.code === "EMLINK" ? linked(path) : error;
+  const handle = await open(path, flags).catch((error: unknown) => {
+    const code = errnoCode(error);
+    throw code === "ELOOP" || code === "EMLINK" ? linked(path) : error;
   });
   try {
     if (!(await handle.stat()).isFile()) {

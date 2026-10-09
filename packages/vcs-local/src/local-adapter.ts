@@ -19,7 +19,7 @@ import {
   type PriorReview,
   type VcsAdapter,
 } from "@open-cr-agent/core";
-import { errnoCode, parseUnifiedDiff } from "@open-cr-agent/core/internal";
+import { errnoCode, isNotFound, parseUnifiedDiff } from "@open-cr-agent/core/internal";
 import { GitError, git, isShallow, SHALLOW_HINT } from "./git.js";
 
 export type LocalTarget =
@@ -208,8 +208,8 @@ async function workspaceDiff(root: string, base: string): Promise<string> {
     // timestamps to catch same-second, same-size edits ("racy git"), and a
     // fresh timestamp would make it trust stale stat data and miss them.
     await cp(resolve(root, realIndex), index, { preserveTimestamps: true }).catch(
-      (error: NodeJS.ErrnoException) => {
-        if (error.code !== "ENOENT") throw error;
+      (error: unknown) => {
+        if (!isNotFound(error)) throw error;
       },
     );
     const env = { GIT_INDEX_FILE: index, GIT_LITERAL_PATHSPECS: "1" };

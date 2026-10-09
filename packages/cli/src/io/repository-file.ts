@@ -1,6 +1,7 @@
 import { constants } from "node:fs";
 import { lstat, mkdir, open } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
+import { errnoCode } from "@open-cr-agent/core/internal";
 import { UsageError } from "./usage-error.js";
 
 const { O_WRONLY, O_CREAT, O_TRUNC, O_EXCL, O_NOFOLLOW } = constants;
@@ -26,8 +27,8 @@ export async function writeRepositoryFile(
   }
   await mkdir(dirname(target), { recursive: true });
   const flags = O_WRONLY | O_CREAT | O_NOFOLLOW | (replace ? O_TRUNC : O_EXCL);
-  const handle = await open(target, flags).catch((error: NodeJS.ErrnoException) => {
-    if (!replace && error.code === "EEXIST") return undefined;
+  const handle = await open(target, flags).catch((error: unknown) => {
+    if (!replace && errnoCode(error) === "EEXIST") return undefined;
     throw error;
   });
   if (!handle) return "exists";
