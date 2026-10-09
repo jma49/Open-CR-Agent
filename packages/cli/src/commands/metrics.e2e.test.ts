@@ -236,6 +236,40 @@ describe("ocra metrics", () => {
     expect(metrics.reviewers.correctness).toMatchObject({ fixed: 1, dismissed: 0 });
   });
 
+  it("counts a task a resumed run reused at the cost of the run that paid for it", async () => {
+    const first = "20261001T100000Z-000001";
+    const cost = (usd: number) => ({
+      inputTokens: 0,
+      outputTokens: 0,
+      reasoningTokens: 0,
+      cachedTokens: 0,
+      costUsd: usd,
+    });
+    const dir = repoWithSessions({
+      [first]: report({
+        runId: first,
+        tasks: [
+          task("correctness-1", "correctness", 0.5),
+          task("security-1", "security", 0, "failed"),
+        ],
+        usage: cost(0.5),
+      }),
+      // The resumed run keeps the reused task's earlier usage, marked by reusedFrom.
+      "20261001T110000Z-000002": report({
+        runId: "20261001T110000Z-000002",
+        tasks: [
+          { ...task("correctness-1", "correctness", 0.5), reusedFrom: first },
+          task("security-1", "security", 0.25),
+        ],
+        usage: cost(0.25),
+      }),
+    });
+    const metrics = await collectMetrics(join(dir, ".ocra", "sessions"));
+    expect(metrics.cost.usd).toBe(0.75);
+    expect(metrics.reviewers.correctness).toMatchObject({ tasks: 2, costUsd: 0.5 });
+    expect(metrics.reviewers.security).toMatchObject({ tasks: 2, costUsd: 0.25 });
+  });
+
   it("limits the runs with --since, by the start time in the session id", async () => {
     const dir = repoWithSessions({
       "20261001T100000Z-000001": report({ runId: "20261001T100000Z-000001" }),

@@ -194,6 +194,24 @@ describe("the review upload", () => {
     expect(up.outcomes).toEqual({ fixed: 2, dismissed: 1 });
   });
 
+  it("counts a reused task's cost to the run that paid for it, not to this one", () => {
+    const resumed = reviewReport({
+      ...report,
+      tasks: [
+        taskOutcome({
+          reviewer: "security",
+          usage: usage({ costUsd: 0.25 }),
+          reusedFrom: "20261001T100000Z-000001",
+        }),
+        taskOutcome({ reviewer: "security", usage: usage({ costUsd: 0.1 }) }),
+      ],
+      usage: usage({ costUsd: 0.1 }),
+    });
+    const up = uploadOf(resumed, "local", "f".repeat(64), 1);
+    expect(up.reviewers?.security).toMatchObject({ tasks: 2, costUsd: 0.1 });
+    expect(up.usage.costUsd).toBe(0.1);
+  });
+
   it("credits a fix or a dismissal to the reviewer the earlier review recorded", () => {
     // The fixed finding is gone from this report, so only its recorded
     // reviewer can claim it; a recorded reviewer outranks this report's.

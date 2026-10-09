@@ -93,7 +93,8 @@ function perReviewer(
     const r = of(task.reviewer);
     r.tasks += 1;
     if (task.status === "failed" || task.status === "timed_out") r.failedTasks += 1;
-    r.costUsd += task.usage.costUsd;
+    // A reused task's usage is what the earlier run paid; this run paid nothing for it.
+    if (task.reusedFrom === undefined) r.costUsd += task.usage.costUsd;
   }
   const verification = Object.fromEntries(verificationSchema.options.map((v) => [v, 0])) as Record<
     Verification,

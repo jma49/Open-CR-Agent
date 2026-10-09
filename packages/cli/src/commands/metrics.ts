@@ -170,7 +170,8 @@ function aggregate(
       const r = forReviewer(task.reviewer);
       r.tasks += 1;
       if (task.status === "failed" || task.status === "timed_out") r.failedTasks += 1;
-      r.costUsd += task.usage.costUsd;
+      // A reused task's usage is what the earlier run paid; that run counts it.
+      if (task.reusedFrom === undefined) r.costUsd += task.usage.costUsd;
     }
     for (const finding of report.findings) {
       reported += 1;
