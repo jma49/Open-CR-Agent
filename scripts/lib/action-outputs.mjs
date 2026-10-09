@@ -1,33 +1,97 @@
 // What the Action's outputs are, from a run's session report
 // (scripts/action-outputs.mjs).
 
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import {
+  closeSync,
+  constants,
+  existsSync,
+  fstatSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
 import { errorMessage } from "./error-message.mjs";
 
 /** @typedef {[name: string, value: string]} Output */
+/** @typedef {Readonly<Record<string, string | undefined>>} Env */
 
 export const SESSIONS_DIR = join(".ocra", "sessions");
 const RUN_ID = /^\d{8}T\d{6}Z-[0-9a-f]{6}$/;
+const SNAPSHOT = "sessions-before.json";
 
-// The UTC stamp a run id starts with (see newRunId in core), to the second.
-export function runStamp(now = new Date()) {
-  return now
-    .toISOString()
-    .replace(/[-:]/g, "")
-    .replace(/\.\d+Z$/, "Z");
+// The checkout is the pull request's: sessions, or a link in place of a
+// directory ocra writes, may have come with the change. ocra refuses to
+// write its session through a link, and the Action reads none.
+/** @param {string} root */
+function sessionsDir(root) {
+  for (const dir of [join(root, ".ocra"), join(root, SESSIONS_DIR)]) {
+    if (lstatSync(dir, { throwIfNoEntry: false })?.isSymbolicLink()) {
+      throw new Error(`${dir} is a symbolic link`);
+    }
+  }
+  return join(root, SESSIONS_DIR);
 }
 
-// The newest session that started at or after `started`: run ids begin with
-// their start time, so they sort in order. Sessions of earlier runs in the
-// same checkout are older.
+/** @param {string} root */
+function sessionNames(root) {
+  const dir = sessionsDir(root);
+  return existsSync(dir) ? readdirSync(dir).filter((name) => RUN_ID.test(name)) : [];
+}
+
+// Where the Action keeps its own files: the runner's, not the checkout's.
+/** @param {Env} env */
+function actionDir(env) {
+  if (!env.RUNNER_TEMP) throw new Error("RUNNER_TEMP is not set");
+  return join(env.RUNNER_TEMP, "ocra");
+}
+
+// The sessions in the checkout before ocra runs, kept under $RUNNER_TEMP
+// out of the change's reach: this run's session is the one that appears.
+/** @param {{ env: Env, root: string }} options */
+export function recordSessions({ env, root }) {
+  const file = join(actionDir(env), SNAPSHOT);
+  // A list left by an earlier step of the job must not stand in for this one.
+  rmSync(file, { force: true });
+  const names = sessionNames(root);
+  mkdirSync(actionDir(env), { recursive: true });
+  writeFileSync(file, JSON.stringify(names));
+}
+
+// The session this run wrote: the one run id that was not there before. A
+// session that came with the change was there before, whatever time its
+// name claims.
 /**
- * @param {string[]} names
- * @param {string} started
+ * @param {readonly string[]} before
+ * @param {readonly string[]} after
  */
-export function newestSession(names, started) {
-  const runs = names.filter((n) => RUN_ID.test(n) && n >= started).sort();
-  return runs.at(-1);
+export function sessionOfRun(before, after) {
+  const known = new Set(before);
+  const added = after.filter((name) => RUN_ID.test(name) && !known.has(name));
+  return added.length === 1 ? added[0] : undefined;
+}
+
+// The report's bytes, refusing a link at the session directory or the file.
+// Where there is no O_NOFOLLOW (Windows) the checks before the open stand
+// alone: nothing that came with the change runs during the step to swap a
+// file in between.
+/** @param {string} sessionDir */
+function readReport(sessionDir) {
+  const report = join(sessionDir, "report.json");
+  for (const path of [sessionDir, report]) {
+    if (lstatSync(path).isSymbolicLink()) throw new Error(`${path} is a symbolic link`);
+  }
+  const fd = openSync(report, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+  try {
+    if (!fstatSync(fd).isFile()) throw new Error(`${report} is not a regular file`);
+    return readFileSync(fd);
+  } finally {
+    closeSync(fd);
+  }
 }
 
 // The outputs a session report gives, as [name, value] pairs. The verdict is
@@ -62,7 +126,9 @@ export function formatOutputs(pairs) {
     .join("");
 }
 
-/** @param {{ env: Readonly<Record<string, string | undefined>>, root: string }} options */
+const EMPTY = "so the outputs verdict, run-id, findings and report are empty";
+
+/** @param {{ env: Env, root: string }} options */
 export function collectOutputs({ env, root }) {
   /** @type {Output[]} */
   const pairs = [];
@@ -72,24 +138,29 @@ export function collectOutputs({ env, root }) {
   const sarif = env.OCRA_SARIF_FILE;
   if (sarif && existsSync(sarif)) pairs.push(["sarif", sarif]);
 
-  const sessions = join(root, SESSIONS_DIR);
-  const names = existsSync(sessions) ? readdirSync(sessions) : [];
-  const id = newestSession(names, env.OCRA_STARTED ?? "");
-  const source = id === undefined ? undefined : join(sessions, id, "report.json");
-  if (source === undefined || !existsSync(source)) {
-    warnings.push(
-      "ocra wrote no report, so the outputs verdict, run-id, findings and report are empty",
-    );
+  /** @type {string | undefined} */
+  let sessionDir;
+  try {
+    const before = JSON.parse(readFileSync(join(actionDir(env), SNAPSHOT), "utf8"));
+    if (!Array.isArray(before)) throw new Error(`${SNAPSHOT} is not a list`);
+    const id = sessionOfRun(before, sessionNames(root));
+    sessionDir = id === undefined ? undefined : join(sessionsDir(root), id);
+  } catch (error) {
+    warnings.push(`could not tell which session ocra wrote (${errorMessage(error)}), ${EMPTY}`);
+    return { pairs, warnings };
+  }
+  if (sessionDir === undefined || !existsSync(join(sessionDir, "report.json"))) {
+    warnings.push(`ocra wrote no report, ${EMPTY}`);
     return { pairs, warnings };
   }
   try {
-    const report = JSON.parse(readFileSync(source, "utf8"));
-    const copy = join(env.RUNNER_TEMP ?? root, "ocra", "report.json");
-    mkdirSync(resolve(copy, ".."), { recursive: true });
-    copyFileSync(source, copy);
+    const bytes = readReport(sessionDir);
+    const report = JSON.parse(bytes.toString("utf8"));
+    const copy = join(actionDir(env), "report.json");
+    writeFileSync(copy, bytes);
     pairs.push(...reportOutputs(report, env.OCRA_EXIT_CODE), ["report", copy]);
   } catch (error) {
-    warnings.push(`could not read ocra's report ${source}: ${errorMessage(error)}`);
+    warnings.push(`could not read ocra's report in ${sessionDir}: ${errorMessage(error)}`);
   }
   return { pairs, warnings };
 }

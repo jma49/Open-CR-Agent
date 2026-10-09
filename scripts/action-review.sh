@@ -19,10 +19,9 @@ export OCRA_SARIF_FILE="$RUNNER_TEMP/ocra/ocra.sarif"
 rm -f "$OCRA_SARIF_FILE"
 # Last, so they win over a --format or --output in args.
 if [ "${OCRA_SARIF:-}" = "true" ]; then extra+=(--format sarif --output "$OCRA_SARIF_FILE"); fi
-# Run ids start with the UTC second the run started: the outputs come from
-# the session report of this run, not an earlier one.
-OCRA_STARTED="$(date -u +%Y%m%dT%H%M%SZ)"
-export OCRA_STARTED
+# The outputs come from the session this run adds, not from one that was in
+# the checkout already (an earlier run's, or one that came with the change).
+node "$GITHUB_ACTION_PATH/scripts/action-outputs.mjs" --before
 # Bash does not pass a cancellation's SIGINT/SIGTERM on to a child it waits
 # for, so ocra runs in the background and gets them forwarded: it then stops,
 # writes its partial report and publishes nothing.

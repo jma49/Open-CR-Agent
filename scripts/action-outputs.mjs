@@ -3,14 +3,15 @@
 // same shape as `--format json`) the run id, the verdict, the number of
 // findings and a copy of the report under $RUNNER_TEMP. The session report is
 // read rather than stdout so that `args` keep every output format, `--format
-// sarif` included.
+// sarif` included. With --before, run before ocra, it records the sessions
+// already in the checkout, so that only the one this run adds is read.
 //
 // It never fails the step: a missing or unreadable report only leaves those
 // outputs empty, with a warning, and the job keeps ocra's exit behavior.
 
 import { spawnSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
-import { collectOutputs, formatOutputs } from "./lib/action-outputs.mjs";
+import { collectOutputs, formatOutputs, recordSessions } from "./lib/action-outputs.mjs";
 import { errorMessage } from "./lib/error-message.mjs";
 
 function repositoryRoot() {
@@ -19,6 +20,16 @@ function repositoryRoot() {
 }
 
 function main() {
+  if (process.argv[2] === "--before") {
+    try {
+      recordSessions({ env: process.env, root: repositoryRoot() });
+    } catch (error) {
+      console.log(
+        `::warning::could not list the sessions before the review: ${errorMessage(error)}`,
+      );
+    }
+    return;
+  }
   try {
     const { pairs, warnings } = collectOutputs({ env: process.env, root: repositoryRoot() });
     for (const warning of warnings) console.log(`::warning::${warning}`);

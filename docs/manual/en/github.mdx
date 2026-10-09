@@ -50,7 +50,7 @@ Since v0.1.1 the Action installs `@open-cr-agent/cli` from npm at its own versio
 | `opencode` | `true` | Install OpenCode, the default runtime. Set `false` when the configuration sets `"runtime": "direct"`; see [The runtime](#the-runtime). New in v0.3.0 |
 | `sarif` | `false` | Also write the review as SARIF 2.1.0 for [code scanning](#code-scanning), to the file the `sarif` output names. It takes the place of `--format` and `--output` in `args` |
 
-Give the step an `id` to read its outputs. They are set whenever ocra ran, also when the step fails:
+Give the step an `id` to read its outputs. They are set whenever ocra ran, also when the step fails, and come from the session this run wrote: a session that came with the pull request, or a link in place of `.ocra/sessions`, is never read.
 
 | Output | Meaning |
 |---|---|

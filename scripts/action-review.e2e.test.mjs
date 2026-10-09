@@ -1,5 +1,12 @@
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,10 +27,16 @@ function reviewRun() {
   return run.trimStart().slice("run: ".length);
 }
 
-// Waits for SIGINT when FAKE_WAIT is set; exits on its own after a while so
-// that a run whose signal never reached it does not outlive the test.
-const FAKE_OCRA = `import { writeFileSync } from "node:fs";
+// Writes its session report under FAKE_SESSION, as ocra does. Waits for
+// SIGINT when FAKE_WAIT is set; exits on its own after a while so that a run
+// whose signal never reached it does not outlive the test.
+const FAKE_OCRA = `import { mkdirSync, writeFileSync } from "node:fs";
 writeFileSync(process.env.FAKE_ARGS, JSON.stringify(process.argv.slice(2)));
+if (process.env.FAKE_SESSION) {
+  const dir = ".ocra/sessions/" + process.env.FAKE_SESSION;
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(dir + "/report.json", JSON.stringify({ version: 1, runId: process.env.FAKE_SESSION, verdict: "minor_issues", findings: [{}] }));
+}
 if (process.env.FAKE_WAIT) {
   process.on("SIGINT", () => { writeFileSync(process.env.FAKE_ARGS + ".signal", "SIGINT"); process.exit(130); });
   writeFileSync(process.env.FAKE_ARGS + ".ready", "");
@@ -31,11 +44,26 @@ if (process.env.FAKE_WAIT) {
 } else process.exit(Number(process.env.FAKE_EXIT ?? 0));
 `;
 
-/** @param {Record<string, string>} env */
-function setup(env) {
+/**
+ * A session report laid out as ocra writes it, under `sessions`.
+ * @param {string} sessions
+ * @param {string} id
+ */
+function plantSession(sessions, id) {
+  mkdirSync(join(sessions, id), { recursive: true });
+  const report = { version: 1, runId: id, verdict: "approved", findings: [] };
+  writeFileSync(join(sessions, id, "report.json"), JSON.stringify(report));
+}
+
+/**
+ * @param {Record<string, string>} env
+ * @param {(work: string, dir: string) => void} [checkout] lays out what came with the change
+ */
+function setup(env, checkout) {
   const dir = mkdtempSync(join(tmpdir(), "ocra-action-review-"));
   const work = join(dir, "work");
   mkdirSync(work);
+  checkout?.(work, dir);
   // A file the glob in args would expand to, were it expanded.
   writeFileSync(join(work, "match-me"), "");
   writeFileSync(join(dir, "ocra.mjs"), FAKE_OCRA);
@@ -60,9 +88,12 @@ function setup(env) {
   };
 }
 
-/** @param {Record<string, string>} env */
-function review(env) {
-  const t = setup(env);
+/**
+ * @param {Record<string, string>} env
+ * @param {(work: string, dir: string) => void} [checkout]
+ */
+function review(env, checkout) {
+  const t = setup(env, checkout);
   const result = spawnSync("bash", t.argv, { cwd: t.work, env: t.env, encoding: "utf8" });
   /** @type {string[] | undefined} */
   let args;
@@ -107,6 +138,26 @@ describe.skipIf(!hasBash)("the Action's review step", () => {
     expect(passing.outputs).toContain("exit-code=1\n");
     expect(review({ FAKE_EXIT: "1", OCRA_FAIL_ON_CONCERNS: "true" }).status).toBe(1);
     expect(review({ FAKE_EXIT: "3" }).status).toBe(3);
+  });
+
+  it("sets the outputs from the session this run wrote, not one that came with the change", () => {
+    const run = "20261009T120000Z-a1b2c3";
+    const r = review({ FAKE_SESSION: run }, (work) =>
+      plantSession(join(work, ".ocra", "sessions"), "20991231T235959Z-ffffff"),
+    );
+    expect(r.outputs).toContain(`run-id=${run}\n`);
+    expect(r.outputs).toContain("verdict=minor_issues\n");
+    expect(r.outputs).toContain("findings=1\n");
+    expect(r.outputs).not.toContain("20991231T235959Z");
+  });
+
+  it("reads no session through a link that came with the change", () => {
+    const r = review({}, (work, dir) => {
+      plantSession(join(dir, "elsewhere", "sessions"), "20991231T235959Z-ffffff");
+      symlinkSync(join(dir, "elsewhere"), join(work, ".ocra"), "junction");
+    });
+    expect(r.outputs).toBe("exit-code=0\n");
+    expect(r.stdout).toContain("::warning::");
   });
 
   it("runs only on a pull request", () => {

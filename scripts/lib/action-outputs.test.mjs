@@ -1,14 +1,14 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   collectOutputs,
   formatOutputs,
-  newestSession,
+  recordSessions,
   reportOutputs,
-  runStamp,
   SESSIONS_DIR,
+  sessionOfRun,
 } from "./action-outputs.mjs";
 
 const report = {
@@ -18,35 +18,52 @@ const report = {
   findings: [{ title: "a" }, { title: "b" }],
 };
 
-function checkout(sessions = {}) {
-  const root = mkdtempSync(join(tmpdir(), "ocra-action-outputs-"));
+/**
+ * @param {string} root
+ * @param {Record<string, string | undefined>} sessions
+ */
+function addSessions(root, sessions) {
   for (const [id, content] of Object.entries(sessions)) {
     const dir = join(root, SESSIONS_DIR, id);
     mkdirSync(dir, { recursive: true });
     if (content !== undefined) writeFileSync(join(dir, "report.json"), content);
   }
+}
+
+/** @param {Record<string, string | undefined>} [sessions] */
+function checkout(sessions = {}) {
+  const root = mkdtempSync(join(tmpdir(), "ocra-action-outputs-"));
+  addSessions(root, sessions);
   return root;
 }
 
-describe("runStamp", () => {
-  it("is the prefix of a run id started in that second", () => {
-    expect(runStamp(new Date("2026-10-03T12:00:05.678Z"))).toBe("20261003T120005Z");
-  });
-});
+/**
+ * The outputs after a run that added `added` to the checkout's sessions.
+ * @param {string} root
+ * @param {Record<string, string | undefined>} added
+ * @param {Record<string, string>} [extra]
+ */
+function afterRun(root, added, extra = {}) {
+  const temp = mkdtempSync(join(tmpdir(), "ocra-runner-temp-"));
+  const env = { RUNNER_TEMP: temp, ...extra };
+  recordSessions({ env, root });
+  addSessions(root, added);
+  return { ...collectOutputs({ env, root }), temp };
+}
 
-describe("newestSession", () => {
-  it("takes the newest run that started at or after the stamp", () => {
-    const names = [
-      ".gitignore",
-      "20261003T115959Z-000000",
-      "20261003T120005Z-ffffff",
-      "20261003T120010Z-abcdef",
-    ];
-    expect(newestSession(names, "20261003T120005Z")).toBe("20261003T120010Z-abcdef");
+describe("sessionOfRun", () => {
+  it("is the one run id that was not there before, whatever its time", () => {
+    const before = ["20991231T235959Z-ffffff", "20261003T110000Z-000000"];
+    const after = [...before, ".gitignore", "20261003T120005Z-a1b2c3"];
+    expect(sessionOfRun(before, after)).toBe("20261003T120005Z-a1b2c3");
   });
 
-  it("ignores runs of earlier steps and names that are not run ids", () => {
-    expect(newestSession(["20261003T115959Z-000000", "zzz"], "20261003T120005Z")).toBeUndefined();
+  it("is none when the run added no session, or more than one", () => {
+    expect(sessionOfRun(["20261003T110000Z-000000"], ["20261003T110000Z-000000"])).toBeUndefined();
+    expect(sessionOfRun([], ["20261003T120005Z-a1b2c3", "20261003T120006Z-a1b2c4"])).toBe(
+      undefined,
+    );
+    expect(sessionOfRun([], ["not-a-run"])).toBeUndefined();
   });
 });
 
@@ -90,21 +107,15 @@ describe("formatOutputs", () => {
 });
 
 describe("collectOutputs", () => {
-  it("copies this run's report to the runner's temporary directory", () => {
+  it("copies the report of the session this run added to the runner's temporary directory", () => {
     const root = checkout({
-      "20261003T110000Z-000000": JSON.stringify({
-        runId: "old",
-        verdict: "approved",
-        findings: [],
-      }),
-      [report.runId]: JSON.stringify(report),
+      "20261003T110000Z-000000": JSON.stringify({ runId: "old", verdict: "approved" }),
+      "20991231T235959Z-ffffff": JSON.stringify({ runId: "planted", verdict: "approved" }),
     });
-    const temp = mkdtempSync(join(tmpdir(), "ocra-runner-temp-"));
-    const env = { OCRA_EXIT_CODE: "1", OCRA_STARTED: "20261003T120005Z", RUNNER_TEMP: temp };
-    const { pairs, warnings } = collectOutputs({ env, root });
-    const copy = join(temp, "ocra", "report.json");
-    expect(warnings).toEqual([]);
-    expect(Object.fromEntries(pairs)).toEqual({
+    const r = afterRun(root, { [report.runId]: JSON.stringify(report) }, { OCRA_EXIT_CODE: "1" });
+    const copy = join(r.temp, "ocra", "report.json");
+    expect(r.warnings).toEqual([]);
+    expect(Object.fromEntries(r.pairs)).toEqual({
       "exit-code": "1",
       "run-id": report.runId,
       verdict: "significant_concerns",
@@ -124,18 +135,50 @@ describe("collectOutputs", () => {
   });
 
   it("keeps the exit code and warns when the run wrote no report", () => {
-    const root = checkout({ "20261003T120005Z-a1b2c3": undefined });
-    const env = { OCRA_EXIT_CODE: "2", OCRA_STARTED: "20261003T120005Z" };
-    const { pairs, warnings } = collectOutputs({ env, root });
-    expect(pairs).toEqual([["exit-code", "2"]]);
-    expect(warnings).toEqual([expect.stringContaining("wrote no report")]);
+    const root = checkout({ "20991231T235959Z-ffffff": JSON.stringify(report) });
+    const r = afterRun(root, { "20261003T120005Z-a1b2c3": undefined }, { OCRA_EXIT_CODE: "2" });
+    expect(r.pairs).toEqual([["exit-code", "2"]]);
+    expect(r.warnings).toEqual([expect.stringContaining("wrote no report")]);
+  });
+
+  it("reads no report when it does not know which sessions were there before", () => {
+    const root = checkout({ [report.runId]: JSON.stringify(report) });
+    const temp = mkdtempSync(join(tmpdir(), "ocra-runner-temp-"));
+    const { pairs, warnings } = collectOutputs({ env: { RUNNER_TEMP: temp }, root });
+    expect(pairs).toEqual([]);
+    expect(warnings).toEqual([expect.stringContaining("which session")]);
   });
 
   it("warns instead of failing on a report it cannot parse", () => {
-    const root = checkout({ "20261003T120005Z-a1b2c3": "{" });
-    const env = { OCRA_EXIT_CODE: "3", OCRA_STARTED: "20261003T120005Z", RUNNER_TEMP: root };
+    const r = afterRun(checkout(), { [report.runId]: "{" }, { OCRA_EXIT_CODE: "3" });
+    expect(r.pairs).toEqual([["exit-code", "3"]]);
+    expect(r.warnings).toEqual([expect.stringContaining("could not read")]);
+  });
+
+  it("refuses a report that is a link", () => {
+    const root = checkout();
+    const outside = join(root, "outside.json");
+    writeFileSync(outside, JSON.stringify(report));
+    const temp = mkdtempSync(join(tmpdir(), "ocra-runner-temp-"));
+    const env = { RUNNER_TEMP: temp };
+    recordSessions({ env, root });
+    mkdirSync(join(root, SESSIONS_DIR, report.runId), { recursive: true });
+    symlinkSync(outside, join(root, SESSIONS_DIR, report.runId, "report.json"));
     const { pairs, warnings } = collectOutputs({ env, root });
-    expect(pairs).toEqual([["exit-code", "3"]]);
-    expect(warnings).toEqual([expect.stringContaining("could not read")]);
+    expect(pairs).toEqual([]);
+    expect(warnings).toEqual([expect.stringContaining("symbolic link")]);
+  });
+
+  it("refuses a sessions directory that is a link", () => {
+    const root = checkout();
+    const elsewhere = checkout({ [report.runId]: JSON.stringify(report) });
+    mkdirSync(join(root, ".ocra"));
+    symlinkSync(join(elsewhere, SESSIONS_DIR), join(root, SESSIONS_DIR), "junction");
+    const temp = mkdtempSync(join(tmpdir(), "ocra-runner-temp-"));
+    const env = { RUNNER_TEMP: temp };
+    expect(() => recordSessions({ env, root })).toThrow(/symbolic link/);
+    const { pairs, warnings } = collectOutputs({ env, root });
+    expect(pairs).toEqual([]);
+    expect(warnings).toEqual([expect.stringContaining("which session")]);
   });
 });

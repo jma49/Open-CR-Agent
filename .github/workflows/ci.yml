@@ -195,10 +195,11 @@ jobs:
       # it (a review needs a model).
       - id: outputs
         run: |
+          node scripts/action-outputs.mjs --before
           session=.ocra/sessions/20991231T235959Z-abcdef
           mkdir -p "$session"
           printf '{"version":1,"runId":"20991231T235959Z-abcdef","verdict":"approved","findings":[]}\n' > "$session/report.json"
-          OCRA_EXIT_CODE=0 OCRA_STARTED="$(date -u +%Y%m%dT%H%M%SZ)" node scripts/action-outputs.mjs
+          OCRA_EXIT_CODE=0 node scripts/action-outputs.mjs
       - env:
           EXIT_CODE: ${{ steps.outputs.outputs.exit-code }}
           RUN_ID: ${{ steps.outputs.outputs.run-id }}
