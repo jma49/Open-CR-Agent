@@ -24,7 +24,9 @@ function unitTests() {
 describe("unit tests", () => {
   it("start no child process", () => {
     const spawning = unitTests()
-      .filter((path) => /^import .* from "node:child_process";$/m.test(readFileSync(path, "utf8")))
+      .filter((path) =>
+        /^import\s[^;]*?\bfrom\s+"node:child_process"/m.test(readFileSync(path, "utf8")),
+      )
       .map((path) => relative(root, path));
     expect(spawning).toEqual([]);
   });
