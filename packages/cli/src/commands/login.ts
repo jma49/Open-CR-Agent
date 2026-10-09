@@ -1,16 +1,10 @@
-import { rm } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import type { TokenAnswer } from "@open-cr-agent/cloud-contract";
 import { errorMessage } from "@open-cr-agent/core";
 import { saveAccountSalt } from "../cloud/account-salt.js";
 import { signInPage } from "../cloud/browser.js";
 import { CloudClient } from "../cloud/client.js";
-import {
-  type Credentials,
-  credentialsHint,
-  loadCredentials,
-  writeCredentials,
-} from "../cloud/credentials.js";
+import { type Credentials, credentialsHint, loadCredentials } from "../cloud/credentials.js";
 import { type CloudDeps, cloudUrl, DEFAULT_CLOUD_URL } from "../cloud/deps.js";
 import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
@@ -83,14 +77,14 @@ async function whoami(out: Output, err: Output, deps: CloudDeps): Promise<number
 }
 
 async function logout(out: Output, deps: CloudDeps): Promise<number> {
+  const client = new CloudClient(deps);
   const saved = await loadCredentials(deps.credentialsPath);
   if (saved && saved !== "unreadable") {
     // Ends the session on the server too; the local file goes either way.
-    const client = new CloudClient(deps);
     const session = await client.session().catch(() => undefined);
     if (session?.kind === "ok") await client.endSession(session.credentials).catch(() => {});
   }
-  await rm(deps.credentialsPath, { force: true });
+  await client.removeSession();
   await saveAccountSalt(deps.credentialsPath, null);
   out.write(
     saved === "unreadable"
@@ -152,7 +146,7 @@ async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean
         refresh_token: t.refresh_token,
         expires_at: deps.now() + t.expires_in * 1000,
       };
-      await writeCredentials(deps.credentialsPath, credentials);
+      await client.saveSession(credentials);
       // Best effort: each signed-in review asks again.
       await client
         .accountSalt()

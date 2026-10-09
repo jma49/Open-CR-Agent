@@ -1,3 +1,5 @@
+import { mkdir, rm } from "node:fs/promises";
+import { dirname } from "node:path";
 import {
   accountSchema,
   type DeviceCode,
@@ -15,9 +17,14 @@ import {
 import { errorMessage, OcraError } from "@open-cr-agent/core";
 import type { z } from "zod";
 import { VERSION } from "../version.js";
-import { type Credentials, readCredentials, writeCredentials } from "./credentials.js";
+import {
+  type Credentials,
+  loadCredentials,
+  readCredentials,
+  writeCredentials,
+} from "./credentials.js";
 import type { CloudDeps } from "./deps.js";
-import { withFileLock } from "./file-lock.js";
+import { type LockTiming, withFileLock } from "./file-lock.js";
 
 // The one way to ocra Cloud (ADR-0024): every call goes through request(),
 // with its user agent and timeout, and every answer is checked against its
@@ -26,6 +33,19 @@ import { withFileLock } from "./file-lock.js";
 
 const USER_AGENT = `ocra/${VERSION}`;
 const CLOUD_TIMEOUT_MS = 30_000;
+// The session's lock is held for at most two refreshes (the second after
+// another process rotated the pair), each over within CLOUD_TIMEOUT_MS. A
+// lock held longer, or whose process has exited, was left by a process that
+// died. A waiter waits for such a lock to be broken and then for one more
+// holder's refreshes.
+const STALE_LOCK_MS = 3 * CLOUD_TIMEOUT_MS;
+const SESSION_LOCK: LockTiming = {
+  staleMs: STALE_LOCK_MS,
+  waitMs: STALE_LOCK_MS + 2 * CLOUD_TIMEOUT_MS,
+  noticeMs: 5_000,
+  pollMs: 50,
+};
+const SESSION_WAIT_NOTICE = "Waiting for another ocra process to renew the ocra Cloud session...";
 
 /** A call to ocra Cloud that could not be sent or whose answer cannot be used. */
 export class CloudError extends OcraError {
@@ -126,18 +146,24 @@ export class CloudClient {
    */
   async session(minValidityMs = 60_000, rejected?: string): Promise<CloudSession> {
     const { deps } = this;
-    const live = (c: Credentials) =>
-      c.access_token !== rejected && c.expires_at - deps.now() > minValidityMs;
+    const lasts = (c: Credentials, ms: number) =>
+      c.access_token !== rejected && c.expires_at - deps.now() > ms;
+    const live = (c: Credentials) => lasts(c, minValidityMs);
     const saved = await readCredentials(deps.credentialsPath);
     if (!saved) return { kind: "signed-out" };
     if (live(saved)) return { kind: "ok", credentials: saved };
-    // One refresh at a time on this machine: the server rotates the refresh
-    // token, so of two processes refreshing with one token, one is refused.
-    return withFileLock(`${deps.credentialsPath}.lock`, async (): Promise<CloudSession> => {
+    // One refresh at a time on this machine: two refreshes with one token
+    // leave two pairs, and the file may keep the superseded one, which ends
+    // the session when it is next used.
+    return this.locked(async (): Promise<CloudSession> => {
       const current = await readCredentials(deps.credentialsPath);
       if (!current) return { kind: "signed-out" };
-      // Another process may have refreshed while this one waited for the lock.
       if (live(current)) return { kind: "ok", credentials: current };
+      // Refreshed by another process while this one waited: another refresh
+      // would give no longer-lived token, only rotate the pair again.
+      if (current.refresh_token !== saved.refresh_token && lasts(current, 0)) {
+        return { kind: "ok", credentials: current };
+      }
       const refreshed = await this.refresh(current);
       if (refreshed.kind !== "revoked") return refreshed;
       // Rotated by a process that did not wait for the lock (an older ocra,
@@ -147,6 +173,17 @@ export class CloudClient {
       if (live(latest)) return { kind: "ok", credentials: latest };
       return this.refresh(latest);
     });
+  }
+
+  /** Saves a new session (ocra login), never in the middle of another process's refresh. */
+  async saveSession(credentials: Credentials): Promise<void> {
+    await mkdir(dirname(this.deps.credentialsPath), { recursive: true, mode: 0o700 });
+    await this.locked(() => writeCredentials(this.deps.credentialsPath, credentials));
+  }
+
+  /** Removes the saved session (ocra logout), never in the middle of another process's refresh. */
+  async removeSession(): Promise<void> {
+    await this.locked(() => rm(this.deps.credentialsPath, { force: true }));
   }
 
   /** The account's repository-hash salt; null while it shares no findings, or on a server without salts. */
@@ -228,8 +265,20 @@ export class CloudClient {
       refresh_token: t.refresh_token,
       expires_at: this.deps.now() + t.expires_in * 1000,
     };
-    await writeCredentials(this.deps.credentialsPath, next);
+    // Saved only over the pair it replaces: the file may hold another
+    // session by now, from a process that did not take the lock.
+    const onDisk = await loadCredentials(this.deps.credentialsPath);
+    if (onDisk !== "unreadable" && onDisk?.refresh_token === saved.refresh_token) {
+      await writeCredentials(this.deps.credentialsPath, next);
+    }
     return { kind: "ok", credentials: next };
+  }
+
+  /** Runs `fn` holding the lock every change to the saved session takes. */
+  private locked<T>(fn: () => Promise<T>): Promise<T> {
+    return withFileLock(`${this.deps.credentialsPath}.lock`, fn, SESSION_LOCK, () =>
+      this.deps.notice?.(SESSION_WAIT_NOTICE),
+    );
   }
 
   private async tokens(url: string, body: unknown): Promise<TokenAnswer & { status: number }> {

@@ -16,6 +16,8 @@ export type CloudDeps = {
   openBrowser: (url: string) => void;
   credentialsPath: string;
   clientName: string;
+  /** A line for the person running ocra while it waits on something (stderr). */
+  notice?: (message: string) => void;
 };
 
 export function defaultCloudDeps(env: CloudDeps["env"] = process.env): CloudDeps {
@@ -27,6 +29,7 @@ export function defaultCloudDeps(env: CloudDeps["env"] = process.env): CloudDeps
     openBrowser: (url) => openBrowser(url),
     credentialsPath: credentialsPath(env),
     clientName: `${hostname()} (ocra ${VERSION})`,
+    notice: (message) => process.stderr.write(`${message}\n`),
   };
 }
 

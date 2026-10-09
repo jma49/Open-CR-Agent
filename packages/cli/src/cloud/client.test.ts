@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { errorMessage, isOcraError } from "@open-cr-agent/core";
@@ -49,7 +49,23 @@ function machine(routes: Record<string, Answer | Answer[]>, saved?: Partial<Cred
     clientName: "t",
   };
   const saved_ = () => JSON.parse(readFileSync(credentialsPath, "utf8")) as Credentials;
-  return { deps, calls, saved: saved_ };
+  return { deps, calls, saved: saved_, credentialsPath };
+}
+
+/**
+ * Another process in the middle of refreshing the saved session: it holds
+ * the lock, then saves its new pair and lets go.
+ */
+function refreshingElsewhere(credentialsPath: string): Promise<void> {
+  writeFileSync(`${credentialsPath}.lock`, JSON.stringify({ token: "x", at: Date.now() }));
+  return new Promise<void>((resolve) => setTimeout(resolve, 100)).then(() => {
+    const saved = JSON.parse(readFileSync(credentialsPath, "utf8")) as Credentials;
+    writeFileSync(
+      credentialsPath,
+      JSON.stringify({ ...saved, access_token: "ocra_cli_old2", refresh_token: "ocra_ref_old2" }),
+    );
+    rmSync(`${credentialsPath}.lock`);
+  });
 }
 
 const pair = () =>
@@ -159,6 +175,26 @@ describe("ocra login", () => {
         /^Signed in; the login is unknown \(.+\): ocra whoami asks again\.\n$/,
       );
     }
+  });
+
+  it("waits for another process's refresh, so the new session is the one saved", async () => {
+    const m = machine({ ...login, "/api/me": () => Response.json({ login: "octo" }) }, {});
+    const other = refreshingElsewhere(m.credentialsPath);
+    const io = { write: () => {} };
+    expect(await loginCommand("login", ["--no-browser"], io, io, m.deps)).toBe(0);
+    await other;
+    expect(m.saved()).toMatchObject({ access_token: "ocra_cli_a2", refresh_token: "ocra_ref_r2" });
+  });
+});
+
+describe("ocra logout", () => {
+  it("waits for another process's refresh, so no session is left saved", async () => {
+    const m = machine({}, {});
+    const other = refreshingElsewhere(m.credentialsPath);
+    const io = { write: () => {} };
+    expect(await loginCommand("logout", [], io, io, m.deps)).toBe(0);
+    await other;
+    expect(existsSync(m.credentialsPath)).toBe(false);
   });
 });
 
