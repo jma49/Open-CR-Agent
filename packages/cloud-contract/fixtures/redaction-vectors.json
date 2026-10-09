@@ -49,7 +49,23 @@
     { "line": "password = \"hunter2hunter2\"", "secret": "hunter2hunter2" },
     { "line": "\"apiKey\": \"live_51HxYz\",", "secret": "live_51HxYz" },
     { "line": "DB_PASSWORD: 'correct horse battery'", "secret": "correct horse battery" },
-    { "line": "client_secret='abc123def'", "secret": "abc123def" }
+    { "line": "client_secret='abc123def'", "secret": "abc123def" },
+    { "line": "password: hunter2", "secret": "hunter2" },
+    { "line": "  db_password: s3cr3t-Pass # staging", "secret": "s3cr3t-Pass" },
+    { "line": "PGPASSWORD=pgpass42 psql -h db.internal", "secret": "pgpass42" },
+    { "line": "export API_TOKEN=tok3n-value", "secret": "tok3n-value" },
+    { "line": "curl -u admin:S3cretPass! https://api.example.com/v1", "secret": "S3cretPass!" },
+    { "line": "curl --user deploy:hunter22 https://example.com", "secret": "hunter22" },
+    { "line": "-H \"Authorization: Bearer abc123def456\"", "secret": "abc123def456" },
+    { "line": "Authorization: Basic dXNlcjpwYXNz", "secret": "dXNlcjpwYXNz" },
+    {
+      "line": "-----BEGIN PGP PRIVATE KEY BLOCK-----\nlQOYBGXabc\n-----END PGP PRIVATE KEY BLOCK-----",
+      "secret": "lQOYBGXabc"
+    },
+    {
+      "line": "client.auth(\"key_v1_0123456789abcdef0123456789abcdef0123456789abcdef\")",
+      "secret": "0123456789abcdef0123456789abcdef"
+    }
   ],
   "keep": [
     "const total = items.reduce((n, i) => n + i.price, 0);",
@@ -63,6 +79,16 @@
     "const ALPHABET = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef\";",
     "// https://github.com/jma49/open-cr-agent/blob/main/docs/adr/0028-findings.md",
     "import { x } from '../../packages/core/src/pipeline/output-schema.ts';",
-    "export async function fetchAccountMemoryForRepository(repoHash: string) {}"
+    "export async function fetchAccountMemoryForRepository(repoHash: string) {}",
+    "password: string",
+    "def login(self, password: str):",
+    "token: process.env.API_TOKEN",
+    "apiKey: config.apiKey,",
+    "secret: z.string(),",
+    "return {\"token\": token}",
+    "password: ${{ secrets.DB_PASSWORD }}",
+    "PASSWORD=$DB_PASSWORD",
+    "Bearer authentication sends the token in a header.",
+    "git branch -u origin/main"
   ]
 }

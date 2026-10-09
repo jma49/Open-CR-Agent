@@ -690,6 +690,13 @@ export function redact(text: string): {
 export const REDACTED = "[redacted]";
 
 // @public
+export function redactField(value: string, max?: number): {
+    text: string;
+    redacted: boolean;
+    truncated: boolean;
+};
+
+// @public
 export const refreshRequestSchema: z.ZodObject<{
     refresh_token: z.ZodString;
 }, z.core.$strip>;

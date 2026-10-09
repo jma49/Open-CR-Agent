@@ -63,7 +63,7 @@ export {
   providerEntrySchema,
   providersAnswerSchema,
 } from "./providers.js";
-export { REDACTED, redact } from "./redact.js";
+export { REDACTED, redact, redactField } from "./redact.js";
 export {
   FINGERPRINT,
   type ReviewerCounts,

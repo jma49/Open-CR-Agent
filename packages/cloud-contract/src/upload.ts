@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_FIELD } from "./limits.js";
 import {
   REPO_HASH,
   REVIEWER_ID,
@@ -40,22 +41,23 @@ const line = z.number().int().min(0).lt(10_000_000).nullable().catch(null);
 
 /**
  * A finding as the CLI shares it when the account shares findings
- * (ADR-0028, 2): already redacted and bounded (redact, MAX_FIELD), which
- * the server does again. One that fails is left out on its own.
+ * (ADR-0028, 2): each text field cut at MAX_FIELD and redacted
+ * (redactField), which the server does again. One that fails is left out
+ * on its own; a longer optional field reads as absent.
  */
 export const sharedFindingSchema = z.object({
   fingerprint: z.string().regex(FINGERPRINT),
   reviewer: z.string().regex(REVIEWER_ID),
   severity: severitySchema,
-  category: z.string().nullable().catch(null),
+  category: z.string().max(MAX_FIELD).nullable().catch(null),
   verification: verificationSchema.nullable().catch(null),
   file: z.string().min(1).max(1024),
   lineStart: line,
   lineEnd: line,
-  title: z.string(),
-  body: z.string(),
-  suggestion: z.string().nullable().catch(null),
-  code: z.string().nullable().catch(null),
+  title: z.string().max(MAX_FIELD),
+  body: z.string().max(MAX_FIELD),
+  suggestion: z.string().max(MAX_FIELD).nullable().catch(null),
+  code: z.string().max(MAX_FIELD).nullable().catch(null),
   // Set when the CLI replaced a secret-looking string or cut a long field.
   redacted: z.literal(true).optional().catch(undefined),
   truncated: z.literal(true).optional().catch(undefined),

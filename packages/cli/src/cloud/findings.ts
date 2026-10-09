@@ -1,8 +1,7 @@
 import {
-  MAX_FIELD,
   MAX_FINDINGS,
   MAX_TOTAL_BYTES,
-  redact,
+  redactField,
   type SharedFinding,
 } from "@open-cr-agent/cloud-contract";
 import type { Finding, ReviewReport } from "@open-cr-agent/core";
@@ -34,13 +33,10 @@ function share(f: Finding): SharedFinding {
   let redacted = false;
   let truncated = false;
   const text = (value: string): string => {
-    const r = redact(value);
+    const r = redactField(value);
     redacted ||= r.redacted;
-    if (r.text.length <= MAX_FIELD) return r.text;
-    truncated = true;
-    const cut = r.text.slice(0, MAX_FIELD);
-    // Never leave half of a surrogate pair at the cut.
-    return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut;
+    truncated ||= r.truncated;
+    return r.text;
   };
   const shared: SharedFinding = {
     fingerprint: f.fingerprint,

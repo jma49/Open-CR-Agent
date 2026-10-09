@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import upload from "../fixtures/upload.json" with { type: "json" };
+import { MAX_FIELD } from "./limits.js";
 import { reviewUploadSchema, sharedFindingSchema, uploadAnswerSchema } from "./upload.js";
 
 const { about: _, ...body } = upload;
@@ -83,6 +84,18 @@ describe("a shared finding", () => {
       suggestion: null,
       redacted: undefined,
     });
+  });
+
+  it("holds each text field to MAX_FIELD: a longer title or body is refused, the rest read as absent", () => {
+    const long = "x".repeat(MAX_FIELD + 1);
+    expect(
+      sharedFindingSchema.safeParse({ ...finding, title: "x".repeat(MAX_FIELD) }).success,
+    ).toBe(true);
+    for (const key of ["title", "body"] as const)
+      expect(sharedFindingSchema.safeParse({ ...finding, [key]: long }).success, key).toBe(false);
+    expect(
+      sharedFindingSchema.parse({ ...finding, category: long, suggestion: long, code: long }),
+    ).toMatchObject({ category: null, suggestion: null, code: null });
   });
 });
 

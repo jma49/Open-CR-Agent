@@ -84,6 +84,17 @@ describe("sharedFindings", () => {
     expect(emoji?.body).toBe("x".repeat(MAX_FIELD - 1));
   });
 
+  it("cuts a field before redacting it, so what lies past the cap is never read", () => {
+    const secret = `ghp_${"Ab3dE5gH7jK9mN1pQ2rS4tU6vW8xY0z".repeat(2).slice(0, 36)}`;
+    const [shared] = sharedFindings({
+      findings: [finding({ existingCode: `${"x ".repeat(MAX_FIELD)}${secret}` })],
+    }).findings;
+    expect(shared?.code).toHaveLength(MAX_FIELD);
+    expect(shared?.truncated).toBe(true);
+    // Nothing sent was replaced, so the finding is not marked redacted.
+    expect(shared).not.toHaveProperty("redacted");
+  });
+
   it("sends at most 200 findings and 256 KB of text, and counts what it left", () => {
     const many = Array.from({ length: MAX_FINDINGS + 5 }, () => finding());
     expect(sharedFindings({ findings: many })).toMatchObject({ left: 5 });
