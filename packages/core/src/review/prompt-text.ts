@@ -7,7 +7,9 @@
 // - Sections are tagged `<ocra_NAME>`. Ordinary code does not use that
 //   prefix, so HTML and XML in reviewed files reach the model unchanged.
 // - Every `<ocra_` or `</ocra_` in data becomes `‹ocra_`, including
-//   look-alike brackets, spaces, case and invisible characters in between.
+//   look-alike brackets and letters, compatibility forms, spaces, case and
+//   invisible characters in between. A bracket that ends a piece of data
+//   becomes `‹` too, so two pieces cannot form a tag where ocra joins them.
 // - The rule is structural: a section's body is PromptText, which only
 //   `data()` (neutralized) and `ocraText()` or `section()` (ocra's own)
 //   produce, so a builder cannot embed raw text by accident.
@@ -35,29 +37,80 @@ const SECTIONS = [
 ] as const;
 export type SectionName = (typeof SECTIONS)[number];
 
-// Characters a tokenizer may drop or a model may read past: whitespace, soft
-// hyphen, joiners, direction marks and overrides, variation selectors.
-const INVISIBLE =
-  "[\\s\\u00ad\\u034f\\u061c\\u115f\\u1160\\u17b4\\u17b5\\u180b-\\u180f\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u206f\\ufe00-\\ufe0f\\ufeff]*";
-// `<` and the characters that render like it. `‹` is left out: it is what
-// neutralized tags become.
-const OPEN_BRACKET = "[<\\u02c2\\u2329\\u27e8\\u3008\\ufe64\\uff1c]";
-// Fullwidth, Cyrillic and Greek letters that render like the Latin ones.
+// Characters a tokenizer may drop or a model may read past: whitespace,
+// every default-ignorable code point (joiners, direction marks, variation
+// selectors, tag characters, Hangul fillers) and other format characters.
+const INVISIBLE = /^[\s\p{Default_Ignorable_Code_Point}\p{Cf}]$/u;
+// `<` and what renders like it, in the text as written: the brackets whose
+// compatibility form (NFKC) is one of these are listed too. `‹` is left out:
+// it is what neutralized tags become.
+const OPEN_BRACKET =
+  /[<\u02c2\u1438\u16b2\u2329\u27e8\u276c\u276e\u2770\u29fc\u3008\ufe3f\ufe64\uff1c\u{1d236}]/gu;
+// The rest of a tag is matched one code point at a time on its compatibility
+// form, so fullwidth, mathematical, circled, small and Roman numeral letters
+// read as the ASCII ones; the classes add look-alikes from other scripts.
+const SLASH = /^[/\u2044\u2215\u2571\u29f8]$/u;
 const PREFIX = [
-  "[oｏ\u043e\u03bf]",
-  "[cｃ\u0441\u03f2]",
-  "[rｒ]",
-  "[aａ\u0430\u03b1]",
-  "[_＿]",
-].join(INVISIBLE);
-const SLASH = "[/\\u2044\\u2215\\uff0f]";
-// One run of invisible characters before an optional slash, never two
-// adjacent ones: two let a failed match retry every split of a long run,
-// and 100k spaces after a "<" took 16 s.
-const TAG = new RegExp(`${OPEN_BRACKET}${INVISIBLE}(?:(${SLASH})${INVISIBLE})?${PREFIX}`, "giu");
+  /^[o\u03bf\u043e\u0585\u1d0f]$/iu,
+  /^[c\u03c2\u03f2\u0441\u1d04]$/iu,
+  /^[r\u0280\u0433\u1d26]$/iu,
+  /^[a\u0251\u03b1\u0430\u1d00]$/iu,
+  /^_$/u,
+];
 
 export function data(text: string): PromptText {
-  return text.replace(TAG, (_, slash?: string) => `‹${slash ? "/" : ""}ocra_`) as PromptText;
+  let out = "";
+  let at = 0;
+  for (const bracket of text.matchAll(OPEN_BRACKET)) {
+    if (bracket.index < at) continue;
+    const tag = tagAfter(text, bracket.index + bracket[0].length);
+    if (tag === undefined) continue;
+    out += text.slice(at, bracket.index);
+    if (tag === "cut") {
+      // The text ends inside a tag that the next piece of data, wherever
+      // ocra joins two, could finish: the bracket alone is enough.
+      out += "‹";
+      at = bracket.index + bracket[0].length;
+    } else {
+      out += `‹${tag.slash ? "/" : ""}ocra_`;
+      at = tag.end;
+    }
+  }
+  return (out + text.slice(at)) as PromptText;
+}
+
+// Linear: a scan that fails stops at the first character no tag can hold,
+// and the invisible run it crossed holds no bracket to start another.
+function tagAfter(text: string, from: number): { end: number; slash: boolean } | "cut" | undefined {
+  let at = skipInvisible(text, from);
+  if (at === text.length) return "cut";
+  const slash = SLASH.test(foldedAt(text, at));
+  if (slash) at = skipInvisible(text, at + charLength(text, at));
+  for (const letter of PREFIX) {
+    if (letter !== PREFIX[0]) at = skipInvisible(text, at);
+    if (at === text.length) return "cut";
+    if (!letter.test(foldedAt(text, at))) return undefined;
+    at += charLength(text, at);
+  }
+  return { end: at, slash };
+}
+
+function skipInvisible(text: string, from: number): number {
+  let at = from;
+  while (at < text.length && INVISIBLE.test(String.fromCodePoint(text.codePointAt(at) ?? 0))) {
+    at += charLength(text, at);
+  }
+  return at;
+}
+
+function charLength(text: string, at: number): number {
+  return (text.codePointAt(at) ?? 0) > 0xffff ? 2 : 1;
+}
+
+function foldedAt(text: string, at: number): string {
+  const char = String.fromCodePoint(text.codePointAt(at) ?? 0);
+  const folded = char.normalize("NFKC");
+  return [...folded].length === 1 ? folded : char;
 }
 
 // For text ocra itself writes: instructions and labels, never data.
