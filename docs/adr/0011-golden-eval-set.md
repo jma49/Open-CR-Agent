@@ -7,7 +7,7 @@
 
 `ocra-eval` replays one dataset, AACR-Bench (Alibaba, downloaded from Hugging Face on first use). Its precision is semantic matches divided by reported findings (`metrics.ts`), and its references are the comments human reviewers happened to leave. A real issue nobody commented on therefore counts against ocra, so AACR-Bench understates precision, the metric ADR-0004 optimizes. 40.0% of its issues are maintainability and readability, which ocra does not report by design; that caps recall at 57.7% (`ocra-eval ceiling`). Its comments labeled incorrect are meant for evaluating comment filters and are not used (`dataset.ts`), so nothing marks a place where a finding would be wrong. Its content, format and availability are outside our control.
 
-Ten pull requests wait for an eval (#85, #86, #103, #126, #142–#146, #150; `docs/handoff.md`), and the model budget is finite. Deciding them needs a small, fixed, repeatable set on which one run can tell a regression from noise.
+Ten pull requests wait for an eval (#85, #86, #103, #126, #142–#146, #150; the maintainers' private notes), and the model budget is finite. Deciding them needs a small, fixed, repeatable set on which one run can tell a regression from noise.
 
 ## Decision
 

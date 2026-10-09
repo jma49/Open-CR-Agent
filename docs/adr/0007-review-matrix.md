@@ -27,3 +27,7 @@ Paths that force reviewers onto a bundle (for example, security on `auth/`) are 
 ## Implementation notes (2026-09-27)
 
 - A fourth skip reason, `task_limit`: past `maxTasks` (default 60) the least important cells are not run (`--ultra`'s second samples first, then reviewers in reverse registration order), and their files are reported as not reviewed.
+
+## Implementation notes (2026-10-09)
+
+- A fifth skip reason, `no_guidelines`: a reviewer whose scope sets `requiresGuidelines` (today `agents-md`) is skipped when the run has no repository guidelines (no `AGENTS.md`, or an empty one), since it would have nothing to check against.

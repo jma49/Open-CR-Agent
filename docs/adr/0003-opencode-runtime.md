@@ -1,6 +1,6 @@
 # ADR-0003: OpenCode as agent runtime behind an AgentRuntime contract
 
-- Status: accepted; tool delivery refined by [ADR-0005](0005-review-tools-over-mcp.md)
+- Status: accepted; tool delivery refined by [ADR-0005](0005-review-tools-over-mcp.md); second runtime: [ADR-0020](0020-direct-runtime.md); OpenCode made optional by [ADR-0023](0023-optional-opencode-runtime.md)
 - Date: 2026-09-24
 
 ## Context
@@ -27,3 +27,10 @@ The pipeline talks only to the `AgentRuntime` contract in `core`.
 - Fast start with a mature runtime and many providers.
 - Token overhead and API churn are the main risks; both are contained by the contract. Pi is the fallback runtime.
 - Requires the OpenCode binary at run time.
+
+## Implementation notes (2026-10-09)
+
+The decision to run tasks on OpenCode behind `AgentRuntime` stands; two consequences no longer hold:
+
+- The second runtime is `direct` (ADR-0020), which calls OpenAI-compatible endpoints itself, not Pi.
+- The OpenCode binary is needed only when a review uses the `opencode` runtime: `runtime-opencode` is an optional dependency of the CLI (ADR-0023).

@@ -28,3 +28,7 @@ Decided with Claude Fable 5.1, gated by that spike.
 - Live-tested remains Gemini on Vertex and the Gemini API; declared providers are "tested against a fake server" in the manual until someone runs one live.
 - A declared id that OpenCode's catalog also knows replaces that provider for the run. The manual tells users to pick an id of their own.
 - Spike 0002 also found that every run lets OpenCode fetch its model catalog and try to install its plugin package from npm. The security page now says so. Whether ocra should block that install is a separate decision.
+
+## Implementation notes (2026-10-09)
+
+- The refused key-variable prefixes also include `GH_`, `AWS_` and `AZURE_`, so a configuration cannot send a GitHub CLI or cloud credential to an endpoint either (`packages/cli/src/config/schema.ts`).

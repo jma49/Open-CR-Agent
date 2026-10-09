@@ -44,3 +44,11 @@ Account settings apply in `--pr` and `--mr` runs as a layer under the base commi
 - **Plugins only by built-in toggles.** Safe but short of the ask; the machine allowlist keeps third-party plugins possible with the user's consent on each machine.
 
 Reviewed with Claude Fable 5.1: accepted with pluginSettings bound to account-listed plugins, a machine-owned plugin install path, combined include/exclude/rules, lenient unknown keys, settings versions in the audit log, and `--plan` showing the effective merge.
+
+## Implementation notes (2026-10-09)
+
+The trust boundary stands; the layering shipped with two additions and the policy it cites does not exist yet:
+
+- **The full layer order**, highest first: command-line flags; the configuration, which is the repository's file or `--config`, what it `extends`, and the `OCRA_MODEL_*` and `OCRA_EFFORT_*` variables; account settings; built-in defaults. `ocra review --plan` names each setting's source.
+- **The account may also turn on `ultra`**, the default for `--ultra` when the command line leaves it out. It is not a configuration key, so a repository cannot turn it off: an account's `ultra` sits above the repository, the one account setting that can raise a run's cost past what the repository chose. Where `maxCostUsd` is set it still bounds the run, the repository's value winning.
+- **No organization policy caps any layer yet.** ADR-0022 is proposed, not implemented; read Decision 1's "an organization policy (ADR-0022) caps all of them" as "will cap all of them once ADR-0022 lands".

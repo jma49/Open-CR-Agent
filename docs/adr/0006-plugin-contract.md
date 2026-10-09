@@ -28,3 +28,10 @@ External plugins are npm packages resolved from the repository's own dependencie
 - New platforms, runtimes, reviewers, rule packs and telemetry ship without CLI changes.
 - Tools registered by plugins are served to agents over MCP (ADR-0005).
 - Loading plugins executes code named in repository configuration. That is acceptable for local runs on one's own repository; CI integration (M3) must read configuration from the trusted base branch, not from the pull request.
+
+## Implementation notes (2026-10-09)
+
+The contract stands; the lists in it grew:
+
+- Built-in plugins today: `vcs-local`, `vcs-github`, `vcs-gitlab`, `runtime-opencode`, `runtime-direct`, `reviewer-correctness`, `reviewer-security`, `reviewer-performance`, `reviewer-docs`, `reviewer-agents-md` and `session-jsonl` (the reviewers and `session-jsonl` in `packages/core/src/plugin/builtin.ts`, the others in their own packages).
+- Plugins also come from an ocra Cloud account, loaded only from what the machine allowed into `~/.config/ocra/plugins/` and never from the reviewed checkout (ADR-0027, 3).

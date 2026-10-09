@@ -28,3 +28,8 @@ ADR-0024 made the upload counts-only by default, with content opt-in. ADR-0027 p
 - **Memory only in the repository:** keeps one source, but leaves the web unable to do what the CLI does.
 
 Reviewed with Claude Fable 5.1: accepted with the switch labeled for code, redaction before upload, a per-account salt so account memory matches across machines and the App, union memory semantics with the source in the report, `ocra memory add --cloud` dropped, a cloud export schema instead of report v1, and the threat model's cloud section.
+
+## Implementation notes (2026-10-09)
+
+- Per-reviewer counts carry tasks, failed tasks, findings by severity, cost, and two lifecycle counts, `fixed` and `dismissed` (`reviewerCountsSchema` in `packages/cloud-contract/src/upload.ts`). "Still open" and "carried over" from Decision 1 were not added; the review-wide counts and the findings, when shared, cover what the web shows. Adding them is a backward-compatible change to the upload schema.
+- The Context's "ADR-0024 made the upload counts-only by default" describes what shipped, not ADR-0024's text; ADR-0024's implementation notes record the difference.

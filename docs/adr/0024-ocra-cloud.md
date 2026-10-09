@@ -1,6 +1,6 @@
 # ADR-0024: ocra Cloud, an account-based product on the open engine
 
-- Status: accepted
+- Status: accepted; upload scope amended by [ADR-0028](0028-findings-upload-and-cloud-memory.md)
 - Date: 2026-10-04
 
 ## Context
@@ -63,3 +63,11 @@ Reviewed with Claude Fable 5.1, whose conditions on custody, upload scope, phasi
 - Organizations (teams, shared keys, policy) arrive in Phase 2 with the App, which installs on an organization; Phase 1 is single-user.
 - Open questions for the phases' own ADRs: worker isolation, webhook verification and installation tokens for the hosted App (Phase 2); the key management service and regions; billing (Phase 3).
 - With one maintainer, the service can stop; export and deletion in the data policy keep users from being trapped, and the engine keeps working without the service.
+
+## Implementation notes (2026-10-09)
+
+The open core and the gateway stand as decided; the upload shipped narrower than Decision 4 describes, and the policy it cites does not exist yet:
+
+- **The default upload carries counts only, and no repository label.** Without the account's switch on, a review sends its run id, the repository's salted hash, its source, risk tier, verdict and completeness, findings by severity, files reviewed and not reviewed, tasks, tokens, cost, duration and the ocra version, and, since ADR-0028, per-reviewer counts, verification counts and how many earlier findings were fixed or dismissed. No per-finding field, no title and no repository name or label leaves the machine (`packages/cloud-contract/src/upload.ts`).
+- **Per-finding data goes only when the account shares findings** (ADR-0028, 2): fingerprint, reviewer, category, severity, verification, file, lines, title, body, suggestion and the quoted code, redacted before upload. The text of dismissals and replies is never uploaded.
+- **No organization policy caps the gateway or the configuration yet.** ADR-0022 is proposed, not implemented; read Decision 3's "an organization policy (ADR-0022) still caps both" as "will cap both once ADR-0022 lands".

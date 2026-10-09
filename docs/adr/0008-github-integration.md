@@ -1,6 +1,6 @@
 # ADR-0008: GitHub integration
 
-- Status: accepted; pull requests from forks: [ADR-0013](0013-fork-pull-requests.md)
+- Status: accepted; trigger amended by [ADR-0013](0013-fork-pull-requests.md) (`pull_request_target` for pull requests from forks)
 - Date: 2026-09-26
 
 ## Context
@@ -28,3 +28,7 @@ The decision stands; these parts of it changed or were added later:
 - When GitHub rejects an inline position, no review is posted unless `REQUEST_CHANGES` is on (then it is posted without comments); the findings move to the summary.
 - Thread resolution and dismissals by reviewers are implemented (ADR-0009, and #107 for which replies count).
 - With `REQUEST_CHANGES` on, ocra requests changes once while the verdict blocks and dismisses its own request when it no longer does (#110).
+
+## Implementation notes (2026-10-09)
+
+- The trigger is no longer only `pull_request`: ADR-0013 reviews pull requests from forks on `pull_request_target`, with the base branch checked out and nothing from the pull request run. The rule this ADR set, never check out and run the head with secrets, still holds.

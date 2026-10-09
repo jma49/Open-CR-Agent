@@ -44,6 +44,6 @@ GitLab also adds a risk GitHub does not have. A comment line that starts with `/
 ## Consequences
 
 - One copy of the trust rules, tested per platform from one file. A third platform (Gitea, Bitbucket) maps its API and runs the same suite.
-- A sixth published package, and a seventh with GitLab. npm lets a workflow publish a package with trusted publishing only once the package exists. So each new package is published once by hand, and its trusted publisher configured, before the release that first includes it (`docs/releasing.md`).
+- A sixth published package, and a seventh with GitLab. npm lets a workflow publish a package with trusted publishing only once the package exists. So each new package is published once by hand, and its trusted publisher configured, before the release that first includes it (the release runbook in the maintainers' private notes).
 - `@open-cr-agent/vcs-github` no longer exports the summary rendering and state. They are `@open-cr-agent/vcs-platform`'s, a change for anyone who imported them from the 0.1 package.
 - GitHub's behavior is unchanged except for points 3 and 4. The existing GitHub tests pass with only their imports changed.
