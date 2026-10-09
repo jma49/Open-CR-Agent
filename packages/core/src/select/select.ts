@@ -42,8 +42,24 @@ const isGenerated = picomatch(GENERATED_PATTERNS, globOptions);
 const isMigration = picomatch(MIGRATION_PATTERNS, globOptions);
 const nonReviewableExtensions = new Set(NON_REVIEWABLE_EXTENSIONS);
 
+// The raw path is matched too: NFKC can fold a character into "/", which a
+// pattern's "*" matches only in the raw path.
 export function isSecretPath(path: string): boolean {
-  return isSecret(path);
+  return isSecret(path) || isSecret(foldPath(path));
+}
+
+const IGNORABLE = /\p{Default_Ignorable_Code_Point}/gu;
+
+// A case-insensitive file system opens a file under any name that folds to
+// the same as its own. APFS normalizes and applies full Unicode case folding,
+// so a Kelvin sign opens "k", a long s "s", "ß" "ss" and a ligature its
+// letters; HFS+ also skips some invisible characters. The access policy
+// compares this form, which folds the ASCII names it refuses at least as far,
+// so that no spelling of such a name passes. NFKC takes the Kelvin sign, the
+// long s and ligatures to ASCII; upper-casing expands "ß" (and "ẞ", once
+// lower-cased), which lower-casing keeps.
+export function foldPath(path: string): string {
+  return path.normalize("NFKC").replace(IGNORABLE, "").toLowerCase().toUpperCase().toLowerCase();
 }
 
 export function selectFiles(
@@ -67,7 +83,7 @@ function exclusionReason(
 ): ExclusionReason | undefined {
   const path = diff.newPath;
   if (diff.isBinary) return "binary";
-  if (isSecret(diff.oldPath) || isSecret(path)) return "secret";
+  if (isSecretPath(diff.oldPath) || isSecretPath(path)) return "secret";
   if (diff.kind === "deleted") return "deleted";
   if (isUserExcluded(path)) return "user_exclude";
 

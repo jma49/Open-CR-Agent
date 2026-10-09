@@ -1,4 +1,14 @@
-import { cp, lstat, mkdtemp, open, readFile, readlink, realpath, rm } from "node:fs/promises";
+import {
+  cp,
+  lstat,
+  mkdtemp,
+  open,
+  readdir,
+  readFile,
+  readlink,
+  realpath,
+  rm,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
@@ -237,15 +247,18 @@ function relativeInside(root: string, absolute: string): string | undefined {
 }
 
 // Reads what git would store, as range and commit mode do: a symlink reads as
-// its target path and a path through a symlinked directory does not exist.
-// Following links would let a committed `notes.txt -> .env` read a file the
-// core access policy refuses by name.
+// its target path, a path through a symlinked directory does not exist, and
+// neither does another spelling of a file's name. Following links would let a
+// committed `notes.txt -> .env` read a file the core access policy refuses by
+// name; so would a spelling that a case-insensitive file system folds to it.
 async function readWorkingTreeFile(root: string, inside: string): Promise<string | undefined> {
   try {
     const parent = dirname(inside);
     const realParent = await realpath(resolve(root, parent));
     if (realParent !== resolve(await realpath(root), parent)) return undefined;
-    const path = join(realParent, basename(inside));
+    const name = basename(inside);
+    if (!(await isListed(realParent, name))) return undefined;
+    const path = join(realParent, name);
     const stat = await lstat(path);
     if (stat.isSymbolicLink()) return await readlink(path, "utf8");
     if (!stat.isFile()) return undefined;
@@ -263,6 +276,15 @@ async function readWorkingTreeFile(root: string, inside: string): Promise<string
     if (code === "ENOENT" || code === "ENOTDIR") return undefined;
     throw error;
   }
+}
+
+// Up to Unicode normalization: git on macOS reports names precomposed,
+// whatever their form on disk.
+async function isListed(dir: string, name: string): Promise<boolean> {
+  const entries = await readdir(dir);
+  if (entries.includes(name)) return true;
+  const wanted = name.normalize("NFC");
+  return entries.some((entry) => entry.normalize("NFC") === wanted);
 }
 
 function request(

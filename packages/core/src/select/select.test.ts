@@ -83,6 +83,24 @@ describe("selectFiles", () => {
     expect(reasonFor(diff(path))).toBe(expected);
   });
 
+  // A case-insensitive file system (APFS by default) opens each of these as
+  // the secret file whose name it folds to.
+  it.each([
+    ["a Kelvin sign", "certs/server.\u212Aey"],
+    ["a long s", "deploy/id_r\u017Fa"],
+    ["a sharp s", "web/.htpa\u00DFwd"],
+    ["a capital sharp s", "web/.htpa\u1E9Ewd"],
+    ["a ligature", ".kube/con\uFB01g"],
+    ["an ignorable character", "certs/server.ke\u200Cy"],
+  ])("excludes a secret name spelled with %s as a secret", (_, path) => {
+    expect(reasonFor(diff(path))).toBe("secret");
+    expect(reasonFor(diff("notes.txt", { kind: "renamed", oldPath: path }))).toBe("secret");
+  });
+
+  it("selects non-ASCII names that fold to no secret name", () => {
+    expect(reasonFor(diff("src/stra\u00DFe.ts"))).toBe("selected");
+  });
+
   it("excludes binary files first", () => {
     expect(reasonFor(diff("src/.env", { isBinary: true }))).toBe("binary");
   });

@@ -1,4 +1,5 @@
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   realpathSync,
@@ -19,6 +20,18 @@ import { LocalGitAdapter, type LocalTarget } from "./local-adapter.js";
 const outsides: string[] = [];
 const scratch = scratchRepos("ocra-local-");
 const repo = () => scratch.create();
+
+// Whether the temporary directory's file system is case- and
+// normalization-insensitive, as APFS is by default: one name opens another.
+const foldsNames = (() => {
+  const dir = mkdtempSync(join(tmpdir(), "ocra-fold-"));
+  try {
+    writeFileSync(join(dir, "cafe\u0301"), "");
+    return existsSync(join(dir, "CAF\u00C9"));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+})();
 
 async function changes(cwd: string, target: LocalTarget) {
   const diffs = await new LocalGitAdapter({ cwd, target }).getDiff();
@@ -238,6 +251,21 @@ describe("LocalGitAdapter.readFile", () => {
     const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
     expect(await adapter.readFile("..notes.md")).toBe("ok\n");
   });
+
+  it.skipIf(!foldsNames)(
+    "reads a file only under its own name, not one the file system folds to it",
+    async () => {
+      const r = repo();
+      r.write("certs/server.key", "KEY\n");
+      r.write("cafe\u0301.md", "nfd\n");
+      const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
+      expect(await adapter.readFile("certs/server.key")).toBe("KEY\n");
+      expect(await adapter.readFile("certs/SERVER.KEY")).toBeUndefined();
+      expect(await adapter.readFile("certs/server.\u212Aey")).toBeUndefined();
+      // git on macOS reports names precomposed whatever form they have on disk.
+      expect(await adapter.readFile("caf\u00E9.md")).toBe("nfd\n");
+    },
+  );
 });
 
 describe("LocalGitAdapter.searchCode", () => {

@@ -42,6 +42,38 @@ describe("reviewContext", () => {
     expect(() => context.readDiff("./config/settings.txt")).toThrow(AccessDeniedError);
   });
 
+  // A case-insensitive file system (APFS by default) opens each of these as
+  // the file whose name it folds to.
+  it.each([
+    ["a Kelvin sign", "certs/server.\u212Aey"],
+    ["a long s", "deploy/id_r\u017Fa"],
+    ["a sharp s", "web/.htpa\u00DFwd"],
+    ["a ligature", ".kube/con\uFB01g"],
+    ["an ignorable character", ".gi\u200Ct/config"],
+  ])("refuses a secret or git path spelled with %s", async (_, path) => {
+    const vcs = fakeVcs();
+    const context = reviewContext(vcs, diffs);
+    await expect(context.readFile(path)).rejects.toThrow(AccessDeniedError);
+    expect(vcs.readFile).not.toHaveBeenCalled();
+  });
+
+  it("refuses a file renamed away from a secret name, under any spelling", async () => {
+    const renamed = [
+      { oldPath: ".env.production", newPath: "config/settings.txt", patch: "p" },
+      { oldPath: "certs/server.\u212Aey", newPath: "notes.txt", patch: "p" },
+    ] as FileDiff[];
+    const context = reviewContext(fakeVcs(), renamed);
+    await expect(context.readFile("Config/SETTINGS.txt")).rejects.toThrow(AccessDeniedError);
+    await expect(context.readFile("notes.txt")).rejects.toThrow(AccessDeniedError);
+  });
+
+  it("reads non-ASCII names that fold to no secret or git name", async () => {
+    const context = reviewContext(fakeVcs(), diffs);
+    await expect(context.readFile("src/stra\u00DFe.ts")).resolves.toBe(
+      "content of src/stra\u00DFe.ts",
+    );
+  });
+
   it("reads ordinary files through the adapter with a normalized path", async () => {
     const vcs = fakeVcs();
     const context = reviewContext(vcs, diffs);

@@ -2,7 +2,7 @@ import { posix } from "node:path";
 import type { CodeMatch, ReviewContext } from "../contracts.js";
 import type { FileDiff } from "../domain.js";
 import { OcraError } from "../errors.js";
-import { isSecretPath } from "../select/select.js";
+import { foldPath, isSecretPath } from "../select/select.js";
 import type { VcsAdapter } from "../vcs.js";
 
 export class AccessDeniedError extends OcraError {
@@ -25,11 +25,15 @@ export function reviewContext(vcs: VcsAdapter, diffs: readonly FileDiff[]): Revi
   // A file renamed away from a secret name still holds the secret, and
   // selection already excludes it from review for that reason.
   const renamedSecrets = new Set(
-    diffs.filter((d) => d.newPath !== d.oldPath && isSecretPath(d.oldPath)).map((d) => d.newPath),
+    diffs
+      .filter((d) => d.newPath !== d.oldPath && isSecretPath(d.oldPath))
+      .map((d) => foldPath(d.newPath)),
   );
   const isReadable = (path: string) => {
     const normalized = normalize(path);
-    return normalized !== undefined && isAllowed(normalized) && !renamedSecrets.has(normalized);
+    return (
+      normalized !== undefined && isAllowed(normalized) && !renamedSecrets.has(foldPath(normalized))
+    );
   };
   const allowedPath = (path: string) => {
     const normalized = normalize(path);
@@ -68,8 +72,10 @@ export function reviewContext(vcs: VcsAdapter, diffs: readonly FileDiff[]): Revi
   };
 }
 
+// Names are compared folded: a case-insensitive file system opens a file
+// under every spelling that folds to its name.
 function isAllowed(normalized: string): boolean {
-  const segments = normalized.toLowerCase().split("/");
+  const segments = foldPath(normalized).split("/");
   return !segments.includes(".git") && !isSecretPath(normalized);
 }
 
