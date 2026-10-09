@@ -82,7 +82,7 @@ ocra review [options]
 | `--to <ref>` | 区间终点，默认 `HEAD`，必须配合 `--from` 使用 |
 | `--commit <sha>` | 审查单个 commit 相对其父 commit 的改动 |
 | `--format text\|json\|sarif` | 输出格式，默认 `text`。`sarif` 输出 [SARIF 2.1.0](#sarif-输出) |
-| `--output <file>` | 把结果写入文件，而不是输出到 stdout。文件整体替换；如果该路径本身，或仓库内途经的某个目录，是符号链接，则拒绝写入（退出码 `2`，在调用任何模型之前） |
+| `--output <file>` | 把结果写入文件，而不是输出到 stdout。文件整体替换；如果该路径本身，或仓库内途经的某个目录，是符号链接，则拒绝写入（退出码 `2`，在调用任何模型之前）；已存在但不是普通文件的路径同样拒绝。因此 `/dev/stdout`、命名管道和进程替换（`>(…)`）都不可用：要输出到 stdout，不加 `--output` 即可 |
 | `--pr <number>` | 审查一个 GitHub PR，见 [GitHub Pull Request](./github) |
 | `--repo <owner/name>` | `--pr` 所在的仓库（默认取 `GITHUB_REPOSITORY` 或 `origin`） |
 | `--mr <iid>` | 审查一个 GitLab Merge Request，见 [GitLab Merge Request](./gitlab) |
