@@ -48,13 +48,21 @@ function machine(refresh: () => Response, dueInMs: number) {
   return { token, warnings, refreshes: () => refreshes };
 }
 
-async function until(done: () => boolean): Promise<void> {
-  for (let i = 0; i < 200 && !done(); i += 1) await new Promise((r) => setTimeout(r, 10));
-}
+// How long a test waits for a renewal, in real time: renewing reads and
+// writes files, which a busy CI runner can hold up for long.
+const PATIENCE_MS = 15_000;
 
-/** The same, for a test whose timers are fake: turns of the event loop let the files be read. */
-async function untilIdle(done: () => boolean): Promise<void> {
-  for (let i = 0; i < 10_000 && !done(); i += 1) await new Promise((r) => setImmediate(r));
+/**
+ * Waits until `done`, a turn of the event loop at a time. The turns are
+ * immediates, which a test's fake timers leave alone; the deadline is the
+ * real clock's, which they leave alone too.
+ */
+async function until(done: () => boolean): Promise<void> {
+  const deadline = performance.now() + PATIENCE_MS;
+  while (!done()) {
+    if (performance.now() > deadline) throw new Error("gave up waiting for the renewal");
+    await new Promise((r) => setImmediate(r));
+  }
 }
 
 describe("the gateway token during a run", () => {
@@ -107,9 +115,9 @@ describe("the gateway token during a run", () => {
     m.token.start();
     for (let attempt = 1; attempt <= 4; attempt += 1) {
       await vi.advanceTimersByTimeAsync(RENEW_BEFORE_MS);
-      await untilIdle(() => m.refreshes() === attempt && vi.getTimerCount() === 1);
+      await until(() => m.refreshes() === attempt && vi.getTimerCount() === 1);
     }
-    await untilIdle(() => m.token.value !== "ocra_cli_first");
+    await until(() => m.token.value !== "ocra_cli_first");
     expect(m.token.value).toBe("ocra_cli_next");
     expect(m.warnings).toHaveLength(1);
   });
