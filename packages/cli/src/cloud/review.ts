@@ -1,6 +1,7 @@
 import type { ReviewSource } from "@open-cr-agent/cloud-contract";
 import { errorMessage, type MemoryEntry, type ReviewReport } from "@open-cr-agent/core";
 import type { Output } from "../io/output.js";
+import { UnreadableSecretError } from "../io/private-file.js";
 import { originRepository } from "../repository-id.js";
 import { readAccountSalt, saveAccountSalt } from "./account-salt.js";
 import { CloudClient, type CloudSessionLost, sessionLostReason } from "./client.js";
@@ -32,15 +33,31 @@ export function sessionLostWarning(
 }
 
 /**
- * Undefined when the saved session is gone; a failure to reach ocra Cloud is
- * one warning. The repository is the pull or merge request's when given,
- * else origin's.
+ * Undefined when the saved session is gone or this machine's salt cannot be
+ * read; a failure to reach ocra Cloud is one warning. The repository is the
+ * pull or merge request's when given, else origin's.
  */
 export async function prepareCloudReview(
   root: string,
   deps: CloudDeps,
   warn: (message: string) => void,
   repository?: string,
+): Promise<CloudReview | undefined> {
+  try {
+    return await prepare(root, deps, warn, repository);
+  } catch (error) {
+    // A hash under another salt would count the repository as a new one.
+    if (!(error instanceof UnreadableSecretError)) throw error;
+    warn(`${error.message}; this review sends nothing to ocra Cloud`);
+    return undefined;
+  }
+}
+
+async function prepare(
+  root: string,
+  deps: CloudDeps,
+  warn: (message: string) => void,
+  repository: string | undefined,
 ): Promise<CloudReview | undefined> {
   const id = repository ?? (await originRepository(root));
   let salt: string | null;

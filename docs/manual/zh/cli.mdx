@@ -191,7 +191,7 @@ ocra 不运行任何分析工具：你自己运行 Semgrep、CodeQL 或其他工
 
 每次审查（`--plan` 除外）都会写入 `.ocra/sessions/<id>/events.jsonl`（运行过程中逐行写入事件）和 `report.json`。运行 id `<id>` 出现在第一行进度输出、JSON 报告（`runId`）、摘要评论（"覆盖范围和花费"）和 SARIF 日志（`automationDetails.id`，`ocra/<id>`）里。每次任务尝试的事件在 `attempt` 里记录审查员读过的文件、搜索过的内容和最后的文字（有长度上限），以便分清一个文件是没打开过，还是读过但没发现问题；这些都不会写进报告。这个目录自带 `.gitignore`。
 
-`events.jsonl` 的每一行末尾都有一个 `seal`：用你自己的密钥计算的 HMAC。这个密钥由 ocra 在首次使用时生成，存放在 `~/.config/ocra/session-key`（`$XDG_CONFIG_HOME/ocra/`，Windows 上是 `%APPDATA%\ocra\`），只有你能读取。`--resume` 只读取 seal 有效的行，因此一个会话只能在写下它的那台机器、那个账户上恢复；删除这个密钥只会让之前的会话无法恢复，不影响其他功能。如果 ocra 无法生成密钥，审查会给出警告，这次的会话不能恢复。
+`events.jsonl` 的每一行末尾都有一个 `seal`：用你自己的密钥计算的 HMAC。这个密钥由 ocra 在首次使用时生成，存放在 `~/.config/ocra/session-key`（`$XDG_CONFIG_HOME/ocra/`，Windows 上是 `%APPDATA%\ocra\`），只有你能读取。`--resume` 只读取 seal 有效的行，因此一个会话只能在写下它的那台机器、那个账户上恢复；删除这个密钥只会让之前的会话无法恢复，不影响其他功能。如果 ocra 无法生成或读取密钥，审查会给出警告，这次的会话不能恢复；读不了的密钥文件（例如 `sudo ocra` 之后属于另一个用户）保持原样，不会被替换。
 
 ## ocra metrics
 
@@ -269,7 +269,7 @@ ocra logout                                   # 在服务器上结束会话，�
 
 - 仓库以其规范化地址 `https://host/owner/repo` 加盐后的 SHA-256 发送（去掉用户名、凭据、端口、末尾的 `/` 和 `.git`，统一大小写，因此 `git@host:owner/repo.git` 和 `ssh://git@host:22/owner/repo` 得到同一个值）。使用 `--pr` 或 `--mr` 时是平台上的仓库；本地审查用 origin（本地路径形式的远程按原样使用；没有 origin 时用目录）。服务器可以把同一仓库的审查归在一起，却不知道是哪个仓库。
 - 远程是 SSH 形式、或带端口或末尾 `/` 的仓库，在 0.5.0 之后得到过一次新的哈希（0.5.0 按原样计算）：旧的审查和 memory 要重新记录后才能对上。
-- 盐是随机值，保存在凭据旁的 `upload-salt`，所以每台机器的哈希不同。账户开启共享问题时，盐是账户的：登录时和每次审查前读取，保存在 `account-salt`（只有你可读），所以你的所有机器哈希一致。
+- 盐是随机值，保存在凭据旁的 `upload-salt`，所以每台机器的哈希不同。账户开启共享问题时，盐是账户的：登录时和每次审查前读取，保存在 `account-salt`（只有你可读），所以你的所有机器哈希一致。审查需要本机的盐却读不了 `upload-salt`（例如 `sudo ocra` 之后属于另一个用户）时，文件保持原样，审查给出警告，不向 ocra Cloud 发送任何内容。
 - `--no-upload` 跳过单次上传，`OCRA_CLOUD=off` 关闭 ocra Cloud；上传失败只会给出警告。
 
 **共享问题。** 在账户的 Settings 里打开"Send findings and the code they quote to ocra Cloud"（默认关闭）后，上传还会带上每个问题的指纹、审查员、级别、类别、核查结果、文件、行范围、标题、描述、建议和引用的代码，让网页可以完整展示这次审查。

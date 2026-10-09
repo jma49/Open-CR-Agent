@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { link, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
-import { errnoCode } from "@open-cr-agent/core/internal";
+import { errorMessage } from "@open-cr-agent/core";
+import { errnoCode, isNotFound } from "@open-cr-agent/core/internal";
 
 // Files only this user may read (the ocra Cloud session, the salts, the
 // session key), written
@@ -37,34 +38,43 @@ async function createPrivateFile(path: string, text: string): Promise<boolean> {
   }
 }
 
+/** The file holding a machine secret exists but cannot be read. */
+export class UnreadableSecretError extends Error {}
+
 /**
  * A random secret of this machine's user (32 bytes as hex) kept in the file,
  * made on first use. Two first uses at once agree on the one made first; a
- * file that holds no such secret is replaced.
+ * file that holds no such secret is replaced. One that cannot be read (owned
+ * by another user, say, after `sudo ocra`) may hold the secret still in use,
+ * so it is left as it is: UnreadableSecretError.
  */
 export async function machineSecret(path: string): Promise<string> {
   const existing = await readSecret(path);
-  if (existing !== "unreadable") {
+  if (existing !== "invalid") {
     if (existing) return existing;
     const fresh = randomBytes(32).toString("hex");
     if (await createPrivateFile(path, `${fresh}\n`)) return fresh;
     const made = await readSecret(path);
-    if (made && made !== "unreadable") return made;
+    if (made && made !== "invalid") return made;
   }
   const fresh = randomBytes(32).toString("hex");
   await writePrivateFile(path, `${fresh}\n`);
   return fresh;
 }
 
-async function readSecret(path: string): Promise<string | "unreadable" | undefined> {
+async function readSecret(path: string): Promise<string | "invalid" | undefined> {
   let text: string;
   try {
     text = await readFile(path, "utf8");
-  } catch {
-    return undefined;
+  } catch (error) {
+    if (isNotFound(error)) return undefined;
+    throw new UnreadableSecretError(
+      `${path} cannot be read (${errnoCode(error) ?? errorMessage(error)}); it was left as it is`,
+      { cause: error },
+    );
   }
   const secret = text.trim();
-  return /^[0-9a-f]{64}$/.test(secret) ? secret : "unreadable";
+  return /^[0-9a-f]{64}$/.test(secret) ? secret : "invalid";
 }
 
 async function writeTemp(path: string, text: string): Promise<string> {

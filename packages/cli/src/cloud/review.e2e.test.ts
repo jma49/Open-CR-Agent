@@ -1,6 +1,14 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { scratchRepos } from "@open-cr-agent/test-support";
 import { afterAll, describe, expect, it } from "vitest";
 import { originRepository } from "../repository-id.js";
@@ -124,6 +132,26 @@ describe("prepareCloudReview", () => {
     await prepareCloudReview(repo(), none.deps, (w) => quiet.push(w));
     expect(quiet).toEqual([]);
   });
+
+  // Windows ignores the mode, and root reads the file anyway.
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "sends nothing, and keeps this machine's salt, when it cannot read that salt",
+    async () => {
+      const m = machine({ "/api/account/salt": () => Response.json({ salt: null }) });
+      const path = join(dirname(m.credentialsPath), "upload-salt");
+      writeFileSync(path, `${SALT}\n`, { mode: 0o000 });
+      const warnings: string[] = [];
+      try {
+        expect(await prepareCloudReview(repo(), m.deps, (w) => warnings.push(w))).toBeUndefined();
+      } finally {
+        chmodSync(path, 0o600);
+      }
+      expect(readFileSync(path, "utf8")).toBe(`${SALT}\n`);
+      expect(warnings).toEqual([
+        expect.stringMatching(/cannot be read.*sends nothing to ocra Cloud/),
+      ]);
+    },
+  );
 
   it("hashes one repository alike whatever form its origin URL takes", async () => {
     const m = machine(sharing);
