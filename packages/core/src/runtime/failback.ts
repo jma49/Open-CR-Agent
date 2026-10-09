@@ -64,13 +64,16 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
       };
       for (const finding of outcome.findings) yield { type: "finding", taskId, finding, model };
 
-      // A cancelled attempt is neither finished nor the model's fault.
-      if (signal.aborted) return;
+      // Ended without an error, the attempt finished even if the task was
+      // stopped meanwhile, as when the spend its last report added reached
+      // the run's limit: the pipeline decides what that stop means.
       if (!outcome.error) {
         health.recordSuccess(model);
         yield doneEvent(taskId, ended);
         return;
       }
+      // A cancelled attempt is neither finished nor the model's fault.
+      if (signal.aborted) return;
       if (!outcome.error.retryable) {
         yield {
           type: "error",

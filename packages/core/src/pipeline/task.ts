@@ -72,8 +72,8 @@ export async function executeTask(
       const ending = iterator
         ? await collectAfterAbort(iterator, pending, result, callbacks)
         : undefined;
-      // The task's last usage report crossed the limit, and it finished
-      // anyway: its review is complete.
+      // The spend limit stopped the run, often through the task's own last
+      // usage report, after the task had finished: its review is complete.
       if (ending === "done" && runSignal.reason instanceof SpendLimitReached) {
         result.status = "completed";
         delete result.error;

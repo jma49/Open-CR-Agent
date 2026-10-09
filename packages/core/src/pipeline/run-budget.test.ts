@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { REVIEW_BUDGET_SHARE } from "../agent/budget.js";
 import type { AgentRuntime, CompletionRequest, Usage } from "../contracts.js";
+import { REVIEW_TOOLS } from "../review/tools.js";
+import { ChainRunner } from "../runtime/chain-runner.js";
 import { finding, patch, runtime, vcs } from "./run.fakes.js";
 import { reviewWithHooks } from "./run.js";
 
@@ -127,6 +129,36 @@ describe("review with a spend limit", () => {
       "spend limit of $2 reached: 2 review task(s) did not start; their files are reported as not reviewed",
     );
     expect(["review", "total"]).toContain(report.spendLimit?.reached);
+  });
+
+  // Through the ChainRunner both shipped runtimes use, which stops yielding
+  // once the task's signal aborts.
+  it("keeps a task complete when the report of its finished attempt spends the review share", async () => {
+    const runner = new ChainRunner(
+      { standard: ["p/m"] },
+      {
+        task: async () => ({
+          findings: [],
+          steps: 2,
+          toolCalls: [REVIEW_TOOLS.readDiff, REVIEW_TOOLS.taskDone],
+          text: "",
+          usage: usage(0.9),
+        }),
+        complete: async () => {
+          throw new Error("verify and judge are off");
+        },
+      },
+    );
+    const report = await reviewWithHooks({
+      vcs: vcs({}, files(1)),
+      runtime: { name: "fake", runTask: (spec, signal) => runner.runTask(spec, signal) },
+      bundling: perFile,
+      limits: { maxCostUsd: 1 },
+      stages: { verify: false, judge: false },
+    });
+    expect(report.tasks.map((t) => [t.status, t.error])).toEqual([["completed", undefined]]);
+    expect(report.coverage.map((c) => c.status)).toEqual(["reviewed"]);
+    expect(report.spendLimit).toEqual({ usd: 1, reached: "review" });
   });
 
   it("verifies and judges with the reserved rest", async () => {

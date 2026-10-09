@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { SpendLimitReached } from "../agent/budget.js";
 import type { AgentEvent, AgentRuntime, AgentTaskSpec } from "../contracts.js";
+import { REVIEW_TOOLS } from "../review/tools.js";
+import type { AttemptOutcome } from "../runtime/attempt.js";
+import { ChainRunner, type ModelAttempts } from "../runtime/chain-runner.js";
 import { executeTask } from "./task.js";
 
 const usage = {
@@ -48,7 +52,36 @@ function stoppingRuntime(): AgentRuntime {
   };
 }
 
+// Through the ChainRunner both shipped runtimes use, which stops yielding
+// once the task's signal aborts.
+function chainRuntime(task: ModelAttempts["task"]): AgentRuntime {
+  const runner = new ChainRunner(
+    { standard: ["p/m"] },
+    {
+      task,
+      complete: async () => {
+        throw new Error("no completions in these tests");
+      },
+    },
+  );
+  return { name: "fake", runTask: (spec, signal) => runner.runTask(spec, signal) };
+}
+
+const finished: AttemptOutcome = {
+  findings: [reported],
+  steps: 2,
+  toolCalls: [REVIEW_TOOLS.reportFinding, REVIEW_TOOLS.taskDone],
+  text: "",
+  usage,
+};
+
 const callbacks = { onProgress: () => {}, category: "correctness", abortGraceMs: 1_000 };
+
+// Like the execute stage: the usage report that spends the review share
+// stops the run at once.
+function stoppingAtLimit(run: AbortController) {
+  return { ...callbacks, onUsage: () => run.abort(new SpendLimitReached(1)) };
+}
 
 describe("executeTask", () => {
   it("keeps the model a finding event names, and nothing when it names none", async () => {
@@ -83,6 +116,43 @@ describe("executeTask", () => {
     const result = await executeTask(stoppingRuntime(), spec(60_000), controller.signal, callbacks);
     expect(result.status).toBe("cancelled");
     expect(result.usage.inputTokens).toBe(100);
+  });
+
+  it("keeps a finished task completed when its last usage report reaches the spend limit", async () => {
+    const run = new AbortController();
+    const result = await executeTask(
+      chainRuntime(async () => finished),
+      spec(60_000),
+      run.signal,
+      stoppingAtLimit(run),
+    );
+    expect(run.signal.aborted).toBe(true);
+    expect(result.status).toBe("completed");
+    expect(result).not.toHaveProperty("error");
+    expect(result.findings).toHaveLength(1);
+    expect(result.usage.costUsd).toBe(0.5);
+  });
+
+  it("cancels a task the spend limit stops before it finishes", async () => {
+    const run = new AbortController();
+    const result = await executeTask(
+      chainRuntime(async (_model, _spec, signal, onUsage) => {
+        onUsage(usage);
+        await new Promise((resolve) => signal.addEventListener("abort", resolve, { once: true }));
+        return {
+          ...finished,
+          toolCalls: [REVIEW_TOOLS.reportFinding],
+          error: { message: "cancelled", retryable: false },
+        };
+      }),
+      spec(60_000),
+      run.signal,
+      stoppingAtLimit(run),
+    );
+    expect(result.status).toBe("cancelled");
+    expect(result.error).toBe("stopped at the spend limit of $1");
+    expect(result.findings).toHaveLength(1);
+    expect(result.usage.costUsd).toBe(0.5);
   });
 
   it("stops waiting after the grace period when the runtime ignores the abort", async () => {
