@@ -5,7 +5,7 @@ description: 用 GitHub Action 或 ocra review --pr 审查 Pull Request。
 
 ## GitHub Action
 
-`ocra init --github` 会写好下文[来自 fork 的 PR](#来自-fork-的-pr) 用的 workflow，加 `--same-repo-only` 时写这一个，并用上你的供应商的 key（[ocra init](./cli#ocra-init)）。手动配置时，在需要审查的仓库里添加一个 workflow：
+`ocra init --github` 会写好下文[可审查 fork 的 workflow](#来自-fork-的-pr)，加 `--same-repo-only` 时写这一个，并用上你的供应商的 key（[ocra init](./cli#ocra-init)）。手动配置时，在仓库里添加这个 workflow：
 
 ```yaml
 name: ocra
@@ -32,13 +32,14 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-这里把 Action 固定到 v0.6.0 发布版本的提交，并在注释里写明版本号。tag 可以被移动，固定到提交才能确保带着你的模型 key 运行的代码确定不变；`git ls-remote --tags https://github.com/jma49/Open-CR-Agent v0.3.0` 会打印某个版本对应的提交，Dependabot 也会更新这种固定方式及其注释。
+- **按提交固定版本**，在注释里写明版本号：tag 可以移动，提交不能。`git ls-remote --tags https://github.com/jma49/Open-CR-Agent v0.3.0` 会打印某个版本的提交；Dependabot 会更新固定的提交和注释。
+- **保留 `fetch-depth: 0`：**ocra 需要 base 与 head 之间的历史，浅克隆会停下并给出提示。
+- **保留 `concurrency`：**否则连续两次 push 会把同样的评论发两遍，较慢的那次还可能用更旧的 head 覆盖摘要。被取消的运行不发布任何内容（已在发布时除外），把部分报告留在 job 日志里。
+- **把模型 key 存为仓库 secret。**模型来自 base 分支的 `.ocra/config.json` 或 `env` 里的 `OCRA_MODEL_*` 变量。
 
-从 v0.1.1 起，Action 从 npm 安装 ocra：安装与 Action 自身版本号相同的 `@open-cr-agent/cli`，每个依赖都固定在 Action 的 `package-lock.json` 锁定的版本，不运行安装脚本，使用 npm 官方源时还会校验源的签名。只有当 ocra 自己的每个包都带有 [provenance](./stability#校验发布版本)，证明它由本仓库的发布 workflow 从该版本的标签构建时，才会使用这些包；否则改为从自身源码构建，并给出警告。npm 上已发布的版本不会再改变。某个版本还没发布到 npm 时（发布后的最初几分钟），Action 改为从自身源码构建；v0.1.0 始终从源码构建。所以 `@main` 运行的是 `main` 上的 Action 代码，加上 `main` 所写版本号对应的发布版，而不是尚未发布的包代码；只有 `main` 在那次发布之后改了包的依赖时，才会构建 `main`。
+遇到 GitHub 限流或短暂故障，ocra 会有限次地重试，但绝不重复可能已经发出评论的请求。
 
-保留 `fetch-depth: 0`：ocra 需要 base 与 head 之间的历史，浅克隆会直接停下并给出提示。`concurrency` 分组也很重要：没有它，连续两次 push 会同时跑两次审查，重复发同样的行内评论，较慢的那次还可能用更旧的 head 覆盖摘要。被取消的运行会停下，把部分报告留在 job 日志里，不发布任何内容（Action 会把取消信号转给 ocra；如果信号到达时 ocra 已在发布，发布会完成）。遇到 GitHub 限流或短暂故障，ocra 会有限次地重试；可能已经发出评论的请求绝不会重复。
-
-把模型 key 存为仓库 secret。模型配置来自 base 分支的 `.ocra/config.json`，或者 `env` 里的 `OCRA_MODEL_*` 变量。
+从 v0.1.1 起，Action 从 npm 安装与自身版本相同的 `@open-cr-agent/cli`，依赖固定在它的 `package-lock.json` 锁定的版本，不运行安装脚本，使用 npm 官方源时还校验源的签名。只有 ocra 的每个包都带有本仓库发布 workflow 在该版本标签上构建的 [provenance](./stability#校验发布版本) 时才使用这些包；否则，或者该版本还没上 npm 时，从自身源码构建并给出警告（v0.1.0 始终如此）。所以 `@main` 运行的是 `main` 上的 Action 代码加上 `main` 所写的发布版；如果此后 `main` 改了包的依赖，就构建 `main`。
 
 | 输入 | 默认值 | 含义 |
 |---|---|---|
@@ -59,7 +60,7 @@ jobs:
 | `findings` | 报告里的问题数 |
 | `sarif` | `sarif` 为 `true` 时 SARIF 日志的路径 |
 
-只有评审完整完成时（退出码 `0` 或 `1`）才会设置 `verdict`：没能评审全部内容的运行（退出码 `2` 或 `3`）也可能写出报告，但其中的结论并不涵盖没评审的文件。ocra 没有写出报告时，`run-id`、`report` 和 `findings` 为空。例如，保存报告并在 job 摘要里写明结论：
+只有评审完整完成时（退出码 `0` 或 `1`）才会设置 `verdict`：没审完全部内容的运行（`2` 或 `3`）可能写出报告，但其结论不涵盖没审的文件。ocra 没写出报告时，`run-id`、`report` 和 `findings` 为空。保存报告并在 job 摘要里写明结论：
 
 ```yaml
       - id: ocra
@@ -79,15 +80,15 @@ jobs:
         run: echo "ocra: $VERDICT, $FINDINGS findings (run $RUN_ID)" >> "$GITHUB_STEP_SUMMARY"
 ```
 
-像这里一样通过 `env` 把输出交给脚本，不要把 `${{ }}` 直接写进 `run`。
+像这里一样通过 `env` 把输出交给脚本，不要把 `${{ }}` 写进 `run`。
 
-结论只是参考意见。模型会读到 PR 的内容，PR 作者可以在其中埋入文字，诱导审查员漏报问题，或说服 Judge 丢掉问题；未经核查的模型判断也可能是错的。不要用这项检查代替人工审查、把它设为必需的状态检查；如果打开 `fail-on-concerns`，通过只代表“没有被确认的问题”，不代表“安全”。
+结论只是参考意见（[原因](./security#结论不是安全门禁)）：不要用这项检查代替人工审查、把它设为必需的状态检查；打开 `fail-on-concerns` 时，通过只代表“没有被确认的问题”，不代表“安全”。
 
-来自 fork 的 PR 在 `pull_request` 事件下拿不到 secret，审查会停下，并提示缺少哪个 key。如何审查这类 PR，见[来自 fork 的 PR](#来自-fork-的-pr)。
+在 `pull_request` 下，来自 fork 的 PR 拿不到 secret，审查会停下并提示缺少哪个 key；见[来自 fork 的 PR](#来自-fork-的-pr)。
 
 ### 运行时
 
-Action 默认安装 OpenCode 运行时：连同 runner 平台的原生二进制文件，它占 Action 所装 108 个包中的 97 个，175 MB 中的约 165 MB。如果 base 分支配置里的模型都在你声明的端点上，并且配置设了 `"runtime": "direct"`（见[选择运行时](./providers#选择运行时)），请设置 `opencode: false`：安装会略去 OpenCode，只装 11 个包。此时如果配置选的是 `opencode`，评审会在调用任何模型之前以退出码 `2` 停下，并说明缺了哪个包。这个输入是 v0.3.0 新增的。
+默认运行时 OpenCode 连同原生二进制文件，占 Action 所装 108 个包中的 97 个、175 MB 中的约 165 MB。如果 base 分支配置里的模型都在你声明的端点上，并且配置设了 `"runtime": "direct"`（[选择运行时](./providers#选择运行时)），设置 `opencode: false`（v0.3.0 新增），只装 11 个包。此时如果配置选的是 `opencode`，评审会在调用任何模型之前以退出码 `2` 停下，并说明缺了哪个包。
 
 ```yaml
       - uses: jma49/Open-CR-Agent@<commit> # v0.6.0
@@ -97,33 +98,33 @@ Action 默认安装 OpenCode 运行时：连同 runner 平台的原生二进制�
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 ```
 
-安装不在运行之间缓存：每次都使用自己的 npm 缓存，所以每个包、签名和 provenance 声明都直接来自 npm 源，而不会来自仓库里其他 workflow 可能写入的缓存。
+安装不做缓存：每次运行都用全新的 npm 缓存，所以每个包、签名和 provenance 声明都来自 npm 源，而不会来自其他 workflow 可能写入的缓存。
 
 ## 会发布什么
 
-- **行内评论**：落在 diff 内的问题（每条都标明已核实、未核实或未核查），放在同一个 `COMMENT` 事件的评审里。ocra 从不批准 PR。设置 `github.requestChanges` 后，结论为 `significant_concerns` 时会请求修改：只请求一次，之后某次运行的结论不再阻塞、或者这个 commit 被放行时，ocra 会撤回（dismiss）自己的修改请求。
-- **一条摘要评论**：每次 push 都在原评论上更新，包括结论、总结、diff 之外的问题、上次评审后已修复的问题，以及覆盖范围、花费和运行 id。有文件没审到时，它会写明有多少个，以及是否达到了花费上限。审查员在审完它的文件之前用完了步数或者停了下来时，它会把这些文件列为只审查了一部分，并说明该怎么做。
+- **行内评论**：落在 diff 内的问题，标明已核实、未核实或未核查，放在同一个 `COMMENT` 评审里。ocra 从不批准 PR。设置 `github.requestChanges` 后，结论为 `significant_concerns` 时请求修改一次；之后的结论不再阻塞或这个 commit 被放行时撤回（dismiss）。
+- **一条摘要评论**，在原处更新：结论、总结、diff 之外的问题、已修复的问题、覆盖范围、花费和运行 id。它写明没审到的文件数、是否达到花费上限，并列出只审查了一部分的文件（审查员用完步数或停下）以及该怎么做。
 
-下一次 push 时，ocra **只审查有改动的部分**：自上次评审所在的提交以来改动过的文件，加上上次没有审完的文件（比如任务失败、审查员用完了步数，或者因为花费上限没能启动）。未改动文件里的问题原样沿用：保持打开，继续计入结论，不重复评论。以下情况会重新审查全部文件：上次的提交已不在分支上（force-push 或 rebase）、这次 push 让风险档位升高（在更高档位才启动的审查员还没看过未改动的文件）、摘要评论最后一次是被 ocra 以外的人编辑的（这时 ocra 也会忽略这条评论记录的全部状态，不过它仍能认出自己发过、没被别人编辑过的行内评论，不会再发一次），或者传了 `--full`（例如写在 Action 的 `args` 里）。只改变运行哪些审查员（base 分支的 `reviewers`、`--reviewers`、`--ultra`）不会让未改动的文件重新审查；这样改时请手动传一次 `--full`。摘要里会写明本次属于哪种情况以及原因。
+之后的 push **只审查有改动的部分**：自上次评审的提交以来改动过的文件，加上上次没审完的文件（任务失败、审查员用完步数、花费上限）。未改动文件里的问题原样沿用：保持打开、计入结论、不重复评论。以下情况会重新审查全部文件：上次的提交已不在分支上（force-push、rebase）、这次 push 让风险档位升高、摘要最后一次由 ocra 以外的人编辑（这时忽略它记录的状态，但 ocra 仍能认出自己没被编辑过的行内评论）、或者传了 `--full`。只改变运行哪些审查员（`reviewers`、`--reviewers`、`--ultra`）不会；请传一次 `--full`。摘要会写明本次属于哪种审查以及原因。
 
-随后 ocra 会和上一次评审对比：
+与上一次评审对比：
 
 - 已经评论过的问题不会重复评论。
-- 只有当问题指向的代码已经不在文件里，或者文件已被删除，才算**已修复**。已修复的问题会列出来，并自动关闭对应的行内评论串。
-- 如果这次没有任何审查员再报这个问题，而它指向的代码没有变，就列为**本次未复现**。模型每次运行的结果会有波动，所以这类问题保持打开：不关闭评论串，不重复评论，并按原来的严重程度继续计入结论，直到代码被修改或有审查者驳回它。同样的代码跑两次，结论不会变。
-- 所在文件这次没有被审查的问题（比如任务失败）列为**未重新检查**，同样保持打开。
+- 只有问题指向的代码已不在文件里或文件已删除，才算**已修复**；它会被列出，评论串被关闭。
+- 这次没被报告、而代码没变的问题列为**本次未复现**：模型运行有波动，所以它保持打开，按原严重程度计入结论，直到代码被修改或被驳回。同样的代码得到同样的结论。
+- 所在文件这次没被审查的问题列为**未重新检查**，保持打开。
 
-由审查者来做主。如果对仓库有写权限（admin、maintain 或 write 权限）且不是 PR 作者的人 resolve 了 ocra 的评论串，或者回复 `/ocra dismiss`，或者回复以明确的拒绝开头（"won't fix"、"will not fix"、"by design"、"false positive"、"not a bug"、"working as intended"、"intended behavior"）且不是问句，这条问题就算被驳回：之后不再报告，也不再影响结论，除非后续运行发现它的严重程度升高。同样的词出现在回复的其他位置（例如 "this is not intended, good catch"、"is this by design?"）不算驳回，回复 "I disagree" 也不算。这类回复如果来自有资格驳回的人，会在这条问题每次再被报告时交给 Judge；回复给出了具体理由说明问题不成立时，Judge 可以丢弃它，但已确认的 critical 不行。PR 作者自己的回复不会交给 Judge。PR 作者也无法驳回自己 PR 上的问题；被他人编辑过的回复不算数（有写权限的人可以编辑任何评论），因此不能靠 resolve 评论串绕过检查。只有带行内评论串的问题能这样驳回，其他问题请用 [`ocra memory`](./cli)。
+由审查者来做主。有写权限（admin、maintain 或 write）且不是 PR 作者的人，resolve 评论串、回复 `/ocra dismiss`，或者回复以明确的拒绝开头（"won't fix"、"will not fix"、"by design"、"false positive"、"not a bug"、"working as intended"、"intended behavior"）且不是问句，就驳回了这条问题。被驳回的问题不再计入，除非之后的运行以更高严重程度发现它。这些词出现在回复其他位置（"this is not intended, good catch"、"is this by design?"）不算，"I disagree" 也不算。这些人的其他回复会在问题再次出现时交给 Judge；Judge 可以凭具体理由丢弃它，但已确认的 critical 不行。作者的回复不会交给 Judge，也不能驳回；被别人编辑过的回复不算数。没有行内评论串的问题，请用 [`ocra memory`](./cli) 驳回。
 
 ### 可提交的建议
 
-一条问题可以带一个修复（fix）：替换它所指那几行的代码。这时它的行内评论末尾会有一个建议块，有写权限的人可以在 PR 里一键提交（**Commit suggestion**，或者加入批量提交）。只有评论正好落在修复要替换的那几行上时，ocra 才会给出建议块；摘要里的问题从不带。代码要么原样发布，要么不发：修复中含有 HTML 注释开头、`/ocra`、回车符、控制字符或双向文本字符，或者超过 20,000 个字符时，不附建议块，问题照常发布。提交前请先读一遍建议：它是语言模型的提议。
+一条问题可以带一个修复（fix）：替换它所指那几行的代码。这时它的行内评论末尾有一个建议块，有写权限的人可以一键提交（**Commit suggestion**，或批量提交）。只有评论正好落在被替换的行上时才给出，摘要里从不给；代码要么原样发布，要么不发：含有 HTML 注释开头、`/ocra`、回车符、控制字符或双向文本字符，或者超过 20,000 个字符时，不附建议块，问题照常发布。建议是模型的提议，提交前请先读一遍。
 
-**计划中：**目前还没有审查员会产生修复，这要等一次经过评估的提示词修改（[ADR-0029](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0029-committable-suggestions.md)）。在那之前，评论像以前一样以文字形式给出建议。
+**计划中：**目前还没有审查员会产生修复，这要等一次经过评估的提示词修改（[ADR-0029](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0029-committable-suggestions.md)）。在那之前，评论以文字形式给出建议。
 
 ## 代码扫描
 
-如果还想把问题显示为代码扫描（code scanning）告警，可以用输入 `sarif` 输出 SARIF，再用 GitHub 的 `upload-sarif` action 上传。在上面的 workflow 里加一个权限和几行配置：
+要同时把问题显示为代码扫描（code scanning）告警，用输入 `sarif` 输出 SARIF，再用 `upload-sarif` 上传：
 
 ```yaml
 permissions:
@@ -152,14 +153,14 @@ jobs:
           category: ocra
 ```
 
-- 审查结果仍会发到 PR 上，输出 `report` 也仍然指向 JSON 报告：SARIF 只改变 ocra 打印的内容。`args: --format sarif --output ocra.sarif` 效果相同，路径由你指定。
-- 代码扫描只显示带行号的结果。ocra 没能定位到行的问题在文件里，但不会在那里显示。之前的审查在此后没改动过的文件里报告的问题也是如此：PR 第一次审查之后，ocra 只审查有改动的部分。要让代码扫描在每次 push 后都显示全部问题，请在 `args` 里加上 `--full`，代价是每次都要完整审查一遍。
+- 审查仍会发到 PR 上，`report` 仍指向 JSON 报告：SARIF 只改变 ocra 打印的内容。`args: --format sarif --output ocra.sarif` 效果相同，路径自定。
+- 代码扫描只显示带行号的结果，所以文件级问题不显示，之后未改动文件里的早先问题也不显示（之后的 push 只审查改动）。在 `args` 里加 `--full` 可以每次都显示全部问题，代价是每次完整审查。
 - 公开仓库可以使用代码扫描；私有仓库需要 GitHub Code Security。
-- 文件里有什么，见 [SARIF 输出](./cli#sarif-输出)。
+- 文件内容见 [SARIF 输出](./cli#sarif-输出)。
 
 ### 导入分析工具的结果
 
-同一个 job 也可以把 Semgrep、CodeQL 或其他能写 SARIF 的分析工具的结果交给 ocra：先运行工具，再用 `--import-sarif` 传入它的日志。只保留落在改动上的结果，它们会和 ocra 自己的问题一起核查和裁决（[SARIF 输入](./cli#sarif-输入)）。ocra 自己不运行任何工具。
+先运行 Semgrep、CodeQL 或其他能写 SARIF 的分析工具，再用 `--import-sarif` 传入日志：落在改动上的结果会和 ocra 自己的问题一起核查和裁决（[SARIF 输入](./cli#sarif-输入)）。ocra 自己不运行任何工具。
 
 ```yaml
       - run: pipx run semgrep scan --config p/default --metrics=off --sarif --output semgrep.sarif
@@ -170,31 +171,31 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-导入功能用 Semgrep 1.178.0 写出的日志测试过；这个 workflow 本身还没有在 CI 里端到端跑过。
+导入用 Semgrep 1.178.0 的日志测试过；这个 workflow 还没在 CI 里端到端跑过。
 
 ## 强制放行阻塞的结论
 
-如果 ocra 拦下了一个你们决定仍要合并的改动，由 PR 作者以外、有写权限的人评论：
+要合并被 ocra 拦下的改动，由作者以外、有写权限的人评论：
 
 ```
 /ocra override <完整的 head commit id> <理由>
 ```
 
-对这个 commit，运行的退出码从 `1` 变成 `0`，`fail-on-concerns` 就会通过，`requestChanges` 的修改请求也会撤回；结论本身仍是 `significant_concerns`，摘要里会写明谁、以什么理由放行（摘要里也会给出带 commit id、可以直接复制的命令）。新的 push 需要重新放行。之所以要完整的 commit id，是因为短前缀可能被专门构造的新 commit 撞上。写权限通过仓库权限接口确认；PR 作者不能放行自己的 PR；被他人编辑进别人评论的命令不算数；审查不完整（退出码 `3`）也不会被放行。
+对这个 commit，退出码从 `1` 变成 `0`，`fail-on-concerns` 通过，`requestChanges` 的请求撤回。结论仍是 `significant_concerns`；摘要写明谁、以什么理由放行，并给出带 commit id、可直接复制的命令。新的 push 需要重新放行。要求完整 id，是因为专门构造的 commit 能撞上短前缀。作者不能放行自己的 PR，被他人编辑进评论的命令不算数，审查不完整（退出码 `3`）绝不会被放行。
 
 <Callout type="warn">
 
-有推送权限的人可以推送自己的 workflow，它会拿到仓库的 secret，也能以 `github-actions[bot]` 的身份发评论；在 `on: pull_request` 下，连审查自己的 workflow 文件都是他们分支上的那份。要让审查既不能被他们修改、也不能被冒充，请用[下面的配置](#自己的开发者也改不了的审查)。
+有推送权限的人可以推送拿得到仓库 secret、以 `github-actions[bot]` 身份发评论的 workflow；在 `on: pull_request` 下，连审查的 workflow 都是他们分支上的那份。要让审查既不能被他们修改、也不能被冒充，请用[下面的配置](#自己的开发者也改不了的审查)。
 
 </Callout>
 
 ## PR 能改变什么、不能改变什么
 
-PR 是不可信的输入。ocra 从 **base** 提交读取 `.ocra/config.json`、`.ocra/rules.json`、`.ocra/memory.json` 和 `AGENTS.md`，绝不从 PR 里读取，并且在这个模式下从不加载仓库插件。diff、标题和描述仍然会作为数据交给审查员，防护措施见[安全](./security)。
+`.ocra/config.json`、`.ocra/rules.json`、`.ocra/memory.json` 和 `AGENTS.md` 都从 **base** 提交读取，仓库插件从不加载。diff、标题和描述作为[不可信的数据](./security#不可信的输入)交给审查员。
 
 ## 来自 fork 的 PR
 
-在 `pull_request` 事件下，来自 fork 的 PR 拿不到仓库的 secret，token 也是只读的。要审查这类 PR，请改在 `pull_request_target` 事件上运行 Action。这个事件运行的是默认分支上的 workflow 文件，带着你的 secret 和你授予的权限。下面的 workflow 用来替换上面那个，你自己分支上的 PR 也由它审查：
+在 `pull_request` 下，来自 fork 的 PR 拿不到你的 secret，token 也是只读的。`pull_request_target` 运行默认分支上的 workflow 文件，带着你的 secret 和你授予的权限。下面的 workflow 替换上面那个，你自己分支上的 PR 也由它审查：
 
 ```yaml
 name: ocra
@@ -232,21 +233,21 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-GitHub 提醒慎用 `pull_request_target`，是因为它把你的 secret 交给了一个由别人控制 PR 内容的 job：如果 job 检出并构建 PR 的代码，这些代码就会带着你的 secret 运行。ocra 不运行 PR 里的任何东西。它获取 PR 的提交，只把它们当作数据来读；配置、规则和指南都从 base 提交读取；从不加载仓库插件（见[威胁模型](./threat-model)）。能否一直保持这一点，取决于它周围的 workflow：
+GitHub 提醒慎用 `pull_request_target`，是因为构建 PR 代码的 job 会带着你的 secret 运行这些代码。ocra 不运行 PR 里的任何东西（[威胁模型](./threat-model)）；workflow 也要保持这一点：
 
-- **不要在这个 workflow 里检出、安装、构建或测试 PR：**不要写 `ref: ${{ github.event.pull_request.head.sha }}`，不要安装依赖，不要跑测试。这些放到单独的 `pull_request` workflow 里，fork 的 PR 在那里拿不到 secret。
-- **保留 `if:` 这道门槛。**任何人都能开 PR，而每次审查都要花钱。有了这道门槛，外部贡献者的 PR 只在维护者每加一次标签时审查一次；下次审查前先移除标签再重新加上。`--max-cost-usd` 限制每次审查的花费。
+- **不要在这里检出、安装、构建或测试 PR：**不要写 `ref: ${{ github.event.pull_request.head.sha }}`，不要安装依赖，不要跑测试。这些放到单独的 `pull_request` workflow 里，fork 的 PR 在那里拿不到 secret。
+- **保留 `if:` 门槛。**任何人都能开 PR，而每次审查都要花钱：外部贡献者的 PR 在维护者每加一次标签时审查一次（下次先移除标签再加上）。`--max-cost-usd` 限制每次审查的花费。
 - **使用只用于这些审查的模型 key**，并在供应商那里设置花费上限。
-- **按提交固定 Action 的版本**，如上所示。
+- **按提交固定 Action。**
 
 只有组织的公开成员，`author_association` 才是 `MEMBER`；非公开成员也需要标签。私有仓库请去掉 `persist-credentials: false`：ocra 会用检出时的凭据获取 PR 的提交。
 
 ## 自己的开发者也改不了的审查
 
-有推送权限的人推送的 workflow 会拿到仓库的 secret，它的 `GITHUB_TOKEN` 以 `github-actions[bot]` 的身份发言，而这正是 ocra 默认信任的账号。要让审查不在他们手里，把三样东西放到只有默认分支才能触及的地方：
+有推送权限的人推送的 workflow 会拿到仓库的 secret，它的 `GITHUB_TOKEN` 以 ocra 默认信任的 `github-actions[bot]` 身份发言。要让审查不在他们手里，把三样东西放到只有默认分支才能触及的地方：
 
-1. **放 secret 的环境。**创建一个环境（Settings → Environments），比如叫 `ocra-review`，在 Deployment branches and tags 里只允许默认分支。把模型密钥移到这里，并删掉仓库级的 secret。`pull_request_target` 任务在默认分支上运行，能拿到这个环境的 secret；推送到其他分支的 workflow 拿不到，`on: pull_request` 也拿不到。
-2. **ocra 自己的账号。**创建一个 GitHub App，仓库权限给 Pull requests（读写）和 Contents（只读），并安装到仓库上。把它的私钥存为环境 secret `OCRA_APP_KEY`，client ID 存为环境变量 `OCRA_APP_CLIENT_ID`。在默认分支的 `.ocra/config.json` 里把 `github.botLogin` 设为这个 App 的账号，比如 `{ "github": { "botLogin": "my-ocra[bot]" } }`：之后以 `github-actions[bot]` 身份发的摘要一律不算数。
+1. **放 secret 的环境。**创建一个环境，比如 `ocra-review`（Settings → Environments），在 Deployment branches and tags 里只允许默认分支。把模型密钥移到这里，删掉仓库级的 secret。在默认分支上运行的 `pull_request_target` 任务能拿到它；其他分支上推送的 workflow 和 `on: pull_request` 都拿不到。
+2. **ocra 自己的账号。**创建一个 GitHub App，仓库权限给 Pull requests（读写）和 Contents（只读），并安装到仓库上。私钥存为环境 secret `OCRA_APP_KEY`，client ID 存为变量 `OCRA_APP_CLIENT_ID`。在默认分支上把 `github.botLogin` 设为这个 App 的账号，比如 `{ "github": { "botLogin": "my-ocra[bot]" } }`，于是以 `github-actions[bot]` 身份发的摘要一律不算数。
 3. **workflow 和配置需要审查。**保护默认分支，并要求 `.github/workflows/` 和 `.ocra/` 的改动经过代码负责人审查（CODEOWNERS）。
 
 ```yaml
@@ -290,7 +291,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-[上面](#来自-fork-的-pr)关于 `pull_request_target` 的规则照样适用。项目还没有把这套配置完整跑过一遍；如果某一步失败，请[提 issue](https://github.com/jma49/Open-CR-Agent/issues/new/choose)。
+[上面](#来自-fork-的-pr)关于 `pull_request_target` 的规则照样适用。这套配置还没有完整跑过；如果某一步失败，请[提 issue](https://github.com/jma49/Open-CR-Agent/issues/new/choose)。
 
 ## 配置
 
@@ -298,7 +299,7 @@ jobs:
 { "github": { "requestChanges": false, "botLogin": "github-actions[bot]" } }
 ```
 
-`botLogin` 是哪个账号发的摘要评论才算 ocra 之前的评审；如果你用别的 token 发布，就改成对应的账号。即使 ocra 用某个人的 token 发布，它自己的摘要评论和模型写的文字里出现的 `/ocra override` 等命令也永远不算数。
+`botLogin` 是哪个账号发的摘要才算 ocra 之前的评审；用别的 token 发布时改成对应账号。即使 ocra 用某个人的 token 发布，它自己的摘要和模型文字里的 `/ocra override` 等命令也永远不算数。
 
 ## 在命令行里使用
 
@@ -308,4 +309,4 @@ ocra review --pr 42               # 审查并打印，和本地审查一样
 ocra review --pr 42 --publish     # 同时发布评审
 ```
 
-token 来自 `GITHUB_TOKEN` 或 `GH_TOKEN`；使用 GitHub Enterprise 时设置 `GITHUB_API_URL`（例如 `https://github.example.com/api/v3`）。仓库来自 `--repo owner/name`、`GITHUB_REPOSITORY` 或指向 github.com 的 `origin` 远端（GitHub Enterprise 请传 `--repo`）。如果本地缺少 PR 的 commit，ocra 会自动拉取。
+token 来自 `GITHUB_TOKEN` 或 `GH_TOKEN`；GitHub Enterprise 请设置 `GITHUB_API_URL`（例如 `https://github.example.com/api/v3`）并传 `--repo`。仓库来自 `--repo owner/name`、`GITHUB_REPOSITORY` 或指向 github.com 的 `origin` 远端。缺少的 PR commit 由 ocra 自动拉取。

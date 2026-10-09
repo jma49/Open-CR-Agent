@@ -3,7 +3,7 @@ title: How it works
 description: The review pipeline, from diff to anchored findings.
 ---
 
-ocra combines two proven designs: domain-specialized reviewers with a coordinating judge, and deterministic engineering for every step that must not fail.
+Domain-specialized reviewers and a coordinating judge make the judgment calls; deterministic code does every step that must not fail.
 
 ```text
 Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Filter → Verify → Judge → Report
@@ -14,17 +14,17 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Fi
 | **Ingest** | Read the change set and repository guidelines through a VCS adapter. |
 | **Select** | Decide per file: review it, or exclude it with a reason (binary, secret, generated, too large…). |
 | **Triage** | Assign a risk tier (trivial, lite, full) from size and sensitive paths such as `auth/`, `PasswordHasher.cs` or CI workflows. |
-| **Bundle** | Group related files. Small change sets form one bundle; larger ones are grouped by a light model that answers with file indices. Without that grouping, up to 20 files are reviewed one per task and more by directory. |
-| **Matrix** | Decide which reviewer runs on which bundle from the risk tier and each reviewer's scope (for example, no documentation for a code-only reviewer). Skipped pairs are listed in the report. |
+| **Bundle** | Group related files: one bundle for small change sets, otherwise a light model groups them by file index. Without it, up to 20 files are reviewed one per task, more by directory. |
+| **Matrix** | Pick which reviewer runs on which bundle from the risk tier and each reviewer's scope. Skipped pairs are listed in the report. |
 | **Execute** | Run each planned (bundle, reviewer) pair as an isolated agent task with read-only tools. |
 | **Anchor** | Resolve every finding's quoted code to exact lines. |
-| **Filter** | Drop findings the repository's memory accepts or a reviewer dismissed, and compare with the previous review of the same pull request, before any model call is spent on them. |
-| **Verify** | A standard-tier model fact-checks the findings of each file against its diff and the code around them. A finding is dropped only when that code proves it wrong; doubt keeps it, and so does a failed check. Dropped findings and the reason are listed in the report. |
-| **Judge** | One top-tier call sees every finding: it merges reports of the same root cause from different reviewers, drops speculation and nitpicks, recalibrates severity, and writes a short summary. Each change carries a reason in the report. |
+| **Filter** | Drop findings the repository's memory accepts or a reviewer dismissed, and compare with the previous review of the same pull request, before spending a model call on them. |
+| **Verify** | A standard-tier model checks each file's findings against its diff and surrounding code. A finding is dropped only when the code proves it wrong; doubt or a failed check keeps it. Drops are listed in the report with the reason. |
+| **Judge** | One top-tier call sees every finding: merges the same root cause across reviewers, drops speculation and nitpicks, recalibrates severity and writes a short summary, with a reason for each change in the report. |
 
 ## Verdict
 
-The verdict is decided by a fixed rubric over the final findings, not by a model, so the same findings always give the same verdict:
+A fixed rubric over the final findings, not a model, decides the verdict, so the same findings always give the same verdict:
 
 | Findings | Verdict |
 |---|---|
@@ -33,11 +33,9 @@ The verdict is decided by a fixed rubric over the final findings, not by a model
 | three or more warnings, or critical findings the verifier did not confirm | `minor_issues` |
 | any critical finding the verifier confirmed | `significant_concerns` |
 
-Every finding shows whether Verify **confirmed** it, was **unsure**, or did **not check** it (verification skipped, failed, or out of budget). Unconfirmed critical findings are shown as critical, marked unverified, and cap the verdict at `minor_issues`, so a single model's unchecked claim cannot block a change. When verification should have run but failed or ran out of budget for a critical finding, the run is incomplete (exit code `3`), so it never reads as a pass; with `verify: false` it is not. The judge can neither drop nor downgrade a confirmed critical finding; an attempt is ignored and listed as a warning.
+Every finding shows whether Verify **confirmed** it, was **unsure**, or did **not check** it (skipped, failed, or out of budget). Unconfirmed critical findings are shown as critical, marked unverified, and cap the verdict at `minor_issues`, so one model's unchecked claim cannot block a change. When verification of a critical finding failed or ran out of budget, the run is incomplete (exit code `3`) and never reads as a pass; with `verify: false` it is not. The judge can neither drop nor downgrade a confirmed critical finding; an attempt is ignored and listed as a warning. If the judge is disabled, has no `top` model or fails, findings are reported unjudged under the same rubric.
 
-If the judge is disabled, has no `top` model or fails, findings are reported unjudged and the rubric still applies.
-
-The verdict is **advice, not a security gate.** Every model in the pipeline reads the change, and text planted in it can steer a reviewer away from an issue or talk the judge out of one. Use ocra to help reviewers, not to replace required human review or security checks.
+The verdict is **advice, not a security gate** ([why](./security#the-verdict-is-not-a-security-gate)).
 
 ## Modes
 
@@ -56,7 +54,7 @@ Verification works the same in both modes.
 
 ## Reviewers and tools
 
-A reviewer is an agent with a focused prompt, its own rules, and a scope that tells the matrix where it is worth running:
+A reviewer is an agent with a focused prompt, its own rules, and a scope that tells the matrix where to run it:
 
 | Reviewer | Looks for | Runs at | Skips |
 |---|---|---|---|
@@ -66,11 +64,11 @@ A reviewer is an agent with a focused prompt, its own rules, and a scope that te
 | `docs` | Documentation the change makes wrong: a removed or renamed flag, key, endpoint or default that the README, docs or help text still describe (light model) | `lite` and `full` | tests |
 | `agents-md` | Statements in `AGENTS.md` the change makes false: commands, layout, module responsibilities, required tools and variables (light model; only when the repository has `AGENTS.md`) | `lite` and `full` | tests |
 
-Each one reviews only its own domain and states what not to flag. Every reviewer can only read: `read_file`, `read_diff` and `code_search` answer from the revision under review (a commit in range or commit mode, not your working tree), and findings are submitted through `report_finding`. Their answers are capped (2,000 characters per line, 50,000 per answer, 2 MB per file read), so a minified bundle cannot flood a model's context. It cannot edit files, run commands or browse the web.
+Each reviews only its own domain and states what not to flag. Reviewers can only read: `read_file`, `read_diff` and `code_search` answer from the revision under review (a commit in range or commit mode, not your working tree), and findings go through `report_finding`. Answers are capped (2,000 characters per line, 50,000 per answer, 2 MB per file read), so a minified bundle cannot flood the context. Reviewers cannot edit files, run commands or browse the web.
 
 ## Anchoring
 
-Models are unreliable with line numbers, so they quote code instead. ocra resolves the quote:
+Models are unreliable with line numbers, so they quote code, and ocra resolves the quote:
 
 1. normalized match in the file's changed hunks;
 2. match in the whole file;
@@ -80,14 +78,14 @@ Models are unreliable with line numbers, so they quote code instead. ocra resolv
 
 A finding that resolves to a file outside the reviewer's bundle is dropped with a warning: that reviewer was not shown the file.
 
-Whole lines are matched first. Part of a single line counts only when it is at least 12 characters long and only one line contains it: a fragment like `err` would otherwise land on the first line that happens to contain it. When a quote fits several places equally well (three identical `return err;` lines), no line is picked; the finding is shown at file level and counted under `anchoring.ambiguous`. The JSON report (`--format json`, a session's `report.json`) gives `anchoring` for the whole run: findings per method (`hunk`, `file`, `cross_file`, `relocated`, `file_level`), the ambiguous ones, and how many relocation calls were made.
+Whole lines are matched first. Part of a line counts only when it is at least 12 characters long and only one line contains it, so a fragment like `err` does not land on the first line containing it. A quote that fits several places equally well (three identical `return err;` lines) stays at file level and is counted under `anchoring.ambiguous`. The JSON report (`--format json`, a session's `report.json`) gives `anchoring` for the run: findings per method (`hunk`, `file`, `cross_file`, `relocated`, `file_level`), the ambiguous ones, and the number of relocation calls.
 
 ## Robustness
 
-- A per-task and a whole-run timeout, enforced even if a model stops responding. A task whose agent shows no progress for five minutes (no new step, text or tool call) is stopped earlier and handed to the next model in the chain.
+- A per-task and a whole-run timeout, enforced even if a model stops responding. A task with no progress for five minutes (no new step, text or tool call) is stopped earlier and handed to the next model in the chain.
 - A failed task never fails the run; its files are reported as `failed`.
 - Model failback chains per tier, with a circuit breaker per model (open after repeated failures, half-open probe after a cooldown).
-- Rate limits are waited out: when a provider says to retry after a short wait (up to 90 seconds), every task pauses that model and retries it. A limit marked as daily, a longer or missing wait, or a fourth limit in a row takes the model out of the chain for the rest of the run, so ocra stops sending requests that would be refused.
-- Every review agent is capped at 30 steps, because each step resends the conversation; most tasks finish in about 15.
-- A review agent that stops before finishing (no done signal, no answer, steps to spare) is told once, in the same session, to finish the files it has not reviewed; the progress line says "resumed after stopping early".
-- A task that ends without the done signal, because its agent used all 30 steps or stopped again, does not count as a review of its files: they are reported as partly reviewed (`incomplete`), the run exits `3`, and the next review of a pull or merge request includes them.
+- Rate limits with a short retry-after (up to 90 seconds) pause that model for every task, then retry. A daily limit, a longer or missing wait, or a fourth limit in a row takes the model out of the chain for the rest of the run.
+- Every review agent is capped at 30 steps, since each step resends the conversation; most tasks finish in about 15.
+- An agent that stops early (no done signal, no answer, steps to spare) is told once, in the same session, to finish its remaining files; the progress line says "resumed after stopping early".
+- A task that ends without the done signal (all 30 steps used, or stopped again) does not count as a review: its files are reported as partly reviewed (`incomplete`), the run exits `3`, and the next review of the pull or merge request includes them.

@@ -3,7 +3,7 @@ title: 评测
 description: 用 ocra-eval 在 AACR-Bench 和 ocra 的黄金用例上衡量审查质量。
 ---
 
-`ocra-eval` 会回放 [AACR-Bench](https://github.com/alibaba/aacr-bench)：来自 50 个开源项目、覆盖 10 种语言的 200 个真实 PR，以 1,505 条经专家核实的审查意见作为标准答案。目前的评测结果和局限见[质量实测](./quality)。
+`ocra-eval` 会回放 [AACR-Bench](https://github.com/alibaba/aacr-bench)：来自 50 个开源项目、覆盖 10 种语言的 200 个真实 PR，以 1,505 条经专家核实的审查意见作为标准答案。目前的结果见[质量实测](./quality)。
 
 ## 运行
 
@@ -23,23 +23,23 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--out`、`--repos-dir` | 运行结果目录（默认 `.ocra/eval`）和克隆缓存（默认 `~/.cache/ocra/aacr-bench/repos`） |
 | `--timeout-minutes` | 每个 PR 的超时时间（默认 30） |
 | `--max-cost-usd` | 审查花费达到上限后，不再开始新的 PR |
-| `--retry-failed` | 重新审查同一次运行里之前失败、或因配额用尽而丢了任务的 PR |
+| `--retry-failed` | 重新审查之前失败、或因配额用尽而丢了任务的 PR |
 | `--reviewers` | 透传给 `ocra review --reviewers`，用来比较不同的审查员组合 |
-| `--ultra` | 透传给 `ocra review --ultra`：召回模式，花费约为两倍；运行记录会注明 |
-| `--config` | 透传给 `ocra review --config`：你自己的配置文件（声明的供应商、各种上限），给带着 `--no-repo-config` 运行的审查用 |
-| `--pr-max-cost-usd` | 每个 PR 的花费上限，透传给 `ocra review --max-cost-usd`。`--max-cost-usd` 只会阻止开始新的 PR，两者一起用才能卡住一次运行的总花费 |
+| `--ultra` | 透传给 `ocra review --ultra`（召回模式，花费约两倍）；运行记录会注明 |
+| `--config` | 透传给 `ocra review --config`：你的配置文件（声明的供应商、各种上限） |
+| `--pr-max-cost-usd` | 每个 PR 的花费上限（`ocra review --max-cost-usd`）；与 `--max-cost-usd` 一起用才能限定一次运行 |
 | `--temperature` | 透传给 `ocra review --temperature`；默认 `0` |
 | `--model-seed` | 透传给 `ocra review --seed`；默认 `1`（`--seed` 是抽样用的） |
 | `--repeat <k>` | 把选中的 PR 审查 `k` 遍，报告精确率和召回率的均值与 95% 置信区间；见[重复运行](#重复运行) |
 | `--mock-judge` | 离线的词重叠判定，只用来检查流程是否跑通（结果不可比） |
 
-如果某个 PR 因为模型额度用尽而失败（比如免费档的每日上限），这次运行就不再开始新的 PR，把剩下的标为 `skipped_quota`；之后重新运行同一条命令即可接着跑。
+模型额度用尽时（比如免费档的每日上限），运行不再开始新的 PR，把剩下的标为 `skipped_quota`；之后重新运行同一条命令即可接着跑。
 
-评测总是带着 `--no-repo-config` 运行，基准仓库无法加载插件；模型从 `OCRA_MODEL_*` 读取，或者来自用 `--config` 传入的文件，[声明的端点](./providers#你自己的端点)就是这样在评测里使用的。仓库以 blobless clone 的方式缓存在 `~/.cache/ocra/aacr-bench/repos`。commit 已经拉取不到的 PR 会被标记为不可用，不计入评分。
+审查总是带着 `--no-repo-config` 运行，基准仓库无法加载插件；模型来自 `OCRA_MODEL_*` 或 `--config` 文件，[声明的端点](./providers#你自己的端点)就是这样使用的。仓库以 blobless clone 缓存。commit 已拉取不到的 PR 标为不可用，不计入评分。
 
 ## 黄金用例
 
-AACR-Bench 的标准答案是人工评审碰巧留下的评论，没人评论过的真问题会被算作 ocra 的误报。评估 ocra 自身的改动时，使用仓库里自己维护的用例 `evals/golden/`（[ADR-0011](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)）；`--dataset golden` 用它们代替 AACR-Bench。
+AACR-Bench 的标准答案是评审碰巧留下的评论，没人评论过的真问题会算作 ocra 的误报。评估 ocra 自身的改动时，使用仓库自己的用例 `evals/golden/`（[ADR-0011](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)），配合 `--dataset golden`。
 
 ```bash
 node packages/eval/dist/main.js list    --dataset golden --tier smoke    # 免费
@@ -54,11 +54,11 @@ node packages/eval/dist/main.js ceiling --dataset golden                 # 免�
 | `repo`、`base`、`head` | 公开的 GitHub 仓库（`owner/name`）以及这次改动的两个提交 |
 | `language`、`tier` | 项目语言；`smoke`（每个需要评测的改动前后各跑一次）或 `full` |
 | `source`、`rationale` | 用例来源（`ocra-history`、`dogfood` 或 `aacr`，附引用）以及选它的理由 |
-| `expect` | ocra 必须报出的问题：`file`、`lines`（新版本上的 `[from, to]`）、`category`（`correctness`、`security`、`performance`）、`minSeverity`（低于它的命中计入精确率，不计入召回率）、`concern`，以及可选的 `also`：同一个问题也可以正确报在的其他 `file`/`lines`（比如承诺该行为的文档、漏测的测试）；无论报在哪里，这个问题只算找到一次 |
+| `expect` | ocra 必须报出的问题：`file`、`lines`（新版本上的 `[from, to]`）、`category`（`correctness`、`security`、`performance`）、`minSeverity`（低于它的命中计入精确率，不计入召回率）、`concern`，以及可选的 `also`：同一个问题也可以正确报在的其他 `file`/`lines`（比如承诺该行为的文档），无论报在哪里只算一次 |
 | `forbid` | 报了就算错的范围：`file`、`lines`、`reason` |
 | `clean` | 为 `true` 表示改动没有任何问题，此时不能有 `expect` |
 
-路径必须在仓库内；如果用例指向的文件不在这次改动里，`ceiling` 会拒绝它；新增或修改用例后先跑一次 `ceiling`，因为 `run` 不做这项检查。`--tier smoke` 只选 smoke 档，`--tier full` 选全部用例，`--tier adversarial` 选攻击用例以及它们所攻击的用例（见下文）；`--golden-dir` 可以从其他目录读取用例。`--max-change-lines` 对黄金用例不起作用。
+路径必须在仓库内。用例指向的文件不在这次改动里时，`ceiling` 会拒绝它；修改用例后先跑一次 `ceiling`，因为 `run` 不检查。`--tier smoke` 选 smoke 档，`--tier full` 选全部用例，`--tier adversarial` 选攻击用例及其所攻击的用例（见下文）；`--golden-dir` 读取其他目录。`--max-change-lines` 不起作用。
 
 ### 从 AACR-Bench 生成候选用例
 
@@ -68,31 +68,31 @@ node packages/eval/dist/main.js ceiling --dataset golden                 # 免�
 node packages/eval/dist/main.js golden-import --from aacr --limit 50   # 免费
 ```
 
-它只取这样的拉取请求：有一到三条属于 ocra 范围的评论（`Code Defect`、`Security Vulnerability`、`Performance`；可维护性与可读性不算，与 `ceiling` 一致），且都在新版本一侧；改动行数不超过 `--max-change-lines`（默认 300）；不在 `--golden-dir` 中。每个拉取请求会像 `ceiling` 那样克隆并规划，只有每条这类评论都可达时才保留。各语言轮流入选，因此 `--limit` 会分散到不同语言；`--seed` 和 `--languages` 与选择参数含义相同。用例写入 `--out`（默认 `.ocra/eval/aacr-golden-candidates`，其中不能已有用例），并附带按语言、类别和严重级别计数的 `summary.md`。
+它只取这样的拉取请求：有一到三条属于 ocra 范围的评论（`Code Defect`、`Security Vulnerability`、`Performance`；不含可维护性与可读性，与 `ceiling` 一致），都在新版本一侧，改动行数不超过 `--max-change-lines`（默认 300），不在 `--golden-dir` 中，并且按 `ceiling` 的规划每条这类评论都可达。各语言在 `--limit` 下轮流入选；`--seed` 和 `--languages` 与选择参数含义相同。用例写入 `--out`（默认 `.ocra/eval/aacr-golden-candidates`，其中不能已有用例），附带按语言、类别和严重级别计数的 `summary.md`。
 
-候选还不是黄金用例。它的期望只是复述人工评审评论，而不是已确认的缺陷，所以 `source.ref` 写明数据集行号并注明未经人工核对，每个 `minSeverity` 都是 `suggestion`，也没有 `forbid`。请对照 `head` 处的代码逐条核对，设置严重级别，补充 `forbid` 范围和许可证，重新命名，然后再移入 `evals/golden/`。
+候选只是复述人工评论，不是已确认的缺陷：`source.ref` 写明数据集行号并注明未经人工核对，每个 `minSeverity` 都是 `suggestion`，没有 `forbid`。请对照 `head` 处的代码核对，设置严重级别，补充 `forbid` 范围和许可证，重新命名，再移入 `evals/golden/`。
 
 ### 黄金集计分与标注
 
-黄金集的运行会在 `summary.md` 里加上自己的指标。命中 `expect` 的问题算正确；没命中的按标注计：
+黄金集的运行会在 `summary.md` 里加上自己的指标。命中 `expect` 的问题算正确，其余按标注计：
 
 - 之前已标为有效或无效的（用例里的 `adjudicated` 列表；标注何时适用见下文）；
 - 落在 `forbid` 范围内的算无效；
 - 其余为未标注。
 
-精确率 =（命中数 + 有效数）/ 报出总数，所以未标注的问题在被标注前会拉低精确率，但绝不靠猜。落在 `forbid` 范围内或出现在 `clean` 用例上的 critical（已标为有效的除外）会被单独列为失败。
+精确率 =（命中数 + 有效数）/ 报出总数，所以未标注的问题在标注前拉低精确率；标注绝不靠猜。落在 `forbid` 范围内或 `clean` 用例上的 critical（已标为有效的除外）会被列为失败。
 
-未标注的问题会写进运行目录下的 `adjudication.json`。把每条的 `label` 填成 `"valid"` 或 `"invalid"`，再写一句 `reason`，然后记录到用例里：
+未标注的问题写进运行目录下的 `adjudication.json`。把每条 `label` 填成 `"valid"` 或 `"invalid"`，写一句 `reason`，再记录到用例里：
 
 ```bash
 node packages/eval/dist/main.js adjudicate .ocra/eval/golden-baseline
 ```
 
-一条标注对应同一段代码上的一个说法。之后的问题只有指纹（审查员类别、文件和引用的代码）相同、标题也相同，或者标题换了说法但判定模型认为是同一个说法时，才沿用这条标注；换了说法的会列在 `summary.md` 里，方便核对标注是否仍然适用。同一段代码上的其他说法在得到自己的标注之前一律算未标注，所以一条被标为有效的问题，不会让同一处代码上一个错误的说法也算作正确。每个说法只标一次。如果一条有效问题其实是某个预期问题报在了别处，请手动把它的位置加进那条 `expect` 的 `also`，不要标注它，否则它会变成第二条预期问题。带行号的有效问题会同时变成一条 `expect`，严重程度记为 `suggestion`（需要更高时手动调整）；`clean` 用例上出现有效问题，这个用例就不再是 clean。重新计分会保留已经填好的标注。
+一条标注对应同一段代码上的一个说法。之后的问题指纹（审查员类别、文件和引用的代码）相同且标题相同，或标题换了说法但判定模型认为是同一个说法时，沿用这条标注；换了说法的列在 `summary.md` 里，方便核对标注是否仍适用。同一段代码上的其他说法需要自己的标注，所以有效标注不会让同一处的错误说法算作正确。每个说法只标一次。如果有效问题其实是某个预期问题报在了别处，请手动把位置加进那条 `expect` 的 `also`，不要标注，否则它会变成第二条预期问题。带行号的有效问题也会变成一条 `suggestion` 严重程度的 `expect`（需要时手动调高）；`clean` 用例上出现有效问题，它就不再是 clean。重新计分会保留已填的标注。
 
 ### 召回漏斗
 
-黄金集的数字只说明某个预期问题没找到，不说明它是在哪一步丢的。每次审查的会话日志（`events.jsonl`）能说明这一点，所以 `ocra-eval run` 会把它保存在运行目录的 `events/<case>.jsonl`，评分时把每个预期问题放到它走到的最远一步：
+为了看出没找到的问题丢在哪一步，`ocra-eval run` 把每次审查的会话日志保存为运行目录里的 `events/<case>.jsonl`，评分时把每个预期问题放到它走到的最远一步：
 
 | 阶段 | 含义 |
 |---|---|
@@ -102,11 +102,11 @@ node packages/eval/dist/main.js adjudicate .ocra/eval/golden-baseline
 | dropped | 它的行上报告的问题被拿掉了：被 Verify、judge（丢弃或并入别的问题）、记忆过滤拿掉，或者因为它指向任务 bundle 之外的文件而被丢弃（只按文件匹配） |
 | found | 进入了报告，不论严重级别；黄金集召回率仍只计达到用例最低严重级别的 |
 
-`summary.md` 列出各阶段的数量，以及每个没找到的预期问题停在哪一步；`summary.json` 记录每个预期问题的阶段（`golden.cases.<case>.claims[].stage` 和 `droppedBy`）以及计数（`golden.funnel`）。raised 和 dropped 只按位置匹配（同一文件，行号与预期范围相差不超过一行），从不调用 judge，所以漏斗不会给评分增加任何模型调用：那里的问题也可能说的是别的事。没有保存会话日志的审查（旧版 `ocra-eval` 做的运行）计为 unknown，而不是漏报。
+`summary.md` 列出各阶段的数量和每个漏掉的问题停在哪一步；`summary.json` 记录各阶段（`golden.cases.<case>.claims[].stage` 和 `droppedBy`）和计数（`golden.funnel`）。raised 和 dropped 只按位置匹配（同一文件，行号与预期范围相差不超过一行），从不调用 judge，所以漏斗不增加模型调用，那里的问题也可能说的是别的事。没有保存日志的审查（旧版 `ocra-eval` 的运行）计为 unknown，而不是漏报。
 
 ### 对抗用例
 
-对抗用例衡量的是：PR 在改动里埋入的文字，能不能改变 ocra 的审查结果（[ADR-0014](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0014-adversarial-golden-cases.md)）。每个对抗用例是一个 `tier: "adversarial"` 的用例文件，写明它攻击哪个黄金用例、埋入什么文字：
+对抗用例衡量埋在改动里的文字能否改变 ocra 的审查（[ADR-0014](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0014-adversarial-golden-cases.md)）。每个是一个 `tier: "adversarial"` 的用例文件，写明攻击哪个黄金用例、埋入什么文字：
 
 ```json
 {
@@ -134,11 +134,11 @@ node packages/eval/dist/main.js list --dataset golden --tier adversarial   # 免
 node packages/eval/dist/main.js run  --dataset golden --tier adversarial --label attacks --max-cost-usd 15
 ```
 
-攻击文字以固定的作者和时间提交在用例的 head 之上，所以每次运行审查的都是同一个提交，克隆里的工作区、暂存区和引用都不会改变。`--tier adversarial` 会把每个攻击用例和它所攻击的用例放在同一次运行里；其他档位和普通的黄金集运行都不包括攻击用例。随后 `summary.md` 把每个攻击用例和它的干净用例对比：达到最低严重程度的预期问题找到了几个、结论是否变化、有几条问题带着 canary。攻击用例不计入这次运行的其他指标，它们的问题也不做标注。模型每次运行都有波动，所以请综合多个攻击用例和多次运行来看差异，而不要只看一对。
+攻击文字以固定的作者和时间提交在用例的 head 上，所以每次运行审查同一个提交；克隆的工作区、暂存区和引用不变。只有 `--tier adversarial` 运行攻击用例，每个都和它所攻击的用例一起，由 `summary.md` 对比：达到最低严重程度的预期问题、结论，以及带着 canary 的问题。攻击用例不计入其他指标，也不做标注。模型运行有波动，请综合多个攻击用例和多次运行来看，而不要只看一对。
 
 ## 可复现性
 
-一次运行里的每次审查都用固定的采样设置：温度 `0`、种子 `1`，除非用 `--temperature` 和 `--model-seed` 另行指定。`run.json` 和 `summary.json` 记录要求的设置（`info.sampling`）；`run.json` 还记录运行的是哪个 ocra（`info.ocra`）：它的版本、构建它的检出所在的提交以及该检出是否有未提交的改动，还有审查 agent 的步数上限，`summary.md` 在 `ocra` 一行打印这些信息；每次审查的 JSON 报告记录实际应用的设置，`summary.json` 把它们汇总为 `summary.provenance`：被审查的 PR 用到的不同 ocra 版本、提示词哈希、配置哈希和采样设置（见报告的 [`provenance`](./cli#json-输出)）。`summary.md` 在 Provenance 一行里列出它们。同一次运行里出现多个值，说明它在重新构建或改了设置之后被接着跑过。OpenCode 运行时不应用种子，有些供应商也会忽略种子，所以固定种子并不能让模型变成确定性的；剩下的波动由重复运行来衡量。
+审查使用固定采样：温度 `0`、种子 `1`，除非 `--temperature` 和 `--model-seed` 另行指定。`run.json` 和 `summary.json` 记录要求的设置（`info.sampling`）；每次审查的 JSON 报告记录实际应用的设置，`summary.json` 汇总为 `summary.provenance`：不同的 ocra 版本、提示词哈希、配置哈希和采样设置（[`provenance`](./cli#json-输出)），打印在 `summary.md` 的 Provenance 一行。出现多个值说明运行在重新构建或改了设置后被接着跑过。`run.json` 还记录运行的是哪个 ocra（`info.ocra`）：版本、检出的提交、是否有未提交的改动，以及审查 agent 的步数上限，打印在 `summary.md` 的 `ocra` 一行。OpenCode 运行时不应用种子，有些供应商也忽略种子，所以固定种子不能让模型变成确定性的；剩下的波动由重复运行衡量。
 
 ## 重复运行
 
@@ -146,9 +146,9 @@ node packages/eval/dist/main.js run  --dataset golden --tier adversarial --label
 node packages/eval/dist/main.js run --dataset golden --tier smoke --label baseline --repeat 3 --max-cost-usd 15
 ```
 
-`--repeat k` 把选中的 PR 依次审查 `k` 遍，结果放在运行目录里的 `r1/` … `rk/`；每一遍都是一次普通的运行，有自己的 `summary.md`，用同一个名称再次运行会接着跑。`--max-cost-usd` 约束所有遍的总花费：每一遍拿到的是前面几遍剩下的额度。运行目录里的 `repeats.json` 和 `summary.md` 列出精确率和召回率（以及黄金集的精确率和召回率）每一遍的值、均值和均值的 95% 置信区间。`ocra-eval score <run-dir>` 会重新评分每一遍并重写这两个文件；黄金集运行的问题要按遍标注（`ocra-eval adjudicate <run-dir>/r1`）。
+`--repeat k` 把选中的 PR 依次审查 `k` 遍，放在 `r1/` … `rk/`，每一遍都是有自己 `summary.md` 的普通运行；用同一个名称再次运行会接着跑。`--max-cost-usd` 约束所有遍的总花费：每一遍拿到前面剩下的额度。运行目录里的 `repeats.json` 和 `summary.md` 列出精确率和召回率（包括黄金集的）每一遍的值、均值和均值的 95% 置信区间。`ocra-eval score <run-dir>` 重新评分每一遍；黄金集的问题按遍标注（`ocra-eval adjudicate <run-dir>/r1`）。
 
-区间是 Student t 区间：均值 ± t(0.975, k−1) · s / √k，s 是 k 遍数值的标准差。它假定这些数值大致服从正态分布；三遍时 t 为 4.3，除非各遍结果很接近，否则区间会很宽。每一边至少跑三遍。
+区间是 Student t 区间：均值 ± t(0.975, k−1) · s / √k，s 是 k 遍数值的标准差，假定大致服从正态分布。三遍时 t 为 4.3，除非各遍结果接近，否则区间很宽。每一边至少跑三遍。
 
 ## 比较两次运行
 
@@ -157,9 +157,13 @@ node packages/eval/dist/main.js compare .ocra/eval/baseline-a .ocra/eval/change 
 node packages/eval/dist/main.js compare .ocra/eval/baseline .ocra/eval/change      # 两次重复运行
 ```
 
-逐项列出两次运行的指标和差值。模型每次运行都有波动。两边都是重复运行时，精确率和召回率用两样本 t 检验比较各遍的数值（合并标准差，双侧，α = 0.05）：只有差值显著时才判为 `better` 或 `worse`；表格会列出两边的 95% 区间和均值。否则结论写作 `no change within noise (detectable ≥ X)`：X 是这些运行五次里能测出四次的最小真实差值（功效 0.8），即 (t(0.975, df) + t(0.8, df)) · s_pooled · √(1/k₁ + 1/k₂)。所以 “no change” 的意思是“没有大于 X 的变化”，而不是“完全相同”：在 smoke 层级上每边三遍，能测出的召回率差异约为 10 个百分点，相当于 18 个预期问题里的 2 个。每边多跑几遍，或者预期问题更多，X 就会变小。
+逐项列出两次运行的指标和差值。两边都是重复运行时，精确率和召回率用两样本 t 检验比较（合并标准差，双侧，α = 0.05）：只有差值显著才判为 `better` 或 `worse`，并列出两边的 95% 区间和均值。否则结论写作 `no change within noise (detectable ≥ X)`，X 是这些运行五次里能测出四次的最小真实差值（功效 0.8）：(t(0.975, df) + t(0.8, df)) · s_pooled · √(1/k₁ + 1/k₂)。所以 “no change” 是“没有大于 X 的变化”，不是“完全相同”：smoke 层级上每边三遍，能测出约 10 个百分点的召回率差异，即 18 个预期问题里的 2 个。多跑几遍或预期问题更多，X 就更小。
 
-两边的黄金集运行用的是同一套用例和标注时，还会多出一节，把每个预期问题和它自己配对：对所有运行都审查过的用例中的每个预期问题，列出两边各有多少比例的运行找到了它，列表给出比例不同的那些，再在它们上面做符号检验（运行一侧找到得更多的有几个、更少的有几个，以及双侧精确二项 p 值；低于 0.05 判为 `better` 或 `worse`）。它用上了每个问题的每一遍，所以能看出召回率数字掩盖的变化。用例或标注不同的运行不做配对检验；请把两边重新评分。单次运行时，加上 `--spread-of`（基线的第二次运行），差值不超过两次基线之间差距的会报告为 `no change`；不加时不判断方向。AACR-Bench 和黄金集的运行都能比较；两次运行审查的 PR 不同、评分用的 judge 不同、用的黄金用例或标注不同、审查成功的 PR 数不同、还有未标注的问题，或者用了不同的 ocra 版本、提示词（`promptHash`）、配置（`configHash`）或采样设置，又或者其中一次没有记录这些时，都会给出警告。黄金集的数字取决于评分时的用例和标注，所以标注之后，要把参与比较的每次运行都重新评分（`ocra-eval score <run-dir>`）。
+用同一套用例和标注评分的黄金集运行还有一节配对比较：对所有运行都审查过的用例中的每个预期问题，列出两边找到它的运行比例，列出比例不同的那些，再做符号检验（找到得更多、更少的各有几个，以及双侧精确二项 p 值；低于 0.05 判为 `better` 或 `worse`）。它用上每个问题的每一遍，能看出召回率数字掩盖的变化。用例或标注不同的运行不做配对检验；请把两边重新评分。
+
+单次运行时，`--spread-of`（基线的第二次运行）把不超过两次基线差距的差值报告为 `no change`；不加时不判断方向。
+
+`compare` 适用于 AACR-Bench 和黄金集的运行。两次运行审查的 PR 不同或数量不同、评分的 judge 不同、黄金用例或标注不同、还有未标注的问题、ocra 版本、提示词（`promptHash`）、配置（`configHash`）或采样设置不同，或其中一次没有记录这些时，都会给出警告。标注之后，请把参与比较的每次运行都重新评分（`ocra-eval score <run-dir>`）。
 
 ## 多次运行的趋势
 
@@ -168,18 +172,20 @@ node packages/eval/dist/main.js trend .ocra/eval
 node packages/eval/dist/main.js trend .ocra/eval --series free-nvidia-nemotron-3-ultra-550b-a55b-free@main-smoke,free-thinkingmachines-inkling-free@main-smoke
 ```
 
-读取一个目录下的所有黄金集运行（任何含 `run.json` 的目录，最多向下四层，所以运行目录和下载下来的 artifact 文件夹都可以），并按系列分组：运行的系列是去掉末尾 `-<n>` 的标签，所以 `nightly-1`、`nightly-2`、`nightly-3` 是同一个系列，重复运行的 `r1/` … `rk/` 归入它的标签。`--series` 只保留列出的系列。每个系列输出：
+读取一个目录下的所有黄金集运行（任何含 `run.json` 的目录，最多向下四层，所以运行目录或下载的 artifact 文件夹都可以），按去掉末尾 `-<n>` 的标签分成系列：`nightly-1`、`nightly-2`、`nightly-3` 是同一个系列，重复运行的 `r1/` … `rk/` 归入它的标签。`--series` 只保留列出的系列。每个系列输出：
 
-- 每次运行的黄金召回率和精确率、所用提交，以及在保存的报告记录了收尾轮次时（`tasks[].wrapUp`），审查任务的收尾轮次和这些轮次报告的问题数；
-- 各次运行召回率和精确率的均值、标准差和范围：同一配置在运行之间的波动；
-- 每次运行在共同用例上的[召回漏斗](#召回漏斗)（not looked/looked/raised/dropped/found），以及每个预期问题在没找到它的那些运行里停在哪一步；
-- 有多个系列时，所有系列在共同用例上的对比，以及这些用例里每个预期问题被各系列的多少次运行在要求的严重级别上找到，还有它的稳定度：所有这些运行中找到它的比例。总能找到或从来找不到的问题，比大约一半时候能找到的问题更难区分两种设置。
+- 每次运行的黄金召回率和精确率、所用提交，以及报告记录了时（`tasks[].wrapUp`）任务的收尾轮次和其中报告的问题；
+- 召回率和精确率的均值、标准差和范围：同一配置在运行之间的波动；
+- 每次运行在共同用例上的[召回漏斗](#召回漏斗)，以及每个预期问题在漏掉它的运行里停在哪一步；
+- 有多个系列时，各系列在全体共同用例上的对比，每个预期问题被各系列多少次运行在要求的严重级别上找到，以及它的稳定度（所有这些运行中找到它的比例）。总能找到或从来找不到的问题，比约一半时候能找到的更难区分两种设置。
 
-运行常常不完整（被额度停下的运行、失败的用例），用例集也会增加，所以每个数字都只在所涉及运行的共同用例上计算；被排除的用例会列出来，每次运行在自己全部用例上的数字留在最后一列。同一次运行读到两次（两次下载里的同一标签）只算一次。按用例的分数由这个版本的 `ocra-eval run` 和 `score` 写进 `summary.json`；更早的运行会列出但没有数字，用 `ocra-eval score <run-dir>` 重新评分之后才有。同一系列的运行用了不同的 judge，或者针对不同的用例或标注评分时，会给出警告。
+运行常常不完整，用例集也在增加，所以每个数字都只在所涉及运行的共同用例上计算；被排除的用例会列出，每次运行在全部用例上的数字留在最后一列。同一次运行读到两次只算一次。`summary.json` 早于按用例计分的运行会列出但没有数字，用 `ocra-eval score <run-dir>` 重新评分后才有。同一系列的运行用了不同的 judge，或针对不同的用例或标注评分时，会给出警告。
 
 ### 每日免费评估（本仓库）
 
-仓库的 `eval-free.yml` 工作流在 OpenRouter 的免费模型上运行黄金用例。这些模型不收费，但共用每天的请求额度（账号没有充值时，`:free` 模型每个 UTC 日约 50 次，00:00 UTC 重置；一个黄金用例要 30 到 210 次，所以一条通道每天大约完成一个用例）。它在重置后的 01:00 UTC 运行，20:00 UTC 再用剩下的额度运行一次，并为当天的拉取请求审查留出一部分请求（仓库变量 `OCRA_EVAL_FREE_RESERVE`，默认 150）。每次运行评估一条通道，即一个模型加仓库的一个分支：定时运行轮流使用 `.github/eval-free-lanes.json` 里的通道（目前是 `main` 和一个待测分支上的 `nvidia/nemotron-3-ultra-550b-a55b:free`，以及 `main` 上的 `thinkingmachines/inkling:free`，所以结果按模型分开），`workflow_dispatch` 则指定一条（`model`、`ref`、`tier`）。一条通道的运行标签为 `free-<model>@<branch>-<tier>-<n>`，跨天续跑直到每个用例都审查过，并由工作流自己的 `ocra-eval` 按默认分支的用例评分；judge 用通道的模型，除非 `OCRA_EVAL_JUDGE_MODEL` 另行指定。因为这个任务持有 OpenRouter 密钥，分支只来自那个文件或手动触发，从不来自拉取请求。通道的模型被 OpenRouter 下架（HTTP 404）或只对充值账号提供（HTTP 402）时，运行会失败，错误信息写明是哪个模型。每次完成的运行作为工作流 artifact 保留 90 天；`scripts/eval-free-download.sh [dir] [pattern]` 用 `gh` 下载它们并输出趋势。
+仓库的 `eval-free.yml` 工作流在 OpenRouter 的免费模型上运行黄金用例。它们不收费，但共用每日额度（账号没有充值时，`:free` 模型每个 UTC 日约 50 次请求，00:00 UTC 重置；一个黄金用例要 30 到 210 次，所以一条通道每天约完成一个用例）。它在 01:00 UTC 运行，20:00 UTC 再用剩下的额度运行一次，并为当天的拉取请求审查留出余量（仓库变量 `OCRA_EVAL_FREE_RESERVE`，默认 150）。
+
+每次运行评估一条通道，即某个分支上的一个模型。定时运行轮流使用 `.github/eval-free-lanes.json`（目前是 `main` 和一个待测分支上的 `nvidia/nemotron-3-ultra-550b-a55b:free`，以及 `main` 上的 `thinkingmachines/inkling:free`）；`workflow_dispatch` 指定一条（`model`、`ref`、`tier`）。运行标签为 `free-<model>@<branch>-<tier>-<n>`，跨天续跑直到每个用例都审查过，由工作流自己的 `ocra-eval` 按默认分支的用例评分，judge 用通道的模型，除非 `OCRA_EVAL_JUDGE_MODEL` 另行指定。因为任务持有 OpenRouter 密钥，分支从不来自拉取请求。模型被 OpenRouter 下架（HTTP 404）或只对充值账号提供（HTTP 402）时，运行失败并写明是哪个模型。完成的运行作为 artifact 保留 90 天；`scripts/eval-free-download.sh [dir] [pattern]` 用 `gh` 下载它们并输出趋势。
 
 ## 召回率上限（免费）
 
@@ -187,7 +193,7 @@ node packages/eval/dist/main.js trend .ocra/eval --series free-nvidia-nemotron-3
 node packages/eval/dist/main.js ceiling --limit 20 --max-change-lines 300
 ```
 
-不调用任何模型，按 ocra 各确定性阶段的决定给每条标注问题归类：文件被选择阶段排除、文件不在改动里、没有审查员覆盖该文件、问题按设计不在范围内（可维护性和可读性）、安全或性能问题但没有对应审查员、问题在改动行之外，或者可达。可达比例就是召回率的上限；这个数字低，说明换更强的模型也无济于事，只能调整文件选择、审查矩阵或审查范围。
+不调用模型，按 ocra 各确定性阶段的决定给每条标注问题归类：文件被选择阶段排除、不在改动里、没有审查员覆盖、按设计不在范围内（可维护性和可读性）、安全或性能问题但没有对应审查员、在改动行之外，或者可达。可达比例是召回率的上限；只有调整文件选择、审查矩阵或范围才能提高它，换模型不行。
 
 ## 评分方式
 
@@ -199,6 +205,6 @@ node packages/eval/dist/main.js ceiling --limit 20 --max-change-lines 300
 | 召回率 | 命中的问题数 / 标注的意见数 |
 | F1 | 两者的调和平均 |
 
-报告里还有一个诊断指标（不是基准的官方指标）：同一文件里、同一个问题，不论在哪一行都算命中时的精确率和召回率。它和官方数字之间的差距，说明问题找到了但标注的行离标准答案太远（基准只容许相差一行），而不是没找到。
+报告还给出一个宽松的诊断指标（不是基准的官方指标）：同一文件、同一问题，任意行都算命中。与官方数字的差距说明问题的行离标准答案太远（基准只容许一行），而不是没找到。
 
-判定模型使用 `JUDGE_BASE_URL`、`JUDGE_API_KEY` 和 `JUDGE_MODEL`，没有设置时使用 Gemini key。判定结果按运行缓存，重新评分不花钱。报告会按语言、问题类别和上下文层级拆分，并附上 token、花费、耗时，以及问题的锚定情况（留在文件级别的比例、重新定位调用次数）。
+判定模型使用 `JUDGE_BASE_URL`、`JUDGE_API_KEY` 和 `JUDGE_MODEL`，或 Gemini key；判定结果按运行缓存，重新评分不花钱。报告按语言、问题类别和上下文层级拆分，附上 token、花费、耗时和锚定情况（留在文件级别的比例、重新定位调用次数）。

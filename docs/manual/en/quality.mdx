@@ -3,7 +3,7 @@ title: Measured quality
 description: What ocra found and missed on its golden cases and on AACR-Bench, how that was measured, and what the numbers cannot tell you.
 ---
 
-This page reports what ocra's evaluation runs have measured so far, how they were scored, and their limits. The sample is small and every run used one model family, so read [Limits](#limits) before relying on a number.
+What ocra's evaluation runs have measured so far, how, and the limits. The sample is small, so read [Limits](#limits) before relying on a number.
 
 <Callout>
 On 8 changes with 16 known issues, the current configuration found **7 (44%)** in its one run, and **all 7 findings it reported were correct**. It found 5 of the 6 issues the cases rate as warnings and 2 of the 10 rated as suggestions. Use ocra as a second reviewer: read what it reports, and do not take an empty report as approval.
@@ -11,21 +11,21 @@ On 8 changes with 16 known issues, the current configuration found **7 (44%)** i
 
 ## How it is measured
 
-`ocra-eval` runs the real `ocra review` on changes pinned at fixed commits and scores what it reports ([Evaluation](./evaluation) shows how to run it). There are two datasets:
+`ocra-eval` runs the real `ocra review` on changes pinned at fixed commits and scores what it reports ([Evaluation](./evaluation)). Two datasets:
 
-- **Golden cases** ([ADR-0011](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)) belong to ocra. Each case pins a public repository at two commits and lists the issues ocra must report, other places where the same issue may rightly be reported, ranges where a finding would be wrong, or that the change has no issue at all. Every run so far used the 8 cases the *smoke* tier had then, now with 16 expected issues. The smoke tier has since grown to 10 cases and the *full* tier to 16; neither has been run as it is now.
-- **[AACR-Bench](https://github.com/alibaba/aacr-bench)** is an external benchmark of real pull requests; its ground truth is the comments human reviewers left. It is the number comparable with published results.
+- **Golden cases** ([ADR-0011](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)) belong to ocra. Each pins a public repository at two commits and lists the issues ocra must report, other places the same issue may rightly be reported, ranges where a finding would be wrong, or that the change has no issue. Every run so far used the 8 cases the *smoke* tier had then, now with 16 expected issues. The smoke tier has since grown to 10 cases and the *full* tier to 16; neither has been run as it is now.
+- **[AACR-Bench](https://github.com/alibaba/aacr-bench)** is an external benchmark of real pull requests whose ground truth is the comments human reviewers left; it is the number comparable with published results.
 
 | The 8 cases these runs used | Cases | Expected issues | Languages |
 |---|---|---|---|
 | Changes from ocra's own history: bugs fixed later, and one change with no issue | 4 | 7 | TypeScript |
 | AACR-Bench pull requests, with issues checked against the code | 4 | 9 | C#, C++, Go, TypeScript |
 
-On the golden cases, a finding matches an expected issue when it is in the same file, at most one line from the expected lines or from one of the other places, and a judge model says it describes the same concern.
+On golden cases, a finding matches an expected issue when it is in the same file, at most one line from the expected lines or one of the other places, and a judge model says it is the same concern.
 
-- **Recall** is the share of expected issues found at or above the severity the case asks for.
-- **Precision** is the share of reported findings that match an expected issue or are labeled valid. A finding that matches nothing is checked against the code once and labeled valid or invalid, and the label is stored with the case; until then it counts as wrong.
-- A critical finding in a range marked wrong, or on a change with no issue, counts as a failure. No run has had one.
+- **Recall** is the share of expected issues found at or above the case's severity.
+- **Precision** is the share of reported findings that match an expected issue or are labeled valid. A finding matching nothing is checked against the code once and labeled valid or invalid with the case; until then it counts as wrong.
+- A critical finding in a range marked wrong, or on a change with no issue, is a failure. No run has had one.
 
 AACR-Bench uses the benchmark's own matching: same file and side of the diff, at most one line apart, then the judge model. Its precision is matches over findings, without labels.
 
@@ -41,17 +41,17 @@ One run on 2026-09-29 (UTC), with ocra's default settings as of `main` at [`664c
 - **Reported 7 findings, all correct (7 of 7, 100%)**, and nothing on the change with no issue.
 - **Cost $12.53** for the 8 changes: $1.57 each on average (median $1.15, from $0.07 to $3.98). A review took 243 seconds at the median and 437 at the 90th percentile.
 
-It found header declarations and callers out of step with their definitions, which breaks the build (FreeCAD, C++); a test's monitor container left on the public image when its server container moved to a mirror (ASP.NET Core, C#); files created before their parent directory exists (Ollama, Go); an import of a name the module does not export, which breaks the build (RAGFlow, TypeScript); and three bugs from ocra's history: documentation promising a `.gitignore` that no code writes, a helper function registered as a plugin, and reference-style Markdown links through which model-written text could still put live links into pull request comments.
+Found: header declarations and callers out of step with their definitions, breaking the build (FreeCAD, C++); a test's monitor container left on the public image when its server container moved to a mirror (ASP.NET Core, C#); files created before their parent directory (Ollama, Go); an import of a name the module does not export, breaking the build (RAGFlow, TypeScript); and three bugs from ocra's history: docs promising a `.gitignore` no code writes, a helper registered as a plugin, and reference-style Markdown links through which model text could still post live links.
 
-It missed four bugs from ocra's history (a temporary copy of the git index with a new modification time, so a file edited in the same second as the real index can look unchanged and be left out of the review; a blocking verdict returned before a new coverage check; unchanged files counted as not reviewed; a run counted as reviewing nothing when one reviewer failed on files another had finished), four smaller validation, error-handling and test issues in Ollama, and missing translation keys in RAGFlow.
+Missed: four bugs from ocra's history (a temporary git index copy with a new modification time, so a file edited in the same second can look unchanged and be skipped; a blocking verdict returned before a new coverage check; unchanged files counted as not reviewed; a run counted as reviewing nothing when one reviewer failed on files another had finished), four smaller validation, error-handling and test issues in Ollama, and missing translation keys in RAGFlow.
 
 ### Where the expected issues come from
 
-Recall depends on which issues are expected. Four of the 16 were written from bugs fixed in ocra's history, before any run; the current configuration found 2 of them. The other 12 were added after an ocra run reported them and a check against the code confirmed them: 5 from runs on AACR-Bench pull requests, 7 from runs on these cases, one of them the run above. On those 12, recall shows whether ocra finds again what it has found before; it found 5.
+Four of the 16 were written from bugs fixed in ocra's history, before any run; the current configuration found 2 of them. The other 12 were added after an ocra run reported them and a check against the code confirmed them: 5 from runs on AACR-Bench pull requests, 7 from runs on these cases, one of them the run above. On those 12, recall shows whether ocra finds again what it found before; it found 5.
 
 ### Every run
 
-All runs on those 8 cases, scored against today's cases and labels so that they compare. Three earlier runs, on the first 4 of them, each found 1 of those cases' 7 expected issues and reported nothing wrong. Runs that only checked mechanics, or compared a change on a handful of AACR-Bench pull requests, are left out.
+All runs on those 8 cases, scored against today's cases and labels so they compare. Three earlier runs on the first 4 each found 1 of those cases' 7 expected issues and reported nothing wrong. Runs that only checked mechanics, or compared a change on a few AACR-Bench pull requests, are left out.
 
 | Date (UTC, 2026) | Configuration | Found | Precision | Cost per change |
 |---|---|---|---|---|
@@ -67,11 +67,11 @@ All runs on those 8 cases, scored against today's cases and labels so that they 
 
 ² One more expected issue was found below the severity its case asks for.
 
-Both configurations that ran twice found about the same number of issues each time (6 and 6, 7 and 8), and their precision differed by one finding. Two runs cannot show the real spread, so treat a difference of one or two issues between configurations as noise.
+Both configurations that ran twice found about the same number each time (6 and 6, 7 and 8), with precision one finding apart. Two runs cannot show the real spread: treat a difference of one or two issues as noise.
 
 ### On a free model
 
-Two runs of the smoke tier as it is today (10 cases, 18 expected issues) on Space Bunny Alpha (`stealth/space-bunny-alpha`), an anonymous free preview on OpenRouter, reached as a declared OpenAI-compatible endpoint. The free key reaches no other model, so every tier, the verification and judge steps and the scoring judge all ran on it. ocra was `main` as of 2026-10-02 ([`c997e07`](https://github.com/jma49/Open-CR-Agent/commit/c997e079dbc37298022c8c3837b67afe64411b89)) with its default settings. OpenRouter's free models share 1000 requests a day per account and a smoke case takes 30 to 250 of them, so each run stretched from 2026-10-02 to 2026-10-04. OpenRouter withdrew the model on 2026-10-06, so these runs cannot be repeated on it.
+Two runs of today's smoke tier (10 cases, 18 expected issues) on Space Bunny Alpha (`stealth/space-bunny-alpha`), an anonymous free preview on OpenRouter reached as a declared OpenAI-compatible endpoint. The free key reaches no other model, so every tier, verification, the judge and the scoring judge ran on it. ocra was `main` as of 2026-10-02 ([`c997e07`](https://github.com/jma49/Open-CR-Agent/commit/c997e079dbc37298022c8c3837b67afe64411b89)) with default settings. OpenRouter's free models share 1000 requests a day per account and a smoke case takes 30 to 250, so each run stretched from 2026-10-02 to 2026-10-04. OpenRouter withdrew the model on 2026-10-06, so these runs cannot be repeated.
 
 | Run | Found | Precision | Findings | Unlabeled | Seconds per change (median) |
 |---|---|---|---|---|---|
@@ -80,15 +80,15 @@ Two runs of the smoke tier as it is today (10 cases, 18 expected issues) on Spac
 
 ³ One more expected issue was found below the severity its case asks for.
 
-Both runs found the same seven issues: FreeCAD's declarations out of step with their definitions, ASP.NET Core's monitor container left on the public image, Keycloak's priority fallthrough, RAGFlow's import of a name the module does not export and its missing translation keys, the `.gitignore` ocra's docs promised, and the helper registered as a plugin. Both missed the same eleven: all five Ollama issues (neither run reported anything on that change), the Elasticsearch issue, the git index copy, and four of the five in the coverage-gaps change. Neither run reported a critical finding where a case says findings are wrong; the change with no issue got one suggestion in each run. Precision differs by four findings on the same seven hits: the 8 and 4 unlabeled findings count as wrong until checked against the code, and three of them recur in both runs (a read cache without a bound, a FreeCAD comment naming a removed parameter, the manual's example output).
+Both runs found the same seven issues: FreeCAD's declarations out of step with their definitions, ASP.NET Core's monitor container left on the public image, Keycloak's priority fallthrough, RAGFlow's import of a name the module does not export and its missing translation keys, the `.gitignore` ocra's docs promised, and the helper registered as a plugin. Both missed the same eleven: all five Ollama issues (nothing reported on that change), the Elasticsearch issue, the git index copy, and four of the five in the coverage-gaps change. Neither reported a critical finding where a case says findings are wrong; the change with no issue got one suggestion in each. Precision differs by four findings on the same seven hits: the 8 and 4 unlabeled findings count as wrong until checked, and three recur in both runs (a read cache without a bound, a FreeCAD comment naming a removed parameter, the manual's example output).
 
-Three caveats on top of the [Limits](#limits) below:
+Three caveats beyond the [Limits](#limits):
 
-- **The matches were decided by Space Bunny itself**, not by `gemini-flash-lite-latest`, so these rows compare with each other, not with the Gemini rows above.
-- **The coverage-gaps change was reviewed in part.** In both runs the daily quota refused some of its tasks (12 of 19 in A, 9 of 18 in B) and the review finished incomplete; its four misses are partly code no reviewer read.
+- **Space Bunny itself decided the matches**, not `gemini-flash-lite-latest`, so these rows compare only with each other.
+- **The coverage-gaps change was reviewed in part.** The daily quota refused some of its tasks (12 of 19 in A, 9 of 18 in B) and the review finished incomplete; its four misses are partly code no reviewer read.
 - **Two tasks in A and one in B hit the 10-minute task limit** on the index-copy change.
 
-Cost was $0 at the model's price of 0. Each run sent 15 to 18 million input tokens, 88% of them cached prompt, and about half a million output tokens; a change took 231 and 247 seconds at the median, 992 and 803 at the 90th percentile.
+Cost was $0 at the model's price of 0. Each run sent 15 to 18 million input tokens, 88% cached, and about half a million output tokens; a change took 231 and 247 seconds at the median, 992 and 803 at the 90th percentile.
 
 ## AACR-Bench
 
@@ -99,11 +99,11 @@ Ten pull requests (`--seed 1 --limit 10 --max-change-lines 300`: at most 300 cha
 | 20 steps per review agent | 4/6 (67%); 2/5 (40%) | 4/44 (9.1%); 2/44 (4.5%) | $0.77; $0.86 |
 | The same, told to report each finding as soon as it is confirmed | 3/14 (21%); 3/7 (43%) | 3/44 (6.8%); 3/44 (6.8%) | $0.97; $1.02 |
 
-The current configuration has not been run on AACR-Bench. Three facts about the benchmark matter when reading these numbers:
+The current configuration has not been run on AACR-Bench. When reading these numbers:
 
-- **Recall has a ceiling.** Of the 530 issues annotated on 94 of its pull requests, 40% are maintainability and readability comments, which ocra does not report by design, so at most 58% are within ocra's reach (`ocra-eval ceiling`, which calls no model).
-- **Precision is understated.** The ground truth is the comments reviewers happened to leave, so a real issue nobody commented on counts as a false positive. A one-off check of each finding against the code (by an AI agent working on ocra, not recorded as labels) found 6 real defects, 4 minor issues and 1 wrong finding among the 11 findings of the first two runs, where the benchmark matched 6; and 15 real defects, 5 minor issues and 1 wrong finding among the 21 of the last two, where it matched 6.
-- **Matching allows one line of distance.** In one Electron pull request, ocra reported the annotated use-after-free ten lines away from the reference, which counted as a miss and as a false positive. `ocra-eval` reports a lenient match (same concern in the same file, at any line) next to the official one for this reason.
+- **Recall has a ceiling.** Of the 530 issues annotated on 94 of its pull requests, 40% are maintainability and readability comments, which ocra does not report by design, so at most 58% are within reach (`ocra-eval ceiling`, which calls no model).
+- **Precision is understated.** A real issue nobody commented on counts as a false positive. A one-off check of each finding against the code (by an AI agent working on ocra, not recorded as labels) found 6 real defects, 4 minor issues and 1 wrong finding among the 11 findings of the first two runs, where the benchmark matched 6; and 15 real defects, 5 minor issues and 1 wrong finding among the 21 of the last two, where it matched 6.
+- **Matching allows one line of distance.** In one Electron pull request, ocra reported the annotated use-after-free ten lines from the reference, counted as a miss and a false positive. Hence `ocra-eval`'s lenient match (same concern, same file, any line) next to the official one.
 
 ## Cost
 
@@ -113,29 +113,29 @@ In these runs, at list prices:
 - with earlier configurations, a review of one of AACR-Bench's smaller pull requests cost $0.77 to $1.02 on average;
 - the most expensive single review in any run cost $4.31, for a change to 10 files.
 
-Cost grows with the size of the change and with the reviewers its risk tier runs. `--max-cost-usd` caps a run's spend ([CLI](./cli)).
+Cost grows with the change's size and the reviewers its risk tier runs. `--max-cost-usd` caps a run's spend ([CLI](./cli)).
 
 ## Limits
 
 - **Small.** 8 changes and 16 expected issues, of which only 4 were written independently of ocra's own findings. The current configuration ran once, and the full tier has not run.
-- **Not independent.** The cases and labels are the project's own. The labels so far were made by an AI agent working on ocra, which checked each finding against the code and recorded its reason. A second model (Claude Fable 5.1), not told the labels, re-judged 5 of the 11 labels recorded by then against the code and agreed with all 5; no person outside the project has reviewed them. Recent changes, the 30-step limit among them, were chosen on these cases, which flatters the current configuration.
-- **A model decides matches.** Whether a finding describes an expected issue is decided by `gemini-flash-lite-latest`. Its answers are cached, so scoring the same run again gives the same result, but another judge could decide differently.
-- **Two model families, not comparable.** The runs until 2026-10-01 used Gemini on Vertex AI; the two free-model runs used Space Bunny Alpha for every step, the scoring judge included, so their rows compare only with each other. Other models will score differently.
+- **Not independent.** The cases and labels are the project's own, the labels made by an AI agent working on ocra that checked each finding against the code and recorded its reason. A second model (Claude Fable 5.1), not told the labels, re-judged 5 of the 11 labels recorded by then and agreed with all 5; no person outside the project has reviewed them. Recent changes, the 30-step limit among them, were chosen on these cases, which flatters the current configuration.
+- **A model decides matches:** `gemini-flash-lite-latest`. Its answers are cached, so re-scoring a run gives the same result, but another judge could decide differently.
+- **Two model families, not comparable.** Runs until 2026-10-01 used Gemini on Vertex AI; the two free-model runs used Space Bunny Alpha for every step, scoring included. Other models will score differently.
 - **Runs vary.** Two runs of the same configuration differed by one finding in precision.
 - **Recall is the weak point.** ocra missed more than half of the expected issues here, most of them rated as suggestions, and on AACR-Bench it matched under 10% of the annotated issues.
-- **Changes since the last run are not measured**, among them that a review agent which stops before finishing its files is now asked once to continue.
-- **Not comparable across tools.** Other tools publish numbers on other datasets, subsets, matching rules and models. These numbers say how ocra did on its own cases, not how it ranks.
+- **Changes since the last run are not measured**, among them that an agent stopping before finishing its files is now asked once to continue.
+- **Not comparable across tools.** Other tools publish numbers on other datasets, matching rules and models. These say how ocra did on its own cases, not how it ranks.
 
 ## What this means for you
 
-ocra finds real bugs and so far has rarely reported something wrong, but it missed more issues than it found. Use it as a second reviewer next to people, not as a gate: read what it reports, and do not take an empty report as approval. Its verdict is advice, not a security check ([How it works](./how-it-works)).
+ocra finds real bugs and has rarely reported something wrong, but it missed more issues than it found. Use it as a second reviewer next to people, not as a gate; its verdict is advice, not a security check ([How it works](./how-it-works#verdict)).
 
 ## Reproduce
 
-The cases and their labels are in [`evals/golden`](https://github.com/jma49/Open-CR-Agent/tree/main/evals/golden). With models configured as in [Evaluation](./evaluation), a run on the 8 cases above cost $8 to $13 at list prices; the smoke tier now has 10:
+The cases and labels are in [`evals/golden`](https://github.com/jma49/Open-CR-Agent/tree/main/evals/golden). With models configured as in [Evaluation](./evaluation), a run on the 8 cases above cost $8 to $13 at list prices; the smoke tier now has 10:
 
 ```bash
 node packages/eval/dist/main.js run --dataset golden --tier smoke --label mine --max-cost-usd 20 --pr-max-cost-usd 6
 ```
 
-On the free OpenRouter model, add `--config <file>` with the recipe from [Free models through OpenRouter](./providers#free-models-through-openrouter) and the judge variables from [Evaluation](./evaluation); the run costs nothing, but one smoke run takes more requests than the account's free quota for a day, so it resumes across days with `--retry-failed`.
+On a free OpenRouter model, add `--config <file>` with the recipe from [Free models through OpenRouter](./providers#free-models-through-openrouter) and the judge variables from [Evaluation](./evaluation#scoring). It costs nothing, but a smoke run exceeds a day's free quota, so it resumes across days with `--retry-failed`.

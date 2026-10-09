@@ -3,15 +3,15 @@ title: Threat model
 description: What a hostile pull request can try, what stops it, and what ocra does not protect against.
 ---
 
-ocra is built to review pull requests from people you do not know. This page lists what such a pull request can try, what stops each attempt, and what remains your risk, so you can decide where to run ocra. [Security and privacy](./security) describes the mechanisms in more detail.
+ocra is built to review pull requests from strangers. This page lists what such a pull request can try, what stops it, and what remains your risk; [Security and privacy](./security) describes the mechanisms.
 
-It covers pull request reviews (the GitHub Action and `ocra review --pr`), GitLab merge request reviews (`ocra review --mr`) and local reviews with `--no-repo-config`. A plain local review trusts the checkout's `.ocra/config.json`, plugins included: pass `--no-repo-config` for code you do not trust.
+It covers the GitHub Action and `ocra review --pr`, `ocra review --mr`, and local reviews with `--no-repo-config`. A plain local review trusts the checkout's `.ocra/config.json`, plugins included: pass `--no-repo-config` for code you do not trust.
 
 ## What is protected
 
-- **Your secrets:** the model provider's key, the GitHub token, and any file that is outside the reviewed revision or looks like a secret.
+- **Your secrets:** the model key, the GitHub token, and any file outside the reviewed revision or that looks like a secret.
 - **Your runner or machine:** ocra runs nothing from the pull request.
-- **Your repository:** ocra posts review comments and, when configured, requests or withdraws changes. It writes nothing else.
+- **Your repository:** ocra posts review comments and, if configured, requests or withdraws changes; nothing else.
 - **What ocra posts:** a pull request cannot make ocra's comments hide a link's target, show images, mention people, carry hidden markup or issue commands.
 - **Your spend:** every loop over a model has a cap.
 
@@ -31,54 +31,54 @@ Not promised: a correct verdict. The models read the pull request, so they can b
 
 | The pull request tries to | What stops it |
 |---|---|
-| Run code: plugins in `.ocra/config.json`, OpenCode plugins or tools in `.opencode/`, install scripts, git drivers | Configuration, rules, memory and `AGENTS.md` come from the base commit, and repository plugins never load for pull requests. OpenCode's project configuration is off, so nothing in `.opencode/` or `opencode.json` loads. ocra never checks out, installs or builds the pull request, and git reads it with external diff drivers and text conversion off. |
-| Read secrets through a reviewer | Reviewers have no shell, file-editing or web tools: they can only read the reviewed revision. Paths stay inside the repository, symbolic links are not followed, and secret-looking files and `.git/` are refused. OpenCode's process gets system basics and the model provider's credentials only (plus names you list in `OCRA_RUNTIME_ENV`), never `GITHUB_TOKEN` or other CI variables. |
+| Run code: plugins in `.ocra/config.json`, OpenCode plugins or tools in `.opencode/`, install scripts, git drivers | Configuration, rules, memory and `AGENTS.md` come from the base commit; repository plugins never load for pull requests; OpenCode's project configuration is off. ocra never checks out, installs or builds the pull request, and git reads it with external diff drivers and text conversion off. |
+| Read secrets through a reviewer | Reviewers can only read the reviewed revision, inside the repository, without following links, and never secret-looking files or `.git/` ([Isolation](./security#isolation)). OpenCode's process gets system basics and the model provider's credentials only (plus names you list in `OCRA_RUNTIME_ENV`), never `GITHUB_TOKEN` or other CI variables. |
 | Get a secret into ocra's comments | No secret reaches a prompt, so no model can repeat one. |
-| Hide an issue or argue a finding away (prompt injection) | Pull request text, code, replies and model output reach models as data, and text that could pose as ocra's own sections is rewritten. Only confirmed critical findings can block, and the judge can neither drop nor downgrade them. This limits steering; it does not prevent it (see below). |
-| Forge a command or a dismissal | A command or dismissal counts only when it comes from someone with write access other than the author, and not from a comment someone else has edited. An override names the full head commit id. A thread of ocra's counts only while nobody else has edited ocra's comment in it, so the finding it is about cannot be swapped. |
-| Plant markup or links in ocra's comments | Model text cannot close ocra's markup, embed images or HTML, mention people (also not through a character reference such as `&#64;`), spell one of ocra's commands, start a line with a slash (which GitLab would run as a quick action, such as `/merge`), or become a link: addresses in it, of any scheme, are shown as text, so a pull request cannot get ocra to post an address of its choosing as a link. Code a finding quotes, in a backtick fence or an inline span, is posted as written, since a code span renders none of these; an unbalanced backtick is text, escaped so that it cannot open a span in a later part of the comment. |
-| Tamper with the state in ocra's summary comment | State counts only when ocra's account posted the comment and edited it last. It is validated and its size is capped. |
-| Rewrite your terminal (local runs) | Control characters, escape sequences and bidirectional overrides are replaced in everything ocra prints and in its JSON output. |
+| Hide an issue or argue a finding away (prompt injection) | Everything reaches models as data, and look-alikes of ocra's own sections are rewritten ([Untrusted input](./security#untrusted-input)). Only confirmed critical findings can block, and the judge can neither drop nor downgrade them. This limits steering; it does not prevent it. |
+| Forge a command or a dismissal | Only someone with write access other than the author counts, never through a comment someone else edited. An override names the full head commit id. A thread counts only while nobody else has edited ocra's comment in it, so its finding cannot be swapped. |
+| Plant markup or links in ocra's comments | Model text cannot close ocra's markup, embed images or HTML, mention people (also not through a character reference such as `&#64;`), spell one of ocra's commands, start a line with a slash (a GitLab quick action such as `/merge`), or become a link: addresses of any scheme are shown as text. Quoted code in a backtick fence or inline span is posted as written, since a code span renders none of these; an unbalanced backtick is escaped so it cannot open a span later in the comment. |
+| Tamper with the state in ocra's summary comment | State counts only when ocra's account posted the comment and edited it last; it is validated and size-capped. |
+| Rewrite your terminal (local runs) | Control characters, escape sequences and bidirectional overrides are replaced in all output, JSON included. |
 | Run up your model bill | 30 steps per task, 60 tasks per run, bounded reads and tool answers, 50 findings per task, and `--max-cost-usd` per run. In CI, also limit who can start a review ([pull requests from forks](./github#pull-requests-from-forks)). |
 
 The defenses are covered by tests next to the code, in [the repository](https://github.com/jma49/Open-CR-Agent).
 
 ## Who controls the pipeline
 
-ocra's rules against the author (no dismissal, no override, no forged earlier review) hold only while the author can neither change the job that runs ocra nor read its secrets. Whether they can depends on the platform and the setup.
+ocra's rules against the author (no dismissal, no override, no forged earlier review) hold only while the author can neither change the job that runs ocra nor read its secrets.
 
-**GitHub.** A pull request from a fork gets no secrets with `on: pull_request`, and with `on: pull_request_target` the workflow comes from your default branch: either way the review is out of its author's reach. Someone with push access is different. A workflow they push runs with the repository's secrets and with a `GITHUB_TOKEN` that posts as `github-actions[bot]`, the account ocra trusts by default, so they could read the model key or post a summary that ocra takes for its own. [GitHub pull requests](./github#a-review-your-own-developers-cannot-change) shows the setup that keeps both out of their reach: the review on `pull_request_target`, its secrets in an environment that only the default branch may use, comments from a GitHub App whose account ocra trusts instead, and code owner review for `.github/workflows`.
+**GitHub.** A fork's pull request gets no secrets on `pull_request`, and on `pull_request_target` the workflow comes from your default branch: either way the review is out of its author's reach. A workflow pushed by someone with push access, though, gets the repository's secrets and a `GITHUB_TOKEN` posting as `github-actions[bot]`, the account ocra trusts by default, so they could read the model key or forge ocra's summary. [GitHub pull requests](./github#a-review-your-own-developers-cannot-change) shows the setup that prevents both: `pull_request_target`, secrets in an environment only the default branch may use, comments from a GitHub App that ocra trusts instead, and code owner review for `.github/workflows`.
 
-**GitLab.** A merge request from a fork runs its pipeline in the fork, without your variables. A merge request from a branch of your project runs a pipeline its author wrote, and every job in it can read the project's unprotected variables: for such merge requests the review is advice that its author can forge ([GitLab merge requests](./gitlab#who-controls-the-pipeline)). A pipeline execution policy (GitLab Ultimate) protects the job, not the token.
+**GitLab.** A fork's merge request runs its pipeline in the fork, without your variables. A merge request from a branch of your project runs a pipeline its author wrote, and every job can read the project's unprotected variables: its review is advice its author can forge ([GitLab merge requests](./gitlab#who-controls-the-pipeline)). A pipeline execution policy (GitLab Ultimate) protects the job, not the token.
 
-Not tried yet, so only a design: a separate reviewer project that only maintainers can change, started by a merge request webhook through a pipeline trigger, running on its protected default branch with the token and the model key as protected variables, and reading the merge request as data. Developers could then neither change the review nor read its secrets. Its result would not be the merge request pipeline's status, so merging would still be gated by approval rules.
+A design, not tried yet: a separate reviewer project only maintainers can change, started by a merge request webhook through a pipeline trigger, running on its protected default branch with the token and model key as protected variables, and reading the merge request as data. Developers could neither change the review nor read its secrets. Its result would not be the merge request pipeline's status, so approval rules would still gate merging.
 
 ## ocra Cloud
 
-This applies only while you are signed in (`ocra login`) and `OCRA_CLOUD` is not `off`; a review that is not signed in never contacts ocra Cloud. What ocra Cloud holds and keeps is in its [data policy](https://app.ocracloud.com/privacy); the decisions behind this section are ADR-0024, ADR-0027 and ADR-0028.
+This applies only while you are signed in (`ocra login`) and `OCRA_CLOUD` is not `off`; a review that is not signed in never contacts ocra Cloud. What it holds and keeps is in its [data policy](https://app.ocracloud.com/privacy); the decisions are ADR-0024, ADR-0027 and ADR-0028.
 
 | Who | What they control |
 |---|---|
-| ocra Cloud, or whoever compromises it | Your account's settings, rules, plugin names and memory, as the CLI fetches them; the model calls of `ocra-<provider>/<model>` models, which pass through its gateway with the keys you stored; the counts, and the findings when you share them, that the CLI sends |
+| ocra Cloud, or whoever compromises it | Your account's settings, rules, plugin names and memory as the CLI fetches them; calls to `ocra-<provider>/<model>` models, which pass its gateway with your stored keys; the counts, and shared findings, the CLI sends |
 | Someone holding your terminal's session token | Model calls through the gateway with your stored keys, up to the account's daily cap |
 | Someone holding your browser session | Your settings, rules, plugin names and memory, and replacing or deleting your stored keys |
 
 | They try to | What stops it |
 |---|---|
-| Send your code or a local key to a server of their choosing | Account settings cannot declare providers, `extends` or a key variable: the CLI drops them whatever the server sends. A model from the account must be `ocra-<provider>/<model>`, which only reaches the gateway's fixed list of providers. |
-| Run code on your machine | A plugin your account names loads only if you installed and allowed that exact version on this machine (`ocra plugins allow`), from that directory, after its integrity is checked; never in `--pr` or `--mr` reviews or with `--no-repo-config`. An unknown runtime name from the account is dropped. |
-| Read your stored provider keys | They are encrypted under a master key kept apart from the database and are never returned; neither a terminal session nor a browser session can read one. |
-| Weaken or inflate reviews through settings and rules | Your repository's configuration wins over the account's, including its spend limit; the gateway's daily cap and your provider's spending limit bound cost. `ocra review --plan` shows which setting came from where, the report records the settings version and every rule with its source, and the web keeps every saved version. |
-| Hide findings through memory | Account memory applies only to the repository it was set for and only while you are signed in; the terminal, the report and the pull request summary say how many findings it hid, apart from `.ocra/memory.json`. |
-| Read your code | Only what you route through the gateway (`ocra-` models) passes through it, in memory; it stores counts, and findings with the code they quote only when you turn sharing on, after secret-looking tokens are redacted on your machine. The repository is sent as a salted hash. |
+| Send your code or a local key to a server of their choosing | The CLI drops providers, `extends` and key variables from account settings, whatever the server sends. An account model must be `ocra-<provider>/<model>`, which reaches only the gateway's fixed list of providers. |
+| Run code on your machine | An account-named plugin loads only if you installed and allowed that exact version on this machine (`ocra plugins allow`), from that directory, after an integrity check; never in `--pr` or `--mr` reviews or with `--no-repo-config`. An unknown runtime name is dropped. |
+| Read your stored provider keys | They are encrypted under a master key kept apart from the database and never returned, to a terminal or a browser session. |
+| Weaken or inflate reviews through settings and rules | Your repository's configuration, spend limit included, wins over the account's; the gateway's daily cap and your provider's limit bound cost. `ocra review --plan` shows each setting's source, the report records the settings version and every rule's source, and the web keeps every saved version. |
+| Hide findings through memory | Account memory applies only to its repository and only while signed in; the terminal, report and pull request summary count the findings it hid, apart from `.ocra/memory.json`. |
+| Read your code | Only what you route through the gateway (`ocra-` models) passes it, in memory; it stores counts, and findings with their quoted code only when you turn sharing on, after secret-looking tokens are redacted on your machine. The repository is sent as a salted hash. |
 
-A stolen terminal session cannot change settings or read keys; revoke it on the web's sessions page, and its refresh token stops working at once. A signed-in review of an untrusted pull request still takes the base commit's configuration, with your account's settings and memory under it and no account plugins.
+A stolen terminal session cannot change settings or read keys; revoking it on the web's sessions page stops its refresh token at once. A signed-in review of an untrusted pull request still takes the base commit's configuration, with your account's settings and memory under it and no account plugins.
 
 ## What ocra does not protect against
 
-- **Steering.** A pull request can hide an issue from a reviewer or talk the judge out of a finding. A clean verdict proves nothing. Keep human review and security tooling for anything that must not slip through.
-- **The model provider.** It sees the code under review. Choose one whose data policy you accept.
-- **Bugs in ocra or in what it builds on.** ocra, OpenCode, git and Node.js all process the pull request. A flaw in one of them would run with your model key and GitHub token present. Limit what a flaw could reach: a model key used only for reviews, with a spending limit at the provider, and the token permissions in the examples.
-- **Your own workflow.** A step that checks out and installs, builds or tests the pull request in a job that has your secrets undoes everything above.
-- **Push access,** unless the pipeline is set up as [above](#who-controls-the-pipeline): people who can push write the pipelines their branches run.
-- **The supply chain.** The Action installs the published ocra with every dependency pinned by its lockfile, install scripts off and registry signatures checked. ocra's packages are published with provenance, and OpenCode is pinned, with its built-in tools checked by a test. A stolen npm login could still publish a bad version, which two-factor authentication with a security key makes hard. Pin the Action by commit.
+- **Steering.** A clean verdict proves nothing ([why](./security#the-verdict-is-not-a-security-gate)).
+- **The model provider.** It sees the code under review; choose one whose data policy you accept.
+- **Bugs in ocra or what it builds on.** ocra, OpenCode, git and Node.js all process the pull request, and a flaw would run with your model key and token present. Limit what it could reach: a review-only model key with a spending limit, and the token permissions in the examples.
+- **Your own workflow.** A step that checks out and installs, builds or tests the pull request in a job with your secrets undoes everything above.
+- **Push access,** unless the pipeline is set up as [above](#who-controls-the-pipeline).
+- **The supply chain.** The Action installs the published ocra with dependencies pinned by its lockfile, install scripts off and registry signatures checked ([GitHub Action](./github#github-action)); ocra's packages carry provenance, and OpenCode is pinned with its built-in tools checked by a test. A stolen npm login could still publish a bad version, which two-factor authentication with a security key makes hard. Pin the Action by commit.

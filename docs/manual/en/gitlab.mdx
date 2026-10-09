@@ -3,15 +3,11 @@ title: GitLab merge requests
 description: Review merge requests on GitLab.com or self-managed GitLab with ocra review --mr.
 ---
 
-`ocra review --mr <iid>` reviews a GitLab merge request, on GitLab.com or a self-managed instance. With `--publish` it posts the review:
-- one summary note, updated in place on every push;
-- a thread on each finding in the diff.
-
-Later pipelines review only what changed since the last review. The rules are the ones for [GitHub pull requests](./github): who may override or dismiss, which earlier state counts, and what text may be posted. The same tests check them on both platforms.
+`ocra review --mr <iid>` reviews a GitLab merge request on GitLab.com or a self-managed instance; `--publish` posts a summary note, updated in place, and a thread on each finding in the diff. Later pipelines review only what changed. Who may override or dismiss, which earlier state counts and what text may be posted follow the rules for [GitHub pull requests](./github), checked by the same tests on both platforms.
 
 <Callout type="warn">
 
-GitLab support is new in 0.2.0. Besides the tests against a fake GitLab API, it was checked on GitLab.com Free on 2026-10-04 (0.3.0, a dedicated account's personal access token, a scripted model): threads on added and on unchanged lines, the summary updated in place, an incremental second run without repeated comments, no live mention, link or quick action from model text, and the author's resolution, override and edit of ocra's summary all counting for nothing. A dismissal by another member has not been tried live yet.
+GitLab support is new in 0.2.0. Beyond tests against a fake GitLab API, it was checked on GitLab.com Free on 2026-10-04 (0.3.0, a dedicated account's personal access token, a scripted model): threads on added and unchanged lines, the summary updated in place, an incremental second run without repeated comments, no live mention, link or quick action from model text, and the author's resolution, override and edit of ocra's summary counting for nothing. A dismissal by another member has not been tried live yet.
 
 </Callout>
 
@@ -19,11 +15,11 @@ GitLab support is new in 0.2.0. Besides the tests against a fake GitLab API, it 
 
 1. **Create a token for ocra** with the **`api`** scope and the **Developer** role:
    - on GitLab Premium or Ultimate, and on self-managed GitLab, a **project access token** (Settings → Access tokens), which gets a bot user of its own;
-   - on GitLab.com Free, where project access tokens are not available, a **personal access token** of a dedicated account (for example `ocra-review-bot`, invited to the project as Developer). Do not use your own account's token: ocra would then post as you, and since it never takes a merge request's author for a reviewer, your own merge requests would lose your dismissals and overrides.
+   - on GitLab.com Free, which has no project access tokens, a **personal access token** of a dedicated account (for example `ocra-review-bot`, a Developer on the project). Not your own: ocra would post as you, and since a merge request's author is never a reviewer, you would lose your dismissals and overrides on your own merge requests.
 
-   ocra posts notes and threads, resolves its threads, and reads, through GraphQL, who last edited a comment. `CI_JOB_TOKEN` cannot post comments.
-2. **Add it as a CI/CD variable named `GITLAB_TOKEN`**, masked. Leave it unprotected: pipelines for merge requests from unprotected branches cannot read protected variables. So every pipeline of the project can read the token: keep its role at Developer and give it an expiry date ([who controls the pipeline](#who-controls-the-pipeline)).
-3. **Add your model key** the same way, for example `GEMINI_API_KEY`: a key that serves only these reviews, with a spending limit at the provider.
+   ocra posts notes and threads, resolves its threads, and reads through GraphQL who last edited a comment. `CI_JOB_TOKEN` cannot post comments.
+2. **Add it as a masked CI/CD variable `GITLAB_TOKEN`.** Leave it unprotected, or pipelines for merge requests from unprotected branches cannot read it. Every pipeline of the project can then read it: keep the role at Developer and set an expiry date ([who controls the pipeline](#who-controls-the-pipeline)).
+3. **Add your model key** the same way, for example `GEMINI_API_KEY`: one that serves only these reviews, with a spending limit at the provider.
 4. **Add the job** to `.gitlab-ci.yml`:
 
 ```yaml
@@ -44,7 +40,7 @@ ocra-review:
     - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
 ```
 
-The job can also use the [container image](./installation#container-image), which needs no install step. Pin it by digest, which `docker buildx imagetools inspect ghcr.io/jma49/ocra:0.6.0` prints, and check its build provenance as [Stability](./stability#verifying-a-release) shows:
+Or use the [container image](./installation#container-image), with no install step. Pin it by digest (`docker buildx imagetools inspect ghcr.io/jma49/ocra:0.6.0` prints it) and check its provenance ([Stability](./stability#verifying-a-release)):
 
 ```yaml
 ocra-review:
@@ -57,26 +53,27 @@ ocra-review:
     - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
 ```
 
-`GIT_DEPTH: 0` gives ocra the history between the target branch and the merge request; a shallow clone stops with a message saying so. With `interruptible: true` and the project's **Auto-cancel redundant pipelines** setting, a new push cancels the review still running for the previous one. A review cancelled before it publishes posts nothing. `--ignore-scripts` keeps install scripts from running with your variables in the environment; ocra finds the OpenCode binary without them.
-
-Models come from the target branch's `.ocra/config.json`, or from `OCRA_MODEL_*` variables. Other options go on the `ocra review` line, such as `--max-cost-usd 2` or `--reviewers correctness,security`.
+- `GIT_DEPTH: 0` gives ocra the history between the target branch and the merge request; a shallow clone stops with a message saying so.
+- With `interruptible: true` and the project's **Auto-cancel redundant pipelines**, a new push cancels the previous review; one cancelled before it publishes posts nothing.
+- `--ignore-scripts` keeps install scripts from running with your variables; ocra finds the OpenCode binary without them.
+- Models come from the target branch's `.ocra/config.json` or `OCRA_MODEL_*` variables. Other options, such as `--max-cost-usd 2` or `--reviewers correctness,security`, go on the `ocra review` line.
 
 ## What gets posted
 
-- **A thread on each finding** on a line of the diff: on an added line, or on an unchanged line next to the change. A finding GitLab will not place stays in the summary.
-- **One summary note**, updated in place: verdict, summary, findings outside the diff, what was fixed since the last review, and coverage, cost and the run id.
+- **A thread on each finding** on an added line, or an unchanged line next to the change. A finding GitLab will not place stays in the summary.
+- **One summary note**, updated in place, with the same content as [on GitHub](./github#what-gets-posted).
 - **Resolved threads** when the code a finding quoted is gone.
-- **Suggestions you can apply** (planned: no reviewer produces fixes yet, [ADR-0029](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0029-committable-suggestions.md)): when a finding carries a fix, code that replaces the lines it is about, its thread ends with a `suggestion:-N+0` block reaching from the thread's line back to the first fixed line, which you apply from the merge request (**Apply suggestion**). ocra offers one only when the thread covers exactly the fixed lines, at most 100 lines above it, and posts the code exactly as written or not at all, as on [GitHub](./github#committable-suggestions).
+- **Suggestions you can apply** (planned: no reviewer produces fixes yet, [ADR-0029](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0029-committable-suggestions.md)): a finding's fix ends its thread with a `suggestion:-N+0` block from the thread's line back to the first fixed line (**Apply suggestion**), only when the thread covers exactly the fixed lines, at most 100 lines above it, and with the code exactly as written or not at all, as on [GitHub](./github#committable-suggestions).
 
-Reviewers stay in charge. When someone with the Developer role or higher, other than the merge request's author, resolves one of ocra's threads, or answers it with `/ocra dismiss` or a reply that opens with "won't fix", "by design" or "false positive", the finding is dismissed. Other replies from them reach the judge the next time the finding comes back. A comment someone else edited counts for nothing.
+Reviewers stay in charge. Someone with the Developer role or higher, other than the author, dismisses a finding by resolving its thread or answering with `/ocra dismiss` or a reply opening with "won't fix", "by design" or "false positive". Their other replies reach the judge when the finding comes back. A comment someone else edited counts for nothing.
 
-If the project resolves outdated threads on push (Settings → Merge requests), GitLab records whoever pushed as the one who resolved a thread, so a push by anyone would count as a reviewer's resolution. In such a project, and whenever GitLab does not say how the setting stands, resolving one of ocra's threads dismisses nothing: answer it instead. ocra reads the setting on every run, and its summary says when a resolved thread did not dismiss its finding.
+If the project resolves outdated threads on push (Settings → Merge requests), GitLab records whoever pushed as the resolver, so any push would count as a dismissal. There, and whenever GitLab does not report the setting, resolving ocra's thread dismisses nothing: answer it instead. ocra reads the setting on every run, and the summary says when a resolved thread did not dismiss its finding.
 
-GitLab has no "request changes". The job's exit code is the gate: with `allow_failure` as above, only an incomplete review fails the pipeline. Without it, a blocking verdict fails it too, and **Pipelines must succeed** then blocks merging.
+GitLab has no "request changes": the job's exit code is the gate. With `allow_failure` as above, only an incomplete review fails the pipeline; without it a blocking verdict does too, and **Pipelines must succeed** then blocks merging.
 
 ### Overriding a blocking verdict
 
-Someone with the Developer role or higher, other than the author, can let one commit pass with a comment of its own:
+Someone with the Developer role or higher, other than the author, can let one commit pass with a comment:
 
 ```
 /ocra override <full head commit id> <reason>
@@ -86,31 +83,31 @@ It works as on [GitHub](./github#overriding-a-blocking-verdict): only for that c
 
 ## What the merge request cannot change
 
-ocra itself runs nothing from the merge request: the configuration, `.ocra/rules.json` and `AGENTS.md` are read from the commit the merge request is based on, and repository plugins never load. The pipeline that runs ocra is another matter: for a merge request from a branch of your project, its author wrote it (next section). Every line ocra posts that starts with a slash gets a zero-width space before it, so text in a finding cannot become a quick action such as `/merge` or `/approve`, which GitLab would run with the token's rights.
+ocra runs nothing from the merge request: configuration, `.ocra/rules.json` and `AGENTS.md` come from its base commit, and repository plugins never load. Every posted line that starts with a slash gets a zero-width space before it, so a finding cannot become a quick action such as `/merge` or `/approve`, which GitLab would run with the token's rights. The pipeline that runs ocra is another matter (next section).
 
 ## Who controls the pipeline
 
-A merge request pipeline runs the `.gitlab-ci.yml` of the merge request's own branch, and every job in it can read the project's CI/CD variables that are not protected, `GITLAB_TOKEN` and your model key among them. What that means depends on where the merge request comes from:
+A merge request pipeline runs the `.gitlab-ci.yml` of the merge request's branch, and every job in it can read the project's unprotected CI/CD variables, `GITLAB_TOKEN` and your model key among them.
 
-- **From a fork:** the pipeline runs in the fork, without your variables, so there is nothing to take ([merge requests from forks](#merge-requests-from-forks)). The rules on this page hold.
-- **From a branch of your project:** the author has the Developer role and wrote the pipeline. They can remove or change the review job, read the token and the model key, and post as ocra, including a summary that a later review would trust. For such merge requests the review is advice that its author can forge. Keep an approval rule with human approvers, and never make ocra's job the only thing between a merge request and your default branch.
+- **From a fork:** the pipeline runs in the fork, without your variables ([merge requests from forks](#merge-requests-from-forks)). The rules on this page hold.
+- **From a branch of your project:** the author, a Developer, wrote the pipeline. They can remove or change the review job, read the token and the model key, and post as ocra, including a summary a later review would trust. For such merge requests the review is advice its author can forge: keep an approval rule with human approvers, and never make ocra's job the only gate to your default branch.
 
 What you can do today:
 
-- **Limit what the token and the key are worth.** The token keeps the Developer role, so it can do nothing a developer cannot, apart from posting as ocra; give it an expiry date. Use a model key that serves only these reviews, with a spending limit at the provider.
-- **On GitLab Ultimate, run the job from a pipeline execution policy.** The project's pipeline can then neither remove nor change it, and the policy's variables win over the project's and the pipeline's. The token is still a project variable that the project's own jobs can read, so posting as ocra remains possible.
+- **Limit what the token and key are worth.** At the Developer role the token can do nothing a developer cannot, apart from posting as ocra; give it an expiry date. Use a model key that serves only these reviews, with a spending limit.
+- **On GitLab Ultimate, run the job from a pipeline execution policy.** The project's pipeline can then neither remove nor change it, and the policy's variables win. The token is still a project variable its jobs can read, so posting as ocra remains possible.
 
-A setup that would keep the token and the key away from developers altogether, with the review running in a separate project, is in the [threat model](./threat-model#who-controls-the-pipeline). It has not been tried yet.
+An untried design that keeps the token and key from developers altogether, with the review in a separate project, is in the [threat model](./threat-model#who-controls-the-pipeline).
 
 ## Self-managed GitLab
 
-- In GitLab CI, `CI_API_V4_URL` and `CI_PROJECT_ID` are set for you. Outside CI, set `CI_API_V4_URL` (for example `https://gitlab.example.com/api/v4`) and pass `--project <id|path>`, or let ocra read the project from the `origin` remote. Without `CI_API_V4_URL`, ocra uses GitLab.com, and stops when `origin` is on another host, so a token for your instance never goes to GitLab.com. It warns when `CI_API_V4_URL` and `origin` are on different hosts.
-- For an instance with a private certificate authority, point `NODE_EXTRA_CA_CERTS` at its certificate.
-- The token needs the `api` scope there too: `read_api` cannot post comments.
+- In GitLab CI, `CI_API_V4_URL` and `CI_PROJECT_ID` are set for you. Elsewhere, set `CI_API_V4_URL` (for example `https://gitlab.example.com/api/v4`) and pass `--project <id|path>` or let ocra read it from the `origin` remote. Without `CI_API_V4_URL` ocra uses GitLab.com, and stops when `origin` is on another host, so your instance's token never goes to GitLab.com. It warns when `CI_API_V4_URL` and `origin` are on different hosts.
+- For a private certificate authority, point `NODE_EXTRA_CA_CERTS` at its certificate.
+- The token needs the `api` scope: `read_api` cannot post comments.
 
 ## Merge requests from forks
 
-A pipeline for a merge request from a fork runs in the fork's project, without the parent's CI/CD variables. The review then stops and names the missing `GITLAB_TOKEN`. On GitLab Premium and Ultimate, a maintainer can run the pipeline in the parent project instead, after reading the change. The job then has the parent's variables, which is acceptable only because ocra runs nothing from the merge request; never add a step that does. ocra does not automate this.
+A fork's merge request pipeline runs in the fork, without the parent's variables, so the review stops naming the missing `GITLAB_TOKEN`. On GitLab Premium and Ultimate, a maintainer can run the pipeline in the parent project after reading the change; the job then has the parent's variables, which is acceptable only because ocra runs nothing from the merge request, so never add a step that does. ocra does not automate this.
 
 ## From the command line
 
@@ -120,4 +117,4 @@ ocra review --mr 42 --project group/project               # review and print
 ocra review --mr 42 --project group/project --publish     # also post the review
 ```
 
-Run it from a clone of the project; ocra fetches the merge request's commits if they are missing.
+Run it from a clone of the project; ocra fetches missing merge request commits.
