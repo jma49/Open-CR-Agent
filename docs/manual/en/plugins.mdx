@@ -70,7 +70,7 @@ Use `bootstrap` for work that may fail harmlessly, such as fetching remote setti
 
 | Method | Contributes |
 |---|---|
-| `registerVcs(name, factory)` | A code host adapter |
+| `registerVcs(name, factory)` | A code host adapter, for [embedding](./embedding) only: the `ocra` command reviews local git, GitHub and GitLab and never selects a registered adapter by name |
 | `registerRuntime(name, factory)` | An agent runtime |
 | `registerReviewer(definition)` | A reviewer with its own prompt and model tier |
 | `registerRules(rules)` | Path-scoped review rules |
