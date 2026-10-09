@@ -1,0 +1,49 @@
+import { describe, expect, it } from "vitest";
+import { credentialEnvironment, gitEnvironment } from "./git.js";
+
+describe("gitEnvironment", () => {
+  it("keeps git's own, ssh's and the system's variables and drops the rest", () => {
+    const env = gitEnvironment({
+      PATH: "/bin",
+      Path: "C:\\Windows",
+      HOME: "/home/me",
+      GIT_SSH_COMMAND: "ssh -i key",
+      GIT_CONFIG_COUNT: "1",
+      SSH_AUTH_SOCK: "/tmp/agent",
+      https_proxy: "http://proxy:3128",
+      SystemRoot: "C:\\Windows",
+      OPENAI_API_KEY: "sk-test",
+      GITHUB_TOKEN: "ghs_test",
+      OCRA_CLOUD: "on",
+      UNSET: undefined,
+    });
+    expect(Object.keys(env).sort()).toEqual(
+      [
+        "PATH",
+        "Path",
+        "HOME",
+        "GIT_SSH_COMMAND",
+        "GIT_CONFIG_COUNT",
+        "SSH_AUTH_SOCK",
+        "https_proxy",
+        "SystemRoot",
+      ].sort(),
+    );
+  });
+});
+
+describe("credentialEnvironment", () => {
+  it("keeps what credential helpers read and drops model keys", () => {
+    const env = credentialEnvironment({
+      GH_TOKEN: "a",
+      GITHUB_TOKEN: "b",
+      GITLAB_TOKEN: "c",
+      GCM_INTERACTIVE: "never",
+      OPENAI_API_KEY: "sk-test",
+      OCRA_CLOUD_TOKEN: "d",
+    });
+    expect(Object.keys(env).sort()).toEqual(
+      ["GCM_INTERACTIVE", "GH_TOKEN", "GITHUB_TOKEN", "GITLAB_TOKEN"].sort(),
+    );
+  });
+});

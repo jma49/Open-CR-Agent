@@ -49,7 +49,12 @@ export function git(args: readonly string[], options: GitOptions): Promise<strin
         maxBuffer: options.truncateAt ?? MAX_OUTPUT_BYTES,
         timeout: options.timeoutMs ?? GIT_TIMEOUT_MS,
         killSignal: "SIGKILL",
-        env: { ...process.env, LC_ALL: "C", GIT_OPTIONAL_LOCKS: "0", ...options.env },
+        env: {
+          ...gitEnvironment(process.env),
+          LC_ALL: "C",
+          GIT_OPTIONAL_LOCKS: "0",
+          ...options.env,
+        },
       },
       (error, stdout, stderr) => {
         if (
@@ -79,6 +84,75 @@ export function git(args: readonly string[], options: GitOptions): Promise<strin
     if (options.input === undefined) child.stdin?.end();
     else child.stdin?.end(options.input);
   });
+}
+
+// git and what it starts (ssh, credential helpers, proxies) see only what
+// they need of ocra's environment, never its model keys or platform tokens.
+// git's own variables pass whole: they are its configuration (GIT_DIR in a
+// hook, GIT_SSH_COMMAND, GIT_CONFIG_*), named by whoever started ocra.
+const PASSED_PREFIXES = ["GIT_", "SSH_"];
+const PASSED = new Set([
+  "PATH",
+  "HOME",
+  "XDG_CONFIG_HOME",
+  "TMPDIR",
+  "HTTP_PROXY",
+  "HTTPS_PROXY",
+  "ALL_PROXY",
+  "NO_PROXY",
+  "SSL_CERT_FILE",
+  "SSL_CERT_DIR",
+  "CURL_CA_BUNDLE",
+  // Windows, where names are case-insensitive (process.env keeps "Path").
+  "PATHEXT",
+  "SYSTEMROOT",
+  "SYSTEMDRIVE",
+  "WINDIR",
+  "COMSPEC",
+  "TEMP",
+  "TMP",
+  "USERPROFILE",
+  "HOMEDRIVE",
+  "HOMEPATH",
+  "APPDATA",
+  "LOCALAPPDATA",
+  "PROGRAMDATA",
+  "PROGRAMFILES",
+]);
+
+export function gitEnvironment(
+  env: Readonly<Record<string, string | undefined>>,
+): Record<string, string> {
+  return pick(
+    env,
+    (upper) => PASSED.has(upper) || PASSED_PREFIXES.some((p) => upper.startsWith(p)),
+  );
+}
+
+// Only a fetch reaches a remote, so only a fetch gets what credential
+// helpers read from the environment: gh's and glab's tokens and Git
+// Credential Manager's settings.
+const CREDENTIAL_PREFIXES = ["GH_", "GLAB_", "GITLAB_", "GCM_"];
+const CREDENTIAL_NAMES = new Set(["GITHUB_TOKEN", "GITHUB_ENTERPRISE_TOKEN"]);
+
+export function credentialEnvironment(
+  env: Readonly<Record<string, string | undefined>>,
+): Record<string, string> {
+  return pick(
+    env,
+    (upper) => CREDENTIAL_NAMES.has(upper) || CREDENTIAL_PREFIXES.some((p) => upper.startsWith(p)),
+  );
+}
+
+function pick(
+  env: Readonly<Record<string, string | undefined>>,
+  passes: (upperCaseName: string) => boolean,
+): Record<string, string> {
+  const picked: Record<string, string> = {};
+  for (const [name, value] of Object.entries(env)) {
+    if (value !== undefined && passes(name.toUpperCase())) picked[name] = value;
+  }
+  return picked;
 }
 
 // CI checkouts are shallow by default; commits beyond the cut-off look

@@ -1,5 +1,5 @@
 import { OcraError } from "@open-cr-agent/core";
-import { git } from "./git.js";
+import { credentialEnvironment, git } from "./git.js";
 
 const FETCH_TIMEOUT_MS = 5 * 60_000;
 
@@ -37,7 +37,7 @@ export async function ensureCommits(
       cwd: root,
       okExitCodes: [0, 1, 128],
       timeoutMs: FETCH_TIMEOUT_MS,
-      env: { GIT_TERMINAL_PROMPT: "0" },
+      env: { ...credentialEnvironment(process.env), GIT_TERMINAL_PROMPT: "0" },
     });
     absent = await missing();
   }
