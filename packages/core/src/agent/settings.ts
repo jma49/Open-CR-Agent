@@ -151,15 +151,25 @@ export function effortWarnings(
     ];
   }
   const applied = asked.map((a) => ({ agent: a, settings: appliedTo.call(runtime, a.id) }));
-  const unsupported = applied.flatMap(({ agent, settings }) =>
-    settings?.unsupported?.length
+  const unsupported = applied.flatMap(({ agent, settings }) => [
+    ...(settings?.unsupported?.length
       ? [
           `the ${runtime.name} runtime did not send reasoning effort "${agent.effort}" for ${agent.id} to ${settings.unsupported.join(", ")}: ocra's capability table knows no way to send that level to that model`,
         ]
-      : [],
-  );
+      : []),
+    ...(settings?.unsentBecause !== undefined
+      ? [
+          `the ${runtime.name} runtime did not send reasoning effort "${agent.effort}" for ${agent.id}: ${settings.unsentBecause}`,
+        ]
+      : []),
+  ]);
   const refused = applied
-    .filter(({ settings }) => settings?.effort === false && !settings.unsupported?.length)
+    .filter(
+      ({ settings }) =>
+        settings?.effort === false &&
+        !settings.unsupported?.length &&
+        settings.unsentBecause === undefined,
+    )
     .map(({ agent }) => agent.id);
   return refused.length === 0
     ? unsupported

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { effortWarnings } from "../../core/src/agent/settings.js";
 import { collect, fakeContext } from "../../core/src/runtime/conformance.fakes.js";
 import { EffortRoutes } from "./effort.js";
+import { type EffortSetup, setUpEfforts } from "./effort-setup.js";
 import { openCodeConfig } from "./opencode-config.js";
 import { OpenCodeRuntime, type OpenCodeRuntimeOptions } from "./runtime.js";
 import type { PromptInput } from "./session-prompt.js";
@@ -106,6 +107,38 @@ describe("OpenCodeRuntime effort", () => {
     });
     expect(effortWarnings([{ id: "judge", tier: "top", effort: "minimal" }], runtime)).toEqual([
       'the opencode runtime did not send reasoning effort "minimal" for judge to openai/o3: ocra\'s capability table knows no way to send that level to that model',
+    ]);
+  });
+});
+
+describe("OpenCodeRuntime effort when OpenCode's catalog cannot be read", () => {
+  it("says why no effort was sent, without the provider's key", async () => {
+    const key = "sk-catalog-key-1234567890";
+    const failing = {
+      providers: async () => {
+        throw new Error(`catalog request failed for ${key}`);
+      },
+    } as unknown as EffortSetup["probe"];
+    const runtime = new OpenCodeRuntime({
+      models: { standard: ["anthropic/claude-sonnet-4-5"], top: ["anthropic/claude-sonnet-4-5"] },
+      tools: [],
+      env: { ANTHROPIC_API_KEY: key },
+    });
+    const internals = runtime as unknown as Record<string, unknown>;
+    internals.start = async () => ({
+      efforts: await setUpEfforts({
+        models: ["anthropic/claude-sonnet-4-5"],
+        probe: failing,
+        workspace: failing,
+        file: "/nonexistent/opencode.json",
+        secrets: [key],
+      }),
+    });
+    internals.prompt = async () => answer;
+    await runtime.complete(judge("high"), signal());
+    const warnings = effortWarnings([{ id: "judge", tier: "top", effort: "high" }], runtime);
+    expect(warnings).toEqual([
+      'the opencode runtime did not send reasoning effort "high" for judge: OpenCode\'s model catalog could not be read (catalog request failed for <key>)',
     ]);
   });
 });

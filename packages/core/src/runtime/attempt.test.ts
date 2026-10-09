@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { attemptRecord, exploredBy, withoutSecrets } from "./attempt.js";
+import { attemptRecord, attemptSummary, exploredBy, withoutSecrets } from "./attempt.js";
 
 describe("withoutSecrets", () => {
   it("replaces every secret wherever it appears, and nothing else", () => {
@@ -7,6 +7,24 @@ describe("withoutSecrets", () => {
       withoutSecrets("HTTP 401: key sk-one rejected; sk-two also sk-one", ["sk-one", "sk-two"]),
     ).toBe("HTTP 401: key <key> rejected; <key> also <key>");
     expect(withoutSecrets("plain", [])).toBe("plain");
+  });
+});
+
+describe("attemptSummary", () => {
+  const usage = {
+    inputTokens: 1,
+    outputTokens: 1,
+    reasoningTokens: 0,
+    cachedTokens: 0,
+    costUsd: 0,
+  };
+  const outcome = { findings: [], steps: 1, toolCalls: [], text: "", usage };
+
+  it("says how many of the session's messages the runtime could not read", () => {
+    expect(attemptSummary("m", { ...outcome, unreadMessages: 2 })).toContain(
+      "2 session message(s) not read",
+    );
+    expect(attemptSummary("m", outcome)).not.toContain("not read");
   });
 });
 

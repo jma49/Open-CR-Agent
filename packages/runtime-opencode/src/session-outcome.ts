@@ -41,9 +41,29 @@ const sessionMessageSchema = z.object({
 
 export type SessionMessage = z.output<typeof sessionMessageSchema>;
 
-// Throws when the answer is not a list of messages ocra can read.
-export function parseSessionMessages(data: unknown): SessionMessage[] {
-  return z.array(sessionMessageSchema).parse(data ?? []);
+// The messages ocra can read, and how many it could not: one message in an
+// unexpected shape must not cost the attempt its findings and usage. Throws
+// when the answer is not a list.
+export function parseSessionMessages(data: unknown): {
+  messages: SessionMessage[];
+  unread: number;
+} {
+  const messages: SessionMessage[] = [];
+  let unread = 0;
+  for (const raw of z.array(z.unknown()).parse(data ?? [])) {
+    const parsed = sessionMessageSchema.safeParse(raw);
+    if (parsed.success) messages.push(parsed.data);
+    else unread += 1;
+  }
+  return { messages, unread };
+}
+
+// The attempt as the session's messages tell it, with the count of those
+// that could not be read.
+export function readSession(data: unknown, reportTool: string, toolPrefix = ""): AttemptOutcome {
+  const { messages, unread } = parseSessionMessages(data);
+  const outcome = summarizeSession(messages, reportTool, toolPrefix);
+  return unread > 0 ? { ...outcome, unreadMessages: unread } : outcome;
 }
 
 const AUTH_STATUS = new Set([401, 403]);

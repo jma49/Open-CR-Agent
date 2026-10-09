@@ -183,7 +183,13 @@ export class OpenCodeRuntime implements AgentRuntime {
   ): { agent: string; variant?: string } {
     if (effort === undefined) return { agent: base };
     const route = infra.efforts.route(model, effort);
-    const keepsSampling = this.applied.record(agent, effort, model, route !== undefined);
+    const keepsSampling = this.applied.record(
+      agent,
+      effort,
+      model,
+      route !== undefined,
+      infra.efforts.unsentBecause,
+    );
     return {
       agent:
         keepsSampling || this.options.sampling?.temperature === undefined
@@ -283,14 +289,15 @@ export class OpenCodeRuntime implements AgentRuntime {
         rmSync(root, { recursive: true, force: true });
       };
       process.on("exit", onExit);
+      const secrets = credentialValues(this.options.env, providersOf(this.options), custom);
       const efforts = await setUpEfforts({
         models: chainModels(this.options),
         custom,
         probe: clientFor(probe).config,
         workspace: client.config,
         file: join(dirs.config, "opencode.json"),
+        secrets,
       });
-      const secrets = credentialValues(this.options.env, providersOf(this.options), custom);
       return { root, tools, server, client, efforts, dispatcher, onExit, secrets };
     } catch (error) {
       await Promise.allSettled([tools.close(), started?.close()]);

@@ -114,6 +114,9 @@ export interface AppliedSettings {
   // Models the agent's level was not sent to because, as far as the runtime
   // knows (the capability table, ADR-0025), they do not take it.
   unsupported?: string[];
+  // Why the level was not sent, when the runtime knows a cause other than
+  // the capability table (OpenCode's catalog could not be read, say).
+  unsentBecause?: string;
   // Sampling settings left out of the agent's calls: a call that sends an
   // effort other than "none" sends no temperature or seed.
   notApplied?: (keyof Sampling)[];

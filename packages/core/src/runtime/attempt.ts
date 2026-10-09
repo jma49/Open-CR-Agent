@@ -43,6 +43,9 @@ export interface AttemptOutcome {
   searched?: string[];
   usage: Usage;
   error?: AttemptError;
+  // Messages of the session the runtime could not read: their findings and
+  // usage are missing from this outcome.
+  unreadMessages?: number;
 }
 
 export interface AttemptError {
@@ -56,7 +59,10 @@ export interface AttemptError {
 export function attemptSummary(model: string, outcome: AttemptOutcome): string {
   const { inputTokens, outputTokens, reasoningTokens, costUsd } = outcome.usage;
   const resumed = outcome.resumed ? ", resumed after stopping early" : "";
-  return `${model}: ${outcome.steps} step(s), ${toolSummary(outcome.toolCalls)}${resumed}, ${inputTokens} in / ${outputTokens} out / ${reasoningTokens} reasoning tokens, $${costUsd.toFixed(4)}`;
+  const unread = outcome.unreadMessages
+    ? `, ${outcome.unreadMessages} session message(s) not read (their findings and usage are missing)`
+    : "";
+  return `${model}: ${outcome.steps} step(s), ${toolSummary(outcome.toolCalls)}${resumed}, ${inputTokens} in / ${outputTokens} out / ${reasoningTokens} reasoning tokens, $${costUsd.toFixed(4)}${unread}`;
 }
 
 export function toolSummary(toolCalls: readonly string[]): string {

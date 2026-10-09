@@ -75,6 +75,15 @@ export function effortOptions(
 // accept it at a price of 0.
 export class EffortRoutes {
   private readonly routes = new Map<string, Map<Effort, Options>>();
+  // Why no level can be sent to any model, when the routes could not be set up.
+  unsentBecause?: string;
+
+  /** No routes at all, and why. */
+  static unavailable(reason: string): EffortRoutes {
+    const routes = new EffortRoutes([]);
+    routes.unsentBecause = reason;
+    return routes;
+  }
 
   constructor(
     models: readonly string[],
@@ -147,17 +156,29 @@ export class AppliedEfforts {
     this.sampling = sampling;
   }
 
-  // Whether the call keeps the configured sampling.
-  record(agent: string, effort: Effort, model: string, sent: boolean): boolean {
+  // Whether the call keeps the configured sampling. `unsentBecause`: why
+  // the level could not be sent, when it is not the capability table.
+  record(
+    agent: string,
+    effort: Effort,
+    model: string,
+    sent: boolean,
+    unsentBecause?: string,
+  ): boolean {
     const keepsSampling = effort === "none";
     const before = this.applied.get(agent);
     const notApplied = [
       ...new Set([...(before?.notApplied ?? []), ...(keepsSampling ? [] : this.requested())]),
     ];
-    const unsupported = [...new Set([...(before?.unsupported ?? []), ...(sent ? [] : [model])])];
+    const tableSays = !sent && unsentBecause === undefined;
+    const unsupported = [
+      ...new Set([...(before?.unsupported ?? []), ...(tableSays ? [model] : [])]),
+    ];
+    const because = before?.unsentBecause ?? (sent ? undefined : unsentBecause);
     this.applied.set(agent, {
       effort: (before?.effort ?? true) && sent,
       ...(unsupported.length > 0 ? { unsupported } : {}),
+      ...(because !== undefined ? { unsentBecause: because } : {}),
       ...(notApplied.length > 0 ? { notApplied } : {}),
     });
     return keepsSampling;

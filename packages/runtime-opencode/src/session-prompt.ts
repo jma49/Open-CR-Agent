@@ -9,9 +9,9 @@ import {
 import type { OpencodeClient } from "@opencode-ai/sdk/v2";
 import {
   parseSessionMessages,
+  readSession,
   type SessionMessage,
   sessionUsage,
-  summarizeSession,
 } from "./session-outcome.js";
 
 // A session that was cut off has still spent tokens and may have reported
@@ -125,7 +125,7 @@ export async function promptSession(
     let outcome: AttemptOutcome;
     try {
       const messages = await session.messages({ sessionID }, { signal: attempt });
-      outcome = summarizeSession(parseSessionMessages(messages.data), reportTool, input.toolPrefix);
+      outcome = readSession(messages.data, reportTool, input.toolPrefix);
     } catch (error) {
       // The session finished; running it again on the next model would pay
       // twice. Keep what one more read gets, and do not retry.
@@ -199,7 +199,7 @@ function watchActivity(
         { sessionID },
         { signal: AbortSignal.timeout(HARVEST_TIMEOUT_MS) },
       );
-      const list = parseSessionMessages(messages.data);
+      const list = parseSessionMessages(messages.data).messages;
       if (options.onUsage) {
         const spent = sessionUsage(list);
         if (spent.costUsd > reported.costUsd || spent.inputTokens > reported.inputTokens) {
@@ -244,7 +244,7 @@ async function harvest(
       { sessionID },
       { signal: AbortSignal.timeout(HARVEST_TIMEOUT_MS) },
     );
-    return summarizeSession(parseSessionMessages(messages.data), reportTool, toolPrefix);
+    return readSession(messages.data, reportTool, toolPrefix);
   } catch {
     return emptyOutcome();
   }

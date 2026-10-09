@@ -1,5 +1,5 @@
 import { writeFile } from "node:fs/promises";
-import type { CustomProvider } from "@open-cr-agent/core";
+import { type CustomProvider, errorMessage, withoutSecrets } from "@open-cr-agent/core";
 import type { OpencodeClient } from "@opencode-ai/sdk/v2";
 import { EffortRoutes } from "./effort.js";
 
@@ -23,13 +23,15 @@ export interface EffortSetup {
   probe: ConfigApi;
   workspace: ConfigApi;
   file: string;
+  // Redacted from the reason a failure gives.
+  secrets?: readonly string[];
 }
 
 // The variants derive thinking budgets from the models' output limits,
 // which only OpenCode's catalog knows, and the catalog is loaded only once
 // OpenCode runs: the variants are written after it started and before the
 // workspace is first used. Any failure leaves effort unsent, with a warning
-// per agent, and never fails the review.
+// per agent that gives the cause, and never fails the review.
 export async function setUpEfforts(setup: EffortSetup): Promise<EffortRoutes> {
   const { models, custom = {} } = setup;
   const everyModel = new Map(models.map((m) => [m, 0]));
@@ -48,8 +50,10 @@ export async function setUpEfforts(setup: EffortSetup): Promise<EffortRoutes> {
     const loaded = await catalogModels(setup.workspace);
     routes.keepLoaded(new Map([...loaded].map(([model, entry]) => [model, entry.variants])));
     return routes;
-  } catch {
-    return new EffortRoutes([]);
+  } catch (error) {
+    return EffortRoutes.unavailable(
+      `OpenCode's model catalog could not be read (${withoutSecrets(errorMessage(error), setup.secrets ?? [])})`,
+    );
   }
 }
 

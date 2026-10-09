@@ -158,7 +158,7 @@ describe("summarizeSession", () => {
 
 describe("parseSessionMessages", () => {
   it("keeps what ocra reads and drops the rest", () => {
-    const messages = parseSessionMessages([
+    const { messages, unread } = parseSessionMessages([
       {
         info: { role: "assistant", cost: 0.1, id: "m1", time: { created: 1 } },
         parts: [{ type: "text", text: "done", id: "p1" }],
@@ -167,13 +167,20 @@ describe("parseSessionMessages", () => {
     expect(messages).toEqual([
       { info: { role: "assistant", cost: 0.1 }, parts: [{ type: "text", text: "done" }] },
     ]);
-    expect(parseSessionMessages(undefined)).toEqual([]);
+    expect(unread).toBe(0);
+    expect(parseSessionMessages(undefined)).toEqual({ messages: [], unread: 0 });
   });
 
-  it("refuses an answer in another shape instead of reading it as one", () => {
-    expect(() =>
-      parseSessionMessages([{ info: { role: "assistant", cost: "free" }, parts: [] }]),
-    ).toThrow();
+  it("skips and counts a message in another shape instead of reading it as one", () => {
+    expect(
+      parseSessionMessages([
+        { info: { role: "assistant", cost: "free" }, parts: [] },
+        { info: { role: "assistant" }, parts: [] },
+      ]),
+    ).toEqual({ messages: [{ info: { role: "assistant" }, parts: [] }], unread: 1 });
+  });
+
+  it("refuses an answer that is not a list", () => {
     expect(() => parseSessionMessages({ messages: [] })).toThrow();
   });
 });

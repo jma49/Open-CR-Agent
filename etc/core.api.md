@@ -132,6 +132,8 @@ export interface AppliedSettings {
     // (undocumented)
     notApplied?: (keyof Sampling)[];
     // (undocumented)
+    unsentBecause?: string;
+    // (undocumented)
     unsupported?: string[];
 }
 
@@ -165,6 +167,8 @@ export interface AttemptOutcome {
     text: string;
     // (undocumented)
     toolCalls: string[];
+    // (undocumented)
+    unreadMessages?: number;
     // (undocumented)
     usage: Usage;
 }

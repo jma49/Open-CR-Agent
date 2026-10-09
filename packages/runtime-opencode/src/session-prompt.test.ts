@@ -181,6 +181,21 @@ describe("promptSession", () => {
     });
   });
 
+  it("keeps the findings and spend of a session when one of its messages is not understood", async () => {
+    const api = {
+      create: async () => ({ data: { id: "s1" } }),
+      prompt: async () => ({ data: {} }),
+      // A message in a shape this version of ocra does not know.
+      messages: async () => ({ data: [...spent, { info: { role: 7 }, parts: "?" }] }),
+      abort: async () => ({ data: true }),
+    } as never;
+    const outcome = await promptSession(api, input, REPORT_TOOL, new AbortController().signal);
+    expect(outcome.findings).toHaveLength(1);
+    expect(outcome.usage.costUsd).toBe(0.25);
+    expect(outcome.error).toBeUndefined();
+    expect(outcome.unreadMessages).toBe(1);
+  });
+
   describe("an agent that stops before finishing", () => {
     const DONE = "ocra_task_done";
     const resume = { doneTool: DONE, maxSteps: 30, message: "Finish the review." };
