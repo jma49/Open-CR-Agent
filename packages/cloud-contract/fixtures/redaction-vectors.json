@@ -77,6 +77,8 @@
     { "line": "mysql -u root -pS3cretPass1 app", "secret": "S3cretPass1" },
     { "line": "mysqldump -h db -p'S3cret Pass' app", "secret": "S3cret Pass" },
     { "line": "app --password hunter2hunter2 --verbose", "secret": "hunter2hunter2" },
+    { "line": "app --password hunter2hunter2; echo done", "secret": "hunter2hunter2" },
+    { "line": "run(app --api-key hunter2hunter2)", "secret": "hunter2hunter2" },
     { "line": "deploy --api-key \"correct horse battery\"", "secret": "correct horse battery" },
     { "line": "-H \"authorization: bearer abc123def456ghi789\"", "secret": "abc123def456" },
     { "line": "authorization: basic dXNlcjE6cGFzczE=", "secret": "dXNlcjE6cGFzczE" },

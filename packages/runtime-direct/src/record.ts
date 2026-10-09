@@ -32,8 +32,9 @@ export function exchangeKey(request: { messages?: unknown; tools?: unknown }): s
 // Wraps fetch so every chat completion it sends is recorded in `dir`. The
 // directory is created, private to its owner, before any request, so a path
 // that cannot be one fails the run at once rather than every request.
-// `secrets` is asked at each write: a key renewed during the run (the ocra
-// Cloud token) is taken out as well. A recording that cannot be written is
+// `secrets` is asked when each request is sent and again at its write, and
+// every key seen is kept: a key renewed during the run (the ocra Cloud
+// token), even while a request was in flight, is taken out as well. A recording that cannot be written is
 // a warning, never a failed request: the answer was paid for, and a thrown
 // error here would read as a network failure and send the request again.
 export function recordingFetch(
@@ -50,7 +51,13 @@ export function recordingFetch(
       `${RECORD_DIR_ENV} names a directory ocra cannot create: ${errorMessage(error)}`,
     );
   }
+  const seen = new Set<string>();
+  const remember = () => {
+    for (const s of secrets()) seen.add(s);
+    return [...seen];
+  };
   return async (input, init) => {
+    remember();
     const response = await base(input, init);
     if (typeof init?.body !== "string") return response;
     const body = await response.text();
@@ -61,7 +68,7 @@ export function recordingFetch(
         JSON.parse(init.body) as Record<string, unknown>,
         response.status,
         body,
-        secrets(),
+        remember(),
       );
     } catch (error) {
       warn(`could not record a model exchange in ${RECORD_DIR_ENV}: ${errorMessage(error)}`);
