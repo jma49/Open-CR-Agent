@@ -1,4 +1,4 @@
-import { SpendLimitReached } from "../agent/budget.js";
+import { SpendLimitReached } from "../agent/spend-limit.js";
 import { addUsage, emptyUsage } from "../agent/usage.js";
 import type {
   AgentEvent,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SpendLimitReached } from "./agent/budget.js";
+import { SpendLimitReached } from "./agent/spend-limit.js";
 import { emptyUsage } from "./agent/usage.js";
 import {
   CompletionError,

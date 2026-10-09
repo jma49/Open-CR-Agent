@@ -1,6 +1,6 @@
-import { SpendLimitReached, type SpendTracker } from "../agent/budget.js";
 import { mapWithConcurrency } from "../agent/pool.js";
 import { roleCall } from "../agent/settings.js";
+import type { SpendLimit } from "../agent/spend-limit.js";
 import { emptyUsage } from "../agent/usage.js";
 import type { AnchorContext, RelocationRequest } from "../anchor/anchor.js";
 import { runtimeRelocator } from "../anchor/relocate.js";
@@ -23,7 +23,7 @@ export interface StageContext {
   // Read limits, mode and stages here, not from options.
   settings: RunSettings;
   plan: ReviewPlan;
-  budget: SpendTracker;
+  spendLimit: SpendLimit;
   signal: AbortSignal;
   emit: (event: ReviewEvent) => void;
 }
@@ -37,8 +37,6 @@ export interface ExecuteStage {
   relocations: readonly Usage[];
   usage(): Usage[];
   warnings: string[];
-  // The review share of the spend limit stopped tasks or kept some from starting.
-  reviewLimitReached(): boolean;
 }
 
 // One agent task per (bundle, reviewer) cell of the matrix, within the task
@@ -62,8 +60,7 @@ export async function executeStage(
   }
   emit({ type: "matrix_planned", tasks: matrix.cells.length, skipped: matrix.skipped });
   const relocations: Usage[] = [];
-  const spendLimit = new AbortController();
-  const execute = executeOptions(context, relocations, spendLimit);
+  const execute = executeOptions(context, relocations);
   const resume = options.resume;
   const pool = reusePool(resume);
   if (resume) execute.reuse = { pool, runId: resume.runId };
@@ -78,7 +75,7 @@ export async function executeStage(
     const key = jobKey(cell, plan, execute);
     const reused = await reuseJob(cell, plan, execute, key);
     if (reused) return reused;
-    if (context.budget.reviewExhausted()) {
+    if (!context.spendLimit.mayStartReview()) {
       notStarted.add(cell.taskId);
       unaffordable += 1;
       return skipCell(cell, `spend limit of $${settings.maxCostUsd} reached`, emit);
@@ -99,18 +96,16 @@ export async function executeStage(
     relocations,
     usage: () => [...results.map((r) => r.usage), ...relocations],
     warnings,
-    reviewLimitReached: () => spendLimit.signal.aborted || unaffordable > 0,
   };
 }
 
 function executeOptions(
-  { options, settings, budget, signal, emit }: StageContext,
+  { options, settings, spendLimit, signal, emit }: StageContext,
   relocations: Usage[],
-  spendLimit: AbortController,
 ): ExecuteOptions {
   const relocator = relocatorOf(options, signal, (u) => {
     relocations.push(u);
-    budget.add(u);
+    spendLimit.charge(u);
   });
   return {
     runtime: options.runtime,
@@ -119,7 +114,8 @@ function executeOptions(
     // Past the spend limit a quote that does not match stays file-level.
     relocate:
       relocator &&
-      (async (request: RelocationRequest) => (budget.exhausted() ? undefined : relocator(request))),
+      (async (request: RelocationRequest) =>
+        spendLimit.mayCall() ? relocator(request) : undefined),
     ultra: settings.ultra,
     plans: new Map(),
     agents: options,
@@ -127,13 +123,8 @@ function executeOptions(
     emit,
     // Tasks report spend while they run, so the one that uses up the review
     // share stops every task still running, not only the ones not yet started.
-    onUsage: (usage: Usage) => {
-      budget.add(usage);
-      if (budget.reviewExhausted() && !spendLimit.signal.aborted) {
-        spendLimit.abort(new SpendLimitReached(settings.maxCostUsd ?? 0));
-      }
-    },
-    signal: AbortSignal.any([signal, spendLimit.signal]),
+    onUsage: (usage: Usage) => spendLimit.chargeReview(usage),
+    signal: AbortSignal.any([signal, spendLimit.reviewSignal]),
   };
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SpendLimitReached } from "../agent/budget.js";
+import { SpendLimitReached } from "../agent/spend-limit.js";
 import type { AgentEvent, AgentRuntime, AgentTaskSpec } from "../contracts.js";
 import { REVIEW_TOOLS } from "../review/tools.js";
 import type { AttemptOutcome } from "../runtime/attempt.js";

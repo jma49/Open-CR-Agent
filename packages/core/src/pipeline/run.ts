@@ -1,4 +1,4 @@
-import { spendTracker } from "../agent/budget.js";
+import { spendLimit } from "../agent/spend-limit.js";
 import type { PriorReview } from "../domain.js";
 import { errorMessage, OcraError } from "../errors.js";
 import type { ReviewReport } from "../report/report.js";
@@ -43,8 +43,14 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
     emit,
     signal,
   );
-  const budget = spendTracker(settings.maxCostUsd, plan.usage);
-  const context: StageContext = { options, settings, plan, budget, signal, emit };
+  const context: StageContext = {
+    options,
+    settings,
+    plan,
+    spendLimit: spendLimit(settings.maxCostUsd, plan.usage),
+    signal,
+    emit,
+  };
   const executed = await executeStage(reviewers, context);
   const filtered = await filterStage(executed, prior.review, context);
   const checked = await checkStage(filtered, context);

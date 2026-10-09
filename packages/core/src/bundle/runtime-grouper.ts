@@ -1,7 +1,7 @@
 import { parseJsonAnswer } from "../agent/json.js";
-import { type AgentCallSettings, agentCall } from "../agent/settings.js";
+import { oneShot } from "../agent/model-call.js";
+import type { AgentCallSettings } from "../agent/settings.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
-import { usageSpent } from "../errors.js";
 import type { FileGrouper } from "./grouping.js";
 
 const HELPER_TIMEOUT_MS = 60_000;
@@ -14,26 +14,22 @@ export function runtimeGrouper(
   onUsage: (usage: Usage) => void,
   call?: AgentCallSettings,
 ): FileGrouper | undefined {
-  const complete = runtime.complete?.bind(runtime);
-  if (!complete) return undefined;
+  const ask = oneShot(runtime, onUsage);
+  if (!ask) return undefined;
   return {
     async group(prompt) {
-      const result = await complete(
+      const text = await ask(
         {
           tier: "light",
-          ...agentCall("helper", call),
+          agent: "helper",
+          call,
           system: prompt.system,
           user: prompt.user,
           timeoutMs: HELPER_TIMEOUT_MS,
         },
-        AbortSignal.any([signal, AbortSignal.timeout(HELPER_TIMEOUT_MS)]),
-      ).catch((error: unknown) => {
-        const spent = usageSpent(error);
-        if (spent) onUsage(spent);
-        throw error;
-      });
-      onUsage(result.usage);
-      return parseJsonAnswer(result.text);
+        signal,
+      );
+      return parseJsonAnswer(text);
     },
   };
 }

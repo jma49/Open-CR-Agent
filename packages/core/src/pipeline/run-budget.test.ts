@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { REVIEW_BUDGET_SHARE } from "../agent/budget.js";
+import { REVIEW_SHARE } from "../agent/spend-limit.js";
 import type { AgentRuntime, CompletionRequest, Usage } from "../contracts.js";
 import { REVIEW_TOOLS } from "../review/tools.js";
 import { ChainRunner } from "../runtime/chain-runner.js";
@@ -44,7 +44,7 @@ const perFile = { groupingMinFiles: 10, maxFilesPerBundle: 1, maxBundleChars: 1_
 
 describe("review with a spend limit", () => {
   it("stops starting review tasks at the review share of the limit", async () => {
-    expect(REVIEW_BUDGET_SHARE).toBe(0.8);
+    expect(REVIEW_SHARE).toBe(0.8);
     const report = await reviewWithHooks({
       vcs: vcs({}, files(4)),
       runtime: pricedRuntime(0.3),

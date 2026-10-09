@@ -1,5 +1,6 @@
 import { parseJsonAnswer } from "../agent/json.js";
-import { type AgentCallSettings, agentCall } from "../agent/settings.js";
+import { oneShot } from "../agent/model-call.js";
+import type { AgentCallSettings } from "../agent/settings.js";
 import { at } from "../at.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
 import type {
@@ -10,7 +11,7 @@ import type {
   Severity,
   Verdict,
 } from "../domain.js";
-import { errorMessage, OcraError, usageSpent } from "../errors.js";
+import { errorMessage, OcraError } from "../errors.js";
 import { buildJudgePrompt, type JudgeResponse, judgeResponseSchema } from "./prompt.js";
 import { decideVerdict, defaultSummary } from "./verdict.js";
 
@@ -58,31 +59,29 @@ export async function judgeFindings(
     usage,
     warnings,
   });
-  const complete = options.runtime.complete?.bind(options.runtime);
-  if (!options.enabled || !complete || findings.length === 0) return fallback();
+  const usage: Usage[] = [];
+  const ask = oneShot(options.runtime, (u) => usage.push(u));
+  if (!options.enabled || !ask || findings.length === 0) return fallback();
 
   const prompt = buildJudgePrompt(options.changeRequest, options.tier, findings);
-  let usage: Usage[] = [];
   let response: JudgeResponse;
   try {
-    const answer = await complete(
+    const answer = await ask(
       {
         tier: "top",
-        ...agentCall("judge", options.call),
+        agent: "judge",
+        call: options.call,
         system: prompt.system,
         user: prompt.user,
         timeoutMs: JUDGE_TIMEOUT_MS,
       },
-      AbortSignal.any([options.signal, AbortSignal.timeout(JUDGE_TIMEOUT_MS)]),
+      options.signal,
     );
-    usage = [answer.usage];
-    const parsed = judgeResponseSchema.safeParse(parseJsonAnswer(answer.text));
+    const parsed = judgeResponseSchema.safeParse(parseJsonAnswer(answer));
     if (!parsed.success)
       throw new OcraError("RUNTIME_INVALID_OUTPUT", "the judge returned an invalid response");
     response = parsed.data;
   } catch (error) {
-    const spent = usageSpent(error);
-    if (spent) usage = [spent];
     return fallback([`judge failed, reporting findings unjudged: ${errorMessage(error)}`], usage);
   }
 

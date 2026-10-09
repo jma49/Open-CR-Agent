@@ -24,17 +24,11 @@ export interface Stages {
 
 export function assembleReport(run: RunFacts, stages: Stages, context: StageContext): ReviewReport {
   const report = reportBody(run, stages, context);
-  const { options, settings, plan, budget } = context;
+  const { options, plan, spendLimit } = context;
   const { executed, filtered, checked } = stages;
   if (checked.judged.decisions) report.judgement = checked.judged.decisions;
-  if (settings.maxCostUsd !== undefined) {
-    const reached = budget.exhausted()
-      ? "total"
-      : executed.reviewLimitReached()
-        ? "review"
-        : undefined;
-    report.spendLimit = { usd: settings.maxCostUsd, ...(reached ? { reached } : {}) };
-  }
+  const limit = spendLimit.status();
+  if (limit) report.spendLimit = limit;
   report.anchoring = summarizeAnchoring(report.findings, executed.relocations.length);
   const agents = resolveAgents(run.reviewers, options);
   report.warnings.push(...effortWarnings(agents, options.runtime));
