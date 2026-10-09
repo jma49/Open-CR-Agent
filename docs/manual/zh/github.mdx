@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@82a3f1183a3177e9efa401d87eb95dea495ef619 # v0.6.0
+      - uses: jma49/Open-CR-Agent@6d4d4a21b6334c086e0f884c240d550b2e4c1f46 # v0.7.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
@@ -65,7 +65,7 @@ jobs:
 
 ```yaml
       - id: ocra
-        uses: jma49/Open-CR-Agent@82a3f1183a3177e9efa401d87eb95dea495ef619 # v0.6.0
+        uses: jma49/Open-CR-Agent@6d4d4a21b6334c086e0f884c240d550b2e4c1f46 # v0.7.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       - if: ${{ !cancelled() && steps.ocra.outputs.report != '' }}
@@ -92,7 +92,7 @@ jobs:
 默认运行时 OpenCode 连同原生二进制文件，占 Action 所装 108 个包中的 97 个、175 MB 中的约 165 MB。如果 base 分支配置里的模型都在你声明的端点上，并且配置设了 `"runtime": "direct"`（[选择运行时](./providers#选择运行时)），设置 `opencode: false`（v0.3.0 新增），只装 11 个包。此时如果配置选的是 `opencode`，评审会在调用任何模型之前以退出码 `2` 停下，并说明缺了哪个包。
 
 ```yaml
-      - uses: jma49/Open-CR-Agent@<commit> # v0.6.0
+      - uses: jma49/Open-CR-Agent@<commit> # v0.7.0
         with:
           opencode: false
         env:
@@ -141,7 +141,7 @@ jobs:
         with:
           fetch-depth: 0
       - id: ocra
-        uses: jma49/Open-CR-Agent@82a3f1183a3177e9efa401d87eb95dea495ef619 # v0.6.0
+        uses: jma49/Open-CR-Agent@6d4d4a21b6334c086e0f884c240d550b2e4c1f46 # v0.7.0
         with:
           sarif: true
         env:
@@ -165,7 +165,7 @@ jobs:
 
 ```yaml
       - run: pipx run semgrep scan --config p/default --metrics=off --sarif --output semgrep.sarif
-      - uses: jma49/Open-CR-Agent@82a3f1183a3177e9efa401d87eb95dea495ef619 # v0.6.0
+      - uses: jma49/Open-CR-Agent@6d4d4a21b6334c086e0f884c240d550b2e4c1f46 # v0.7.0
         with:
           args: --import-sarif semgrep.sarif
         env:
@@ -234,7 +234,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@82a3f1183a3177e9efa401d87eb95dea495ef619 # v0.6.0
+      - uses: jma49/Open-CR-Agent@6d4d4a21b6334c086e0f884c240d550b2e4c1f46 # v0.7.0
         with:
           args: --max-cost-usd 2
         env:
@@ -299,7 +299,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@82a3f1183a3177e9efa401d87eb95dea495ef619 # v0.6.0
+      - uses: jma49/Open-CR-Agent@6d4d4a21b6334c086e0f884c240d550b2e4c1f46 # v0.7.0
         with:
           github-token: ${{ steps.app.outputs.token }}
           args: --max-cost-usd 2
