@@ -1,6 +1,7 @@
 import type { ReviewReport } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import { finding, HEAD, report } from "./conformance.fakes.js";
+import { problemsIn } from "./markdown.fakes.js";
 import { inlineBody, renderSummary } from "./render.js";
 import { githubSuggestion } from "./suggestion.js";
 
@@ -100,6 +101,20 @@ describe("renderSummary", () => {
     expect(body).toContain("### Dismissed by maintainers");
     expect(body).toContain("until the code changes or a maintainer dismisses them.");
     expect(body).not.toContain("reviewer dismisses");
+  });
+
+  it("keeps a title and a body on their line of a list, which a line break would continue", () => {
+    // Continued in the list item, the title's second line makes its first a
+    // table header, whose cell boundary splits the code span.
+    const title = "t `a|@all`\n    |-|-|\nx";
+    const body = renderSummary({
+      report: report([finding("a".repeat(16), { title, body: "b\r/merge" })]),
+      commented: new Set(),
+      state: { findings: [] },
+      text: gitlab,
+    });
+    expect(problemsIn(body).filter((p) => /^(mention|command|carriage)/.test(p))).toEqual([]);
+    expect(body).toContain("**t `a|@all`     |-|-| x**");
   });
 });
 

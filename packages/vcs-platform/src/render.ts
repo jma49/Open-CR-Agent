@@ -91,6 +91,14 @@ function codeSpan(text: string): string {
   return `\`${safe}\``;
 }
 
+// Model text within one of ocra's lines (a title, a body in a list) stays on
+// that line. A line break would continue a list item, which safeMarkdown's
+// parse does not see, and a table delimiter row there would split the code
+// spans it found on the line above.
+function safeLine(text: string): string {
+  return safeMarkdown(text.replace(/\r\n?|\n/g, " "));
+}
+
 function location(f: Finding): string {
   if (!f.lineRange) return codeSpan(f.file);
   const { start, end } = f.lineRange;
@@ -104,7 +112,7 @@ export const FINDING_MARKER = /<!-- ocra:finding ([0-9a-f]{16}) -->/;
 export function inlineBody(f: Finding, fence: SuggestionFence): string {
   const parts = [
     `<!-- ocra:finding ${f.fingerprint} -->`,
-    `${ICON[f.severity]} **${safeMarkdown(f.title)}** · ${f.severity} · ${verification(f)} · ${f.reviewer}${f.lowConfidence ? " · low confidence" : ""}`,
+    `${ICON[f.severity]} **${safeLine(f.title)}** · ${f.severity} · ${verification(f)} · ${f.reviewer}${f.lowConfidence ? " · low confidence" : ""}`,
     "",
     safeMarkdown(f.body, { startsLine: true }),
   ];
@@ -245,7 +253,7 @@ function outsideDiff(findings: readonly Finding[], commented: ReadonlySet<string
     "### Findings outside the diff",
     ...inSummary.map(
       (f) =>
-        `- ${ICON[f.severity]} ${location(f)} **${safeMarkdown(f.title)}** _(${verification(f)}${f.lowConfidence ? ", low confidence" : ""})_: ${safeMarkdown(f.body.replaceAll("\n", " "))}`,
+        `- ${ICON[f.severity]} ${location(f)} **${safeLine(f.title)}** _(${verification(f)}${f.lowConfidence ? ", low confidence" : ""})_: ${safeLine(f.body)}`,
     ),
   ];
 }
@@ -278,7 +286,7 @@ function rereviewSections(rereview: ReviewReport["rereview"]): string[] {
       ? [
           "",
           "### Fixed since the last review",
-          ...rereview.fixed.map((f) => `- ~~${safeMarkdown(f.title)}~~ ${codeSpan(f.file)}`),
+          ...rereview.fixed.map((f) => `- ~~${safeLine(f.title)}~~ ${codeSpan(f.file)}`),
         ]
       : []),
     ...openList(
@@ -295,7 +303,7 @@ function rereviewSections(rereview: ReviewReport["rereview"]): string[] {
       ? [
           "",
           "### Dismissed by maintainers",
-          ...rereview.dismissed.map((f) => `- ${safeMarkdown(f.title)} ${codeSpan(f.file)}`),
+          ...rereview.dismissed.map((f) => `- ${safeLine(f.title)} ${codeSpan(f.file)}`),
         ]
       : []),
     ...openList(
@@ -317,7 +325,7 @@ function openList(title: string, intro: string, findings: readonly PriorFinding[
     "",
     ...findings.map(
       (f) =>
-        `- ${ICON[f.severity]} ${safeMarkdown(f.title)} ${codeSpan(f.file)} _(${verification(f)})_`,
+        `- ${ICON[f.severity]} ${safeLine(f.title)} ${codeSpan(f.file)} _(${verification(f)})_`,
     ),
   ];
 }

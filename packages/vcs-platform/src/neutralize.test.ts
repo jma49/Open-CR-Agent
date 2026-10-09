@@ -139,3 +139,32 @@ describe("safeMarkdown treats what is not a code span as text", () => {
     expect(line).toBe("**x \\`**: `@all` z");
   });
 });
+
+describe("safeMarkdown leaves text nothing that binds tighter than a code span", () => {
+  it("shows every angle bracket as text, also an incomplete tag", () => {
+    expect(safeMarkdown("a < b, <i, \\<b> and `<i>`")).toBe("a &lt; b, &lt;i, \\<b> and `<i>`");
+  });
+
+  it("escapes dollar signs, between which both platforms render math", () => {
+    expect(safeMarkdown("costs $5, `$HOME` and \\$x")).toBe("costs \\$5, `$HOME` and \\$x");
+  });
+
+  it("escapes a backtick after an escaped backslash, which is not escaped itself", () => {
+    expect(safeMarkdown("\\\\` @all")).toBe("\\\\\\` @​all");
+  });
+
+  it("spaces out a GitLab multiline blockquote fence, which CommonMark reads the same", () => {
+    expect(safeMarkdown(">>>\n- >>>> \na >>>", { startsLine: true })).toBe(
+      "> > >\n- > > > > \na > > >",
+    );
+    expect(safeMarkdown(">>> quoted")).toBe(">>> quoted");
+  });
+
+  it("ends lines at carriage returns, as CommonMark does", () => {
+    expect(safeMarkdown("a\r\n/merge\r/close")).toBe("a\n​/merge\n​/close");
+  });
+
+  it("breaks an address whose slashes are escaped, which GitLab links once rendered", () => {
+    expect(safeMarkdown("smb:\\/\\/host and www\\.host")).toBe("smb:​\\/\\/host and www​\\.host");
+  });
+});

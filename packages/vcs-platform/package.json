@@ -39,6 +39,8 @@
   ],
   "dependencies": {
     "@open-cr-agent/core": "0.6.0",
+    "micromark": "^4.0.3",
+    "micromark-extension-gfm-table": "^2.1.2",
     "zod": "^4.6.5"
   },
   "publishConfig": {
