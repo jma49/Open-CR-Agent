@@ -70,6 +70,8 @@ function sameRepo(action: readonly string[]): string[] {
     "",
     "jobs:",
     "  review:",
+    "    # A pull request from a fork gets no secrets on pull_request: skip it.",
+    "    if: github.event.pull_request.head.repo.full_name == github.repository",
     ONE_REVIEW,
     "    concurrency:",
     `      group: ocra-${expr("github.event.pull_request.number")}`,

@@ -107,6 +107,13 @@ describe("workflowFor", () => {
     );
   });
 
+  it("with --same-repo-only, skips pull requests from forks, which get no secrets", () => {
+    const workflow = workflowFor({ kind: "same-repo", keyEnv: "GEMINI_API_KEY", direct: false });
+    expect(workflow).toContain(
+      "\n    if: github.event.pull_request.head.repo.full_name == github.repository\n",
+    );
+  });
+
   it("pins the Action as the manual does", () => {
     for (const kind of ["fork-safe", "same-repo"] as const) {
       const workflow = workflowFor({ kind, keyEnv: "GEMINI_API_KEY", direct: true });

@@ -17,6 +17,8 @@ permissions:
 
 jobs:
   review:
+    # A pull request from a fork gets no secrets on pull_request: skip it.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     # One review per pull request at a time: a new push cancels the older run.
     concurrency:
       group: ocra-${{ github.event.pull_request.number }}
@@ -83,7 +85,7 @@ jobs:
 
 结论只是参考意见（[原因](./security#结论不是安全门禁)）：不要用这项检查代替人工审查、把它设为必需的状态检查；打开 `fail-on-concerns` 时，通过只代表“没有被确认的问题”，不代表“安全”。
 
-在 `pull_request` 下，来自 fork 的 PR 拿不到 secret，审查会停下并提示缺少哪个 key；见[来自 fork 的 PR](#来自-fork-的-pr)。
+在 `pull_request` 下，来自 fork 的 PR 拿不到 secret，所以 `if:` 会跳过它们；要审查它们，见[来自 fork 的 PR](#来自-fork-的-pr)。
 
 ### 运行时
 

@@ -17,7 +17,7 @@ ocra init --provider anthropic     # 当前 shell 里没有这个供应商的 ke
 | 参数 | 含义 |
 |---|---|
 | `--github` | 同时写入 `.github/workflows/ocra.yml`，即 `pull_request_target` 上的[fork 方案](./github#来自-fork-的-pr)：成员和协作者的 PR 每次推送都审查，其他人的 PR 在维护者每次加上 `ocra-review` 标签时审查；只检出 base 分支，不运行 PR 里的任何东西 |
-| `--same-repo-only` | 与 `--github` 一起用，改写普通的 [`pull_request` workflow](./github#github-action)。来自 fork 的 PR 在那里拿不到 secret，不会被审查 |
+| `--same-repo-only` | 与 `--github` 一起用，改写普通的 [`pull_request` workflow](./github#github-action)。它跳过来自 fork 的 PR，它们在那里拿不到 secret |
 | `--provider <name>` | `gemini`、`anthropic`、`openai` 或 `openrouter`，代替从环境里找到的 key |
 | `--force` | 替换已有文件。不加时保留已有文件，并说明保留了 |
 

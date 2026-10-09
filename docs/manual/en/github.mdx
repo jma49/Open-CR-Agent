@@ -17,6 +17,8 @@ permissions:
 
 jobs:
   review:
+    # A pull request from a fork gets no secrets on pull_request: skip it.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     # One review per pull request at a time: a new push cancels the older run.
     concurrency:
       group: ocra-${{ github.event.pull_request.number }}
@@ -83,7 +85,7 @@ Pass outputs to a script through `env`, as here, never as `${{ }}` inside `run`.
 
 The verdict is advice ([why](./security#the-verdict-is-not-a-security-gate)): do not make the check a required status in place of human review, and with `fail-on-concerns` read a pass as "nothing confirmed", not "safe".
 
-On `pull_request`, pull requests from forks get no secrets, so their review stops naming the missing key; see [Pull requests from forks](#pull-requests-from-forks).
+On `pull_request`, pull requests from forks get no secrets, so the `if:` skips them; to review them, see [Pull requests from forks](#pull-requests-from-forks).
 
 ### The runtime
 

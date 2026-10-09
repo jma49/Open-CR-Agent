@@ -17,7 +17,7 @@ ocra init --provider anthropic     # a provider whose key is not in this shell
 | Option | Meaning |
 |---|---|
 | `--github` | Also write `.github/workflows/ocra.yml`, the [fork recipe](./github#pull-requests-from-forks) on `pull_request_target`: members' and collaborators' pull requests are reviewed on every push, others' each time a maintainer adds the `ocra-review` label; only the base branch is checked out, and nothing from the pull request runs |
-| `--same-repo-only` | With `--github`, the plain [`pull_request` workflow](./github#github-action) instead. Pull requests from forks get no secrets there and are not reviewed |
+| `--same-repo-only` | With `--github`, the plain [`pull_request` workflow](./github#github-action) instead. It skips pull requests from forks, which get no secrets there |
 | `--provider <name>` | `gemini`, `anthropic`, `openai` or `openrouter`, in place of the key found in the environment |
 | `--force` | Replace existing files. Without it, an existing file is kept, and ocra init says so |
 

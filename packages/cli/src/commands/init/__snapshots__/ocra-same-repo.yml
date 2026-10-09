@@ -9,6 +9,8 @@ permissions:
 
 jobs:
   review:
+    # A pull request from a fork gets no secrets on pull_request: skip it.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     # One review per pull request at a time: a new push cancels the older run.
     concurrency:
       group: ocra-${{ github.event.pull_request.number }}

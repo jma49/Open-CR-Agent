@@ -23,7 +23,7 @@ Options:
                      are reviewed on every push, anyone else's when a
                      maintainer adds the ${REVIEW_LABEL} label
   --same-repo-only   With --github, a pull_request workflow instead: it
-                     reviews no pull request from a fork
+                     skips pull requests from forks
   --provider <name>  ${PRESETS.map((p) => p.name).join(", ")}; by default the first key found
                      of ${PRESETS.map((p) => p.keyEnv).join(", ")}
   --force            Replace the files if they exist
@@ -137,7 +137,7 @@ Next:
 const WORKFLOW_SCOPE: Record<WorkflowKind, string> = {
   "fork-safe": `pull requests from members are reviewed on every push, anyone else's once each time a maintainer adds the ${REVIEW_LABEL} label.`,
   "same-repo":
-    "pull requests from this repository's branches are reviewed; those from forks get no secrets and are not.",
+    "pull requests from this repository's branches are reviewed; those from forks get no secrets and are skipped.",
 };
 
 function githubNext(kind: WorkflowKind, keyEnv: string): string {

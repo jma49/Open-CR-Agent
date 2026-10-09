@@ -84,6 +84,8 @@ permissions:
   pull-requests: write
 jobs:
   review:
+    # Forks get no secrets on pull_request; see the GitHub guide.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     concurrency:
       group: ocra-${{ github.event.pull_request.number }}
       cancel-in-progress: true

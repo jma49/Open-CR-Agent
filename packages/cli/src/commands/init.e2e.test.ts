@@ -130,7 +130,7 @@ Next:
     const result = await init(dir, ["--github", "--same-repo-only", "--provider", "openai"]);
     expect(result.code).toBe(0);
     expect(result.out).toContain(
-      "Wrote .github/workflows/ocra.yml: pull requests from this repository's branches are reviewed; those from forks get no secrets and are not.\n",
+      "Wrote .github/workflows/ocra.yml: pull requests from this repository's branches are reviewed; those from forks get no secrets and are skipped.\n",
     );
     expect(result.out).toContain("gh secret set OPENAI_API_KEY\n");
     expect(result.out).not.toContain("gh label");
