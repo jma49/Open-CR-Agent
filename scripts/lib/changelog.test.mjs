@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   changelogProblems,
   cutRelease,
+  latestRelease,
   parseFragment,
   releaseNotes,
   renderEntries,
@@ -104,6 +105,13 @@ describe("releaseNotes", () => {
     for (const version of ["Unreleased", "0.3.0", "0.1"]) {
       expect(releaseNotes(changelog, version)).toBeUndefined();
     }
+  });
+});
+
+describe("latestRelease", () => {
+  it("is the newest dated section, never Unreleased", () => {
+    expect(latestRelease(changelog)).toEqual({ version: "0.2.0", date: "2026-09-29" });
+    expect(latestRelease("# C\n\n## [Unreleased]\n\n### Fixed\n\n- a\n")).toBeUndefined();
   });
 });
 

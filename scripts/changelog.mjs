@@ -119,6 +119,9 @@ function versionPackages() {
   });
   console.log(`The manual's version pins name ${version} (${bumped.length} page(s) changed).`);
   console.log(
+    `Bring docs/roadmap.md up to ${version} by hand: its milestones, and its header "as of <date> (${version} released)", which scripts/roadmap.test.mjs checks.`,
+  );
+  console.log(
     `\nEvery published package is now ${version}. Review the changes and open a pull request.`,
   );
 }

@@ -163,6 +163,17 @@ export function releaseNotes(text, version) {
   return section?.body || undefined;
 }
 
+// The version and date of the newest "## [<version>] - <date>" section, or
+// undefined before the first release.
+/**
+ * @param {string} text
+ * @returns {{ version: string, date: string } | undefined}
+ */
+export function latestRelease(text) {
+  const { version, date } = splitChangelog(text).sections.find((s) => s.date) ?? {};
+  return version && date ? { version, date } : undefined;
+}
+
 // CHANGELOG.md with a section for the release: what [Unreleased] held, then
 // the changesets' entries, by category. [Unreleased] is left empty and the
 // compare links move on. Throws when there is nothing to release or the
