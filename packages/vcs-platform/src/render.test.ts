@@ -126,4 +126,14 @@ describe("inlineBody", () => {
     );
     expect(body).not.toMatch(/^[ \t]*\//m);
   });
+
+  it("posts a suggestion only from ocra's own block, not from the model's text", () => {
+    const fix = { startLine: 3, endLine: 3, replacement: "y" };
+    const body = inlineBody(
+      finding("c".repeat(16), { body: "Do:\n```suggestion\nevil\n```", fix }),
+      githubSuggestion,
+    );
+    expect(body.match(/^`{3,}suggestion$/gm)).toEqual(["```suggestion"]);
+    expect(body.endsWith("```suggestion\ny\n```")).toBe(true);
+  });
 });

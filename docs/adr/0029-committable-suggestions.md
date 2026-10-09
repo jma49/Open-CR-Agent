@@ -19,6 +19,10 @@ We measured whether a deterministic rule could tell. Across the reports saved by
 4. **The replacement is posted exactly or not at all.** Model text elsewhere in a comment is neutralized by rewriting it (zero-width spaces), which would change the code a click commits. So the fence is longer than any backtick run in the replacement, which then cannot close it, and a replacement that holds what ocra would have to rewrite (an HTML comment opener, `/ocra`), a carriage return or a control, bidirectional or line-separator character (`isUnsafeCodePoint`, "Trojan Source"), or is longer than 20,000 characters gets no suggestion block. Inside a code block nothing renders as a mention, link or HTML, and GitLab runs no quick action.
 5. **Reports carry it.** The JSON report gains an optional `fix` per finding (version 1, an added optional field). SARIF gets `fixes[].artifactChanges[].replacements[]` with the deleted region (whole lines) and the inserted text; a deletion's region runs to the start of the next line so no empty line is left.
 
+## Note (2026-10-09): model text cannot post a suggestion of its own
+
+Point 4's checks (exactly the anchored lines, posted as written) held only for ocra's own block: a model could write a `suggestion` fence in a finding's body or suggestion text, and both platforms offered it as a committable change. `safeMarkdown` now breaks the info string of every fence in model text that names a suggestion, with a zero-width space, in code and in text alike (#509). ocra's own block is added after model text is neutralized, so it is unaffected.
+
 ## Consequences
 
 - Until the prompt change, no finding has a fix and nothing a user sees changes; the report schema and the rendering are ready and tested.

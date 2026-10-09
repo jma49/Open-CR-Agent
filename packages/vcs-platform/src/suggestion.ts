@@ -17,7 +17,9 @@ export const gitlabSuggestion: SuggestionFence = ({ start, end }) =>
 
 const MAX_REPLACEMENT_CHARS = 20_000;
 // What safeMarkdown rewrites even in code, because ocra reads it from the raw
-// comment: its markers and its commands.
+// comment: its markers and its commands. It also breaks a `suggestion` info
+// string, which cannot occur here: inside this block, longer than any
+// backtick run in it, no fence opens.
 const REWRITTEN_IN_CODE = /<!--|\/ocra/i;
 
 // A finding's fix as a committable suggestion (ADR-0029): only for a fix of

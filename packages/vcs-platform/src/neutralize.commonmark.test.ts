@@ -23,6 +23,8 @@ describe("safeMarkdown finds code where CommonMark does", () => {
     ["a table cell boundary inside a span", "| `a | @all` |\n| - | - |", true],
     ["a GitLab multiline blockquote around a fence", ">>>\n```\n>>>\n@all\n```", true],
     ["math around a backtick", "$a`b$ @all `", false],
+    ["an indented block right after a fence the escaping undoes", "> ```\n    @all", true],
+    ["a suggestion fence", "x\n~~~suggestion\ny\n~~~", false],
   ])("%s", (_, text, startsLine) => {
     expect(problemsIn(posted(text, startsLine))).toEqual([]);
   });
@@ -34,7 +36,7 @@ const PIECES = [
   ...["`", "``", "```", "~~~", "\\", "    ", "x", "*"],
   ...["<", ">", "pre", "i ", '="', "<!--", "-->"],
   ...["\n", "\r", "\t", " ", "- ", "> ", "1. ", ">>>", "|", "| - |"],
-  ...["@a", "/m", "!", "[", "]", "(", ")", ":", "//", "ab:", "www.", "&#64;", "$"],
+  ...["@a", "/m", "!", "[", "]", "(", ")", ":", "//", "ab:", "www.", "&#64;", "$", "suggestion"],
 ];
 
 function seeded(seed: number): () => number {

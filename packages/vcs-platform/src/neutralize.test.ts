@@ -126,9 +126,11 @@ describe("safeMarkdown treats what is not a code span as text", () => {
     );
   });
 
-  it("a ~~~ fence and an indented block", () => {
+  it("a ~~~ fence, and an indented block after a line that is not blank", () => {
     expect(safeMarkdown("~~~\n@all\n~~~", { startsLine: true })).toBe("~~~\n@\u200ball\n~~~");
-    expect(safeMarkdown("    @all", { startsLine: true })).toBe("    @\u200ball");
+    expect(safeMarkdown("> ```\n    @all", { startsLine: true })).toBe(
+      "> \\`\\`\\`\n    @\u200ball",
+    );
   });
 
   it("so that pieces of one line cannot pair backticks across each other", () => {
@@ -150,7 +152,7 @@ describe("safeMarkdown leaves text nothing that binds tighter than a code span",
   });
 
   it("escapes a backtick after an escaped backslash, which is not escaped itself", () => {
-    expect(safeMarkdown("\\\\` @all")).toBe("\\\\\\` @​all");
+    expect(safeMarkdown("\\\\` @all")).toBe("\\\\\\` @\u200ball");
   });
 
   it("spaces out a GitLab multiline blockquote fence, which CommonMark reads the same", () => {
@@ -161,10 +163,59 @@ describe("safeMarkdown leaves text nothing that binds tighter than a code span",
   });
 
   it("ends lines at carriage returns, as CommonMark does", () => {
-    expect(safeMarkdown("a\r\n/merge\r/close")).toBe("a\n​/merge\n​/close");
+    expect(safeMarkdown("a\r\n/merge\r/close")).toBe("a\n\u200b/merge\n\u200b/close");
   });
 
   it("breaks an address whose slashes are escaped, which GitLab links once rendered", () => {
-    expect(safeMarkdown("smb:\\/\\/host and www\\.host")).toBe("smb:​\\/\\/host and www​\\.host");
+    expect(safeMarkdown("smb:\\/\\/host and www\\.host")).toBe(
+      "smb:\u200b\\/\\/host and www\u200b\\.host",
+    );
+  });
+});
+
+describe("safeMarkdown keeps model text from posting what ocra posts only under its own rules", () => {
+  it("breaks a GitLab wikilink, which links any target", () => {
+    expect(safeMarkdown("[[a|//host/x]] and [[[b]]")).toBe("[​[a|//host/x]] and [​[​[b]]");
+  });
+
+  it.each([
+    ["a backtick fence", "```suggestion\nx\n```", "```​suggestion\nx\n```"],
+    ["a tilde fence", "~~~suggestion:-0+0\nx\n~~~", "~~~​suggestion:-0+0\nx\n~~~"],
+    ["an unclosed fence", "~~~Suggestion\nx", "~~~​Suggestion\nx"],
+    ["a decoded info string", "```suggesti&#111;n\nx\n```", "```​suggesti&#111;n\nx\n```"],
+  ])(
+    "breaks the info string of a suggestion in %s, which only ADR-0029's checks may post",
+    (_, text, safe) => {
+      expect(safeMarkdown(text, { startsLine: true })).toBe(safe);
+    },
+  );
+
+  it("breaks a suggestion fence past the first line of text placed after other words", () => {
+    expect(safeMarkdown("Instead:\n~~~suggestion\nx\n~~~")).toBe("Instead:\n~~~​suggestion\nx\n~~~");
+  });
+});
+
+describe("safeMarkdown bounds its work", () => {
+  it("cuts text at GitHub's comment limit", () => {
+    expect(safeMarkdown("a".repeat(70_000))).toBe(`${"a".repeat(65_536)} …(truncated)`);
+  });
+
+  it("parses emphasis delimiters in linear time", () => {
+    const start = performance.now();
+    safeMarkdown("*a".repeat(32_000));
+    expect(performance.now() - start).toBeLessThan(3_000);
+  });
+});
+
+describe("safeMarkdown leaves an indented code block as written", () => {
+  it("when it starts a line after a blank one, as code a reviewer quotes", () => {
+    const text = "Use:\n\n    p = make_unique<T>(); // @all\n\n    <!-- x -->\nDone @me";
+    expect(safeMarkdown(text, { startsLine: true })).toBe(
+      "Use:\n\n    p = make_unique<T>(); // @all\n\n    <!​-- x -->\nDone @​me",
+    );
+  });
+
+  it("but not after other words, where its context is not known", () => {
+    expect(safeMarkdown("x\n\n    a<b")).toBe("x\n\n    a&lt;b");
   });
 });
