@@ -81,9 +81,9 @@ These `ReviewOptions` fields are a contract under the [0.x rule](./stability): a
 | `rules` | Path-scoped rules, the registry's plus yours (`SourcedRule[]`: a `RepoRule` with an optional `source`: `repository`, `shared`, `account` or `plugin`); `provenance.rules` lists them, `.ocra/rules.json`'s as `repository` |
 | `readTrusted` | Where `AGENTS.md`, `.ocra/rules.json` and `.ocra/memory.json` are read from; default the revision under review. For a pull request, pass a reader of the trusted base |
 | `selection` | Which files are reviewed: `include`, `exclude`, `maxPatchChars` (200,000); each one left out keeps its default |
-| `limits.concurrency`, `limits.taskTimeoutMs`, `limits.runTimeoutMs` | Parallel tasks (4), the per-task timeout (10 minutes) and the run's (25 minutes); a timeout past 2^31 - 1 ms (about 24.8 days) is cut to that |
+| `limits.concurrency`, `limits.taskTimeoutMs`, `limits.runTimeoutMs` | Parallel tasks (4), the per-task timeout (10 minutes) and the run's (25 minutes); a timeout past 2^31 - 1 ms (about 24.8 days), `Infinity` included, is cut to that. `review()` refuses a concurrency that is not a whole number of at least 1, and a timeout that is not a positive number, with `CONFIG_INVALID` before it starts |
 | `stages.verify`, `stages.judge` | Fact-check findings against the diff, and merge, filter and recalibrate them across reviewers (both default on) |
-| `limits.maxCostUsd`, `limits.maxTasks` | The spend limit ([`--max-cost-usd`](./cli)) and the task cap |
+| `limits.maxCostUsd`, `limits.maxTasks` | The spend limit ([`--max-cost-usd`](./cli)) and the task cap; a negative or `NaN` limit, or a task cap that is not a whole number, is refused with `CONFIG_INVALID` |
 | `mode.full` | Review every file although the platform reports what changed since the previous review |
 | `mode.ultra` | Recall over cost ([Modes](./how-it-works#modes)) |
 | `sarif` | Parsed SARIF logs (`parseSarifLog`) whose results on the change join the review ([SARIF input](./cli#sarif-input)) |
