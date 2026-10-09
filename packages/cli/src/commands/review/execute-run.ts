@@ -88,7 +88,7 @@ function resumedRun(run: ResolvedRun, runId: string): Promise<ResumedRun> {
   if (!sealKey) {
     throw new OcraError(
       "INPUT_INVALID",
-      "--resume: this machine has no session key, so no session can be checked",
+      "--resume: this machine has no usable session key, so no session can be checked",
     );
   }
   return readResumedRun(dir, runId, sealKey, run.warn);

@@ -113,6 +113,26 @@ describe("ocra review --resume", () => {
     expect(seen).toHaveLength(0);
   });
 
+  it("refuses to resume, before any task runs, when the session key cannot be read", async () => {
+    const cwd = repoWithFourFiles();
+    const first = await review(cwd, reviewing([], { on: true }));
+    const seen: AgentTaskSpec[] = [];
+    const err = capture();
+    const code = await run(
+      ["review", "--resume", first.report.runId],
+      capture(),
+      err,
+      deps(cwd, reviewing(seen, { on: false }), {
+        sessionKey: async () => {
+          throw new Error("session-key cannot be read (EACCES)");
+        },
+      }),
+    );
+    expect(code).toBe(2);
+    expect(err.text()).toContain("no usable session key");
+    expect(seen).toHaveLength(0);
+  });
+
   it("seals the session it writes, so that a session without seals cannot be resumed", async () => {
     const cwd = repoWithFourFiles();
     const first = await review(cwd, reviewing([], { on: true }));
