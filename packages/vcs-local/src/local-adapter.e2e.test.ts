@@ -111,7 +111,9 @@ describe("LocalGitAdapter workspace mode", () => {
       ["pkg/a.ts", "modified"],
     ]);
     const adapter = new LocalGitAdapter({ cwd: join(r.dir, "pkg"), target: { mode: "workspace" } });
-    expect(await adapter.repositoryRoot()).toBe(realpathSync(r.dir));
+    // Native, as Windows spells the same directory in more than one way
+    // (git's C:/Users/runneradmin, the temporary directory's RUNNER~1).
+    expect(realpathSync.native(await adapter.repositoryRoot())).toBe(realpathSync.native(r.dir));
   });
 
   it("ignores user diff configuration that changes the output format", async () => {
@@ -232,7 +234,8 @@ describe("LocalGitAdapter.readFile", () => {
     const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
     const context = reviewContext(adapter, []);
     expect(await context.readFile("notes.txt")).toBe(".env");
-    expect(await context.readFile("docs/AGENTS.md")).toBe("../.env");
+    // The link's own text, which Windows writes with its separator.
+    expect(await context.readFile("docs/AGENTS.md")).toBe(join("..", ".env"));
     expect(await context.readFile("cfg/config")).toBeUndefined();
     expect(await adapter.readFile("cfg/config")).toBeUndefined();
     await expect(context.readFile(".env")).rejects.toThrow("not allowed");
