@@ -95,10 +95,12 @@ describe("the Action's pin", () => {
     })),
   );
 
-  it("is written once in the template of ocra init, and in both languages of the manual", () => {
+  it("is written once in the template of ocra init, and in both languages of the manual and the README", () => {
     expect(found.filter((p) => p.where.startsWith(`${ACTION_TEMPLATE}:`))).toHaveLength(1);
     expect(found.some((p) => p.where.startsWith("docs/manual/en/"))).toBe(true);
     expect(found.some((p) => p.where.startsWith("docs/manual/zh/"))).toBe(true);
+    expect(found.some((p) => p.where.startsWith("README.md:"))).toBe(true);
+    expect(found.some((p) => p.where.startsWith("README.zh-CN.md:"))).toBe(true);
   });
 
   it("names one commit and one version everywhere", () => {

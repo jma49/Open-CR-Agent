@@ -65,7 +65,17 @@ export function bumpPins(text, version) {
 }
 
 /**
- * Every file that pins the Action: the manual, the README, the dogfood
+ * The READMEs at the root, one per language.
+ * @param {string} root
+ */
+function readmes(root) {
+  return readdirSync(root)
+    .filter((name) => /^README(\.[\w-]+)?\.md$/.test(name))
+    .map((name) => join(root, name));
+}
+
+/**
+ * Every file that pins the Action: the manual, the READMEs, the dogfood
  * workflow, and the template of ocra init with the workflows it writes,
  * kept for actionlint.
  * @param {string} root
@@ -74,7 +84,7 @@ export function actionPinFiles(root) {
   const written = join(root, dirname(ACTION_TEMPLATE), "__snapshots__");
   return [
     ...manualPages(root),
-    join(root, "README.md"),
+    ...readmes(root),
     join(root, ".github", "workflows", "ocra-dogfood.yml"),
     join(root, ACTION_TEMPLATE),
     ...readdirSync(written).map((name) => join(written, name)),
