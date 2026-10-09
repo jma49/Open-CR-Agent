@@ -80,6 +80,12 @@ export async function readResumedRun(
     const b = bundledEventSchema.safeParse(data);
     if (b.success) groups = b.data.groups;
   }
+  if (sealed === 0 && unsealed === 0) {
+    throw new OcraError(
+      "INPUT_INVALID",
+      `--resume: the session log of ${runId} is empty, so there is nothing to reuse`,
+    );
+  }
   if (sealed === 0) {
     throw new OcraError(
       "INPUT_INVALID",

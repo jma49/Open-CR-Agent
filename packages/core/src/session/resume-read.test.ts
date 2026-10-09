@@ -150,6 +150,14 @@ describe("readResumedRun", () => {
       /no session log for run missing/,
     );
   });
+
+  it("says a session log with no line in it is empty", async () => {
+    const { root } = await loggedRun("r5");
+    writeFileSync(join(root, "r5", EVENTS_FILE), "\n");
+    await expect(readResumedRun(root, "r5", KEY)).rejects.toThrow(
+      /session log of r5 is empty, so there is nothing to reuse/,
+    );
+  });
 });
 
 // The session lives in the reviewed tree, so a change can bring one of its
