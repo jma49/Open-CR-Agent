@@ -15,7 +15,7 @@ ocra init                            # 写入 .ocra/config.json，并说明选�
 ocra review                          # 审查未提交的改动
 ```
 
-还要在 GitHub 上审查 PR 的话，运行 `ocra init --github`：它还会写入 `.github/workflows/ocra.yml`（可安全审查来自 fork 的 PR），并打印要运行的两条 `gh` 命令（设置 secret、创建 `ocra-review` 标签）。它从不替换已有文件。它写了什么、为什么这样写，见 [ocra init](./cli#ocra-init)。
+要审查 GitHub PR，`ocra init --github` 还会写入 `.github/workflows/ocra.yml`（可安全审查 fork 的 PR），并打印设置 secret 和创建 `ocra-review` 标签的 `gh` 命令。它从不替换已有文件。见 [ocra init](./cli#ocra-init)。
 
 下面的步骤是手动完成同样的事，可以用 OpenCode 支持的任何供应商。
 
@@ -32,7 +32,7 @@ npm install -g @open-cr-agent/cli
 ocra --version
 ```
 
-npx 用法和从源码构建见[安装](./installation)。ocra 目前是早期的 0.x 版本；[质量实测](./quality)说明了它的审查能发现什么、会漏掉什么。
+npx 用法和从源码构建见[安装](./installation)。[质量实测](./quality)说明审查能发现什么、会漏掉什么。
 
 </Step>
 
@@ -40,7 +40,7 @@ npx 用法和从源码构建见[安装](./installation)。ocra 目前是早期�
 
 ## 配置模型的 API key
 
-ocra 通过 [OpenCode](https://opencode.ai) 运行审查，OpenCode 支持的模型供应商都可以用。以 Google Gemini 为例：
+[OpenCode](https://opencode.ai) 支持的供应商都可以用（[模型供应商](./providers)）。以 Google Gemini 为例：
 
 ```bash
 export GEMINI_API_KEY="你的 key"
@@ -66,7 +66,7 @@ key 请放在 shell 配置文件或密钥管理工具里，不要放进任何仓
 }
 ```
 
-`standard` 层级的模型负责审查代码，`light` 层级负责分组文件这类便宜的辅助工作，`top` 层级负责 Judge（最终裁决），每次有问题的审查调用一次。写成列表就是降级链。
+`standard` 模型负责审查代码，`light` 负责分组文件这类便宜的辅助工作，`top` 负责裁决问题。写成列表就是降级链。
 
 </Step>
 
@@ -81,7 +81,7 @@ ocra review --from main      # 当前分支从 main 分叉以来的改动
 ocra review --commit HEAD    # 单个 commit
 ```
 
-运行过程中 ocra 会打印进度，最后输出结论和按文件分组的报告。每条问题都标明是否经过核查确认，并带一个可用于 `ocra memory` 的编号：
+ocra 会打印进度，然后输出结论和按文件分组的报告。每条问题都标明是否经核查确认，并带一个用于 `ocra memory` 的编号：
 
 ```text
 Review: Working tree changes
@@ -98,7 +98,7 @@ src/list.ts
 Session: .ocra/sessions/20260924T225539Z-aa9790
 ```
 
-存在经核查确认的 critical 问题时，退出码为 `1`。请把它当作给审查者的参考意见，而不是安全门禁：模型会读到被审查的改动，也可能被它误导。详见 [CLI 参考](./cli)。
+核查确认了 critical 问题时，退出码为 `1`。请把它当作参考意见，而不是安全门禁：模型会读到改动，也可能被它误导。见[退出码](./cli#退出码)。
 
 </Step>
 

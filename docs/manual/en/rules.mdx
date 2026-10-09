@@ -20,7 +20,7 @@ Each reviewer prompt also lists what it must **not** flag: style, formatting, sp
 
 ## AGENTS.md
 
-If the repository has an `AGENTS.md` at its root, ocra passes it to reviewers as repository guidelines. It is read at the revision under review (for pull requests, from the base commit, so a pull request cannot rewrite its own guidelines) and truncated at 20,000 characters. Use it for conventions a reviewer should enforce: architecture boundaries, error-handling policy, forbidden APIs.
+A root `AGENTS.md` goes to reviewers as repository guidelines, truncated at 20,000 characters. It is read at the revision under review (for pull requests, the base commit, so a pull request cannot rewrite it). Use it for conventions to enforce: architecture boundaries, error-handling policy, forbidden APIs.
 
 ## .ocra/rules.json
 
@@ -44,7 +44,7 @@ Path-scoped rules apply only when a bundle contains a matching file:
 - `path`: one glob or a list of globs.
 - `rule`: free text given to the reviewer.
 
-An invalid `rules.json` stops the run with a clear error rather than being ignored. For pull requests it is read from the base commit, like `AGENTS.md`.
+An invalid `rules.json` stops the run with an error. For pull requests it is read from the base commit.
 
 ## Rules from plugins
 

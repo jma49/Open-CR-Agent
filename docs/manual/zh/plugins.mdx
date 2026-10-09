@@ -3,7 +3,7 @@ title: 插件
 description: 用插件为 ocra 扩展代码托管平台、运行时、审查员、规则、工具和事件监听。
 ---
 
-ocra 里的一切都是插件：本地 Git 和 GitHub 适配器、OpenCode 运行时、correctness、security、performance、docs 和 agents-md 五个审查员，以及会话记录，都是内置插件。你写的插件使用的是同一套接口。
+ocra 自己的适配器、运行时、审查员和会话记录都是内置插件；你写的插件使用同一套接口。
 
 ## 编写插件
 
@@ -33,11 +33,11 @@ export default {
 }
 ```
 
-插件从仓库自己的依赖（按包名）或文件路径加载，路径相对仓库根目录解析（也可以指向仓库之外：配置由你自己信任）。插件会执行代码，所以只在本地审查时从仓库自己的配置加载；审查 PR 时或使用 `--no-repo-config` 时都不会加载。
+插件从仓库的依赖（按包名）或相对仓库根目录的路径（可以指向仓库之外）解析。插件会执行代码，所以只在本地审查时加载；审查 PR 或 Merge Request、或使用 `--no-repo-config` 时都不加载。
 
 ## 来自 ocra Cloud 账户的插件
 
-[登录](./cli#ocra-loginocra-logoutocra-whoami)后，你的 ocra Cloud 设置可以按 npm 包名列出插件，并为它们提供 `pluginSettings`。插件会在你的机器上执行代码，所以账户只能列出它的名字：只有你在某台机器上用 [`ocra plugins allow`](./cli#ocra-plugins) 允许之后，它才会在这台机器上加载。
+[登录](./cli#ocra-loginocra-logoutocra-whoami)后，你的 ocra Cloud 设置可以按 npm 包名列出插件及其 `pluginSettings`。账户只能列出名字：只有你在某台机器上用 [`ocra plugins allow`](./cli#ocra-plugins) 允许后，插件才会在这台机器上加载。
 
 ```bash
 ocra plugins allow ocra-plugin-team-rules@1.4.0   # 显示这个包及其发布者，然后安装
@@ -45,16 +45,16 @@ ocra plugins list
 ocra plugins deny ocra-plugin-team-rules
 ```
 
-`allow` 要求精确版本，不接受范围或标签。它会显示 registry 中该包的名称、版本、发布者、维护者和 integrity，然后在关闭安装脚本的情况下把这个精确版本安装到 `~/.config/ocra/plugins/`（`$XDG_CONFIG_HOME/ocra/plugins/`，Windows 上为 `%APPDATA%\ocra\plugins\`），并把名称、版本和 integrity 记录在该目录的 `plugins.json` 中（只有你可读）。npm 在该目录中运行，所以你运行 ocra 所在项目的 npm 配置不会生效；registry 中没有列出 integrity 的包会被拒绝。记录的 integrity 只覆盖这个包本身的 tarball，不覆盖它的依赖：依赖由 npm 在安装时按当时的解析结果安装。允许一个插件是你自己的供应链决定，就像添加一个依赖。
+`allow` 只接受精确版本，不接受范围或标签。它显示 registry 中的名称、版本、发布者、维护者和 integrity，在关闭安装脚本的情况下安装（细节见 [`ocra plugins`](./cli#ocra-plugins)），并把名称、版本和 integrity 记录在 `plugins.json` 中（只有你可读）。npm 在该目录中运行，所以你项目的 npm 配置不生效；没有列出 integrity 的包会被拒绝。integrity 只覆盖包本身的 tarball，不覆盖依赖，依赖由 npm 在安装时解析。允许一个插件是供应链决定，就像添加一个依赖。
 
 审查只在以下条件下加载账户列出的插件：
 
 - 这台机器允许了它：只从上述目录加载，从不从被审查代码的 `node_modules` 加载，并且已安装的包仍然是允许时记录的版本和 integrity；
 - 仓库的插件也能加载的场合：本地审查；`--pr`、`--mr` 和 `--no-repo-config` 时从不加载。
 
-账户列出、但这台机器没有允许的插件会被跳过，并给出一条警告，列出它的名字和 `ocra plugins allow <name>@<version>`。仓库配置已经列出的包按仓库的插件加载；插件名已被占用的会被跳过。来自账户的插件加载失败时会被跳过并给出警告，不会让审查失败。
+这台机器没有允许的账户插件会被跳过，并给出一条警告，写明 `ocra plugins allow <name>@<version>`。仓库已经列出的按仓库的插件加载；插件名已被占用的被跳过；加载失败的被跳过并给出警告，不会让审查失败。
 
-账户的 `pluginSettings` 只作用于账户自己列出、并且这台机器加载了的插件，按账户列出的 npm 包名对应（例如 `@acme/ocra-team-rules`，而不是它导出的插件名 `team-rules`），与 ocra Cloud 的存储方式一致；插件随后按自己的插件名收到这些设置，和来自配置的设置一样；配置自己的 `pluginSettings` 优先，仓库插件的设置只来自仓库。
+账户的 `pluginSettings` 按 npm 包名对应（`@acme/ocra-team-rules`，而不是它导出的插件名 `team-rules`），只作用于账户列出且已加载的插件，插件按自己的插件名收到它们。配置的 `pluginSettings` 优先，仓库插件的设置只来自仓库。
 
 ## 生命周期
 
@@ -77,13 +77,15 @@ ocra plugins deny ocra-plugin-team-rules
 | `registerTool(tool)` | 审查员可以调用的工具，输入用 Zod schema 定义 |
 | `onEvent(listener)` | 审查过程中每个事件的监听器（遥测、通知）。监听器抛出异常时会被停用，并给出一次警告，审查继续进行 |
 
-运行时工厂会收到模型链、环境变量、声明的供应商，配置了的话还有 `sampling`（`temperature`、`seed`）；运行时用自己的 `sampling` 属性说明它实际发送什么，并在 `notApplied` 里列出没法传下去的设置。没有这个属性的运行时会被报告为一项都没应用。任务的 spec 带有它的审查员要求的[推理强度](./configuration#推理强度) `effort`；补全请求带有 `agent`（计划调用对应的审查员，或 `verifier`、`judge`、`helper`）和 `effort`；没有配置推理强度时两者都不存在。会发送推理强度的运行时实现 `appliedTo(agent)`，返回这个 agent 的每次调用是否都发送了它；`unsupported`：因为模型不接受该级别而没有发送的模型（运行会按 agent 给出一次警告）；以及 `notApplied`：这些调用没有发送的采样设置。`@open-cr-agent/core` 的 `effortCapability(model)` 提供 ocra 关于模型能接受什么的表：参数形式和级别。没有实现它的运行时会被报告为不发送推理强度，运行会给出一次警告。有[自己的模型链](./configuration#按-agent-指定模型)的 agent 会在任务 spec 和补全请求的 `models` 中带上它，工厂也会在 `agentModels` 中按 agent id 收到所有这样的模型链，供需要在第一次调用前准备供应商的运行时使用；忽略这两者的运行时会用层级的模型链执行这些调用。
+每个插件只能拿到自己的设置（`ctx.settings`），并由可选的 `settingsSchema` 校验。同一个名字重复注册、使用保留的工具名，或在 `configure` 之后再注册，都会报错并指出是哪个插件。
 
-运行时不必自己在模型之间做故障切换：`@open-cr-agent/core` 的 `ChainRunner` 可以替它实现 `runTask` 和 `complete`。它决定一次调用用哪条模型链（agent 自己的，否则是层级的），对没有配置模型的层级给出 `CONFIG_INVALID` 错误，在整次运行中记录每个模型的健康状况（短时限流会等待，配额用尽的模型在本次运行中不再使用，持续失败的模型由熔断器跳过），并在一次尝试失败时换下一个模型。运行时提供 `ModelAttempts`：`task` 和 `complete` 在一个模型上执行一次尝试，返回 `AttemptOutcome`（发现、步数、工具调用、文本和用量，以及一个 `error`，说明换个模型是否可能成功，带 `QuotaError` 时说明是否需要等待、等多久）；可选的 `refuse` 在发出任何请求之前说明一条模型链为什么无法使用，可选的 `ready` 启动这些尝试需要的东西。每个运行时实例创建一个 runner，这样它记录的健康状况覆盖整次运行。两个内置运行时都是这样实现的。
+### 编写运行时
 
-运行时需要的其余部分也在 `@open-cr-agent/core` 中，你自己的运行时可以按内置运行时的方式执行审查：`reviewTools`，和 `RuntimeOptions.tools` 一起提供给 agent 的只读审查工具，以及 `REVIEW_TOOLS`，它们的名字（一次尝试的发现就是 agent 传给 `report_finding` 的内容；`task_done` 结束尝试）；`MAX_AGENT_STEPS`，每次审查尝试的模型请求上限；`RESUME_MESSAGE`，agent 在还有步数、没有回答也没有调用 `task_done` 时停下，会收到一次这条消息；`parseModel(model)`，拆分 `provider/model`，其他写法抛出 `CONFIG_INVALID`；`parseQuotaError(message, status?)`，把供应商的限流或配额错误读成 `QuotaError`；`withoutSecrets(text, secrets)`，在引用供应商的错误之前去掉其中的密钥；`emptyUsage()` 和 `addUsage()`；`EFFORT_LEVELS` 和 `thinkingBudget(capability, level, outputLimit?)`，ocra 为某个级别推算的思考预算；以及 `proxiedFetch(env)`，按给定环境中的 `HTTP_PROXY`、`HTTPS_PROXY` 和 `NO_PROXY` 走代理的 `fetch`。
-
-每个插件只能拿到自己的设置（`ctx.settings`），并由可选的 `settingsSchema` 校验。同一个名字重复注册、使用保留的工具名，或在 `configure` 阶段之后再注册，都会报错并指出是哪个插件。
+- **工厂输入：** 模型链、环境变量、声明的供应商，配置了的话还有 `sampling`（`temperature`、`seed`），以及 `agentModels`：按 agent id 列出每个 agent [自己的模型链](./configuration#按-agent-指定模型)，供需要在第一次调用前准备供应商的运行时使用。这样的 agent 也会在任务 spec 和补全请求的 `models` 中带上它；两者都忽略的运行时使用层级的模型链。
+- **采样：** 运行时的 `sampling` 属性说明它实际发送什么，`notApplied` 列出没法传下去的设置；没有这个属性的运行时报告为一项都没应用。
+- **推理强度：** 任务 spec 带有审查员要求的[推理强度](./configuration#推理强度) `effort`；补全请求带有 `agent`（计划调用对应的审查员，或 `verifier`、`judge`、`helper`）和 `effort`；没有配置时两者都不存在。发送推理强度的运行时实现 `appliedTo(agent)`：这个 agent 的每次调用是否都发送了它，`unsupported` 列出不接受该级别的模型（每个 agent 警告一次），`notApplied` 列出没发送的采样设置。没有实现它的运行时报告为不发送推理强度，并警告一次。`@open-cr-agent/core` 的 `effortCapability(model)` 给出 ocra 关于模型参数形式和级别的表。
+- **故障切换：** `@open-cr-agent/core` 的 `ChainRunner` 可以实现 `runTask` 和 `complete`，两个内置运行时都是这样。它为每次调用选择模型链（agent 自己的，否则是层级的），对没有模型的层级给出 `CONFIG_INVALID`，在整次运行中记录每个模型的健康状况（短时限流会等待，配额用尽的模型不再使用，熔断器），并在一次尝试失败时换下一个模型。你提供 `ModelAttempts`：`task` 和 `complete` 在一个模型上执行一次尝试，返回 `AttemptOutcome`（发现、步数、工具调用、文本、用量，以及说明换模型是否可能成功的 `error`，带 `QuotaError` 时说明要等多久）；可选的 `refuse` 在任何请求之前说明一条链为什么无法使用，可选的 `ready` 启动尝试需要的东西。每个运行时实例创建一个 runner，健康状况才能覆盖整次运行。
+- **辅助工具**，都在 `@open-cr-agent/core` 中，让你的运行时按内置运行时的方式审查：`reviewTools`，和 `RuntimeOptions.tools` 一起提供给 agent 的只读审查工具，以及 `REVIEW_TOOLS`，它们的名字（一次尝试的发现就是 agent 传给 `report_finding` 的内容；`task_done` 结束尝试）；`MAX_AGENT_STEPS`，每次审查尝试的模型请求上限；`RESUME_MESSAGE`，agent 在还有步数、没有回答也没有调用 `task_done` 时停下，会收到一次这条消息；`parseModel(model)`，拆分 `provider/model`，其他写法抛出 `CONFIG_INVALID`；`parseQuotaError(message, status?)`，把供应商的限流或配额错误读成 `QuotaError`；`withoutSecrets(text, secrets)`，在引用供应商的错误之前去掉其中的密钥；`emptyUsage()` 和 `addUsage()`；`EFFORT_LEVELS` 和 `thinkingBudget(capability, level, outputLimit?)`，ocra 为某个级别推算的思考预算；以及 `proxiedFetch(env)`，按给定环境中的 `HTTP_PROXY`、`HTTPS_PROXY` 和 `NO_PROXY` 走代理的 `fetch`。
 
 ## 安全
 

@@ -3,7 +3,7 @@ title: Embedding ocra
 description: Run the review pipeline from your own program with review() from @open-cr-agent/core.
 ---
 
-ocra is a library first. The `ocra` command is one caller of `review()` in `@open-cr-agent/core`; your program can be another: a bot, a CI step of your own, a service that reviews on a schedule. The same stages, trust rules, cost limits and report apply.
+The `ocra` command is one caller of `review()` in `@open-cr-agent/core`; your bot, CI step or scheduled service can be another, with the same stages, trust rules, cost limits and report.
 
 ## A complete call
 
@@ -62,11 +62,11 @@ try {
 }
 ```
 
-`startPlugins` runs the plugins' lifecycle ([Plugins](./plugins)) and returns a frozen registry; `createVcs` and `createRuntime` build the adapter and the runtime the plugins registered, by name; `registry.emit` hands each event to the listeners, here the session log. The plugins and settings above are what the CLI uses; the `.ocra/config.json` it reads is a CLI convenience, not part of the library.
+`startPlugins` runs the plugins' lifecycle ([Plugins](./plugins)) and returns a frozen registry; `createVcs` and `createRuntime` build the registered adapter and runtime by name; `registry.emit` hands events to the listeners (here the session log). These are the plugins the CLI uses; `.ocra/config.json` is a CLI convenience, not part of the library.
 
 ## What `review()` takes
 
-`ReviewOptions`, as the [stability page](./stability) says, is a contract while ocra is 0.x: a minor release may change it, and the changelog says how. These fields are the contract:
+These `ReviewOptions` fields are a contract under the [0.x rule](./stability): a minor release may change them, and the changelog says how.
 
 | Option | Meaning |
 |---|---|
@@ -76,9 +76,9 @@ try {
 | `reviewerOverrides` | Per reviewer: `enabled`, `minTier`, and its own `effort` and `models` chain ([Models per agent](./configuration#models-per-agent)) |
 | `roles` | Per role (`verifier`, `judge`, `helper`): its own `effort` and `models` chain |
 | `effort` | Reasoning effort per model tier ([Effort](./configuration#effort)) |
-| `models` | The tier chains the runtime was given, so the report's `provenance.agents` can record each agent's chain; the runtime itself takes them in `RuntimeOptions.models` |
-| `rules` | Path-scoped review rules (`SourcedRule[]`: a `RepoRule` with an optional `source`, `repository`, `shared`, `account` or `plugin`), the registry's plus your own; the report's `provenance.rules` lists them with `.ocra/rules.json`'s as `repository` |
-| `readTrusted` | Where `AGENTS.md`, `.ocra/rules.json` and `.ocra/memory.json` are read from. Default: the revision under review; for a pull request, pass a reader of the trusted base so the change cannot rewrite them |
+| `models` | The tier chains the runtime was given (it takes them in `RuntimeOptions.models`), so `provenance.agents` can record each agent's chain |
+| `rules` | Path-scoped rules, the registry's plus yours (`SourcedRule[]`: a `RepoRule` with an optional `source`: `repository`, `shared`, `account` or `plugin`); `provenance.rules` lists them, `.ocra/rules.json`'s as `repository` |
+| `readTrusted` | Where `AGENTS.md`, `.ocra/rules.json` and `.ocra/memory.json` are read from; default the revision under review. For a pull request, pass a reader of the trusted base |
 | `selection` | Which files are reviewed: `include`, `exclude`, `maxPatchChars` (200,000); each one left out keeps its default |
 | `limits.concurrency`, `limits.taskTimeoutMs`, `limits.runTimeoutMs` | Parallel tasks (4), the per-task timeout (10 minutes) and the run's (25 minutes); a timeout past 2^31 - 1 ms (about 24.8 days) is cut to that |
 | `stages.verify`, `stages.judge` | Fact-check findings against the diff, and merge, filter and recalibrate them across reviewers (both default on) |
@@ -89,26 +89,24 @@ try {
 | `signal` | An `AbortSignal`: the run stops, keeps what it found and writes a partial report |
 | `onEvent` | Receives each `ReviewEvent` as the run progresses |
 | `identity.runId` | Names the run in the report, the events and what is posted; generated when absent. The CLI passes its session id |
-| `identity.provenance` | `{ ocraVersion, configHash, sampling?, accountSettings? }`: with it, the report's `provenance` adds the hash of the system prompts the enabled reviewers and helper stages send and the sampling the runtime applied (`sampling` is what you asked the runtime for; `stableHash()` hashes a configuration of yours) |
-
-Up to 0.5, the limits, stages, mode and identity fields were top-level options (`maxCostUsd`, `verify`, `fullReview`, `runId`, …) and `selection` needed all three of its fields. Up to 0.2, `ReviewOptions` also carried `bundling`, `grouper`, `relocate` and `abortGraceMs`; they were tuning and test hooks, never a contract, and are no longer part of it.
+| `identity.provenance` | `{ ocraVersion, configHash, sampling?, accountSettings? }`: the report's `provenance` then adds the system prompts' hash and the sampling applied (`sampling` is what you asked for; `stableHash()` hashes your configuration) |
 
 ## What it returns
 
-A `ReviewReport`: the change, risk tier, verdict and summary, coverage per file, bundles, tasks, findings, what verification refuted and the judge decided, the comparison with the previous review, usage and warnings. Two things to know when you read it:
+A `ReviewReport`, with the content of the [JSON report](./cli#json-output).
 
-- **Publish `toReportOutput(report)`**, not the report itself. It is the versioned JSON the CLI writes, described by `reportOutputSchema` and the published [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json). Its type, `ReportOutput`, is derived from `reportOutputSchema`, so the type and the validator cannot disagree. The internal report carries fields that may change.
-- **An incomplete review is not a pass.** `coverageGaps(report)` says how many selected files were not reviewed and whether nothing was, and in `incomplete` how many of them were only partly reviewed, by how their task ended (`step_cap`, `stopped_early`); `report.unverifiedCriticals` counts critical findings nobody could check. The CLI's [exit codes](./cli) are computed from these; a program that gates on the review should do the same, and never read `verdict` alone as approval.
+- **Publish `toReportOutput(report)`**, not the report: it is the versioned JSON the CLI writes, typed `ReportOutput` and validated by `reportOutputSchema` (from which the type is derived) and the [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json). The internal report's fields may change.
+- **An incomplete review is not a pass.** `coverageGaps(report)` gives how many selected files were not reviewed, whether nothing was, and in `incomplete` how many were partly reviewed, by how their task ended (`step_cap`, `stopped_early`); `report.unverifiedCriticals` counts critical findings nobody could check. Gate on these as the CLI's [exit codes](./cli#exit-codes) do, never on `verdict` alone.
 
-`vcs.publish(report)` posts the review the way `--publish` does, under the platform's trust rules; it returns the parts it could not post as warnings.
+`vcs.publish(report)` posts the review as `--publish` does, under the platform's trust rules, and returns what it could not post as warnings.
 
-Events (`onEvent`) are how progress, the session log and the terminal output are produced. Their shapes are not a contract: a listener should tolerate new event types and fields.
+Event shapes (`onEvent`) are not a contract: a listener should tolerate new types and fields.
 
 ## Errors
 
-`review()` rejects only when the run cannot start: no reviewers, an invalid `.ocra/rules.json` or `.ocra/memory.json`, or a change the VCS adapter cannot read. Once tasks run, a failed task, a failed helper call, a model that is out of quota and the spend limit are recorded in the report (task outcomes, coverage, warnings), not thrown; read them with `coverageGaps(report)` as above.
+`review()` rejects only when the run cannot start: no reviewers, an invalid `.ocra/rules.json` or `.ocra/memory.json`, or a change the VCS adapter cannot read. After that, failed tasks and helper calls, exhausted quotas and the spend limit are recorded in the report, not thrown.
 
-What ocra's packages throw is an `OcraError` (or one of its subclasses) with a `code`; `isOcraError(error, code?)` tells you so, and `OCRA_ERROR_CODES` lists the codes. Where an error has an underlying one (a JSON parse error, a failed read), it is the `cause`. Branch on the code, never on the message: messages are for people and may be reworded. A plugin's adapter or runtime may throw errors of its own, so a caller should handle errors that are not `OcraError` too; `errorMessage(error)` gives the message of any thrown value, an `Error` or not.
+ocra's packages throw `OcraError` (or a subclass) with a `code`: `isOcraError(error, code?)` checks it, `OCRA_ERROR_CODES` lists the codes, and an underlying error (a JSON parse error, a failed read) is the `cause`. Branch on the code, never the message, which may be reworded. A plugin's adapter or runtime may throw other errors; `errorMessage(error)` gives the message of any thrown value.
 
 | Code | Meaning |
 |---|---|
@@ -129,19 +127,19 @@ What ocra's packages throw is an `OcraError` (or one of its subclasses) with a `
 | `BUDGET_EXHAUSTED` | The spend limit was reached (`SpendLimitReached`, the reason running tasks were stopped) |
 | `INTERNAL` | A broken invariant or a misused object, such as one OpenCode runtime used for two runs: a bug in ocra or in its caller |
 
-The subclasses keep their names for `instanceof`: `CompletionError`, `SpendLimitReached`, `AccessDeniedError`, `SarifError` and `PluginError` from `@open-cr-agent/core`, `GitError` from `@open-cr-agent/vcs-local`, `GitHubApiError` and `GitLabApiError` from the platform adapters. ocra puts no token or model key in an error message, and both runtimes redact them from what a model provider answers before quoting it.
+Subclasses for `instanceof`: `CompletionError`, `SpendLimitReached`, `AccessDeniedError`, `SarifError` and `PluginError` (`@open-cr-agent/core`), `GitError` (`@open-cr-agent/vcs-local`), `GitHubApiError` and `GitLabApiError` (the platform adapters). No error message carries a token or model key; both runtimes redact them from provider answers before quoting.
 
-The codes are a contract under the [0.x rule](./stability): a minor release may add a code, and the changelog says when one is renamed or removed. The CLI prints the code of an error that ends a run with exit `2`, as in `ocra [CONFIG_INVALID]: .ocra/config.json is invalid: …`.
+The codes are a contract under the [0.x rule](./stability): a minor release may add one, and the changelog says when one is renamed or removed. The CLI prints the code of an error ending a run with exit `2`, as in `ocra [CONFIG_INVALID]: .ocra/config.json is invalid: …`.
 
 ## Pull requests and merge requests
 
 `githubPlugin` (`@open-cr-agent/vcs-github`) and `gitlabPlugin` (`@open-cr-agent/vcs-gitlab`) register the `github` and `gitlab` adapters.
 
-`resolveGitHubTarget` and `resolveGitLabTarget` find a pull or merge request the way `ocra review --pr` and `--mr` do. Each takes one options object: `ref` (the number, and the repository or project if you name it), `env` (read for the same token, repository and API variables as the CLI's), `origin()` (the checkout's origin remote, read only when needed), `warn` and an optional `fetch`. Each returns the base and head commits, the refspecs that fetch the head, the change request's web page, and `createVcs(registry, local, settings)`, which makes the adapter once the commits are in your clone: `local` gives the code under review and the repository's history, and `settings` is `GitHubSettings` (`botLogin`, `requestChanges`) or `GitLabSettings` (none yet). Fetching the commits and reading configuration, guidelines and rules from the base (`readTrusted`) stay with you; `packages/cli/src/commands/review/target.ts` in the repository shows how the CLI does it. The options the adapters' `createVcs` takes are not a library contract yet; go through these functions.
+`resolveGitHubTarget` and `resolveGitLabTarget` find a pull or merge request as `--pr` and `--mr` do. Each takes `ref` (the number, plus repository or project if you name it), `env` (the CLI's token, repository and API variables), `origin()` (the checkout's origin, read only when needed), `warn` and an optional `fetch`. Each returns the base and head commits, the refspecs that fetch the head, the change request's web page, and `createVcs(registry, local, settings)`, which makes the adapter once the commits are in your clone: `local` gives the code and history, `settings` is `GitHubSettings` (`botLogin`, `requestChanges`) or `GitLabSettings` (none yet). Fetching commits and reading configuration, guidelines and rules from the base (`readTrusted`) are up to you, as in `packages/cli/src/commands/review/target.ts`. The adapters' own `createVcs` options are not a contract; go through these functions.
 
 ## Trust
 
-The program that embeds ocra is the trust boundary. Plugins run code, so load only plugins you trust, and never ones named by the tree under review; pass model keys through `env`, where the runtime forwards only what the configured providers need ([Security](./security)); for a pull request, read guidelines, rules and memory from the base revision through `readTrusted`. The review itself gives agents read-only tools and no shell, whoever calls it.
+Your program is the trust boundary. Load only plugins you trust, never ones the reviewed tree names; pass model keys through `env`, of which the runtime forwards only what the configured providers need ([Security](./security)); for a pull request, read guidelines, rules and memory from the base through `readTrusted`. Agents get read-only tools and no shell, whoever calls `review()`.
 
 ## The public API
 
@@ -152,6 +150,6 @@ The main entry of each package is its public API, a contract under the [0.x rule
 - **`@open-cr-agent/cli`**: `run(argv)`, the `ocra` command with its arguments (no node or script path), writing to stdout and stderr and resolving to the [exit code](./cli).
 - **`@open-cr-agent/vcs-platform`** is what ocra's platform adapters share; it is not a contract yet.
 
-Every name and the shape of every type is in the package's API report, in the repository's [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc) directory; CI fails when an entry changes and its report does not.
+Every name and type shape is in the package's API report in [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc); CI fails when an entry changes without its report.
 
-`@open-cr-agent/core/internal`, and the `/internal` entry of some other packages, is what ocra's packages share with each other. It is not a contract: any release, a patch included, may change or remove what it exports. Build on the main entries only.
+`/internal` entries (`@open-cr-agent/core/internal` and others) are shared between ocra's packages and are not a contract: any release, a patch included, may change them. Build on the main entries only.

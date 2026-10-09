@@ -5,28 +5,28 @@ description: 常见问题解答。
 
 ## 为什么 ocra 报出的问题这么少？
 
-这是有意为之。ocra 精确优先：审查员被明确告知哪些内容不该报，问题要经过校验并对照代码核查，不属于本任务文件的问题会被丢弃以避免重复。对正确的改动给出空报告，本来就是好结果。
+有意为之：审查员被明确告知哪些内容不该报，问题要经过校验并对照代码核查，不属于本任务文件的问题会被丢弃。对正确的改动给出空报告，本来就是好结果。
 
 ## 一次审查要花多少钱？
 
-取决于模型和改动大小。在评测运行中，用 Vertex AI 上的 Gemini、按标价计算，一次审查平均花费 $1.57（中位数 $1.15，最低 $0.07，最高 $3.98），详见[质量实测](./quality)。`ocra review --plan` 不调用模型就能列出审查任务和每个首次提示词的大小，`--max-cost-usd` 给本次运行设花费上限，每次运行也都会打印每次尝试和总计的 token 与花费。把相关文件分组审查，加上每个审查 agent 最多 30 步，都能把成本控制住。
+取决于模型和改动。在评测运行中（Vertex AI 上的 Gemini，按标价），一次审查平均花费 $1.57（中位数 $1.15，最低 $0.07，最高 $3.98），见[质量实测](./quality)。`ocra review --plan` 不调用模型即可估算，`--max-cost-usd` 设定上限，每次运行都会打印 token 和花费。
 
 ## 可以用哪些模型？
 
-OpenCode 支持的所有模型，写成 `provider/model`。建议每个层级都配置降级链，这样某个模型过载时审查也不会失败。
+OpenCode 支持的所有模型，或你自己的 OpenAI 兼容端点，写成 `provider/model`；见[模型供应商](./providers)。每个层级配置降级链，模型过载时审查也不会失败。
 
 ## 支持 GitHub PR 吗？
 
-支持。`ocra review --pr <编号>` 可以审查一个 PR；GitHub Action 会发布行内评论和一条摘要评论，之后的 push 只重新审查改动过的部分。见 [GitHub Pull Request](./github)。
+支持：`ocra review --pr <编号>`，或者用 GitHub Action，它发布行内评论和摘要，只重新审查改动过的部分。见 [GitHub Pull Request](./github)。
 
 ## 支持 GitLab 吗？
 
-支持，GitLab.com 和自建 GitLab 都可以：`ocra review --mr <iid>` 审查一个 Merge Request，发布讨论串和一条摘要评论，可以在 GitLab CI 任务里运行，也可以在命令行运行。见 [GitLab Merge Request](./gitlab)。
+支持 GitLab.com 和自建实例：`ocra review --mr <iid>` 发布讨论串和摘要评论，可在 CI 或命令行运行。见 [GitLab Merge Request](./gitlab)。
 
 ## 为什么不让模型直接给行号？
 
-模型经常把行号写错，所以让它引用代码，再由 ocra 解析出行号。详见[工作原理](./how-it-works#行号定位)。
+模型经常写错行号，所以让它引用代码，由 ocra 解析出行号。详见[工作原理](./how-it-works#行号定位)。
 
 ## 结果保存在哪里？
 
-每次审查（`--plan` 除外）都会在被审查的仓库里写入 `.ocra/sessions/<id>/events.jsonl` 和 `report.json`。
+在被审查仓库的 `.ocra/sessions/<id>/` 里；见[会话记录](./cli#会话记录)。

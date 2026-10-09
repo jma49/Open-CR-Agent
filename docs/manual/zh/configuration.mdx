@@ -3,9 +3,9 @@ title: 配置
 description: .ocra/config.json 配置文件与环境变量。
 ---
 
-ocra 从被审查仓库根目录的 `.ocra/config.json` 读取配置。所有字段都是可选的；未知字段会直接报错，避免拼写错误被悄悄忽略。
+ocra 从被审查仓库根目录的 `.ocra/config.json` 读取配置。所有字段都可选；未知字段直接报错，拼写错误不会被悄悄忽略。
 
-`ocra review --config <文件>` 改为读取你自己的一个文件，放在哪里都行：CI 的检出目录、你的家目录。它是你信任的文件，所以和 `--no-repo-config` 一起用也生效；审查不信任的代码（比如评测工具）时，声明的[模型端点](./providers#你自己的端点)和各种上限就是这样传进去的。它列出的插件从文件所在目录解析。与 `--pr`、`--mr` 一起用时，它代替 base 分支的那份文件；插件在那里照样不加载。
+`ocra review --config <文件>` 改为读取你自己的文件，放在哪里都行。它是你信任的，所以和 `--no-repo-config` 一起用也生效：审查不信任的代码（比如评测工具）时，声明的[模型端点](./providers#你自己的端点)和上限就是这样传进去的。它列出的插件从文件所在目录解析。与 `--pr`、`--mr` 一起用时，它代替 base 分支的文件；插件在那里照样不加载。
 
 ```json
 {
@@ -30,7 +30,7 @@ ocra 从被审查仓库根目录的 `.ocra/config.json` 读取配置。所有字
 }
 ```
 
-可选的 `$schema` 字段让编辑器使用这个文件的 [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/config.v1.json)（draft 2020-12，由代码生成并经测试核对），输入时就能补全字段、标出未知字段和错误的值；ocra 本身忽略这个字段。
+`$schema` 让编辑器用这个文件的 [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/config.v1.json)（draft 2020-12，由代码生成并经测试核对）做补全和校验；ocra 忽略它。
 
 ## 模型
 
@@ -42,7 +42,7 @@ ocra 从被审查仓库根目录的 `.ocra/config.json` 读取配置。所有字
 | `light` | 辅助调用，比如给改动文件分组 |
 | `top` | Judge（最终裁决） |
 
-模型过载或拒绝请求时，任务会换到链上的下一个模型重试。遇到限流且供应商给出了较短的等待时间（最多 90 秒）时，所有任务都会暂停使用这个模型，等完再重试；如果限流标明是按天计算、等待时间更长或没有给出，或者连续第四次被限流，这个模型在本次运行里就不再使用。每个模型都有熔断器：连续失败两次后跳过一分钟，然后放行一个请求试探；成功就恢复，再失败就跳过两倍时长（最多十分钟）。凭证错误会立即停止，因为同一供应商的其他模型也会失败。
+模型过载或拒绝请求时，任务换到链上的下一个模型重试。限流给出的等待不超过 90 秒时，所有任务暂停使用这个模型，等完再重试；按天限流、等待更长或没给出，或连续第四次限流，这个模型在本次运行里就不再使用。每个模型都有熔断器：连续失败两次后跳过一分钟，再放行一个请求试探；成功就恢复，失败则暂停时长加倍（最多十分钟）。凭证错误立即停止，因为该供应商的其他模型也会失败。
 
 环境变量会覆盖配置文件，降级链用逗号分隔：
 
@@ -54,7 +54,7 @@ export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
 
 ## 按 agent 指定模型
 
-`reviewers.<id>.models` 为单个审查员指定它自己的模型或故障切换链（包括它的审查任务和计划调用），`roles.<role>.models` 为 `verifier`、`judge` 或 `helper`（给文件分组、重新定位引用的代码）指定。写法与层级相同。没有设置的 agent 使用所在层级的模型链，与上文一致；verifier 和 judge 从不沿用审查员的模型链，这样核查始终独立于被核查的内容。
+`reviewers.<id>.models` 为单个审查员指定自己的模型或降级链（审查任务和计划调用），`roles.<role>.models` 为 `verifier`、`judge` 或 `helper`（给文件分组、重新定位引用的代码）指定。写法与层级相同。没有设置的 agent 用所在层级的链；verifier 和 judge 从不沿用审查员的链，核查因此保持独立。
 
 ```json
 {
@@ -64,11 +64,11 @@ export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
 }
 ```
 
-故障切换、限流暂停和断路器与层级一样按模型计算：同一个模型出现在两条链里时共用一个断路器，一个不可用的模型会被所有用到它的 agent 跳过。审查前的检查也覆盖这些模型链：供应商的 key 必须已设置（`opencode` 运行时会像层级模型一样把它传给 OpenCode），[自行声明的供应商](./providers#你自己的端点)的模型必须在声明里有价格，`ocra-<provider>/` 模型经由 ocra Cloud。不读取 agent 模型链的插件运行时使用层级的模型链。JSON 报告的 `provenance.agents` 在 `models` 中记录每个 agent 实际使用的模型链，`--plan` 显示每个任务的模型链，配置哈希也覆盖它们。
+降级、限流暂停和熔断器都按模型计算，同一个模型出现在两条链里时共用一个熔断器。审查前的检查也覆盖这些链：供应商的 key 必须已设置，[自行声明的供应商](./providers#你自己的端点)的模型必须有价格，`ocra-<provider>/` 模型经由 ocra Cloud。忽略 agent 模型链的插件运行时使用层级的链。JSON 报告的 `provenance.agents` 记录每条实际使用的链，`--plan` 显示每个任务的链，配置哈希也覆盖它们。
 
 ## 推理强度
 
-当前大多数模型都可以指定回答前推理多少。`effort` 按层级设置，`reviewers.<id>.effort` 设置单个审查员（包括它的审查任务和计划调用），`roles.<role>.effort` 设置 `verifier`（核验）、`judge`（裁决）或 `helper`（辅助调用：给文件分组、重新定位引用的代码）。可选级别为 `none`、`minimal`、`low`、`medium` 和 `high`。每个 agent 先用自己的设置，没有就用它所在层级的设置（审查员按自己的层级，verifier 为 `standard`，judge 为 `top`，helper 为 `light`）；verifier 和 judge 从不沿用审查员的设置。不设置时什么都不发送，使用供应商的默认值。
+即模型回答前推理多少：`effort` 按层级设置，`reviewers.<id>.effort` 按审查员设置（审查任务和计划调用），`roles.<role>.effort` 设置 `verifier`、`judge` 或 `helper` 调用。级别：`none`、`minimal`、`low`、`medium`、`high`。agent 先用自己的设置，没有就用所在层级的（审查员按自己的层级，verifier 为 `standard`，judge 为 `top`，helper 为 `light`）；verifier 和 judge 从不沿用审查员的。不设置时什么都不发送，用供应商的默认值。
 
 ```json
 {
@@ -80,20 +80,18 @@ export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
 
 `OCRA_EFFORT_TOP`、`OCRA_EFFORT_STANDARD` 和 `OCRA_EFFORT_LIGHT` 会覆盖对应层级的设置。
 
-- `direct` 运行时把级别作为 `reasoning_effort` 发送；对声明了 `"effort": "openrouter"` 的供应商，则发送 `reasoning: { effort }`（见[模型供应商](./providers#你自己的端点)）。`none` 按 `none` 发送。发送其他级别的调用不再发送 `temperature` 和 `seed`：推理模型会拒绝或忽略它们。如果端点返回 HTTP 400 并点名这个参数，这次调用会去掉它重发一次，不算作模型失败；这个模型之后的调用都不再带它，运行结束时给出警告。
-- `opencode` 运行时把级别写进它交给 OpenCode 的配置里，作为模型的供应商参数：OpenAI 推理模型（GPT-5、o 系列）用 `reasoningEffort`，Claude 4 及以后的模型和 Gemini 2.5 用思考预算（thinking budget），Gemini 3 用 `thinkingLevel`；OpenRouter 模型和[声明的供应商](./providers#你自己的端点)按它们的 `effort` 设置接收。思考预算取 OpenCode 模型目录中该模型输出上限的一定比例（`minimal` 1/32、`low` 1/16、`medium` 1/4、`high` 1/2；Claude 至少 1,024 个 token，Gemini 不超出它自己的范围），目录里没有上限时按 32,000 个 token 计算；`none` 关闭思考（Claude 不开启思考，Gemini 2.5 Flash 预算为 0）。每个模型的每个级别对应一个独立的 OpenCode variant，所以同一个模型上的两个 agent 可以使用不同的级别。和 `direct` 一样，发送 `none` 以外级别的调用不带配置的 `temperature`。经 OpenCode 使用的其他供应商（Azure、Bedrock、Groq 等）不发送推理强度。
-- 某个模型接受哪些级别，来自 ocra 内置的一张小表（`@open-cr-agent/core` 的 `effortCapability`），新模型发布后它会过时：在 `opencode` 上，这张表没有为某个模型列出的级别（例如 o3 的 `minimal`、Gemini 3 的 `medium`），或者它不认识的模型，这些调用就不带推理强度，运行时会按 agent 给出一次警告，写明级别和模型。审查不会因此失败。
-- JSON 报告的 `provenance.agents` 列出每个 agent 的层级、推理强度、是否已应用（`applied`），以及它的调用没有发送的采样设置（`notApplied`）。`--plan` 会显示每个任务的推理强度。配置哈希也覆盖推理强度。
+- **`direct`** 发送 `reasoning_effort`；对声明了 `"effort": "openrouter"` 的供应商发送 `reasoning: { effort }`（见[模型供应商](./providers#你自己的端点)）；`none` 按 `none` 发送。带其他级别的调用不发送 `temperature` 和 `seed`，推理模型会拒绝或忽略它们。端点返回 HTTP 400 并点名该参数时，去掉它重试一次（不算失败），这个模型之后的调用都不再带它，并给出警告。
+- **`opencode`** 把级别写进模型的供应商参数：OpenAI 推理模型（GPT-5、o 系列）用 `reasoningEffort`，Claude 4 及以后和 Gemini 2.5 用思考预算（thinking budget），Gemini 3 用 `thinkingLevel`；OpenRouter 模型和[声明的供应商](./providers#你自己的端点)按各自的 `effort` 接收。思考预算取 OpenCode 目录中该模型输出上限的一定比例（`minimal` 1/32、`low` 1/16、`medium` 1/4、`high` 1/2；Claude 至少 1,024 个 token，Gemini 不超出它自己的范围），没有上限时按 32,000 个 token 计算；`none` 关闭思考（Claude 不思考，Gemini 2.5 Flash 预算为 0）。每个模型的每个级别是独立的 OpenCode variant，共用一个模型的 agent 可以用不同级别。和 `direct` 一样，`none` 以外的级别不带配置的 `temperature`。其他供应商（Azure、Bedrock、Groq 等）不发送推理强度。
+- 模型接受哪些级别来自 ocra 内置的一张表（`@open-cr-agent/core` 的 `effortCapability`），可能跟不上新模型：在 `opencode` 上，表里没为某模型列出的级别（例如 o3 的 `minimal`、Gemini 3 的 `medium`）或不认识的模型不带推理强度，每个 agent 警告一次。审查不会因此失败。
+- JSON 报告的 `provenance.agents` 列出每个 agent 的层级、推理强度、`applied` 和 `notApplied`；`--plan` 显示每个任务的推理强度；配置哈希也覆盖它。
 
 ## 供应商 key
 
-key 只从环境变量读取，变量名用 OpenCode 里各供应商对应的名字，例如 `ANTHROPIC_API_KEY`、`OPENAI_API_KEY`。Google 支持 `GEMINI_API_KEY`、`GOOGLE_API_KEY` 和 `GOOGLE_GENERATIVE_AI_API_KEY`。
+key 只从环境变量读取，变量名用 OpenCode 期望的（`ANTHROPIC_API_KEY`、`OPENAI_API_KEY`；Google 可用 `GEMINI_API_KEY`、`GOOGLE_API_KEY` 或 `GOOGLE_GENERATIVE_AI_API_KEY`）。各供应商的变量，以及如何在 `providers` 下声明你自己的端点，见[模型供应商](./providers)。
 
-agent 运行时只会从你的环境里拿到它需要的东西：`PATH`、`HOME`、语言区域、代理和 CA 设置，以及模型链里用到的供应商的凭据（ocra 不认识的供应商，会拿到所有以其大写 id 开头的变量，例如 `groq` 对应 `GROQ_`）。其余的，比如云服务凭据或 `GITHUB_TOKEN`，都不会传过去。如果某个供应商还需要别的变量，把变量名写进 `OCRA_RUNTIME_ENV`，用逗号分隔。
+agent 运行时只拿到 `PATH`、`HOME`、语言区域、代理和 CA 设置，以及模型链里供应商的凭据（ocra 不认识的供应商，拿到所有以其大写 id 开头的变量，例如 `GROQ_`）。云服务凭据、`GITHUB_TOKEN` 等其余变量都不会传过去；供应商还需要的变量，写进 `OCRA_RUNTIME_ENV`，用逗号分隔。
 
-对于一定需要 key 的供应商（Google、Anthropic、OpenAI、OpenRouter、Groq、Mistral、DeepSeek、xAI、Azure），ocra 会在启动前检查 key 是否已设置，缺失时会指出该设置哪个变量。
-
-要接入你自己的服务，或兼容 OpenAI API 的公司网关，请在 `providers` 下声明；哪些供应商可用、各自需要什么，见[模型供应商](./providers)。
+对一定需要 key 的供应商（Google、Anthropic、OpenAI、OpenRouter、Groq、Mistral、DeepSeek、xAI、Azure），ocra 在启动前检查，并指出缺少的变量。
 
 ## 执行参数
 
@@ -106,20 +104,20 @@ agent 运行时只会从你的环境里拿到它需要的东西：`PATH`、`HOME
 | `maxTasks` | `60` | 一次运行最多启动的审查任务数。超出时先去掉 `--ultra` 的第二遍，再去掉排在后面的审查员，尽量让每个文件至少保留第一个审查员；被跳过的文件报告为未审查（退出码 `3`） |
 | `judge` | `true` | 跨审查员合并、过滤并校准问题（每次有问题的运行调用一次 top 档位模型） |
 | `verify` | `true` | 报告前逐条核查问题（每个有问题的文件调用一次 standard 档位模型） |
-| `sampling` | 无 | `{ "temperature": 0–2, "seed": n }`，用于每次模型调用；两项都可以省略，不设置时用各供应商的默认值。`--temperature` 和 `--seed` 会覆盖它。`direct` 运行时两项都会发送。`opencode` 运行时把温度设在它的 agent 上，OpenCode 只在模型目录标明该模型接受温度时才传下去（ocra 会给你[声明的模型](./providers#你自己的端点)加上这个标记）；它没有种子设置，所以种子会报告为未应用。JSON 报告的 `provenance.sampling` 写明实际应用了什么。种子只有在供应商遵守它时才能让运行可重复 |
+| `sampling` | 无 | `{ "temperature": 0–2, "seed": n }`，用于每次模型调用，两项都可省略（不设置时用供应商默认值）；`--temperature` 和 `--seed` 会覆盖它。`direct` 两项都发送。`opencode` 只把温度传给目录标明接受温度的模型（[声明的模型](./providers#你自己的端点)都标明了），种子报告为未应用。`provenance.sampling` 写明实际应用了什么。种子只有在供应商遵守时才能让运行可重复 |
 
 某个任务失败或超时不会导致整次运行失败，它负责的文件会被标记为 `failed`。
 
 ## 文件选择
 
-ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书、云服务和镜像仓库凭据、Terraform 变量和状态文件）、已删除的文件、媒体和压缩包、锁文件、第三方和生成的代码，以及过大的 diff。超过 1 MB 的文件按二进制处理并跳过。数据库迁移文件不会被当作生成代码跳过（其他规则照常生效）。
+ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书、云服务和镜像仓库凭据、Terraform 变量和状态文件）、已删除的文件、媒体和压缩包、锁文件、第三方和生成的代码，以及过大的 diff。超过 1 MB 的文件按二进制处理并跳过。数据库迁移文件从不被当作生成代码。
 
 - `exclude`：额外要跳过的 glob。
 - `include`：即使会被当作生成代码或按扩展名跳过，也要审查的 glob。密钥文件永远无法被 include。
 
 ## 审查员
 
-`reviewers.<id>` 可以关闭某个审查员，设置它开始运行的风险档位（可以比默认高，也可以更低），或设置它的[模型](#按-agent-指定模型)或[推理强度](#推理强度)。风险档位从低到高：`trivial`（改动 ≤10 行）、`lite`（≤100 行）、`full`（更大的改动、超过 20 个文件，或涉及敏感路径：CI workflow，或目录名、文件名中含有 `auth`、`oauth`、`jwt`、`password`、`credential`、`secret`、`login`、`permission`、`acl`、`identity`、`crypto`、`security` 等单词）。
+`reviewers.<id>` 可以关闭某个审查员，设置它开始运行的风险档位，或设置它的[模型](#按-agent-指定模型)或[推理强度](#推理强度)。风险档位从低到高：`trivial`（改动 ≤10 行）、`lite`（≤100 行）、`full`（更大的改动、超过 20 个文件，或涉及敏感路径：CI workflow，或目录名、文件名中含有 `auth`、`oauth`、`jwt`、`password`、`credential`、`secret`、`login`、`permission`、`acl`、`identity`、`crypto`、`security` 等单词）。
 
 ```json
 { "reviewers": { "correctness": { "minTier": "lite" }, "security": { "enabled": false } } }
@@ -129,31 +127,31 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 
 ## 共享配置
 
-组织可以把通用设置放在一处，让各个仓库继承：
+仓库可以继承组织的通用设置：
 
 ```json
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`effort`、`reviewers`、`roles`、`github`、`providers`（必须固定内容，见下文）和 `rules`（格式与 `.ocra/rules.json` 的条目相同）。它不能列出插件，也不能选择运行时：它来自仓库之外，不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 会合并，`models`、`effort`、`reviewers`、`roles`、`github` 和 `providers` 按键合并。
+共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`effort`、`reviewers`、`roles`、`github`、`providers`（仅在固定内容时）和 `rules`（格式同 `.ocra/rules.json` 的条目）。它不能列出插件或选择运行时，因为它不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 合并，`models`、`effort`、`reviewers`、`roles`、`github` 和 `providers` 按键合并。
 
-只接受 `https` 地址，不跟随重定向，最大 256 KB。可选的 `#sha256=` 片段会固定文件内容；声明了 `providers` 的文件必须固定，因为供应商决定了你的代码发往哪里（见[模型供应商](./providers#你自己的端点)）。文件无法加载或内容无效时，ocra 会给出警告，然后继续使用仓库自己的设置；只写在共享文件里的限制（例如 `maxCostUsd`）这时就不生效，必须始终生效的限制请在仓库里也写一份。
+只接受 `https` 地址，不跟随重定向，最大 256 KB。`#sha256=` 固定文件内容；声明了 `providers` 的文件必须固定，因为供应商决定了你的代码发往哪里（见[模型供应商](./providers#你自己的端点)）。文件无法加载或无效时，ocra 警告后只用仓库自己的设置，只写在共享文件里的限制（例如 `maxCostUsd`）就不生效；必须始终生效的限制请在仓库里也写一份。
 
 ## 账户设置
 
-登录 [ocra Cloud](./cli#ocra-loginocra-logoutocra-whoami) 后，`ocra review` 会读取你账户中的设置，放在配置之下。优先级从高到低：命令行参数、配置（仓库的文件或 `--config`、它 `extends` 的共享配置、`OCRA_*` 环境变量）、账户设置、ocra 的默认值。
+登录 [ocra Cloud](./cli#ocra-loginocra-logoutocra-whoami) 后，`ocra review` 把账户设置放在配置之下。优先级从高到低：命令行参数、配置（仓库的文件或 `--config`、它 `extends` 的共享配置、`OCRA_*` 环境变量）、账户设置、ocra 的默认值。
 
 | 账户中的键 | 如何生效 |
 |---|---|
 | `runtime`（`opencode` 或 `direct`）、`models.<tier>`、`effort.<tier>`、`reviewers.<id>`、`roles.<role>` | 只补充配置没有写的部分；配置中某个审查员或角色的条目整体优先 |
-| `concurrency`、`taskTimeoutMinutes`、`runTimeoutMinutes`、`maxCostUsd`、`maxTasks`、`verify`、`judge`、`sampling` | 只在配置没有设置时生效；`sampling` 算作一个整体。因此账户可以为仓库未设上限的审查加上限，但不能放宽仓库已设的限制 |
+| `concurrency`、`taskTimeoutMinutes`、`runTimeoutMinutes`、`maxCostUsd`、`maxTasks`、`verify`、`judge`、`sampling` | 只在配置没有设置时生效（`sampling` 算一个整体）：账户可以给没有上限的运行加上限，但不能放宽限制 |
 | `include`、`exclude` | 合并：先是配置中的模式，再是账户的 |
 | `rules` | 追加在仓库规则和共享规则之后：最多 50 条，格式与 [`.ocra/rules.json`](./rules) 的条目相同，每条规则最多 2,000 个字符，以同样的方式嵌入提示词 |
 
-每个键都按本文件自己的 schema 校验：不符合的键会被忽略，并给出点名该键的警告，其余键照常生效。当前版本 ocra 不认识的键会被忽略，并用一条警告列出。账户设置中的模型必须是 `ocra-<provider>/<model>`，经由 ocra Cloud 使用其中保存的 key。账户永远不能在这里设置 `providers`、`extends`、`github`（`botLogin` 决定信任谁的评论）或插件：无论服务器发送什么，ocra 都会忽略并给出警告。
+每个键都按本文件的 schema 校验；不符合的、或当前版本不认识的键会被忽略，并给出点名它的警告，其余照常生效。模型必须是 `ocra-<provider>/<model>`，经由 ocra Cloud 使用其中保存的 key。账户永远不能设置 `providers`、`extends`、`github`（`botLogin` 决定信任谁的评论）或插件：ocra 会忽略并给出警告。
 
-账户设置同样适用于 `--pr` 和 `--mr`，位于基准提交的配置之下：它们不来自被审查的代码。补充了哪些会打印出来（`From your ocra Cloud settings: …`），`--plan` 会列出每项设置及其来源，JSON 报告的 `provenance.accountSettings.version` 记录所用设置的保存版本；配置哈希覆盖该版本和账户规则，因此未登录时哈希不变。无法连接 ocra Cloud 时会给出警告，审查只使用配置。
+账户设置同样适用于 `--pr` 和 `--mr`，位于基准提交的配置之下，从不来自被审查的代码。补充了哪些会打印出来（`From your ocra Cloud settings: …`），`--plan` 列出每项设置的来源，`provenance.accountSettings.version` 记录所用的版本。配置哈希覆盖它和账户规则，因此未登录时哈希不变。连不上 ocra Cloud 时会给出警告，只使用配置。
 
 ## 插件
 
-`runtime` 指定使用哪个已注册的运行时：`opencode`（默认）通过 OpenCode 运行审查员，能用它目录里的所有供应商；`direct` 自己调用 `providers` 下声明的端点，不访问其他任何地址（见[模型供应商](./providers#选择运行时)）。`plugins` 按包名或路径列出额外的插件，`pluginSettings.<插件名>` 存放各插件自己的设置。详见[插件](./plugins)。
+`runtime` 选择已注册的运行时：`opencode`（默认）或 `direct`（见[选择运行时](./providers#选择运行时)）。`plugins` 按包名或路径列出额外的插件，`pluginSettings.<插件名>` 存放各插件的设置。详见[插件](./plugins)。

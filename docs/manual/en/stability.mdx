@@ -3,16 +3,18 @@ title: Stability and support
 description: What you can build on, how it may change, and how to verify a release.
 ---
 
-ocra is an early 0.x release. This page says which parts are contracts that scripts, CI and plugins can rely on, how those contracts may change, and what support to expect.
+ocra is an early 0.x release. This page lists the contracts scripts, CI and plugins can rely on, how they may change, and what support to expect.
 
 ## Versions
 
 ocra follows [semantic versioning](https://semver.org) as it applies before 1.0:
 
 - A **patch** release (0.1.x) fixes bugs and never changes a contract, except where a security fix cannot be made otherwise; the release notes then say so.
-- A **minor** release (0.x.0) may change a contract. Every such change is listed in the [changelog](https://github.com/jma49/Open-CR-Agent/blob/main/CHANGELOG.md). Where it can, ocra first keeps the old form working for at least one minor release and warns when it is used; then the old form is removed.
+- A **minor** release (0.x.0) may change a contract, listed in the [changelog](https://github.com/jma49/Open-CR-Agent/blob/main/CHANGELOG.md). Where it can, the old form keeps working, with a warning, for at least one minor release before removal.
 
-All packages share one version and are released together.
+All packages share one version and release together.
+
+Below, "0.x rule" means: a minor release may change it, and the changelog says how to adapt.
 
 ## Contracts
 
@@ -20,27 +22,27 @@ All packages share one version and are released together.
 |---|---|
 | Commands, options and exit codes | [CLI](./cli) |
 | `.ocra/config.json`, `.ocra/rules.json`, `.ocra/memory.json` and the `OCRA_*` environment variables | [Configuration](./configuration), [Rules](./rules) |
-| The JSON report (`--format json`, `report.json`) and the `--plan` JSON | [CLI](./cli#json-output). Both carry `"version": 1`; a version only gains optional fields (`runId` and `provenance` were added that way) and new values of a listed set (the coverage status `incomplete` was), and anything else is a new version. The [report's](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json) and the [plan's](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/plan.v1.json) JSON Schemas are generated from the code and tested against it |
-| The SARIF output (`--format sarif`) | [CLI](./cli#sarif-output). SARIF 2.1.0; the rule ids, the `ocra/v1` fingerprint key and the property names follow the rules for other contracts |
+| The JSON report (`--format json`, `report.json`) and the `--plan` JSON | [CLI](./cli#json-output). Both carry `"version": 1`; a version only gains optional fields and new values of a listed set, anything else is a new version. JSON Schemas for the [report](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json) and the [plan](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/plan.v1.json) |
+| The SARIF output (`--format sarif`) | [CLI](./cli#sarif-output). SARIF 2.1.0; rule ids, the `ocra/v1` fingerprint key and property names are covered |
 | The GitHub Action's inputs | [GitHub pull requests](./github) |
-| The state ocra keeps in its pull request summary comment | An internal format that later releases keep reading (`v1` today). If one ever cannot, the next review starts over as if it were the first: it reviews every file and may comment again on findings it had commented on |
-| The plugin interface (`OcraPlugin`) | [Plugins](./plugins). It may still change in minor releases while ocra is 0.x, with the changelog saying how to adapt |
-| The library entry: `review()` and the `ReviewOptions` fields the Embedding page lists, `startPlugins()`, the registry's `createVcs`, `createRuntime`, `reviewers`, `rules` and `emit`, `toReportOutput()`, `coverageGaps()` and `parseSarifLog()` | [Embedding ocra](./embedding). Same rule as the plugin interface while ocra is 0.x |
-| The main entry of each package: what `@open-cr-agent/core`, the adapters and the runtimes export | [Embedding ocra](./embedding#the-public-api), and the API report of each package in [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc). Same rule as the plugin interface while ocra is 0.x. The `/internal` entries (`@open-cr-agent/core/internal` and others) and `@open-cr-agent/vcs-platform` are not a contract |
-| The error model: `OcraError`, its `code` values, `isOcraError()`, and what `review()` throws | [Embedding ocra](./embedding#errors). Same rule as the plugin interface while ocra is 0.x: a minor release may add codes, and the changelog says when one is renamed or removed. The messages are not a contract |
+| The state ocra keeps in its pull request summary comment | Internal (`v1` today), but later releases keep reading it. If one ever cannot, the next review starts over: every file, possibly repeating comments |
+| The plugin interface (`OcraPlugin`) | [Plugins](./plugins); 0.x rule |
+| The library entry: `review()` and the `ReviewOptions` fields the Embedding page lists, `startPlugins()`, the registry's `createVcs`, `createRuntime`, `reviewers`, `rules` and `emit`, `toReportOutput()`, `coverageGaps()` and `parseSarifLog()` | [Embedding ocra](./embedding); 0.x rule |
+| The main entry of each package: what `@open-cr-agent/core`, the adapters and the runtimes export | [Embedding ocra](./embedding#the-public-api) and each package's API report in [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc); 0.x rule. `/internal` entries and `@open-cr-agent/vcs-platform` are not a contract |
+| The error model: `OcraError`, its `code` values, `isOcraError()`, and what `review()` throws | [Embedding ocra](./embedding#errors); 0.x rule (codes may be added; renames and removals are in the changelog). Messages are not a contract |
 
-Not contracts: the wording of the text output and of error messages, progress lines and pull request comments; the events in a session's `events.jsonl`; the prompts; which findings a model reports; and cost. Parse the JSON report, not the text.
+Not contracts: the wording of text output, error messages, progress lines and pull request comments; session events (`events.jsonl`); prompts; which findings a model reports; cost. Parse the JSON report, not the text.
 
 ## Support
 
-- Fixes, security fixes included, go into the latest release only; there are no backports. How to report a vulnerability, and what happens next, is in [SECURITY.md](https://github.com/jma49/Open-CR-Agent/blob/main/SECURITY.md).
-- Node.js: 22.19 or newer (`engines`). CI runs the tests on Node.js 22 on Linux, and installs and starts the Action on Linux, macOS and Windows.
-- Git: tested with the versions on GitHub's hosted runners and on the maintainer's machine; there is no minimum version yet.
-- ocra has one maintainer. Issues and pull requests are answered on a best-effort basis; there is no paid support.
+- Fixes, security fixes included, go into the latest release only; no backports. Reporting a vulnerability: [SECURITY.md](https://github.com/jma49/Open-CR-Agent/blob/main/SECURITY.md).
+- Node.js 22.19 or newer (`engines`). CI tests on Node.js 22 on Linux, and installs and starts the Action on Linux, macOS and Windows.
+- Git: tested with the versions on GitHub's hosted runners; no minimum version yet.
+- One maintainer; issues and pull requests are answered best-effort, with no paid support.
 
 ## Verifying a release
 
-Releases are published from GitHub releases by a workflow in this repository, through npm trusted publishing. Publishing ocra's packages with an npm token is disabled, and a publish by hand needs the maintainer's second factor. From 0.1.1 on, each package carries [provenance](https://docs.npmjs.com/generating-provenance-statements) that ties it to this repository, the release workflow and the tagged commit. To check what you installed:
+Releases are published by this repository's release workflow through npm trusted publishing; token publishing is disabled, and a manual publish needs the maintainer's second factor. Since 0.1.1, each package carries [provenance](https://docs.npmjs.com/generating-provenance-statements) tying it to this repository, the workflow and the tagged commit. To check what you installed:
 
 ```bash
 npm audit signatures --include-attestations
@@ -48,4 +50,4 @@ npm audit signatures --include-attestations
 
 The container image carries build provenance too: `gh attestation verify oci://ghcr.io/jma49/ocra:<version> --repo jma49/Open-CR-Agent`.
 
-The GitHub Action installs the published CLI with the dependency versions its CI tested, verifies the registry's signatures and the provenance of ocra's own packages, and builds from source when a version is not on npm or lacks that provenance; see [GitHub pull requests](./github).
+The GitHub Action installs the published CLI with its tested dependency versions, verifies signatures and ocra's provenance, and builds from source when a version is not on npm or lacks provenance ([GitHub pull requests](./github)).

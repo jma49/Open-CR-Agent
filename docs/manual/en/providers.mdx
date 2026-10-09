@@ -3,7 +3,7 @@ title: Model providers
 description: Which model providers ocra can use, what each needs, and how to use your own endpoint.
 ---
 
-ocra runs its reviewers through OpenCode, so the providers in OpenCode's catalog work, apart from the few [that need code from npm](#providers-that-need-code-from-npm). Name a model as `provider/model` in the model chains ([Configuration](./configuration#models)). The runtime receives only the credentials of the providers your chains name.
+On the default runtime, every provider in OpenCode's catalog works except the few [that need code from npm](#providers-that-need-code-from-npm). Name a model as `provider/model` in the model chains ([Configuration](./configuration#models)); the runtime receives only the credentials of the providers they name.
 
 ## Providers in OpenCode's catalog
 
@@ -17,11 +17,11 @@ ocra runs its reviewers through OpenCode, so the providers in OpenCode's catalog
 | Azure OpenAI | `azure/<deployment>` | `AZURE_API_KEY`, `AZURE_RESOURCE_NAME` | No |
 | DeepSeek, OpenRouter, Groq, Mistral, xAI and the rest of the catalog | `deepseek/<model>` | The provider's key, such as `DEEPSEEK_API_KEY`; for an id ocra does not know, every variable starting with it, such as `GROQ_` | No |
 
-"No" means that ocra passes the provider its variables and OpenCode does the rest, but no review has run through that provider yet. If one fails, [open an issue](https://github.com/jma49/Open-CR-Agent/issues/new/choose). Model ids come from OpenCode's catalog, [models.dev](https://models.dev).
+"No": ocra passes the variables and OpenCode does the rest, but no review has run through that provider yet; if one fails, [open an issue](https://github.com/jma49/Open-CR-Agent/issues/new/choose). Model ids come from [models.dev](https://models.dev), OpenCode's catalog.
 
 ### Providers that need code from npm
 
-OpenCode ships the code for talking to almost every provider in its catalog. For a few it would download that code from npm the first time a model is used, and ocra does not let anything be downloaded during a review. In the catalog of 2026-09-29 these are `aihubmix`, `cloudflare-ai-gateway`, `merge-gateway`, `qvac`, `salad-cloud`, `sap-ai-core` and `watsonx`. Their models fail at once with "Failed to initialize provider". If such a service offers an endpoint that speaks the OpenAI API, declare it as [your own endpoint](#your-own-endpoint).
+For a few providers OpenCode would download its client code from npm on first use, which ocra does not allow during a review. In the catalog of 2026-09-29 these are `aihubmix`, `cloudflare-ai-gateway`, `merge-gateway`, `qvac`, `salad-cloud`, `sap-ai-core` and `watsonx`; their models fail at once with "Failed to initialize provider". If such a service has an OpenAI-compatible endpoint, declare it as [your own endpoint](#your-own-endpoint).
 
 ## Your own endpoint
 
@@ -49,18 +49,18 @@ A self-hosted server (vLLM, Ollama, LM Studio) or a company gateway that speaks 
 }
 ```
 
-- **The id** (`gateway`) is yours: lowercase letters, digits and hyphens. Pick one OpenCode's catalog does not use, since a declared provider replaces a known one of the same id for the run.
+- **The id** (`gateway`) is yours: lowercase letters, digits and hyphens. Avoid ids in OpenCode's catalog: a declaration replaces the known provider for the run.
 - **`baseUrl`** must be `https`, or plain `http` on this machine: `localhost`, `127.0.0.1` or `::1`. For Ollama, for example, `http://127.0.0.1:11434/v1`. It may not contain `{` or `}`, which OpenCode would replace with a variable or a file's content.
-- **`apiKeyEnv`** is the name of the variable that holds the key. The key never goes in the file, and only this variable reaches the runtime. Names of platform tokens and cloud credentials (starting with `GITHUB_`, `GITLAB_`, `CI_`, `AWS_`, `AZURE_` and similar) are refused. Leave it out for a server without keys.
-- **`effort`** (optional) says how the endpoint takes a [reasoning effort](./configuration#effort), on either runtime: `openai` sends `reasoning_effort` (the default, which OpenAI, the Gemini API's OpenAI-compatible endpoint and OpenRouter accept), `openrouter` sends `reasoning: { effort }`.
-- **Every model has a price** in US dollars per million tokens: `input`, `output`, and optionally `cachedInput`. ocra uses them for the reported cost and for `--max-cost-usd`. A price of 0 is allowed, for a server on your own hardware; the run then warns that the model is unpriced and that the spend limit does not count it.
-- A shared configuration named by `extends` may declare providers too, but only when it is pinned with `#sha256=`: unpinned, whoever serves the file could send your code to an endpoint of their choosing. ocra ignores an unpinned file that declares providers, with a warning that gives the pin to add once you have checked the file. The repository's declaration of the same id wins. In pull and merge requests, providers come from the base commit, like the rest of the configuration.
+- **`apiKeyEnv`** names the variable holding the key; the key never goes in the file, and only this variable reaches the runtime. Platform tokens and cloud credentials (`GITHUB_`, `GITLAB_`, `CI_`, `AWS_`, `AZURE_` and similar) are refused. Omit it for a server without keys.
+- **`effort`** (optional) says how the endpoint takes a [reasoning effort](./configuration#effort), on either runtime: `openai` (default; OpenAI, Gemini's OpenAI-compatible endpoint and OpenRouter accept it) sends `reasoning_effort`, `openrouter` sends `reasoning: { effort }`.
+- **Every model has a price** in US dollars per million tokens: `input`, `output`, optionally `cachedInput`, used for the reported cost and `--max-cost-usd`. A price of 0 (your own hardware) makes the run warn that the spend limit does not count the model.
+- A shared configuration (`extends`) may declare providers only when pinned with `#sha256=`; otherwise whoever serves it could redirect your code. ocra ignores an unpinned one that declares providers, with a warning giving the pin to add once you have checked it. The repository's declaration of the same id wins. In pull and merge requests, providers come from the base commit.
 
-This has been tested in CI against a fake OpenAI-compatible server with the real OpenCode binary: the key goes where it should, the price is counted, and nothing else on the network is needed. Against a live server it has run on OpenRouter (a free model, 2026-10-02): the key reached it, tool calls worked, and the price of 0 was reported.
+Tested in CI against a fake OpenAI-compatible server with the real OpenCode binary (the key goes where it should, the price is counted, nothing else is reached), and live on OpenRouter (a free model, 2026-10-02).
 
 ## Free models through OpenRouter
 
-A model offered at no charge on [OpenRouter](https://openrouter.ai) is used like any OpenAI-compatible endpoint: declare the endpoint with a price of 0 for the model, under the id OpenRouter lists it by, and name it as `<endpoint id>/<model id>`. This is what [`ocra init`](./cli#ocra-init) writes for an OpenRouter key, with `openrouter/free`, OpenRouter's router that sends each request to one of its free models:
+A free model on [OpenRouter](https://openrouter.ai) is declared like any endpoint, at a price of 0 under OpenRouter's model id, and named `<endpoint id>/<model id>`. [`ocra init`](./cli#ocra-init) writes this for an OpenRouter key, with `openrouter/free`, the router that sends each request to one of its free models:
 
 ```json
 {
@@ -80,14 +80,14 @@ A model offered at no charge on [OpenRouter](https://openrouter.ai) is used like
 }
 ```
 
-- A price of 0 is taken literally: the run warns that the model's tokens are not counted by `--max-cost-usd`, and reports a cost of $0, which is what a free model costs; tokens are still reported.
-- Keep the file outside the reviewed repository and pass it with [`--config`](./cli) when the review runs with `--no-repo-config`, as the evaluation harness does.
+- The run reports a cost of $0 and warns that `--max-cost-usd` does not count the model; tokens are still reported.
+- With `--no-repo-config`, as in the evaluation harness, keep the file outside the reviewed repository and pass it with [`--config`](./cli).
 - The evaluation's judge can use the same endpoint: `JUDGE_API_KEY`, `JUDGE_BASE_URL=https://openrouter.ai/api/v1` and `JUDGE_MODEL=openrouter/free`.
-- The router picks a different free model from request to request, so the quality of a review varies with it. To compare runs, name one free model instead (its id ends in `:free`, for example `nvidia/nemotron-3-ultra-550b-a55b:free`), and check its page, since OpenRouter withdraws free models without notice: a withdrawn model answers HTTP 404, and the review fails.
-- Without credits on the account, OpenRouter allows few free requests a day (about 50, shared by its `:free` models); a review takes 30 to 70 requests per task, so a large one may stop part way. Some zero-price models without `:free` are served only to accounts with credits, and answer HTTP 402 otherwise.
-- Free models, their limits and their prices can change without notice, and a free model's provider may keep what it is sent. Use them to try ocra, not on code you must keep private.
+- The router picks a different model per request, so review quality varies. To compare runs, name one free model (its id ends in `:free`, such as `nvidia/nemotron-3-ultra-550b-a55b:free`, which this repository's CI pins); OpenRouter withdraws free models without notice, and a withdrawn one answers HTTP 404, failing the review.
+- Without credits, OpenRouter allows about 50 free requests a day across its `:free` models; a review takes 30 to 70 requests per task, so a large one may stop part way. Some zero-price models without `:free` need credits and answer HTTP 402 otherwise.
+- Free models, limits and prices change without notice, and a free model's provider may keep what it is sent. Use them to try ocra, not on code you must keep private.
 
-This repository's own CI (the dogfood reviews, the nightly live check and the daily free evaluation) pins `nvidia/nemotron-3-ultra-550b-a55b:free` rather than the router, so its results compare from day to day. The declared-endpoint path works without OpenCode's pricing catalog; the catalog form, `openrouter/<model>`, needs the catalog reachable and the model in it, and fails at once otherwise. Reviews have run through OpenRouter this way since 2026-10-02.
+The declared endpoint works without OpenCode's pricing catalog; the catalog form, `openrouter/<model>`, needs the catalog reachable and the model in it, and fails at once otherwise.
 
 ## Choosing the runtime
 
@@ -98,12 +98,12 @@ Two runtimes can run the reviewers; `runtime` in the configuration picks one:
 | `opencode` (default) | Every provider in OpenCode's catalog and your declared endpoints, plus the pricing catalog `models.opencode.ai` | Your models are Gemini, Vertex AI, Anthropic, Bedrock or another catalog provider |
 | `direct` | Only the endpoints declared under `providers`; nothing else on the network | Every model in your chains is on a declared endpoint, and you want nothing but that endpoint reached |
 
-Both run the same review: the same tools, the same step cap, the same failback over the chain, the same prices. The `direct` runtime refuses a chain that names a provider you did not declare, and says so before any request. Behind a proxy it reads `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` like the rest of ocra. The quality numbers on the [quality page](./quality) were measured through `opencode`; the `direct` runtime passes the same conformance tests but has not been evaluated on the golden set yet.
+Both run the same review: tools, step cap, failback and prices. `direct` refuses, before any request, a chain naming a provider you did not declare, and honors `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY`. The [quality numbers](./quality) were measured on `opencode`; `direct` passes the same conformance tests but has not been evaluated on the golden set yet.
 
-To see exactly what the `direct` runtime sent a model and what came back, set `OCRA_RECORD_DIR` to a directory: every request is written there as a JSON file with the answers it got, readable only by you. Keys are replaced by `<key>`, and headers and the endpoint's address are left out, but the files do hold the code and prompts sent to the model, so treat the directory like the code itself. ocra's own tests replay such recordings without a model; a recording answers only the exact conversation it recorded, so it cannot stand in for a model when a prompt changes. The `opencode` runtime ignores the variable.
+To see what `direct` sent a model and got back, set `OCRA_RECORD_DIR` to a directory: each request is written there as a JSON file with its answers, readable only by you. Keys become `<key>` and headers and the endpoint address are left out, but the files hold the code and prompts, so guard them like the code. A recording replays only the exact conversation it recorded. `opencode` ignores the variable.
 
-The `opencode` runtime is an optional dependency of the CLI, installed by default. With `direct`, you can install ocra without it, about 165 MB less: see [Without OpenCode](./installation#without-opencode), and the input `opencode: false` [in the GitHub Action](./github#the-runtime).
+The `opencode` runtime is an optional dependency, installed by default; with `direct` you can leave it out and save about 165 MB: see [Without OpenCode](./installation#without-opencode) and the Action's `opencode: false` [input](./github#the-runtime).
 
 ## What else reaches the network
 
-Besides the model providers, OpenCode fetches its pricing catalog from `models.opencode.ai` when it starts. It also tries to install its own plugin package from npm then, and the code for a provider it does not ship when a model needs it; ocra sends both installs to a registry on your machine that refuses them at once. With every address but a declared endpoint refused, a review works (tested). Where outside access is blocked, the catalog fetch fails, OpenCode uses the catalog it ships with, and a model missing from that catalog has no price: the run then warns that its calls are not counted.
+Besides the model providers, OpenCode fetches its pricing catalog from `models.opencode.ai` at start. Its attempts to install its plugin package, or a provider's code, from npm go to a local registry that refuses them at once. A review works with every address but a declared endpoint refused (tested): the catalog fetch fails, OpenCode uses its bundled catalog, and a model missing from it has no price, so the run warns its calls are not counted.

@@ -15,7 +15,7 @@ ocra is an early 0.x release: options and output may still change between minor 
 - **Git**
 - An API key for at least one model provider
 
-The OpenCode agent runtime, the default, is installed automatically as an optional dependency; no separate install is needed. To install without it, see [Without OpenCode](#without-opencode).
+The default OpenCode runtime comes along as an optional dependency; to leave it out, see [Without OpenCode](#without-opencode).
 
 ## From npm
 
@@ -26,43 +26,41 @@ ocra --version
 
 To update: `npm install -g @open-cr-agent/cli@latest`. To remove it: `npm uninstall -g @open-cr-agent/cli`.
 
-To run it without installing, npx downloads it first:
+Or run it without installing:
 
 ```bash
 npx @open-cr-agent/cli review
 ```
 
-Install with optional dependencies, as npm does by default: the OpenCode runtime and its binary are optional dependencies, and `--omit=optional` leaves OpenCode out (see [Without OpenCode](#without-opencode)).
-
-npm 11.16 and later warn that `opencode-ai` has an install script not covered by `allowScripts`, and npm 12 blocks it. ocra does not need that script: it finds the OpenCode binary in the platform package without it, so you can leave it blocked.
+npm 11.16 and later warn that `opencode-ai` has an install script not covered by `allowScripts`, and npm 12 blocks it. ocra does not need it (it finds the binary in the platform package), so leave it blocked.
 
 ## Without OpenCode
 
-The OpenCode runtime, `@open-cr-agent/runtime-opencode`, is an optional dependency of the CLI: with its native binary it is about 165 MB of the 175 MB an install takes. If every model you use is on an endpoint you declare and the configuration sets `"runtime": "direct"` ([Choosing the runtime](./providers#choosing-the-runtime)), you can leave it out. `npm install -g` installs optional dependencies whatever you pass, so install ocra into a directory of its own instead:
+The OpenCode runtime, `@open-cr-agent/runtime-opencode`, is about 165 MB of the 175 MB an install takes. If every model is on a declared endpoint and the configuration sets `"runtime": "direct"` ([Choosing the runtime](./providers#choosing-the-runtime)), leave it out. `npm install -g` installs optional dependencies regardless, so install into a directory of its own:
 
 ```bash
 npm install --prefix ~/.ocra --omit=optional @open-cr-agent/cli
 ~/.ocra/node_modules/.bin/ocra --version   # or put ~/.ocra/node_modules/.bin on your PATH
 ```
 
-The same `--omit=optional` works for ocra as a dependency of a project. ocra imports a runtime only when a review needs one, and `ocra review --plan` needs none. A review whose configuration selects `opencode`, the default, stops before any model call with exit code 2, names the missing package and both ways out: set `"runtime": "direct"`, or install the runtime next to ocra at ocra's exact version (`npm install --prefix ~/.ocra @open-cr-agent/runtime-opencode@<version>`).
+`--omit=optional` works the same for ocra as a project dependency. `ocra review --plan` needs no runtime. A review on `opencode` (the default) then stops before any model call with exit code 2, naming both fixes: set `"runtime": "direct"`, or install the runtime at ocra's exact version (`npm install --prefix ~/.ocra @open-cr-agent/runtime-opencode@<version>`).
 
 In the GitHub Action, the input `opencode: false` does the same ([GitHub](./github#the-runtime)).
 
 ## Container image
 
-Since 0.2.0, each release is also a container image for amd64 and arm64, `ghcr.io/jma49/ocra:<version>`. It is built by the release workflow from the packages just published, installed as the GitHub Action installs them (pinned dependencies, signatures and provenance checked), with git, running as the unprivileged `node` user.
+Each release since 0.2.0 is also a container image for amd64 and arm64, `ghcr.io/jma49/ocra:<version>`: the just-published packages installed as the GitHub Action installs them (pinned dependencies, signatures and provenance checked), with git, running as the unprivileged `node` user.
 
 ```bash
 docker run --rm --user "$(id -u):$(id -g)" --volume "$PWD:/repo" \
   --env GEMINI_API_KEY ghcr.io/jma49/ocra:0.6.0 ocra review --from main
 ```
 
-Images after 0.2.0 have `ocra` as their entrypoint, so `docker run <image> review --from main` is enough; a leading `ocra`, as above, works with every image. Run it as your own user, as above, so it can write `.ocra/sessions/` in your checkout. Pass the model key and any `OCRA_*` variables with `--env`. Check where an image came from with `gh attestation verify oci://ghcr.io/jma49/ocra:<version> --repo jma49/Open-CR-Agent`.
+Images after 0.2.0 have `ocra` as entrypoint, so `docker run <image> review --from main` works; a leading `ocra` works with every image. Run as your own user so it can write `.ocra/sessions/`, and pass the model key and `OCRA_*` variables with `--env`. To check an image's origin, see [Verifying a release](./stability#verifying-a-release).
 
 ## From source
 
-To work on ocra itself, or to run a version that is not released yet:
+To work on ocra or run an unreleased version:
 
 ```bash
 git clone https://github.com/jma49/Open-CR-Agent.git
@@ -72,7 +70,7 @@ npm run build
 npm link --workspace @open-cr-agent/cli
 ```
 
-`npm link` makes the `ocra` command available globally. To update, pull and rebuild:
+`npm link` puts `ocra` on your PATH. To update:
 
 ```bash
 git pull && npm install && npm run build
@@ -80,7 +78,7 @@ git pull && npm install && npm run build
 
 To remove it: `npm unlink --global @open-cr-agent/cli`.
 
-Or run the built CLI directly, without linking:
+Or run the built CLI without linking:
 
 ```bash
 node /path/to/Open-CR-Agent/packages/cli/dist/main.js review
@@ -88,7 +86,7 @@ node /path/to/Open-CR-Agent/packages/cli/dist/main.js review
 
 ## OpenCode binary
 
-ocra looks for the OpenCode binary for your platform in `opencode-ai`'s platform package, then in `opencode-ai/bin/`, where that package's install script puts one when it runs. If neither has it, point ocra at an OpenCode binary:
+ocra looks for OpenCode in `opencode-ai`'s platform package, then in `opencode-ai/bin/` (where its install script puts it). If neither has it, point ocra at one:
 
 ```bash
 export OCRA_OPENCODE_BIN=/path/to/opencode

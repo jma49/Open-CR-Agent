@@ -3,9 +3,9 @@ title: Configuration
 description: The .ocra/config.json file and environment variables.
 ---
 
-ocra reads `.ocra/config.json` from the root of the repository being reviewed. Every key is optional; unknown keys are rejected so typos fail loudly.
+ocra reads `.ocra/config.json` from the root of the reviewed repository. Every key is optional; unknown keys are rejected, so typos fail loudly.
 
-`ocra review --config <file>` reads a file of your own instead, wherever it is: a CI checkout, your home directory. It is yours to trust, so it applies with `--no-repo-config` too, which is how reviews of code you do not trust (the evaluation harness, for example) get declared [model endpoints](./providers#your-own-endpoint) and limits. Plugins it names are resolved from its own directory. With `--pr` and `--mr` it replaces the base branch's file; plugins are still not loaded there.
+`ocra review --config <file>` reads a file of your own instead, from anywhere. Since you trust it, it applies with `--no-repo-config` too: that is how reviews of untrusted code (the evaluation harness, for example) get declared [model endpoints](./providers#your-own-endpoint) and limits. Plugins it names resolve from its own directory. With `--pr` and `--mr` it replaces the base branch's file; plugins still do not load there.
 
 ```json
 {
@@ -30,7 +30,7 @@ ocra reads `.ocra/config.json` from the root of the repository being reviewed. E
 }
 ```
 
-The optional `$schema` key points editors at the file's [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/config.v1.json) (draft 2020-12, generated from the code and tested against it), so they complete keys and flag unknown ones and bad values as you type; ocra itself ignores the key.
+`$schema` points editors at the file's [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/config.v1.json) (draft 2020-12, generated from the code and tested against it) for completion and validation; ocra ignores it.
 
 ## Models
 
@@ -42,7 +42,7 @@ Models are written as `provider/model`, using OpenCode's provider IDs (for examp
 | `light` | Helper calls such as grouping changed files |
 | `top` | The judge |
 
-When a model is overloaded or rejects a request, the task retries on the next model in the chain. A rate limit with a short stated wait (up to 90 seconds) pauses that model for every task and retries it; a limit marked as daily, a longer or missing wait, or a fourth limit in a row takes the model out of the chain for the rest of the run. Each model has a circuit breaker: after two failures in a row it is skipped for a minute, then one request probes it; success brings it back, another failure skips it for twice as long (up to ten minutes). Credential errors stop immediately, because another model of the same provider would fail too.
+When a model is overloaded or rejects a request, the task retries on the next model in the chain. A rate limit with a stated wait of up to 90 seconds pauses that model for every task, then retries; a daily limit, a longer or missing wait, or a fourth limit in a row drops the model for the run. Each model has a circuit breaker: after two failures in a row it is skipped for a minute, then probed with one request; success restores it, failure doubles the pause (up to ten minutes). Credential errors stop at once, since the provider's other models would fail too.
 
 Environment variables override the file, comma-separated for chains:
 
@@ -54,7 +54,7 @@ export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
 
 ## Models per agent
 
-`reviewers.<id>.models` gives one reviewer its own model or failback chain, for its review tasks and its plan call, and `roles.<role>.models` gives one to the `verifier`, the `judge` or the `helper` calls (grouping files, relocating quotes). They take the same forms as a tier. An agent without one uses its tier's chain, as above; the verifier and the judge never take a reviewer's, so checking stays independent of what was checked.
+`reviewers.<id>.models` gives one reviewer its own model or chain (review tasks and plan call); `roles.<role>.models` does the same for the `verifier`, the `judge` or the `helper` calls (grouping files, relocating quotes). Same forms as a tier. Without one, an agent uses its tier's chain; the verifier and judge never take a reviewer's, so checking stays independent.
 
 ```json
 {
@@ -64,11 +64,11 @@ export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
 }
 ```
 
-Failback, rate-limit pauses and the circuit breaker work as for a tier, per model: a model in two chains shares one circuit, so a model that is down is skipped by every agent that names it. The checks before a review cover these chains too: the provider's key must be set (the `opencode` runtime passes it to OpenCode like a tier's), a model of a [declared provider](./providers#your-own-endpoint) must be priced there, and `ocra-<provider>/` models go through ocra Cloud. A plugin runtime that does not read an agent's chain uses the tier's. The JSON report's `provenance.agents` records each agent's resolved chain under `models`, `--plan` shows each task's chain, and the configuration hash covers them.
+Failback, rate-limit pauses and the circuit breaker work per model, so a model in two chains shares one circuit. The pre-review checks cover these chains: the provider's key must be set, a [declared provider's](./providers#your-own-endpoint) model must be priced there, and `ocra-<provider>/` models go through ocra Cloud. A plugin runtime that ignores an agent's chain uses the tier's. `provenance.agents` in the JSON report records each resolved chain, `--plan` shows each task's, and the configuration hash covers them.
 
 ## Effort
 
-Most current models can be told how much to reason before they answer. `effort` sets it per tier, `reviewers.<id>.effort` for one reviewer (its review tasks and its plan call), and `roles.<role>.effort` for the `verifier`, the `judge` or the `helper` calls (grouping files, relocating quotes). Levels are `none`, `minimal`, `low`, `medium` and `high`. An agent takes its own effort, else its tier's (reviewers by their tier, the verifier `standard`, the judge `top`, helpers `light`); the verifier and the judge never take a reviewer's. Unset sends nothing, so the provider's default applies.
+How much a model reasons before answering: `effort` sets it per tier, `reviewers.<id>.effort` per reviewer (review tasks and plan call), `roles.<role>.effort` for the `verifier`, `judge` or `helper` calls. Levels: `none`, `minimal`, `low`, `medium`, `high`. An agent takes its own effort, else its tier's (reviewers by their tier, verifier `standard`, judge `top`, helpers `light`); the verifier and judge never take a reviewer's. Unset sends nothing: the provider's default applies.
 
 ```json
 {
@@ -80,20 +80,18 @@ Most current models can be told how much to reason before they answer. `effort` 
 
 `OCRA_EFFORT_TOP`, `OCRA_EFFORT_STANDARD` and `OCRA_EFFORT_LIGHT` override a tier's effort.
 
-- The `direct` runtime sends the level as `reasoning_effort`, or as `reasoning: { effort }` for a provider declared with `"effort": "openrouter"` ([Model providers](./providers#your-own-endpoint)). `none` is sent as `none`. A call that sends any other level sends no `temperature` or `seed`: reasoning models refuse or override them. If the endpoint answers HTTP 400 naming the parameter, the call is sent again without it, once, without counting as the model's failure; that model's later calls go without it, and the run warns.
-- The `opencode` runtime sets the level in the model's provider options, in the configuration it gives OpenCode: `reasoningEffort` for OpenAI reasoning models (GPT-5, o-series), a thinking budget for Claude 4 and later and for Gemini 2.5, and `thinkingLevel` for Gemini 3; OpenRouter models and [declared providers](./providers#your-own-endpoint) take the level as their `effort` says. A thinking budget is a share of the model's output limit in OpenCode's model catalog (`minimal` 1/32, `low` 1/16, `medium` 1/4, `high` 1/2; at least 1,024 tokens for Claude, within Gemini's own bounds), or of 32,000 tokens when the catalog has no limit; `none` turns thinking off (Claude: no thinking; Gemini 2.5 Flash: a budget of 0). Each model and level gets its own OpenCode variant, so two agents on one model can use different levels. A call that sends any level but `none` runs without the configured `temperature`, as on `direct`. Other providers through OpenCode (Azure, Bedrock, Groq and the like) get no effort.
-- Which levels a model takes comes from a small table in ocra (`effortCapability` in `@open-cr-agent/core`), which goes stale as models ship: on `opencode`, a level the table does not list for a model (for example `minimal` for o3, or `medium` for Gemini 3), or a model it does not know, is left out of that model's calls, and the run warns once per agent naming the level and the models. A review never fails over it.
-- The JSON report's `provenance.agents` lists each agent's tier, its effort and whether it was `applied`, and `notApplied` for the sampling settings its calls left out. `--plan` shows each task's effort. The configuration hash covers effort.
+- **`direct`** sends `reasoning_effort`, or `reasoning: { effort }` for a provider declared with `"effort": "openrouter"` ([Model providers](./providers#your-own-endpoint)); `none` is sent as `none`. A call with any other level omits `temperature` and `seed`, which reasoning models refuse or override. If the endpoint answers HTTP 400 naming the parameter, the call is retried once without it (not counted as a failure), that model's later calls omit it, and the run warns.
+- **`opencode`** sets the level in the model's provider options: `reasoningEffort` for OpenAI reasoning models (GPT-5, o-series), a thinking budget for Claude 4+ and Gemini 2.5, `thinkingLevel` for Gemini 3; OpenRouter models and [declared providers](./providers#your-own-endpoint) as their `effort` says. A thinking budget is a share of the model's output limit in OpenCode's catalog (`minimal` 1/32, `low` 1/16, `medium` 1/4, `high` 1/2; at least 1,024 tokens for Claude, within Gemini's bounds), or of 32,000 tokens without a limit; `none` turns thinking off (Claude: no thinking; Gemini 2.5 Flash: budget 0). Each model and level is its own OpenCode variant, so agents sharing a model can differ. Any level but `none` drops the configured `temperature`, as on `direct`. Other providers (Azure, Bedrock, Groq and the like) get no effort.
+- Which levels a model takes comes from a table in ocra (`effortCapability` in `@open-cr-agent/core`) that can lag new models: on `opencode`, a level it does not list for a model (such as `minimal` for o3 or `medium` for Gemini 3), or an unknown model, gets no effort, and the run warns once per agent. A review never fails over it.
+- `provenance.agents` in the JSON report lists each agent's tier, effort, `applied` and `notApplied`; `--plan` shows each task's effort; the configuration hash covers it.
 
 ## Provider keys
 
-Keys are read from the environment only. Use the variable your provider expects in OpenCode, for example `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`. For Google, `GEMINI_API_KEY`, `GOOGLE_API_KEY` and `GOOGLE_GENERATIVE_AI_API_KEY` all work.
+Keys come from the environment only, in the variable OpenCode expects (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`; for Google, `GEMINI_API_KEY`, `GOOGLE_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`). Each provider's variables are on [Model providers](./providers), with how to declare your own endpoint under `providers`.
 
-The agent runtime receives only what it needs from your environment: `PATH`, `HOME`, locale, proxy and CA settings, and the credentials of the providers named in your model chains (for a provider ocra does not know, every variable starting with its uppercased id, such as `GROQ_` for `groq`). Anything else, like cloud credentials or `GITHUB_TOKEN`, stays out. If a provider needs another variable, list its name in `OCRA_RUNTIME_ENV`, comma-separated.
+The agent runtime receives only `PATH`, `HOME`, locale, proxy and CA settings, and the credentials of the providers in your chains (for a provider ocra does not know, every variable starting with its uppercased id, such as `GROQ_`). Cloud credentials, `GITHUB_TOKEN` and the rest stay out; list any other variable a provider needs in `OCRA_RUNTIME_ENV`, comma-separated.
 
-For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Groq, Mistral, DeepSeek, xAI, Azure), ocra checks before starting that one is set and names the variable if it is missing.
-
-To reach your own server or a company gateway that speaks the OpenAI API, declare it under `providers`; which providers work and what each needs is on [Model providers](./providers).
+For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Groq, Mistral, DeepSeek, xAI, Azure), ocra checks before starting and names a missing variable.
 
 ## Execution
 
@@ -106,20 +104,20 @@ To reach your own server or a company gateway that speaks the OpenAI API, declar
 | `maxTasks` | `60` | Most review tasks one run starts. Past it, `--ultra`'s second passes go first, then later reviewers, so every file keeps its first reviewer as long as possible; skipped files are reported as not reviewed (exit code `3`) |
 | `judge` | `true` | Merge, filter and recalibrate findings across reviewers (one top-tier call per run with findings) |
 | `verify` | `true` | Fact-check findings before reporting them (one standard-tier call per file with findings) |
-| `sampling` | none | `{ "temperature": 0–2, "seed": n }` for every model call; either may be left out, and unset means each provider's default. `--temperature` and `--seed` override it. The `direct` runtime sends both. The `opencode` runtime sets the temperature on its agents, and OpenCode passes it on only for models its catalog says accept one (it marks your [declared models](./providers#your-own-endpoint) so); it has no seed setting, so a seed is reported as not applied. The JSON report's `provenance.sampling` says what was applied. A seed makes runs repeatable only where the provider honors it |
+| `sampling` | none | `{ "temperature": 0–2, "seed": n }` for every model call, each optional (unset: the provider's default); `--temperature` and `--seed` override it. `direct` sends both. `opencode` passes the temperature only to models its catalog says accept one ([declared models](./providers#your-own-endpoint) do) and reports a seed as not applied. `provenance.sampling` says what was applied. A seed makes runs repeatable only where the provider honors it |
 
 A task that fails or times out never fails the run; its files are reported as `failed`.
 
 ## File selection
 
-ocra skips binary files, likely secrets (`.env`, keys, certificates, cloud and registry credentials, Terraform variables and state), deleted files, media and archives, lock files, vendored and generated code, and very large diffs. Files over 1 MB are diffed as binary and skipped. Database migrations are never skipped as generated code (the other rules still apply).
+ocra skips binary files, likely secrets (`.env`, keys, certificates, cloud and registry credentials, Terraform variables and state), deleted files, media and archives, lock files, vendored and generated code, and very large diffs. Files over 1 MB are diffed as binary and skipped. Database migrations are never treated as generated code.
 
 - `exclude`: globs to skip in addition.
 - `include`: globs to review even if they would be skipped as generated or by extension. Secrets can never be included.
 
 ## Reviewers
 
-`reviewers.<id>` turns a reviewer off, sets the risk tier it starts at (higher or lower than its default), or sets its [models](#models-per-agent) or [effort](#effort). Risk tiers, from lowest: `trivial` (≤10 changed lines), `lite` (≤100), `full` (larger changes, more than 20 files, or a sensitive path: CI workflows, or a directory or file name with a word such as `auth`, `oauth`, `jwt`, `password`, `credential`, `secret`, `login`, `permission`, `acl`, `identity`, `crypto` or `security`).
+`reviewers.<id>` turns a reviewer off, sets the risk tier it starts at, or sets its [models](#models-per-agent) or [effort](#effort). Risk tiers, from lowest: `trivial` (≤10 changed lines), `lite` (≤100), `full` (larger changes, more than 20 files, or a sensitive path: CI workflows, or a directory or file name with a word such as `auth`, `oauth`, `jwt`, `password`, `credential`, `secret`, `login`, `permission`, `acl`, `identity`, `crypto` or `security`).
 
 ```json
 { "reviewers": { "correctness": { "minTier": "lite" }, "security": { "enabled": false } } }
@@ -129,31 +127,31 @@ Pairs the matrix skips are listed under `skipped` in the JSON report; a file no 
 
 ## Shared configuration
 
-An organization can keep common settings in one place and let repositories extend it:
+Repositories can extend an organization's common settings:
 
 ```json
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned, see below) and `rules` (the same shape as `.ocra/rules.json` entries). It cannot list plugins or choose a runtime: it comes from outside the repository and must not run code. The repository's own values win; `include`, `exclude` and `rules` are combined and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` are merged key by key.
+The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned) and `rules` (shaped like `.ocra/rules.json` entries). It cannot list plugins or choose a runtime, since it must not run code. The repository's values win; `include`, `exclude` and `rules` combine, and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` merge key by key.
 
-Only `https` URLs are accepted, without redirects, up to 256 KB. The optional `#sha256=` fragment pins the exact content; a file that declares `providers` must be pinned, since a provider decides where your code goes ([Model providers](./providers#your-own-endpoint)). If the file cannot be loaded or is invalid, ocra warns and continues with the repository's own settings; limits set only in the shared file, such as `maxCostUsd`, then do not apply, so set them in the repository too if they must always hold.
+Only `https` URLs, without redirects, up to 256 KB. `#sha256=` pins the exact content; a file declaring `providers` must be pinned, since a provider decides where your code goes ([Model providers](./providers#your-own-endpoint)). If the file cannot be loaded or is invalid, ocra warns and uses the repository's settings alone, so limits set only there (such as `maxCostUsd`) do not apply; set must-hold limits in the repository too.
 
 ## Account settings
 
-When you are signed in to [ocra Cloud](./cli#ocra-login-ocra-logout-ocra-whoami), `ocra review` reads your account's settings and layers them under the configuration. Highest first: command-line flags, the configuration (the repository's file or `--config`, what it `extends`, and `OCRA_*` variables), your account's settings, ocra's defaults.
+Signed in to [ocra Cloud](./cli#ocra-login-ocra-logout-ocra-whoami), `ocra review` layers your account's settings under the configuration. Highest first: command-line flags, the configuration (the repository's file or `--config`, what it `extends`, `OCRA_*` variables), account settings, ocra's defaults.
 
 | Account key | How it applies |
 |---|---|
 | `runtime` (`opencode` or `direct`), `models.<tier>`, `effort.<tier>`, `reviewers.<id>`, `roles.<role>` | Only where the configuration leaves it out; a reviewer's or role's entry in the configuration wins whole |
-| `concurrency`, `taskTimeoutMinutes`, `runTimeoutMinutes`, `maxCostUsd`, `maxTasks`, `verify`, `judge`, `sampling` | Only when the configuration does not set it; `sampling` counts as one setting. So the account can bound a run the repository left unbounded, never loosen a limit it set |
+| `concurrency`, `taskTimeoutMinutes`, `runTimeoutMinutes`, `maxCostUsd`, `maxTasks`, `verify`, `judge`, `sampling` | Only when the configuration does not set it (`sampling` as one setting): the account can bound an unbounded run, never loosen a limit |
 | `include`, `exclude` | Combined: the configuration's patterns, then the account's |
 | `rules` | Added after the repository's and the shared ones: at most 50, each like an [`.ocra/rules.json`](./rules) entry with a rule of at most 2,000 characters, embedded in the prompt the same way |
 
-Each key is checked with this file's own schema: a key that does not match is ignored with a warning naming it, and the others still apply. Keys this version of ocra does not know are ignored with one warning naming them. Models in account settings must be `ocra-<provider>/<model>`, which go through ocra Cloud with the keys stored there. Your account can never set `providers`, `extends`, `github` (`botLogin` decides whose comments are trusted) or plugins here: ocra ignores them, with a warning, whatever the server sends.
+Each key is checked against this file's schema; one that fails, or that this version does not know, is ignored with a warning naming it, and the rest apply. Models must be `ocra-<provider>/<model>`, which go through ocra Cloud with the keys stored there. The account can never set `providers`, `extends`, `github` (`botLogin` decides whose comments are trusted) or plugins: ocra ignores them with a warning.
 
-Account settings apply to `--pr` and `--mr` runs too, under the base commit's configuration: they do not come from the reviewed tree. What they filled in is printed (`From your ocra Cloud settings: …`), `--plan` lists every setting with its source, and the JSON report's `provenance.accountSettings.version` names the saved version used; the configuration hash covers it and the account's rules, so a signed-out run keeps its hash. If ocra Cloud cannot be reached, a warning says so and the review uses the configuration alone.
+Account settings apply to `--pr` and `--mr` runs too, under the base commit's configuration; they never come from the reviewed tree. What they filled in is printed (`From your ocra Cloud settings: …`), `--plan` lists every setting's source, and `provenance.accountSettings.version` names the version used. The configuration hash covers them and the account's rules, so a signed-out run keeps its hash. If ocra Cloud is unreachable, a warning says so and the configuration applies alone.
 
 ## Plugins
 
-`runtime` names the registered runtime to use: `opencode` (the default) runs the reviewers through OpenCode and reaches every provider in its catalog; `direct` calls the endpoints declared under `providers` itself and reaches nothing else ([Model providers](./providers#choosing-the-runtime)). `plugins` lists extra plugins by package name or path, and `pluginSettings.<plugin-name>` holds each plugin's settings. See [Plugins](./plugins).
+`runtime` picks the registered runtime: `opencode` (default) or `direct` ([Choosing the runtime](./providers#choosing-the-runtime)). `plugins` lists extra plugins by package name or path; `pluginSettings.<plugin-name>` holds each one's settings. See [Plugins](./plugins).

@@ -3,7 +3,7 @@ title: 嵌入 ocra
 description: 在你自己的程序里用 @open-cr-agent/core 的 review() 运行审查流水线。
 ---
 
-ocra 首先是一个库。`ocra` 命令只是 `@open-cr-agent/core` 里 `review()` 的一个调用方；你的程序可以是另一个：一个机器人、你自己的 CI 步骤、一个定时审查的服务。同样的阶段、信任规则、花费上限和报告都适用。
+`ocra` 命令只是 `@open-cr-agent/core` 里 `review()` 的一个调用方；你的机器人、CI 步骤或定时审查服务也可以调用它，阶段、信任规则、花费上限和报告都一样。
 
 ## 一次完整的调用
 
@@ -62,11 +62,11 @@ try {
 }
 ```
 
-`startPlugins` 执行插件的生命周期（[插件](./plugins)）并返回一个冻结的注册表；`createVcs` 和 `createRuntime` 按名字构造插件注册的适配器和运行时；`registry.emit` 把每个事件交给监听者，这里是会话日志。上面的插件和设置就是 CLI 用的那一套；CLI 读取的 `.ocra/config.json` 是命令行的便利功能，不属于库。
+`startPlugins` 执行插件的生命周期（[插件](./plugins)）并返回一个冻结的注册表；`createVcs` 和 `createRuntime` 按名字构造已注册的适配器和运行时；`registry.emit` 把事件交给监听者（这里是会话日志）。这些就是 CLI 用的插件；`.ocra/config.json` 是 CLI 的便利功能，不属于库。
 
 ## `review()` 接受什么
 
-`ReviewOptions` 按[稳定性页](./stability)的说法，在 ocra 还是 0.x 时是一份约定：次版本可能改变它，变更日志会说明如何适配。下面这些字段属于约定：
+下面这些 `ReviewOptions` 字段是遵循 [0.x 规则](./stability)的约定：次版本可能改变它们，变更日志会说明如何适配。
 
 | 选项 | 含义 |
 |---|---|
@@ -76,9 +76,9 @@ try {
 | `reviewerOverrides` | 按审查员设置 `enabled`、`minTier`，以及它自己的 `effort` 和 `models` 模型链（[按 agent 指定模型](./configuration#按-agent-指定模型)） |
 | `roles` | 按角色（`verifier`、`judge`、`helper`）设置它自己的 `effort` 和 `models` 模型链 |
 | `effort` | 按模型层级设置的推理强度（[推理强度](./configuration#推理强度)） |
-| `models` | 运行时拿到的层级模型链，让报告的 `provenance.agents` 能记录每个 agent 的模型链；运行时本身通过 `RuntimeOptions.models` 接收它们 |
-| `rules` | 按路径生效的审查规则（`SourcedRule[]`：带可选来源 `source` 的 `RepoRule`，取值 `repository`、`shared`、`account` 或 `plugin`），注册表里的加上你自己的；报告的 `provenance.rules` 会列出它们，`.ocra/rules.json` 中的规则记为 `repository` |
-| `readTrusted` | 从哪里读取 `AGENTS.md`、`.ocra/rules.json` 和 `.ocra/memory.json`。默认是被审查的版本；审查 PR 时传入一个读取可信 base 的函数，改动就改不了它们 |
+| `models` | 运行时拿到的层级模型链（运行时通过 `RuntimeOptions.models` 接收），让 `provenance.agents` 能记录每个 agent 的模型链 |
+| `rules` | 按路径生效的规则，注册表里的加上你自己的（`SourcedRule[]`：带可选来源 `source` 的 `RepoRule`，取值 `repository`、`shared`、`account` 或 `plugin`）；`provenance.rules` 会列出它们，`.ocra/rules.json` 的记为 `repository` |
+| `readTrusted` | 从哪里读取 `AGENTS.md`、`.ocra/rules.json` 和 `.ocra/memory.json`，默认是被审查的版本。审查 PR 时传入读取可信 base 的函数 |
 | `selection` | 审查哪些文件：`include`、`exclude`、`maxPatchChars`（200,000）；没给的字段保持默认值 |
 | `limits.concurrency`、`limits.taskTimeoutMs`、`limits.runTimeoutMs` | 并行任务数（4）、单个任务的超时（10 分钟）和整次运行的超时（25 分钟）；超过 2^31 - 1 毫秒（约 24.8 天）的超时会被截到这个值 |
 | `stages.verify`、`stages.judge` | 对照 diff 核查问题，以及跨审查员合并、过滤和重新定级（默认都开启） |
@@ -89,26 +89,24 @@ try {
 | `signal` | 一个 `AbortSignal`：运行会停下，保留已发现的问题并写出部分报告 |
 | `onEvent` | 在运行过程中接收每个 `ReviewEvent` |
 | `identity.runId` | 在报告、事件和发布的内容里标识这次运行；不传则自动生成。CLI 传入它的会话 id |
-| `identity.provenance` | `{ ocraVersion, configHash, sampling?, accountSettings? }`：传入后，报告的 `provenance` 会加上启用的审查员和辅助阶段所发系统提示词的哈希，以及运行时实际应用的采样设置（`sampling` 是你向运行时要求的设置；`stableHash()` 可以给你自己的配置算哈希） |
-
-0.5 及以前，限额、阶段、模式和标识这几类字段都是顶层选项（`maxCostUsd`、`verify`、`fullReview`、`runId` 等），`selection` 也必须给全三个字段。0.2 及以前，`ReviewOptions` 还带有 `bundling`、`grouper`、`relocate` 和 `abortGraceMs`；它们是调优和测试钩子，从来不是约定，现在已不在其中。
+| `identity.provenance` | `{ ocraVersion, configHash, sampling?, accountSettings? }`：传入后，报告的 `provenance` 会加上系统提示词的哈希和实际应用的采样设置（`sampling` 是你要求的设置；`stableHash()` 可以给你的配置算哈希） |
 
 ## 它返回什么
 
-一个 `ReviewReport`：改动、风险档位、结论和总结、每个文件的覆盖情况、分组、任务、问题、核查否决和 Judge 的决定、与上次审查的对比、用量和警告。读取它时要知道两件事：
+一个 `ReviewReport`，内容与 [JSON 报告](./cli#json-输出)相同。
 
-- **对外发布的是 `toReportOutput(report)`**，不是报告本身。它是 CLI 写出的带版本号的 JSON，由 `reportOutputSchema` 和公开的 [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json) 描述。它的类型 `ReportOutput` 由 `reportOutputSchema` 推导而来，类型和校验器不会不一致。内部报告里的字段可能会变。
-- **不完整的审查不算通过。** `coverageGaps(report)` 给出有多少选中的文件没被审查、是否什么都没审到，并在 `incomplete` 里按任务的结束方式（`step_cap`、`stopped_early`）给出其中只审查了一部分的文件数；`report.unverifiedCriticals` 是没人能核查的 critical 数量。CLI 的[退出码](./cli)就是由这些算出来的；用审查结果做门禁的程序应当照做，永远不要只看 `verdict` 就当作通过。
+- **对外发布的是 `toReportOutput(report)`**，不是报告本身：它是 CLI 写出的带版本号的 JSON，类型为 `ReportOutput`，由 `reportOutputSchema`（类型即由它推导）和 [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json) 校验。内部报告的字段可能会变。
+- **不完整的审查不算通过。** `coverageGaps(report)` 给出有多少选中的文件没被审查、是否什么都没审到，并在 `incomplete` 里按任务的结束方式（`step_cap`、`stopped_early`）给出只审查了一部分的文件数；`report.unverifiedCriticals` 是没人能核查的 critical 数量。像 CLI 的[退出码](./cli#退出码)那样用这些做门禁，永远不要只看 `verdict`。
 
 `vcs.publish(report)` 像 `--publish` 一样按平台的信任规则发布审查，没能发出去的部分以警告返回。
 
-事件（`onEvent`）是进度、会话日志和终端输出的来源。它们的形状不是约定：监听者应当容忍新的事件类型和字段。
+事件（`onEvent`）的形状不是约定：监听者应当容忍新的类型和字段。
 
 ## 错误
 
-`review()` 只在运行无法开始时 reject：没有审查员、`.ocra/rules.json` 或 `.ocra/memory.json` 无效，或者 VCS 适配器读不到改动。任务开始运行之后，任务失败、辅助调用失败、模型配额用尽和触及花费上限都会记录在报告里（任务结果、覆盖情况、警告），而不是抛出；按上文用 `coverageGaps(report)` 读取它们。
+`review()` 只在运行无法开始时 reject：没有审查员、`.ocra/rules.json` 或 `.ocra/memory.json` 无效，或者 VCS 适配器读不到改动。此后，任务和辅助调用失败、配额用尽和触及花费上限都记录在报告里，而不是抛出。
 
-ocra 的各个包抛出的都是 `OcraError`（或它的子类），带有 `code`；`isOcraError(error, code?)` 可以判断，`OCRA_ERROR_CODES` 列出全部代码。如果错误源于另一个错误（JSON 解析错误、读取失败），那个错误就是 `cause`。请按代码分支，不要按消息：消息是给人看的，措辞可能会改。插件提供的适配器或运行时可能抛出它自己的错误，所以调用方也要处理不是 `OcraError` 的错误；`errorMessage(error)` 能取出任何被抛出值的消息，不管它是不是 `Error`。
+ocra 的各个包抛出带 `code` 的 `OcraError`（或其子类）：`isOcraError(error, code?)` 用来判断，`OCRA_ERROR_CODES` 列出全部代码，底层错误（JSON 解析错误、读取失败）是 `cause`。请按代码分支，不要按可能改写的消息。插件的适配器或运行时可能抛出其他错误；`errorMessage(error)` 能取出任何被抛出值的消息。
 
 | 代码 | 含义 |
 |---|---|
@@ -129,19 +127,19 @@ ocra 的各个包抛出的都是 `OcraError`（或它的子类），带有 `code
 | `BUDGET_EXHAUSTED` | 达到了花费上限（`SpendLimitReached`，即正在运行的任务被停止的原因） |
 | `INTERNAL` | 不变量被破坏或对象被误用，例如一个 OpenCode 运行时被用于两次运行：ocra 或其调用方的 bug |
 
-子类保留各自的名字，供 `instanceof` 使用：`@open-cr-agent/core` 的 `CompletionError`、`SpendLimitReached`、`AccessDeniedError`、`SarifError` 和 `PluginError`，`@open-cr-agent/vcs-local` 的 `GitError`，平台适配器的 `GitHubApiError` 和 `GitLabApiError`。ocra 不会把令牌或模型密钥写进错误消息，两种运行时在引用模型供应商的回答之前也会把其中的密钥去掉。
+供 `instanceof` 使用的子类：`CompletionError`、`SpendLimitReached`、`AccessDeniedError`、`SarifError` 和 `PluginError`（`@open-cr-agent/core`），`GitError`（`@open-cr-agent/vcs-local`），`GitHubApiError` 和 `GitLabApiError`（平台适配器）。错误消息里不会有令牌或模型密钥；两种运行时引用供应商回答前也会去掉它们。
 
-这些代码是一份约定，遵循 [0.x 规则](./stability)：次版本可能新增代码，重命名或删除代码时变更日志会说明。CLI 在以退出码 `2` 结束运行时会打印错误代码，例如 `ocra [CONFIG_INVALID]: .ocra/config.json is invalid: …`。
+这些代码是遵循 [0.x 规则](./stability)的约定：次版本可能新增代码，重命名或删除时变更日志会说明。以退出码 `2` 结束运行时，CLI 会打印错误代码，例如 `ocra [CONFIG_INVALID]: .ocra/config.json is invalid: …`。
 
 ## PR 与 Merge Request
 
 `githubPlugin`（`@open-cr-agent/vcs-github`）和 `gitlabPlugin`（`@open-cr-agent/vcs-gitlab`）注册 `github` 和 `gitlab` 适配器。
 
-`resolveGitHubTarget` 和 `resolveGitLabTarget` 按 `ocra review --pr` 和 `--mr` 的方式找到 PR 或 Merge Request。它们各接收一个选项对象：`ref`（编号，以及你指定时的仓库或项目）、`env`（读取的令牌、仓库和 API 变量与 CLI 相同）、`origin()`（检出目录的 origin remote，只在需要时读取）、`warn` 和可选的 `fetch`。它们返回 base 和 head commit、拉取 head 的 refspec、变更请求的网页地址，以及 `createVcs(registry, local, settings)`：commit 进入你的克隆后，用它创建适配器。`local` 提供被审查的代码和仓库历史，`settings` 是 `GitHubSettings`（`botLogin`、`requestChanges`）或 `GitLabSettings`（暂无设置）。拉取 commit、从 base 读取配置、指南和规则（`readTrusted`）由你负责；仓库里的 `packages/cli/src/commands/review/target.ts` 展示了 CLI 的做法。适配器 `createVcs` 接收的选项还不是库的约定，请通过这两个函数使用。
+`resolveGitHubTarget` 和 `resolveGitLabTarget` 像 `--pr` 和 `--mr` 一样找到 PR 或 Merge Request。它们接收 `ref`（编号，以及你指定时的仓库或项目）、`env`（CLI 的令牌、仓库和 API 变量）、`origin()`（检出目录的 origin，只在需要时读取）、`warn` 和可选的 `fetch`，返回 base 和 head commit、拉取 head 的 refspec、变更请求的网页地址，以及 `createVcs(registry, local, settings)`：commit 进入你的克隆后用它创建适配器，`local` 提供代码和历史，`settings` 是 `GitHubSettings`（`botLogin`、`requestChanges`）或 `GitLabSettings`（暂无设置）。拉取 commit、从 base 读取配置、指南和规则（`readTrusted`）由你负责，做法见 `packages/cli/src/commands/review/target.ts`。适配器自己的 `createVcs` 选项不是约定，请通过这两个函数使用。
 
 ## 信任
 
-嵌入 ocra 的程序就是信任边界。插件会执行代码，所以只加载你信任的插件，绝不加载被审查的代码树指定的插件；模型密钥通过 `env` 传入，运行时只转发配置的供应商需要的变量（[安全](./security)）；审查 PR 时通过 `readTrusted` 从 base 版本读取指南、规则和 memory。无论谁调用，审查本身只给 agent 只读工具，没有 shell。
+你的程序就是信任边界。只加载你信任的插件，绝不加载被审查的代码树指定的插件；模型密钥通过 `env` 传入，运行时只转发配置的供应商需要的部分（[安全](./security)）；审查 PR 时通过 `readTrusted` 从 base 读取指南、规则和 memory。无论谁调用 `review()`，agent 都只有只读工具，没有 shell。
 
 ## 公开 API
 
@@ -152,6 +150,6 @@ ocra 的各个包抛出的都是 `OcraError`（或它的子类），带有 `code
 - **`@open-cr-agent/cli`**：`run(argv)`，即带参数（不含 node 和脚本路径）运行 `ocra` 命令，输出写到 stdout 和 stderr，返回值是[退出码](./cli)。
 - **`@open-cr-agent/vcs-platform`** 是 ocra 各平台适配器共用的部分，还不是约定。
 
-每个名字和每个类型的形状都记录在该包的 API 报告里，位于仓库的 [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc) 目录；入口变了而报告没变时，CI 会失败。
+每个名字和类型的形状都在该包位于 [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc) 的 API 报告里；入口变了而报告没变时，CI 会失败。
 
-`@open-cr-agent/core/internal`，以及另外几个包的 `/internal` 入口，是 ocra 各个包之间共用的部分。它不是约定：任何版本（包括补丁版本）都可能修改或删除它导出的内容。请只依赖主入口。
+`/internal` 入口（`@open-cr-agent/core/internal` 等）供 ocra 各包之间共用，不是约定：任何版本（包括补丁版本）都可能修改它们。请只依赖主入口。

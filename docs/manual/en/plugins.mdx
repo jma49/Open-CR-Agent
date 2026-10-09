@@ -3,7 +3,7 @@ title: Plugins
 description: Extend ocra with VCS adapters, runtimes, reviewers, rules, tools and listeners.
 ---
 
-Everything in ocra is a plugin: the local Git and GitHub adapters, the OpenCode runtime, the correctness, security, performance, docs and agents-md reviewers and the session log ship as built-in plugins. Your plugins use the same contract.
+ocra's own adapters, runtimes, reviewers and session log are built-in plugins; yours use the same contract.
 
 ## Writing a plugin
 
@@ -33,11 +33,11 @@ Register it in `.ocra/config.json`:
 }
 ```
 
-Plugins are resolved from the repository's own dependencies (package names) or from file paths, resolved from the repository root (they may point outside it: the configuration is yours to trust). Plugins run code, so they load only from a repository's own config in local reviews, never for pull requests or with `--no-repo-config`.
+Plugins resolve from the repository's dependencies (package names) or from paths relative to the repository root (which may point outside it). They run code, so they load only in local reviews, never for pull or merge requests or with `--no-repo-config`.
 
 ## Plugins from your ocra Cloud account
 
-When you are [signed in](./cli#ocra-login-ocra-logout-ocra-whoami), your ocra Cloud settings may name plugins by npm package name, with `pluginSettings` for them. A plugin runs code on your machine, so the account only names it: it loads on a machine only after you allow it there with [`ocra plugins allow`](./cli#ocra-plugins).
+When you are [signed in](./cli#ocra-login-ocra-logout-ocra-whoami), your ocra Cloud settings may name plugins by npm package name, with `pluginSettings`. The account only names them: a plugin loads on a machine only after you allow it there with [`ocra plugins allow`](./cli#ocra-plugins).
 
 ```bash
 ocra plugins allow ocra-plugin-team-rules@1.4.0   # shows the package and its publisher, then installs it
@@ -45,16 +45,16 @@ ocra plugins list
 ocra plugins deny ocra-plugin-team-rules
 ```
 
-`allow` needs an exact version, never a range or tag. It shows the package's name, version, publisher, maintainers and integrity as the registry lists them, installs that exact version with install scripts off into `~/.config/ocra/plugins/` (`$XDG_CONFIG_HOME/ocra/plugins/`, or `%APPDATA%\ocra\plugins\` on Windows), and records its name, version and integrity in `plugins.json` there (readable only by you). npm runs in that directory, so the npm configuration of the project you run ocra from does not apply, and a package whose registry entry lists no integrity is refused. The recorded integrity covers the package tarball itself, not its dependencies: those are installed by npm as it resolves them at that time. Allowing a plugin is your own supply-chain decision, like adding a dependency.
+`allow` takes an exact version, never a range or tag. It shows the registry's name, version, publisher, maintainers and integrity, installs with install scripts off (details in [`ocra plugins`](./cli#ocra-plugins)), and records name, version and integrity in `plugins.json` (readable only by you). npm runs in that directory, so your project's npm configuration does not apply; a package without a listed integrity is refused. The integrity covers the package tarball, not its dependencies, which npm resolves at install time. Allowing a plugin is a supply-chain decision, like adding a dependency.
 
 A review loads a plugin your account names only:
 
 - if this machine allowed it, from that directory alone, never from the reviewed checkout's `node_modules`, and only while the installed package still has the version and integrity recorded when you allowed it;
 - where a repository's plugins could load: local reviews, never `--pr` or `--mr`, never with `--no-repo-config`.
 
-A plugin your account names that this machine has not allowed is skipped with one warning naming it and `ocra plugins allow <name>@<version>`. A plugin the repository's configuration already lists loads as the repository's, and one whose plugin name is already taken is skipped. A plugin from the account that fails to load is skipped with a warning; it never fails the review.
+An account plugin this machine has not allowed is skipped with one warning giving `ocra plugins allow <name>@<version>`. One the repository already lists loads as the repository's; one whose plugin name is taken is skipped; one that fails to load is skipped with a warning, never failing the review.
 
-The account's `pluginSettings` apply only to the plugins it lists and this machine loads, keyed by the npm package name the account lists (for example `@acme/ocra-team-rules`, not the `team-rules` plugin it exports), as ocra Cloud stores them; the plugin then receives them under its own name, as from the configuration; the configuration's own `pluginSettings` win, and a repository plugin's settings come from the repository alone.
+The account's `pluginSettings` are keyed by npm package name (`@acme/ocra-team-rules`, not the `team-rules` plugin it exports) and reach only the account's loaded plugins, under their plugin name. The configuration's `pluginSettings` win, and a repository plugin's settings come from the repository alone.
 
 ## Lifecycle
 
@@ -77,13 +77,15 @@ Use `bootstrap` for work that may fail harmlessly, such as fetching remote setti
 | `registerTool(tool)` | A tool reviewers can call, with a Zod input schema |
 | `onEvent(listener)` | A listener for every review event (telemetry, notifications). A listener that throws is disabled with one warning; the review continues |
 
-A runtime factory receives the model chains, the environment, the declared providers and, when configured, `sampling` (`temperature`, `seed`); a runtime says what it sends in its `sampling` property, listing in `notApplied` what it cannot pass on. A runtime without that property is reported as applying none of it. A task's spec carries the [`effort`](./configuration#effort) its reviewer asks for, and a completion request names its `agent` (the reviewer of a plan call, or `verifier`, `judge` or `helper`) and `effort`; both are absent when no effort is configured. A runtime that sends the effort implements `appliedTo(agent)`, returning whether every call of that agent sent it, in `unsupported` the models it left the level out for because they do not take it (the run warns once per agent), and in `notApplied` the sampling settings those calls left out. `effortCapability(model)` from `@open-cr-agent/core` gives ocra's table of what a model takes: the parameter style and the levels. A runtime without it is reported as sending no effort, and the run warns once. An agent with [its own model chain](./configuration#models-per-agent) sends it as `models` on its task specs and completion requests, and the factory receives every such chain, by agent id, in `agentModels`, for a runtime that prepares its providers before the first call; a runtime that ignores both runs those calls on the tier's chain.
-
-A runtime does not have to fail over between models itself: `ChainRunner` from `@open-cr-agent/core` can serve its `runTask` and `complete`. It picks the chain a call runs on (the agent's own, else its tier's), refuses a tier without a model with a `CONFIG_INVALID` error, keeps each model's health for the run (a short rate limit is waited out, a model out of quota is dropped, a circuit breaker skips a model that keeps failing) and moves on to the next model when an attempt fails. The runtime gives it `ModelAttempts`: `task` and `complete` run one attempt on one model and return an `AttemptOutcome` (the findings, steps, tool calls, text and usage, and an `error` that says whether another model may succeed and, with a `QuotaError`, whether and how long to wait); the optional `refuse` says, before any request, why a chain cannot be served, and the optional `ready` starts what the attempts need. Create one runner per runtime instance, so the health it keeps spans the run. Both built-in runtimes work this way.
-
-The rest of what a runtime needs is in `@open-cr-agent/core` too, so a runtime of yours runs the review the way the built-in ones do: `reviewTools`, the read-only review tools to offer the agent next to `RuntimeOptions.tools`, and `REVIEW_TOOLS`, their names (an attempt's findings are what the agent passes to `report_finding`; `task_done` ends it); `MAX_AGENT_STEPS`, the cap on model requests per review attempt; `RESUME_MESSAGE`, sent once to an agent that stops with steps left, no answer and no `task_done`; `parseModel(model)`, which splits `provider/model` and throws `CONFIG_INVALID` for anything else; `parseQuotaError(message, status?)`, which reads a provider's rate-limit or quota error into a `QuotaError`; `withoutSecrets(text, secrets)`, to redact keys from a provider's error before it is quoted; `emptyUsage()` and `addUsage()`; `EFFORT_LEVELS` and `thinkingBudget(capability, level, outputLimit?)`, the thinking budget ocra derives for a level; and `proxiedFetch(env)`, a `fetch` that honors `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` from the given environment.
-
 Plugins receive only their own settings (`ctx.settings`), validated by an optional `settingsSchema`. Registering a name twice, using a reserved tool name, or registering after `configure` fails with an error naming the plugin.
+
+### Writing a runtime
+
+- **Factory input:** the model chains, the environment, the declared providers, `sampling` (`temperature`, `seed`) when configured, and `agentModels`: every agent's [own chain](./configuration#models-per-agent) by agent id, for a runtime that prepares providers before the first call. Such an agent also sends its chain as `models` on its task specs and completion requests; a runtime that ignores both uses the tier's chain.
+- **Sampling:** the runtime's `sampling` property says what it sends, with `notApplied` for what it cannot pass on; without it, the runtime is reported as applying none.
+- **Effort:** a task spec carries its reviewer's [`effort`](./configuration#effort); a completion request names its `agent` (the plan call's reviewer, or `verifier`, `judge`, `helper`) and `effort`; both are absent when none is configured. A runtime that sends effort implements `appliedTo(agent)`: whether every call of that agent sent it, in `unsupported` the models that do not take the level (the run warns once per agent), and in `notApplied` the sampling settings left out. Without it, the runtime is reported as sending no effort, with one warning. `effortCapability(model)` from `@open-cr-agent/core` gives ocra's table of a model's parameter style and levels.
+- **Failover:** `ChainRunner` from `@open-cr-agent/core` can serve `runTask` and `complete`, as in both built-in runtimes. It picks each call's chain (the agent's, else its tier's), refuses a tier without a model with `CONFIG_INVALID`, tracks each model's health for the run (short rate limits waited out, out-of-quota models dropped, a circuit breaker) and moves to the next model when an attempt fails. You give it `ModelAttempts`: `task` and `complete` run one attempt on one model and return an `AttemptOutcome` (findings, steps, tool calls, text, usage, and an `error` saying whether another model may succeed and, with a `QuotaError`, how long to wait); optional `refuse` says before any request why a chain cannot be served, optional `ready` starts what attempts need. Create one runner per runtime instance, so health spans the run.
+- **Helpers** in `@open-cr-agent/core`, so your runtime reviews as the built-in ones do: `reviewTools`, the read-only review tools to offer the agent next to `RuntimeOptions.tools`, and `REVIEW_TOOLS`, their names (an attempt's findings are what the agent passes to `report_finding`; `task_done` ends it); `MAX_AGENT_STEPS`, the cap on model requests per review attempt; `RESUME_MESSAGE`, sent once to an agent that stops with steps left, no answer and no `task_done`; `parseModel(model)`, which splits `provider/model` and throws `CONFIG_INVALID` for anything else; `parseQuotaError(message, status?)`, which reads a provider's rate-limit or quota error into a `QuotaError`; `withoutSecrets(text, secrets)`, to redact keys from a provider's error before it is quoted; `emptyUsage()` and `addUsage()`; `EFFORT_LEVELS` and `thinkingBudget(capability, level, outputLimit?)`, the thinking budget ocra derives for a level; and `proxiedFetch(env)`, a `fetch` that honors `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` from the given environment.
 
 ## Security
 

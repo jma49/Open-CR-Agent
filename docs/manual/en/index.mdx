@@ -7,8 +7,8 @@ description: Open-CR-Agent (ocra) is an open-source, multi-agent code review sys
 
 ## Why ocra
 
-- **Precision first.** Every reviewer states what it must *not* flag, and findings that fail validation never reach you. A quiet review you trust beats a noisy one you skim.
-- **Comments land on the right line.** Models quote the code they mean; ocra resolves the quote to exact lines itself. Models never make up line numbers.
+- **Precision first.** Every reviewer states what it must *not* flag, and findings that fail validation never reach you.
+- **Comments land on the right line.** Models quote the code; ocra resolves the quote to lines, so no line number is made up.
 - **Plugins all the way down.** VCS platforms, agent runtimes, reviewers, rule packs, tools and listeners are all plugins.
 - **Any model, with failback.** Configure a chain of models per tier; overloads move to the next model, short rate limits are waited out, and a model out of quota is dropped for the run.
 - **Transparent cost.** Every run reports input, output, reasoning and cached tokens and the cost of each attempt.

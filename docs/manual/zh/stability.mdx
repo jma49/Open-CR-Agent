@@ -3,16 +3,18 @@ title: 稳定性与支持
 description: 哪些部分可以依赖、会怎样变化，以及如何校验一个发布版本。
 ---
 
-ocra 目前是早期的 0.x 版本。本页说明哪些部分是脚本、CI 和插件可以依赖的约定，这些约定可能怎样变化，以及能得到什么样的支持。
+ocra 目前是早期的 0.x 版本。本页列出脚本、CI 和插件可以依赖的约定、它们可能怎样变化，以及能得到什么支持。
 
 ## 版本
 
 ocra 遵循 1.0 之前适用的[语义化版本](https://semver.org/lang/zh-CN/)：
 
 - **补丁版本**（0.1.x）只修复问题，从不改变约定；唯一的例外是不改就无法修复的安全问题，这时发布说明会写明。
-- **次版本**（0.x.0）可能改变约定，每一处都会列在[变更日志](https://github.com/jma49/Open-CR-Agent/blob/main/CHANGELOG.md)里。能做到时，ocra 会先让旧写法至少再用一个次版本，使用时给出警告，之后才移除。
+- **次版本**（0.x.0）可能改变约定，并列在[变更日志](https://github.com/jma49/Open-CR-Agent/blob/main/CHANGELOG.md)里。能做到时，旧写法会带着警告至少再保留一个次版本，之后才移除。
 
 所有包共用同一个版本号，一起发布。
+
+下文的“0.x 规则”指：次版本可能改变它，变更日志会说明如何适配。
 
 ## 约定
 
@@ -20,27 +22,27 @@ ocra 遵循 1.0 之前适用的[语义化版本](https://semver.org/lang/zh-CN/)
 |---|---|
 | 命令、选项和退出码 | [CLI 参考](./cli) |
 | `.ocra/config.json`、`.ocra/rules.json`、`.ocra/memory.json` 和 `OCRA_*` 环境变量 | [配置](./configuration)、[审查规则](./rules) |
-| JSON 报告（`--format json`、`report.json`）和 `--plan` 的 JSON | [CLI 参考](./cli#json-输出)。两者都带 `"version": 1`；同一版本只会增加可选字段（`runId` 和 `provenance` 就是这样加入的）和取值集合里的新值（覆盖状态 `incomplete` 就是这样加入的），其他任何改动都会换一个新版本。[报告](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json)和 [plan](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/plan.v1.json) 的 JSON Schema 都由代码生成并经测试核对 |
-| SARIF 输出（`--format sarif`） | [CLI 参考](./cli#sarif-输出)。SARIF 2.1.0；规则 id、`ocra/v1` 指纹键和属性名遵循与其他约定相同的规则 |
+| JSON 报告（`--format json`、`report.json`）和 `--plan` 的 JSON | [CLI 参考](./cli#json-输出)。两者都带 `"version": 1`；同一版本只会增加可选字段和取值集合里的新值，其他改动都会换新版本。JSON Schema：[报告](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json)、[plan](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/plan.v1.json) |
+| SARIF 输出（`--format sarif`） | [CLI 参考](./cli#sarif-输出)。SARIF 2.1.0；规则 id、`ocra/v1` 指纹键和属性名都包括在内 |
 | GitHub Action 的输入 | [GitHub Pull Request](./github) |
-| ocra 保存在 PR 总结评论里的状态 | 内部格式，但之后的版本会继续读取（目前是 `v1`）。万一某个版本读不了，下一次审查会像第一次那样从头开始：审查所有文件，已经评论过的问题可能再评论一次 |
-| 插件接口（`OcraPlugin`） | [插件](./plugins)。在 ocra 还是 0.x 时，它仍可能在次版本中变化，变更日志会说明如何适配 |
-| 库的入口：`review()` 和嵌入页列出的 `ReviewOptions` 字段、`startPlugins()`、注册表的 `createVcs`、`createRuntime`、`reviewers`、`rules` 和 `emit`、`toReportOutput()`、`coverageGaps()` 和 `parseSarifLog()` | [嵌入 ocra](./embedding)。在 ocra 还是 0.x 时和插件接口同一规则 |
-| 每个包的主入口：`@open-cr-agent/core`、各适配器和运行时导出的内容 | [嵌入 ocra](./embedding#公开-api)，以及 [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc) 中每个包的 API 报告。在 ocra 还是 0.x 时和插件接口同一规则。`/internal` 入口（`@open-cr-agent/core/internal` 等）和 `@open-cr-agent/vcs-platform` 不是约定 |
-| 错误模型：`OcraError`、它的 `code` 取值、`isOcraError()`，以及 `review()` 抛出什么 | [嵌入 ocra](./embedding#错误)。在 ocra 还是 0.x 时和插件接口同一规则：次版本可能新增代码，重命名或删除代码时变更日志会说明。错误消息不是约定 |
+| ocra 保存在 PR 总结评论里的状态 | 内部格式（目前是 `v1`），但之后的版本会继续读取。万一读不了，下一次审查从头开始：审查所有文件，评论可能重复 |
+| 插件接口（`OcraPlugin`） | [插件](./plugins)；0.x 规则 |
+| 库的入口：`review()` 和嵌入页列出的 `ReviewOptions` 字段、`startPlugins()`、注册表的 `createVcs`、`createRuntime`、`reviewers`、`rules` 和 `emit`、`toReportOutput()`、`coverageGaps()` 和 `parseSarifLog()` | [嵌入 ocra](./embedding)；0.x 规则 |
+| 每个包的主入口：`@open-cr-agent/core`、各适配器和运行时导出的内容 | [嵌入 ocra](./embedding#公开-api) 和 [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc) 中每个包的 API 报告；0.x 规则。`/internal` 入口和 `@open-cr-agent/vcs-platform` 不是约定 |
+| 错误模型：`OcraError`、它的 `code` 取值、`isOcraError()`，以及 `review()` 抛出什么 | [嵌入 ocra](./embedding#错误)；0.x 规则（可能新增代码；重命名和删除见变更日志）。错误消息不是约定 |
 
-不属于约定的：文本输出、错误消息、进度行和 PR 评论的措辞；会话 `events.jsonl` 里的事件；提示词；模型报告哪些问题；以及费用。请解析 JSON 报告，而不是文本输出。
+不属于约定的：文本输出、错误消息、进度行和 PR 评论的措辞；会话事件（`events.jsonl`）；提示词；模型报告哪些问题；费用。请解析 JSON 报告，而不是文本。
 
 ## 支持
 
-- 修复（包括安全修复）只进入最新版本，不回移到旧版本。如何报告漏洞、之后会发生什么，见 [SECURITY.md](https://github.com/jma49/Open-CR-Agent/blob/main/SECURITY.md)。
-- Node.js：22.19 或更新（`engines`）。CI 在 Linux 上用 Node.js 22 跑测试，并在 Linux、macOS 和 Windows 上安装并启动 Action。
-- Git：用 GitHub 托管 runner 上的版本和维护者机器上的版本测试过；目前没有最低版本要求。
-- ocra 只有一位维护者。issue 和 PR 尽力回复，没有付费支持。
+- 修复（包括安全修复）只进入最新版本，不回移。报告漏洞见 [SECURITY.md](https://github.com/jma49/Open-CR-Agent/blob/main/SECURITY.md)。
+- Node.js 22.19 或更新（`engines`）。CI 在 Linux 上用 Node.js 22 跑测试，并在 Linux、macOS 和 Windows 上安装并启动 Action。
+- Git：用 GitHub 托管 runner 上的版本测试过；目前没有最低版本要求。
+- 只有一位维护者；issue 和 PR 尽力回复，没有付费支持。
 
 ## 校验发布版本
 
-发布由本仓库里的一个 workflow 从 GitHub release 通过 npm trusted publishing 完成。ocra 的包禁止用 npm token 发布，手动发布需要维护者的第二重验证。从 0.1.1 起，每个包都带有 [provenance](https://docs.npmjs.com/generating-provenance-statements)，把它和本仓库、发布 workflow 以及打了标签的 commit 绑定在一起。检查你装的是什么：
+发布由本仓库的发布 workflow 通过 npm trusted publishing 完成；禁止用 token 发布，手动发布需要维护者的第二重验证。从 0.1.1 起，每个包都带有 [provenance](https://docs.npmjs.com/generating-provenance-statements)，把它和本仓库、该 workflow 以及打了标签的 commit 绑定。检查你装的是什么：
 
 ```bash
 npm audit signatures --include-attestations
@@ -48,4 +50,4 @@ npm audit signatures --include-attestations
 
 容器镜像同样带有构建 provenance：`gh attestation verify oci://ghcr.io/jma49/ocra:<版本> --repo jma49/Open-CR-Agent`。
 
-GitHub Action 安装的是已发布的 CLI，依赖版本与它的 CI 测试过的一致，会校验 npm registry 的签名和 ocra 自己各个包的 provenance；某个版本还不在 npm 上、或者缺少这样的 provenance 时，则从源码构建。见 [GitHub Pull Request](./github)。
+GitHub Action 安装已发布的 CLI 及测试过的依赖版本，校验签名和 ocra 的 provenance；版本不在 npm 上或缺少 provenance 时从源码构建（[GitHub Pull Request](./github)）。

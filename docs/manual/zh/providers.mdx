@@ -3,7 +3,7 @@ title: 模型供应商
 description: ocra 能用哪些模型供应商、各自需要什么，以及如何接入你自己的端点。
 ---
 
-ocra 通过 OpenCode 运行审查员，所以 OpenCode 目录里的供应商都可以用，只有少数[需要从 npm 下载代码的](#需要从-npm-下载代码的供应商)除外。在模型链里把模型写成 `provider/model`（见[配置](./configuration#模型)）。运行时只会拿到模型链里出现的那些供应商的凭据。
+在默认运行时上，OpenCode 目录里的供应商都可以用，只有少数[需要从 npm 下载代码的](#需要从-npm-下载代码的供应商)除外。在模型链里把模型写成 `provider/model`（见[配置](./configuration#模型)）；运行时只拿到链里出现的供应商的凭据。
 
 ## OpenCode 目录中的供应商
 
@@ -17,11 +17,11 @@ ocra 通过 OpenCode 运行审查员，所以 OpenCode 目录里的供应商都�
 | Azure OpenAI | `azure/<deployment>` | `AZURE_API_KEY`、`AZURE_RESOURCE_NAME` | 否 |
 | DeepSeek、OpenRouter、Groq、Mistral、xAI 以及目录里的其他供应商 | `deepseek/<model>` | 供应商的密钥，比如 `DEEPSEEK_API_KEY`；ocra 不认识的 id 会拿到以它开头的所有变量，比如 `GROQ_` | 否 |
 
-"否"的意思是：ocra 会把变量传给这个供应商，其余由 OpenCode 处理，但还没有任何审查实际经过它运行过。如果出了问题，请[提 issue](https://github.com/jma49/Open-CR-Agent/issues/new/choose)。模型 id 以 OpenCode 的目录 [models.dev](https://models.dev) 为准。
+"否"：ocra 传入变量，其余由 OpenCode 处理，但还没有审查实际经过这个供应商运行过；出了问题请[提 issue](https://github.com/jma49/Open-CR-Agent/issues/new/choose)。模型 id 以 OpenCode 的目录 [models.dev](https://models.dev) 为准。
 
 ### 需要从 npm 下载代码的供应商
 
-OpenCode 自带了与目录里几乎所有供应商通信的代码。只有少数几个，它会在第一次用到其模型时从 npm 下载这部分代码，而 ocra 不允许在审查过程中下载任何东西。在 2026-09-29 的目录里，它们是 `aihubmix`、`cloudflare-ai-gateway`、`merge-gateway`、`qvac`、`salad-cloud`、`sap-ai-core` 和 `watsonx`。这些供应商的模型会立即失败，报错 "Failed to initialize provider"。如果这类服务提供兼容 OpenAI API 的端点，可以把它声明为[你自己的端点](#你自己的端点)。
+有少数供应商，OpenCode 会在第一次使用时从 npm 下载其客户端代码，而 ocra 不允许审查过程中下载。在 2026-09-29 的目录里，它们是 `aihubmix`、`cloudflare-ai-gateway`、`merge-gateway`、`qvac`、`salad-cloud`、`sap-ai-core` 和 `watsonx`；它们的模型会立即失败，报错 "Failed to initialize provider"。如果这类服务有 OpenAI 兼容端点，可以声明为[你自己的端点](#你自己的端点)。
 
 ## 你自己的端点
 
@@ -49,18 +49,18 @@ OpenCode 自带了与目录里几乎所有供应商通信的代码。只有少�
 }
 ```
 
-- **id**（`gateway`）由你自己取：小写字母、数字和连字符。请选一个 OpenCode 目录里没有的 id，因为声明的供应商会在这次运行中替换同名的已知供应商。
+- **id**（`gateway`）由你自己取：小写字母、数字和连字符。避开 OpenCode 目录里已有的 id：声明会在这次运行中替换同名的已知供应商。
 - **`baseUrl`** 必须是 `https`，或者本机上的普通 `http`：`localhost`、`127.0.0.1` 或 `::1`。比如 Ollama 用 `http://127.0.0.1:11434/v1`。地址里不能有 `{` 或 `}`，OpenCode 会把它们替换成变量或文件内容。
-- **`apiKeyEnv`** 是保存密钥的环境变量的名字。密钥本身从不写进文件，运行时也只拿到这一个变量。平台令牌和云凭据的名字（以 `GITHUB_`、`GITLAB_`、`CI_`、`AWS_`、`AZURE_` 等开头）会被拒绝。不需要密钥的服务可以省略。
-- **`effort`**（可选）说明这个端点怎样接收两种运行时发送的[推理强度](./configuration#推理强度)：`openai` 发送 `reasoning_effort`（默认值，OpenAI、Gemini API 的 OpenAI 兼容端点和 OpenRouter 都接受），`openrouter` 发送 `reasoning: { effort }`。
-- **每个模型都要有价格**，单位是每百万 token 多少美元：`input`、`output`，以及可选的 `cachedInput`。ocra 用它们计算报告里的花费和 `--max-cost-usd`。价格可以写 0，适合跑在你自己硬件上的服务；这时运行会警告该模型没有定价，花费上限也不会计入它。
-- 通过 `extends` 引用的共享配置也可以声明供应商，但必须用 `#sha256=` 固定内容：不固定的话，提供这个文件的人就能把你的代码发到他选的端点。声明了供应商却没有固定的共享文件会被忽略，并给出警告，警告里写着检查过文件之后要加的固定值。仓库里同 id 的声明优先。审查 PR 和 Merge Request 时，供应商和其他配置一样来自 base 提交。
+- **`apiKeyEnv`** 是保存密钥的变量名；密钥从不写进文件，运行时也只拿到这一个变量。平台令牌和云凭据（`GITHUB_`、`GITLAB_`、`CI_`、`AWS_`、`AZURE_` 等）会被拒绝。不需要密钥的服务可以省略。
+- **`effort`**（可选）说明端点怎样接收两种运行时发送的[推理强度](./configuration#推理强度)：`openai`（默认；OpenAI、Gemini 的 OpenAI 兼容端点和 OpenRouter 都接受）发送 `reasoning_effort`，`openrouter` 发送 `reasoning: { effort }`。
+- **每个模型都要有价格**，单位是每百万 token 美元：`input`、`output`，可选 `cachedInput`，用于报告的花费和 `--max-cost-usd`。价格为 0（你自己的硬件）时，运行会警告花费上限不计入这个模型。
+- 共享配置（`extends`）只有用 `#sha256=` 固定后才能声明供应商，否则提供文件的人就能把你的代码转到别处。声明了供应商却没固定的共享文件会被忽略，警告里给出检查后要加的固定值。仓库里同 id 的声明优先。审查 PR 和 Merge Request 时，供应商来自 base 提交。
 
-这项功能已经在 CI 里用真实的 OpenCode 二进制文件对一个模拟的 OpenAI 兼容服务测试过：密钥发往该去的地方，价格被计入，而且不需要访问网络上的其他地址。对真实服务的运行已经在 OpenRouter 上完成（一个免费模型，2026-10-02）：密钥送达、工具调用正常、价格按 0 计入。
+已在 CI 里用真实的 OpenCode 二进制文件对模拟的 OpenAI 兼容服务测试过（密钥发往该去的地方，价格被计入，不访问其他地址），也在 OpenRouter 上真实运行过（一个免费模型，2026-10-02）。
 
 ## OpenRouter 上的免费模型
 
-[OpenRouter](https://openrouter.ai) 上免费提供的模型，用法和任何 OpenAI 兼容端点一样：声明端点，把该模型的价格写成 0（模型 id 按 OpenRouter 列出的写），然后以 `<端点 id>/<模型 id>` 的形式引用。对 OpenRouter 的 key，[`ocra init`](./cli#ocra-init) 写的就是这样的配置，模型是 `openrouter/free`：OpenRouter 的路由，把每次请求交给它的某个免费模型：
+[OpenRouter](https://openrouter.ai) 上的免费模型和任何端点一样声明：按 OpenRouter 的模型 id 写，价格为 0，以 `<端点 id>/<模型 id>` 引用。对 OpenRouter 的 key，[`ocra init`](./cli#ocra-init) 写的就是这样的配置，模型是 `openrouter/free`，即把每次请求交给某个免费模型的路由：
 
 ```json
 {
@@ -80,14 +80,14 @@ OpenCode 自带了与目录里几乎所有供应商通信的代码。只有少�
 }
 ```
 
-- 价格 0 按字面理解：运行会警告这个模型的 token 不计入 `--max-cost-usd`，报告的花费是 $0，这正是免费模型的价格；token 数照常报告。
-- 把这个文件放在被审查仓库之外，审查带着 `--no-repo-config` 运行时用 [`--config`](./cli) 传入，评测工具就是这么用的。
+- 运行报告的花费是 $0，并警告 `--max-cost-usd` 不计入这个模型；token 数照常报告。
+- 带 `--no-repo-config` 运行时（评测工具就是这样），把文件放在被审查仓库之外，用 [`--config`](./cli) 传入。
 - 评测的判定模型也可以用同一个端点：`JUDGE_API_KEY`、`JUDGE_BASE_URL=https://openrouter.ai/api/v1`、`JUDGE_MODEL=openrouter/free`。
-- 路由每次请求可能选不同的免费模型，所以审查质量会随之变化。要让运行之间可比，就指定一个免费模型（id 以 `:free` 结尾，例如 `nvidia/nemotron-3-ultra-550b-a55b:free`），并到它的页面核对，因为 OpenRouter 会不经通知下架免费模型：下架的模型返回 HTTP 404，审查失败。
-- 账号没有充值时，OpenRouter 每天只给很少的免费请求（约 50 次，由各个 `:free` 模型共用）；一个审查任务要 30 到 70 次请求，所以大的审查可能中途停下。有些不带 `:free` 的零价格模型只服务充值过的账号，否则返回 HTTP 402。
-- 免费模型、它们的限额和价格随时可能变，免费模型的提供方也可能保留发给它的内容。拿它们试用 ocra，别拿它们审查必须保密的代码。
+- 路由每次请求可能选不同的模型，审查质量随之变化。要让运行可比，就指定一个免费模型（id 以 `:free` 结尾，例如本仓库 CI 固定使用的 `nvidia/nemotron-3-ultra-550b-a55b:free`）；OpenRouter 会不经通知下架免费模型，下架的模型返回 HTTP 404，审查失败。
+- 没有充值时，OpenRouter 每天约给 50 次免费请求，由各 `:free` 模型共用；一个审查任务要 30 到 70 次请求，所以大的审查可能中途停下。有些不带 `:free` 的零价格模型需要充值，否则返回 HTTP 402。
+- 免费模型、限额和价格随时可能变，其提供方也可能保留发给它的内容。拿它们试用 ocra，别用于必须保密的代码。
 
-本仓库自己的 CI（dogfood 审查、每晚的真实模型检查和每日免费评估）固定使用 `nvidia/nemotron-3-ultra-550b-a55b:free` 而不是路由，让结果每天之间可比。声明端点这条路不需要 OpenCode 的价格目录；目录形式的 `openrouter/<模型>` 需要能访问目录且模型在目录里，否则立刻失败。自 2026-10-02 起，已有审查这样经过 OpenRouter 运行。
+声明端点不需要 OpenCode 的价格目录；目录形式的 `openrouter/<模型>` 需要能访问目录且模型在目录里，否则立刻失败。
 
 ## 选择运行时
 
@@ -98,12 +98,12 @@ OpenCode 自带了与目录里几乎所有供应商通信的代码。只有少�
 | `opencode`（默认） | OpenCode 目录里的所有供应商和你声明的端点，外加价格目录 `models.opencode.ai` | 你的模型是 Gemini、Vertex AI、Anthropic、Bedrock 或目录里的其他供应商 |
 | `direct` | 只访问 `providers` 下声明的端点，不访问网络上的其他任何地址 | 模型链里的每个模型都在声明的端点上，而且你希望除此之外什么都不访问 |
 
-两者跑的是同一套审查：同样的工具、同样的步数上限、同样的模型链回退、同样的价格。`direct` 运行时会拒绝写了未声明供应商的模型链，并在发出任何请求之前说明。经过代理时它和 ocra 的其他部分一样读取 `HTTP_PROXY`、`HTTPS_PROXY` 和 `NO_PROXY`。[质量页](./quality)上的数字是通过 `opencode` 测得的；`direct` 运行时通过同一套一致性测试，但还没有在黄金用例集上评测过。
+两者跑同一套审查：工具、步数上限、降级和价格都相同。`direct` 会在发出任何请求前拒绝写了未声明供应商的模型链，并读取 `HTTP_PROXY`、`HTTPS_PROXY` 和 `NO_PROXY`。[质量数字](./quality)是在 `opencode` 上测得的；`direct` 通过同一套一致性测试，但还没有在黄金用例集上评测过。
 
-想看 `direct` 运行时到底给模型发了什么、收到了什么，把 `OCRA_RECORD_DIR` 设成一个目录：每个请求连同它收到的回答写成一个 JSON 文件，只有你自己能读。密钥会替换成 `<key>`，请求头和端点地址不会写入，但文件里有发给模型的代码和提示词，所以要像对待代码本身一样对待这个目录。ocra 自己的测试会在没有模型的情况下回放这些记录；一份记录只能回答它记录下的那段对话，所以提示词一改，它就不能替代模型。`opencode` 运行时不读这个变量。
+想看 `direct` 给模型发了什么、收到了什么，把 `OCRA_RECORD_DIR` 设成一个目录：每个请求连同回答写成一个 JSON 文件，只有你能读。密钥替换成 `<key>`，请求头和端点地址不写入，但文件里有代码和提示词，要像代码本身一样保护。一份记录只能回放它记录的那段对话。`opencode` 不读这个变量。
 
-`opencode` 运行时是 CLI 的可选依赖，默认会安装。使用 `direct` 时，可以不装它，少约 165 MB：见[不装 OpenCode](./installation#不装-opencode)，以及 [GitHub Action](./github#运行时) 的输入 `opencode: false`。
+`opencode` 运行时是可选依赖，默认安装；使用 `direct` 时可以不装，少约 165 MB：见[不装 OpenCode](./installation#不装-opencode)和 Action 的 `opencode: false` [输入](./github#运行时)。
 
 ## 还会访问哪些网络地址
 
-除模型供应商之外，OpenCode 启动时还会从 `models.opencode.ai` 拉取价格目录。启动时它还会尝试从 npm 安装它自己的插件包，并在模型需要时安装它没有自带的供应商代码；ocra 把这两种安装都指向本机上一个立即拒绝的 registry。除声明的端点之外所有地址都被拒绝时，审查依然正常（已测试）。在屏蔽外网的环境里，价格目录拉取失败，OpenCode 会使用它自带的目录；不在该目录里的模型没有价格，这时运行会警告它的调用没有计入。
+除模型供应商外，OpenCode 启动时会从 `models.opencode.ai` 拉取价格目录。它从 npm 安装自身插件包或供应商代码的尝试，都被指向本机一个立即拒绝的 registry。除声明的端点外所有地址都被拒绝时，审查依然正常（已测试）：价格目录拉取失败，OpenCode 用自带的目录，不在其中的模型没有价格，运行会警告它的调用没有计入。

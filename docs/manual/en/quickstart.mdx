@@ -15,7 +15,7 @@ ocra init                            # writes .ocra/config.json and says what it
 ocra review                          # review your uncommitted changes
 ```
 
-To review pull requests on GitHub as well, run `ocra init --github`: it also writes `.github/workflows/ocra.yml`, safe for pull requests from forks, and prints the two `gh` commands to run (the secret and the `ocra-review` label). It never replaces a file that exists. See [ocra init](./cli#ocra-init) for what it writes and why.
+For GitHub pull requests, `ocra init --github` also writes `.github/workflows/ocra.yml`, safe for forks, and prints the `gh` commands for the secret and the `ocra-review` label. It never replaces an existing file. See [ocra init](./cli#ocra-init).
 
 The steps below do the same by hand, with any provider OpenCode supports.
 
@@ -32,7 +32,7 @@ npm install -g @open-cr-agent/cli
 ocra --version
 ```
 
-See [Installation](./installation) for npx and building from source. ocra is an early 0.x release; [Measured quality](./quality) shows what its reviews find and miss.
+See [Installation](./installation) for npx and building from source. [Measured quality](./quality) shows what reviews find and miss.
 
 </Step>
 
@@ -40,7 +40,7 @@ See [Installation](./installation) for npx and building from source. ocra is an 
 
 ## Add a model key
 
-ocra runs reviews through [OpenCode](https://opencode.ai), so any provider OpenCode supports works. For Google Gemini:
+Any provider [OpenCode](https://opencode.ai) supports works ([Model providers](./providers)). For Google Gemini:
 
 ```bash
 export GEMINI_API_KEY="your-key"
@@ -66,7 +66,7 @@ Create `.ocra/config.json` in the repository you want to review:
 }
 ```
 
-`standard` models review code, `light` models do cheap helper work such as grouping files, and the `top` model judges the findings, one call per review that has any. A list is a failback chain.
+`standard` models review code, `light` ones do cheap helper work such as grouping files, and `top` judges the findings. A list is a failback chain.
 
 </Step>
 
@@ -81,7 +81,7 @@ ocra review --from main      # this branch since it diverged from main
 ocra review --commit HEAD    # a single commit
 ```
 
-ocra prints progress while it works, then the verdict and a report grouped by file. Each finding says whether verification confirmed it and carries an id for `ocra memory`:
+ocra prints progress, then the verdict and a report by file. Each finding says whether verification confirmed it and has an id for `ocra memory`:
 
 ```text
 Review: Working tree changes
@@ -98,7 +98,7 @@ src/list.ts
 Session: .ocra/sessions/20260924T225539Z-aa9790
 ```
 
-The exit code is `1` when a critical finding was confirmed by verification. Treat it as advice for reviewers rather than a security gate: the models read the change and can be misled by it. See the [CLI reference](./cli).
+The exit code is `1` when verification confirmed a critical finding. Treat it as advice, not a security gate: the models read the change and can be misled by it. See [Exit codes](./cli#exit-codes).
 
 </Step>
 
