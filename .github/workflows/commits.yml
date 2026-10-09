@@ -3,11 +3,13 @@ name: Commits
 # The commit rules of AGENTS.md for ocra's other repositories (ocra-cloud,
 # ocra-site), with this repository's commitlint config and attribution check,
 # so the rules live once. This repository runs the same steps in ci.yml's
-# `commits` job, which branch protection requires by that name.
+# `commits` job, which branch protection requires by that name. Callers pin
+# it by commit SHA; the rule files are read at that same commit, so a pin
+# also pins the rules.
 #   jobs:
 #     commits:
 #       if: github.event_name == 'pull_request'
-#       uses: jma49/Open-CR-Agent/.github/workflows/commits.yml@main
+#       uses: jma49/Open-CR-Agent/.github/workflows/commits.yml@<commit SHA>
 on:
   workflow_call:
 
@@ -27,7 +29,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: jma49/Open-CR-Agent
-          ref: main
+          ref: ${{ job.workflow_sha }}
           path: .ocra-engine
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

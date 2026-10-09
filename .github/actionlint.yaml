@@ -1,0 +1,7 @@
+paths:
+  # GitHub's job.workflow_sha (the commit of the reusable workflow a job runs
+  # from) is newer than the pinned actionlint (ci.yml). Remove this once the
+  # pinned version knows it.
+  .github/workflows/commits.yml:
+    ignore:
+      - 'property "workflow_sha" is not defined'
