@@ -2,6 +2,7 @@ import {
   chmodSync,
   existsSync,
   linkSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -187,6 +188,19 @@ describe("ocra login", () => {
     t.deps.fetch = fakeCloud({}).fetch;
     expect(await loginCommand("logout", [], t.io.out, t.io.err, t.deps)).toBe(0);
     expect(existsSync(consent(t))).toBe(false);
+  });
+
+  it("removes an earlier consent when the account cannot say whether it shares findings", async () => {
+    const t = setup({
+      "POST /api/device/code": ok(code),
+      "POST /api/device/token": ok(tokens),
+      "GET /api/me": ok({ login: "octo" }),
+    });
+    const consent = join(dirname(t.deps.credentialsPath), "share-findings");
+    mkdirSync(dirname(consent), { recursive: true });
+    writeFileSync(consent, "on\n");
+    expect(await loginCommand("login", [], t.io.out, t.io.err, t.deps)).toBe(0);
+    expect(existsSync(consent)).toBe(false);
   });
 
   it("does not open a browser with --no-browser", async () => {

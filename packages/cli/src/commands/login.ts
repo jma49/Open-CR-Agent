@@ -186,14 +186,17 @@ async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean
 // login records with the user present (sharing-consent.ts). Best effort:
 // each signed-in review asks for the salt again, and without the consent it
 // sends counts only and says how to give it. True when sharing is on.
+// Consent fails closed: when the account cannot say whether it shares
+// findings, a record from an earlier login is removed, not kept.
 async function keepSharing(client: CloudClient, credentialsPath: string): Promise<boolean> {
   try {
     const salt = await client.accountSalt();
-    if (salt.kind !== "ok") return false;
-    await saveAccountSalt(credentialsPath, salt.value);
-    await saveSharingConsent(credentialsPath, salt.value !== null);
-    return salt.value !== null;
-  } catch {
-    return false;
-  }
+    if (salt.kind === "ok") {
+      await saveAccountSalt(credentialsPath, salt.value);
+      await saveSharingConsent(credentialsPath, salt.value !== null);
+      return salt.value !== null;
+    }
+  } catch {}
+  await saveSharingConsent(credentialsPath, false).catch(() => {});
+  return false;
 }
