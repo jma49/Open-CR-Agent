@@ -1,4 +1,3 @@
-import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { errorMessage, isOcraError } from "@open-cr-agent/core";
 import { defaultCloudDeps } from "./cloud/deps.js";
@@ -43,7 +42,6 @@ export function defaultDeps(): ReviewDeps {
     env: process.env,
     builtinPlugins: BUILTIN_PLUGINS,
     runtimes: BUILTIN_RUNTIMES,
-    writeFile: (path, content) => writeFile(path, content, "utf8"),
     cloud: defaultCloudDeps(process.env),
     sessionKey: () => sessionKey(process.env),
     now: Date.now,

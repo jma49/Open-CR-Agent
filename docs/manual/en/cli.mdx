@@ -82,7 +82,7 @@ ocra review [options]
 | `--to <ref>` | End of the range; defaults to `HEAD`; requires `--from` |
 | `--commit <sha>` | Review a single commit against its parent |
 | `--format text\|json\|sarif` | Output format; default `text`. `sarif` writes [SARIF 2.1.0](#sarif-output) |
-| `--output <file>` | Write the result to a file instead of stdout |
+| `--output <file>` | Write the result to a file instead of stdout. The file is replaced whole; a symbolic link at that path, or at a directory on the way inside the repository, is refused (exit `2`, before any model call) |
 | `--pr <number>` | Review a GitHub pull request; see [GitHub pull requests](./github) |
 | `--repo <owner/name>` | Repository of `--pr` (default: `GITHUB_REPOSITORY` or `origin`) |
 | `--mr <iid>` | Review a GitLab merge request; see [GitLab merge requests](./gitlab) |

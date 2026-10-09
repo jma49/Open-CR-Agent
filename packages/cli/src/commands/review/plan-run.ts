@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { previewReview, type ReviewPreview, toPlanOutput } from "@open-cr-agent/core/internal";
 import { EXIT } from "../../io/exit.js";
+import { writeOutputFile } from "../../io/output-file.js";
 import type { ReviewArgs } from "./args.js";
 import type { ReviewDeps } from "./deps.js";
 import { inputPriceOf } from "./plan-prices.js";
@@ -36,7 +37,7 @@ export async function planRun(
       ? `${safeJson(planJson(preview, settings, run.accountSettings))}\n`
       : renderPlan(preview) + renderSettings(settings, run.accountSettings);
   if (args.output === undefined) io.out.write(rendered);
-  else await deps.writeFile(resolve(deps.cwd, args.output), rendered);
+  else await writeOutputFile(run.root, resolve(deps.cwd, args.output), rendered);
   return EXIT.ok;
 }
 

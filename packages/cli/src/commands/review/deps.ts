@@ -8,7 +8,6 @@ export interface ReviewDeps {
   env: Readonly<Record<string, string | undefined>>;
   builtinPlugins: readonly OcraPlugin[];
   runtimes: RuntimeLoaders;
-  writeFile(path: string, content: string): Promise<void>;
   now(): number;
   heartbeatMs: number;
   // Only tests replace it, to fake the GitHub and GitLab APIs.

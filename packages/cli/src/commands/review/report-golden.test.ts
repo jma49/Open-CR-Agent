@@ -177,7 +177,6 @@ function platformDeps(
     env,
     builtinPlugins: BUILTIN_PLUGINS,
     runtimes: { opencode: async () => warningRuntime },
-    writeFile: async () => {},
     now: Date.now,
     heartbeatMs: 60_000,
     fetch: fetchImpl,

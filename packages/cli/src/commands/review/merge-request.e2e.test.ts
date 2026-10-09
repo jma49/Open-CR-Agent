@@ -21,7 +21,6 @@ function deps(cwd: string, fetchImpl: typeof fetch, env: Record<string, string>)
     env,
     builtinPlugins: BUILTIN_PLUGINS,
     runtimes: { opencode: async () => warningRuntime },
-    writeFile: async () => {},
     now: Date.now,
     heartbeatMs: 60_000,
     fetch: fetchImpl,
@@ -165,7 +164,6 @@ describe("ocra review --mr", () => {
       env: {},
       builtinPlugins: BUILTIN_PLUGINS,
       runtimes: BUILTIN_RUNTIMES,
-      writeFile: async () => {},
       now: Date.now,
       heartbeatMs: 60_000,
     });
@@ -177,7 +175,6 @@ describe("ocra review --mr", () => {
       env: {},
       builtinPlugins: BUILTIN_PLUGINS,
       runtimes: BUILTIN_RUNTIMES,
-      writeFile: async () => {},
       now: Date.now,
       heartbeatMs: 60_000,
     });

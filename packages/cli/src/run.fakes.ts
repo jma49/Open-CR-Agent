@@ -1,4 +1,3 @@
-import { writeFileSync } from "node:fs";
 import type { AgentEvent, AgentTaskSpec, OcraPlugin } from "@open-cr-agent/core";
 import { scratchRepos } from "@open-cr-agent/test-support";
 import type { ReviewDeps } from "./commands/review/deps.js";
@@ -70,7 +69,6 @@ export function deps(
     sessionKey: async () => TEST_SESSION_KEY,
     builtinPlugins: BUILTIN_PLUGINS,
     runtimes: { opencode: async () => fakeRuntime },
-    writeFile: async (path, content) => writeFileSync(path, content),
     now: Date.now,
     heartbeatMs: 60_000,
     ...extra,

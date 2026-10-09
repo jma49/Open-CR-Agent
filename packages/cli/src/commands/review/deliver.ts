@@ -1,5 +1,6 @@
 import { join, relative, resolve } from "node:path";
 import { sendToCloud } from "../../cloud/review.js";
+import { writeOutputFile } from "../../io/output-file.js";
 import { VERSION } from "../../version.js";
 import type { ReviewArgs } from "./args.js";
 import type { ReviewDeps } from "./deps.js";
@@ -27,7 +28,7 @@ export async function writeReport(
   if (args.output === undefined) {
     io.out.write(rendered);
   } else {
-    await deps.writeFile(resolve(deps.cwd, args.output), rendered);
+    await writeOutputFile(run.root, resolve(deps.cwd, args.output), rendered);
     io.err.write(`[ocra] Wrote ${args.output}\n`);
   }
   const hidden = report.remembered.filter((e) => e.source === "account").length;

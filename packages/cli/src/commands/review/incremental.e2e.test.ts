@@ -19,7 +19,6 @@ async function review(
     env: { GITHUB_TOKEN: "t" },
     builtinPlugins: BUILTIN_PLUGINS,
     runtimes: { opencode: async () => runtime.plugin },
-    writeFile: async () => {},
     now: Date.now,
     heartbeatMs: 60_000,
     fetch: f.fetchImpl,
