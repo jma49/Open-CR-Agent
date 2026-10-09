@@ -9,6 +9,8 @@ export interface QuotaError {
 
 // Longest wait for a rate limit inside a run; per-minute limits ask for less.
 export const MAX_QUOTA_WAIT_MS = 90_000;
+// First wait for a rate limit that states none, doubled on each repeat.
+export const UNSTATED_QUOTA_WAIT_MS = 15_000;
 // Waits per model before it counts as out of quota for the rest of the run.
 export const QUOTA_RETRIES = 3;
 
@@ -16,7 +18,7 @@ const QUOTA_MESSAGE =
   /exceeded your current quota|quota exceeded|resource[_ ]exhausted|rate limit/i;
 const RETRY_IN = /retry in ([\d.]+)\s*(ms|s)\b/i;
 const RETRY_DELAY = /"retryDelay"\s*:\s*"([\d.]+)s"/i;
-const DAILY = /per ?day|daily/i;
+const DAILY = /per[- ]?day|daily/i;
 
 export function parseQuotaError(message: string, statusCode?: number): QuotaError | undefined {
   if (statusCode !== 429 && !QUOTA_MESSAGE.test(message)) return undefined;

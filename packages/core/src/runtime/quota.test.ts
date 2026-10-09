@@ -24,6 +24,9 @@ describe("parseQuotaError", () => {
     expect(parseQuotaError("Quota exceeded: GenerateRequestsPerDayPerProjectPerModel")).toEqual({
       daily: true,
     });
+    expect(parseQuotaError("Rate limit exceeded: free-models-per-day", 429)).toEqual({
+      daily: true,
+    });
     expect(
       parseQuotaError("This model is currently experiencing high demand.", 503),
     ).toBeUndefined();
@@ -46,13 +49,25 @@ describe("ModelHealth quota", () => {
     expect(health.order(["a"])).toEqual([]);
   });
 
-  it("gives up at once on daily limits, unknown or long waits", () => {
+  it("gives up at once on daily limits and long waits", () => {
     const health = new ModelHealth();
     expect(health.recordQuota("a", { daily: true, retryAfterMs: 1 })).toBe("out_of_quota");
-    expect(health.recordQuota("b", { daily: false })).toBe("out_of_quota");
     expect(health.recordQuota("c", { daily: false, retryAfterMs: MAX_QUOTA_WAIT_MS + 1 })).toBe(
       "out_of_quota",
     );
+  });
+
+  // Vertex AI's shared quota answers a busy moment with a bare 429.
+  it("backs off on a limit without a stated wait, then gives up", () => {
+    const now = 0;
+    const health = new ModelHealth({ now: () => now });
+    const waits: number[] = [];
+    for (let i = 0; i < QUOTA_RETRIES; i += 1) {
+      expect(health.recordQuota("a", { daily: false })).toBe("wait");
+      waits.push(health.pausedFor("a"));
+    }
+    expect(waits).toEqual([15_000, 30_000, 60_000]);
+    expect(health.recordQuota("a", { daily: false })).toBe("out_of_quota");
   });
 
   it("forgets the waits after a success", () => {

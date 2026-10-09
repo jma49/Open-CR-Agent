@@ -1,6 +1,11 @@
 import type { ModelChains, ModelTier } from "../contracts.js";
 import { OcraError } from "../errors.js";
-import { MAX_QUOTA_WAIT_MS, QUOTA_RETRIES, type QuotaError } from "./quota.js";
+import {
+  MAX_QUOTA_WAIT_MS,
+  QUOTA_RETRIES,
+  type QuotaError,
+  UNSTATED_QUOTA_WAIT_MS,
+} from "./quota.js";
 
 export interface ModelRef {
   providerID: string;
@@ -116,18 +121,14 @@ export class ModelHealth {
     return this.outOfQuota.has(model);
   }
 
-  // A rate limit with a short, stated wait pauses the model for every task;
-  // a daily limit, no stated wait, a long one, or too many waits in a row
-  // mean the model is out of quota for the rest of the run.
+  // A rate limit with a short wait pauses the model for every task; a daily
+  // limit, a long stated wait, or too many waits in a row mean the model is
+  // out of quota for the rest of the run. Vertex AI's shared quota answers
+  // 429 without a wait when it is busy, so a missing wait backs off instead.
   recordQuota(model: string, quota: QuotaError): "wait" | "out_of_quota" {
     const state = this.quotas.get(model) ?? { waits: 0, pausedUntil: 0 };
-    const wait = quota.retryAfterMs;
-    if (
-      quota.daily ||
-      wait === undefined ||
-      wait > MAX_QUOTA_WAIT_MS ||
-      state.waits >= QUOTA_RETRIES
-    ) {
+    const wait = quota.retryAfterMs ?? UNSTATED_QUOTA_WAIT_MS * 2 ** state.waits;
+    if (quota.daily || wait > MAX_QUOTA_WAIT_MS || state.waits >= QUOTA_RETRIES) {
       this.outOfQuota.add(model);
       return "out_of_quota";
     }

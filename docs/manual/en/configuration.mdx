@@ -42,7 +42,7 @@ Models are written as `provider/model`, using OpenCode's provider IDs (for examp
 | `light` | Helper calls such as grouping changed files |
 | `top` | The judge |
 
-When a model is overloaded or rejects a request, the task retries on the next model in the chain. A rate limit with a stated wait of up to 90 seconds pauses that model for every task, then retries; a daily limit, a longer or missing wait, or a fourth limit in a row drops the model for the run. Each model has a circuit breaker: after two failures in a row it is skipped for a minute, then probed with one request; success restores it, failure doubles the pause (up to ten minutes). Credential errors stop at once, since the provider's other models would fail too.
+When a model is overloaded or rejects a request, the task retries on the next model in the chain. A rate limit with a stated wait of up to 90 seconds pauses that model for every task, then retries; one without a stated wait pauses it for 15 seconds, then 30, then 60. A daily limit, a longer wait, or a fourth limit in a row drops the model for the run. Each model has a circuit breaker: after two failures in a row it is skipped for a minute, then probed with one request; success restores it, failure doubles the pause (up to ten minutes). Credential errors stop at once, since the provider's other models would fail too.
 
 Environment variables override the file, comma-separated for chains:
 
