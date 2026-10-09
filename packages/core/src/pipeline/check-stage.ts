@@ -31,7 +31,7 @@ export async function checkStage(
 
 async function verify(
   { reconciled }: FilterStage,
-  { options, settings, plan, budget, signal, emit }: StageContext,
+  { options, settings, plan, spendLimit, signal, emit }: StageContext,
 ): Promise<VerificationResult> {
   if (!settings.verify) {
     return {
@@ -49,7 +49,7 @@ async function verify(
     context: plan.context,
     signal,
     concurrency: settings.concurrency,
-    budget,
+    spendLimit,
     call: roleCall("verifier", options),
   });
   if (verification.checked > 0) {
@@ -65,10 +65,10 @@ async function verify(
 async function judge(
   verification: VerificationResult,
   { reconciled, nothingReviewed }: FilterStage,
-  { options, settings, plan, budget, signal, emit }: StageContext,
+  { options, settings, plan, spendLimit, signal, emit }: StageContext,
 ): Promise<JudgeResult> {
   const wanted = settings.judge && verification.kept.length > 0;
-  const affordable = !budget.exhausted();
+  const affordable = spendLimit.mayCall();
   const judged = await judgeFindings(verification.kept, {
     runtime: options.runtime,
     changeRequest: plan.changeRequest,

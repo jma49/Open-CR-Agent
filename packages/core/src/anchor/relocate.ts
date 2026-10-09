@@ -1,6 +1,6 @@
-import { type AgentCallSettings, agentCall } from "../agent/settings.js";
+import { oneShot } from "../agent/model-call.js";
+import type { AgentCallSettings } from "../agent/settings.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
-import { usageSpent } from "../errors.js";
 import { data, join, labelled, section } from "../review/prompt-text.js";
 import type { RelocationRequest } from "./anchor.js";
 
@@ -22,8 +22,8 @@ export function runtimeRelocator(
   onUsage: (usage: Usage) => void,
   call?: AgentCallSettings,
 ): ((request: RelocationRequest) => Promise<string | undefined>) | undefined {
-  const complete = runtime.complete?.bind(runtime);
-  if (!complete) return undefined;
+  const ask = oneShot(runtime, onUsage);
+  if (!ask) return undefined;
   return async (request) => {
     const user = join(
       [
@@ -35,22 +35,18 @@ export function runtimeRelocator(
       ],
       "\n\n",
     );
-    const answer = await complete(
+    const answer = await ask(
       {
         tier: "light",
-        ...agentCall("helper", call),
+        agent: "helper",
+        call,
         system: RELOCATE_SYSTEM_PROMPT,
         user,
         timeoutMs: RELOCATE_TIMEOUT_MS,
       },
-      AbortSignal.any([signal, AbortSignal.timeout(RELOCATE_TIMEOUT_MS)]),
-    ).catch((error: unknown) => {
-      const spent = usageSpent(error);
-      if (spent) onUsage(spent);
-      throw error;
-    });
-    onUsage(answer.usage);
-    const text = answer.text.replace(/^```[^\n]*\n?|```\s*$/g, "").replace(/^\s*\n|\n\s*$/g, "");
+      signal,
+    );
+    const text = answer.replace(/^```[^\n]*\n?|```\s*$/g, "").replace(/^\s*\n|\n\s*$/g, "");
     if (text === "" || /^none\.?$/i.test(text.trim())) return undefined;
     return text.split("\n").slice(0, 5).join("\n");
   };

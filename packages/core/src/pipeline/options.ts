@@ -58,7 +58,7 @@ export interface ReviewLimits {
   concurrency?: number;
   taskTimeoutMs?: number;
   runTimeoutMs?: number;
-  // Review tasks stop starting at REVIEW_BUDGET_SHARE of this; Verify and
+  // Review tasks stop starting at REVIEW_SHARE of this; Verify and
   // Judge use the rest, and are skipped (findings left unchecked) once it is
   // gone. Calls already running finish, so a run can end slightly above it.
   maxCostUsd?: number;

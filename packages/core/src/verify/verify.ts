@@ -1,10 +1,11 @@
-import type { SpendTracker } from "../agent/budget.js";
 import { parseJsonAnswer } from "../agent/json.js";
+import { oneShot } from "../agent/model-call.js";
 import { mapWithConcurrency } from "../agent/pool.js";
-import { type AgentCallSettings, agentCall } from "../agent/settings.js";
+import type { AgentCallSettings } from "../agent/settings.js";
+import type { SpendLimit } from "../agent/spend-limit.js";
 import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
 import type { FileDiff, Finding, Verification } from "../domain.js";
-import { errorMessage, OcraError, usageSpent } from "../errors.js";
+import { errorMessage, OcraError } from "../errors.js";
 import { buildVerificationPrompt, fileExcerpt, verificationResponseSchema } from "./prompt.js";
 
 const VERIFY_TIMEOUT_MS = 120_000;
@@ -37,7 +38,7 @@ export interface VerifyOptions {
   concurrency: number;
   // Files are not sent once the run's spend limit is used up; their findings
   // stay, unchecked.
-  budget?: Pick<SpendTracker, "exhausted" | "add">;
+  spendLimit?: Pick<SpendLimit, "mayCall" | "charge">;
   call?: AgentCallSettings | undefined;
 }
 
@@ -55,8 +56,11 @@ export async function verifyFindings(
     usage: [],
     warnings: [],
   };
-  const complete = options.runtime.complete?.bind(options.runtime);
-  if (!complete || findings.length === 0) {
+  const ask = oneShot(options.runtime, (usage) => {
+    result.usage.push(usage);
+    options.spendLimit?.charge(usage);
+  });
+  if (!ask || findings.length === 0) {
     result.kept = markUnchecked(findings);
     result.missed = findings.map((f) => f.fingerprint);
     return result;
@@ -69,7 +73,7 @@ export async function verifyFindings(
 
   let unaffordable = 0;
   await mapWithConcurrency([...byFile], options.concurrency, async ([file, group]) => {
-    if (options.budget?.exhausted()) {
+    if (options.spendLimit && !options.spendLimit.mayCall()) {
       unaffordable += group.length;
       result.kept.push(...markUnchecked(group));
       return;
@@ -86,19 +90,18 @@ export async function verifyFindings(
         patch,
         content === undefined ? undefined : fileExcerpt(content, group),
       );
-      const answer = await complete(
+      const answer = await ask(
         {
           tier: "standard",
-          ...agentCall("verifier", options.call),
+          agent: "verifier",
+          call: options.call,
           system: prompt.system,
           user: prompt.user,
           timeoutMs: VERIFY_TIMEOUT_MS,
         },
-        AbortSignal.any([options.signal, AbortSignal.timeout(VERIFY_TIMEOUT_MS)]),
+        options.signal,
       );
-      result.usage.push(answer.usage);
-      options.budget?.add(answer.usage);
-      const parsed = verificationResponseSchema.safeParse(parseJsonAnswer(answer.text));
+      const parsed = verificationResponseSchema.safeParse(parseJsonAnswer(answer));
       if (!parsed.success)
         throw new OcraError("RUNTIME_INVALID_OUTPUT", "the verifier returned an invalid response");
       for (const entry of parsed.data) {
@@ -109,11 +112,6 @@ export async function verifyFindings(
         else outcomes.set(index, entry.verdict);
       }
     } catch (error) {
-      const spent = usageSpent(error);
-      if (spent) {
-        result.usage.push(spent);
-        options.budget?.add(spent);
-      }
       result.warnings.push(
         `verification of ${file} failed, keeping its findings: ${errorMessage(error)}`,
       );

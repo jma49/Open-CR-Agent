@@ -102,7 +102,7 @@ describe("verifyFindings", () => {
     const spent = await verifyFindings([finding("a.ts", "a")], {
       ...base,
       runtime: answered,
-      budget: { exhausted: () => true, add: () => {} },
+      spendLimit: { mayCall: () => false, charge: () => {} },
     });
     expect(spent.missed).toEqual(["fp-a"]);
 

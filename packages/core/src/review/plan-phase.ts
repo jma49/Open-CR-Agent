@@ -1,6 +1,7 @@
-import { type AgentCallSettings, agentCall } from "../agent/settings.js";
+import { oneShot } from "../agent/model-call.js";
+import type { AgentCallSettings } from "../agent/settings.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
-import { errorMessage, usageSpent } from "../errors.js";
+import { errorMessage } from "../errors.js";
 import type { ReviewPrompt } from "./prompt.js";
 import type { ReviewerDefinition } from "./reviewer.js";
 
@@ -21,26 +22,27 @@ export async function planBundle(
   signal: AbortSignal,
   call?: AgentCallSettings,
 ): Promise<{ plan?: string; usage: Usage[]; warning?: string }> {
-  const complete = runtime.complete?.bind(runtime);
-  if (!complete) return { usage: [] };
+  const usage: Usage[] = [];
+  const ask = oneShot(runtime, (u) => usage.push(u));
+  if (!ask) return { usage };
   try {
-    const answer = await complete(
+    const answer = await ask(
       {
         tier: reviewer.modelTier,
-        ...agentCall(reviewer.id, call),
+        agent: reviewer.id,
+        call,
         system: PLAN_SYSTEM_PROMPT.replace("{{reviewer}}", reviewer.id),
         user: prompt.user,
         timeoutMs: PLAN_TIMEOUT_MS,
       },
-      AbortSignal.any([signal, AbortSignal.timeout(PLAN_TIMEOUT_MS)]),
+      signal,
     );
     // Model output is data: the review prompt embeds it through data().
-    const plan = answer.text.trim().slice(0, MAX_PLAN_CHARS);
-    return plan ? { plan, usage: [answer.usage] } : { usage: [answer.usage] };
+    const plan = answer.trim().slice(0, MAX_PLAN_CHARS);
+    return plan ? { plan, usage } : { usage };
   } catch (error) {
-    const spent = usageSpent(error);
     return {
-      usage: spent ? [spent] : [],
+      usage,
       warning: `plan phase for ${reviewer.id} failed, reviewing without a plan: ${errorMessage(error)}`,
     };
   }

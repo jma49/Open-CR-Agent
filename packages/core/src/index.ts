@@ -4,7 +4,6 @@
 // (`npm run api`). What the other workspace packages need beyond this comes
 // from "@open-cr-agent/core/internal", which is not a contract.
 
-export { SpendLimitReached } from "./agent/budget.js";
 export type { ReviewerOverride, ReviewerOverrides } from "./agent/settings.js";
 export {
   type AgentRole,
@@ -13,6 +12,7 @@ export {
   type RoleSettings,
   type TierEfforts,
 } from "./agent/settings.js";
+export { SpendLimitReached } from "./agent/spend-limit.js";
 export { addUsage, emptyUsage } from "./agent/usage.js";
 export type {
   AgentEvent,
