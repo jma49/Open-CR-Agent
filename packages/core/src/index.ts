@@ -114,6 +114,8 @@ export {
   type AnchoringSummary,
   type CoverageEntry,
   coverageGaps,
+  isBlocking,
+  isIncompleteReview,
   isUnfinished,
   type ReviewEvent,
   type ReviewReport,

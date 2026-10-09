@@ -1,7 +1,7 @@
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import {
-  isUnfinished,
+  isIncompleteReview,
   type ReportOutput,
   type Severity,
   type Verification,
@@ -12,6 +12,7 @@ import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
 import { forTerminal } from "../io/terminal.js";
 import { UsageError } from "../io/usage-error.js";
+import { reviewerOutcomes } from "../reviewer-outcomes.js";
 import {
   listSessions,
   readSessionReport,
@@ -53,7 +54,8 @@ export interface Metrics {
   runs: {
     total: number;
     byVerdict: Record<string, number>;
-    // Runs that left files not reviewed, failed or never started.
+    // Incomplete reviews: runs that left a file unfinished (not reviewed,
+    // failed, or only partly reviewed) or a critical finding unverified.
     incomplete: number;
     // Sessions without a readable version 1 report: interrupted, or older.
     unreadable: number;
@@ -132,81 +134,37 @@ function aggregate(
 ): Metrics {
   const byVerdict: Record<string, number> = {};
   const bySeverity: Record<Severity, number> = { critical: 0, warning: 0, suggestion: 0 };
-  const byVerification: Record<Verification, number> = { confirmed: 0, uncertain: 0, unchecked: 0 };
-  const reviewers = new Map<string, ReviewerMetrics>();
-  const reviewerOf = new Map<string, string>();
-  const recorded = new Map<string, string>();
   const unique = new Set<string>();
-  const fixed = new Set<string>();
-  const dismissed = new Set<string>();
   let incomplete = 0;
   let reported = 0;
   let usd = 0;
   let inputTokens = 0;
   let outputTokens = 0;
-  const forReviewer = (id: string): ReviewerMetrics => {
-    let r = reviewers.get(id);
-    if (!r) {
-      r = {
-        tasks: 0,
-        failedTasks: 0,
-        findings: 0,
-        costUsd: 0,
-        fixed: 0,
-        dismissed: 0,
-        acceptanceRate: null,
-      };
-      reviewers.set(id, r);
-    }
-    return r;
-  };
-
   for (const report of reports) {
     byVerdict[report.verdict] = (byVerdict[report.verdict] ?? 0) + 1;
-    if (report.coverage.some(isUnfinished)) incomplete += 1;
+    if (isIncompleteReview(report)) incomplete += 1;
     usd += report.usage.costUsd;
     inputTokens += report.usage.inputTokens;
     outputTokens += report.usage.outputTokens;
-    for (const task of report.tasks) {
-      const r = forReviewer(task.reviewer);
-      r.tasks += 1;
-      if (task.status === "failed" || task.status === "timed_out") r.failedTasks += 1;
-      // A reused task's usage is what the earlier run paid; that run counts it.
-      if (task.reusedFrom === undefined) r.costUsd += task.usage.costUsd;
-    }
     for (const finding of report.findings) {
       reported += 1;
       unique.add(finding.fingerprint);
       bySeverity[finding.severity] += 1;
-      byVerification[finding.verification] += 1;
-      forReviewer(finding.reviewer).findings += 1;
-      if (!reviewerOf.has(finding.fingerprint))
-        reviewerOf.set(finding.fingerprint, finding.reviewer);
-    }
-    for (const f of report.rereview?.fixed ?? []) {
-      fixed.add(f.fingerprint);
-      if (f.reviewer && !recorded.has(f.fingerprint)) recorded.set(f.fingerprint, f.reviewer);
-    }
-    for (const f of report.rereview?.dismissed ?? []) {
-      dismissed.add(f.fingerprint);
-      if (f.reviewer && !recorded.has(f.fingerprint)) recorded.set(f.fingerprint, f.reviewer);
     }
   }
-  // A fingerprint can be dismissed in one review and gone in a later one:
-  // the reviewer's decision stands.
-  for (const fp of dismissed) fixed.delete(fp);
-  // The reviewer the earlier review recorded with the finding; reports from
-  // before it was recorded fall back to the first that reported the fingerprint.
-  const creditedTo = (fp: string) => recorded.get(fp) ?? reviewerOf.get(fp);
-  for (const fp of fixed) {
-    const reviewer = creditedTo(fp);
-    if (reviewer) forReviewer(reviewer).fixed += 1;
-  }
-  for (const fp of dismissed) {
-    const reviewer = creditedTo(fp);
-    if (reviewer) forReviewer(reviewer).dismissed += 1;
-  }
-  for (const r of reviewers.values()) r.acceptanceRate = rate(r.fixed, r.dismissed);
+  const outcomes = reviewerOutcomes(reports);
+  const reviewers = Object.entries(outcomes.reviewers).map(([id, r]): [string, ReviewerMetrics] => [
+    id,
+    {
+      tasks: r.tasks,
+      failedTasks: r.failedTasks,
+      findings: r.findings.critical + r.findings.warning + r.findings.suggestion,
+      costUsd: r.costUsd,
+      fixed: r.fixed,
+      dismissed: r.dismissed,
+      acceptanceRate: rate(r.fixed, r.dismissed),
+    },
+  ]);
 
   return {
     version: METRICS_VERSION,
@@ -219,13 +177,18 @@ function aggregate(
       outputTokens,
       usdPerRun: reports.length > 0 ? usd / reports.length : null,
     },
-    findings: { reported, unique: unique.size, bySeverity, byVerification },
-    outcomes: {
-      fixed: fixed.size,
-      dismissed: dismissed.size,
-      acceptanceRate: rate(fixed.size, dismissed.size),
+    findings: {
+      reported,
+      unique: unique.size,
+      bySeverity,
+      byVerification: outcomes.verification,
     },
-    reviewers: Object.fromEntries([...reviewers].sort(([a], [b]) => a.localeCompare(b))),
+    outcomes: {
+      fixed: outcomes.fixed,
+      dismissed: outcomes.dismissed,
+      acceptanceRate: rate(outcomes.fixed, outcomes.dismissed),
+    },
+    reviewers: Object.fromEntries(reviewers),
   };
 }
 

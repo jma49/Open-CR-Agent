@@ -27,7 +27,7 @@ Below, "0.x rule" means: a minor release may change it, and the changelog says h
 | The GitHub Action's inputs | [GitHub pull requests](./github) |
 | The state ocra keeps in its pull request summary comment | Internal (`v1` today), but later releases keep reading it. If one ever cannot, the next review starts over: every file, possibly repeating comments |
 | The plugin interface (`OcraPlugin`) | [Plugins](./plugins); 0.x rule |
-| The library entry: `review()` and the `ReviewOptions` fields the Embedding page lists, `startPlugins()`, the registry's `createVcs`, `createRuntime`, `reviewers`, `rules` and `emit`, `toReportOutput()`, `coverageGaps()` and `parseSarifLog()` | [Embedding ocra](./embedding); 0.x rule |
+| The library entry: `review()` and the `ReviewOptions` fields the Embedding page lists, `startPlugins()`, the registry's `createVcs`, `createRuntime`, `reviewers`, `rules` and `emit`, `toReportOutput()`, `coverageGaps()`, `isIncompleteReview()`, `isBlocking()` and `parseSarifLog()` | [Embedding ocra](./embedding); 0.x rule |
 | The main entry of each package: what `@open-cr-agent/core`, the adapters and the runtimes export | [Embedding ocra](./embedding#the-public-api) and each package's API report in [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc); 0.x rule. `/internal` entries and `@open-cr-agent/vcs-platform` are not a contract |
 | The error model: `OcraError`, its `code` values, `isOcraError()`, and what `review()` throws | [Embedding ocra](./embedding#errors); 0.x rule (codes may be added; renames and removals are in the changelog). Messages are not a contract |
 

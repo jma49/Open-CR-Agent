@@ -270,6 +270,20 @@ describe("ocra metrics", () => {
     expect(metrics.reviewers.security).toMatchObject({ tasks: 2, costUsd: 0.25 });
   });
 
+  it("counts a run with a critical finding it could not verify as incomplete, as its exit code does", async () => {
+    const dir = repoWithSessions({
+      "20261001T100000Z-000001": report({
+        runId: "20261001T100000Z-000001",
+        verdict: "minor_issues",
+        findings: [{ ...finding(A, "security", "critical"), verification: "unchecked" }],
+        unverifiedCriticals: 1,
+      }),
+      "20261002T100000Z-000002": report({ runId: "20261002T100000Z-000002" }),
+    });
+    const metrics = await collectMetrics(join(dir, ".ocra", "sessions"));
+    expect(metrics.runs).toMatchObject({ total: 2, incomplete: 1 });
+  });
+
   it("limits the runs with --since, by the start time in the session id", async () => {
     const dir = repoWithSessions({
       "20261001T100000Z-000001": report({ runId: "20261001T100000Z-000001" }),

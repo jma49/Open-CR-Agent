@@ -3,6 +3,7 @@ import {
   coverageGaps,
   type Finding,
   type IncompleteEnding,
+  isIncompleteReview,
   isUnfinished,
   MAX_AGENT_STEPS,
   type PriorFinding,
@@ -10,6 +11,7 @@ import {
   type Severity,
   type Verification,
 } from "@open-cr-agent/core";
+import { unconfirmedCriticals } from "@open-cr-agent/core/internal";
 import { safeMarkdown } from "./neutralize.js";
 import { type ReviewState, SUMMARY_MARKER, writeState } from "./state.js";
 import { type SuggestionFence, suggestionBlock } from "./suggestion.js";
@@ -36,14 +38,12 @@ const VERIFICATION: Record<Verification, string> = {
 // A run that reviewed nothing has no verdict to announce, and one that missed
 // files or could not verify a critical finding says so next to its verdict.
 function headline(report: ReviewReport): string {
-  const { notReviewed, nothingReviewed } = coverageGaps(report);
-  if (nothingReviewed) return "⏸️ Not reviewed";
-  const incomplete = notReviewed > 0 || report.unverifiedCriticals > 0;
+  if (coverageGaps(report).nothingReviewed) return "⏸️ Not reviewed";
   const overridden =
     report.verdict === "significant_concerns" && report.changeRequest.override
       ? " · overridden"
       : "";
-  return `${VERDICT[report.verdict]}${overridden}${incomplete ? " · incomplete" : ""}`;
+  return `${VERDICT[report.verdict]}${overridden}${isIncompleteReview(report) ? " · incomplete" : ""}`;
 }
 
 // Who overrode a blocking verdict, or how someone entitled to can.
@@ -186,14 +186,7 @@ function scopeNote(report: ReviewReport): string[] {
 // Unverified criticals that cap the verdict, and what the run did not check.
 function incompleteNotes(report: ReviewReport, text: PlatformText): string[] {
   const lines: string[] = [];
-  // Only true while no confirmed critical blocks, and low-confidence
-  // findings do not count at all.
-  const unverified =
-    report.verdict === "significant_concerns"
-      ? 0
-      : report.findings.filter(
-          (f) => f.severity === "critical" && f.verification !== "confirmed" && !f.lowConfidence,
-        ).length;
+  const unverified = unconfirmedCriticals(report);
   if (unverified > 0) {
     lines.push(
       "",

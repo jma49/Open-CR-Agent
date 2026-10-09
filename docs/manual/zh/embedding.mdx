@@ -10,7 +10,8 @@ description: 在你自己的程序里用 @open-cr-agent/core 的 review() 运行
 ```ts
 import {
   correctnessReviewerPlugin,
-  coverageGaps,
+  isBlocking,
+  isIncompleteReview,
   review,
   securityReviewerPlugin,
   sessionJsonlPlugin,
@@ -54,9 +55,9 @@ try {
     limits: { maxCostUsd: 2 },
     onEvent: (event) => registry.emit(event),
   });
-  const { notReviewed, nothingReviewed } = coverageGaps(report);
   console.log(JSON.stringify(toReportOutput(report)));
-  if (nothingReviewed || notReviewed > 0) process.exitCode = 3;
+  if (isIncompleteReview(report)) process.exitCode = 3;
+  else if (isBlocking(report)) process.exitCode = 1;
 } finally {
   await runtime.dispose?.();
 }
@@ -97,7 +98,7 @@ try {
 一个 `ReviewReport`，内容与 [JSON 报告](./cli#json-输出)相同。
 
 - **对外发布的是 `toReportOutput(report)`**，不是报告本身：它是 CLI 写出的带版本号的 JSON，类型为 `ReportOutput`，由 `reportOutputSchema`（类型即由它推导）和 [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json) 校验。内部报告的字段可能会变。
-- **不完整的审查不算通过。** `coverageGaps(report)` 给出有多少选中的文件没被审查、是否什么都没审到，并在 `incomplete` 里按任务的结束方式（`step_cap`、`stopped_early`）给出只审查了一部分的文件数；`report.unverifiedCriticals` 是没人能核查的 critical 数量。像 CLI 的[退出码](./cli#退出码)那样用这些做门禁，永远不要只看 `verdict`。
+- **不完整的审查不算通过。** 审查留下了没审完的选中文件，或有没人能核查的 critical 时，`isIncompleteReview(report)` 为真，这正是 CLI 以 3 退出的情形；结论让运行失败（退出码 1）时，即 `significant_concerns` 且没人推翻，`isBlocking(report)` 为真。像 CLI 的[退出码](./cli#退出码)那样用它们做门禁，永远不要只看 `verdict`。要看细节：`coverageGaps(report)` 给出有多少选中的文件没被审查、是否什么都没审到，并在 `incomplete` 里按任务的结束方式（`step_cap`、`stopped_early`）给出只审查了一部分的文件数；`report.unverifiedCriticals` 是没人能核查的 critical 数量。
 
 `vcs.publish(report)` 像 `--publish` 一样按平台的信任规则发布审查，没能发出去的部分以警告返回。
 
@@ -146,7 +147,7 @@ ocra 的各个包抛出带 `code` 的 `OcraError`（或其子类）：`isOcraErr
 
 每个包的主入口就是它的公开 API，是一份遵循 [0.x 规则](./stability)的约定：
 
-- **`@open-cr-agent/core`**：`review()` 和 `ReviewOptions`；它返回的内容（`ReviewReport`、`Finding` 以及组成它们的类型）、`coverageGaps()`、`toReportOutput()` 及 `ReportOutput`、`reportOutputSchema`、`reportJsonSchema()` 和 `REPORT_VERSION`；`parseSarifLog()`；插件接口（`OcraPlugin` 及其上下文、`startPlugins()`、`PluginRegistry`、内置的审查者插件和 `sessionJsonlPlugin`）；插件实现的约定（`VcsAdapter`、`AgentRuntime` 及它们用到的类型、`ToolDefinition`、`ReviewerDefinition`、`RepoRule`）；运行时可以基于的部分（`ChainRunner` 及 `ModelAttempts`、`AttemptOutcome`、`QuotaError`，审查工具、步数上限以及[插件](./plugins)列出的其他辅助内容）；以及[错误模型](#错误)。
+- **`@open-cr-agent/core`**：`review()` 和 `ReviewOptions`；它返回的内容（`ReviewReport`、`Finding` 以及组成它们的类型）、`coverageGaps()`、`isIncompleteReview()`、`isBlocking()`、`toReportOutput()` 及 `ReportOutput`、`reportOutputSchema`、`reportJsonSchema()` 和 `REPORT_VERSION`；`parseSarifLog()`；插件接口（`OcraPlugin` 及其上下文、`startPlugins()`、`PluginRegistry`、内置的审查者插件和 `sessionJsonlPlugin`）；插件实现的约定（`VcsAdapter`、`AgentRuntime` 及它们用到的类型、`ToolDefinition`、`ReviewerDefinition`、`RepoRule`）；运行时可以基于的部分（`ChainRunner` 及 `ModelAttempts`、`AttemptOutcome`、`QuotaError`，审查工具、步数上限以及[插件](./plugins)列出的其他辅助内容）；以及[错误模型](#错误)。
 - **`@open-cr-agent/vcs-local`**：`localGitPlugin`、`LocalTarget`、`LocalGitOptions` 和 `GitError`。**`vcs-github`** 和 **`vcs-gitlab`**：`githubPlugin` 和 `gitlabPlugin`，`resolveGitHubTarget` 和 `resolveGitLabTarget` 及 `GitHubSettings` 和 `GitLabSettings`，以及它们的 API 错误。**`runtime-opencode`** 和 **`runtime-direct`**：`opencodeRuntimePlugin` 和 `directRuntimePlugin`。
 - **`@open-cr-agent/cli`**：`run(argv)`，即带参数（不含 node 和脚本路径）运行 `ocra` 命令，输出写到 stdout 和 stderr，返回值是[退出码](./cli)。
 - **`@open-cr-agent/vcs-platform`** 是 ocra 各平台适配器共用的部分，还不是约定。

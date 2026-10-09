@@ -2,6 +2,7 @@ import {
   coverageGaps,
   type Finding,
   type FindingFix,
+  isIncompleteReview,
   isUnfinished,
   type PriorFinding,
   type ReviewReport,
@@ -107,7 +108,7 @@ export function sarifLog(report: ReviewReport, version: string) {
         },
         invocations: [
           {
-            executionSuccessful: notReviewed === 0 && report.unverifiedCriticals === 0,
+            executionSuccessful: !isIncompleteReview(report),
             toolExecutionNotifications: [
               ...(notReviewed > 0
                 ? [
