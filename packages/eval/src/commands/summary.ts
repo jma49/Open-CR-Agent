@@ -11,6 +11,7 @@ import { REPEATS_FILE, type Repetition, renderRepeats, summarizeRepeats } from "
 import { type RunInfo, renderMarkdown } from "../report.js";
 import type { InstanceResult } from "../results.js";
 import { score } from "../score.js";
+import { readSessionTrace, type SessionTrace, sessionLogPath } from "../session-trace.js";
 import type { Output } from "./options.js";
 
 // The judge's cache is shared by the repetitions of a run.
@@ -27,7 +28,12 @@ export async function writeSummary(
   const summary: SavedSummary["summary"] = await score(instances, results, cache);
   const goldenDir = info.selection.goldenDir;
   if (typeof goldenDir === "string") {
-    summary.golden = await scoreGolden(instances, results, cache);
+    summary.golden = await scoreGolden(
+      instances,
+      results,
+      cache,
+      await readTraces(runDir, results),
+    );
     const attacks = await scoreAttacks(instances, results, cache);
     if (attacks) summary.attacks = attacks;
     const labels = labelsFor(goldenDir, summary.golden.unadjudicated, await readLabels(runDir));
@@ -40,6 +46,19 @@ export async function writeSummary(
   await writeFile(join(runDir, "summary.json"), `${JSON.stringify({ info, summary }, null, 2)}\n`);
   await writeFile(join(runDir, "summary.md"), markdown);
   return { markdown, saved: { info, summary } };
+}
+
+async function readTraces(
+  runDir: string,
+  results: readonly InstanceResult[],
+): Promise<Map<string, SessionTrace>> {
+  const traces = new Map<string, SessionTrace>();
+  for (const result of results) {
+    if (result.status !== "reviewed") continue;
+    const trace = await readSessionTrace(sessionLogPath(runDir, result.id));
+    if (trace) traces.set(result.id, trace);
+  }
+  return traces;
 }
 
 export async function writeRepeats(

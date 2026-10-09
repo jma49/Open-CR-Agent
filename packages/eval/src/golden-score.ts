@@ -1,9 +1,11 @@
 import type { OutputFinding, Severity } from "@open-cr-agent/core";
 import { shortHash } from "@open-cr-agent/core/internal";
+import { type ClaimStage, claimStages, countFunnel, type Funnel } from "./funnel.js";
 import type { Adjudication, ForbiddenRange, Instance } from "./instance.js";
 import { matchComments, type SemanticJudge } from "./match.js";
 import type { InstanceResult } from "./results.js";
 import { toGeneratedComment } from "./score.js";
+import type { DropStage, MatchableFinding, SessionTrace } from "./session-trace.js";
 
 // A finding as the maintainer sees it when labeling, and as failures list it.
 export interface GoldenFinding {
@@ -48,6 +50,9 @@ export interface GoldenSummary {
   // By case id, so runs that reviewed different cases can be compared on
   // the ones they share (trend.ts). Absent in summaries written before it.
   cases?: Record<string, GoldenCaseScore>;
+  // The recall funnel over every expected finding (funnel.ts). Absent in
+  // summaries written before it.
+  funnel?: Funnel;
 }
 
 export interface GoldenCaseScore {
@@ -58,8 +63,8 @@ export interface GoldenCaseScore {
   // Matched or labeled valid: precision's numerator.
   right: number;
   // Each expected finding, in the case's order, and whether it was found
-  // at or above its severity.
-  claims: { concern: string; found: boolean }[];
+  // at or above its severity; with the review's session log, how far it got.
+  claims: ({ concern: string; found: boolean } & Partial<ClaimStage>)[];
 }
 
 const RANK: Record<Severity, number> = { suggestion: 0, warning: 1, critical: 2 };
@@ -70,6 +75,7 @@ export async function scoreGolden(
   instances: readonly Instance[],
   results: readonly InstanceResult[],
   judge: SemanticJudge,
+  traces: ReadonlyMap<string, SessionTrace> = new Map(),
 ): Promise<GoldenSummary> {
   const byId = new Map(results.map((r) => [r.id, r]));
   const summary: GoldenSummary = {
@@ -105,6 +111,8 @@ export async function scoreGolden(
     counts.correct += matched.size;
     const atSeverity = foundAtSeverity(instance, found);
     counts.underrated += found.size - atSeverity;
+    const trace = traces.get(instance.id);
+    const stages = trace && (await funnelOf(instance, found, trace));
     const caseScore: GoldenCaseScore = {
       expected: instance.references.length,
       found: atSeverity,
@@ -113,6 +121,7 @@ export async function scoreGolden(
       claims: instance.references.map((reference, k) => ({
         concern: reference.note,
         found: atRequiredSeverity(instance, k, found.get(k)),
+        ...stages?.[k],
       })),
     };
     cases[instance.id] = caseScore;
@@ -145,6 +154,7 @@ export async function scoreGolden(
     }
   }
   summary.cases = cases;
+  summary.funnel = countFunnel(Object.values(cases).flatMap((c) => c.claims));
   counts.unadjudicated = summary.unadjudicated.length;
   summary.precision = ratio(counts.correct + counts.valid, counts.reported);
   summary.recall = ratio(counts.matched - counts.underrated, counts.expected);
@@ -170,22 +180,53 @@ async function labelFor(
   return undefined;
 }
 
-export interface ExpectedMatch {
+// Findings that never reached the report are matched by location alone
+// (same file, lines within the matcher's tolerance), never by the judge:
+// the funnel adds no model call to scoring. So raised and dropped say a task
+// reported something at the expected lines, not that it was the same issue.
+const AT_LOCATION: SemanticJudge = { sameIssue: async () => true };
+
+async function funnelOf(
+  instance: Instance,
+  found: ReadonlyMap<number, OutputFinding>,
+  trace: SessionTrace,
+): Promise<ClaimStage[]> {
+  const missed = new Set([...instance.references.keys()].filter((k) => !found.has(k)));
+  const at = async <F extends MatchableFinding>(findings: readonly F[]) =>
+    (await matchExpected(instance, findings, AT_LOCATION, missed)).found;
+  const dropped = new Map<number, DropStage>();
+  for (const [k, f] of await at(trace.raised.filter((f) => trace.removed.has(f.fingerprint)))) {
+    const by = trace.removed.get(f.fingerprint);
+    if (by) dropped.set(k, by);
+  }
+  for (const k of (await at(trace.outsideBundle)).keys()) {
+    if (!dropped.has(k)) dropped.set(k, "outside_bundle");
+  }
+  const raised = await at(trace.raised.filter((f) => !trace.removed.has(f.fingerprint)));
+  return claimStages(instance, trace, { found, dropped, raised });
+}
+
+export interface ExpectedMatch<F = OutputFinding> {
   // Indices of reported findings that match an expected one.
   matched: Set<number>;
   // Each expected finding that was found, by its index, with its most
   // severe report.
-  found: Map<number, OutputFinding>;
+  found: Map<number, F>;
 }
 
 // An expected finding may be reported at its location or at an alternate:
-// every variant is matched, and the finding is found once.
-export async function matchExpected(
+// every variant is matched, and the finding is found once. `only` limits
+// the expected findings looked for to those indices.
+export async function matchExpected<F extends MatchableFinding>(
   instance: Instance,
-  findings: readonly OutputFinding[],
+  findings: readonly F[],
   judge: SemanticJudge,
-): Promise<ExpectedMatch> {
-  const variants = instance.references.flatMap((reference, k) => [
+  only?: ReadonlySet<number>,
+): Promise<ExpectedMatch<F>> {
+  const wanted = instance.references.flatMap((reference, k) =>
+    only && !only.has(k) ? [] : [{ k, reference }],
+  );
+  const variants = wanted.flatMap(({ k, reference }) => [
     { k, reference },
     ...(instance.golden?.alternates[k] ?? []).map((a) => ({
       k,
@@ -198,7 +239,7 @@ export async function matchExpected(
     judge,
   );
   const matched = new Set(matches.flatMap((m) => m.matchedIndex ?? []));
-  const found = new Map<number, OutputFinding>();
+  const found = new Map<number, F>();
   for (const [i, match] of matches.entries()) {
     const finding = match.matchedIndex === undefined ? undefined : findings[match.matchedIndex];
     const k = variants[i]?.k;

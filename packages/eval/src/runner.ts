@@ -1,12 +1,14 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import type { Usage } from "@open-cr-agent/core";
 import { errorMessage } from "@open-cr-agent/core";
+import { isNotFound } from "@open-cr-agent/core/internal";
 import { plantAttack } from "./attack.js";
 import type { Instance } from "./instance.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
 import { type InstanceResult, readResult } from "./results.js";
 import { reviewInstance } from "./reviewer.js";
+import { sessionLogPath } from "./session-trace.js";
 
 // What ocra's runtime reports when a provider refuses for quota. A free-tier
 // daily limit refuses every later PR too, and each ocra process would first
@@ -124,12 +126,20 @@ async function reviewOne(
     }
   }
   await mkdir(join(options.runDir, "reports"), { recursive: true });
+  const logPath = sessionLogPath(options.runDir, instance.id);
+  // A log left by an earlier attempt at this PR is not this review's.
+  await rm(logPath, { force: true });
   const outcome = await reviewInstance(repoDir, target, reportPath, {
     command: options.command,
     timeoutMs: options.timeoutMs,
     reviewArgs: options.reviewArgs ?? [],
   });
   const report = outcome.report;
+  if (report?.runId) {
+    await keepSessionLog(repoDir, report.runId, logPath).catch((error: unknown) => {
+      options.log(`${instance.id}: the session log was not kept: ${errorMessage(error)}`);
+    });
+  }
   const completed = report?.tasks.some((t) => t.status === "completed") ?? false;
   // Timed out or interrupted (130), the CLI still writes a partial report;
   // it is a failure to retry, not a review to score.
@@ -153,6 +163,19 @@ async function reviewOne(
   if (report?.provenance) result.provenance = report.provenance;
   if (outcome.error) result.error = outcome.error;
   return result;
+}
+
+// The clone is shared by every run that reviews the PR, so the log ocra wrote
+// there (`.ocra/sessions/<run id>/`, the CLI's session store) is copied into
+// the run. Without one, the recall funnel of the PR is unknown.
+async function keepSessionLog(repoDir: string, runId: string, target: string): Promise<void> {
+  if (!/^[\w.@-]+$/.test(runId) || runId.startsWith(".")) return;
+  await mkdir(dirname(target), { recursive: true });
+  try {
+    await copyFile(join(repoDir, ".ocra", "sessions", runId, "events.jsonl"), target);
+  } catch (error) {
+    if (!isNotFound(error)) throw error;
+  }
 }
 
 function skipped(id: string, status: "skipped_budget" | "skipped_quota"): InstanceResult {

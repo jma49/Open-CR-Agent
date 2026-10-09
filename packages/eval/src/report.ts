@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { AttackSummary } from "./attack-score.js";
+import { FUNNEL_STAGES } from "./funnel.js";
 import type { GoldenSummary } from "./golden-score.js";
 import { ocraBuildSchema, renderBuild } from "./ocra-build.js";
 import { type ProvenanceSummary, renderProvenance } from "./provenance.js";
@@ -162,5 +163,38 @@ function goldenSection(golden: GoldenSummary): string[] {
           ),
         ]),
     "",
+    ...funnelSection(golden),
+  ];
+}
+
+function funnelSection(golden: GoldenSummary): string[] {
+  const funnel = golden.funnel;
+  if (!funnel) return [];
+  const known = FUNNEL_STAGES.reduce((n, stage) => n + funnel[stage], 0);
+  if (known === 0) {
+    return [
+      "Recall funnel: unknown, the run kept no session log of its reviews (runs made before ocra-eval kept them).",
+      "",
+    ];
+  }
+  const lost = Object.entries(golden.cases ?? {}).flatMap(([id, c]) =>
+    c.claims.flatMap((claim, k) =>
+      claim.stage && claim.stage !== "found"
+        ? [
+            `- ${id}#${k + 1} (${claim.droppedBy ? `dropped by ${claim.droppedBy}` : claim.stage}): ${claim.concern.replace(/\s+/g, " ").trim()}`,
+          ]
+        : [],
+    ),
+  );
+  return [
+    "### Recall funnel",
+    "",
+    "How far each expected finding got, from the reviews' session logs; found counts any severity. Unknown: reviews without a session log.",
+    "",
+    "| Not looked | Looked | Raised | Dropped | Found | Unknown |",
+    "|---|---|---|---|---|---|",
+    `| ${FUNNEL_STAGES.map((stage) => funnel[stage]).join(" | ")} | ${funnel.unknown} |`,
+    "",
+    ...(lost.length === 0 ? [] : ["Where the others stopped:", "", ...lost, ""]),
   ];
 }

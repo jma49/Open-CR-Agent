@@ -3,13 +3,15 @@ import { join, relative } from "node:path";
 import { errorMessage } from "@open-cr-agent/core";
 import { isNotFound } from "@open-cr-agent/core/internal";
 import { z } from "zod";
+import { FUNNEL_STAGES } from "./funnel.js";
+import { DROP_STAGES } from "./session-trace.js";
 import type { TrendRun, WrapUps } from "./trend.js";
 
 // A tree of runs as the cache or downloaded artifacts lay it out: any
 // directory with run.json is a run (a repeated run's r1/ … rk/ included).
 // Bounded, and symlinks are not followed.
 const MAX_DEPTH = 4;
-const NOT_RUNS = new Set(["instances", "reports"]);
+const NOT_RUNS = new Set(["instances", "reports", "events"]);
 
 // What trend reads of a saved summary. Loose on purpose: summaries from
 // older ocra-eval versions lack later fields, and trend says what is missing.
@@ -18,7 +20,14 @@ const caseScoreSchema = z.object({
   found: z.int().nonnegative(),
   reported: z.int().nonnegative(),
   right: z.int().nonnegative(),
-  claims: z.array(z.object({ concern: z.string(), found: z.boolean() })),
+  claims: z.array(
+    z.object({
+      concern: z.string(),
+      found: z.boolean(),
+      stage: z.enum(FUNNEL_STAGES).exactOptional(),
+      droppedBy: z.enum(DROP_STAGES).exactOptional(),
+    }),
+  ),
 });
 const summarySchema = z.object({
   info: z.object({

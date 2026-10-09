@@ -42,7 +42,9 @@ export interface Summary {
   anchoring?: AnchoringSummary & { fileLevelShare: number };
 }
 
-export function toGeneratedComment(finding: OutputFinding): GeneratedComment {
+export function toGeneratedComment(
+  finding: Pick<OutputFinding, "file" | "lines" | "title" | "body">,
+): GeneratedComment {
   return {
     path: finding.file,
     side: "right",

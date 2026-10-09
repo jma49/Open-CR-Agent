@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { main } from "./cli.js";
+import type { FunnelStage } from "./funnel.js";
 import type { GoldenCaseScore } from "./golden-score.js";
 import { buildTrend, seriesOf, stats } from "./trend.js";
 import { loadTrendRuns } from "./trend-load.js";
@@ -127,7 +128,13 @@ describe("trend", () => {
     const feat = trend.across?.rows.find((r) => r.name === "free-m@feat-x-smoke");
     // Case c is not common, so its wrap-up turn is left out.
     expect(feat?.scored).toEqual([
-      { recall: 0.75, precision: 0.8, wrapUps: { turns: 3, findings: 3 } },
+      {
+        recall: 0.75,
+        precision: 0.8,
+        wrapUps: { turns: 3, findings: 3 },
+        // These summaries predate the funnel.
+        funnel: { "not-looked": 0, looked: 0, raised: 0, dropped: 0, found: 0, unknown: 4 },
+      },
     ]);
     expect(trend.claims.map((c) => [c.id, c.hits])).toEqual([
       [
@@ -193,12 +200,41 @@ describe("trend", () => {
       "compared on 2 case(s) every scored run reviewed (left out, reviewed by only some: c)",
     );
     expect(text).toContain(
-      "| free-m@main-smoke-1 | 0123456789ab | 3 | 75.0% | 66.7% | 0 | 0 | 50.0%, 50.0% |",
+      "| free-m@main-smoke-1 | 0123456789ab | 3 | 75.0% | 66.7% | 0 | 0 | unknown | 50.0%, 50.0% |",
     );
     expect(text).toContain("- Golden recall: 62.5% (SD 17.7%; 50.0% to 75.0%)");
     expect(text).toContain("## Across series, on the 2 case(s) every scored run reviewed");
     expect(text).toContain("| a#1 | first \\| issue | 1/1 | 1/2 |");
     expect(err.join("")).toContain("skipped unscored: not scored yet");
+  });
+
+  it("shows how far each run got with each expected finding, unknown without session logs", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ocra-trend-"));
+    const staged = (hits: [boolean, boolean], stages: [FunnelStage, FunnelStage]) => {
+      const c = kase(hits, 1, 1);
+      const claims = c.claims.map((claim, k) => {
+        const stage = stages[k];
+        return stage ? { ...claim, stage } : claim;
+      });
+      return { ...c, claims };
+    };
+    await writeRun(join(root, "s-1"), {
+      runId: "s-1",
+      cases: { a: staged([true, false], ["found", "looked"]) },
+    });
+    // The second finding reached the report below its minimum severity.
+    await writeRun(join(root, "s-2"), {
+      runId: "s-2",
+      cases: { a: staged([false, false], ["dropped", "found"]) },
+    });
+    await writeRun(join(root, "s-3"), { runId: "s-3", cases: { a: kase([true, false], 1, 1) } });
+    const out: string[] = [];
+    await main(["trend", root], { write: (s: string) => out.push(s) }, { write: () => undefined });
+    const text = out.join("");
+    expect(text).toContain("| s-1 | 0123456789ab | 1 | 50.0% | 100.0% | 0 | 0 | 0/1/0/0/1 |");
+    expect(text).toContain("| s-3 | 0123456789ab | 1 | 50.0% | 100.0% | 0 | 0 | unknown |");
+    expect(text).toContain("| a#1 | first \\| issue | 2/3 (dropped 1) |");
+    expect(text).toContain("| a#2 | second issue | 0/3 (looked 1, underrated 1, unknown 1) |");
   });
 
   it("fails when there is no golden run", async () => {

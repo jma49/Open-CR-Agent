@@ -26,11 +26,19 @@ function fakeOcra(dir: string): string {
   const script = join(dir, "fake-ocra.mjs");
   writeFileSync(
     script,
-    `import { writeFileSync, appendFileSync } from "node:fs";
+    `import { writeFileSync, appendFileSync, mkdirSync } from "node:fs";
 ${FAKE_REPORT_JS}
 const args = process.argv.slice(2);
 const out = args[args.indexOf("--output") + 1];
 appendFileSync(${JSON.stringify(join(dir, "calls.log"))}, args[args.indexOf("--from") + 1] + "\\n");
+// A session log where ocra keeps one, under the run id the report names.
+if (args[args.indexOf("--from") + 1].startsWith("session:")) {
+  const runId = args[args.indexOf("--from") + 1].slice("session:".length);
+  mkdirSync(".ocra/sessions/" + runId, { recursive: true });
+  writeFileSync(".ocra/sessions/" + runId + "/events.jsonl", '{"type":"run_started"}\\n');
+  writeFileSync(out, JSON.stringify(report({ runId, tasks: [task("correctness-1", "completed")] })));
+  process.exit(0);
+}
 if (args[args.indexOf("--from") + 1] === "fail") { process.stderr.write("boom\\n"); process.exit(2); }
 if (args[args.indexOf("--from") + 1] === "quota") {
   writeFileSync(out, JSON.stringify(report({ tasks: [task("correctness-1", "failed",
@@ -120,6 +128,27 @@ describe("runInstances", () => {
     });
     const [plain] = await runInstances([instance("p@1")], options);
     expect(plain).not.toHaveProperty("provenance");
+  });
+
+  it("keeps each review's session log next to its result, for the recall funnel", async () => {
+    const dir = temp();
+    const options = {
+      runDir: join(dir, "run"),
+      reposDir: dir,
+      command: [process.execPath, fakeOcra(dir)],
+      timeoutMs: 30_000,
+      prepare: async () => dir,
+      log: () => {},
+    };
+    await runInstances(
+      [instance("kept", "session:20261008T000000Z-abcdef"), instance("odd", "session:..")],
+      options,
+    );
+    expect(readFileSync(join(dir, "run", "events", "kept.jsonl"), "utf8")).toBe(
+      '{"type":"run_started"}\n',
+    );
+    // A run id that is not one names no session directory.
+    expect(() => readFileSync(join(dir, "run", "events", "odd.jsonl"))).toThrow(/ENOENT/);
   });
 
   it("keeps how a task that never called task_done ended (#477)", async () => {
