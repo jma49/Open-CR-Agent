@@ -110,7 +110,7 @@ A task that fails or times out never fails the run; its files are reported as `f
 
 ## File selection
 
-ocra skips binary files, likely secrets (`.env`, keys, certificates, cloud and registry credentials, Terraform variables and state), deleted files, media and archives, lock files, vendored and generated code, and very large diffs. Files over 1 MB are diffed as binary and skipped. Database migrations are never treated as generated code.
+ocra skips binary files, likely secrets (`.env`, keys, certificates, cloud and registry credentials, Terraform variables and state), deleted files, media and archives, lock files, vendored and generated code, and very large diffs. Files over 1 MB are diffed as binary and skipped. A file whose name says text (`.ts`, `.py`, …) but that was skipped as binary gets a warning. Range, commit and pull request reviews read `.gitattributes` from the base commit (git 2.41 or later), so the reviewed change cannot mark its own files binary. Database migrations are never treated as generated code.
 
 - `exclude`: globs to skip in addition.
 - `include`: globs to review even if they would be skipped as generated or by extension. Secrets can never be included.

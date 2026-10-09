@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { FileChangeKind, FileDiff } from "../domain.js";
-import { defaultSelectionPolicy, type SelectionPolicy, selectFiles } from "./select.js";
+import {
+  binaryTextWarning,
+  defaultSelectionPolicy,
+  type SelectionPolicy,
+  selectFiles,
+} from "./select.js";
 
 interface DiffOptions {
   kind?: FileChangeKind;
@@ -138,5 +143,24 @@ describe("selectFiles", () => {
   it("returns one decision per input in input order", () => {
     const files = [diff("b.ts"), diff("yarn.lock"), diff("a.ts")];
     expect(selectFiles(files).map((d) => d.diff.newPath)).toEqual(["b.ts", "yarn.lock", "a.ts"]);
+  });
+});
+
+describe("binaryTextWarning", () => {
+  it("names text files excluded as binary, but not binary formats or deletions", () => {
+    const decisions = selectFiles([
+      diff("a.ts", { isBinary: true }),
+      diff("b.py", { isBinary: true }),
+      diff("c.go", { isBinary: true }),
+      diff("d.rs", { isBinary: true }),
+      diff("logo.png", { isBinary: true }),
+      diff("old.js", { isBinary: true, kind: "deleted" }),
+      diff("e.ts"),
+    ]);
+    expect(binaryTextWarning(decisions)).toBe(
+      "4 file(s) not reviewed as binary although their names say text " +
+        "(a .gitattributes entry or their size): a.ts, b.py, c.go and 1 more",
+    );
+    expect(binaryTextWarning(selectFiles([diff("logo.png", { isBinary: true })]))).toBeUndefined();
   });
 });

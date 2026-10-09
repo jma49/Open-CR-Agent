@@ -112,4 +112,16 @@ describe("review completeness", () => {
     expect(report.verdict).toBe("significant_concerns");
     expect(report.summary).toBe("No new issues; 1 earlier finding(s) are still open.");
   });
+
+  it("warns when a file whose name says text was excluded as binary", async () => {
+    const binary = (path: string) =>
+      `diff --git a/${path} b/${path}\nindex 1111111..2222222 100644\nBinary files a/${path} and b/${path} differ`;
+    const diff = [patch("src/a.ts", "const a = 1;"), binary("src/app.js"), binary("logo.png")];
+    const report = await review({
+      vcs: vcs({}, diff.join("\n")),
+      runtime: done,
+    });
+    expect(report.warnings).toContainEqual(expect.stringContaining("src/app.js"));
+    expect(report.warnings.join("\n")).not.toContain("logo.png");
+  });
 });

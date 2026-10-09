@@ -155,6 +155,28 @@ function pick(
   return picked;
 }
 
+// Attributes decide which files diff as binary, and binary files are not
+// reviewed, so the reviewed commits must not set them: they come from the
+// base commit, which the reviewer trusts, rather than from the work tree
+// (where a pull request review has the head checked out). git before 2.41
+// has no --attr-source; there the work tree's apply, and the review warns
+// about text files it excluded as binary.
+const ATTR_SOURCE_SINCE = [2, 41] as const;
+let attrSource: Promise<boolean> | undefined;
+
+export async function attributesFrom(root: string, commit: string): Promise<string[]> {
+  attrSource ??= git(["version"], { cwd: root }).then(supportsAttrSource, () => false);
+  return (await attrSource) ? [`--attr-source=${commit}`] : [];
+}
+
+export function supportsAttrSource(version: string): boolean {
+  const match = /(\d+)\.(\d+)/.exec(version);
+  if (!match) return false;
+  const [major, minor] = [Number(match[1]), Number(match[2])];
+  const [sinceMajor, sinceMinor] = ATTR_SOURCE_SINCE;
+  return major > sinceMajor || (major === sinceMajor && minor >= sinceMinor);
+}
+
 // CI checkouts are shallow by default; commits beyond the cut-off look
 // unrelated to git, which surfaces as a failed merge-base.
 export async function isShallow(root: string): Promise<boolean> {

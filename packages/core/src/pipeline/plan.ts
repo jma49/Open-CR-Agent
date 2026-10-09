@@ -11,7 +11,12 @@ import {
   type RepoRule,
   type SourcedRule,
 } from "../rules/repo-rules.js";
-import { defaultSelectionPolicy, type FileDecision, selectFiles } from "../select/select.js";
+import {
+  binaryTextWarning,
+  defaultSelectionPolicy,
+  type FileDecision,
+  selectFiles,
+} from "../select/select.js";
 import { triage } from "../triage.js";
 import { reviewContext } from "./context.js";
 import { rank } from "./matrix.js";
@@ -117,6 +122,7 @@ export async function planReview(
     warnings: bundled.warnings,
   });
 
+  const binaryText = binaryTextWarning(decisions);
   return {
     changeRequest,
     decisions,
@@ -136,7 +142,7 @@ export async function planReview(
       options.accountMemory ?? [],
     ),
     usage,
-    warnings: bundled.warnings,
+    warnings: binaryText ? [binaryText, ...bundled.warnings] : bundled.warnings,
   };
 }
 

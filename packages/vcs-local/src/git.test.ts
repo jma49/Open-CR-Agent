@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { credentialEnvironment, gitEnvironment } from "./git.js";
+import { credentialEnvironment, gitEnvironment, supportsAttrSource } from "./git.js";
 
 describe("gitEnvironment", () => {
   it("keeps git's own, ssh's and the system's variables and drops the rest", () => {
@@ -29,6 +29,17 @@ describe("gitEnvironment", () => {
         "SystemRoot",
       ].sort(),
     );
+  });
+});
+
+describe("supportsAttrSource", () => {
+  it("is true from git 2.41 on", () => {
+    expect(supportsAttrSource("git version 2.39.5 (Apple Git-154)")).toBe(false);
+    expect(supportsAttrSource("git version 2.40.1")).toBe(false);
+    expect(supportsAttrSource("git version 2.41.0")).toBe(true);
+    expect(supportsAttrSource("git version 2.47.1.windows.1")).toBe(true);
+    expect(supportsAttrSource("git version 3.0.0")).toBe(true);
+    expect(supportsAttrSource("not git")).toBe(false);
   });
 });
 

@@ -10,7 +10,7 @@ import {
   type VcsAdapter,
 } from "@open-cr-agent/core";
 import { isNotFound, parseUnifiedDiff } from "@open-cr-agent/core/internal";
-import { GitError, git, isShallow, SHALLOW_HINT } from "./git.js";
+import { attributesFrom, GitError, git, isShallow, SHALLOW_HINT } from "./git.js";
 import { MAX_READ_BYTES, WorkingTree } from "./working-tree.js";
 
 export type LocalTarget =
@@ -75,7 +75,10 @@ export class LocalGitAdapter implements VcsAdapter {
   async getDiff(): Promise<FileDiff[]> {
     const { root, base, head } = await this.target();
     if (head !== undefined) {
-      return parseUnifiedDiff(await git([...DIFF_ARGS, base, head, "--"], { cwd: root }));
+      const attributes = await attributesFrom(root, base);
+      return parseUnifiedDiff(
+        await git([...attributes, ...DIFF_ARGS, base, head, "--"], { cwd: root }),
+      );
     }
     return parseUnifiedDiff(await workspaceDiff(root, base));
   }
@@ -102,8 +105,20 @@ export class LocalGitAdapter implements VcsAdapter {
   }
 
   async searchCode(literal: string): Promise<CodeMatch[]> {
-    const { root, head } = await this.target();
-    const args = ["grep", "-n", "-z", "-I", "--no-color", "--full-name", "-F", "-m", "20"];
+    const { root, base, head } = await this.target();
+    const attributes = head === undefined ? [] : await attributesFrom(root, base);
+    const args = [
+      ...attributes,
+      "grep",
+      "-n",
+      "-z",
+      "-I",
+      "--no-color",
+      "--full-name",
+      "-F",
+      "-m",
+      "20",
+    ];
     if (head === undefined) args.push("--untracked");
     args.push("-e", literal);
     if (head !== undefined) args.push(head);

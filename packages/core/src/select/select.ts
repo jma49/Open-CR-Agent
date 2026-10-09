@@ -7,6 +7,7 @@ import {
   MIGRATION_PATTERNS,
   NON_REVIEWABLE_EXTENSIONS,
   SECRET_PATTERNS,
+  TEXT_EXTENSIONS,
 } from "./patterns.js";
 
 export const exclusionReasonSchema = z.enum([
@@ -41,6 +42,8 @@ const isSecret = picomatch(SECRET_PATTERNS, { ...globOptions, ignore: ENV_TEMPLA
 const isGenerated = picomatch(GENERATED_PATTERNS, globOptions);
 const isMigration = picomatch(MIGRATION_PATTERNS, globOptions);
 const nonReviewableExtensions = new Set(NON_REVIEWABLE_EXTENSIONS);
+const textExtensions = new Set(TEXT_EXTENSIONS);
+const NAMED_FILES = 3;
 
 // The raw path is matched too: NFKC can fold a character into "/", which a
 // pattern's "*" matches only in the raw path.
@@ -94,6 +97,23 @@ function exclusionReason(
 
   if (diff.patch.length > policy.maxPatchChars) return "too_large";
   return undefined;
+}
+
+// A file whose name says text diffs as binary because of its size or a
+// .gitattributes entry, and an adapter that reads attributes from the
+// reviewed tree (an old git) lets the change set them: worth saying, since
+// binary files are not reviewed.
+export function binaryTextWarning(decisions: readonly FileDecision[]): string | undefined {
+  const paths = decisions
+    .filter((d) => !d.selected && d.reason === "binary" && d.diff.kind !== "deleted")
+    .map((d) => d.diff.newPath)
+    .filter((path) => textExtensions.has(extension(path)));
+  if (paths.length === 0) return undefined;
+  const more = paths.length > NAMED_FILES ? ` and ${paths.length - NAMED_FILES} more` : "";
+  return (
+    `${paths.length} file(s) not reviewed as binary although their names say text ` +
+    `(a .gitattributes entry or their size): ${paths.slice(0, NAMED_FILES).join(", ")}${more}`
+  );
 }
 
 function matcher(patterns: readonly string[]): (path: string) => boolean {
