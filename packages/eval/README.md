@@ -1,18 +1,18 @@
 # @open-cr-agent/eval
 
-`ocra-eval`: replays benchmark changes through the `ocra` CLI and scores the findings. How to run it, the golden case format and the scoring rules are in the user manual's evaluation page (`docs/manual/en/evaluation.mdx`); this file is the map for working on the package. The package is private and not published.
+`ocra-eval` replays benchmark changes through the `ocra` CLI and scores the findings. Private, not published. How to run it, the golden case format and the scoring rules are in the manual's [evaluation page](../../docs/manual/en/evaluation.mdx); this file maps the package for contributors.
 
-Run it from a build: `node packages/eval/dist/main.js <command>` (`npm run build` first; `ocra-eval --help` lists the commands).
+Run it from a build: `npm run build`, then `node packages/eval/dist/main.js <command>` (`--help` lists the commands).
 
 ## Modules
 
 | Module | What it does |
 |---|---|
 | `cli.ts`, `main.ts` | The usage text and which command runs |
-| `commands/*.ts` | One file per command (`list`, `ceiling`, `run`, `score`, `adjudicate`, `compare`, `trend`, `golden-import`); `options.ts` holds the flags and selection they share, `summary.ts` writes a run's summary |
+| `commands/*.ts` | One file per command; `options.ts` holds shared flags and selection, `summary.ts` writes a run's summary |
 | `repeat.ts`, `interval.ts` | `run --repeat k`: the repetitions, their 95% Student t intervals, and reading a run directory of either kind |
 | `provenance.ts` | What the reviews of a run were made with (version, prompt and config hashes, sampling), and the warnings `compare` gives when runs differ in it |
-| `instance.ts` | The case model every module shares: `Instance`, its reference comments, golden expectations and attack |
+| `instance.ts` | The shared case model: `Instance`, its reference comments, golden expectations and attack |
 | `dataset.ts` | Downloads and validates AACR-Bench; turns its rows into `Instance`s, one per pull request |
 | `golden.ts` | Loads and validates `evals/golden/*.json` into the same `Instance` shape, with expectations |
 | `attack.ts` | Adversarial cases: plants hostile text in the case they attack (ADR-0014) |
@@ -26,9 +26,9 @@ Run it from a build: `node packages/eval/dist/main.js <command>` (`npm run build
 | `golden-score.ts`, `attack-score.ts` | Golden and adversarial scoring against expectations and forbidden ranges |
 | `adjudicate.ts` | Labels typed into a run's `adjudication.json`, written back into the golden cases |
 | `ceiling.ts`, `ceiling-run.ts` | The recall ceiling of the deterministic stages, without a model |
-| `golden-import.ts` | `golden-import --from aacr`: picks AACR-Bench pull requests whose in-scope comments the ceiling reaches and writes unverified case candidates |
+| `golden-import.ts` | `golden-import --from aacr`: unverified case candidates from AACR-Bench pull requests whose in-scope comments the ceiling reaches |
 | `compare.ts`, `report.ts` | Side-by-side comparison of runs; the `summary.md` of one run |
-| `trend.ts`, `trend-load.ts` | `trend`: many golden runs grouped into series by label, compared on the cases they share (per-case scores in `summary.json`, wrap-up turns from `reports/`) |
+| `trend.ts`, `trend-load.ts` | `trend`: golden runs grouped into series by label, compared on shared cases |
 
 ## A run on disk
 
@@ -45,9 +45,9 @@ Run it from a build: `node packages/eval/dist/main.js <command>` (`npm run build
 
 A run with `--repeat k` holds `k` such runs in `r1/` … `rk/`, with `repeats.json` (each metric's values and interval) and `summary.md` beside them; the judge cache is shared at the top. `compare` and `score` take either kind of directory.
 
-Sampling: `run` passes `--temperature` (default 0) and `--seed` (`--model-seed`, default 1) to every review, records them in `run.json` as `info.sampling`, and copies each report's `provenance` into `instances/<id>.json`; `summary.json` lists the distinct values as `summary.provenance`.
+`run` passes `--temperature` (default 0) and `--seed` (`--model-seed`, default 1) to every review and records them as `info.sampling` in `run.json`; each report's `provenance` goes into `instances/<id>.json`, and `summary.json` lists the distinct values.
 
-Each review's session (events, prompts' metadata, cost per step) is in the clone it reviewed: `~/.cache/ocra/aacr-bench/repos/<owner>__<repo>/.ocra/sessions/<runId>/`, where `runId` comes from `reports/<id>.json`. Do not match runs to sessions by time.
+Each review's session is in the clone it reviewed, `~/.cache/ocra/aacr-bench/repos/<owner>__<repo>/.ocra/sessions/<runId>/`, with `runId` from `reports/<id>.json`; never match runs to sessions by time.
 
 ## AACR-Bench fields
 
@@ -64,4 +64,4 @@ The dataset is cached at `~/.cache/ocra/aacr-bench/` (clones under `repos/`, one
 
 ## Traps
 
-Maintainers: read the evaluation section of the private `pitfalls.md` before a run: the free-quota limits, rebuilding during a run (it changes the code under test), LFS repositories, git 2.43, and resuming with `--retry-failed`.
+Maintainers: read the evaluation section of the private `pitfalls.md` before a run (free-quota limits, rebuilding mid-run, LFS repositories, git 2.43, `--retry-failed`).

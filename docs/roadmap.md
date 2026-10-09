@@ -1,169 +1,166 @@
 # Roadmap
 
-What comes after M1–M4 (`docs/architecture.md`, all built), as of 2026-10-04 (0.5.0 released). It records the maintainer's long-term direction, decided on 2026-10-01: ocra is not another review bot but the engine other review agents are built on. It also keeps what the earlier roadmap answered: a comparison with open-source peers, what ocra's first model runs showed, and the goal of 2026-09-30, a project a company can adopt and a company could be built on.
+What comes after M1–M4 ([architecture](architecture.md)), as of 2026-10-04 (0.5.0 released). The long-term direction, decided on 2026-10-01: ocra is not another review bot but the engine other review agents are built on.
 
 ## The rule while evaluation is scarce
 
-Evaluation runs on models cost money, and today there is little of it. So: **ship what tests prove without a model first: contracts, reach, trust, cost control and operability. Prompts, rules and reviewers change only with an eval run behind them.** Labels keep coming from real reviews. Every page states what was tested live and what was not; readiness is claimed only where it is shown. M5 and M6 resume when evaluation is funded; free models (M11) cover what they can.
+Model runs cost money, and there is little. So: **ship what tests prove without a model first: contracts, reach, trust, cost control and operability. Prompts, rules and reviewers change only with an eval run behind them.** Labels come from real reviews. Every page states what was tested live; readiness is claimed only where it is shown.
 
 ## Where ocra stands
 
-**What peers have that ocra lacks**, largest gap first:
+**What peers have that ocra lacks**, largest first:
 
 1. **Platforms.** PR-Agent and Kodus support five or more (GitHub, GitLab, Bitbucket, Azure DevOps, Gitea); ocra supports GitHub and GitLab.
-2. **Published quality numbers at scale.** Alibaba reports SEM-F1 25.1% on AACR-Bench (recall 12–20%); Kodus published how it raised recall from 53% to 62%. ocra publishes one run on 16 golden cases (the quality page), too few to decide changes.
-3. **Beyond one-shot review.** Chat commands in the pull request (`/ask`, `/describe`), learning from corrections, code graphs, IDE plugins.
+2. **Published quality numbers at scale.** Alibaba reports SEM-F1 25.1% on AACR-Bench (recall 12–20%); Kodus published how it raised recall from 53% to 62%. ocra publishes one run on 16 golden cases, too few to decide changes.
+3. **Beyond one-shot review.** Chat commands in the pull request, learning from corrections, code graphs, IDE plugins.
 4. **Production mileage.** Cloudflare runs 130k reviews a month at $1.19 each; ocra reviews its own pull requests and one other repository's, and has no external user.
 
-**What ocra has that none of them publish:** defense in depth for untrusted pull requests. No write, shell or web tools for agents; an environment allowlist; configuration, rules and memory from the base commit; prompt-injection boundaries; neutralized comment output, with no commands and no links from model text; commands only from verified, unedited comments of people with write access; a threat model and a measured adversarial tier. Also: structured output (a versioned JSON report, SARIF), a per-run spend limit that says what it left, and a pipeline in which code decides everything but the judgment calls.
+**What ocra has that none of them publish:** defense in depth for untrusted pull requests (read-only agents, configuration and memory from the base commit, neutralized output, commands only from verified comments of people with write access, a threat model and a measured adversarial tier; see the manual's security page), structured output (a versioned JSON report, SARIF), a spend limit that says what it left, and a pipeline in which code decides everything but the judgment calls.
 
 **What the first runs on Vertex showed:**
 
-- **Recall is the gap, and it is lost at the reviewers.** Across 20 baseline reviews the reviewers reported 14 findings in total; Verify refuted none and the judge dropped none.
+- **Recall is lost at the reviewers:** 14 findings across 20 baseline reviews, none refuted by Verify or dropped by the judge.
 - **Ten AACR-Bench PRs cannot decide a change.** Two identical runs gave precision 66.7% and 40.0%: with 5–6 findings a run, one finding moves precision by 20 points.
-- **AACR-Bench's line rule hides real hits**, and by hand 64–86% of ocra's findings there were real, against the 21–43% the benchmark scored.
-- **A spend cap covers only a slice of a large pull request.** On a jmos pull request (14 files, 28 tasks) the $2 limit held ($1.69), but most files went unreviewed, because tasks ran bundle by bundle.
-- **The recall ceiling of the deterministic stages is 58.3%** on AACR-Bench, and 40% of the benchmark's issues are maintainability, which ocra does not report by design. Whether more context (callers, a code graph) raises recall has not been measured: #144 merged without an eval.
+- **AACR-Bench's line rule hides real hits:** by hand 64–86% of ocra's findings were real, against the 21–43% the benchmark scored.
+- **A spend cap covers only a slice of a large pull request.** On a 14-file pull request (28 tasks) the $2 limit held ($1.69), but most files went unreviewed.
+- **The deterministic stages' recall ceiling is 58.3%** on AACR-Bench; 40% of its issues are maintainability, which ocra does not report by design. Whether more context (callers, a code graph) raises recall is unmeasured: #144 merged without an eval.
 
 ## Direction: an engine-shaped product
 
-**The decision (2026-10-01).** ocra's long-term position is the infrastructure review agents are built on, not one of the agents: a review engine with stable contracts for the parts that vary (where the change comes from, how a task runs, who reviews what, where findings go), and one shared data model for what they exchange. The products on top of it (the CLI, the Action, the image, a service one day, other people's tools) are its hosts.
+**The decision (2026-10-01).** ocra is the infrastructure review agents are built on: stable contracts for the parts that vary (where the change comes from, how a task runs, who reviews what, where findings go) and one shared data model. The CLI, the Action and other tools are its hosts.
 
-**What "infrastructure" means here.** Specifications with conformance suites, not a plugin registry. The analogy is OpenTelemetry, whose product is the specification and the semantic conventions, and Kubernetes, whose core objects are fixed while CRI, CNI and CSI are pluggable and certified. For ocra:
+**Infrastructure means specifications with conformance suites, not a plugin registry** (compare Kubernetes' fixed core objects and certified CRI, CNI and CSI):
 
 | Fixed, never pluggable | Pluggable, each with a conformance suite |
 |---|---|
-| The `Finding` model (the shared language; it is the Pod) | `VcsAdapter` (3 implementations today) |
-| The pipeline's stage order and its guarantees: budget, cancellation, coverage, exit codes | `AgentRuntime` (1 today; the second is justified below) |
-| The access policy every agent read goes through | `Reviewer` (5 today; the entity gets a scope and a tool set) |
-| The trust rules of the review conversation (`vcs-platform`) | Analyzers: finding sources that are not a model (none today; SARIF in) |
+| The `Finding` model | `VcsAdapter` (3 implementations) |
+| The stage order and its guarantees: budget, cancellation, coverage, exit codes | `AgentRuntime` (2) |
+| The access policy every agent read goes through | `Reviewer` (5; the entity gets a scope and a tool set) |
+| The trust rules of the review conversation (`vcs-platform`) | Analyzers: non-model finding sources (SARIF in) |
 | | Sinks: where a report goes (the platform and SARIF today) |
-| | Context providers, all behind the one access policy |
+| | Context providers, behind the one access policy |
 | | Finding processors at fixed insertion points (after Execute, after Verify) |
 
-Stages are inserted into, not replaced: whoever swaps Verify or Judge gets a pipeline with no quality or budget guarantee and blames ocra for it. Insertion points are the admission-webhook pattern; replacement is not offered.
+Stages are inserted into, not replaced: whoever swaps Verify or Judge loses the quality and budget guarantees and blames ocra.
 
-**The order rule.** No successful open-source infrastructure was designed before it carried load: Kubernetes came out of Borg, OpenTelemetry out of two projects with users, Backstage out of four years inside Spotify. So the reference reviewer (today's pipeline) stays the product, is the engine's first customer, and has to win on precision first; every contract is extracted when the reference reviewer or a second real implementation needs it, never ahead of that. The abstraction rule in `AGENTS.md` (introduce one at the second real use case) is the same rule at file scale.
+**The order rule.** Successful infrastructure carried load before it was designed (Kubernetes came out of Borg). So the reference reviewer (today's pipeline) stays the product and the engine's first customer, and must win on precision first; a contract is extracted when it or a second real implementation needs it, never ahead. This is `AGENTS.md`'s abstraction rule at project scale.
 
-**Design decisions taken with the direction**, to become ADRs as each is implemented:
+**Design decisions taken with the direction**, each to become an ADR when implemented:
 
-1. **`Finding` stays the one model**, extended with provenance (source, model, run, cost) and a full lifecycle (new, unfixed, fixed, dismissed). Severity keeps blocking semantics (`critical`, `warning`, `suggestion`) and the verdict stays code. Confidence is the three-valued `verification` produced by an independent step, never a number a model reports about itself. Locations keep quote-based anchoring with the method recorded, since models cannot give line numbers. No free-form `metadata` bag. External analyzers enter as SARIF and are mapped once; ocra does not define a universal static-analysis schema.
-2. **The engine stays a synchronous orchestrator** that emits events (today's `ReviewEvent` and the session JSONL). Event-driven architecture belongs to the service layer (webhook, queue, worker), where each job is one engine call.
-3. **Runtime and Strategy are two layers.** `runTask(spec) -> events` already unifies agent harnesses (they own the tool loop) and model providers (ocra owns the loop). Above it, a Strategy decides how a change becomes tasks and how results merge: today the bundle × reviewer matrix; a whole-change multi-round agent or an analyzers-first run would be others. A Strategy abstraction is introduced only when a second strategy is built. Harnesses that can write files and run shells (Claude Code, Codex, Gemini CLI, Aider) become runtimes only if the runtime conformance suite proves they ran with no write, no shell and no outbound network.
-4. **Memory is decisions; knowledge is retrieval.** Memory holds what was accepted or dismissed, why and by whom, structured and small, read from a trusted revision so a change cannot silence its own findings. Documents (ADRs, wikis, past reviews) are a context provider's job. Memory has three scopes, by trust boundary: organization (administrators only, versioned, with owners and expiry), repository (today's `.ocra/memory.json`), path (rules). No embedding store until fingerprint matching is shown to be the limit.
-5. **Context is one engine with providers**, which is what `ReviewContext` already is with three methods. Providers (symbols, callers, ownership, documents) join behind the same policy. A code graph is built only after one provider (callers) is shown to raise recall.
-6. **MCP** is not used inside the trust boundary (ADR-0005 stands: typed tools, policy enforced in core). It may carry user-supplied context (issue trackers, wikis) when loaded under the same trust rules as plugins, and ocra itself exposes "review this change" as an MCP server, a distribution channel that costs little.
-7. **Duplicate findings across agents** are handled in four layers, in this order: scope partitioning in the matrix, deterministic merging (same file, overlapping anchor, same category; the merged finding cites every source), the judge's semantic deduplication, and a single publisher that owns the conversation. A cap on findings per change truncates by severity and verification rather than posting everything.
+1. **`Finding` stays the one model**, with provenance (source, model, run, cost) and a lifecycle (new, unfixed, fixed, dismissed). The verdict stays code; confidence is Verify's three-valued `verification`, never a model's self-reported number; anchoring stays quote-based; no free-form `metadata` bag. External analyzers enter as SARIF.
+2. **The engine stays a synchronous orchestrator** that emits events; event-driven architecture belongs to a service layer, where each job is one engine call.
+3. **Runtime and Strategy are two layers.** `runTask(spec) -> events` covers agent harnesses and model providers alike. A Strategy (how a change becomes tasks; today the bundle × reviewer matrix) is abstracted only when a second one is built. Harnesses that can write and run shells (Claude Code, Codex, Aider) become runtimes only if the conformance suite proves no write, no shell and no outbound network.
+4. **Memory is decisions; knowledge is retrieval.** Memory holds what was accepted or dismissed, why and by whom, read from a trusted revision so a change cannot silence its own findings, in three scopes: organization, repository (`.ocra/memory.json`), path (rules).
+5. **Context is one engine with providers** (`ReviewContext`): symbols, callers, ownership and documents join behind the same access policy.
+6. **MCP** stays outside the trust boundary (ADR-0005); it may carry user-supplied context under the plugin trust rules, and ocra may serve "review this change" over it.
+7. **Duplicate findings** are handled in four layers: scope partitioning in the matrix, deterministic merging (same file, overlapping anchor, same category), the judge's deduplication, and one publisher. A per-change cap truncates by severity and verification.
 
 ## Milestones
 
+The roadmap sets no deadlines; each phase starts when the one before has shown what it set out to show.
+
 ### Done
 
-- **M1–M4** (`docs/architecture.md`): the pipeline, reviewers, GitHub, re-review, failover, memory.
-- **M7 — Ship v0.1** (2026-09-29): on npm with provenance; dogfood on two repositories; the measured-quality page.
-- **M8 — Own the untrusted-PR niche** (2026-09-29): the adversarial golden tier (ADR-0014), the threat model and the gated `pull_request_target` recipe (ADR-0013), and the hardening they led to. Carried over, none of it paid from credit: a live check of the fork recipe on a real fork pull request (a second account; the maintainer's call), and talking to three maintainers who receive outside contributions.
-- **M9 — Reach and trust** (0.2.0, 2026-09-30): trust documents (#269), release hardening (#270), what a spend limit leaves (ADR-0015, #271), SARIF (#272), GitLab (ADR-0016, #273–#275), the container image (#276), declared model providers (ADR-0017, #279), and a security audit with every finding fixed or documented (#281–#287).
-
-### Paused until credit returns
-
-- **M5 — Measure.** A quality number stable enough to decide changes and honest enough to publish. The golden set has 16 cases (10 smoke) and 26 expected findings; evaluation fixes are done (#250, #251). Resumes with one golden smoke run of `main`, then the `[needs-eval]` backlog with the cheapest check that answers each. About $60.
-- **M6 — Recall.** Move recall without giving back precision: split the gate (reviewers report every defect they can support; Verify and the judge own precision), one prompt change at a time, each measured; then context (#144's callers). About $80.
-
-When the direction's standing credit line exists, M5 and M6 fold into M11 below.
+- **M1–M4**: the pipeline, reviewers, GitHub, re-review, failover, memory ([architecture](architecture.md)).
+- **M7 — Ship v0.1** (2026-09-29): npm with provenance, dogfood on two repositories, the quality page.
+- **M8 — Untrusted pull requests** (2026-09-29): the adversarial tier (ADR-0014), the threat model and the gated `pull_request_target` recipe (ADR-0013). Carried over: a live check on a real fork pull request, and talking to three maintainers who receive outside contributions.
+- **M9 — Reach and trust** (0.2.0, 2026-09-30): trust documents, release hardening, spend-limit reporting (ADR-0015), SARIF out, GitLab (ADR-0016), the container image, declared providers (ADR-0017), a security audit with every finding fixed or documented.
 
 ### Now: users and recall (from 2026-10-05, six weeks)
 
-Decided by the maintainer on 2026-10-05: for six weeks the project is judged on two numbers only, **external users** and **recall**. Everything else waits.
+Decided on 2026-10-05: for six weeks the project is judged on two numbers, **external users** and **recall**. Everything else waits.
 
-- **Users (M13):** 20 candidate open-source repositories (outside contributors, many pull requests, no AI reviewer yet), each offered a setup pull request and watched through its first ten reviews; `ocra init` to make the setup one command. Target: three external repositories running ocra for two weeks or more. Before inviting anyone, settle who pays for their model calls: the free model's shared daily pool cannot carry three busy repositories.
-- **Recall (M11):** first establish the run-to-run noise of the golden score (the same configuration three times), find from saved runs where expected issues are lost (never raised, or dropped by Verify, Judge or a severity filter), and grow the golden set from AACR-Bench's in-scope issues; then one change at a time, measured against that noise.
-- **Paused:** the rest of M10 (the reviewer entity, sinks) and M12. **ocra Cloud (M14) is frozen**: it keeps running and gets security fixes, no new features, no paid plan.
-- **Checkpoint at week six:** with users and better recall, decide what Cloud should become (the candidate is a hosted GitHub App for reviewing open-source fork pull requests); with no takers after 20 invitations, find out why before building more.
+- **Users (M13):** offer setup pull requests to 20 open-source repositories with outside contributors and no AI reviewer, and watch each through its first ten reviews. Target: three external repositories running ocra for two weeks or more. First settle who pays for their model calls: the free model's shared daily pool cannot carry three busy repositories.
+- **Recall (M11):** measure the golden score's run-to-run noise (one configuration three times), find from saved runs where expected issues are lost (never raised, or dropped by Verify, Judge or a severity filter), grow the golden set from AACR-Bench's in-scope issues; then one change at a time, measured against that noise.
+- **Paused:** the rest of M10 and M12. **ocra Cloud (M14) is frozen**: running, security fixes only, no new features, no paid plan.
+- **Week-six checkpoint:** with users and better recall, decide what Cloud becomes (candidate: a hosted GitHub App for fork pull requests); with no takers, find out why before building more.
 
 The milestones below keep their lists; the order of work is the one above.
 
-7. Carried over from 0.2.0: #289 (the GitHub setup people with push access cannot change, end to end), #290 (the separate GitLab reviewer project); the live GitLab check ran on GitLab.com Free on 2026-10-04. #288 landed in #302.
+**M5 — Measure** and **M6 — Recall** (paused until credit, then folded into M11). M5: a quality number stable enough to decide changes; resumes with a golden smoke run of `main`, then the `[needs-eval]` backlog (about $60). M6: reviewers report every defect they can support while Verify and the judge own precision, one measured prompt change at a time, then callers as context (about $80).
 
-**M11 — Evidence** (a standing credit line: cents a run for the nightly test, tens of dollars for golden runs; the free OpenRouter model covers what it can).
+**M10 — Contracts** (no credit). Landed: the Finding specification and JSON Schema (ADR-0018), SARIF in (ADR-0019), the public `review()` entry with curated, API-reported exports, and the second runtime with its conformance suite (ADR-0020). Paused: the reviewer entity (ADR-0021, proposed) and sinks (SARIF and the platform behind one contract). Carried over from 0.2.0: #290 (the separate GitLab reviewer project).
 
-1. A nightly live smoke test in CI on a two-file pull request with the cheapest model, gated by a secret: the first real-model integration test the project has. The workflow exists (`nightly-live.yml`: a fixed seven-file change of this repository on the free OpenRouter model with the `direct` runtime, every task completed, $0, gated by the `OCRA_LIVE_SMOKE` variable and the `OPENROUTER_API_KEY` secret); both are set, and it shares the free model's daily quota with the dogfood reviews and `eval-free.yml`, which runs the golden tiers on the rest of it from 01:00 UTC, in lanes of a model and a branch (`main`, and a pending change while it is measured).
-2. The golden set grown until a five-point change is visible; precision and recall published per reviewer, per model and per language, with cost per change, as a trend across releases.
-3. M5 and M6 as written above, under that evidence.
-4. Only then: prompts, rules and reviewers unfreeze, one change at a time, each measured.
+**M11 — Evidence** (a standing credit line; the free OpenRouter model covers what it can).
 
-**M12 — Operability** (no credit; paused 2026-10-05).
+1. A nightly live smoke test. Running: `nightly-live.yml` on the free OpenRouter model with the `direct` runtime (gated by `OCRA_LIVE_SMOKE` and `OPENROUTER_API_KEY`), and `eval-free.yml` running the golden tiers on the rest of the free daily quota, in lanes of a model and a branch.
+2. The golden set grown until a five-point change is visible; precision and recall per reviewer, model and language, with cost per change, as a trend across releases.
+3. M5 and M6 under that evidence.
+4. Only then: prompts, rules and reviewers unfreeze, one measured change at a time.
 
-1. **Organization policy**: a central configuration the reviewed repository cannot override (allowed models, spend limits, mandatory reviewers, excluded paths), with a documented precedence over remote and repository configuration. Design proposed in ADR-0022 (`OCRA_POLICY`, caps over every layer, fails closed, reported).
-2. **A run id** through logs, comments, the report and the session file; the event schema versioned and published. The run id landed (the session id, in the report as `runId`, in the progress output, the summary comment and the SARIF log); the event schema is still internal.
-3. Minimal metrics an operations team can scrape from session files: runs, cost, findings, dismissals, acceptance rate, per reviewer. Landed as `ocra metrics` (text and versioned JSON over the sessions' `report.json`).
+**M12 — Operability** (paused 2026-10-05).
 
-**M13 — Use** (people, not code; the focus from 2026-10-05). Three external teams on the Action or the GitLab job, reviewing their real pull requests, with their dismissals and replies feeding the golden set; the three-maintainer conversations from M8. If no team will run it, the next phase starts with the product layer, not the control plane. Landed: `ocra init`, a one-command setup that writes the configuration for the key in the environment and, with `--github`, the fork-safe workflow.
+1. **Organization policy** the reviewed repository cannot override (allowed models, spend limits, mandatory reviewers, excluded paths). Proposed in ADR-0022 (`OCRA_POLICY`, caps over every layer, fails closed).
+2. **A run id** everywhere, and a published event schema. The run id landed (`runId` in the report, progress output, summary comment and SARIF log); the event schema is still internal.
+3. **Metrics** from session files. Landed as `ocra metrics`.
 
-**M14 — ocra Cloud** ([ADR-0024](adr/0024-ocra-cloud.md); frozen from 2026-10-05: running, security fixes only, decided again at the six-week checkpoint). Open core plus an optional hosted service on the published packages, in its own private repository.
+**M13 — Use** (the focus). Three external teams on the Action or the GitLab job, their dismissals and replies feeding the golden set; the M8 maintainer conversations. If no team will run it, the next phase starts with the product layer, not the control plane. Landed: `ocra init`.
 
-1. **Phase 1, the MVP:** sign-in with GitHub and `ocra login` (device flow); the user's own key stored encrypted in the cloud and used only by an allowlisted model gateway that logs no bodies; zero configuration when logged in; metadata-only upload after a review, content opt-in; a web view of reviews, statistics, keys and sessions; a public data policy. Built and live at https://app.ocracloud.com and released with 0.4.0 and 0.5.0: `ocra login/logout/whoami`, `ocra-<provider>/<model>` through the gateway, the counts upload with `--no-upload`, account configuration layered under the repository's ([ADR-0027](adr/0027-account-configuration.md)), findings shared only when the account opts in, with account memory ([ADR-0028](adr/0028-findings-upload-and-cloud-memory.md)). Left: the first external users (M13).
-2. **Models and reasoning effort per agent** ([ADR-0025](adr/0025-per-agent-models-and-effort.md)), in `.ocra/config.json` or as ocra Cloud account defaults under the repository's settings. Landed: effort per tier, reviewer and role (#349); per-agent model chains on both runtimes; a per-agent input cost estimate in `--plan`; the OpenCode effort mapping; the web's Agents page. Next: a policy cap on effort.
-3. **Phase 2:** a hosted GitHub App (install, nothing to configure), with organizations ([ADR-0026](adr/0026-hosted-review-compute.md), proposed; deferred).
+**M14 — ocra Cloud** ([ADR-0024](adr/0024-ocra-cloud.md); frozen). Open core plus an optional hosted service on the published packages, in a private repository.
+
+1. **Phase 1:** built, live at https://app.ocracloud.com (0.4.0, 0.5.0): `ocra login`, the user's key behind a model gateway, metadata-only upload, account configuration ([ADR-0027](adr/0027-account-configuration.md)), opt-in findings and account memory ([ADR-0028](adr/0028-findings-upload-and-cloud-memory.md)), a web view. Left: external users (M13).
+2. **Models and effort per agent** ([ADR-0025](adr/0025-per-agent-models-and-effort.md)): landed on both runtimes, with a per-agent cost estimate in `--plan` and the web's Agents page. Next: a policy cap on effort.
+3. **Phase 2:** a hosted GitHub App with organizations ([ADR-0026](adr/0026-hosted-review-compute.md), proposed; deferred).
 4. **Phase 3:** models ocra provides, a free allowance and paid plans, once there is a model budget.
 
-**Review experience** (from the comparison with CodeRabbit, 2026-10-04; each behind M11's numbers where it touches quality).
+**Review experience** (from a comparison with CodeRabbit; anything touching quality waits for M11).
 
-1. A public benchmark run (the Martian Code Review Bench) on cheap or free models, published with precision first: low noise is the claim to prove. Folds into M11.
-2. Committable suggestions: a finding whose fix is a local edit carries it in GitHub's suggestion format (GitLab's too), so a reviewer applies it in one click. The plumbing landed ([ADR-0029](adr/0029-committable-suggestions.md)): a finding's `fix`, the GitHub and GitLab suggestion blocks, the report and SARIF. Left: producing the fix, which today's suggestion text cannot give safely, so it waits for an evaluated prompt change once prompts unfreeze.
-3. Minimal pull request commands: a maintainer's reply that asks for a re-review or dismisses a finding is acted on, within the trust rules of `vcs-platform` (the author cannot dismiss).
-4. Semgrep bundled as the first analyzer behind SARIF in, off unless configured.
-5. A pull request summary in the summary comment, from the judged findings and the change, not a second free-text pass.
+1. A public run of the Martian Code Review Bench on free models, precision first (part of M11).
+2. Committable suggestions. The plumbing landed ([ADR-0029](adr/0029-committable-suggestions.md)); producing the fix waits for an evaluated prompt change.
+3. Pull request commands: a maintainer's reply asking for a re-review or dismissing a finding is acted on, within `vcs-platform`'s trust rules.
+4. Semgrep as the first bundled analyzer behind SARIF in, off unless configured.
+5. A pull request summary from the judged findings and the change, not a second free-text pass.
 
 ### Next: driven by the numbers of the phase before
 
-- **M15 — Organization memory and context providers.** Organization-scoped memory with owners and expiry; `callers` and `ownership` as the first providers, each measured for recall before the next; a code graph only if they move the number.
-- **M16 — Reach on demand.** Bitbucket or Azure DevOps, whichever is asked for first, through the conformance suite; ocra as an MCP server for agent IDEs; OpenTelemetry export once there are sessions to aggregate.
-- **Governance.** A second maintainer, an issue-response commitment and a version-support policy, since a buyer asks who is accountable before asking what the contracts are.
+- **M15 — Organization memory and context providers.** Organization-scoped memory with owners and expiry; `callers` and `ownership` as the first providers, each measured for recall; a code graph only if they move the number.
+- **M16 — Reach on demand.** Bitbucket or Azure DevOps, whichever is asked for first, through the conformance suite; ocra as an MCP server; OpenTelemetry export.
+- **Governance.** A second maintainer, an issue-response commitment and a version-support policy.
 
 ### Later: an ecosystem
 
-- **M17 — Certified extensions.** Third-party reviewers, analyzers, runtimes and adapters registered and certified against the conformance suites, the way CSI drivers are.
-- The Finding specification and the Reviewer and Runtime contracts published as documents of their own, open to implementations outside this repository.
+- **M17 — Certified extensions.** Third-party reviewers, analyzers, runtimes and adapters certified against the conformance suites.
+- The Finding specification and the Reviewer and Runtime contracts published as standalone documents, open to outside implementations.
 
 ## Readiness checklist
 
-What a company checks before adopting a code review tool, and where ocra is. Updated as milestones land.
+What a company checks before adopting a code review tool, and where ocra is.
 
 | Area | Status |
 |---|---|
 | Install | npm with provenance; the Action; a container image with attested provenance |
 | Platforms | GitHub; GitLab (GitLab.com and self-managed), tested against a fake API and checked live on GitLab.com Free |
-| Embedding | The CLI, and the `review()` entry with its Embedding page (a contract under the 0.x rule); a curated public API in every package, recorded in API reports checked in CI |
-| Data stays with the customer | Runs in the customer's CI with the customer's model keys; no ocra service in between; your own OpenAI-compatible endpoint; corporate proxies and CA bundles pass through |
-| Model providers | Any provider in OpenCode's catalog whose SDK OpenCode bundles (all but 7 of 225), and declared endpoints, through OpenCode or the `direct` runtime; tested live: Gemini on Vertex, the Gemini API, and a free model through OpenRouter |
-| Security | Threat model with who controls the pipeline, adversarial tier, `SECURITY.md` with private reporting, one conformance suite for every platform's trust rules, a security audit of M9 with every finding fixed or documented (2026-09-30). For a same-project GitLab merge request the review is advice its author could forge (#290 tries a fix) |
-| Supply chain | Trusted publishing, SLSA provenance required by the Action, the package check in its own job, tarball digests carried from pack to publish, an attested image; no code is fetched at review time (OpenCode's npm installs go to a refusing local registry), only the pricing catalog, and with the `direct` runtime not even that |
-| Cost control | Per-run spend limit that stops running tasks and says what it left, task cap, token and dollar reporting, prices required for declared models |
-| Policy | Repository and remote configuration; no organization-level policy the repository cannot override (M12) |
-| Integrations | Versioned JSON report with a published JSON Schema; SARIF 2.1.0 out; SARIF in (`--import-sarif`); no sinks contract yet (M10) |
-| Observability | Session files with cost, tokens and latency per run, and one run id across the session directory, the report, the progress output, the summary comment and the SARIF log; `ocra metrics` over the session reports; no published event schema (M12) |
-| Quality evidence | 16 golden cases, one run on Gemini and two smoke-tier runs on a free model (not comparable with each other's judge), agent labels spot-checked by a second model; the nightly live smoke and the daily free golden evaluation (`eval-free.yml`) run on the free quota (M11) |
+| Embedding | The CLI, and the `review()` entry (a contract under the 0.x rule); a curated public API in every package, recorded in API reports checked in CI |
+| Data stays with the customer | Runs in the customer's CI with their keys and no ocra service in between; own endpoints, proxies and CA bundles |
+| Model providers | OpenCode's catalog (all but 7 of 225) and declared endpoints; tested live: Gemini on Vertex, the Gemini API, a free OpenRouter model |
+| Security | Threat model, adversarial tier, `SECURITY.md` with private reporting, one conformance suite for every platform's trust rules, an M9 security audit (2026-09-30). For a same-project GitLab merge request the review is advice its author could forge (#290) |
+| Supply chain | Trusted publishing, SLSA provenance required by the Action, tarball digests from pack to publish, an attested image; no code fetched at review time, only OpenCode's pricing catalog (none with the `direct` runtime) |
+| Cost control | Spend limit that says what it left, task cap, token and dollar reporting |
+| Policy | Repository and remote configuration; no organization policy the repository cannot override (M12) |
+| Integrations | Versioned JSON report with a JSON Schema; SARIF 2.1.0 out and in (`--import-sarif`); no sinks contract (M10) |
+| Observability | Session files with cost, tokens and latency; one run id across session, report, progress output, summary comment and SARIF; `ocra metrics`; no published event schema (M12) |
+| Quality evidence | 16 golden cases: one run on Gemini, two smoke-tier runs on a free model (not comparable); nightly live smoke and daily free golden evaluation (M11) |
 | Support and stability | Early 0.x; the Stability and support page names the contracts; one maintainer |
 | Production use | Dogfood on two repositories; no external user yet (M13) |
 
 ## Not now
 
-- **Replaceable pipeline stages.** Insertion points, not replacement (see Direction).
+- **Replaceable pipeline stages.** Insertion points only (see Direction).
 - **A code graph, AST or call-graph context** before one provider is shown to raise recall.
 - **An embedding store for memory** before fingerprint matching is shown to be the limit.
 - **MCP inside the trust boundary** (ADR-0005).
-- **Demo features**: chat commands in the pull request, auto-fix, IDE plugins, issue-tracker checks, full-repository scans, agents that "optimize themselves". Each is a product of its own; none appears on an enterprise checklist, and none helps until review quality is proven. ocra already keeps `.ocra/memory.json`, human dismissals and replies, which cover the "learning" peers advertise at the scale ocra has.
+- **Demo features**: chat commands, auto-fix, IDE plugins, issue-tracker checks, full-repository scans. None helps until review quality is proven; memory, dismissals and replies cover the "learning" peers advertise.
 - **Five platforms or seven runtimes at once.** One maintainer cannot keep them alive; each is added on demand through a conformance suite.
-- Any prompt, rule or reviewer change until M11, and #171 (a model-specific failure not reproduced on Vertex).
+- Any prompt, rule or reviewer change until M11.
 
 ## Risks of the direction
 
-1. **The architecture outruns the use.** Contracts versioned for nobody break for everybody; the order rule above is the guard, and M13 is the test.
-2. **Quality comes from the model and the context, not from the framework.** A reference reviewer that loses to GitHub Copilot Review or Cursor Bugbot, both bundled and nearly free, gets no users whatever its plugin system. M11 is the guard.
-3. **Abstractions over fast-moving vendors leak every quarter** (the LangChain problem), and a single maintainer's bandwidth goes to keeping up. Conformance suites and on-demand reach are the guard.
+1. **The architecture outruns the use.** Contracts versioned for nobody break for everybody; the order rule is the guard, and M13 the test.
+2. **Quality comes from the model and the context, not the framework.** A reference reviewer that loses to GitHub Copilot Review or Cursor Bugbot, bundled and nearly free, gets no users. M11 is the guard.
+3. **Abstractions over fast-moving vendors leak every quarter**, and one maintainer's bandwidth goes to keeping up. Conformance suites and on-demand reach are the guard.
 
 ## Positioning, to be tested
 
 1. **The reviewer you can run on strangers' pull requests.** Supported by M8; tested by talking to open-source maintainers.
-2. **The engine review agents are built on**: stable contracts, a shared finding model, and a conformance suite for every pluggable part. Decided on 2026-10-01; tested by whether anyone builds on the contracts.
-3. **What large tools do not cover: GitLab and self-hosted deployments, then Gitee and domestic models.** M9 built the reach; dogfood alone cannot show demand.
+2. **The engine review agents are built on**: stable contracts, a shared finding model, a conformance suite for every pluggable part. Tested by whether anyone builds on the contracts.
+3. **What large tools do not cover: GitLab and self-hosted deployments, then Gitee and domestic models.** M9 built the reach; dogfood cannot show demand.
