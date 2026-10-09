@@ -117,8 +117,9 @@ export function inlineBody(f: Finding, fence: SuggestionFence): string {
     safeMarkdown(f.body, { startsLine: true }),
   ];
   if (f.suggestion) parts.push("", `**Suggestion:** ${safeMarkdown(f.suggestion)}`);
-  // A `~~~` fence in model text stays text to safeMarkdown, and one left open
-  // would run to the end of the comment and swallow the suggestion.
+  // A `~~~` fence in model text keeps its fence through safeMarkdown, and one
+  // left open would run to the end of the comment and swallow ocra's
+  // suggestion block, so the fence is why the block is left out.
   const block = TILDE_FENCE.test(parts.join("\n")) ? undefined : suggestionBlock(f, fence);
   if (block) parts.push("", block);
   return parts.join("\n");

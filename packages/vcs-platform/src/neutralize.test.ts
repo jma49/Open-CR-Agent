@@ -196,13 +196,31 @@ describe("safeMarkdown keeps model text from posting what ocra posts only under 
 });
 
 describe("safeMarkdown bounds its work", () => {
-  it("cuts text at GitHub's comment limit", () => {
+  it("cuts text at GitHub's comment limit, and at 2,000 lines", () => {
     expect(safeMarkdown("a".repeat(70_000))).toBe(`${"a".repeat(65_536)} …(truncated)`);
+    expect(safeMarkdown("a\n".repeat(3_000))).toBe(`${"a\n".repeat(1_999)}a …(truncated)`);
   });
 
-  it("parses emphasis delimiters in linear time", () => {
+  it("nests at most 16 containers on a line, the rest of it being text", () => {
+    const deep = `${"- ".repeat(16)}\u200b- - x`;
+    expect(safeMarkdown(`${"- ".repeat(18)}x`, { startsLine: true })).toBe(deep);
+    expect(safeMarkdown(`${"> ".repeat(16)}x`, { startsLine: true })).toBe(`${"> ".repeat(16)}x`);
+  });
+
+  // The parser rescans the line or the paragraph at every level, line or
+  // heading of these: quadratic in the length the limit allows.
+  it.each([
+    ["emphasis delimiters", "*a".repeat(32_000)],
+    ["nested list items", `${"- ".repeat(32_768)}x`],
+    ["nested list items that could be a break", `${"* ".repeat(32_768)}x`],
+    ["nested ordered list items", `${"1. ".repeat(21_845)}x`],
+    ["nested quotes", `${"> ".repeat(32_768)}x`],
+    ["thematic breaks", "---\n".repeat(16_000)],
+    ["setext headings", "a\n---\n".repeat(10_000)],
+    ["lazy continuation lines", `> a\n${"b\n".repeat(20_000)}`],
+  ])("parses %s in linear time", (_, text) => {
     const start = performance.now();
-    safeMarkdown("*a".repeat(32_000));
+    safeMarkdown(text, { startsLine: true });
     expect(performance.now() - start).toBeLessThan(3_000);
   });
 });

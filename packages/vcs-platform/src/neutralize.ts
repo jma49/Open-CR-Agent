@@ -72,11 +72,19 @@ const ABSENT = {
   },
 };
 // An info string that names a suggestion, or may once its escapes and
-// character references are decoded. In text, where only a `~~~` fence can
-// open and references are broken, its spelling is enough.
+// character references are decoded: any with `&` or `\` matches, which breaks
+// some that would not decode to one, on purpose. In text, where only a `~~~`
+// fence can open and references are broken, its spelling is enough.
 const SUGGESTION_INFO = /^suggestion|[&\\]/i;
-// GitHub's limit on a comment; longer text is cut, which also bounds the parse.
+// The parser's work grows with the square of some of what text can hold:
+// nested containers on a line, which it rescans at every level, and lines of
+// a paragraph or of setext headings. Text is cut at GitHub's limit on a
+// comment and at a number of lines no finding needs, and a line nests at most
+// MAX_DEPTH containers; after them, a zero-width space makes the rest text.
 const MAX_CHARS = 65_536;
+const MAX_LINES = 2_000;
+const MAX_DEPTH = 16;
+const CONTAINER_MARKER = /[ \t]*(?:>|(?:[-+*]|\d{1,9}[.)])(?=[ \t]|$))/y;
 
 export interface Placement {
   // True when the text starts a line of the posted comment, so that a fence
@@ -87,7 +95,7 @@ export interface Placement {
 
 export function safeMarkdown(text: string, { startsLine = false }: Placement = {}): string {
   // A bare carriage return ends a line in CommonMark too.
-  const source = bounded(text.replace(/\r\n?/g, "\n"));
+  const source = bounded(text.replace(/\r\n?/g, "\n")).split("\n").map(shallow).join("\n");
   const textBetween = (start: number, end: number) =>
     neutralizeText(
       source.slice(start, end),
@@ -110,9 +118,27 @@ export function safeMarkdown(text: string, { startsLine = false }: Placement = {
 }
 
 function bounded(text: string): string {
-  if (text.length <= MAX_CHARS) return text;
-  const highSurrogate = /[\uD800-\uDBFF]/.test(text.charAt(MAX_CHARS - 1));
-  return `${text.slice(0, highSurrogate ? MAX_CHARS - 1 : MAX_CHARS)} …(truncated)`;
+  let cut = Math.min(text.length, MAX_CHARS);
+  let lineEnd = -1;
+  for (let line = 0; line < MAX_LINES && lineEnd < cut; line++) {
+    lineEnd = text.indexOf("\n", lineEnd + 1);
+    if (lineEnd === -1) break;
+  }
+  if (lineEnd !== -1 && lineEnd < cut) cut = lineEnd;
+  if (cut === text.length) return text;
+  if (/[\uD800-\uDBFF]/.test(text.charAt(cut - 1))) cut--;
+  return `${text.slice(0, cut)} …(truncated)`;
+}
+
+function shallow(line: string): string {
+  CONTAINER_MARKER.lastIndex = 0;
+  for (let depth = 0; depth < MAX_DEPTH; depth++) {
+    if (!CONTAINER_MARKER.test(line)) return line;
+  }
+  const at = CONTAINER_MARKER.lastIndex;
+  if (!CONTAINER_MARKER.test(line)) return line;
+  const deeper = at + (/^[ \t]*/.exec(line.slice(at))?.[0].length ?? 0);
+  return `${line.slice(0, deeper)}\u200b${line.slice(deeper)}`;
 }
 
 interface Code {
