@@ -100,7 +100,7 @@ description: ocra 能用哪些模型供应商、各自需要什么，以及如�
 
 两者跑同一套审查：工具、步数上限、降级和价格都相同。`direct` 会在发出任何请求前拒绝写了未声明供应商的模型链，并读取 `HTTP_PROXY`、`HTTPS_PROXY` 和 `NO_PROXY`。[质量数字](./quality)是在 `opencode` 上测得的；`direct` 通过同一套一致性测试，但还没有在黄金用例集上评测过。
 
-想看 `direct` 给模型发了什么、收到了什么，把 `OCRA_RECORD_DIR` 设成一个目录：每个请求连同回答写成一个 JSON 文件，只有你能读。密钥替换成 `<key>`，请求头和端点地址不写入，但文件里有代码和提示词，要像代码本身一样保护。一份记录只能回放它记录的那段对话。`opencode` 不读这个变量。
+想看 `direct` 给模型发了什么、收到了什么，把 `OCRA_RECORD_DIR` 设成一个目录：每个请求连同回答写成一个 JSON 文件，只有你能读。密钥替换成 `<key>`（运行中续期的 ocra Cloud 令牌也一样），请求头和端点地址不写入，但文件里有代码和提示词，要像代码本身一样保护。写不进记录时会在 stderr 上警告，审查照常继续，不会重发请求。一份记录只能回放它记录的那段对话。`opencode` 不读这个变量。
 
 `opencode` 运行时是可选依赖，默认安装；使用 `direct` 时可以不装，少约 165 MB：见[不装 OpenCode](./installation#不装-opencode)和 Action 的 `opencode: false` [输入](./github#运行时)。
 

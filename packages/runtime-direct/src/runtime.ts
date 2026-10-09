@@ -77,14 +77,25 @@ export class DirectRuntime implements AgentRuntime {
   }
 
   // Every exchange goes to the recording directory when one is set, with the
-  // keys of all declared providers taken out.
+  // keys of all declared providers taken out as they are at each write: the
+  // environment may be live, renewing a key while the run lasts. The first
+  // recording that fails is said once on stderr, which a review's output
+  // (stdout) does not share.
   private recorded(base: typeof fetch): typeof fetch {
     const dir = this.options.env[RECORD_DIR_ENV];
     if (!dir) return base;
-    const keys = Object.values(this.options.providers ?? {}).flatMap((p) =>
-      p.apiKeyEnv && this.options.env[p.apiKeyEnv] ? [this.options.env[p.apiKeyEnv] as string] : [],
-    );
-    return recordingFetch(base, dir, keys);
+    const { env, providers } = this.options;
+    const keys = () =>
+      Object.values(providers ?? {}).flatMap((p) => {
+        const key = p.apiKeyEnv ? env[p.apiKeyEnv] : undefined;
+        return key ? [key] : [];
+      });
+    let warned = false;
+    return recordingFetch(base, dir, keys, (message) => {
+      if (warned) return;
+      warned = true;
+      process.stderr.write(`ocra: ${message}; the review goes on without recording it\n`);
+    });
   }
 
   appliedTo(agent: string): AppliedSettings | undefined {

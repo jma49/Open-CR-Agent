@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type FakeEndpoint, scriptedEndpoint } from "../../core/src/runtime/conformance.fakes.js";
-import { exchangeKey, type Recording } from "./record.js";
+import { exchangeKey, type Recording, recordingSchema } from "./record.js";
 
 export interface ReplayEndpoint extends FakeEndpoint {
   // The keys of requests no recording answers.
@@ -17,7 +17,7 @@ export interface ReplayEndpoint extends FakeEndpoint {
 export async function replayEndpoint(dir: string): Promise<ReplayEndpoint> {
   const recordings = new Map<string, { answers: Recording["answers"]; served: number }>();
   for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
-    const recording = JSON.parse(readFileSync(join(dir, file), "utf8")) as Recording;
+    const recording = recordingSchema.parse(JSON.parse(readFileSync(join(dir, file), "utf8")));
     recordings.set(exchangeKey(recording.request), { answers: recording.answers, served: 0 });
   }
   const misses: string[] = [];

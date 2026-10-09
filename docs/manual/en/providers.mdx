@@ -100,7 +100,7 @@ Two runtimes can run the reviewers; `runtime` in the configuration picks one:
 
 Both run the same review: tools, step cap, failback and prices. `direct` refuses, before any request, a chain naming a provider you did not declare, and honors `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY`. The [quality numbers](./quality) were measured on `opencode`; `direct` passes the same conformance tests but has not been evaluated on the golden set yet.
 
-To see what `direct` sent a model and got back, set `OCRA_RECORD_DIR` to a directory: each request is written there as a JSON file with its answers, readable only by you. Keys become `<key>` and headers and the endpoint address are left out, but the files hold the code and prompts, so guard them like the code. A recording replays only the exact conversation it recorded. `opencode` ignores the variable.
+To see what `direct` sent a model and got back, set `OCRA_RECORD_DIR` to a directory: each request is written there as a JSON file with its answers, readable only by you. Keys become `<key>`, an ocra Cloud token renewed during the run included, and headers and the endpoint address are left out, but the files hold the code and prompts, so guard them like the code. A recording ocra cannot write is a warning on stderr; the review goes on and no request is sent again. A recording replays only the exact conversation it recorded. `opencode` ignores the variable.
 
 The `opencode` runtime is an optional dependency, installed by default; with `direct` you can leave it out and save about 165 MB: see [Without OpenCode](./installation#without-opencode) and the Action's `opencode: false` [input](./github#the-runtime).
 

@@ -1,8 +1,8 @@
 import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentEvent, AgentTaskSpec } from "@open-cr-agent/core";
-import { afterEach, describe, expect, it } from "vitest";
+import type { AgentEvent, AgentTaskSpec, Env } from "@open-cr-agent/core";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   collect,
   type FakeEndpoint,
@@ -41,10 +41,14 @@ function tempDir(): string {
 }
 
 function runtime(url: string, env: Record<string, string> = {}) {
+  return runtimeWith(url, { LOCAL_KEY: KEY, ...env });
+}
+
+function runtimeWith(url: string, env: Env) {
   return new DirectRuntime({
     models: { standard: ["local/m1"], light: ["local/m1"] },
     tools: [],
-    env: { LOCAL_KEY: KEY, ...env },
+    env,
     providers: {
       local: { baseUrl: url, apiKeyEnv: "LOCAL_KEY", models: { m1: { input: 3, output: 15 } } },
     },
@@ -150,6 +154,79 @@ describe("recording the direct runtime's model exchanges", () => {
     expect(written).not.toContain(live.url);
     for (const file of files) expect(statSync(join(dir, file)).mode & 0o077).toBe(0);
     expect(statSync(dir).mode & 0o077).toBe(0);
+  });
+
+  it("leaves out a key renewed during the run and a key with quotes or backslashes", async () => {
+    const dir = tempDir();
+    // A live environment, as the CLI passes for the ocra Cloud token it renews.
+    let key = 'sk-first-"quoted\\slashed-secret';
+    const env = {
+      [RECORD_DIR_ENV]: dir,
+      get LOCAL_KEY() {
+        return key;
+      },
+    };
+    const live = await scriptedEndpoint((request) => ({
+      content: `Echoed ${request.authorization ?? ""} in ${request.messages.length}.`,
+      toolCalls: [{ name: "task_done", args: {} }],
+    }));
+    servers.push(live);
+    const direct = runtimeWith(live.url, env);
+    const signal = new AbortController().signal;
+    await collect(direct.runTask(spec(), signal));
+    const first = key;
+    key = "sk-renewed-secret";
+    await collect(direct.runTask(spec("Review src/b.ts."), signal));
+    expect(live.seen.map((s) => s.authorization)).toEqual([`Bearer ${first}`, `Bearer ${key}`]);
+
+    const written = readdirSync(dir)
+      .map((f) => readFileSync(join(dir, f), "utf8"))
+      .join("\n");
+    expect(written).toContain("Echoed");
+    expect(written).not.toContain("slashed-secret");
+    expect(written).not.toContain("renewed");
+  });
+
+  it("goes on without a recording it cannot write, sending each request once", async () => {
+    const dir = tempDir();
+    const live = await scriptedEndpoint([
+      { content: "Reviewed.", toolCalls: [{ name: "task_done", args: {} }] },
+    ]);
+    servers.push(live);
+    const direct = runtime(live.url, { [RECORD_DIR_ENV]: dir });
+    // The directory is gone and a file holds its name, so no write can land.
+    rmSync(dir, { recursive: true });
+    writeFileSync(dir, "");
+    const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      const events = await collect(direct.runTask(spec(), new AbortController().signal));
+      expect(live.seen).toHaveLength(1);
+      expect(events.at(-1)).toEqual({ type: "done", taskId: "t1" });
+      expect(stderr.mock.calls.map(([text]) => String(text)).join("")).toContain(RECORD_DIR_ENV);
+    } finally {
+      stderr.mockRestore();
+    }
+  });
+
+  it("goes on without a recording whose earlier file is not a recording", async () => {
+    const dir = tempDir();
+    await record(dir, [{ content: "Reviewed.", toolCalls: [{ name: "task_done", args: {} }] }]);
+    const [file] = readdirSync(dir);
+    writeFileSync(join(dir, file as string), '{"version":1,"answers":"none"}');
+    const live = await scriptedEndpoint([
+      { content: "Reviewed.", toolCalls: [{ name: "task_done", args: {} }] },
+    ]);
+    servers.push(live);
+    const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      const events = await collect(
+        runtime(live.url, { [RECORD_DIR_ENV]: dir }).runTask(spec(), new AbortController().signal),
+      );
+      expect(live.seen).toHaveLength(1);
+      expect(events.at(-1)).toEqual({ type: "done", taskId: "t1" });
+    } finally {
+      stderr.mockRestore();
+    }
   });
 
   it("refuses a recording directory it cannot create, before any request", () => {
