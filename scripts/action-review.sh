@@ -3,14 +3,14 @@
 # request, then sets the Action's outputs (action-outputs.mjs). Its inputs
 # arrive only as environment variables, never interpolated into the script,
 # so pull request text cannot inject shell code: OCRA_MAIN (the installed
-# CLI), OCRA_PR, OCRA_ARGS, OCRA_SARIF, OCRA_FAIL_ON_CONCERNS.
+# CLI), OCRA_PR, OCRA_ARGS, OCRA_SARIF, OCRA_FAIL_ON_CONCERNS. action.yml
+# execs it, so the runner's cancellation signals reach its trap.
 # GitHub's options for a bash step; no -u: bash 3.2 reads an empty array as unset.
 set -eo pipefail
 if [ -z "${OCRA_PR:-}" ]; then
   echo "::error::ocra review runs on pull_request events"
   exit 2
 fi
-here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Split on whitespace, across lines, without glob expansion against the
 # checkout.
 read -r -d '' -a extra <<< "${OCRA_ARGS:-}" || true
@@ -33,6 +33,6 @@ code=0
 while kill -0 "$pid" 2>/dev/null; do
   wait "$pid" && code=0 || code=$?
 done
-OCRA_EXIT_CODE="$code" node "$here/action-outputs.mjs"
+OCRA_EXIT_CODE="$code" node "$GITHUB_ACTION_PATH/scripts/action-outputs.mjs"
 if [ "$code" -eq 1 ] && [ "${OCRA_FAIL_ON_CONCERNS:-}" != "true" ]; then code=0; fi
 exit "$code"

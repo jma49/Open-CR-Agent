@@ -5,17 +5,29 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-// The Action's review step (action.yml), against a fake ocra that records
+// The Action's review step, run as the runner runs it: action.yml's `run:`
+// in a step file under `bash -eo pipefail`, against a fake ocra that records
 // its arguments and exits with FAKE_EXIT.
-const script = fileURLToPath(new URL("./action-review.sh", import.meta.url));
+const root = fileURLToPath(new URL("..", import.meta.url));
 const hasBash = spawnSync("bash", ["-c", "true"]).status === 0;
 
+/** The one-line `run:` of action.yml's Review step. */
+function reviewRun() {
+  const lines = readFileSync(join(root, "action.yml"), "utf8").split("\n");
+  const step = lines.findIndex((line) => line.trim() === "- name: Review");
+  const run = lines.slice(step).find((line) => line.trimStart().startsWith("run: "));
+  if (step < 0 || !run) throw new Error("action.yml has no Review step with a one-line run:");
+  return run.trimStart().slice("run: ".length);
+}
+
+// Waits for SIGINT when FAKE_WAIT is set; exits on its own after a while so
+// that a run whose signal never reached it does not outlive the test.
 const FAKE_OCRA = `import { writeFileSync } from "node:fs";
 writeFileSync(process.env.FAKE_ARGS, JSON.stringify(process.argv.slice(2)));
 if (process.env.FAKE_WAIT) {
   process.on("SIGINT", () => { writeFileSync(process.env.FAKE_ARGS + ".signal", "SIGINT"); process.exit(130); });
   writeFileSync(process.env.FAKE_ARGS + ".ready", "");
-  setInterval(() => {}, 1000);
+  setTimeout(() => process.exit(0), 5000);
 } else process.exit(Number(process.env.FAKE_EXIT ?? 0));
 `;
 
@@ -28,11 +40,16 @@ function setup(env) {
   writeFileSync(join(work, "match-me"), "");
   writeFileSync(join(dir, "ocra.mjs"), FAKE_OCRA);
   writeFileSync(join(dir, "output"), "");
+  const step = join(dir, "step.sh");
+  writeFileSync(step, `${reviewRun()}\n`);
   return {
     dir,
     work,
+    // GitHub's command line for a bash step.
+    argv: ["--noprofile", "--norc", "-eo", "pipefail", step],
     env: {
       PATH: process.env.PATH ?? "",
+      GITHUB_ACTION_PATH: root,
       OCRA_MAIN: join(dir, "ocra.mjs"),
       OCRA_PR: "7",
       RUNNER_TEMP: dir,
@@ -46,7 +63,7 @@ function setup(env) {
 /** @param {Record<string, string>} env */
 function review(env) {
   const t = setup(env);
-  const result = spawnSync("bash", [script], { cwd: t.work, env: t.env, encoding: "utf8" });
+  const result = spawnSync("bash", t.argv, { cwd: t.work, env: t.env, encoding: "utf8" });
   /** @type {string[] | undefined} */
   let args;
   try {
@@ -60,6 +77,9 @@ function review(env) {
     dir: t.dir,
   };
 }
+
+/** @param {number} ms */
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe.skipIf(!hasBash)("the Action's review step", () => {
   it("passes args split on whitespace, unexpanded, before the SARIF flags", () => {
@@ -96,14 +116,20 @@ describe.skipIf(!hasBash)("the Action's review step", () => {
     expect(r.args).toBeUndefined();
   });
 
-  it("forwards a cancellation to ocra as SIGINT", async () => {
-    const t = setup({ FAKE_WAIT: "1" });
-    const bash = spawn("bash", [script], { cwd: t.work, env: t.env, stdio: "ignore" });
-    const ready = `${t.env.FAKE_ARGS}.ready`;
-    for (let i = 0; i < 200 && !existsSync(ready); i++) await new Promise((r) => setTimeout(r, 25));
-    bash.kill("SIGTERM");
-    const status = await new Promise((resolve) => bash.on("close", resolve));
-    expect(readFileSync(`${t.env.FAKE_ARGS}.signal`, "utf8")).toBe("SIGINT");
-    expect(status).toBe(130);
-  });
+  // The runner signals the step's own shell when a run is cancelled.
+  it.each(["SIGINT", "SIGTERM"])(
+    "forwards a cancellation (%s to the step) to ocra as SIGINT",
+    async (signal) => {
+      const t = setup({ FAKE_WAIT: "1" });
+      const step = spawn("bash", t.argv, { cwd: t.work, env: t.env, stdio: "ignore" });
+      const closed = new Promise((resolve) => step.on("close", resolve));
+      const ready = `${t.env.FAKE_ARGS}.ready`;
+      for (let i = 0; i < 200 && !existsSync(ready); i++) await sleep(25);
+      step.kill(/** @type {NodeJS.Signals} */ (signal));
+      const signalled = `${t.env.FAKE_ARGS}.signal`;
+      for (let i = 0; i < 80 && !existsSync(signalled); i++) await sleep(25);
+      expect(existsSync(signalled)).toBe(true);
+      expect(await closed).toBe(130);
+    },
+  );
 });

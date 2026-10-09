@@ -81,6 +81,8 @@ runs:
 
     # Inputs reach the script only through environment variables, never
     # interpolated into it, so pull request text cannot inject shell code.
+    # exec: the runner signals this step's shell when the run is cancelled,
+    # and a shell waiting on another would not pass the signal on.
     - name: Review
       id: review
       shell: bash
@@ -91,4 +93,4 @@ runs:
         OCRA_FAIL_ON_CONCERNS: ${{ inputs.fail-on-concerns }}
         OCRA_SARIF: ${{ inputs.sarif }}
         OCRA_MAIN: ${{ steps.install.outputs.main }}
-      run: bash "$GITHUB_ACTION_PATH/scripts/action-review.sh"
+      run: exec bash "$GITHUB_ACTION_PATH/scripts/action-review.sh"
