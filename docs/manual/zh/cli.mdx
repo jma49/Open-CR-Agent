@@ -261,15 +261,15 @@ ocra logout                                   # 在服务器上结束会话，�
 - 提示词及其中引用的代码经过 ocra Cloud，它只记录每次调用的模型、状态码、token 数和耗时，从不记录内容。
 - 没有使用 `ocra-` 模型的审查不读取会话，也不连接 ocra Cloud；配置中以 `ocra-` 名称自行声明的 provider 保持原有声明。
 - [推理强度](./configuration#推理强度)按 ocra Cloud 为该 provider 列出的方式发送（`openai`：`reasoning_effort`；`openrouter`：`reasoning.effort`），没有列出时用 `openai`；不认识的方式会被忽略并给出警告。回答不是 provider 列表时审查停止。
-- 使用 `"runtime": "direct"` 时，ocra 在整个运行期间于令牌过期前五分钟续期。续期失败时警告一次并重试：先隔一分钟，之后间隔逐渐拉长（最长五分钟），令牌过期后也继续，直到运行结束。`opencode` 只在启动时读取一次令牌，所以 ocra 给它一个比 `runTimeoutMinutes` 多十分钟仍有效的令牌；运行可能比任何令牌都长时会警告：大约一小时后，经由 ocra Cloud 的调用会失败。
+- 使用 `"runtime": "direct"` 时，ocra 在整个运行期间于令牌过期前五分钟续期。续期失败时警告一次并重试：先隔一分钟，之后间隔逐渐拉长（最长五分钟），令牌过期后也继续，直到运行结束。`opencode` 只在启动时读取一次令牌，所以 ocra 给它一个比 `runTimeoutMinutes` 多十分钟仍有效的令牌；运行可能比任何令牌都长时会警告：大约一小时后，经由 ocra Cloud 的调用会失败。只有新令牌会更持久时，ocra 才为此续期已保存的令牌；已保存的令牌几乎同样新时不续期。
 
 **账户设置。** 登录后，`ocra review` 会把账户设置放在配置之下应用（见[账户设置](./configuration#账户设置)）。账户还可以开启 `ultra`，效果如同传了 `--ultra`；命令行上的 `--ultra` 始终生效。账户补充了哪些会打印出来（`From your ocra Cloud settings: …`）。`--plan` 也会读取它们，并在末尾列出 Settings，标明每项设置的来源：`shared`（extends 的共享配置）、`file`、`env`（`OCRA_MODEL_*`、`OCRA_EFFORT_*`）、`account`（含 `ultra`）、会合并的列表（`include`、`exclude`、规则）用 `+` 连接来源（例如 `shared+account`），或 `default`。连不上 ocra Cloud 时会给出警告，计划只显示配置本身。
 
 **审查会上传什么。** 每次审查后，已登录的 CLI 会发送统计：结论、是否审完所有文件、各级别问题数、文件数、任务数、token、费用、耗时、来源（本地、GitHub、GitLab）和 ocra 版本；每个审查员的任务数、失败任务数、各级别问题数、费用（不含 `--resume` 复用的任务，本次运行没有为它们付费），以及它早先的问题已修复或被驳回的数量；已确认、不确定和未检查的问题数；早先的问题一共有多少已修复或被驳回（计入记录的审查员；记录审查员之前的问题，只有本次审查仍有同一指纹时才计入）。除非账户开启了共享问题，从不发送路径、标题、指纹、问题描述或代码。
 
-- 仓库以其规范化地址 `https://host/owner/repo` 加盐后的 SHA-256 发送（去掉用户名、凭据、端口、末尾的 `/` 和 `.git`，统一大小写，因此 `git@host:owner/repo.git` 和 `ssh://git@host:22/owner/repo` 得到同一个值）。使用 `--pr` 或 `--mr` 时是平台上的仓库；本地审查用 origin（本地路径形式的远程按原样使用；没有 origin 时用目录）。服务器可以把同一仓库的审查归在一起，却不知道是哪个仓库。
+- 仓库以其规范化地址 `https://host/owner/repo` 加盐后的 SHA-256 发送（去掉用户名、凭据、端口、末尾的 `/` 和 `.git`，统一大小写，因此 `git@host:owner/repo.git` 和 `ssh://git@host:22/owner/repo` 得到同一个值）。使用 `--pr` 或 `--mr` 时是平台上的仓库；本地审查用 origin（本地路径形式的远程按原样使用；没有 origin 时用目录）。服务器可以把同一仓库的审查归在一起，却不知道是哪个仓库。自建 GitLab 部署在子路径下（`https://host/gitlab/…`）或由另一台主机提供 SSH 时，SSH 克隆的地址与合并请求的不同，因此对该克隆的本地审查与 `--mr` 审查算作不同的仓库；HTTPS 克隆则一致。
 - 远程是 SSH 形式、或带端口或末尾 `/` 的仓库，在 0.5.0 之后得到过一次新的哈希（0.5.0 按原样计算）：旧的审查和 memory 要重新记录后才能对上。
-- 盐是随机值，保存在凭据旁的 `upload-salt`，所以每台机器的哈希不同。账户开启共享问题时，盐是账户的：登录时和每次审查前读取，保存在 `account-salt`（只有你可读），所以你的所有机器哈希一致。审查需要本机的盐却读不了 `upload-salt`（例如 `sudo ocra` 之后属于另一个用户）时，文件保持原样，审查给出警告，不向 ocra Cloud 发送任何内容。
+- 盐是随机值，保存在凭据旁的 `upload-salt`，所以每台机器的哈希不同。账户开启共享问题时，盐是账户的：登录时和每次审查前读取，保存在 `account-salt`（只有你可读），所以你的所有机器哈希一致。审查需要本机的盐却读不了 `upload-salt`（例如 `sudo ocra` 之后属于另一个用户），或无法创建它（目录只读）时，文件保持原样，审查给出警告，不向 ocra Cloud 发送任何内容。无法把账户的盐保存到 `account-salt` 时，审查给出警告，并使用刚收到的盐。
 - `--no-upload` 跳过单次上传，`OCRA_CLOUD=off` 关闭 ocra Cloud；上传失败只会给出警告。
 
 **共享问题。** 在账户的 Settings 里打开"Send findings and the code they quote to ocra Cloud"（默认关闭）后，上传还会带上每个问题的指纹、审查员、级别、类别、核查结果、文件、行范围、标题、描述、建议和引用的代码，让网页可以完整展示这次审查。
