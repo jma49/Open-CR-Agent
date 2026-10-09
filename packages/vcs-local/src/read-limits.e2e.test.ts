@@ -1,7 +1,8 @@
 import { rmSync } from "node:fs";
 import { scratchRepo } from "@open-cr-agent/test-support";
 import { afterEach, describe, expect, it } from "vitest";
-import { LocalGitAdapter, MAX_READ_BYTES } from "./local-adapter.js";
+import { LocalGitAdapter } from "./local-adapter.js";
+import { MAX_READ_BYTES } from "./working-tree.js";
 
 const dirs: string[] = [];
 afterEach(() => {
