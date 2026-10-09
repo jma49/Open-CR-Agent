@@ -8,7 +8,7 @@ import { assembleReport } from "./assemble-report.js";
 import { checkStage } from "./check-stage.js";
 import { executeStage, type StageContext } from "./execute-stage.js";
 import { filterStage } from "./filter-stage.js";
-import { MAX_TIMER_MS, REVIEW_DEFAULTS, type ReviewHooks, type ReviewOptions } from "./options.js";
+import { type ReviewHooks, type ReviewOptions, runSettings } from "./options.js";
 import { planReview } from "./plan.js";
 import { newRunId } from "./run-id.js";
 
@@ -21,17 +21,16 @@ export function review(options: ReviewOptions): Promise<ReviewReport> {
 }
 
 export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Promise<ReviewReport> {
+  const settings = runSettings(options);
   const emit = options.onEvent ?? (() => {});
-  const timeout = AbortSignal.timeout(
-    Math.min(options.limits?.runTimeoutMs ?? REVIEW_DEFAULTS.runTimeoutMs, MAX_TIMER_MS),
-  );
+  const timeout = AbortSignal.timeout(settings.runTimeoutMs);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
   const reviewers = options.reviewers ?? [correctnessReviewer];
   if (reviewers.length === 0) throw new OcraError("CONFIG_INVALID", "No reviewer is registered");
   const runId = options.identity?.runId ?? newRunId();
 
   const prior = await loadPriorReview(options.vcs);
-  const scope = reviewScope(prior.review, options.mode?.full === true);
+  const scope = reviewScope(prior.review, settings.full);
   const plan = await planReview(
     scope.only
       ? {
@@ -44,8 +43,8 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
     emit,
     signal,
   );
-  const budget = spendTracker(options.limits?.maxCostUsd, plan.usage);
-  const context: StageContext = { options, plan, budget, signal, emit };
+  const budget = spendTracker(settings.maxCostUsd, plan.usage);
+  const context: StageContext = { options, settings, plan, budget, signal, emit };
   const executed = await executeStage(reviewers, context);
   const filtered = await filterStage(executed, prior.review, context);
   const checked = await checkStage(filtered, context);

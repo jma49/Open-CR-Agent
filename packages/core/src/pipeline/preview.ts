@@ -9,7 +9,7 @@ import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import { resolveRules } from "../rules/resolve.js";
 import type { FileDecision } from "../select/select.js";
 import { isLargeBundle } from "./execute.js";
-import type { ReviewOptions } from "./options.js";
+import { type ReviewOptions, runSettings } from "./options.js";
 import { type PlanOptions, planReview } from "./plan.js";
 
 export interface PreviewTask {
@@ -74,11 +74,12 @@ export type PreviewOptions = Omit<PlanOptions, "runtime"> &
 // Everything a review would do before its first model call, for free: which
 // files, which tasks, and how large each first prompt is.
 export async function previewReview(options: PreviewOptions): Promise<ReviewPreview> {
+  const settings = runSettings(options);
   const plan = await planReview(options, () => {}, new AbortController().signal);
   const reviewers = options.reviewers ?? [correctnessReviewer];
   const planned = planTasks(plan.bundles, reviewers, plan.tier, options.reviewerOverrides, {
-    ultra: options.mode?.ultra === true,
-    ...(options.limits?.maxTasks !== undefined ? { maxTasks: options.limits?.maxTasks } : {}),
+    ultra: settings.ultra,
+    ...(settings.maxTasks !== undefined ? { maxTasks: settings.maxTasks } : {}),
     hasGuidelines: Boolean(plan.guidelines?.trim()),
   });
   const { cells } = planned;
@@ -108,7 +109,7 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
     const models = call.models ?? options.models?.[cell.reviewer.modelTier];
     if (models?.length) task.models = [...models];
     const key = `${cell.reviewer.id}\0${cell.bundle.label}`;
-    if ((options.mode?.ultra || isLargeBundle(cell.bundle.files)) && !plannedBundles.has(key)) {
+    if ((settings.ultra || isLargeBundle(cell.bundle.files)) && !plannedBundles.has(key)) {
       plannedBundles.add(key);
       task.planPromptTokens = tokens(buildReviewPrompt({ ...input, forPlanning: true }));
     }

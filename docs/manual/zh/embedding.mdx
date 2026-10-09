@@ -81,9 +81,9 @@ try {
 | `rules` | 按路径生效的规则，注册表里的加上你自己的（`SourcedRule[]`：带可选来源 `source` 的 `RepoRule`，取值 `repository`、`shared`、`account` 或 `plugin`）；`provenance.rules` 会列出它们，`.ocra/rules.json` 的记为 `repository` |
 | `readTrusted` | 从哪里读取 `AGENTS.md`、`.ocra/rules.json` 和 `.ocra/memory.json`，默认是被审查的版本。审查 PR 时传入读取可信 base 的函数 |
 | `selection` | 审查哪些文件：`include`、`exclude`、`maxPatchChars`（200,000）；没给的字段保持默认值 |
-| `limits.concurrency`、`limits.taskTimeoutMs`、`limits.runTimeoutMs` | 并行任务数（4）、单个任务的超时（10 分钟）和整次运行的超时（25 分钟）；超过 2^31 - 1 毫秒（约 24.8 天）的超时会被截到这个值 |
+| `limits.concurrency`、`limits.taskTimeoutMs`、`limits.runTimeoutMs` | 并行任务数（4）、单个任务的超时（10 分钟）和整次运行的超时（25 分钟）；超过 2^31 - 1 毫秒（约 24.8 天）的超时（包括 `Infinity`）会被截到这个值。并行任务数不是不小于 1 的整数、超时不是正数时，`review()` 在开始前以 `CONFIG_INVALID` 拒绝 |
 | `stages.verify`、`stages.judge` | 对照 diff 核查问题，以及跨审查员合并、过滤和重新定级（默认都开启） |
-| `limits.maxCostUsd`、`limits.maxTasks` | 花费上限（[`--max-cost-usd`](./cli)）和任务数上限 |
+| `limits.maxCostUsd`、`limits.maxTasks` | 花费上限（[`--max-cost-usd`](./cli)）和任务数上限；负数或 `NaN` 的上限、不是整数的任务数上限以 `CONFIG_INVALID` 拒绝 |
 | `mode.full` | 即使平台报告了上次审查以来的改动，也审查所有文件 |
 | `mode.ultra` | 以成本换召回率（[模式](./how-it-works#模式)） |
 | `sarif` | 解析好的 SARIF 日志（`parseSarifLog`），其中落在改动上的结果加入审查（[SARIF 输入](./cli#sarif-输入)） |
