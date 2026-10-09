@@ -62,6 +62,29 @@ describe("the vectors ocra Cloud runs too", () => {
       expect(redact(line), line).toEqual({ text: line, redacted: false });
   });
 
+  it("keeps the escaping of a JSON string inside a string", () => {
+    expect(redact('{\\"password\\":\\"hunter2hunter2\\"}').text).toBe(
+      `{\\"password\\":\\"${REDACTED}\\"}`,
+    );
+  });
+
+  it("redacts a block scalar's lines down to the next key at its own indentation", () => {
+    const yaml = "db:\n  password: |\n    s3cret-one\n\n    s3cret-two\n  user: admin\n";
+    expect(redact(yaml).text).toBe(
+      `db:\n  password: |\n    ${REDACTED}\n\n    ${REDACTED}\n  user: admin\n`,
+    );
+  });
+
+  it("matches a lowercase scheme only when its credential has a digit", () => {
+    expect(redact("bearer abcdefghijkl").redacted).toBe(false);
+    expect(redact("the basic\nabcd1234efgh").redacted).toBe(false);
+  });
+
+  it("redacts a glued -p only on a mysql command line", () => {
+    expect(redact("mysql -uroot -pS3cret1").text).toBe(`mysql -uroot -p${REDACTED}`);
+    expect(redact("tool -pS3cret1").redacted).toBe(false);
+  });
+
   it("redacts a hex run of 32 or more, which may be a key as well as a digest", () => {
     const sha = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
     expect(redact(`const sha = '${sha}';`).text).toBe(`const sha = '${REDACTED}';`);
@@ -106,6 +129,20 @@ describe("what redact costs", () => {
     "sk-a-",
     "0a_",
     "-----BEGIN A PRIVATE KEY-----",
+    '\\"password\\":\\"a',
+    'password\\": \\"a\\',
+    "password: |\n",
+    "password: |\n a",
+    "  password: >-\n",
+    "--password a",
+    "--password 'a",
+    "--a-",
+    " -pa",
+    "mysql -pa ",
+    "bearer a1",
+    "Bearer\n",
+    "Bearer \n a-",
+    'password: "a\n',
   ];
 
   it("is linear in its input: 100k characters of any crafted run take under 200 ms", {

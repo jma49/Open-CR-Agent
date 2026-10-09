@@ -69,7 +69,19 @@
     { "line": "SECRET_KEY=django-insecure-x1y2z3", "secret": "x1y2z3" },
     { "line": "secret_key_base: 9f8e7d-Base", "secret": "9f8e7d-Base" },
     { "line": "passphrase: s3cr3t-Pass", "secret": "s3cr3t-Pass" },
-    { "line": "DB_PASSWORD=s3cret1; export DB_PASSWORD", "secret": "s3cret1" }
+    { "line": "DB_PASSWORD=s3cret1; export DB_PASSWORD", "secret": "s3cret1" },
+    { "line": "{\\\"password\\\":\\\"hunter2hunter2\\\"}", "secret": "hunter2hunter2" },
+    { "line": "body: \"{\\\"api_key\\\": \\\"live_51HxYz\\\"}\"", "secret": "live_51HxYz" },
+    { "line": "password: |\n  s3cr3t-Pass\n", "secret": "s3cr3t-Pass" },
+    { "line": "  client_secret: >-\n    abc123def\n    ghi456jkl\nnext: 1", "secret": "ghi456jkl" },
+    { "line": "mysql -u root -pS3cretPass1 app", "secret": "S3cretPass1" },
+    { "line": "mysqldump -h db -p'S3cret Pass' app", "secret": "S3cret Pass" },
+    { "line": "app --password hunter2hunter2 --verbose", "secret": "hunter2hunter2" },
+    { "line": "deploy --api-key \"correct horse battery\"", "secret": "correct horse battery" },
+    { "line": "-H \"authorization: bearer abc123def456ghi789\"", "secret": "abc123def456" },
+    { "line": "authorization: basic dXNlcjE6cGFzczE=", "secret": "dXNlcjE6cGFzczE" },
+    { "line": "Authorization: Bearer\n  abc123def456", "secret": "abc123def456" },
+    { "line": "password = \"hunter2hunter2\nnext line", "secret": "hunter2hunter2" }
   ],
   "keep": [
     "const total = items.reduce((n, i) => n + i.price, 0);",
@@ -101,6 +113,12 @@
     "docker run --rm --user \"$(id -u):$(id -g)\" --volume \"$PWD:/repo\" ocra:ci review --plan",
     "--volume $PWD:/repo",
     "docker run -u 1000:1000 image",
-    "curl -u user:$PASS https://example.com"
+    "curl -u user:$PASS https://example.com",
+    "mkdir -p build/output && gcc -pthread -pedantic main.c",
+    "docker run -p8080:80 nginx; ssh -p2222 host",
+    "Run it with --token tokenName, or pass --password to be prompted.",
+    "--private-key ./keys/deploy.pem --password-file /run/secrets/db",
+    "This is a basic example of bearer authentication, over a basic int32Array.",
+    "password: |"
   ]
 }

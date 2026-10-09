@@ -36,18 +36,37 @@ const USER_FLAG =
 const isUidGid = (user: string, value: string) => /^\d+$/.test(user) && /^\d+$/.test(value);
 
 // An HTTP credential however short: Bearer …, Basic …, capitalised as in a
-// header. A word after the scheme is prose ("Basic error-handling",
-// "Bearer TokenValidation") and stays.
-const AUTH_SCHEME = /\b(Bearer|Basic)([ \t]+)([A-Za-z0-9._~+/-]{8,}=*)/g;
+// header, on the same line or the next. A word after the scheme is prose
+// ("Basic error-handling", "Bearer TokenValidation") and stays. Spelled
+// otherwise (an HTTP/2 header is lowercase), the scheme is a word of prose
+// as often, so it counts only on the same line and before a credential of
+// 16 or more characters with a digit, longer than words such as int32Array.
+const AUTH_SCHEME =
+  /\b(Bearer|Basic)([ \t]+|[ \t]{0,64}\r?\n[ \t]{0,64})([A-Za-z0-9._~+/-]{8,}=*)/gi;
 const isWord = (s: string) => /^[A-Z]?[a-z]+(?:[-A-Z][a-z]+)*$/.test(s);
+const isAuthCredential = (scheme: string, space: string, value: string) =>
+  scheme === "Bearer" || scheme === "Basic"
+    ? !isWord(value)
+    : !space.includes("\n") && value.length >= 16 && /\d/.test(value);
 
 const SECRET_NAME =
   "(?:passw(?:or)?d|passphrase|pwd|secret[_-]?key(?:[_-]?base)?|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|credentials?)";
 
 // A quoted value assigned to a name that says it is secret:
-// password = "…", "apiKey": "…", DB_PASSWORD: '…'; also one whose closing
-// quote a cut at the end of the text left out.
-const QUOTED = new RegExp(`(${SECRET_NAME}["']?\\s*[:=]\\s*)(["'\`])([^"'\`\\n]{4,})(\\2|$)`, "gi");
+// password = "…", "apiKey": "…", DB_PASSWORD: '…', and the same in a JSON
+// string inside a string, its quotes escaped; also one whose closing quote
+// a cut or a line break left out.
+const QUOTED = new RegExp(
+  `(${SECRET_NAME}\\\\?["']?\\s*[:=]\\s*)(\\\\?)(["'\`])([^"'\`\\n]{4,})(\\3|$|(?=\\r?\\n))`,
+  "gi",
+);
+
+// A YAML block scalar (password: |, token: >-): the value is the lines
+// below, indented deeper than the key.
+const BLOCK_SCALAR = new RegExp(
+  `${SECRET_NAME}["']?[ \\t]*:[ \\t]*[|>][-+0-9]{0,2}[ \\t]{0,64}(?:#[^\\n]{0,256})?\\r?\\n`,
+  "gi",
+);
 
 // An unquoted value. One starting like a reference, a template or markup
 // ($VAR, ${{ … }}, <…>, {…}, *alias, :symbol, @field) is not a secret.
@@ -64,6 +83,21 @@ const BARE_LINE = new RegExp(
   `(${SECRET_NAME}["']?[ \\t]*[:=][ \\t]*)(?=(${BARE_VALUE}))\\2(?=["'\`]|[ \\t]{0,64}(?:[\\r\\n]|$)|[ \\t]{1,64}#)`,
   "gi",
 );
+// A secret given to a command-line flag as the next argument:
+// --password …, --api-key "…". A word after it is prose ("pass --token
+// tokenName"), a path names a file.
+const FLAG_VALUE = new RegExp(
+  `(?<![^\\s"'\`])(--[\\w-]{0,32}?${SECRET_NAME}[ \\t]+)(?:(["'])([^"'\\n]{1,256})\\2|(?=(${BARE_VALUE}))\\4(?![^\\s"'\`]))`,
+  "gi",
+);
+const isPathLike = (s: string) => /^\.{0,2}\//.test(s);
+
+// MySQL's password glued to -p (mysql -pS3cret). Other tools' -p is a port,
+// a path or a flag of its own (-p8080:80, mkdir -p, -pthread), so the line
+// must start a MySQL or MariaDB client, looked for a bounded way back.
+const GLUED_P = /(?<![^\s"'`])(-p)(?:(["'])([^"'\n]{1,256})\2|([^\s"'`$][^\s"'`]{0,255}))/g;
+const MYSQL_CLIENT = /\b(?:mysql|mysqldump|mysqladmin|mariadb)(?:-dump)?\b[^\n]{0,256}$/;
+
 // An unquoted value that reads as code: a call, an index or a generic; the
 // end of a statement, an argument list or a block; a name or a type
 // (letters only: null, string, String!); a dotted reference
@@ -108,12 +142,40 @@ export function redact(text: string): { text: string; redacted: boolean } {
     isUidGid(user, value) ? m : `${flag}${user}:${REDACTED}`,
   );
   out = out.replace(AUTH_SCHEME, (m, scheme: string, space: string, value: string) =>
-    isWord(value) ? m : `${scheme}${space}${REDACTED}`,
+    isAuthCredential(scheme, space, value) ? `${scheme}${space}${REDACTED}` : m,
   );
+  // An escaped closing quote keeps its backslash, which the value took.
   out = out.replace(
     QUOTED,
-    (_m, head: string, open: string, _value: string, close: string) =>
-      `${head}${open}${REDACTED}${close}`,
+    (_m, head: string, backslash: string, open: string, value: string, close: string) =>
+      `${head}${backslash}${open}${REDACTED}${backslash && value.endsWith("\\") ? "\\" : ""}${close}`,
+  );
+  out = redactBlockScalars(out);
+  out = out.replace(
+    FLAG_VALUE,
+    (m, head: string, quote?: string, quoted?: string, bare?: string) => {
+      if (quote !== undefined && quoted !== undefined)
+        return quoted.startsWith("$") ? m : `${head}${quote}${REDACTED}${quote}`;
+      return bare !== undefined && isBareSecret(bare) && !isPathLike(bare)
+        ? `${head}${REDACTED}`
+        : m;
+    },
+  );
+  out = out.replace(
+    GLUED_P,
+    (
+      m,
+      flag: string,
+      quote: string | undefined,
+      quoted: string | undefined,
+      _bare,
+      at: number,
+      all: string,
+    ) => {
+      if (quoted?.startsWith("$") || !MYSQL_CLIENT.test(all.slice(Math.max(0, at - 256), at)))
+        return m;
+      return quote === undefined ? `${flag}${REDACTED}` : `${flag}${quote}${REDACTED}${quote}`;
+    },
   );
   // NAME=value is shell or .env, where a `;` or `,` after the value ends a
   // command rather than marking code.
@@ -128,6 +190,38 @@ export function redact(text: string): { text: string; redacted: boolean } {
   out = out.replace(HEX, (m) => (isHexKey(m) ? REDACTED : m));
   out = out.replace(LONG_RUN, (m) => (looksRandom(m) ? REDACTED : m));
   return { text: out, redacted: out !== text };
+}
+
+// Each block scalar's lines, from the one after its head down to the first
+// line with text that is no deeper than the head's line. A head ends its
+// line, so the scan back to the line's start happens once per line.
+function redactBlockScalars(text: string): string {
+  let out = "";
+  let from = 0;
+  for (const m of text.matchAll(BLOCK_SCALAR)) {
+    if (m.index < from) continue;
+    const keyIndent = indentAt(text, text.lastIndexOf("\n", m.index) + 1);
+    let at = m.index + m[0].length;
+    while (at < text.length) {
+      const newline = text.indexOf("\n", at);
+      const end = newline === -1 ? text.length : newline;
+      const indent = indentAt(text, at);
+      const cr = text.charAt(end - 1) === "\r" ? "\r" : "";
+      if (at + indent < end - cr.length) {
+        if (indent <= keyIndent) break;
+        out += `${text.slice(from, at + indent)}${REDACTED}${cr}`;
+        from = end;
+      }
+      at = end + 1;
+    }
+  }
+  return out + text.slice(from);
+}
+
+function indentAt(text: string, at: number): number {
+  let end = at;
+  while (text.charAt(end) === " " || text.charAt(end) === "\t") end += 1;
+  return end - at;
 }
 
 // How far past the cap a field is read to finish the run of non-space
