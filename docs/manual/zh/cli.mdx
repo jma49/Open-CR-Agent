@@ -259,7 +259,7 @@ ocra logout                                   # 在服务器上结束会话，�
 - 提示词及其中引用的代码经过 ocra Cloud，它只记录每次调用的模型、状态码、token 数和耗时，从不记录内容。
 - 没有使用 `ocra-` 模型的审查不读取会话，也不连接 ocra Cloud；配置中以 `ocra-` 名称自行声明的 provider 保持原有声明。
 - [推理强度](./configuration#推理强度)按 ocra Cloud 为该 provider 列出的方式发送（`openai`：`reasoning_effort`；`openrouter`：`reasoning.effort`），没有列出时用 `openai`；不认识的方式会被忽略并给出警告。回答不是 provider 列表时审查停止。
-- 使用 `"runtime": "direct"` 时，ocra 在整个运行期间于令牌过期前五分钟续期（失败时警告一次）。`opencode` 只在启动时读取一次令牌，所以 ocra 给它一个比 `runTimeoutMinutes` 多十分钟仍有效的令牌；运行可能比任何令牌都长时会警告：大约一小时后，经由 ocra Cloud 的调用会失败。
+- 使用 `"runtime": "direct"` 时，ocra 在整个运行期间于令牌过期前五分钟续期。续期失败时警告一次并重试：先隔一分钟，之后间隔逐渐拉长（最长五分钟），令牌过期后也继续，直到运行结束。`opencode` 只在启动时读取一次令牌，所以 ocra 给它一个比 `runTimeoutMinutes` 多十分钟仍有效的令牌；运行可能比任何令牌都长时会警告：大约一小时后，经由 ocra Cloud 的调用会失败。
 
 **账户设置。** 登录后，`ocra review` 会把账户设置放在配置之下应用（见[账户设置](./configuration#账户设置)）。账户还可以开启 `ultra`，效果如同传了 `--ultra`；命令行上的 `--ultra` 始终生效。账户补充了哪些会打印出来（`From your ocra Cloud settings: …`）。`--plan` 也会读取它们，并在末尾列出 Settings，标明每项设置的来源：`shared`（extends 的共享配置）、`file`、`env`（`OCRA_MODEL_*`、`OCRA_EFFORT_*`）、`account`（含 `ultra`）、会合并的列表（`include`、`exclude`、规则）用 `+` 连接来源（例如 `shared+account`），或 `default`。连不上 ocra Cloud 时会给出警告，计划只显示配置本身。
 

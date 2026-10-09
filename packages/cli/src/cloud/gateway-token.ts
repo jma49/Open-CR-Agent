@@ -6,15 +6,18 @@ import type { CloudDeps } from "./deps.js";
 // The access token a run's models use at the ocra Cloud gateway lives an
 // hour; a run may last longer. While the run lasts, the token is renewed a
 // few minutes before it expires, for a runtime that reads its key at each
-// call (the direct runtime does).
+// call (the direct runtime does). A renewal that fails is tried again, ever
+// less often, until the run ends: past expiry too, since a token renewed
+// late still serves the rest of the run.
 
 export const RENEW_BEFORE_MS = 5 * 60_000;
-const RETRY_MS = 60_000;
+const FIRST_RETRY_MS = 60_000;
 
 export class GatewayToken {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private stopped = false;
   private failing = false;
+  private retryMs = FIRST_RETRY_MS;
 
   private credentials: Credentials;
   private readonly deps: CloudDeps;
@@ -54,6 +57,7 @@ export class GatewayToken {
       if (session.kind === "ok") {
         this.credentials = session.credentials;
         this.failing = false;
+        this.retryMs = FIRST_RETRY_MS;
         this.start();
         return;
       }
@@ -67,6 +71,7 @@ export class GatewayToken {
       );
       this.failing = true;
     }
-    if (this.deps.now() < this.credentials.expires_at) this.schedule(RETRY_MS);
+    this.schedule(this.retryMs);
+    this.retryMs = Math.min(2 * this.retryMs, RENEW_BEFORE_MS);
   }
 }
