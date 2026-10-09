@@ -20,7 +20,8 @@ export interface ModelAttempts {
   // Awaited once a call is accepted, before its first attempt: starting a
   // server, say. What it throws, the call throws.
   ready?(): Promise<void>;
-  // onUsage receives what the attempt has spent so far, as it grows.
+  // onUsage receives what the attempt has spent so far, as it grows. An
+  // outcome without an error counts as finished, whatever the signal says.
   task(
     model: string,
     spec: AgentTaskSpec,
