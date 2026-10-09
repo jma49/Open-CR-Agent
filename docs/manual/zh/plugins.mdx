@@ -33,7 +33,7 @@ export default {
 }
 ```
 
-插件从仓库的依赖（按包名）或相对仓库根目录的路径（可以指向仓库之外）解析。插件会执行代码，所以只在本地审查时加载；审查 PR 或 Merge Request、或使用 `--no-repo-config` 时都不加载。
+插件从仓库的依赖（按包名）或相对仓库根目录的路径（可以指向仓库之外）解析。包按 `import` 的方式解析，因此 `exports` 只为 `import` 指定入口的包也能加载；只指定 `require` 入口的包则退回到该入口。插件会执行代码，所以只在本地审查时加载；审查 PR 或 Merge Request、或使用 `--no-repo-config` 时都不加载。
 
 ## 来自 ocra Cloud 账户的插件
 

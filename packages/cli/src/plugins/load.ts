@@ -1,9 +1,10 @@
 import { realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { isAbsolute, join, resolve, sep } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import type { OcraPlugin } from "@open-cr-agent/core";
 import { errorMessage } from "@open-cr-agent/core";
+import { resolve as resolveImport } from "import-meta-resolve";
 import { ConfigError } from "../config/cli-config.js";
 import { installedEntry, readAllowed } from "./store.js";
 
@@ -30,7 +31,7 @@ export async function loadExternalPlugins(
 function resolvePlugin(specifier: string, root: string): string {
   if (specifier.startsWith(".") || isAbsolute(specifier)) return resolve(root, specifier);
   try {
-    return createRequire(join(root, "package.json")).resolve(specifier);
+    return resolvePackage(specifier, root);
   } catch {
     throw new ConfigError(
       `Cannot find plugin "${specifier}" from ${root}; install it as a dependency`,
@@ -87,8 +88,21 @@ export async function loadAllowedPlugins(
 // Node's resolution walks up past the directory to any node_modules above
 // it; the entry must be inside the allowed package itself.
 async function allowedEntry(dir: string, name: string): Promise<string> {
-  const entry = await realpath(createRequire(join(dir, "package.json")).resolve(name));
+  const entry = await realpath(resolvePackage(name, dir));
   const root = await realpath(join(dir, "node_modules", name));
   if (!entry.startsWith(`${root}${sep}`)) throw new Error(`it resolves outside ${dir}`);
   return entry;
+}
+
+// The entry a package exports from `dir`, as `import` finds it, since that
+// is how it loads; else as `require` finds it, for a package whose exports
+// name a CommonJS entry only. import.meta.resolve takes no parent directory
+// without an experimental flag, hence the library.
+function resolvePackage(specifier: string, dir: string): string {
+  const parent = pathToFileURL(join(dir, "package.json")).href;
+  try {
+    return fileURLToPath(resolveImport(specifier, parent));
+  } catch {
+    return createRequire(join(dir, "package.json")).resolve(specifier);
+  }
 }

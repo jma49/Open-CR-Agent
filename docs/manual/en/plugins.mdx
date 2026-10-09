@@ -33,7 +33,7 @@ Register it in `.ocra/config.json`:
 }
 ```
 
-Plugins resolve from the repository's dependencies (package names) or from paths relative to the repository root (which may point outside it). They run code, so they load only in local reviews, never for pull or merge requests or with `--no-repo-config`.
+Plugins resolve from the repository's dependencies (package names) or from paths relative to the repository root (which may point outside it). A package resolves as `import` finds it, so one whose `exports` name an entry for `import` only loads too; one that names a `require` entry only falls back to that. They run code, so they load only in local reviews, never for pull or merge requests or with `--no-repo-config`.
 
 ## Plugins from your ocra Cloud account
 
