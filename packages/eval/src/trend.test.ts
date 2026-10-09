@@ -147,6 +147,12 @@ describe("trend", () => {
         { "free-m@feat-x-smoke": { hits: 0, runs: 1 }, "free-m@main-smoke": { hits: 2, runs: 2 } },
       ],
     ]);
+    expect(trend.claims.map((c) => c.stability)).toEqual([
+      { hits: 2, runs: 3 },
+      { hits: 1, runs: 3 },
+      { hits: 3, runs: 3 },
+      { hits: 2, runs: 3 },
+    ]);
     expect(trend.warnings.join("\n")).toContain("free-smoke-4 has no per-case scores");
   });
 

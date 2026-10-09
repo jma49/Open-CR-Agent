@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { confidenceInterval, intervalVerdict, tQuantile } from "./interval.js";
+import { confidenceInterval, testVerdict, tQuantile, twoSampleTest } from "./interval.js";
 
 describe("confidenceInterval", () => {
   it("is the Student t interval of the mean", () => {
@@ -25,13 +25,25 @@ describe("confidenceInterval", () => {
   });
 });
 
-describe("intervalVerdict", () => {
-  const at = (low: number, high: number) => ({ mean: (low + high) / 2, low, high, n: 3 });
+describe("twoSampleTest", () => {
+  it("reports a known difference", () => {
+    const test = twoSampleTest([0.2, 0.22, 0.18], [0.4, 0.42, 0.38]);
+    expect(test?.difference).toBeCloseTo(0.2, 12);
+    expect(test && testVerdict(test, true)).toBe("better");
+    expect(test && testVerdict(test, false)).toBe("worse");
+  });
 
-  it("calls a change only when the intervals do not overlap", () => {
-    expect(intervalVerdict(at(0.2, 0.3), at(0.35, 0.4), true)).toBe("better");
-    expect(intervalVerdict(at(0.2, 0.3), at(0.35, 0.4), false)).toBe("worse");
-    expect(intervalVerdict(at(0.35, 0.4), at(0.2, 0.3), true)).toBe("worse");
-    expect(intervalVerdict(at(0.2, 0.3), at(0.29, 0.5), true)).toBe("no change");
+  it("gives identical-looking sides the difference it could have detected", () => {
+    // Recall 2/18–3/18 on both sides, as measured for #470 on 2026-10-08:
+    // pooled SD 0.0321, df 4, (2.776 + 0.941) · 0.0321 · √(2/3).
+    const test = twoSampleTest([2 / 18, 3 / 18, 3 / 18], [2 / 18, 2 / 18, 3 / 18]);
+    expect(test && testVerdict(test, true)).toBe("no change");
+    const sd = Math.sqrt((2 * (1 / 18) ** 2) / 3 / 2);
+    expect(test?.detectable).toBeCloseTo((2.776 + 0.941) * sd * Math.sqrt(2 / 3), 12);
+    expect(test?.detectable).toBeGreaterThan(0.09);
+  });
+
+  it("needs two runs on each side", () => {
+    expect(twoSampleTest([0.2], [0.3, 0.4])).toBeUndefined();
   });
 });

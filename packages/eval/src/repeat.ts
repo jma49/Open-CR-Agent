@@ -72,7 +72,7 @@ export function renderRepeats(label: string, summary: RepeatSummary, first?: Sav
     "|---|---|---|---|",
     ...rows,
     "",
-    "The interval is a Student t interval over the runs' values: mean ± t(0.975, k−1) · s/√k. `ocra-eval compare` calls a change better or worse only when the two runs' intervals do not overlap. Each run's own summary is in its directory.",
+    "The interval is a Student t interval over the runs' values: mean ± t(0.975, k−1) · s/√k. `ocra-eval compare` calls a change better or worse only when a two-sample t test finds it significant, and otherwise says how large a change the runs could have detected. Each run's own summary is in its directory.",
     "",
   ].join("\n");
 }

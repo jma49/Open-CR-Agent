@@ -1,4 +1,5 @@
 import { compareSummaries, comparisonWarnings, renderComparison } from "../compare.js";
+import { compareClaims, renderClaimComparison } from "../compare-claims.js";
 import { loadRuns } from "../repeat.js";
 import { type Output, parse } from "./options.js";
 
@@ -22,5 +23,7 @@ export async function compare(argv: string[], out: Output): Promise<number> {
       warnings,
     ),
   );
+  const claims = compareClaims(baseline.summaries, run.summaries);
+  if (claims) out.write(renderClaimComparison(claims));
   return 0;
 }

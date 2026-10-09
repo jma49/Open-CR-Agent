@@ -58,7 +58,14 @@ export interface Trend {
   series: SeriesTrend[];
   // Every series again, on the cases common to all of them.
   across?: { common: string[]; rows: { name: string; scored: Scored[] }[] };
-  claims: { id: string; concern: string; hits: Record<string, { hits: number; runs: number }> }[];
+  claims: {
+    id: string;
+    concern: string;
+    hits: Record<string, { hits: number; runs: number }>;
+    // Over every scored run of every series: a claim found always or never
+    // tells two setups apart less than one found about half the time.
+    stability: { hits: number; runs: number };
+  }[];
   warnings: string[];
 }
 
@@ -195,15 +202,16 @@ function claims(series: readonly SeriesTrend[], common: readonly string[]): Tren
     const sample = series.flatMap((s) => s.runs.filter(hasCases))[0]?.cases?.[id];
     for (const [k, claim] of (sample?.claims ?? []).entries()) {
       const hits: Trend["claims"][number]["hits"] = {};
+      const stability = { hits: 0, runs: 0 };
       for (const s of series) {
         const runs = s.runs.filter(hasCases);
         if (runs.length === 0) continue;
-        hits[s.name] = {
-          hits: runs.filter((r) => r.cases[id]?.claims[k]?.found === true).length,
-          runs: runs.length,
-        };
+        const found = runs.filter((r) => r.cases[id]?.claims[k]?.found === true).length;
+        hits[s.name] = { hits: found, runs: runs.length };
+        stability.hits += found;
+        stability.runs += runs.length;
       }
-      rows.push({ id: `${id}#${k + 1}`, concern: claim.concern, hits });
+      rows.push({ id: `${id}#${k + 1}`, concern: claim.concern, hits, stability });
     }
   }
   return rows;
@@ -270,14 +278,16 @@ export function renderTrend(trend: Trend): string {
     lines.push(
       "## Claims: runs that found each expected finding",
       "",
-      `| Claim | Concern | ${names.join(" | ")} |`,
-      `|---|---|${names.map(() => "---|").join("")}`,
+      "Stability is the share of all these runs that found it.",
+      "",
+      `| Claim | Concern | ${names.join(" | ")} | Stability |`,
+      `|---|---|${names.map(() => "---|").join("")}---|`,
       ...trend.claims.map((c) => {
         const cells = names.map((n) => {
           const h = c.hits[n];
           return h ? `${h.hits}/${h.runs}` : "–";
         });
-        return `| ${c.id} | ${short(c.concern)} | ${cells.join(" | ")} |`;
+        return `| ${c.id} | ${concernCell(c.concern)} | ${cells.join(" | ")} | ${pct(c.stability.hits / c.stability.runs)} |`;
       }),
       "",
     );
@@ -292,7 +302,7 @@ function judges(s: SeriesTrend): string[] {
 }
 
 // Concerns are case text: one line, bounded, and no table breaks.
-function short(text: string): string {
+export function concernCell(text: string): string {
   const line = text.replace(/\s+/g, " ").replaceAll("|", "\\|").trim();
   return line.length > 80 ? `${line.slice(0, 77)}...` : line;
 }

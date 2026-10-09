@@ -1,4 +1,4 @@
-import { confidenceInterval, type Interval, intervalVerdict } from "./interval.js";
+import { confidenceInterval, type Interval, testVerdict, twoSampleTest } from "./interval.js";
 import { provenanceWarnings } from "./provenance.js";
 import type { RunInfo, RunSummary } from "./report.js";
 
@@ -115,13 +115,16 @@ export interface ComparisonRow {
   // Repeated runs on both sides: 95% intervals of each side's mean.
   baselineInterval?: Interval;
   runInterval?: Interval;
+  // Repeated runs on both sides: the smallest difference the runs could
+  // detect, so "no change" reads "no change larger than this".
+  detectable?: number;
   verdict: "better" | "worse" | "no change" | "unknown";
   percent: boolean;
 }
 
 // ADR-0011: a small set cannot show small effects. Repeated runs on both
-// sides compare by confidence interval: a difference counts only when the
-// intervals do not overlap. Otherwise, with a second baseline run, a
+// sides compare by a two-sample t test, which also says how large a
+// difference they could have detected. Otherwise, with a second baseline run, a
 // difference no larger than the spread between the two baselines is no
 // change; without either, the direction is not judged. A repeated side is
 // shown by its mean.
@@ -144,17 +147,17 @@ export function compareSummaries(
     const intervals = metric.interval
       ? { baseline: confidenceInterval(before), run: confidenceInterval(after) }
       : undefined;
+    const test = metric.interval ? twoSampleTest(before, after) : undefined;
     const difference = b - a;
-    const verdict =
-      intervals?.baseline && intervals.run
-        ? intervalVerdict(intervals.baseline, intervals.run, metric.higherIsBetter)
-        : spread === undefined
-          ? "unknown"
-          : Math.abs(difference) <= spread
-            ? "no change"
-            : difference > 0 === metric.higherIsBetter
-              ? "better"
-              : "worse";
+    const verdict = test
+      ? testVerdict(test, metric.higherIsBetter)
+      : spread === undefined
+        ? "unknown"
+        : Math.abs(difference) <= spread
+          ? "no change"
+          : difference > 0 === metric.higherIsBetter
+            ? "better"
+            : "worse";
     rows.push({
       metric: metric.name,
       baseline: a,
@@ -164,6 +167,7 @@ export function compareSummaries(
       ...(intervals?.baseline && intervals.run
         ? { baselineInterval: intervals.baseline, runInterval: intervals.run }
         : {}),
+      ...(test ? { detectable: test.detectable } : {}),
       verdict,
       percent: metric.percent,
     });
@@ -201,6 +205,10 @@ export function renderComparison(
   const signed = (value: number, percent: boolean) =>
     `${value >= 0 ? "+" : ""}${format(value, percent)}`;
   const intervals = rows.some((r) => r.runInterval);
+  const verdict = (r: ComparisonRow) =>
+    r.verdict === "no change" && r.detectable !== undefined
+      ? `no change within noise (detectable ≥ ${format(r.detectable, r.percent)})`
+      : r.verdict;
   const ci = (r: ComparisonRow) =>
     !intervals
       ? ""
@@ -212,7 +220,7 @@ export function renderComparison(
     `|---|---|---|---|---|${intervals ? "---|---|" : ""}---|`,
     ...rows.map(
       (r) =>
-        `| ${r.metric} | ${format(r.baseline, r.percent)} | ${format(r.run, r.percent)} | ${signed(r.difference, r.percent)} | ${r.spread === undefined ? "not measured" : format(r.spread, r.percent)} |${ci(r)} ${r.verdict} |`,
+        `| ${r.metric} | ${format(r.baseline, r.percent)} | ${format(r.run, r.percent)} | ${signed(r.difference, r.percent)} | ${r.spread === undefined ? "not measured" : format(r.spread, r.percent)} |${ci(r)} ${verdict(r)} |`,
     ),
     ...warnings.map((w) => `\nWarning: ${w}`),
     "",

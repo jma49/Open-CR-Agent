@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -87,5 +87,71 @@ describe("comparisonWarnings", () => {
       "the runs were scored against different golden cases or labels; rescore them",
       "some findings are unlabeled, which lowers golden precision until labeled",
     ]);
+  });
+});
+
+// A golden run of one case whose expected findings were found as `found`.
+const golden = (found: boolean[], casesHash = "h1", recall = 0): SavedSummary =>
+  ({
+    summary: {
+      overall: { metrics: { precision: 0.5, recall: 0.5, f1: 0.5 } },
+      costPerReviewedUsd: 1,
+      durationSeconds: { median: 60 },
+      golden: {
+        precision: 0.5,
+        recall,
+        failures: [],
+        counts: { unadjudicated: 0 },
+        casesHash,
+        cases: {
+          c: {
+            expected: found.length,
+            found: found.filter(Boolean).length,
+            reported: 1,
+            right: 1,
+            claims: found.map((f, k) => ({ concern: `claim ${k + 1} | x`, found: f })),
+          },
+        },
+      },
+    },
+  }) as unknown as SavedSummary;
+
+describe("ocra-eval compare on repeated golden runs", () => {
+  const repeated = async (runs: SavedSummary[]) => {
+    const dir = await mkdtemp(join(tmpdir(), "ocra-compare-claims-"));
+    await writeFile(
+      join(dir, "repeats.json"),
+      JSON.stringify({ repeat: runs.length, runs: runs.map((_, n) => `r${n + 1}`) }),
+    );
+    for (const [n, saved] of runs.entries()) {
+      await mkdir(join(dir, `r${n + 1}`));
+      await writeFile(join(dir, `r${n + 1}`, "summary.json"), JSON.stringify(saved));
+      await writeFile(join(dir, `r${n + 1}`, "run.json"), JSON.stringify({ ids: ["c"] }));
+    }
+    return dir;
+  };
+
+  it("words no change by what the runs could detect, and lists the claims that moved", async () => {
+    const r = (found: boolean[], recall: number) => golden(found, "h1", recall);
+    const baseline = await repeated([
+      r([true, false], 2 / 18),
+      r([true, false], 3 / 18),
+      r([false, false], 3 / 18),
+    ]);
+    const change = await repeated([
+      r([true, true], 2 / 18),
+      r([true, false], 2 / 18),
+      r([true, false], 3 / 18),
+    ]);
+    let text = "";
+    const out = { write: (chunk: string) => (text += chunk) };
+    expect(await main(["compare", baseline, change], out, out)).toBe(0);
+    expect(text).toContain("| Golden recall | 14.8% | 13.0% | -1.9% |");
+    expect(text).toMatch(/\| Golden recall .* no change within noise \(detectable ≥ 9\.\d%\) \|/);
+    expect(text).toContain(
+      "2 found more often by the run, 0 less often, 0 as often; two-sided p = 0.500: no change",
+    );
+    expect(text).toContain("| c#1 | claim 1 \\| x | 2/3 | 3/3 |");
+    expect(text).toContain("| c#2 | claim 2 \\| x | 0/3 | 1/3 |");
   });
 });
