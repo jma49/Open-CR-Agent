@@ -133,7 +133,9 @@ async function keepAccountSalt(
     await saveAccountSalt(credentialsPath, salt);
   } catch (error) {
     warn(
-      `could not keep your ocra Cloud account's salt (${errorMessage(error)}); a review that cannot reach ocra Cloud may count this repository as another`,
+      salt === null
+        ? `could not remove the ocra Cloud account salt this machine kept (${errorMessage(error)}); a review that cannot reach ocra Cloud may still hash this repository with it`
+        : `could not keep your ocra Cloud account's salt (${errorMessage(error)}); a review that cannot reach ocra Cloud may count this repository as another`,
     );
   }
 }

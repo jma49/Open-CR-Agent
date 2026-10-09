@@ -159,7 +159,7 @@ describe("prepareCloudReview", () => {
     const m = machine(off);
     const warnings: string[] = [];
     await prepareCloudReview(repo(), m.deps, (w) => warnings.push(w));
-    expect(m.calls).toEqual(["/api/account/salt", "/api/memory"]);
+    expect(m.calls).toEqual(["/api/account/salt", "/api/memory?limit=1"]);
     expect(warnings).toEqual([
       "your ocra Cloud account remembers findings, but applies them only while it shares findings (Settings in ocra Cloud); this review applies the repository's memory alone",
     ]);
@@ -249,7 +249,9 @@ describe("prepareCloudReview", () => {
         repoHash: await hashOf(root, off.credentialsPath),
         shareFindings: false,
       });
-      expect(stale.warnings).toEqual([expect.stringMatching(notKept)]);
+      expect(stale.warnings).toEqual([
+        expect.stringMatching(/could not remove the ocra Cloud account salt this machine kept/),
+      ]);
 
       // No salt to hash with: nothing goes to ocra Cloud.
       for (const answer of [

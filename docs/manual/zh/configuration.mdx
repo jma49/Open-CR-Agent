@@ -108,6 +108,8 @@ agent 运行时只拿到 `PATH`、`HOME`、语言区域、代理和 CA 设置，
 
 某个任务失败或超时不会导致整次运行失败，它负责的文件会被标记为 `failed`。
 
+git 及其启动的程序（ssh、凭据助手、代理）只拿到 ocra 环境变量的一部分，永远拿不到模型 key 或平台 token：所有 `GIT_*` 和 `SSH_*` 变量、`PATH`、`HOME`、`XDG_CONFIG_HOME`、`TMPDIR`、代理变量（`HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY`、`NO_PROXY`）、`SSL_CERT_FILE`、`SSL_CERT_DIR`、`CURL_CA_BUNDLE`，以及 Windows 上 git 需要的系统变量（`PATHEXT`、`SYSTEMROOT`、`TEMP`、`USERPROFILE`、`APPDATA` 等）。fetch 还会拿到凭据助手读取的变量：`GH_*`、`GLAB_*`、`GITLAB_*`、`GCM_*`、`GITHUB_TOKEN` 和 `GITHUB_ENTERPRISE_TOKEN`。如果你的环境需要给 git 传其他变量（Kerberos、Nix 的证书包），可以通过 git 自身的配置传入，例如 `GIT_SSH_COMMAND` 或 `GIT_CONFIG_*`。
+
 ## 文件选择
 
 ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书、云服务和镜像仓库凭据、Terraform 变量和状态文件）、已删除的文件、媒体和压缩包、锁文件、第三方和生成的代码，以及过大的 diff。超过 1 MB 的文件按二进制处理并跳过。名字看起来是文本（`.ts`、`.py` 等）却按二进制跳过的文件会给出警告。审查提交区间、单个提交和 PR 时，`.gitattributes` 从 base 提交读取（git 2.41 及以上），被审查的改动无法把自己的文件标成二进制。数据库迁移文件从不被当作生成代码。

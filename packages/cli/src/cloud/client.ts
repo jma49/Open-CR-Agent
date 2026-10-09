@@ -37,7 +37,8 @@ const CLOUD_TIMEOUT_MS = 30_000;
 // Above the longest answer ocra Cloud gives (a repository's 500 remembered
 // findings); a longer one is not an answer to use.
 const MAX_ANSWER_BYTES = 16 * 1024 * 1024;
-// Enough to tell an empty list of remembered findings from one that is not.
+// Enough to tell an empty list of remembered findings from one that is not,
+// from a server that ignores ?limit=1 and lists them all.
 const HAS_MEMORY_BYTES = 64 * 1024;
 // The session's lock is held for at most two refreshes (the second after
 // another process rotated the pair), each over within CLOUD_TIMEOUT_MS. A
@@ -213,7 +214,7 @@ export class CloudClient {
 
   /** Whether the account remembers any finding, for any repository, read no further than that. */
   async hasMemory(): Promise<CloudResult<boolean>> {
-    const sent = await this.authorized("/api/memory");
+    const sent = await this.authorized("/api/memory?limit=1");
     if (sent.kind !== "answered") return sent;
     const { res } = sent;
     if (!res.ok) return { kind: "status", status: res.status };

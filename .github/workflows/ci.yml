@@ -68,7 +68,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
-      - run: npx vitest run packages/cli/src/cloud packages/cli/src/commands/login packages/cli/src/session packages/vcs-local
+      - run: npx vitest run packages/cli/src/cloud packages/cli/src/io packages/cli/src/commands/login packages/cli/src/session packages/vcs-local
 
   # actionlint (with shellcheck, preinstalled on the runner) and zizmor's
   # offline audits of the workflows, action.yml and dependabot.yml, both at
