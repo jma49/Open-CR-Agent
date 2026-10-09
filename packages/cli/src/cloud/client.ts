@@ -16,6 +16,7 @@ import {
 } from "@open-cr-agent/cloud-contract";
 import { errorMessage, OcraError } from "@open-cr-agent/core";
 import type { z } from "zod";
+import { readLimited } from "../io/read-limited.js";
 import { VERSION } from "../version.js";
 import {
   type Credentials,
@@ -33,6 +34,11 @@ import { type LockTiming, withFileLock } from "./file-lock.js";
 
 const USER_AGENT = `ocra/${VERSION}`;
 const CLOUD_TIMEOUT_MS = 30_000;
+// Above the longest answer ocra Cloud gives (a repository's 500 remembered
+// findings); a longer one is not an answer to use.
+const MAX_ANSWER_BYTES = 16 * 1024 * 1024;
+// Enough to tell an empty list of remembered findings from one that is not.
+const HAS_MEMORY_BYTES = 64 * 1024;
 // The session's lock is held for at most two refreshes (the second after
 // another process rotated the pair), each over within CLOUD_TIMEOUT_MS. A
 // lock held longer, or whose process has exited, was left by a process that
@@ -198,11 +204,26 @@ export class CloudClient {
     return this.call("/api/preferences", preferencesAnswerSchema);
   }
 
-  /** The findings the account remembers, for one repository's hash or for all. */
-  async memory(repoHash?: string): Promise<CloudResult<unknown[]>> {
-    const query = repoHash === undefined ? "" : `?repo=${encodeURIComponent(repoHash)}`;
+  /** The findings the account remembers for one repository's hash. */
+  async memory(repoHash: string): Promise<CloudResult<unknown[]>> {
+    const query = `?repo=${encodeURIComponent(repoHash)}`;
     const answer = await this.call(`/api/memory${query}`, memoryAnswerSchema);
     return answer.kind === "ok" ? { kind: "ok", value: answer.value.entries } : answer;
+  }
+
+  /** Whether the account remembers any finding, for any repository, read no further than that. */
+  async hasMemory(): Promise<CloudResult<boolean>> {
+    const sent = await this.authorized("/api/memory");
+    if (sent.kind !== "answered") return sent;
+    const { res } = sent;
+    if (!res.ok) return { kind: "status", status: res.status };
+    const text = await readLimited(res, HAS_MEMORY_BYTES);
+    // An answer this long lists entries; the rest is never read.
+    if (text === undefined) return { kind: "ok", value: true };
+    const answer = memoryAnswerSchema.safeParse(parseJson(text));
+    return answer.success
+      ? { kind: "ok", value: answer.data.entries.length > 0 }
+      : { kind: "malformed" };
   }
 
   /** Sends a review's counts (and shared findings); answers how many findings the server kept. */
@@ -230,6 +251,18 @@ export class CloudClient {
     schema: S,
     init: { method?: string; body?: unknown } = {},
   ): Promise<CloudResult<z.infer<S>>> {
+    const sent = await this.authorized(path, init);
+    if (sent.kind !== "answered") return sent;
+    const { res } = sent;
+    if (!res.ok) return { kind: "status", status: res.status };
+    const value = await answerOf(res, schema);
+    return value === undefined ? { kind: "malformed" } : { kind: "ok", value };
+  }
+
+  private async authorized(
+    path: string,
+    init: { method?: string; body?: unknown } = {},
+  ): Promise<{ kind: "answered"; res: Response } | CloudSessionLost> {
     let session = await this.session();
     if (session.kind !== "ok") return session;
     const send = (c: Credentials) =>
@@ -240,9 +273,7 @@ export class CloudClient {
       if (session.kind !== "ok") return session;
       res = await send(session.credentials);
     }
-    if (!res.ok) return { kind: "status", status: res.status };
-    const value = await answerOf(res, schema);
-    return value === undefined ? { kind: "malformed" } : { kind: "ok", value };
+    return { kind: "answered", res };
   }
 
   /** The new pair, saved; revoked when the server refuses the refresh token. */
@@ -307,17 +338,24 @@ export class CloudClient {
   }
 }
 
-/** The answer's JSON when it fits the schema; undefined when it is not JSON or does not fit. */
+/**
+ * The answer's JSON when it fits the schema; undefined when it is not JSON,
+ * does not fit, or is longer than any answer ocra Cloud gives.
+ */
 async function answerOf<S extends z.ZodType>(
   res: Response,
   schema: S,
 ): Promise<z.infer<S> | undefined> {
-  let body: unknown;
+  const text = await readLimited(res, MAX_ANSWER_BYTES);
+  if (text === undefined) return undefined;
+  const parsed = schema.safeParse(parseJson(text));
+  return parsed.success ? parsed.data : undefined;
+}
+
+function parseJson(text: string): unknown {
   try {
-    body = await res.json();
+    return JSON.parse(text);
   } catch {
     return undefined;
   }
-  const parsed = schema.safeParse(body);
-  return parsed.success ? parsed.data : undefined;
 }

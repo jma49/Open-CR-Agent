@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { MODEL_TIERS, OcraError } from "@open-cr-agent/core";
 import { repoRuleSchema } from "@open-cr-agent/core/internal";
 import { z } from "zod";
+import { readLimited } from "../io/read-limited.js";
 
 const MAX_BYTES = 256 * 1024;
 const TIMEOUT_MS = 10_000;
@@ -52,7 +53,10 @@ export async function fetchRemoteConfig(
   });
   if (!response.ok)
     throw new OcraError("CONFIG_INVALID", `${url.href} answered ${response.status}`);
-  const body = await readLimited(response, MAX_BYTES, url.href);
+  const body = await readLimited(response, MAX_BYTES);
+  if (body === undefined) {
+    throw new OcraError("CONFIG_INVALID", `${url.href} is larger than ${MAX_BYTES / 1024} KB`);
+  }
   if (pinned !== undefined) {
     const actual = createHash("sha256").update(body).digest("hex");
     if (actual !== pinned)
@@ -74,23 +78,4 @@ export async function fetchRemoteConfig(
     );
   }
   return parsed.data;
-}
-
-// Stops reading at the limit instead of buffering whatever the server sends.
-async function readLimited(response: Response, limit: number, name: string): Promise<string> {
-  const reader = response.body?.getReader();
-  if (!reader) return "";
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > limit) {
-      await reader.cancel();
-      throw new OcraError("CONFIG_INVALID", `${name} is larger than 256 KB`);
-    }
-    chunks.push(value);
-  }
-  return Buffer.concat(chunks).toString("utf8");
 }

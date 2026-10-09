@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { errorMessage, isOcraError } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import { loginCommand } from "../commands/login.js";
+import { endlessMemory } from "./client.fakes.js";
 import { CloudClient } from "./client.js";
 import type { Credentials } from "./credentials.js";
 import type { CloudDeps } from "./deps.js";
@@ -256,5 +257,14 @@ describe("an answer that is not one", () => {
     const error = await new CloudClient(m.deps).preferences().catch((e: unknown) => e);
     expect(isOcraError(error, "CLOUD_API_FAILED")).toBe(true);
     expect(errorMessage(error)).toBe("fetch failed");
+  });
+});
+
+describe("an answer longer than any ocra Cloud gives", () => {
+  it("is malformed, and read no further than the limit", async () => {
+    const memory = endlessMemory(40);
+    const m = machine({ "/api/memory": memory.answer }, {});
+    expect(await new CloudClient(m.deps).memory("f".repeat(64))).toEqual({ kind: "malformed" });
+    expect(memory.counter.read).toBeLessThan(17 * 1024 * 1024);
   });
 });

@@ -13,6 +13,7 @@ import { scratchRepos } from "@open-cr-agent/test-support";
 import { afterAll, describe, expect, it } from "vitest";
 import { originRepository } from "../repository-id.js";
 import { accountSaltPath } from "./account-salt.js";
+import { endlessMemory } from "./client.fakes.js";
 import type { CloudDeps } from "./deps.js";
 import { parseAccountMemory } from "./memory.js";
 import { prepareCloudReview } from "./review.js";
@@ -131,6 +132,18 @@ describe("prepareCloudReview", () => {
     const quiet: string[] = [];
     await prepareCloudReview(repo(), none.deps, (w) => quiet.push(w));
     expect(quiet).toEqual([]);
+  });
+
+  it("tells whether the account remembers findings without reading all of them", async () => {
+    const memory = endlessMemory(40);
+    const m = machine({
+      "/api/account/salt": () => Response.json({ salt: null }),
+      "/api/memory": memory.answer,
+    });
+    const warnings: string[] = [];
+    await prepareCloudReview(repo(), m.deps, (w) => warnings.push(w));
+    expect(warnings).toEqual([expect.stringMatching(/remembers findings/)]);
+    expect(memory.counter.read).toBeLessThan(1024 * 1024);
   });
 
   // Windows ignores the mode, and root reads the file anyway.

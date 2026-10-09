@@ -45,8 +45,8 @@ export async function fetchAccountMemory(
 /** Whether the account remembers any finding, for any repository; false when that cannot be read. */
 export async function accountHasMemory(deps: CloudDeps): Promise<boolean> {
   try {
-    const answer = await new CloudClient(deps).memory();
-    return answer.kind === "ok" && answer.value.length > 0;
+    const answer = await new CloudClient(deps).hasMemory();
+    return answer.kind === "ok" && answer.value;
   } catch {
     return false;
   }
