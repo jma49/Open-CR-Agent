@@ -51,9 +51,12 @@ describe("writeOutputFile", () => {
     rename.hold = true;
     const before = new Set(process.listeners("exit"));
     void writeOutputFile(dir, join(dir, "report.json"), "{}\n");
-    await vi.waitFor(() => expect(readdirSync(dir)).toHaveLength(1));
-    const onExit = process.listeners("exit").filter((l) => !before.has(l));
-    expect(onExit).toHaveLength(1);
+    // The listener is added once the write has finished; the file appears
+    // when the write opens it, so waiting for the file alone races under load.
+    const added = () => process.listeners("exit").filter((l) => !before.has(l));
+    await vi.waitFor(() => expect(added()).toHaveLength(1));
+    expect(readdirSync(dir)).toHaveLength(1);
+    const onExit = added();
     for (const listener of onExit) {
       listener(0);
       process.off("exit", listener);

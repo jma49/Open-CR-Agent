@@ -6,7 +6,7 @@ import { signInPage } from "../cloud/browser.js";
 import { CloudClient } from "../cloud/client.js";
 import { type Credentials, credentialsHint, loadCredentials } from "../cloud/credentials.js";
 import { type CloudDeps, cloudUrl, DEFAULT_CLOUD_URL } from "../cloud/deps.js";
-import { saveSharingConsent } from "../cloud/sharing-consent.js";
+import { hasSharingConsent, saveSharingConsent } from "../cloud/sharing-consent.js";
 import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
 import { forTerminal } from "../io/terminal.js";
@@ -74,6 +74,11 @@ async function whoami(out: Output, err: Output, deps: CloudDeps): Promise<number
     return EXIT.notSignedIn;
   }
   out.write(forTerminal(`${me.login} on ${session.credentials.server}\n`));
+  out.write(
+    (await hasSharingConsent(deps.credentialsPath))
+      ? "This machine sends findings, and the code they quote, to ocra Cloud.\n"
+      : "This machine sends no findings to ocra Cloud (ocra login turns this on when your account shares findings).\n",
+  );
   return EXIT.ok;
 }
 

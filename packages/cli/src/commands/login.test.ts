@@ -16,6 +16,7 @@ import { accountSaltPath, saveAccountSalt } from "../cloud/account-salt.js";
 import { CloudClient } from "../cloud/client.js";
 import { type Credentials, readCredentials } from "../cloud/credentials.js";
 import type { CloudDeps } from "../cloud/deps.js";
+import { saveSharingConsent } from "../cloud/sharing-consent.js";
 import { loginCommand } from "./login.js";
 
 const SERVER = "https://cloud.test";
@@ -262,9 +263,23 @@ describe("sessions", () => {
     const cloud = fakeCloud({ "GET /api/me": ok({ login: "octo" }) });
     t.deps.fetch = cloud.fetch;
     expect(await loginCommand("whoami", [], t.io.out, t.io.err, t.deps)).toBe(0);
-    expect(t.out.at(-1)).toBe(`octo on ${SERVER}\n`);
+    expect(t.out.slice(-2)).toEqual([
+      `octo on ${SERVER}\n`,
+      "This machine sends no findings to ocra Cloud (ocra login turns this on when your account shares findings).\n",
+    ]);
     expect(cloud.calls.map((c) => c.path)).toEqual(["GET /api/me"]);
     expect(cloud.calls[0]?.headers.get("authorization")).toBe("Bearer ocra_cli_a1");
+  });
+
+  it("whoami says when this machine sends findings", async () => {
+    const t = setup({});
+    await signedIn(t);
+    await saveSharingConsent(t.deps.credentialsPath, true);
+    t.deps.fetch = fakeCloud({ "GET /api/me": ok({ login: "octo" }) }).fetch;
+    expect(await loginCommand("whoami", [], t.io.out, t.io.err, t.deps)).toBe(0);
+    expect(t.out.at(-1)).toBe(
+      "This machine sends findings, and the code they quote, to ocra Cloud.\n",
+    );
   });
 
   it("refreshes an expired token and saves the new pair", async () => {

@@ -160,7 +160,12 @@ function isStale(held: Held, timing: LockTiming): boolean {
   return Math.abs(Date.now() - held.at) > timing.staleMs || holderExited(held);
 }
 
-/** False when not known: taken on another machine, or its number reused by a running process. */
+/**
+ * False when not known: taken on another machine, or its number reused by a
+ * running process. Known gap: two hosts or containers with one hostname that
+ * share the config directory without sharing a pid namespace see each other's
+ * live lock as exited here; give each its own config directory.
+ */
 function holderExited({ pid, host }: Held): boolean {
   if (host !== HOST || typeof pid !== "number" || !Number.isInteger(pid) || pid <= 0) return false;
   try {

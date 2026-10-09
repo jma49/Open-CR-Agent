@@ -108,6 +108,8 @@ For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Gro
 
 A task that fails or times out never fails the run; its files are reported as `failed`.
 
+git, and what it starts (ssh, credential helpers, proxies), gets only part of ocra's environment, never its model keys or platform tokens: every `GIT_*` and `SSH_*` variable, `PATH`, `HOME`, `XDG_CONFIG_HOME`, `TMPDIR`, the proxy variables (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`), `SSL_CERT_FILE`, `SSL_CERT_DIR`, `CURL_CA_BUNDLE`, and on Windows the system variables git needs (`PATHEXT`, `SYSTEMROOT`, `TEMP`, `USERPROFILE`, `APPDATA` and the like). A fetch also gets what credential helpers read: `GH_*`, `GLAB_*`, `GITLAB_*`, `GCM_*`, `GITHUB_TOKEN` and `GITHUB_ENTERPRISE_TOKEN`. A setup that needs another variable for git (Kerberos, a Nix certificate bundle) can pass it through git's own configuration, such as `GIT_SSH_COMMAND` or `GIT_CONFIG_*`.
+
 ## File selection
 
 ocra skips binary files, likely secrets (`.env`, keys, certificates, cloud and registry credentials, Terraform variables and state), deleted files, media and archives, lock files, vendored and generated code, and very large diffs. Files over 1 MB are diffed as binary and skipped. A file whose name says text (`.ts`, `.py`, …) but that was skipped as binary gets a warning. Range, commit and pull request reviews read `.gitattributes` from the base commit (git 2.41 or later), so the reviewed change cannot mark its own files binary. Database migrations are never treated as generated code.
