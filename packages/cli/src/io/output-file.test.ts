@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -7,6 +7,15 @@ import { refuseLinkedOutput, writeOutputFile } from "./output-file.js";
 // rename never settles while `hold` is set: the moment between the write of
 // the temporary file and the rename that replaces the output with it.
 const rename = vi.hoisted(() => ({ hold: false }));
+// The random part of the temporary file's name, fixed while `bytes` is set.
+const random = vi.hoisted(() => ({ bytes: undefined as Buffer | undefined }));
+vi.mock("node:crypto", async (original) => {
+  const crypto = await original<typeof import("node:crypto")>();
+  return {
+    ...crypto,
+    randomBytes: (size: number) => random.bytes ?? crypto.randomBytes(size),
+  };
+});
 vi.mock("node:fs/promises", async (original) => {
   const fs = await original<typeof import("node:fs/promises")>();
   return {
@@ -19,6 +28,7 @@ vi.mock("node:fs/promises", async (original) => {
 const dirs: string[] = [];
 afterEach(() => {
   rename.hold = false;
+  random.bytes = undefined;
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
@@ -49,6 +59,19 @@ describe("writeOutputFile", () => {
       process.off("exit", listener);
     }
     expect(readdirSync(dir)).toEqual([]);
+  });
+
+  it("never removes a temporary file it did not make", async () => {
+    const dir = temp();
+    random.bytes = Buffer.alloc(6, 0xab);
+    const planted = join(dir, `.report.json.${"ab".repeat(6)}.tmp`);
+    writeFileSync(planted, "not ocra's");
+    const before = process.listeners("exit").length;
+    await expect(writeOutputFile(dir, join(dir, "report.json"), "{}\n")).rejects.toMatchObject({
+      code: "EEXIST",
+    });
+    expect(readFileSync(planted, "utf8")).toBe("not ocra's");
+    expect(process.listeners("exit")).toHaveLength(before);
   });
 
   it("refuses an output that exists and is not a regular file", async () => {

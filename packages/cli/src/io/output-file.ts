@@ -51,12 +51,13 @@ export async function refuseLinkedOutput(root: string, path: string): Promise<vo
 export async function writeOutputFile(root: string, path: string, text: string): Promise<void> {
   await refuseLinkedOutput(root, path);
   const temp = join(dirname(path), `.${basename(path)}.${randomBytes(6).toString("hex")}.tmp`);
-  // A process that exits first (a second Ctrl-C) leaves no temporary file;
-  // only a kill can.
+  // Outside the try: a temporary file that already exists is not ours to remove.
+  await writeFile(temp, text, { encoding: "utf8", flag: "wx" });
+  // A process that exits before the rename (a second Ctrl-C) leaves no
+  // temporary file; only a kill can.
   const removeTemp = () => rmSync(temp, { force: true });
   process.on("exit", removeTemp);
   try {
-    await writeFile(temp, text, { encoding: "utf8", flag: "wx" });
     await rename(temp, path);
   } catch (error) {
     await rm(temp, { force: true });
