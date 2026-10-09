@@ -1,12 +1,14 @@
-import { access, appendFile, copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { sessionsDir } from "@open-cr-agent/cli/internal";
 import type { Usage } from "@open-cr-agent/core";
 import { addUsage, errorMessage } from "@open-cr-agent/core";
-import { isNotFound } from "@open-cr-agent/core/internal";
+import { EVENTS_FILE, isNotFound } from "@open-cr-agent/core/internal";
 import { plantAttack } from "./attack.js";
 import type { Instance } from "./instance.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
 import { type InstanceResult, readResult } from "./results.js";
+import { carriedEvents } from "./resumed-log.js";
 import { reviewInstance } from "./reviewer.js";
 import { sessionLogPath } from "./session-trace.js";
 
@@ -90,7 +92,6 @@ export async function runInstances(
     );
     // A review that reused tasks counts the attempt it resumed in its usage,
     // which this invocation did not pay.
-    // invocation did not pay.
     const paid = result.usage.costUsd - (resumed?.reused ? (previous?.usage.costUsd ?? 0) : 0);
     spent += paid;
     options.log(
@@ -143,12 +144,9 @@ async function reviewOne(
   // The tasks that completed in an earlier attempt are reused, not paid for
   // again, when its session is still in the clone (ADR-0031).
   const resumed = await resumableRun(repoDir, previous);
-  // A log left by an earlier attempt at this PR is not this review's, unless
-  // this review continues it: then the new log is appended, so the funnel
-  // still sees what the reused tasks read. It then holds both attempts'
-  // events: the funnel's stages tolerate that (a finding reported twice is
-  // still one), but what attempt 1's other tasks raised also counts.
-  if (!resumed) await rm(logPath, { force: true });
+  // A log left by an earlier attempt at this PR is not this review's; only
+  // what the tasks this review reuses read and raised there is kept.
+  const earlierLog = resumed ? await readText(logPath) : "";
   const outcome = await reviewInstance(repoDir, target, reportPath, {
     command: options.command,
     timeoutMs: options.timeoutMs,
@@ -156,13 +154,9 @@ async function reviewOne(
   });
   const report = outcome.report;
   const reused = report?.tasks.filter((t) => t.reusedFrom !== undefined).length ?? 0;
-  if (report?.runId) {
-    await keepSessionLog(repoDir, report.runId, logPath, resumed !== undefined).catch(
-      (error: unknown) => {
-        options.log(`${instance.id}: the session log was not kept: ${errorMessage(error)}`);
-      },
-    );
-  }
+  await keepSessionLog(repoDir, report?.runId, logPath, earlierLog).catch((error: unknown) => {
+    options.log(`${instance.id}: the session log was not kept: ${errorMessage(error)}`);
+  });
   const completed = report?.tasks.some((t) => t.status === "completed") ?? false;
   // Timed out or interrupted (130), the CLI still writes a partial report;
   // it is a failure to retry, not a review to score.
@@ -198,27 +192,42 @@ async function resumableRun(
 ): Promise<string | undefined> {
   const runId = previous?.runId;
   if (!runId || !SAFE_RUN_ID.test(runId)) return undefined;
-  const log = join(repoDir, ".ocra", "sessions", runId, "events.jsonl");
-  return (await exists(log)) ? runId : undefined;
+  return (await exists(sessionEvents(repoDir, runId))) ? runId : undefined;
 }
 
 // The clone is shared by every run that reviews the PR, so the log ocra wrote
-// there (`.ocra/sessions/<run id>/`, the CLI's session store) is copied into
-// the run. Without one, the recall funnel of the PR is unknown.
+// there (the CLI's session store) is copied into the run, after the events
+// carried from the attempts it resumed. Without one, the recall funnel of
+// the PR is unknown.
 async function keepSessionLog(
   repoDir: string,
-  runId: string,
+  runId: string | undefined,
   target: string,
-  append: boolean,
+  earlier: string,
 ): Promise<void> {
-  if (!SAFE_RUN_ID.test(runId)) return;
+  const current =
+    runId !== undefined && SAFE_RUN_ID.test(runId)
+      ? await readText(sessionEvents(repoDir, runId))
+      : "";
+  if (current === "") {
+    await rm(target, { force: true });
+    return;
+  }
   await mkdir(dirname(target), { recursive: true });
-  const source = join(repoDir, ".ocra", "sessions", runId, "events.jsonl");
+  await writeFile(target, carriedEvents(earlier, current) + current);
+}
+
+function sessionEvents(repoDir: string, runId: string): string {
+  return join(sessionsDir(repoDir), runId, EVENTS_FILE);
+}
+
+// Empty when the file does not exist.
+async function readText(path: string): Promise<string> {
   try {
-    if (append) await appendFile(target, await readFile(source));
-    else await copyFile(source, target);
+    return await readFile(path, "utf8");
   } catch (error) {
-    if (!isNotFound(error)) throw error;
+    if (isNotFound(error)) return "";
+    throw error;
   }
 }
 

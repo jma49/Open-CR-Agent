@@ -46,7 +46,13 @@ if (args[args.indexOf("--from") + 1] === "resumable") {
   const runId = resume < 0 ? "run-1" : "run-2";
   if (resume >= 0) appendFileSync(${JSON.stringify(join(dir, "resumed.log"))}, args[resume + 1] + "\\n");
   mkdirSync(".ocra/sessions/" + runId, { recursive: true });
-  writeFileSync(".ocra/sessions/" + runId + "/events.jsonl", '{"type":"run_started","runId":"' + runId + '"}\\n');
+  // What each task read; the lost task of run-1 read src/lost.ts.
+  const events = [{ type: "run_started", runId },
+    { type: "task_progress", taskId: "performance-1", message: "", attempt: { read: ["src/perf.ts"] } },
+    { type: "task_reported", taskId: "performance-1", key: "k-perf", findings: [] },
+    { type: "task_progress", taskId: "correctness-1", message: "", attempt: { read: [resume < 0 ? "src/lost.ts" : "src/redone.ts"] } }];
+  if (resume >= 0) events.splice(1, 1, { type: "task_finished", outcome: { taskId: "performance-1", reusedFrom: "run-1" } });
+  writeFileSync(".ocra/sessions/" + runId + "/events.jsonl", events.map((e) => JSON.stringify(e) + "\\n").join(""));
   const tasks = resume < 0
     ? [task("performance-1", "completed"), task("correctness-1", "failed", "out of quota for this run")]
     : [{ ...task("performance-1", "completed"), reusedFrom: "run-1" }, task("correctness-1", "completed")];
@@ -270,10 +276,13 @@ describe("runInstances", () => {
     expect(logs.join("\n")).toContain(
       "$0.2000 (resumed run-1, 1 task(s) reused; this PR $0.5000) (total $0.2000)",
     );
-    // The funnel reads both attempts' session logs.
+    // The funnel reads what the reused task read in run-1, and nothing else of run-1.
     const events = readFileSync(join(dir, "run", "events", "a.jsonl"), "utf8");
     expect(events).toContain('"runId":"run-1"');
     expect(events).toContain('"runId":"run-2"');
+    expect(events).toContain("src/perf.ts");
+    expect(events).toContain("src/redone.ts");
+    expect(events).not.toContain("src/lost.ts");
   });
 
   it("reviews a lost PR afresh when the earlier session is gone", async () => {
