@@ -39,10 +39,18 @@ const repos = scratchRepos("ocra-cr-repo-");
 afterAll(repos.removeAll);
 const repo = (origin = "https://github.com/org/repo") => repos.create({ origin }).dir;
 
-function machine(routes: Record<string, () => Response>) {
+// Named in the manual; `ocra login` writes it, with the user present, while
+// the account shares findings.
+const sharingConsentPath = (credentialsPath: string) =>
+  join(dirname(credentialsPath), "share-findings");
+
+// A machine signed in with `ocra login`, which recorded its consent to send
+// findings unless `consent` is false.
+function machine(routes: Record<string, () => Response>, { consent = true } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "ocra-cr-"));
   const credentialsPath = join(dir, "ocra", "credentials.json");
   mkdirSync(join(dir, "ocra"));
+  if (consent) writeFileSync(sharingConsentPath(credentialsPath), "on\n");
   writeFileSync(
     credentialsPath,
     JSON.stringify({
@@ -117,6 +125,33 @@ describe("prepareCloudReview", () => {
       expect(ready?.repoHash).toBe(await hashOf(root, m.credentialsPath));
       expect(existsSync(accountSaltPath(m.credentialsPath))).toBe(false);
     }
+  });
+
+  it("shares no findings, and says so, when the account shares them but this machine never agreed", async () => {
+    const root = repo();
+    const m = machine(sharing, { consent: false });
+    const warnings: string[] = [];
+    const ready = await prepareCloudReview(root, m.deps, (w) => warnings.push(w));
+    expect(ready).toMatchObject({
+      repoHash: await hashOf(root, m.credentialsPath, SALT),
+      shareFindings: false,
+    });
+    expect(warnings).toEqual([
+      "your ocra Cloud account shares findings, but this machine has not agreed to send them since it signed in; this review sends counts only (run ocra login to send findings from this machine)",
+    ]);
+  });
+
+  it("forgets this machine's consent once the account stops sharing, so turning it on again needs a login", async () => {
+    const root = repo();
+    const m = machine({ ...sharing, "/api/account/salt": () => Response.json({ salt: null }) });
+    expect((await prepareCloudReview(root, m.deps, () => {}))?.shareFindings).toBe(false);
+    expect(existsSync(sharingConsentPath(m.credentialsPath))).toBe(false);
+    m.deps.fetch = machine(sharing).deps.fetch;
+    const warnings: string[] = [];
+    expect((await prepareCloudReview(root, m.deps, (w) => warnings.push(w)))?.shareFindings).toBe(
+      false,
+    );
+    expect(warnings).toEqual([expect.stringMatching(/has not agreed to send them/)]);
   });
 
   it("says once that the account's memory does not apply while it does not share findings", async () => {
@@ -203,7 +238,10 @@ describe("prepareCloudReview", () => {
 
       // An account that answers no salt: this machine's, while account-salt
       // stays behind.
-      const off = machine({ "/api/account/salt": () => Response.json({ salt: null }) });
+      const off = machine(
+        { "/api/account/salt": () => Response.json({ salt: null }) },
+        { consent: false },
+      );
       writeFileSync(join(dirname(off.credentialsPath), "upload-salt"), `${"6".repeat(64)}\n`);
       writeFileSync(accountSaltPath(off.credentialsPath), `${SALT}\n`);
       const stale = await unwritable(off);

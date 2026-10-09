@@ -8,15 +8,17 @@ import { CloudClient, type CloudSessionLost, sessionLostReason } from "./client.
 import type { CloudDeps } from "./deps.js";
 import { sharedFindings } from "./findings.js";
 import { accountHasMemory, fetchAccountMemory } from "./memory.js";
+import { hasSharingConsent, saveSharingConsent } from "./sharing-consent.js";
 import { repoHash, uploadOf, uploadReview } from "./upload.js";
 
 // What a signed-in review takes from ocra Cloud before it runs (ADR-0028):
-// the repository's hash, whether the account shares findings, and the
-// findings the account remembers for the repository.
+// the repository's hash, whether to share findings, and the findings the
+// account remembers for the repository.
 
 export type CloudReview = {
   repoHash: string;
-  // The account answered a salt: the server's signal that it shares findings.
+  // The account answered a salt, the server's signal that it shares
+  // findings, and this machine agreed to send them (sharing-consent.ts).
   shareFindings: boolean;
   memory: MemoryEntry[];
 };
@@ -84,6 +86,7 @@ async function prepare(
   await keepAccountSalt(deps.credentialsPath, salt, warn);
   const hash = await repoHash(id, deps.credentialsPath, salt ?? undefined);
   if (salt === null) {
+    await forgetSharingConsent(deps.credentialsPath, warn);
     // Memory is keyed by the account's hash, which only a sharing account has.
     if (await accountHasMemory(deps)) {
       warn(
@@ -92,11 +95,31 @@ async function prepare(
     }
     return { repoHash: hash, shareFindings: false, memory: [] };
   }
+  const consented = await hasSharingConsent(deps.credentialsPath);
+  if (!consented) {
+    warn(
+      "your ocra Cloud account shares findings, but this machine has not agreed to send them since it signed in; this review sends counts only (run ocra login to send findings from this machine)",
+    );
+  }
   return {
     repoHash: hash,
-    shareFindings: true,
+    shareFindings: consented,
     memory: await fetchAccountMemory(deps, hash, warn),
   };
+}
+
+// Sharing is off: a later switch back on is not this machine's consent.
+async function forgetSharingConsent(
+  credentialsPath: string,
+  warn: (message: string) => void,
+): Promise<void> {
+  try {
+    await saveSharingConsent(credentialsPath, false);
+  } catch (error) {
+    warn(
+      `could not remove this machine's consent to send findings (${errorMessage(error)}); if your ocra Cloud account shares findings again, this machine sends them without a new ocra login`,
+    );
+  }
 }
 
 // A copy for the reviews that cannot reach ocra Cloud; without it this

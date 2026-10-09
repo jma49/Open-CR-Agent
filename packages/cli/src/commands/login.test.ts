@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { accountSaltPath, saveAccountSalt } from "../cloud/account-salt.js";
 import { CloudClient } from "../cloud/client.js";
@@ -158,6 +158,35 @@ describe("ocra login", () => {
     t.deps.fetch = fakeCloud({}).fetch;
     expect(await loginCommand("logout", [], t.io.out, t.io.err, t.deps)).toBe(0);
     expect(existsSync(path)).toBe(false);
+  });
+
+  it("records this machine's consent to send findings while the account shares them, and says so", async () => {
+    const consent = (t: ReturnType<typeof setup>) =>
+      join(dirname(t.deps.credentialsPath), "share-findings");
+    const login = (salt: string | null) => ({
+      "POST /api/device/code": ok(code),
+      "POST /api/device/token": ok(tokens),
+      "GET /api/me": ok({ login: "octo" }),
+      "GET /api/account/salt": ok({ salt }),
+    });
+    const t = setup(login("5".repeat(64)));
+    expect(await loginCommand("login", [], t.io.out, t.io.err, t.deps)).toBe(0);
+    expect(existsSync(consent(t))).toBe(true);
+    if (process.platform !== "win32") expect(statSync(consent(t)).mode & 0o777).toBe(0o600);
+    expect(t.out.join("")).toContain(
+      "Your ocra Cloud account shares findings: reviews on this machine send them, and the code they quote, to ocra Cloud",
+    );
+
+    t.deps.fetch = fakeCloud(login(null)).fetch;
+    t.out.length = 0;
+    expect(await loginCommand("login", [], t.io.out, t.io.err, t.deps)).toBe(0);
+    expect(existsSync(consent(t))).toBe(false);
+    expect(t.out.join("")).not.toContain("shares findings");
+
+    writeFileSync(consent(t), "on\n");
+    t.deps.fetch = fakeCloud({}).fetch;
+    expect(await loginCommand("logout", [], t.io.out, t.io.err, t.deps)).toBe(0);
+    expect(existsSync(consent(t))).toBe(false);
   });
 
   it("does not open a browser with --no-browser", async () => {

@@ -2,9 +2,12 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CloudDeps } from "../../cloud/deps.js";
+import { sharingConsentPath } from "../../cloud/sharing-consent.js";
 
 // A signed-in machine against a fake ocra Cloud, for the CLI's end-to-end
-// tests of what a review takes from and sends to it.
+// tests of what a review takes from and sends to it. It signed in while the
+// account shared findings, so it agreed to send them when the account
+// answers a salt.
 
 const NOW = Date.now();
 
@@ -34,6 +37,7 @@ export function signedIn(
       expires_at: NOW + 3_600_000,
     }),
   );
+  writeFileSync(sharingConsentPath(credentialsPath), "on\n");
   const calls: { path: string; query: string; body?: unknown }[] = [];
   const cloud: CloudDeps = {
     env,

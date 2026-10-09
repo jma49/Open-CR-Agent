@@ -276,7 +276,7 @@ ocra logout                                   # 在服务器上结束会话，�
 
 - 发送前，ocra 会把路径、类别、标题、描述、建议和代码中看起来像密钥的内容替换为 `[redacted]`，并把问题标记为已脱敏：PEM 和 PGP 私钥块、AWS key id（`AKIA…`、`ASIA…`）、GitHub token（`ghp_`、`gho_`、`ghs_`、`ghu_`、`ghr_`、`github_pat_`）、GitLab token（`glpat-`）、`sk-` 开头的 key（包括 `sk-ant-`、`sk-or-`、`sk-proj-`）、Slack token（`xoxb-` 等）、Google API key（`AIza…`）、npm token（`npm_…`）、Slack 和 Discord 的 webhook URL、URL 中的密码（`postgres://user:…@`）、`curl -u user:…` 或 `--user user:…` 中的密码、`Bearer` 或 `Basic` 之后的凭据（之后若是普通单词，如在行文中，则保持不变），以及赋给 `password`、`passphrase`、`secret`、`secret_key`、`token`、`api_key` 这类名字的值：带引号的（`password = "…"`），或不带引号、写成 `NAME=…`（`.env`、命令行参数、查询字符串）或位于行尾的（YAML 中的 `password: …`）。不带引号的值如果只有字母（`changeme`、`string`），或看起来是代码（函数调用、`process.env.TOKEN` 这类带点的名字、`${…}`、以 `,` 或 `;` 结尾的行），则保持不变。此外还有 32 个字符以上的十六进制串（包括 `dop_v1_` 这类前缀之后的），以及 32 个字符以上、含数字且看起来随机的 base64 串（路径不受影响）。这只能识别模式，不能识别所有密钥；服务器会再做一遍同样的处理。
 - 最多 200 个问题、256 KB 文本，每个字段先截断到 4 KB 再脱敏（标记为已截断；截断处所在的 token 会整体脱敏）。终端打印 `Sent this review's counts and N finding(s) to ocra Cloud`。
-- 只有服务器返回账户的盐时才发送问题，而它只在开关打开时返回。审查前连不上 ocra Cloud 时，审查会警告，用 `account-salt` 里的盐（没有时用本机的）计算哈希，不发送问题，也不应用账户的 memory。
+- 只有服务器返回账户的盐（它只在开关打开时返回）、并且本机同意时才发送问题：`ocra login` 发现开关打开时会说明这一点，并在凭据旁的 `share-findings`（只有你可读）中记下本机的同意；审查发现开关关闭时会删除它。打开开关后，或关闭再打开后，请在每台机器上重新运行 `ocra login`；在此之前，这台机器的审查会给出警告，只发送统计。因此 ocra Cloud 不能自己开启共享。审查前连不上 ocra Cloud 时，审查会警告，用 `account-salt` 里的盐（没有时用本机的）计算哈希，不发送问题，也不应用账户的 memory。
 - `--no-upload` 和 `OCRA_CLOUD=off` 仍然什么都不发送。
 
 ## ocra plugins

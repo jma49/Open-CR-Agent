@@ -6,6 +6,7 @@ import { signInPage } from "../cloud/browser.js";
 import { CloudClient } from "../cloud/client.js";
 import { type Credentials, credentialsHint, loadCredentials } from "../cloud/credentials.js";
 import { type CloudDeps, cloudUrl, DEFAULT_CLOUD_URL } from "../cloud/deps.js";
+import { saveSharingConsent } from "../cloud/sharing-consent.js";
 import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
 import { forTerminal } from "../io/terminal.js";
@@ -86,6 +87,7 @@ async function logout(out: Output, deps: CloudDeps): Promise<number> {
   }
   await client.removeSession();
   await saveAccountSalt(deps.credentialsPath, null);
+  await saveSharingConsent(deps.credentialsPath, false);
   out.write(
     saved === "unreadable"
       ? "Removed the saved session, which could not be read.\n"
@@ -148,13 +150,7 @@ async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean
         lifetime_ms: t.expires_in * 1000,
       };
       await client.saveSession(credentials);
-      // Best effort: each signed-in review asks again.
-      await client
-        .accountSalt()
-        .then((salt) =>
-          salt.kind === "ok" ? saveAccountSalt(deps.credentialsPath, salt.value) : undefined,
-        )
-        .catch(() => {});
+      const sharing = await keepSharing(client, deps.credentialsPath);
       out.write(
         forTerminal(
           login
@@ -162,6 +158,11 @@ async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean
             : `Signed in; the login is unknown${unknown ? ` (${unknown})` : ""}: ocra whoami asks again.\n`,
         ),
       );
+      if (sharing) {
+        out.write(
+          "Your ocra Cloud account shares findings: reviews on this machine send them, and the code they quote, to ocra Cloud (Settings in ocra Cloud turns this off).\n",
+        );
+      }
       return EXIT.ok;
     }
     if (t.error === "authorization_pending") continue;
@@ -179,4 +180,20 @@ async function login(out: Output, err: Output, deps: CloudDeps, browser: boolean
   }
   err.write("The code expired before it was confirmed. Run ocra login again.\n");
   return EXIT.notSignedIn;
+}
+
+// The account's salt, and this machine's consent to send findings, which a
+// login records with the user present (sharing-consent.ts). Best effort:
+// each signed-in review asks for the salt again, and without the consent it
+// sends counts only and says how to give it. True when sharing is on.
+async function keepSharing(client: CloudClient, credentialsPath: string): Promise<boolean> {
+  try {
+    const salt = await client.accountSalt();
+    if (salt.kind !== "ok") return false;
+    await saveAccountSalt(credentialsPath, salt.value);
+    await saveSharingConsent(credentialsPath, salt.value !== null);
+    return salt.value !== null;
+  } catch {
+    return false;
+  }
 }
