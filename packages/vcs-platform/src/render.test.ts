@@ -54,7 +54,7 @@ describe("renderSummary", () => {
     );
   });
 
-  it("names which memory hid findings, the repository's or the reviewing account's", () => {
+  it("names which memory hid findings, the repository's or the reviewing account's, and only those", () => {
     const entry = { file: "src/a.ts", title: "t", reason: "r" };
     const body = renderSummary({
       report: {
@@ -63,6 +63,8 @@ describe("renderSummary", () => {
           { ...entry, fingerprint: "c".repeat(16), source: "repository" },
           { ...entry, fingerprint: "d".repeat(16), source: "account" },
           { ...entry, fingerprint: "e".repeat(16), source: "account" },
+          // As a report written before entries had a source has it.
+          { ...entry, fingerprint: "b".repeat(16) } as ReviewReport["remembered"][number],
         ],
       },
       commented: new Set(),

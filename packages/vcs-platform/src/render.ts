@@ -261,8 +261,10 @@ function outsideDiff(findings: readonly Finding[], commented: ReadonlySet<string
 
 function memoryNotes(remembered: ReviewReport["remembered"]): string[] {
   const lines: string[] = [];
+  // Entries without a source (older reports, other adapters) are not
+  // attributed to either memory.
   const fromRepository = remembered.filter((e) => e.source === "repository").length;
-  const fromAccount = remembered.length - fromRepository;
+  const fromAccount = remembered.filter((e) => e.source === "account").length;
   if (fromRepository > 0) {
     lines.push(
       "",
