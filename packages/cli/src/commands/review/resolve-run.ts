@@ -49,6 +49,9 @@ export interface ResolvedRun extends ResolvedConfig {
   // sealKey: this machine's, which seals the session (ADR-0031).
   session: RunSession;
   registry: PluginRegistry;
+  // Aborted by the first Ctrl-C of the review; the platform adapter's
+  // client, made before the review starts, already listens to it.
+  interrupt: AbortController;
   vcs: VcsAdapter;
   rules: SourcedRule[];
   overrides: ReviewerOverrides;
@@ -67,12 +70,14 @@ export async function resolveRun(
 ): Promise<ResolvedRun> {
   const root = await findRepositoryRoot(deps.cwd);
   const warn = (message: string) => io.err.write(`[ocra] Warning: ${forTerminal(message)}\n`);
+  const interrupt = new AbortController();
   const target = await resolveReviewTarget(args, {
     cwd: deps.cwd,
     root,
     env: deps.env,
     warn,
     ...(deps.fetch ? { fetch: deps.fetch } : {}),
+    signal: interrupt.signal,
   });
   const account = await withAccount(deps.cloud, warn);
   const resolved = resolveRunConfig(
@@ -108,6 +113,7 @@ export async function resolveRun(
     ...(account.settings ? { accountSettings: account.settings } : {}),
     session,
     registry,
+    interrupt,
     vcs: target.createVcs(registry),
     rules: [
       ...registry.rules.map((rule): SourcedRule => ({ ...rule, source: "plugin" })),

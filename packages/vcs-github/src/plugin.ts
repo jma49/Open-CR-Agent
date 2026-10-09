@@ -4,6 +4,7 @@ import {
   codeSourceSchema,
   fetchSchema,
   historySchema,
+  signalSchema,
 } from "@open-cr-agent/vcs-platform";
 import { z } from "zod";
 import { DEFAULT_BOT_LOGIN, GitHubAdapter } from "./adapter.js";
@@ -18,6 +19,7 @@ const optionsSchema = z.object({
   botLogin: z.string().min(1).default(DEFAULT_BOT_LOGIN),
   requestChanges: z.boolean().default(false),
   fetch: fetchSchema.optional(),
+  signal: signalSchema.optional(),
   code: codeSourceSchema,
   snapshot: changeRequestSchema.optional(),
   history: historySchema.optional(),
@@ -34,6 +36,7 @@ export const githubPlugin: OcraPlugin = {
           token: options.token,
           ...(options.apiUrl ? { baseUrl: options.apiUrl } : {}),
           ...(options.fetch ? { fetch: options.fetch } : {}),
+          ...(options.signal ? { signal: options.signal } : {}),
         },
       );
       return new GitHubAdapter({

@@ -23,6 +23,8 @@ export const historySchema = z.custom<History>(
 
 export const fetchSchema = z.custom<typeof fetch>((value) => typeof value === "function");
 
+export const signalSchema = z.instanceof(AbortSignal);
+
 // Commit ids reach git as arguments; anything else is refused at the boundary.
 export const commitIdSchema = z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/, "not a commit id");
 

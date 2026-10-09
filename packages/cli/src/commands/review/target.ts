@@ -77,6 +77,8 @@ export interface TargetOptions {
   env: Readonly<Record<string, string | undefined>>;
   warn: (message: string) => void;
   fetch?: typeof fetch;
+  // The run's interrupt, for the platform's client.
+  signal?: AbortSignal;
 }
 
 interface Inputs extends TargetOptions {
@@ -163,6 +165,7 @@ async function changeRequestTarget(
     origin: () => originUrl(root),
     warn,
     ...(inputs.fetch ? { fetch: inputs.fetch } : {}),
+    ...(inputs.signal ? { signal: inputs.signal } : {}),
   });
   await ensureCommits(root, [found.baseSha, found.headSha], found.headRefs);
 

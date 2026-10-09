@@ -27,10 +27,12 @@ export async function resolveGitLabTarget(
   const project = ref.repository ?? env.CI_PROJECT_ID ?? gitlabProject(origin);
   const apiUrl = gitlabApi(env.CI_API_V4_URL, remoteHost(origin), options.warn);
   const fetchImpl = options.fetch;
+  const signal = options.signal ? { signal: options.signal } : {};
   const api = new GitLabApi(project, {
     token,
     baseUrl: apiUrl,
     ...(fetchImpl ? { fetch: fetchImpl } : {}),
+    ...signal,
   });
   const iid = ref.number;
   const merge = await api.getMergeRequest(iid);
@@ -51,6 +53,7 @@ export async function resolveGitLabTarget(
         snapshot,
         history: local.history,
         ...(fetchImpl ? { fetch: fetchImpl } : {}),
+        ...signal,
       }),
   };
 }

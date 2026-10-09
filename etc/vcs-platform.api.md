@@ -213,6 +213,8 @@ export interface ResolveTargetOptions {
     // (undocumented)
     ref: ChangeRequestRef;
     // (undocumented)
+    signal?: AbortSignal;
+    // (undocumented)
     warn(message: string): void;
 }
 
@@ -256,6 +258,9 @@ export interface ReviewPlatform {
     // (undocumented)
     writeSummary(existing: PlatformComment | undefined, body: string): Promise<void>;
 }
+
+// @public (undocumented)
+export const signalSchema: z.ZodInstanceOf<AbortSignal>;
 
 // @public (undocumented)
 export type SuggestionFence = (range: LineRange) => string | undefined;

@@ -82,7 +82,8 @@ describe("resolveGitHubTarget", () => {
 
   it("gives the adapter the configured settings, and defaults for the rest", async () => {
     const { options: o } = options({ GITHUB_TOKEN: "t", GITHUB_REPOSITORY: "o/r" });
-    const target = await resolveGitHubTarget(o);
+    const signal = new AbortController().signal;
+    const target = await resolveGitHubTarget({ ...o, signal });
     const created: unknown[] = [];
     const local = {
       code: {
@@ -111,6 +112,7 @@ describe("resolveGitHubTarget", () => {
           code: local.code,
           history: local.history,
           snapshot: { id: "o/r#7", title: "t", description: "", baseSha: BASE, headSha: HEAD },
+          signal,
         }),
       },
     ]);

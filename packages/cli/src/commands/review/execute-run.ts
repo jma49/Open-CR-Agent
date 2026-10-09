@@ -48,7 +48,7 @@ export async function executeRun(
   const sampling = requestedSampling(run.config, args);
   const { runtime, stopCloud } = await startRuntime(run, deps, sampling);
   const progress = new ProgressPrinter(io.err, { heartbeatMs: deps.heartbeatMs, now: deps.now });
-  const interrupt = new AbortController();
+  const { interrupt } = run;
   const stopListening = deps.onInterrupt?.(() => {
     io.err.write(
       "[ocra] Interrupted: stopping and writing a partial report (Ctrl-C again quits now)\n",
