@@ -25,7 +25,7 @@ jobs:
       cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - uses: jma49/Open-CR-Agent@82a3f1183a3177e9efa401d87eb95dea495ef619 # v0.6.0
@@ -33,7 +33,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-- **按提交固定版本**，在注释里写明版本号：tag 可以移动，提交不能。`git ls-remote --tags https://github.com/jma49/Open-CR-Agent v0.3.0` 会打印某个版本的提交；Dependabot 会更新固定的提交和注释。
+- **每个 action 都按提交固定版本**，在注释里写明版本号：tag 可以移动，提交不能。本页的方案和 `ocra init` 都这样做，`actions/checkout` 也不例外。`git ls-remote --tags https://github.com/jma49/Open-CR-Agent v0.3.0` 会打印某个版本的提交；Dependabot 会更新固定的提交和注释。
 - **保留 `fetch-depth: 0`：**ocra 需要 base 与 head 之间的历史，浅克隆会停下并给出提示。
 - **保留 `concurrency`：**否则连续两次 push 会把同样的评论发两遍，较慢的那次还可能用更旧的 head 覆盖摘要。被取消的运行不发布任何内容（已在发布时除外），把部分报告留在 job 日志里。
 - **把模型 key 存为仓库 secret。**模型来自 base 分支的 `.ocra/config.json` 或 `env` 里的 `OCRA_MODEL_*` 变量。
@@ -69,7 +69,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       - if: ${{ !cancelled() && steps.ocra.outputs.report != '' }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ocra-report
           path: ${{ steps.ocra.outputs.report }}
@@ -137,7 +137,7 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - id: ocra
@@ -146,7 +146,7 @@ jobs:
           sarif: true
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      - uses: github/codeql-action/upload-sarif@v4
+      - uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         # 审查不完整时上一步会失败，这里也照样上传。
         if: ${{ !cancelled() && steps.ocra.outputs.sarif != '' }}
         with:
@@ -230,7 +230,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # The base branch. Nothing from the pull request is checked out.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -290,12 +290,12 @@ jobs:
     environment: ocra-review
     steps:
       - id: app
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ vars.OCRA_APP_CLIENT_ID }}
           private-key: ${{ secrets.OCRA_APP_KEY }}
       # 默认分支。不检出 PR 里的任何东西。
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false

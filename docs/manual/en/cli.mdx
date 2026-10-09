@@ -49,7 +49,7 @@ For Gemini, the file is:
 
 The key is never written; OpenCode reads it from `GEMINI_API_KEY`. Change the models like any [configuration](./configuration).
 
-**The workflow** is the [GitHub](./github) recipe with the key as a secret, `--max-cost-usd 2` per review, `opencode: false` on the direct runtime, and the Action pinned to this release's commit. `ocra init --github` then prints:
+**The workflow** is the [GitHub](./github) recipe with the key as a secret, `--max-cost-usd 2` per review, `opencode: false` on the direct runtime, and the Action pinned to this release's commit (`actions/checkout` by commit too). `ocra init --github` then prints:
 
 ```text
 Wrote .ocra/config.json: Gemini models through GEMINI_API_KEY, on the OpenCode runtime.

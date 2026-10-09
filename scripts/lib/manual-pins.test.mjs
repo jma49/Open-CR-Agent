@@ -10,6 +10,8 @@ import {
   bumpPins,
   manualPages,
   pinsIn,
+  recipeFiles,
+  unpinnedUses,
 } from "./manual-pins.mjs";
 import { lockstep, readWorkspaces } from "./release.mjs";
 
@@ -113,5 +115,49 @@ describe("the Action's pin", () => {
       )
       .map((p) => `${p.where} ${p.commit} # v${p.version}`);
     expect(differ).toEqual([]);
+  });
+});
+
+describe("unpinnedUses", () => {
+  it("finds an action on a tag or branch, or on a commit without its version", () => {
+    const text = `steps:
+  - uses: actions/checkout@${NEW} # v7.0.1
+  - uses: actions/checkout@v7
+    with:
+      fetch-depth: 0
+  - name: upload
+    uses: actions/upload-artifact@main
+  - uses: jma49/Open-CR-Agent@<commit> # v0.6.0
+  - uses: actions/cache@${NEW}
+  - uses: ./.github/actions/setup
+`;
+    expect(unpinnedUses(text)).toEqual([
+      { uses: "actions/checkout@v7", line: 3 },
+      { uses: "actions/upload-artifact@main", line: 7 },
+      { uses: `actions/cache@${NEW}`, line: 9 },
+    ]);
+  });
+});
+
+// A recipe is copied as it is: an action on a tag runs whatever the tag
+// points at later (CWE-829).
+describe("the workflows users copy or ocra init writes", () => {
+  const files = recipeFiles(root);
+
+  it("include both languages of the manual and the README, and ocra init's", () => {
+    const names = files.map((path) => relative(root, path));
+    expect(names).toEqual(
+      expect.arrayContaining(["README.md", "README.zh-CN.md", "docs/manual/en/github.mdx"]),
+    );
+    expect(names.some((name) => name.endsWith("__snapshots__/ocra-fork-safe.yml"))).toBe(true);
+  });
+
+  it("pin every action to a commit", () => {
+    const unpinned = files.flatMap((path) =>
+      unpinnedUses(readFileSync(path, "utf8")).map(
+        (u) => `${relative(root, path)}:${u.line} ${u.uses}`,
+      ),
+    );
+    expect(unpinned).toEqual([]);
   });
 });

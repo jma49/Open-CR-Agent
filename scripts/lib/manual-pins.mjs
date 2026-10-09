@@ -75,20 +75,48 @@ function readmes(root) {
 }
 
 /**
- * Every file that pins the Action: the manual, the READMEs, the dogfood
- * workflow, and the template of ocra init with the workflows it writes,
- * kept for actionlint.
+ * The workflows users copy or get: the manual's recipes, the READMEs, and the
+ * workflows ocra init writes, kept for actionlint.
  * @param {string} root
  */
-export function actionPinFiles(root) {
+export function recipeFiles(root) {
   const written = join(root, dirname(ACTION_TEMPLATE), "__snapshots__");
   return [
     ...manualPages(root),
     ...readmes(root),
-    join(root, ".github", "workflows", "ocra-dogfood.yml"),
-    join(root, ACTION_TEMPLATE),
     ...readdirSync(written).map((name) => join(written, name)),
   ];
+}
+
+/**
+ * Every file that pins the Action: the recipes, the dogfood workflow and the
+ * template of ocra init.
+ * @param {string} root
+ */
+export function actionPinFiles(root) {
+  return [
+    ...recipeFiles(root),
+    join(root, ".github", "workflows", "ocra-dogfood.yml"),
+    join(root, ACTION_TEMPLATE),
+  ];
+}
+
+const PINNED_REF = /^([0-9a-f]{40}|<commit>)$/;
+const USES = /^[\s-]*uses:\s+([^\s@]+)@(\S+)(.*)$/gm;
+
+/**
+ * Each action in a workflow text that is not pinned to a full commit with its
+ * version as a comment, a tag or branch can be moved under the user. The
+ * Action's own <commit> placeholder stands for its commit.
+ * @param {string} text
+ */
+export function unpinnedUses(text) {
+  return [...text.matchAll(USES)]
+    .filter(([, , ref = "", rest = ""]) => !(PINNED_REF.test(ref) && / # v\d/.test(rest)))
+    .map((match) => ({
+      uses: `${match[1]}@${match[2]}`,
+      line: text.slice(0, match.index).split("\n").length,
+    }));
 }
 
 /**

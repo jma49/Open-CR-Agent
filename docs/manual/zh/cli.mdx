@@ -49,7 +49,7 @@ ocra init --provider anthropic     # 当前 shell 里没有这个供应商的 ke
 
 key 本身从不写入文件；OpenCode 从 `GEMINI_API_KEY` 读取它。模型可以像其他[配置](./configuration)一样修改。
 
-**workflow** 就是 [GitHub](./github) 页面里的方案：key 作为 secret，每次审查 `--max-cost-usd 2`，direct 运行时下加 `opencode: false`，Action 固定到本发布版本的提交。`ocra init --github` 随后打印：
+**workflow** 就是 [GitHub](./github) 页面里的方案：key 作为 secret，每次审查 `--max-cost-usd 2`，direct 运行时下加 `opencode: false`，Action 固定到本发布版本的提交（`actions/checkout` 也按提交固定）。`ocra init --github` 随后打印：
 
 ```text
 Wrote .ocra/config.json: Gemini models through GEMINI_API_KEY, on the OpenCode runtime.

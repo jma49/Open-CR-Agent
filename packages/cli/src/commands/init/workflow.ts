@@ -7,6 +7,10 @@
 // manual's; scripts/lib/manual-pins.test.mjs fails when they differ.
 export const ACTION_USES = "jma49/Open-CR-Agent@82a3f1183a3177e9efa401d87eb95dea495ef619 # v0.6.0";
 
+// By commit like the Action, so a moved tag cannot change what runs with the
+// workflow's secrets; scripts/lib/manual-pins.test.mjs keeps every recipe pinned.
+const CHECKOUT_USES = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1";
+
 export const REVIEW_LABEL = "ocra-review";
 
 export type WorkflowKind = "fork-safe" | "same-repo";
@@ -78,7 +82,7 @@ function sameRepo(action: readonly string[]): string[] {
     "      cancel-in-progress: true",
     "    runs-on: ubuntu-latest",
     "    steps:",
-    "      - uses: actions/checkout@v7",
+    `      - uses: ${CHECKOUT_USES}`,
     "        with:",
     "          fetch-depth: 0",
     ...step(action, "      "),
@@ -114,7 +118,7 @@ function forkSafe(action: readonly string[]): string[] {
     "    runs-on: ubuntu-latest",
     "    steps:",
     "      # The base branch. Nothing from the pull request is checked out.",
-    "      - uses: actions/checkout@v7",
+    `      - uses: ${CHECKOUT_USES}`,
     "        with:",
     "          fetch-depth: 0",
     "          # In a private repository, remove this line: ocra fetches the",
