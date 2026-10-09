@@ -36,16 +36,16 @@ ocra-review:
   allow_failure:
     exit_codes: [1]
   script:
-    - npm install -g --ignore-scripts @open-cr-agent/cli@0.6.0
+    - npm install -g --ignore-scripts @open-cr-agent/cli@0.7.0
     - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
 ```
 
-Or use the [container image](./installation#container-image), with no install step. Pin it by digest (`docker buildx imagetools inspect ghcr.io/jma49/ocra:0.6.0` prints it) and check its provenance ([Stability](./stability#verifying-a-release)):
+Or use the [container image](./installation#container-image), with no install step. Pin it by digest (`docker buildx imagetools inspect ghcr.io/jma49/ocra:0.7.0` prints it) and check its provenance ([Stability](./stability#verifying-a-release)):
 
 ```yaml
 ocra-review:
   image:
-    name: ghcr.io/jma49/ocra:0.6.0@sha256:<digest>
+    name: ghcr.io/jma49/ocra:0.7.0@sha256:<digest>
     # The job's script runs in a shell, not through the image's ocra entrypoint.
     entrypoint: [""]
   # (rules, variables, interruptible and allow_failure as above)

@@ -1,6 +1,6 @@
 # Roadmap
 
-What comes after M1–M4 ([architecture](architecture.md)), as of 2026-10-09 (0.6.0 released). The long-term direction, decided on 2026-10-01: ocra is not another review bot but the engine other review agents are built on.
+What comes after M1–M4 ([architecture](architecture.md)), as of 2026-10-09 (0.7.0 released). The long-term direction, decided on 2026-10-01: ocra is not another review bot but the engine other review agents are built on.
 
 ## The rule while evaluation is scarce
 
@@ -94,7 +94,7 @@ The milestones below keep their lists; the order of work is the one above.
 2. **A run id** everywhere, and a published event schema. The run id landed (`runId` in the report, progress output, summary comment and SARIF log); the event schema is still internal.
 3. **Metrics** from session files. Landed as `ocra metrics`.
 
-**M13 — Use** (the focus). Three external teams on the Action or the GitLab job, their dismissals and replies feeding the golden set; the M8 maintainer conversations. If no team will run it, the next phase starts with the product layer, not the control plane. Landed, not yet released: `ocra init`.
+**M13 — Use** (the focus). Three external teams on the Action or the GitLab job, their dismissals and replies feeding the golden set; the M8 maintainer conversations. If no team will run it, the next phase starts with the product layer, not the control plane. Landed in 0.7.0: `ocra init`.
 
 **M14 — ocra Cloud** ([ADR-0024](adr/0024-ocra-cloud.md); frozen). Open core plus an optional hosted service on the published packages, in a private repository.
 

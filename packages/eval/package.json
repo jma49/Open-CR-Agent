@@ -9,8 +9,8 @@
   },
   "type": "module",
   "dependencies": {
-    "@open-cr-agent/cli": "0.6.0",
-    "@open-cr-agent/core": "0.6.0",
+    "@open-cr-agent/cli": "0.7.0",
+    "@open-cr-agent/core": "0.7.0",
     "zod": "^4.6.5"
   },
   "bin": {

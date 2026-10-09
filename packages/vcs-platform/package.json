@@ -1,6 +1,6 @@
 {
   "name": "@open-cr-agent/vcs-platform",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "What Open-CR-Agent's code review platform adapters share: the review summary, its state, and who may command ocra",
   "keywords": [
     "code-review",
@@ -38,7 +38,7 @@
     "!dist/**/*.map"
   ],
   "dependencies": {
-    "@open-cr-agent/core": "0.6.0",
+    "@open-cr-agent/core": "0.7.0",
     "micromark": "^4.0.3",
     "micromark-extension-gfm-table": "^2.1.2",
     "zod": "^4.6.5"

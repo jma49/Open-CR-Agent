@@ -6,6 +6,52 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-09
+
+Security hardening from the 2026-10-09 audit: model text in comments is neutralized from a CommonMark parse, secret paths are refused under Unicode case folding, `--resume` reuses only sessions sealed on this machine, `--output` no longer follows links, and redaction runs in linear time and covers more secret forms. Reliability for busy and shared setups: a burst of rate limits costs one wait, tasks that finish at the spend limit are kept, and concurrent processes take turns renewing the ocra Cloud session. This release also brings `ocra init` and `ocra review --resume`; the Action's tag for it is `jma49/Open-CR-Agent@v0.7.0`.
+
+### Added
+
+- `ocra init` writes `.ocra/config.json` for the model key in the environment (Gemini, Anthropic and OpenAI on the default OpenCode runtime, OpenRouter's free router `openrouter/free` on the direct runtime, with a note that free requests are few without credits), and with `--github` the fork-safe GitHub workflow (`--same-repo-only` for the plain `pull_request` one); a file that exists is kept unless `--force` is given.
+- `ocra review --resume <run-id>` reuses the completed tasks of an earlier run whose inputs and commits are unchanged and runs only the rest, taking reused tasks before the spend limit; `ReviewOptions.resume` does the same for embedders. `tasks[].reusedFrom` in the JSON report names the run that paid for a reused task, and `ocra metrics` and the ocra Cloud upload count its cost there, not in the run that reused it.
+- Review events: `task_reported` (a completed task's findings and the key of its inputs) and `groups` on `files_bundled` (each bundle's files). An exhaustive `switch` over `ReviewEvent` needs the new case.
+- The session log (`events.jsonl`) records, on each attempt's summary line, the files the reviewer read, what it searched for and its final text (`attempt`), so a missed issue can be traced to a file it never opened or one it read and passed over, and each finding dropped because it names a file outside its task's bundle (`finding_dropped`); the report is unchanged. Runtimes report exploration through `exploredBy()`.
+- `OCRA_RECORD_DIR`: the direct runtime writes every model request and the answers it got to that directory (keys redacted, owner-only files), so a run can be read afterwards or replayed in tests without a model.
+- The JSON report's `tasks[].ended` (`step_cap` or `stopped_early`) and coverage status `incomplete` with `ended`; `coverageGaps()` counts them in `incomplete`, and `isUnfinished()` tells which coverage entries the next review includes; a runtime marks an attempt whose last turn used every step with `AttemptOutcome.atStepCap`.
+- `redactField()` in `@open-cr-agent/cloud-contract`: one shared finding field cut at `MAX_FIELD`, then redacted, as the CLI sends it.
+
+### Changed
+
+- The summary comment credits dismissals to maintainers ("Dismissed by maintainers"), since "reviewer" names ocra's review agents.
+- A review task whose reviewer ran out of steps, or stopped, before it called the done tool no longer counts its files as reviewed: they are `incomplete` (partly reviewed) in coverage, the run exits `3`, the message says what to do, and the pull or merge request summary lists them ([#477](https://github.com/jma49/Open-CR-Agent/issues/477)).
+- `sharedFindingSchema` holds `title` and `body` to `MAX_FIELD` characters (a finding with a longer one is left out) and reads a longer `category`, `suggestion` or `code` as absent.
+
+### Fixed
+
+- Rate limits that reach a model while it is paused, as when tasks running at once are refused together, count as that pause: one burst no longer drops the model for the run, and a task that waited one out no longer sends a request to a model another task found out of quota in the meantime.
+- A rate limit that states no wait, as Vertex AI's shared quota sends when busy, pauses the model for 15, 30, then 60 seconds instead of dropping it for the run; a limit that says "per-day" (OpenRouter's free models) counts as a daily limit.
+- With `--max-cost-usd`, a review task whose last spend report reaches the review share after the agent finished counts as completed, not cancelled: its files no longer count as unfinished, exit with `3`, and get reviewed again on the next push.
+- Concurrent ocra processes no longer renew the ocra Cloud session with the same refresh token: a process waits out another's renewal (up to two and a half minutes, saying so after five seconds) instead of giving up after 10 seconds, the lock of a process that died is broken (at once when its process has exited) by one process only, a renewal never saves over a session saved meanwhile, and `ocra login` and `ocra logout` wait for a renewal in progress. On Windows, a lock still being removed is waited for too, instead of carried on without. Two renewals with one token could leave a superseded token saved and end the session at its next use.
+- On `"runtime": "direct"`, a gateway token that could not be renewed before it expired is still renewed once ocra Cloud answers again, instead of failing every later model call through ocra Cloud for the rest of the run.
+- The direct runtime now works with Gemini behind an OpenAI-compatible endpoint, such as Vertex AI's: a tool call goes back to the model with its `type` and with the thought signature Gemini attached (`extra_content`). Before, the second request of every review task was refused with HTTP 400.
+- In the GitHub guide's fork-safe workflow (and the one `ocra init --github` writes), a run the job's `if:` skips (an unrelated label, an outside author's push) no longer cancels the review in progress: the concurrency group, now on the review job, repeats the condition, so such a run gets a group of its own. The guide's plain `pull_request` workflow skips pull requests from forks, which get no secrets there, instead of failing their check. A workflow copied from an earlier guide keeps both problems: change it as the guide shows.
+- On a Windows runner the Action starts npm without a shell, so a runner directory holding `&` or `^` no longer breaks its install step.
+- On Windows, a git command that exits before reading all of its input no longer fails the local review with `write EOF`. Its exit code decides the outcome, as on Linux and macOS.
+- The published packages no longer end their files with `sourceMappingURL` comments naming maps they do not ship, so bundlers that load ocra's packages stop warning "Failed to load source map".
+
+### Security
+
+- Model text in pull request and merge request comments is neutralized from a CommonMark parse, so it can no longer post HTML, images, links or mentions by making ocra and the platform disagree on what is code, nor a GitLab wikilink or a committable suggestion of its own (#509).
+- Secret-looking paths, files renamed away from them and `.git/` are refused under any spelling a case-insensitive file system opens as the same name, Unicode case variants and invisible characters included, not only under ASCII case variants.
+- Workspace reviews read a file only under its own name: on a case-insensitive file system, such as macOS's by default, another spelling of the name no longer opens it.
+- `ocra review --resume` reuses only what ocra on this machine wrote: each session line is sealed with a key of the user's kept in `~/.config/ocra/session-key`, and a session without valid seals (another machine, another user, or one that came with the change) is refused. The session log is read without following links, as a regular file, within 64 MiB; bundles come from the sealed log, not `report.json`. `sessionJsonlPlugin` takes an optional `sealKey` setting that seals each line it writes.
+- `ocra review --output` no longer writes through a symbolic link: a link at the output path, or at a directory on the way inside the repository, is refused with `ACCESS_DENIED` (exit `2`) before any model call, and the file is replaced whole in one rename.
+- Reading a JSON report (`ocra metrics`, `ocra memory`) refuses anything but a regular file and stops at 64 MiB.
+- `redact()` takes time linear in its input; crafted text no longer stalls it, and the CLI cuts each field to 4 KB before redacting it ([#515](https://github.com/jma49/Open-CR-Agent/issues/515)).
+- Shared findings are redacted of more secret forms: unquoted `password: …` and `NAME=…` values, `curl -u user:…`, short `Bearer` and `Basic` credentials, PGP private key blocks, and hex tokens after a prefix such as `dop_v1_` ([#513](https://github.com/jma49/Open-CR-Agent/issues/513)).
+- The GitHub guide's recipes, and the workflows `ocra init --github` writes, pin every action by commit, like the Action, so a moved tag cannot change what runs with the workflow's secrets. A workflow copied from an earlier guide keeps the tags: pin them as the guide shows.
+- `@modelcontextprotocol/sdk` is at 1.31.0 or later (GHSA-6qxp-vccf-f47h). ocra's tool server does not use the SDK's OAuth client, which the advisory concerns.
+
 ## [0.6.0] - 2026-10-04
 
 Hardening and reliability for ocra Cloud users: concurrent runs no longer sign each other out, an unreachable or ended session says so instead of silently running signed out, shared findings are redacted with the same rules on the machine and the server, and every answer from ocra Cloud is checked before use. Using the `ocra` command does not change: install, flags and the JSON report work as before, and `docker run <image> ocra review …` keeps working. Code that embeds the engine should read **Changed**: `ReviewOptions` groups its settings and the CLI package's public entry is `run(argv)`. The Action's tag for this release is `jma49/Open-CR-Agent@v0.6.0`.
@@ -307,7 +353,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.3.0...v0.4.0

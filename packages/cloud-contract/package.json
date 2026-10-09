@@ -1,6 +1,6 @@
 {
   "name": "@open-cr-agent/cloud-contract",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "The wire contract between Open-CR-Agent and ocra Cloud: Zod schemas, limits, vocabularies, the redaction pass and its test vectors",
   "keywords": [
     "code-review",
