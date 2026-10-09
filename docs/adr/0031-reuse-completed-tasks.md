@@ -1,6 +1,6 @@
 # ADR-0031: A retried review reuses the tasks that completed
 
-- Status: accepted
+- Status: accepted; points 1, 4 and 5 amended on 2026-10-09 ([below](#amendment-2026-10-09-resume-only-what-this-machine-sealed))
 - Date: 2026-10-08
 
 ## Context
@@ -26,3 +26,26 @@ Core had no notion of an earlier run's tasks. The incremental re-review of a pul
 - Rejected: **keying on the task id and the run's provenance.** Task ids follow bundle order, which grouping can change, and provenance omits the change, memory and guidelines; the prompt hash covers all of them.
 - Rejected: **storing anchored findings.** They have no validating schema at the boundary, and anchoring again is deterministic for the same commits.
 - Rejected: **retrying only inside the run** (longer backoff). It helps (#500), but a daily or shared quota can stay spent for hours, and a killed run would still lose its work.
+
+## Amendment, 2026-10-09: resume only what this machine sealed
+
+### Context
+
+The 2026-10-09 audit (E8, #511) found that point 5's defenses (every line validated, findings bounded, a linked session directory refused) do not stop a session that arrives with the change. `.ocra/sessions/` is in the reviewed tree; a task key hashes inputs an author can compute; the run id is printed in the summary comment. A committed session could therefore hand a resumed run completed tasks that found nothing, and turn a review that did not look into a pass. The log was also opened through links and buffered whole, so a link to a device stalled the CLI. The same audit (E25, #517) found that the key left out the commits, so a rebase that kept the hunks byte for byte reused findings made against other surrounding code, and that the spend limit was checked before reuse, so free reused tasks were skipped as "spend limit reached" when resuming a run that had hit `--max-cost-usd`.
+
+### Decision
+
+1. **Sessions are sealed with a key of this machine's user.** Each line of `events.jsonl` ends with a `seal` field: HMAC-SHA256 over the run id and the line, keyed by a 32-byte secret that the CLI makes on first use in the user's ocra directory (`~/.config/ocra/session-key`, mode 0600), never in a repository. `session-jsonl` takes it as its optional `sealKey` setting. `--resume` reads only lines whose seal verifies for the run id it names: other lines are skipped and counted in a warning, and a session with no such line is refused. The bundles come from the sealed `files_bundled` event; `report.json`, which carries no seal, is no longer read.
+2. **The log is read as a regular file, without links, within a bound.** A link at the session's directories or at `events.jsonl` is refused (`O_NOFOLLOW`), anything but a regular file is refused, and the read stops at 64 MiB counted as read, not taken from `stat`. `readReport` reads within the same bound but follows links, since a report the user names may be one.
+3. **Sealed lines are still checked**: validated, bounded like a model's answer, and `reusedFrom` must be a run id.
+4. **The key includes the base and head commits.** A reviewer reads code around the change that the prompt does not hold.
+5. **A reusable cell is reused before the spend limit is checked.** It costs nothing.
+
+### Consequences
+
+- A session resumes only on the machine and user account that wrote it. Deleting the key makes earlier sessions impossible to resume, nothing else. A CI job makes a new key, so it cannot resume another job's session.
+- Sessions written before this amendment carry no seal and cannot be resumed (`--resume` had not been released).
+- Each line grows by 74 bytes.
+- Rejected: **moving resumable state out of the tree** into a per-user state directory. Sessions stay where `ocra metrics`, `ocra memory`, eval and the Action find them; a second store would need a lifecycle of its own, and the seal gives the same trust in one file.
+- Rejected: **refusing `--resume` with `--pr` or `--mr`.** A forged session is the same threat in every mode, and retrying a pull request's review locally is a real use.
+- Rejected: **refusing a session git tracks.** It checks how the files arrived, not who wrote them: a checkout may replace ignored files, and files can arrive by other ways than git.

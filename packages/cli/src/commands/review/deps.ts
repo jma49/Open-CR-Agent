@@ -18,6 +18,10 @@ export interface ReviewDeps {
   cloud?: CloudDeps;
   // Runs npm for `ocra plugins`; only tests replace it.
   npm?: NpmRunner;
+  // This machine's key that seals session logs, so --resume reuses only what
+  // ocra wrote here (ADR-0031). Absent, sessions are not sealed and cannot be
+  // resumed.
+  sessionKey?(): Promise<string>;
   // Calls the handler on Ctrl-C or SIGTERM; returns a function that stops listening.
   onInterrupt?(handler: () => void): () => void;
 }

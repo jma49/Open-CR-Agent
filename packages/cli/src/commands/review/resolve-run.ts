@@ -1,4 +1,5 @@
 import {
+  errorMessage,
   type OcraPlugin,
   type PluginRegistry,
   type ReviewerOverride,
@@ -45,11 +46,18 @@ export interface ResolvedRun extends ResolvedConfig {
   // Present while the machine is signed in to ocra Cloud and the session held.
   signedInCloud?: CloudDeps;
   accountSettings?: AccountVersion;
-  session: { dir: string; id: string };
+  // sealKey: this machine's, which seals the session (ADR-0031).
+  session: RunSession;
   registry: PluginRegistry;
   vcs: VcsAdapter;
   rules: SourcedRule[];
   overrides: ReviewerOverrides;
+}
+
+interface RunSession {
+  dir: string;
+  id: string;
+  sealKey?: string;
 }
 
 export async function resolveRun(
@@ -73,7 +81,11 @@ export async function resolveRun(
   if (filled.length > 0) {
     io.err.write(forTerminal(`[ocra] From your ocra Cloud settings: ${filled.join(", ")}\n`));
   }
-  const session = { dir: sessionsDir(root), id: newRunId() };
+  const session: RunSession = {
+    dir: sessionsDir(root),
+    id: newRunId(),
+    ...(await sealKeyOf(args, deps, warn)),
+  };
   const registry = await startRegistry(args, deps, {
     target,
     config: resolved.config,
@@ -134,6 +146,22 @@ async function withAccount(
   };
 }
 
+// The key that seals the session; without it the review still runs, and
+// only its session cannot be resumed.
+async function sealKeyOf(
+  args: ReviewArgs,
+  deps: ReviewDeps,
+  warn: (message: string) => void,
+): Promise<{ sealKey?: string }> {
+  if (args.plan || !deps.sessionKey) return {};
+  try {
+    return { sealKey: await deps.sessionKey() };
+  } catch (error) {
+    warn(`no session key on this machine (${errorMessage(error)}): this run cannot be resumed`);
+    return {};
+  }
+}
+
 // A plan calls no model, writes no session log and imports no runtime: it
 // works without the optional runtime-opencode.
 async function startRegistry(
@@ -143,7 +171,7 @@ async function startRegistry(
     target: ReviewTarget;
     config: CliConfig;
     account: AccountPlugins;
-    session: { dir: string; id: string };
+    session: RunSession;
     warn: (message: string) => void;
   },
 ): Promise<PluginRegistry> {

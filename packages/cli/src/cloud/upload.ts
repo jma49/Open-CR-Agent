@@ -1,5 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
 import type {
   ReviewerCounts,
@@ -9,11 +8,11 @@ import type {
 } from "@open-cr-agent/cloud-contract";
 import { coverageGaps, type ReviewReport, type Verification } from "@open-cr-agent/core";
 import { verificationSchema } from "@open-cr-agent/core/internal";
+import { machineSecret } from "../io/private-file.js";
 import { VERSION } from "../version.js";
 import { CloudClient, CloudError, sessionLostReason } from "./client.js";
 import { readCredentials } from "./credentials.js";
 import type { CloudDeps } from "./deps.js";
-import { createPrivateFile, writePrivateFile } from "./private-file.js";
 
 // After a review, a signed-in CLI sends ocra Cloud its counts (ADR-0024):
 // the verdict, how many findings of each severity, files and tasks, tokens
@@ -125,31 +124,8 @@ function perReviewer(
 }
 
 /** This machine's random salt, kept beside the credentials, made on first use. */
-async function machineSalt(credentialsPath: string): Promise<string> {
-  const path = join(dirname(credentialsPath), "upload-salt");
-  const existing = await readSalt(path);
-  if (existing !== "unreadable") {
-    if (existing) return existing;
-    // Two first reviews at once agree on the salt the first of them made.
-    const fresh = randomBytes(32).toString("hex");
-    if (await createPrivateFile(path, `${fresh}\n`)) return fresh;
-    const made = await readSalt(path);
-    if (made && made !== "unreadable") return made;
-  }
-  const fresh = randomBytes(32).toString("hex");
-  await writePrivateFile(path, `${fresh}\n`);
-  return fresh;
-}
-
-async function readSalt(path: string): Promise<string | "unreadable" | undefined> {
-  let text: string;
-  try {
-    text = await readFile(path, "utf8");
-  } catch {
-    return undefined;
-  }
-  const salt = text.trim();
-  return /^[0-9a-f]{64}$/.test(salt) ? salt : "unreadable";
+function machineSalt(credentialsPath: string): Promise<string> {
+  return machineSecret(join(dirname(credentialsPath), "upload-salt"));
 }
 
 /**

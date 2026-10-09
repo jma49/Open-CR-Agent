@@ -39,6 +39,7 @@ Not promised: a correct verdict. The models read the pull request, so they can b
 | Plant markup or links in ocra's comments | Model text cannot close ocra's markup, embed images or HTML, mention people (also not through a character reference such as `&#64;`), spell one of ocra's commands, start a line with a slash (a GitLab quick action such as `/merge`), or become a link: addresses of any scheme are shown as text. Quoted code in a backtick fence or inline span is posted as written, since a code span renders none of these; an unbalanced backtick is escaped so it cannot open a span later in the comment. |
 | Tamper with the state in ocra's summary comment | State counts only when ocra's account posted the comment and edited it last; it is validated and size-capped. |
 | Rewrite your terminal (local runs) | Control characters, escape sequences and bidirectional overrides are replaced in all output, JSON included. |
+| Pass off committed session files as an earlier review (`--resume`, local runs) | Only session lines sealed with your own key, kept outside every repository, are reused; a session without them is refused ([Sessions](./cli#sessions)). |
 | Run up your model bill | 30 steps per task, 60 tasks per run, bounded reads and tool answers, 50 findings per task, and `--max-cost-usd` per run. In CI, also limit who can start a review ([pull requests from forks](./github#pull-requests-from-forks)). |
 
 The defenses are covered by tests next to the code, in [the repository](https://github.com/jma49/Open-CR-Agent).

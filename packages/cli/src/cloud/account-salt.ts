@@ -1,6 +1,6 @@
 import { readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { writePrivateFile } from "./private-file.js";
+import { writePrivateFile } from "../io/private-file.js";
 
 // The account's repository-hash salt (ADR-0028, 4). The server answers one
 // only while the account shares findings, so that a repository hashes alike

@@ -90,7 +90,7 @@ These `ReviewOptions` fields are a contract under the [0.x rule](./stability): a
 | `onEvent` | Receives each `ReviewEvent` as the run progresses |
 | `identity.runId` | Names the run in the report, the events and what is posted; generated when absent. The CLI passes its session id |
 | `identity.provenance` | `{ ocraVersion, configHash, sampling?, accountSettings? }`: the report's `provenance` then adds the system prompts' hash and the sampling applied (`sampling` is what you asked for; `stableHash()` hashes your configuration) |
-| `resume` | A `ResumedRun`: an earlier run's id, bundles and completed tasks (each with its key and the findings it reported), as the `task_reported` and `task_finished` events of its session give them. A task whose key matches is reused and costs nothing; its outcome has `reusedFrom`. The CLI's `--resume` reads it from a session. The key includes `identity.provenance`'s version and sampling; without them, tasks of another ocra build or sampling can be reused |
+| `resume` | A `ResumedRun`: an earlier run's id, bundles and completed tasks (each with its key and the findings it reported), as the `task_reported` and `task_finished` events of its session give them. A task whose key matches is reused and costs nothing; its outcome has `reusedFrom`. The CLI's `--resume` reads it from a session, only from lines sealed with this machine's key (`session-jsonl`'s optional `sealKey` setting, 64 hex digits, seals each line it writes). The key includes the base and head commits, and `identity.provenance`'s version and sampling; without those, tasks of another ocra build or sampling can be reused. Reused tasks are taken before the spend limit is checked, since they cost nothing |
 
 ## What it returns
 

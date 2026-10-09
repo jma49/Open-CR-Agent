@@ -95,4 +95,42 @@ describe("ocra review --resume", () => {
     expect(code).toBe(2);
     expect(err.text()).toContain("no session log for run 20260101T000000Z-000000");
   });
+
+  it("does not resume a session that ocra on this machine did not write", async () => {
+    const cwd = repoWithFourFiles();
+    const first = await review(cwd, reviewing([], { on: true }));
+    // Sealed with another machine's key, the session could have come with the change.
+    const seen: AgentTaskSpec[] = [];
+    const err = capture();
+    const code = await run(
+      ["review", "--resume", first.report.runId],
+      capture(),
+      err,
+      deps(cwd, reviewing(seen, { on: false }), { sessionKey: async () => "cd".repeat(32) }),
+    );
+    expect(code).toBe(2);
+    expect(err.text()).toContain("not written by ocra on this machine");
+    expect(seen).toHaveLength(0);
+  });
+
+  it("seals the session it writes, so that a session without seals cannot be resumed", async () => {
+    const cwd = repoWithFourFiles();
+    const first = await review(cwd, reviewing([], { on: true }));
+    const log = join(cwd, ".ocra", "sessions", first.report.runId, "events.jsonl");
+    const lines = readFileSync(log, "utf8").trim().split("\n");
+    expect(lines.every((l) => /,"seal":"[0-9a-f]{64}"\}$/.test(l))).toBe(true);
+    writeFileSync(
+      log,
+      `${lines.map((l) => l.replace(/,"seal":"[0-9a-f]{64}"\}$/, "}")).join("\n")}\n`,
+    );
+    const err = capture();
+    const code = await run(
+      ["review", "--resume", first.report.runId],
+      capture(),
+      err,
+      deps(cwd, reviewing([], { on: false })),
+    );
+    expect(code).toBe(2);
+    expect(err.text()).toContain("not written by ocra on this machine");
+  });
 });

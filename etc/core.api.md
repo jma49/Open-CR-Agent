@@ -1673,6 +1673,7 @@ export const sessionJsonlPlugin: OcraPlugin<z.infer<typeof sessionSettings>>;
 const sessionSettings: z.ZodObject<{
     dir: z.ZodString;
     id: z.ZodString;
+    sealKey: z.ZodExactOptional<z.ZodString>;
 }, z.core.$strict>;
 
 // @public (undocumented)

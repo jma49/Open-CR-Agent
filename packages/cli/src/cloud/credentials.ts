@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ocraConfigDir } from "../config/user-dir.js";
-import { writePrivateFile } from "./private-file.js";
+import { writePrivateFile } from "../io/private-file.js";
 
 export type Credentials = {
   server: string;

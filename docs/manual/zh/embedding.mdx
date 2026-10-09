@@ -90,7 +90,7 @@ try {
 | `onEvent` | 在运行过程中接收每个 `ReviewEvent` |
 | `identity.runId` | 在报告、事件和发布的内容里标识这次运行；不传则自动生成。CLI 传入它的会话 id |
 | `identity.provenance` | `{ ocraVersion, configHash, sampling?, accountSettings? }`：传入后，报告的 `provenance` 会加上系统提示词的哈希和实际应用的采样设置（`sampling` 是你要求的设置；`stableHash()` 可以给你的配置算哈希） |
-| `resume` | 一个 `ResumedRun`：早先一次运行的 id、分组和已完成的任务（每个带它的键和它报告的问题），即该运行会话里 `task_reported` 和 `task_finished` 事件给出的内容。键相同的任务直接复用，不产生花费，它的结果带 `reusedFrom`。CLI 的 `--resume` 从会话读取它。键包含 `identity.provenance` 里的版本和采样设置；不传时，其他 ocra 版本或采样设置下的任务也可能被复用 |
+| `resume` | 一个 `ResumedRun`：早先一次运行的 id、分组和已完成的任务（每个带它的键和它报告的问题），即该运行会话里 `task_reported` 和 `task_finished` 事件给出的内容。键相同的任务直接复用，不产生花费，它的结果带 `reusedFrom`。CLI 的 `--resume` 从会话读取它，且只读取用本机密钥封存过的行（`session-jsonl` 的可选设置 `sealKey`，64 位十六进制，用来封存它写下的每一行）。键包含基准提交和头部提交，以及 `identity.provenance` 里的版本和采样设置；不传后两者时，其他 ocra 版本或采样设置下的任务也可能被复用。复用的任务不产生花费，所以在检查花费上限之前就会被取用 |
 
 ## 它返回什么
 

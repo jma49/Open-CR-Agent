@@ -35,6 +35,7 @@ Pull request text, diffs, repository files, rules, guidelines, tool results, SAR
 - ocra's own sections are tagged `<ocra_…>`. Text in the data that could form such a tag (look-alike brackets, spacing, case and invisible characters included) is rewritten to `‹ocra_…`, so data can neither leave its section nor pose as another finding. Ordinary HTML and XML in reviewed code pass unchanged.
 - Pull request titles and descriptions are capped in length; a reviewer reports at most 50 findings per task, with bounded text.
 - Terminal output (findings, commit messages, errors) has control characters, escape sequences and bidirectional overrides replaced, so a change cannot rewrite your screen, hide a finding or write to your clipboard. JSON output (`--format json`, session reports and logs) escapes the same characters.
+- `--resume` reuses only results ocra on this machine sealed with your own key, kept outside every repository, so a session committed with a change cannot pass itself off as an earlier review. It reads the session log without following links and only up to a size bound.
 
 ## The verdict is not a security gate
 
