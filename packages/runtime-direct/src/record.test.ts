@@ -10,7 +10,7 @@ import {
   type Reply,
   scriptedEndpoint,
 } from "../../core/src/runtime/conformance.fakes.js";
-import { RECORD_DIR_ENV } from "./record.js";
+import { RECORD_DIR_ENV, recordingFetch } from "./record.js";
 import { type ReplayEndpoint, replayEndpoint } from "./replay.fakes.js";
 import { DirectRuntime } from "./runtime.js";
 
@@ -185,6 +185,29 @@ describe("recording the direct runtime's model exchanges", () => {
     expect(written).toContain("Echoed");
     expect(written).not.toContain("slashed-secret");
     expect(written).not.toContain("renewed");
+  });
+
+  it("leaves out the key a request was sent with when it is renewed before the answer", async () => {
+    const dir = tempDir();
+    let key = "sk-before-renewal-secret";
+    const base: typeof fetch = async () => {
+      const sent = key;
+      key = "sk-after-renewal-secret";
+      return new Response(`Echoed Bearer ${sent}.`);
+    };
+    const recorded = recordingFetch(
+      base,
+      dir,
+      () => [key],
+      () => {},
+    );
+    await recorded("http://127.0.0.1/", { method: "POST", body: JSON.stringify({ messages: [] }) });
+
+    const written = readdirSync(dir)
+      .map((f) => readFileSync(join(dir, f), "utf8"))
+      .join("\n");
+    expect(written).toContain("Echoed");
+    expect(written).not.toContain("before-renewal");
   });
 
   it("goes on without a recording it cannot write, sending each request once", async () => {

@@ -156,9 +156,12 @@ export function redact(text: string): { text: string; redacted: boolean } {
     (m, head: string, quote?: string, quoted?: string, bare?: string) => {
       if (quote !== undefined && quoted !== undefined)
         return quoted.startsWith("$") ? m : `${head}${quote}${REDACTED}${quote}`;
-      return bare !== undefined && isBareSecret(bare) && !isPathLike(bare)
-        ? `${head}${REDACTED}`
-        : m;
+      if (bare === undefined) return m;
+      // A flag's value is a shell argument, where a `;`, `,` or `)` after
+      // it ends a command, a list or a subshell rather than marking code.
+      const end = /[;,)]$/.test(bare) ? bare.slice(-1) : "";
+      const value = bare.slice(0, bare.length - end.length);
+      return isBareSecret(value) && !isPathLike(value) ? `${head}${REDACTED}${end}` : m;
     },
   );
   out = out.replace(
