@@ -31,7 +31,7 @@ Core had no notion of an earlier run's tasks. The incremental re-review of a pul
 
 ### Context
 
-The 2026-10-09 audit (E8, #511) found that point 5's defenses (every line validated, findings bounded, a linked session directory refused) do not stop a session that arrives with the change. `.ocra/sessions/` is in the reviewed tree; a task key hashes inputs an author can compute; the run id is printed in the summary comment. A committed session could therefore hand a resumed run completed tasks that found nothing, and turn a review that did not look into a pass. The log was also opened through links and buffered whole, so a link to a device stalled the CLI. The same audit (E25, #517) found that the key left out the commits, so a rebase that kept the hunks byte for byte reused findings made against other surrounding code, and that the spend limit was checked before reuse, so free reused tasks were skipped as "spend limit reached" when resuming a run that had hit `--max-cost-usd`.
+The 2026-10-09 audit (E8, #511) found that point 5's defenses (every line validated, findings bounded, a linked session directory refused) do not stop a session that arrives with the change. `.ocra/sessions/` is in the reviewed tree; a task key hashes inputs an author can compute; the run id is printed in the summary comment. A committed session could therefore hand a resumed run completed tasks that found nothing, and turn a review that did not look into a pass. The log was also opened through links and buffered whole, so a link to a device stalled the CLI. The same audit (E25, #517) found that the key left out the commits, so a rebase that kept the hunks byte for byte reused findings made against other surrounding code, and that the spend limit was checked before reuse, so free reused tasks were skipped as "spend limit reached" when resuming a run that had hit `--max-cost-usd`. It also found (E31, #517) that eval, by appending the new session log to the old one, fed the recall funnel every event of the attempt resumed, even when nothing was reused: what the lost tasks read and raised, and that attempt's Verify and judge.
 
 ### Decision
 
@@ -40,6 +40,7 @@ The 2026-10-09 audit (E8, #511) found that point 5's defenses (every line valida
 3. **Sealed lines are still checked**: validated, bounded like a model's answer, and `reusedFrom` must be a run id.
 4. **The key includes the base and head commits.** A reviewer reads code around the change that the prompt does not hold.
 5. **A reusable cell is reused before the spend limit is checked.** It costs nothing.
+6. **eval keeps only the reused tasks' earlier events.** Instead of appending the new session log to the old one, `ocra-eval run --retry-failed` writes the events of the tasks the new review reused, taken from the earlier attempts and matched by their key within each attempt, then the new log.
 
 ### Consequences
 
