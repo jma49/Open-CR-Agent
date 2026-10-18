@@ -50,7 +50,7 @@
     "@open-cr-agent/vcs-local": "0.7.0",
     "@open-cr-agent/vcs-platform": "0.7.0",
     "import-meta-resolve": "^4.2.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "optionalDependencies": {
     "@open-cr-agent/runtime-opencode": "0.7.0"
