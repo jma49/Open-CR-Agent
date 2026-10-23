@@ -146,6 +146,8 @@ node packages/eval/dist/main.js run  --dataset golden --tier adversarial --label
 
 审查使用固定采样：温度 `0`、种子 `1`，除非 `--temperature` 和 `--model-seed` 另行指定。`run.json` 和 `summary.json` 记录要求的设置（`info.sampling`）；每次审查的 JSON 报告记录实际应用的设置，`summary.json` 汇总为 `summary.provenance`：不同的 ocra 版本、提示词哈希、配置哈希和采样设置（[`provenance`](./cli#json-输出)），打印在 `summary.md` 的 Provenance 一行。出现多个值说明运行在重新构建或改了设置后被接着跑过。`run.json` 还记录运行的是哪个 ocra（`info.ocra`）：版本、检出的提交、是否有未提交的改动，以及审查 agent 的步数上限，打印在 `summary.md` 的 `ocra` 一行。OpenCode 运行时不应用种子，有些供应商也忽略种子，所以固定种子不能让模型变成确定性的；剩下的波动由重复运行衡量。
 
+每个 PR 的结果（`instances/<id>.json`）还在 `ranOn` 中记录它的审查运行在什么之上：结束时间（`at`）；ocra 构建（`ocra`：版本、提交、未提交的改动、步数上限）；运行时（`runtime`：除非 `--config` 文件指定了别的，否则是 `opencode`；只有它 `extends` 的配置才可能指定时不记录）；安装的 `opencode-ai` 版本（`opencode`，`OCRA_OPENCODE_BIN` 替换了二进制时一并记录）；`--config` 文件的 sha256（`config`）；在 OpenCode 上还有各 agent 所用模型的目录条目（`catalog`：价格、分档价格、上限、是否接受温度）。OpenCode 按在线目录（models.opencode.ai）计价，而 ocra 的报告不说明用了哪些条目，所以这些条目在审查结束时从 OpenCode 缓存的副本（`~/.cache/opencode/models.json`）读取；审查期间目录刷新过的话，记录的条目可能比计价时用的更新。接着跑运行时被复用的 PR 保留它自己的记录，所以运行被后来的调用在另一个提交或目录上接着跑过，就能看出来。`summary.provenance` 加入每一项的不同取值（`ocra`、`runtime`、`opencode`、`catalog`），以及报告中每个 agent 的档位、模型链和推理强度（`agents`），没有记录的审查记为 `null`；`summary.md` 的 Models 一行只列出 `OCRA_MODEL_*` 设置的模型。`run.json` 记录最后一次调用的运行时和 OpenCode 安装（`info.runtime`、`info.opencode`）、`--config` 文件（`info.config`：路径和 sha256，并在运行目录中保存一份去掉了疑似密钥内容的副本 `config/<sha256>.json`，因为原文件之后可能不在了；它 `extends` 的配置不复制），以及 AACR-Bench 数据集文件的 sha256 和版本（`info.datasetFile`）。数据集按固定版本下载；之前下载的缓存可能是另一个文件，`run` 会指出。`run.json` 和 `summary.json` 带有格式版本 `version`（`1`）：没有的文件早于它，ocra-eval 不认识的版本会被拒绝。未提交的改动不做哈希，所以同一提交上改动不同的两次调用看起来一样：付费运行请在干净的检出上进行。
+
 ## 重复运行
 
 ```bash
@@ -169,7 +171,7 @@ node packages/eval/dist/main.js compare .ocra/eval/baseline .ocra/eval/change   
 
 单次运行时，`--spread-of`（基线的第二次运行）把不超过两次基线差距的差值报告为 `no change`；不加时不判断方向。
 
-`compare` 适用于 AACR-Bench 和黄金集的运行。两次运行审查的 PR 不同或数量不同、评分的 judge 不同、黄金用例或标注不同、还有未标注的问题、ocra 版本、提示词（`promptHash`）、配置（`configHash`）或采样设置不同，或其中一次没有记录这些时，都会给出警告。标注之后，请把参与比较的每次运行都重新评分（`ocra-eval score <run-dir>`）。
+`compare` 适用于 AACR-Bench 和黄金集的运行。如果某一方不是同一套设置，它会拒绝比较并以退出码 2 结束：一次运行、它的各次重复，或者基线和它的 `--spread-of` 运行，其中的审查在 ocra 版本或构建（提交、未提交的改动、步数上限）、提示词、配置、采样、运行时、OpenCode 安装、模型链或目录条目上不同，或其中一部分没有记录这些；也就是运行在重新构建、改了设置或目录刷新之后被接着跑过。请用新的 `--label` 重新审查这些 PR，或加 `--allow-mixed` 照样比较，这些差异作为警告列出。两次运行审查的 PR 不同或数量不同、读取的 AACR-Bench 文件不同、评分的 judge 不同、黄金用例或标注不同、还有未标注的问题，或 ocra 版本、提示词（`promptHash`）、配置（`configHash`）、采样、运行时、OpenCode 安装、模型链或目录条目不同，某次运行出自有未提交改动的检出，或其中一次没有记录这些时，都会给出警告。参与比较的两次运行通常是两个提交，所以不比较它们的构建。标注之后，请把参与比较的每次运行都重新评分（`ocra-eval score <run-dir>`）。
 
 ## 多次运行的趋势
 
@@ -185,7 +187,7 @@ node packages/eval/dist/main.js trend .ocra/eval --series free-nvidia-nemotron-3
 - 每次运行在共同用例上的[召回漏斗](#召回漏斗)，以及每个预期问题在漏掉它的运行里停在哪一步；
 - 有多个系列时，各系列在全体共同用例上的对比，每条断言（按 id 配对；可选断言另行标出）被各系列多少次运行在要求的严重级别上找到，以及它的稳定度（所有这些运行中找到它的比例）。断言还没有 id 时评分的运行不进入这张表，并附一条提示，请重新评分。总能找到或从来找不到的问题，比约一半时候能找到的更难区分两种设置。
 
-运行常常不完整，用例集也在增加，所以每个数字都只在所涉及运行的共同用例上计算；被排除的用例会列出，每次运行在全部用例上的数字留在最后一列。同一次运行读到两次只算一次。`summary.json` 早于按用例计分的运行会列出但没有数字，用 `ocra-eval score <run-dir>` 重新评分后才有。同一系列的运行用了不同的 judge，或针对不同的用例或标注评分时，会给出警告。
+运行常常不完整，用例集也在增加，所以每个数字都只在所涉及运行的共同用例上计算；被排除的用例会列出，每次运行在全部用例上的数字留在最后一列。同一次运行读到两次只算一次。`summary.json` 早于按用例计分的运行会列出但没有数字，用 `ocra-eval score <run-dir>` 重新评分后才有。同一系列的运行用了不同的 judge，或针对不同的用例或标注评分时，某次运行的审查用了不同的设置（`compare` 会拒绝的情况）时，以及同一系列的运行在 ocra 构建或 `compare` 会警告的其他设置上不同时，都会给出警告。
 
 ### 每日免费评估（本仓库）
 

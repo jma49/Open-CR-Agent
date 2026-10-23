@@ -1,8 +1,16 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DATASET_URL, loadDataset, parseRecords, toInstances } from "./dataset.js";
+import {
+  DATASET_REVISION,
+  DATASET_URL,
+  datasetFile,
+  loadDataset,
+  parseRecords,
+  toInstances,
+} from "./dataset.js";
 import { selectInstances } from "./select.js";
 
 function record(overrides: Record<string, unknown> = {}) {
@@ -115,5 +123,21 @@ describe("selectInstances", () => {
       false,
     );
     expect(selectInstances(instances, { seed: 1, ids: ["acme__repo3@bbbbbbb"] })).toHaveLength(1);
+  });
+});
+
+describe("the dataset file", () => {
+  it("is downloaded at a fixed revision, and runs record which file they read", async () => {
+    expect(DATASET_URL).toBe(
+      `https://huggingface.co/datasets/Alibaba-Aone/aacr-bench/resolve/${DATASET_REVISION}/dataset.json`,
+    );
+    const dir = mkdtempSync(join(tmpdir(), "ocra-dataset-"));
+    dirs.push(dir);
+    const path = join(dir, "dataset.json");
+    writeFileSync(path, "[]");
+    // Not the pinned revision's file, so no revision.
+    expect(await datasetFile(path)).toEqual({
+      sha256: createHash("sha256").update("[]").digest("hex"),
+    });
   });
 });

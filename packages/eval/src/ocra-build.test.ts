@@ -61,13 +61,25 @@ describe("a run.json that records the build", () => {
       models: {},
       judge: "mock",
       ocra: { version: "0.6.0", commit: "0123456789abcdef", dirty: true, maxAgentSteps: 30 },
+      runtime: "opencode",
+      opencode: { version: "1.18.32" },
+      config: { file: "/tmp/eval.json", sha256: "f".repeat(64) },
     };
-    await writeFile(join(dir, "run.json"), JSON.stringify({ info, ids: [] }));
+    await writeFile(join(dir, "run.json"), JSON.stringify({ version: 1, info, ids: [] }));
     let text = "";
     const out = { write: (chunk: string) => (text += chunk) };
     expect(await main(["score", dir, "--mock-judge"], out, out)).toBe(0);
-    expect(await readFile(join(dir, "summary.md"), "utf8")).toContain(
+    const markdown = await readFile(join(dir, "summary.md"), "utf8");
+    expect(markdown).toContain(
       "- ocra: 0.6.0 at 0123456789ab with uncommitted changes, 30 steps per review agent",
     );
+    expect(markdown).toContain("- Runtime: opencode, OpenCode 1.18.32");
+    expect(markdown).toContain(
+      `- Configuration: /tmp/eval.json, copied to ${join("config", `${"f".repeat(64)}.json`)}`,
+    );
+    expect(JSON.parse(await readFile(join(dir, "summary.json"), "utf8"))).toMatchObject({
+      version: 1,
+      info: { runtime: "opencode", opencode: { version: "1.18.32" } },
+    });
   });
 });

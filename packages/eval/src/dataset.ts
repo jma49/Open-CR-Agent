@@ -1,10 +1,14 @@
+import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { z } from "zod";
 import type { Instance, ReferenceComment } from "./instance.js";
 
-export const DATASET_URL =
-  "https://huggingface.co/datasets/Alibaba-Aone/aacr-bench/resolve/main/dataset.json";
+// A fixed revision of the dataset, the one runs have been scored on since
+// 2026-09, so a new cache holds the same file; DATASET_SHA256 is that file's.
+export const DATASET_REVISION = "47be1d6df1e7faf222cf531587772d92f79fe6b2";
+export const DATASET_URL = `https://huggingface.co/datasets/Alibaba-Aone/aacr-bench/resolve/${DATASET_REVISION}/dataset.json`;
+const DATASET_SHA256 = "0804505f0a474765ce2840c832cfeaa6c4f0250dd6ccb169fe73c6758b245a86";
 
 const recordSchema = z.object({
   project_main_language: z.string(),
@@ -98,4 +102,15 @@ export function toReference(r: DatasetRecord): ReferenceComment {
     category: r.category,
     context: r.context,
   };
+}
+
+// The cached file a run read: a cache downloaded before the revision was
+// pinned may hold another, which only its hash tells.
+export async function datasetFile(
+  cachePath: string,
+): Promise<{ sha256: string; revision?: string }> {
+  const sha256 = createHash("sha256")
+    .update(await readFile(cachePath))
+    .digest("hex");
+  return sha256 === DATASET_SHA256 ? { sha256, revision: DATASET_REVISION } : { sha256 };
 }

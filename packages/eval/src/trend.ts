@@ -1,6 +1,7 @@
 import { formatValue } from "./compare.js";
 import { countFunnel, FUNNEL_STAGES, type Funnel } from "./funnel.js";
 import { type GoldenCaseScore, type GoldenClaimScore, lacksClaimIds } from "./golden-score.js";
+import { mixedSetups, type ProvenanceSummary, provenanceWarnings } from "./provenance.js";
 
 // Many golden runs over time, grouped by series: how much the same setup
 // varies from run to run, and how two setups differ. Runs are often partial
@@ -15,6 +16,7 @@ export interface TrendRun {
   commit?: string | undefined;
   judge?: string | undefined;
   casesHash?: string | undefined;
+  provenance?: ProvenanceSummary | undefined;
   // Golden recall and precision over all the cases the run reviewed.
   overall: { recall: number; precision: number };
   // Undefined when the summary predates per-case scores.
@@ -127,6 +129,7 @@ function seriesTrend(name: string, runs: TrendRun[], warnings: string[]): Series
       `${name}: the runs were scored against different golden cases or labels; rescore them`,
     );
   }
+  warnings.push(...setupWarnings(name, usable));
   const common = commonCases(usable);
   const seen = [...new Set(usable.flatMap((r) => Object.keys(r.cases)))].sort();
   const scoredRuns = runs.map((r) => (hasCases(r) ? { ...r, scored: score(r, common) } : r));
@@ -138,6 +141,18 @@ function seriesTrend(name: string, runs: TrendRun[], warnings: string[]): Series
   if (precision) result.precision = precision;
   if (scored.length > 0) result.wrapUps = meanWrapUps(scored);
   return result;
+}
+
+// A series is one setup over time: a run that mixes setups, or runs that
+// differ, are named, builds included.
+function setupWarnings(name: string, runs: readonly TrendRun[]): string[] {
+  return [
+    ...runs.flatMap((r) => mixedSetups([r.provenance]).map((m) => `${r.runId}: ${m}`)),
+    ...provenanceWarnings(
+      runs.map((r) => r.provenance),
+      { builds: true },
+    ).map((w) => `${name}: ${w}`),
+  ];
 }
 
 function hasCases(run: TrendRun): run is TrendRun & { cases: Record<string, GoldenCaseScore> } {

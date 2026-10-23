@@ -7,6 +7,7 @@ import { createJudge, type JudgeSetup } from "../judges.js";
 import { type Repetition, readRepeats, repetitionDir } from "../repeat.js";
 import { runInfoSchema } from "../report.js";
 import { type InstanceResult, readResult } from "../results.js";
+import { checkRunFile, RUN_FILES_VERSION } from "../run-files.js";
 import { loadInstances, type Output, parse } from "./options.js";
 import { writeRepeats, writeSummary } from "./summary.js";
 
@@ -38,7 +39,11 @@ export async function rescore(
 }
 
 // run.json: what a run was asked for, and the PRs it took, in order.
-const savedRunSchema = z.strictObject({ info: runInfoSchema, ids: z.array(z.string()) });
+const savedRunSchema = z.strictObject({
+  version: z.literal(RUN_FILES_VERSION).exactOptional(),
+  info: runInfoSchema,
+  ids: z.array(z.string()),
+});
 
 async function rescoreOne(
   runDir: string,
@@ -46,7 +51,10 @@ async function rescoreOne(
   goldenDirFlag: string | undefined,
   judge: JudgeSetup,
 ): Promise<{ markdown: string; saved: SavedSummary }> {
-  const saved = savedRunSchema.parse(JSON.parse(await readFile(join(runDir, "run.json"), "utf8")));
+  const path = join(runDir, "run.json");
+  const data: unknown = JSON.parse(await readFile(path, "utf8"));
+  checkRunFile(path, data);
+  const saved = savedRunSchema.parse(data);
   // run.json is a file on disk like any other: its ids become paths below.
   const bad = saved.ids.find((id) => !/^[\w.@-]+$/.test(id) || id.startsWith("."));
   if (bad !== undefined) throw new Error(`run.json lists an invalid id "${bad}"`);

@@ -16,6 +16,9 @@ export function comparisonWarnings(runs: readonly SavedSummary[]): string[] {
   if (differ((s) => s.info?.judge)) warnings.push("the runs were scored by different judges");
   if (differ((s) => s.info?.selection.dataset ?? "aacr"))
     warnings.push("the runs use different datasets");
+  if (new Set(runs.flatMap((s) => s.info?.datasetFile?.sha256 ?? [])).size > 1) {
+    warnings.push("the runs read different AACR-Bench files (info.datasetFile)");
+  }
   // Summaries written before a field existed may lack it.
   if (differ((s) => s.summary.instances?.reviewed)) {
     warnings.push("the runs reviewed a different number of PRs (failed ones are not scored)");

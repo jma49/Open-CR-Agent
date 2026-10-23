@@ -6,6 +6,9 @@
     },
     {
       "path": "../cli"
+    },
+    {
+      "path": "../cloud-contract"
     }
   ]
 }

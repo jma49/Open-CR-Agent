@@ -39,6 +39,7 @@ describe("runInstances", () => {
       promptHash: "p1",
       configHash: "c1",
       sampling: { temperature: 0, notApplied: ["seed"] },
+      agents: { correctness: { tier: "standard", models: ["anthropic/claude-haiku-5-5"] } },
     });
     const [plain] = await runInstances([instance("p@1")], options);
     expect(plain).not.toHaveProperty("provenance");

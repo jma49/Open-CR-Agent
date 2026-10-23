@@ -41,8 +41,9 @@ export const REFUSALS = {
 // fails every task on that refusal and "lost:<refusal>" one of them (with
 // another lost to the runtime giving up on the model); "spend-cap" is cut by
 // the per-PR spend cap and a task's timeout, "run-timeout" by ocra's run
-// timeout; "slow" outlives the PR's timeout. The base of every call is
-// logged in calls.log.
+// timeout; "slow" outlives the PR's timeout. With --temperature, the report
+// records its provenance, one agent on anthropic/claude-haiku-5-5. The base
+// of every call is logged in calls.log.
 export function fakeOcra(dir: string): string {
   const script = join(dir, "fake-ocra.mjs");
   writeFileSync(
@@ -139,7 +140,8 @@ if (from === "slow") {
     evidence: [], lines: { start: 10, end: 10 }, inDiff: true, status: "new" };
   const t = args.indexOf("--temperature");
   const provenance = t < 0 ? {} : { provenance: { ocraVersion: "9.9.9", promptHash: "p1", configHash: "c1",
-    sampling: { temperature: Number(args[t + 1]), notApplied: ["seed"] } } };
+    sampling: { temperature: Number(args[t + 1]), notApplied: ["seed"] },
+    agents: { correctness: { tier: "standard", models: ["anthropic/claude-haiku-5-5"] } } } };
   writeFileSync(out, JSON.stringify(report({ findings: [finding], tasks: [task("correctness-1", "completed")],
     usage: { ...zero, inputTokens: 100, outputTokens: 10, costUsd: 0.5 }, ...provenance })));
   // Interrupted after one task finished: a partial report and exit 130.

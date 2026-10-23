@@ -1,10 +1,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { DATASET_REVISION, datasetFile } from "../dataset.js";
 import { createJudge } from "../judges.js";
 import { ocraBuild } from "../ocra-build.js";
+import { catalogFile, ranOnFor, runSetup } from "../ran-on.js";
 import { repeatRuns } from "../repeat.js";
 import type { RunInfo } from "../report.js";
-import { defaultOcraCommand } from "../reviewer.js";
+import { defaultOcraCommand, ocraCliRoot } from "../reviewer.js";
+import { RUN_FILES_VERSION } from "../run-files.js";
 import { runInstances } from "../runner.js";
 import { selectInstances } from "../select.js";
 import {
@@ -64,11 +67,26 @@ export async function run(
     ...(values["retry-failed"] ? { retryFailed: true } : {}),
   };
   const build = await ocraBuild();
+  if (build.dirty) {
+    base.log(
+      "ocra's checkout has uncommitted changes, which its commit does not identify: a run resumed after more changes cannot show them",
+    );
+  }
+  const datasetInfo =
+    name === "aacr" ? await datasetFile(join(CACHE_DIR, "dataset.json")) : undefined;
+  if (datasetInfo && !datasetInfo.revision) {
+    base.log(
+      `the cached AACR-Bench file is not revision ${DATASET_REVISION}; delete ${join(CACHE_DIR, "dataset.json")} to download it`,
+    );
+  }
+  const configFile = values.config ? resolve(values.config) : undefined;
   const once = async (dir: string, label: string, maxCostUsd: number | undefined) => {
     await mkdir(dir, { recursive: true });
+    const setup = await runSetup(build, dir, configFile, env, ocraCliRoot());
     const results = await runInstances(instances, {
       ...base,
       runDir: dir,
+      ranOn: ranOnFor(setup, catalogFile(env)),
       ...(maxCostUsd === undefined ? {} : { maxCostUsd }),
     });
     const info: RunInfo = {
@@ -90,11 +108,13 @@ export async function run(
       review: reviewArgs,
       sampling,
       ocra: build,
+      ...(setup.runtime === undefined ? {} : { runtime: setup.runtime }),
+      ...(setup.opencode ? { opencode: setup.opencode } : {}),
+      ...(setup.config ? { config: { file: setup.config.file, sha256: setup.config.sha256 } } : {}),
+      ...(datasetInfo ? { datasetFile: datasetInfo } : {}),
     };
-    await writeFile(
-      join(dir, "run.json"),
-      `${JSON.stringify({ info, ids: instances.map((i) => i.id) }, null, 2)}\n`,
-    );
+    const saved = { version: RUN_FILES_VERSION, info, ids: instances.map((i) => i.id) };
+    await writeFile(join(dir, "run.json"), `${JSON.stringify(saved, null, 2)}\n`);
     return writeSummary(dir, info, instances, results, judge, runDir);
   };
 

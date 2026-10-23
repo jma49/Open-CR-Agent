@@ -4,6 +4,7 @@ import { formatInterval, formatValue, METRICS, type SavedSummary } from "./compa
 import { readJson } from "./golden.js";
 import { confidenceInterval, type Interval } from "./interval.js";
 import { renderProvenance } from "./provenance.js";
+import { checkRunFile } from "./run-files.js";
 
 // A run made with --repeat k: k ordinary runs in r1/ … rk/ under the run
 // directory, and this file beside them.
@@ -93,10 +94,16 @@ export async function loadRuns(dir: string): Promise<{ summaries: SavedSummary[]
   const summaries: SavedSummary[] = [];
   let ids: string[] = [];
   for (const [n, runDir] of dirs.entries()) {
-    summaries.push((await readJson(join(runDir, "summary.json"))) as SavedSummary);
-    if (n === 0) ids = ((await readJson(join(runDir, "run.json"))) as { ids: string[] }).ids;
+    summaries.push((await readRunFile(join(runDir, "summary.json"))) as SavedSummary);
+    if (n === 0) ids = ((await readRunFile(join(runDir, "run.json"))) as { ids: string[] }).ids;
   }
   return { summaries, ids };
+}
+
+async function readRunFile(path: string): Promise<unknown> {
+  const data = await readJson(path);
+  checkRunFile(path, data);
+  return data;
 }
 
 // repeats.json is a file on disk like any other: its names become paths.

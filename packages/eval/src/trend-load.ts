@@ -4,6 +4,8 @@ import { errorMessage } from "@open-cr-agent/core";
 import { isNotFound } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 import { FUNNEL_STAGES } from "./funnel.js";
+import { provenanceSummarySchema } from "./provenance.js";
+import { checkRunFile } from "./run-files.js";
 import { DROP_STAGES } from "./session-trace.js";
 import type { TrendRun, WrapUps } from "./trend.js";
 
@@ -39,6 +41,7 @@ const summarySchema = z.object({
     ocra: z.object({ commit: z.string().optional() }).optional(),
   }),
   summary: z.object({
+    provenance: provenanceSummarySchema.optional(),
     golden: z
       .object({
         recall: z.number(),
@@ -90,7 +93,9 @@ async function loadRun(dir: string): Promise<TrendRun | string> {
     if (isNotFound(error)) return "not scored yet (no summary.json)";
     throw error;
   }
-  const { info, summary } = summarySchema.parse(JSON.parse(text));
+  const data: unknown = JSON.parse(text);
+  checkRunFile(join(dir, "summary.json"), data);
+  const { info, summary } = summarySchema.parse(data);
   if (!summary.golden) return "not a golden run";
   const cases = summary.golden.cases;
   const wrapUps: Record<string, WrapUps> = {};
@@ -107,6 +112,7 @@ async function loadRun(dir: string): Promise<TrendRun | string> {
     commit: info.ocra?.commit,
     judge: info.judge,
     casesHash: summary.golden.casesHash,
+    provenance: summary.provenance,
     overall: { recall: summary.golden.recall, precision: summary.golden.precision },
     cases,
     wrapUps,

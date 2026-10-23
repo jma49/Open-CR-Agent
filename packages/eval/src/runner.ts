@@ -7,6 +7,7 @@ import { EVENTS_FILE, isNotFound } from "@open-cr-agent/core/internal";
 import { plantAttack } from "./attack.js";
 import type { Instance } from "./instance.js";
 import { type LostTasks, logLine, lostTo } from "./provider-limits.js";
+import { modelsOf, type RanOn } from "./ran-on.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
 import { type InstanceResult, readResult } from "./results.js";
 import { carriedEvents } from "./resumed-log.js";
@@ -25,6 +26,9 @@ export interface RunOptions {
   // provider's limits, instead of reusing that result.
   retryFailed?: boolean;
   prepare?: (reposDir: string, instance: Instance) => Promise<string>;
+  // What each review ran on, given the models its report names; kept in its
+  // result, so a run resumed on another setup shows it.
+  ranOn?: (models: readonly string[]) => Promise<RanOn>;
   log(message: string): void;
 }
 
@@ -192,6 +196,11 @@ async function reviewOne(
     result.error = `tasks lost to the provider's ${by}: ${logLine(lost.error)}`;
   }
   if (report?.runId) result.runId = report.runId;
+  const ranOn = await options.ranOn?.(modelsOf(report?.provenance)).catch((error: unknown) => {
+    options.log(`${instance.id}: what the review ran on was not recorded: ${errorMessage(error)}`);
+    return undefined;
+  });
+  if (ranOn) result.ranOn = ranOn;
   return resumed ? { result, resumed: { runId: resumed, reused } } : { result };
 }
 

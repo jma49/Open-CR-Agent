@@ -17,8 +17,11 @@ Commands:
   run                  Review the selected PRs with ocra, then score them
   score <run-dir>      Re-score an existing run
   adjudicate <run-dir> Record the labels typed into a golden run's adjudication.json in its cases
-  compare <baseline-run> <run> [--spread-of <second-baseline-run>]
-                       Difference per metric; within the baselines' spread it is "no change"
+  compare <baseline-run> <run> [--spread-of <second-baseline-run>] [--allow-mixed]
+                       Difference per metric; within the baselines' spread it is "no change".
+                       Refuses a side whose reviews ran on different setups (ocra
+                       builds, runtime, models, OpenCode, catalog, configuration)
+                       unless --allow-mixed
   trend <runs-dir> [--series <a,b>]
                        Golden runs over time, per series (label without its
                        trailing -<n>): recall, precision and wrap-up turns per

@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { errorMessage, reportOutputSchema } from "@open-cr-agent/core";
 import { isNotFound } from "@open-cr-agent/core/internal";
 import { z } from "zod";
+import { ranOnSchema } from "./ran-on.js";
 
 const report = reportOutputSchema.shape;
 
@@ -45,6 +46,9 @@ const instanceResultSchema = z.strictObject({
   // What the review was made with (ocra's report); absent before ocra
   // recorded it.
   provenance: report.provenance,
+  // What the invocation of ocra-eval that reviewed it ran it on; absent
+  // when no review ran, and in results written before it was recorded.
+  ranOn: ranOnSchema.exactOptional(),
   error: z.string().exactOptional(),
 });
 export type InstanceResult = z.output<typeof instanceResultSchema>;

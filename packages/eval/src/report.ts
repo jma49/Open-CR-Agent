@@ -5,6 +5,7 @@ import type { GoldenSummary } from "./golden-score.js";
 import type { JudgeSpend } from "./judge-cache.js";
 import { ocraBuildSchema, renderBuild } from "./ocra-build.js";
 import { type ProvenanceSummary, renderProvenance } from "./provenance.js";
+import { configSnapshotPath, opencodeSchema } from "./ran-on.js";
 import type { Summary } from "./score.js";
 import { renderTruncation } from "./truncation.js";
 
@@ -29,8 +30,40 @@ export const runInfoSchema = z.strictObject({
     .strictObject({ temperature: z.number().exactOptional(), seed: z.int().exactOptional() })
     .exactOptional(),
   ocra: ocraBuildSchema.exactOptional(),
+  // What this invocation ran the reviews on: the runtime, the OpenCode
+  // install, the --config file (copied, redacted, to config/<sha256>.json)
+  // and AACR-Bench's file. Each PR's result keeps its own (ranOn). Absent
+  // in runs made before they were recorded.
+  runtime: z.string().exactOptional(),
+  opencode: opencodeSchema.exactOptional(),
+  config: z.strictObject({ file: z.string(), sha256: z.string() }).exactOptional(),
+  datasetFile: z
+    .strictObject({ sha256: z.string(), revision: z.string().exactOptional() })
+    .exactOptional(),
 });
 export type RunInfo = z.output<typeof runInfoSchema>;
+
+function setupLines(info: RunInfo): string[] {
+  const opencode = info.opencode
+    ? `, OpenCode ${info.opencode.version ?? "of unknown version"}${info.opencode.bin ? ` (OCRA_OPENCODE_BIN ${info.opencode.bin})` : ""}`
+    : "";
+  const dataset = info.datasetFile;
+  return [
+    ...(info.runtime || info.opencode
+      ? [`- Runtime: ${info.runtime ?? "set by the configuration's extends"}${opencode}`]
+      : []),
+    ...(info.config
+      ? [
+          `- Configuration: ${info.config.file}, copied to ${configSnapshotPath(info.config.sha256)}`,
+        ]
+      : []),
+    ...(dataset
+      ? [
+          `- AACR-Bench file: sha256 ${dataset.sha256.slice(0, 16)}, ${dataset.revision ? `revision ${dataset.revision.slice(0, 12)}` : "not the pinned revision"}`,
+        ]
+      : []),
+  ];
+}
 
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 
@@ -41,10 +74,11 @@ export function renderMarkdown(info: RunInfo, summary: RunSummary): string {
     "",
     `- Date: ${info.createdAt}`,
     `- Selection: ${JSON.stringify(info.selection)}`,
-    `- Models: ${JSON.stringify(info.models)}`,
+    `- Models set by OCRA_MODEL_*: ${JSON.stringify(info.models)}`,
     `- Judge: ${info.judge}`,
     ...(info.review ? [`- Review flags: ${info.review.join(" ")}`] : []),
     ...(info.ocra ? [`- ocra: ${renderBuild(info.ocra)}`] : []),
+    ...setupLines(info),
     `- Provenance: ${renderProvenance(summary.provenance)}`,
     `- Instances: ${summary.instances.reviewed} reviewed, ${summary.instances.failed} failed, ${summary.instances.unavailable} unavailable in the dataset, ${summary.instances.skippedBudget} skipped for budget, ${summary.instances.skippedQuota} skipped for spent quota (of ${summary.instances.selected})`,
     renderTruncation(summary.truncation),

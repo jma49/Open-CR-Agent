@@ -11,6 +11,7 @@ import { summarizeProvenance } from "../provenance.js";
 import { REPEATS_FILE, type Repetition, renderRepeats, summarizeRepeats } from "../repeat.js";
 import { type RunInfo, renderMarkdown } from "../report.js";
 import type { InstanceResult } from "../results.js";
+import { RUN_FILES_VERSION } from "../run-files.js";
 import { score } from "../score.js";
 import { readSessionTrace, type SessionTrace, sessionLogPath } from "../session-trace.js";
 import type { Output } from "./options.js";
@@ -48,7 +49,10 @@ export async function writeSummary(
   const provenance = summarizeProvenance(results);
   if (provenance) summary.provenance = provenance;
   const markdown = renderMarkdown(info, summary);
-  await writeFile(join(runDir, "summary.json"), `${JSON.stringify({ info, summary }, null, 2)}\n`);
+  await writeFile(
+    join(runDir, "summary.json"),
+    `${JSON.stringify({ version: RUN_FILES_VERSION, info, summary }, null, 2)}\n`,
+  );
   await writeFile(join(runDir, "summary.md"), markdown);
   return { markdown, saved: { info, summary } };
 }

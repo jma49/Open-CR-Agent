@@ -35,6 +35,7 @@ const OPTIONS = {
   ultra: { type: "boolean" },
   config: { type: "string" },
   "spread-of": { type: "string" },
+  "allow-mixed": { type: "boolean" },
   series: { type: "string" },
   temperature: { type: "string" },
   "model-seed": { type: "string" },
