@@ -91,6 +91,40 @@ async function ensureCommit(dir: string, commit: string, prUrl: string): Promise
     throw new UnavailableCommitError(`commit ${commit} is not available from ${prUrl}`);
 }
 
+// A licence text runs to tens of kilobytes; a larger file is passed on empty
+// rather than buffered, and reads as unrecognised.
+const MAX_ROOT_FILE_BYTES = 1024 * 1024;
+const MAX_ROOT_FILES = 16;
+
+// The files at the root of a commit whose names `accept` takes, read from
+// git's objects: no checkout, no filter, nothing from the repository runs.
+export async function rootFiles(
+  dir: string,
+  commit: string,
+  accept: (name: string) => boolean,
+): Promise<{ name: string; text: string }[]> {
+  const tree = await exec("git", ["ls-tree", "-z", "-l", "--end-of-options", commit], {
+    cwd: dir,
+    env: GIT_ENV,
+  });
+  if (tree.exitCode !== 0) throw new Error(`git ls-tree failed: ${tree.stderr.trim()}`);
+  const blobs = tree.stdout.split("\0").flatMap((entry) => {
+    const [, object, size, name] = /^\d+ blob ([0-9a-f]+) +(\d+)\t(.+)$/s.exec(entry) ?? [];
+    return object && size && name && accept(name) ? [{ object, size: Number(size), name }] : [];
+  });
+  const files: { name: string; text: string }[] = [];
+  for (const blob of blobs.slice(0, MAX_ROOT_FILES)) {
+    if (blob.size > MAX_ROOT_FILE_BYTES) {
+      files.push({ name: blob.name, text: "" });
+      continue;
+    }
+    const read = await exec("git", ["cat-file", "blob", blob.object], { cwd: dir, env: GIT_ENV });
+    if (read.exitCode !== 0) throw new Error(`git cat-file failed: ${read.stderr.trim()}`);
+    files.push({ name: blob.name, text: read.stdout });
+  }
+  return files;
+}
+
 async function hasCommit(dir: string, commit: string): Promise<boolean> {
   return (await exec("git", ["cat-file", "-e", `${commit}^{commit}`], { cwd: dir })).exitCode === 0;
 }

@@ -4,17 +4,22 @@ import { errorMessage, proxiedFetch } from "@open-cr-agent/core";
 import { classifyChange } from "../ceiling-run.js";
 import { type DatasetRecord, loadRecords } from "../dataset.js";
 import { exec } from "../exec.js";
-import { loadGolden } from "../golden.js";
+import { loadGolden, MAX_REQUIRED_CLAIMS } from "../golden.js";
 import {
   byLanguage,
   DEFAULT_MAX_CHANGE_LINES,
+  humanFirst,
   type ImportCandidate,
+  type Imported,
   importCandidates,
   pickInTurn,
-  renderImportSummary,
+  renderForbidSeeds,
   type Verdict,
   verdictFor,
 } from "../golden-import.js";
+import { renderImportSummary } from "../golden-import-summary.js";
+import { detectLicence, isLicenceSource } from "../licence.js";
+import { rootFiles } from "../repos.js";
 import { defaultOcraCommand } from "../reviewer.js";
 import { CACHE_DIR, number, type Output, parse } from "./options.js";
 
@@ -50,36 +55,36 @@ export async function goldenImport(
   const records = await (
     deps.records ?? (() => loadRecords(join(CACHE_DIR, "dataset.json"), proxiedFetch(process.env)))
   )();
+  const languages = values.languages?.split(",").map((l) => l.trim().toLowerCase());
   const candidates = importCandidates(records, {
     maxChangeLines,
     exclude: new Set(golden.map((g) => g.headCommit)),
-  });
-  const languages = values.languages?.split(",").map((l) => l.trim().toLowerCase());
-  const queues = byLanguage(
-    candidates.filter((c) => !languages || languages.includes(c.instance.language.toLowerCase())),
-    seed,
-  );
+  }).filter((c) => !languages || languages.includes(c.instance.language.toLowerCase()));
+  const [withPeople, modelsOnly] = humanFirst(candidates);
   const log = (message: string) => err.write(`[ocra-eval] ${message}\n`);
   log(
-    `${candidates.length} candidate PR(s) with 1-3 in-scope issues and <= ${maxChangeLines} changed lines`,
+    `${candidates.length} candidate PR(s) with at most ${MAX_REQUIRED_CLAIMS} in-scope comments written by people and <= ${maxChangeLines} changed lines: ${withPeople.length} with a person's comment, ${modelsOnly.length} with models' only`,
   );
 
   const reposDir = values["repos-dir"] ?? join(CACHE_DIR, "repos");
   const command = defaultOcraCommand();
-  const cases = await pickInTurn(
-    queues,
-    limit,
-    deps.judge ?? ((candidate) => classifyCandidate(candidate, reposDir, command)),
-    log,
-  );
+  const judge = deps.judge ?? ((candidate) => classifyCandidate(candidate, reposDir, command));
+  const imported: Imported[] = [];
+  for (const group of [withPeople, modelsOnly]) {
+    imported.push(
+      ...(await pickInTurn(byLanguage(group, seed), limit - imported.length, judge, log)),
+    );
+  }
 
   await mkdir(outDir, { recursive: true });
-  for (const c of cases) {
+  for (const { case: c } of imported) {
     await writeFile(join(outDir, `${c.id}.json`), `${JSON.stringify(c, null, 2)}\n`);
   }
-  const summary = renderImportSummary(cases, outDir);
+  await writeFile(join(outDir, "forbid-seeds.json"), renderForbidSeeds(imported));
+  const summary = renderImportSummary(imported);
   await writeFile(join(outDir, "summary.md"), summary);
   out.write(summary);
+  log(`wrote ${imported.length} case(s) to ${outDir}`);
   return 0;
 }
 
@@ -106,9 +111,11 @@ async function classifyCandidate(
       { cwd: dir },
     );
     if (date.exitCode !== 0) return { rejected: `git log failed: ${date.stderr.trim()}` };
+    const licence = detectLicence(await rootFiles(dir, instance.headCommit, isLicenceSource));
     return verdictFor(candidate, reaches, {
       base: mergeBase.stdout.trim(),
       date: date.stdout.trim(),
+      licence,
     });
   } catch (error) {
     return { rejected: errorMessage(error).split("\n")[0] ?? "failed" };

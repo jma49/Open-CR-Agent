@@ -68,6 +68,12 @@ const LICENCES = [
   "Zlib",
 ] as const;
 
+export type Licence = (typeof LICENCES)[number];
+
+export function isAllowedLicence(id: string): id is Licence {
+  return (LICENCES as readonly string[]).includes(id);
+}
+
 // Where a claim came from (ADR-0036). author-fix wins whenever upstream later
 // fixed the code: the fix is the strongest evidence that the claim is real.
 const CLAIM_ORIGINS = [
@@ -79,7 +85,7 @@ const CLAIM_ORIGINS = [
 ] as const;
 
 // Per case, so no case can dominate a tier's recall or precision.
-const MAX_REQUIRED_CLAIMS = 3;
+export const MAX_REQUIRED_CLAIMS = 3;
 export const MAX_OPTIONAL_CLAIMS = 5;
 const MAX_FORBID_RANGES = 3;
 // A required claim names the defect's lines, not the function around them;

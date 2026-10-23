@@ -29,9 +29,11 @@ Commands:
                        rate, on the cases common to the runs compared
   golden-import --from aacr
                        Write unverified golden case candidates from AACR-Bench
-                       PRs with 1-3 in-scope issues on changed lines, spread
-                       across languages (free, no model; --limit default 50,
-                       --max-change-lines default 300, --out default
+                       PRs with at most 3 in-scope comments written by people
+                       (models' become optional claims), people's first, then
+                       spread across languages, with forbid-seeds.json (free,
+                       no model; --limit default 50, --max-change-lines
+                       default 300, --out default
                        .ocra/eval/aacr-golden-candidates)
 
 Selection:

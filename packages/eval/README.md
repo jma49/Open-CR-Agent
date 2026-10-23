@@ -26,7 +26,7 @@ Run it from a build: `npm run build`, then `node packages/eval/dist/main.js <com
 | `golden-score.ts`, `attack-score.ts` | Golden and adversarial scoring against expectations and forbidden ranges |
 | `adjudicate.ts` | Labels typed into a run's `adjudication.json`, written back into the golden cases |
 | `ceiling.ts`, `ceiling-run.ts` | The recall ceiling of the deterministic stages, without a model |
-| `golden-import.ts` | `golden-import --from aacr`: unverified case candidates from AACR-Bench pull requests whose in-scope comments the ceiling reaches |
+| `golden-import.ts`, `golden-import-summary.ts`, `licence.ts` | `golden-import --from aacr`: unverified case candidates from AACR-Bench pull requests, each in-scope comment the ceiling reaches a claim (people's required, models' optional), people's first; the comments labelled incorrect as `forbid-seeds.json`; the licence the repository's root files state at head |
 | `compare.ts`, `report.ts`, `truncation.ts` | Side-by-side comparison of runs; the `summary.md` of one run, with how far its reviews were cut short |
 | `trend.ts`, `trend-load.ts` | `trend`: golden runs grouped into series by label, compared on shared cases |
 

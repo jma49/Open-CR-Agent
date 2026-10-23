@@ -1,79 +1,51 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import type { ReferenceReach } from "./ceiling.js";
-import { goldenImport } from "./commands/golden-import.js";
-import { type DatasetRecord, parseRecords } from "./dataset.js";
+import { describe, expect, it } from "vitest";
+import { parseRecords } from "./dataset.js";
 import { parseCandidate, parseCase } from "./golden.js";
 import {
+  candidateFor,
+  facts,
+  fixture,
+  model,
+  options,
+  reaches,
+  record,
+} from "./golden-import.fakes.js";
+import {
   byLanguage,
-  type ImportCandidate,
   importCandidates,
   pickInTurn,
   toGoldenCase,
   verdictFor,
 } from "./golden-import.js";
 
-function record(pr: number, overrides: Record<string, unknown> = {}) {
-  return {
-    project_main_language: "Go",
-    pr_url: `https://github.com/acme/api/pull/${pr}`,
-    pr_source_commit: "a".repeat(40),
-    pr_target_commit: `${String(pr).padStart(7, "0")}${"b".repeat(33)}`,
-    pr_change_line_count: 120,
-    pr_category: "Bug Fix",
-    is_ai_comment: false,
-    note: "nil map write\n\n  panics when the cache is cold",
-    path: "server/handler.go",
-    side: "right",
-    source_model: "",
-    from_line: 10,
-    to_line: 12,
-    category: "Code Defect",
-    context: "File Level",
-    label: 1,
-    ...overrides,
-  };
-}
-
-// One pull request per selection rule, plus the ones that pass.
-const fixture: DatasetRecord[] = parseRecords([
-  record(1),
-  record(1, { category: "Maintainability and Readability", from_line: 30 }),
-  record(1, { label: 0, from_line: 40 }),
-  record(2, { category: "Maintainability and Readability" }),
-  record(3, { pr_change_line_count: 900 }),
-  record(4, { side: "left" }),
-  record(5),
-  record(5, { from_line: 20 }),
-  record(5, { from_line: 30 }),
-  record(5, { from_line: 40 }),
-  record(6, { from_line: null, to_line: null }),
-  record(7),
-  record(8, { project_main_language: "Rust", category: "Security Vulnerability", to_line: null }),
-  record(9, { project_main_language: "Rust", category: "Performance" }),
-  record(10, { project_main_language: "C", note: "x".repeat(800) }),
-]);
-
-const options = { maxChangeLines: 300, exclude: new Set([`0000007${"b".repeat(33)}`]) };
-const commits = { base: "c".repeat(40), date: "2025-03-01" };
-
-const reachable = (c: ImportCandidate): ReferenceReach[] =>
-  c.instance.references.map((r) => ({
-    instance: c.instance.id,
-    path: r.path,
-    category: r.category,
-    reach: "reachable",
-  }));
+const prs = (rows = fixture) =>
+  importCandidates(rows, options).map((c) => c.instance.prUrl.split("/").pop());
 
 describe("importCandidates", () => {
-  it("keeps pull requests whose 1-3 in-scope issues sit on the new side", () => {
-    const candidates = importCandidates(fixture, options);
-    expect(candidates.map((c) => c.instance.prUrl.split("/").pop())).toEqual(["1", "8", "9", "10"]);
-    const [first] = candidates;
-    expect(first?.issues.map((i) => i.row)).toEqual([0]);
-    expect(first?.instance.references).toHaveLength(1);
+  it("keeps pull requests with an in-scope comment on the new side", () => {
+    expect(prs()).toEqual(["1", "8", "9", "10"]);
+    const first = candidateFor(1, fixture);
+    expect(first.issues.map((i) => i.row)).toEqual([0]);
+    expect(first.instance.references).toHaveLength(1);
+  });
+
+  it("caps the comments people wrote, not the ones models wrote", () => {
+    const rows = parseRecords([
+      record(11),
+      ...[20, 30, 40, 50].map((line) => record(11, { from_line: line, ...model() })),
+      ...[10, 20, 30, 40].map((line) => record(12, { from_line: line })),
+    ]);
+    expect(prs(rows)).toEqual(["11"]);
+    expect(candidateFor(11, rows).issues).toHaveLength(5);
+  });
+
+  it("leaves out a comment on removed lines instead of the pull request", () => {
+    const rows = parseRecords([record(13), record(13, { side: "left", from_line: 50 })]);
+    const candidate = candidateFor(13, rows);
+    expect(candidate.issues.map((i) => i.row)).toEqual([0]);
+    expect(candidate.leftOut).toEqual([
+      { row: 1, path: "server/handler.go", reason: "on removed lines" },
+    ]);
   });
 });
 
@@ -89,39 +61,100 @@ describe("byLanguage and pickInTurn", () => {
         seen.push(c.instance.id);
         return c.instance.language === "C"
           ? { rejected: "not reachable" }
-          : verdictFor(c, reachable(c), commits);
+          : verdictFor(c, reaches(c), facts);
       },
       () => {},
     );
-    expect(picked.map((c) => c.language)).toEqual(["Go", "Rust", "Rust"]);
+    expect(picked.map((p) => p.case.language)).toEqual(["Go", "Rust", "Rust"]);
     expect(seen).toHaveLength(4);
   });
 });
 
-describe("verdictFor and toGoldenCase", () => {
-  const candidates = importCandidates(fixture, options);
-  const security = candidates.find((c) => c.instance.prUrl.endsWith("/8"));
-  if (!security) throw new Error("fixture lost PR 8");
+describe("verdictFor", () => {
+  const rows = parseRecords([
+    record(14),
+    record(14, { from_line: 60, path: "server/cache.go" }),
+    record(14, { from_line: 80, ...model() }),
+    record(14, { label: 0, from_line: 90, note: "wrong:\n the map is guarded" }),
+  ]);
+  const candidate = candidateFor(14, rows);
 
-  it("rejects a pull request with an issue the deterministic stages cannot reach", () => {
-    const reaches = reachable(security).map((r) => ({
-      ...r,
-      reach: "no_domain_reviewer" as const,
-    }));
-    expect(verdictFor(security, reaches, commits)).toEqual({
-      rejected: "not reachable: server/handler.go (no_domain_reviewer)",
+  it("keeps the reachable comments and names the others with their reason", () => {
+    const verdict = verdictFor(candidate, reaches(candidate, new Set([60])), facts);
+    if (!("case" in verdict)) throw new Error(verdict.rejected);
+    expect(verdict.case.expect.map((e) => e.id)).toEqual(["row-0", "row-2"]);
+    expect(verdict.case.rationale).toContain("Left out: row 1 (server/cache.go, outside_diff).");
+  });
+
+  it("skips the pull request when no comment is reachable", () => {
+    const verdict = verdictFor(candidate, reaches(candidate, new Set([10, 60, 80])), facts);
+    expect(verdict).toEqual({
+      rejected:
+        "not reachable: server/handler.go (outside_diff), server/cache.go (outside_diff), server/handler.go (outside_diff)",
     });
   });
 
+  it("records the licence and date found at head", () => {
+    const verdict = verdictFor(candidate, reaches(candidate), facts);
+    if (!("case" in verdict)) throw new Error(verdict.rejected);
+    expect(verdict.case.source).toMatchObject({ licence: "MIT", date: "2025-03-01" });
+    expect(verdict.case.source.ref).toContain("licence MIT read from LICENSE");
+    expect(() => parseCase(JSON.parse(JSON.stringify(verdict.case)), "c.json")).not.toThrow();
+  });
+
+  it("hands comments labelled incorrect over as forbid seeds, outside the case", () => {
+    const verdict = verdictFor(candidate, reaches(candidate), facts);
+    if (!("case" in verdict)) throw new Error(verdict.rejected);
+    expect(verdict.case.expect.map((e) => e.id)).not.toContain("row-3");
+    expect(verdict.case.forbid).toEqual([]);
+    expect(verdict.forbidSeeds).toEqual([
+      {
+        case: "aacr-api-0000014",
+        row: 3,
+        file: "server/handler.go",
+        side: "right",
+        lines: [90, 90],
+        category: "Code Defect",
+        isAiComment: false,
+        producer: "human",
+        note: "wrong: the map is guarded",
+      },
+    ]);
+  });
+
+  it("keeps at most five of the models' comments, in row order", () => {
+    const many = parseRecords(
+      [10, 20, 30, 40, 50, 60, 70].map((line) => record(15, { from_line: line, ...model() })),
+    );
+    const c = candidateFor(15, many);
+    const verdict = verdictFor(c, reaches(c), facts);
+    if (!("case" in verdict)) throw new Error(verdict.rejected);
+    expect(verdict.case.expect.map((e) => e.id)).toEqual([
+      "row-0",
+      "row-1",
+      "row-2",
+      "row-3",
+      "row-4",
+    ]);
+    expect(verdict.case.rationale).toContain(
+      "row 5 (server/handler.go, past the cap of 5 optional claims)",
+    );
+    expect(verdict.case.rationale).toContain("vet this case after those with people's");
+  });
+});
+
+describe("toGoldenCase", () => {
+  const security = candidateFor(8, fixture);
+
   it("writes a candidate that names its rows and says it is unverified", () => {
-    const golden = toGoldenCase(security, commits);
+    const golden = toGoldenCase(security, facts);
     expect(parseCandidate(JSON.parse(JSON.stringify(golden)), "round trip")).toEqual(golden);
     expect(golden).toMatchObject({
       id: "aacr-api-0000008",
       base: "c".repeat(40),
       head: `0000008${"b".repeat(33)}`,
       tier: "full",
-      source: { kind: "aacr", licence: "NOASSERTION", date: "2025-03-01" },
+      source: { kind: "aacr", licence: "MIT", date: "2025-03-01" },
       adjudicated: [],
       forbid: [],
       expect: [
@@ -144,95 +177,25 @@ describe("verdictFor and toGoldenCase", () => {
   });
 
   it("records a model-written comment as the model's, and optional until vetted", () => {
-    const [ai] = parseRecords([
-      record(11, { is_ai_comment: true, source_model: "GLM-4.7", category: "Code Defect" }),
-    ]);
-    const [candidate] = importCandidates(ai ? [ai] : [], options);
-    if (!candidate) throw new Error("fixture lost PR 11");
-    expect(toGoldenCase(candidate, commits).expect[0]).toMatchObject({
+    const ai = parseRecords([record(11, { ...model(), category: "Code Defect" })]);
+    expect(toGoldenCase(candidateFor(11, ai), facts).expect[0]).toMatchObject({
       origin: "ai-reference-vetted",
       producer: "GLM-4.7",
       optional: true,
     });
   });
 
-  it("leaves the licence for a person to check: no case loads without one", () => {
-    const golden = toGoldenCase(security, commits);
+  it("leaves an undetermined licence for a person to check: no case loads without one", () => {
+    const unknown = { ...facts, licence: { licence: "NOASSERTION", note: "n" } } as const;
+    const golden = toGoldenCase(security, unknown);
     expect(() => parseCase(JSON.parse(JSON.stringify(golden)), "candidate.json")).toThrow(
       "candidate.json: source.licence: check the repository's licence",
     );
   });
 
   it("shortens a long comment to a concern", () => {
-    const long = candidates.find((c) => c.instance.prUrl.endsWith("/10"));
-    if (!long) throw new Error("fixture lost PR 10");
-    const concern = toGoldenCase(long, commits).expect[0]?.concern ?? "";
+    const concern = toGoldenCase(candidateFor(10, fixture), facts).expect[0]?.concern ?? "";
     expect(concern.length).toBeLessThanOrEqual(502);
     expect(concern.endsWith(" …") || concern.endsWith("…")).toBe(true);
-  });
-});
-
-describe("ocra-eval golden-import", () => {
-  const dirs: string[] = [];
-  afterEach(() => {
-    for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
-  });
-  const tmp = () => {
-    const dir = mkdtempSync(join(tmpdir(), "ocra-golden-import-"));
-    dirs.push(dir);
-    return dir;
-  };
-  const buffer = () => {
-    let text = "";
-    return { write: (chunk: string) => (text += chunk), text: () => text };
-  };
-  const deps = {
-    records: async () => fixture,
-    judge: async (c: ImportCandidate) => verdictFor(c, reachable(c), commits),
-  };
-
-  it("writes the candidates and a summary by language, category and severity", async () => {
-    const out = join(tmp(), "candidates");
-    const stdout = buffer();
-    const argv = ["--from", "aacr", "--limit", "3", "--out", out, "--golden-dir", tmp()];
-    expect(await goldenImport(argv, stdout, buffer(), deps)).toBe(0);
-    const files = readdirSync(out).filter((f) => f.endsWith(".json"));
-    const cases = files.map((f) =>
-      parseCandidate(JSON.parse(readFileSync(join(out, f), "utf8")), f),
-    );
-    expect(cases.map((c) => c.language).sort()).toEqual(["C", "Go", "Rust"]);
-    expect(readdirSync(out)).toContain("summary.md");
-    expect(stdout.text()).toContain("| C | 1 |");
-    expect(stdout.text()).toContain("| suggestion | 3 |");
-  });
-
-  it("skips pull requests already in the golden set", async () => {
-    const golden = tmp();
-    const existing = toGoldenCase(
-      importCandidates(fixture, options)[0] as ImportCandidate,
-      commits,
-    );
-    const vetted = { ...existing, source: { ...existing.source, licence: "MIT" } };
-    writeFileSync(join(golden, `${existing.id}.json`), JSON.stringify(vetted));
-    const out = join(tmp(), "candidates");
-    const argv = ["--from", "aacr", "--languages", "go", "--out", out, "--golden-dir", golden];
-    await goldenImport(argv, buffer(), buffer(), deps);
-    expect(readdirSync(out).sort()).toEqual(["aacr-api-0000007.json", "summary.md"]);
-  });
-
-  it("refuses to write over earlier candidates or without a source", async () => {
-    const out = tmp();
-    writeFileSync(join(out, "old.json"), "{}");
-    await expect(
-      goldenImport(
-        ["--from", "aacr", "--out", out, "--golden-dir", tmp()],
-        buffer(),
-        buffer(),
-        deps,
-      ),
-    ).rejects.toThrow(/already holds cases/);
-    await expect(goldenImport(["--out", tmp()], buffer(), buffer(), deps)).rejects.toThrow(
-      /--from aacr/,
-    );
   });
 });

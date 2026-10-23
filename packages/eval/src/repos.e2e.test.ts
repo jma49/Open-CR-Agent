@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { scratchRepo } from "@open-cr-agent/test-support";
 import { afterEach, describe, expect, it } from "vitest";
 import { exec } from "./exec.js";
-import { checkoutArgs, GIT_ENV } from "./repos.js";
+import { checkoutArgs, GIT_ENV, rootFiles } from "./repos.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -52,5 +52,25 @@ describe("checkoutArgs", () => {
     const result = await exec("git", checkoutArgs(first), { cwd: dir, env: GIT_ENV });
     expect(result.exitCode, result.stderr).toBe(0);
     expect(repo.git("rev-parse", "HEAD")).toBe(first);
+  });
+});
+
+describe("rootFiles", () => {
+  it("reads the accepted files at the root of a commit, not later ones or deeper ones", async () => {
+    const repo = scratchRepo({ prefix: "ocra-root-files-" });
+    dirs.push(repo.dir);
+    const first = repo.commit("one", {
+      LICENSE: "MIT text\n",
+      "README.md": "readme\n",
+      "docs/LICENSE": "nested\n",
+    });
+    repo.commit("two", { LICENSE: "changed\n", COPYING: "added later\n" });
+
+    const files = await rootFiles(
+      repo.dir,
+      first,
+      (name) => name.startsWith("LICENSE") || name === "docs",
+    );
+    expect(files).toEqual([{ name: "LICENSE", text: "MIT text\n" }]);
   });
 });
