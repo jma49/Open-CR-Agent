@@ -13,8 +13,8 @@ On 8 changes with 16 known issues, the current configuration found **7 (44%)** i
 
 `ocra-eval` runs the real `ocra review` on changes pinned at fixed commits and scores what it reports ([Evaluation](./evaluation)). Two datasets:
 
-- **Golden cases** ([ADR-0011](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)) belong to ocra. Each pins a public repository at two commits and lists the issues ocra must report, other places the same issue may rightly be reported, ranges where a finding would be wrong, or that the change has no issue. Every run so far used the 8 cases the *smoke* tier had then, now with 16 expected issues. The smoke tier has since grown to 10 cases and the *full* tier to 16; neither has been run as it is now.
-- **[AACR-Bench](https://github.com/alibaba/aacr-bench)** is an external benchmark of real pull requests whose ground truth is the comments human reviewers left; it is the number comparable with published results.
+- **Golden cases** ([ADR-0011](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)) belong to ocra. Each pins a public repository at two commits and lists the issues ocra must report, other places the same issue may rightly be reported, ranges where a finding would be wrong, or that the change has no issue. Every run so far used the 8 cases the *smoke* tier had then, with 16 expected issues. The smoke tier has since grown to 10 cases and the *full* tier to 16; neither has been run as it is now. Since 2026-10-23 ([ADR-0036](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0036-golden-case-set-policy.md)) a case requires at most 3 issues, and an issue the reviewers are not asked to report (one a compiler reports, one in code the change leaves alone) or that only a model has found is optional: a finding on it counts as correct, and recall leaves it out. The smoke tier now requires 9 issues and the full tier 16. The numbers on this page were scored before that change and are not comparable with runs scored after it.
+- **[AACR-Bench](https://github.com/alibaba/aacr-bench)** is an external benchmark of real pull requests whose ground truth is review comments checked by experts, about three quarters of them written by AI models; it is the number comparable with published results.
 
 | The 8 cases these runs used | Cases | Expected issues | Languages |
 |---|---|---|---|
@@ -51,7 +51,7 @@ Four of the 16 were written from bugs fixed in ocra's history, before any run; t
 
 ### Every run
 
-All runs on those 8 cases, scored against today's cases and labels so they compare. Three earlier runs on the first 4 each found 1 of those cases' 7 expected issues and reported nothing wrong. Runs that only checked mechanics, or compared a change on a few AACR-Bench pull requests, are left out.
+All runs on those 8 cases, scored against the cases and labels as they stood before 2026-10-23, so they compare with each other but not with later runs. Three earlier runs on the first 4 each found 1 of those cases' 7 expected issues and reported nothing wrong. Runs that only checked mechanics, or compared a change on a few AACR-Bench pull requests, are left out.
 
 | Date (UTC, 2026) | Configuration | Found | Precision | Cost per change |
 |---|---|---|---|---|

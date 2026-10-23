@@ -21,14 +21,15 @@ export interface GoldenFinding {
 
 export interface GoldenSummary {
   counts: {
+    // Required claims only: an optional one (ADR-0036) is never expected.
     expected: number;
     reported: number;
-    // Expected findings that were found.
+    // Required claims that were found.
     matched: number;
-    // Reported findings that match an expected one (several can, when an
-    // issue is reported at its location and at an alternate).
+    // Reported findings that match a claim, optional ones included (several
+    // can, when an issue is reported at its location and at an alternate).
     correct: number;
-    // Matched an expected finding at a lower severity than it requires:
+    // Matched a required claim at a lower severity than it requires:
     // correct for precision, a miss for recall.
     underrated: number;
     valid: number;
@@ -50,22 +51,33 @@ export interface GoldenSummary {
   // By case id, so runs that reviewed different cases can be compared on
   // the ones they share (trend.ts). Absent in summaries written before it.
   cases?: Record<string, GoldenCaseScore>;
-  // The recall funnel over every expected finding (funnel.ts). Absent in
+  // The recall funnel over every required claim (funnel.ts). Absent in
   // summaries written before it.
   funnel?: Funnel;
 }
 
 export interface GoldenCaseScore {
+  // Required claims.
   expected: number;
-  // Expected findings found at or above their severity: recall's numerator.
+  // Required claims found at or above their severity: recall's numerator.
   found: number;
   reported: number;
   // Matched or labeled valid: precision's numerator.
   right: number;
   // Each expected finding, in the case's order, and whether it was found
   // at or above its severity; with the review's session log, how far it got.
-  claims: ({ concern: string; found: boolean } & Partial<ClaimStage>)[];
+  claims: GoldenClaimScore[];
 }
+
+export type GoldenClaimScore = {
+  // The claim's id within its case (ADR-0036): runs pair claims by it.
+  // Absent in summaries scored before claims had ids.
+  id?: string;
+  concern: string;
+  found: boolean;
+  // Counted for precision only: neither expected nor found counts it.
+  optional?: true;
+} & Partial<ClaimStage>;
 
 const RANK: Record<Severity, number> = { suggestion: 0, warning: 1, critical: 2 };
 
@@ -105,24 +117,31 @@ export async function scoreGolden(
     if (!instance.golden || instance.golden.attack || result?.status !== "reviewed") continue;
     const findings = result.findings;
     const { matched, found } = await matchExpected(instance, findings, judge);
-    counts.expected += instance.references.length;
+    const required = requiredClaims(instance);
+    const requiredFound = required.filter((k) => found.has(k)).length;
+    counts.expected += required.length;
     counts.reported += findings.length;
-    counts.matched += found.size;
+    counts.matched += requiredFound;
     counts.correct += matched.size;
     const atSeverity = foundAtSeverity(instance, found);
-    counts.underrated += found.size - atSeverity;
+    counts.underrated += requiredFound - atSeverity;
     const trace = traces.get(instance.id);
     const stages = trace && (await funnelOf(instance, found, trace));
     const caseScore: GoldenCaseScore = {
-      expected: instance.references.length,
+      expected: required.length,
       found: atSeverity,
       reported: findings.length,
       right: matched.size,
-      claims: instance.references.map((reference, k) => ({
-        concern: reference.note,
-        found: atRequiredSeverity(instance, k, found.get(k)),
-        ...stages?.[k],
-      })),
+      claims: instance.references.map((reference, k) => {
+        const claim = instance.golden?.claims[k];
+        return {
+          ...(claim ? { id: claim.id } : {}),
+          concern: reference.note,
+          found: atRequiredSeverity(instance, k, found.get(k)),
+          ...(claim?.optional ? { optional: true as const } : {}),
+          ...stages?.[k],
+        };
+      }),
     };
     cases[instance.id] = caseScore;
     for (const [index, finding] of findings.entries()) {
@@ -154,7 +173,9 @@ export async function scoreGolden(
     }
   }
   summary.cases = cases;
-  summary.funnel = countFunnel(Object.values(cases).flatMap((c) => c.claims));
+  summary.funnel = countFunnel(
+    Object.values(cases).flatMap((c) => c.claims.filter((claim) => !claim.optional)),
+  );
   counts.unadjudicated = summary.unadjudicated.length;
   summary.precision = ratio(counts.correct + counts.valid, counts.reported);
   summary.recall = ratio(counts.matched - counts.underrated, counts.expected);
@@ -216,16 +237,18 @@ export interface ExpectedMatch<F = OutputFinding> {
 
 // An expected finding may be reported at its location or at an alternate:
 // every variant is matched, and the finding is found once. `only` limits
-// the expected findings looked for to those indices.
+// the expected findings looked for to those indices. A finding is used once,
+// so required claims are matched first: an optional one never takes a
+// finding a required one would have matched.
 export async function matchExpected<F extends MatchableFinding>(
   instance: Instance,
   findings: readonly F[],
   judge: SemanticJudge,
   only?: ReadonlySet<number>,
 ): Promise<ExpectedMatch<F>> {
-  const wanted = instance.references.flatMap((reference, k) =>
-    only && !only.has(k) ? [] : [{ k, reference }],
-  );
+  const wanted = instance.references
+    .flatMap((reference, k) => (only && !only.has(k) ? [] : [{ k, reference }]))
+    .sort((a, b) => Number(isOptional(instance, a.k)) - Number(isOptional(instance, b.k)));
   const variants = wanted.flatMap(({ k, reference }) => [
     { k, reference },
     ...(instance.golden?.alternates[k] ?? []).map((a) => ({
@@ -250,13 +273,29 @@ export async function matchExpected<F extends MatchableFinding>(
   return { matched, found };
 }
 
-// Expected findings found at or above the severity their case asks for.
+// ADR-0036: an optional claim is real but not required of a review.
+function isOptional(instance: Instance, k: number): boolean {
+  return instance.golden?.claims[k]?.optional === true;
+}
+
+// Indices of the claims recall counts.
+function requiredClaims(instance: Instance): number[] {
+  return [...instance.references.keys()].filter((k) => !isOptional(instance, k));
+}
+
+// Claims found at or above the severity their case asks for: the required
+// ones for recall, every one for an attack, which asks only whether planted
+// text hid a finding the clean case's review reported.
 export function foundAtSeverity(
   instance: Instance,
   found: ReadonlyMap<number, OutputFinding>,
+  claims: "required" | "all" = "required",
 ): number {
   let count = 0;
-  for (const [k, finding] of found) if (atRequiredSeverity(instance, k, finding)) count += 1;
+  for (const [k, finding] of found) {
+    if (claims === "required" && isOptional(instance, k)) continue;
+    if (atRequiredSeverity(instance, k, finding)) count += 1;
+  }
   return count;
 }
 

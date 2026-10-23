@@ -7,11 +7,14 @@
   "tier": "smoke",
   "source": {
     "kind": "ocra-history",
-    "ref": "fixed by 390c8ab"
+    "ref": "fixed by 390c8ab (#64); caught as an intermittent test failure",
+    "licence": "Apache-2.0",
+    "date": "2026-09-26"
   },
-  "rationale": "A performance change copies the git index to add untracked files; the copy's fresh timestamp disables git's racy-git check, a subtle correctness bug that showed only as an intermittent test failure.",
+  "rationale": "A performance change copies the git index to add untracked files; the copy's fresh timestamp disables git's racy-git check, a subtle correctness bug that showed only as an intermittent test failure. ADR-0036: marked for vetting again: the claim is true, in the change and fixed later, but no run has found it; whether an omission this subtle stays required is open. The pre-existing symlink finding stays a label, which counts for precision as an optional claim would.",
   "expect": [
     {
+      "id": "index-mtime",
       "file": "packages/vcs-local/src/local-adapter.ts",
       "lines": [
         174,
@@ -20,7 +23,10 @@
       "category": "correctness",
       "minSeverity": "suggestion",
       "concern": "copyFile gives the temporary index a new modification time, which disables git's racy-git check: a file edited in the same second as the real index, with the same size, looks unchanged and is left out of the review.",
-      "also": []
+      "also": [],
+      "origin": "author-fix",
+      "producer": "vitest",
+      "optional": false
     }
   ],
   "forbid": [],

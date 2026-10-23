@@ -87,6 +87,7 @@ describe("measureCeiling", () => {
         clean: false,
         forbid: [{ path: "other.ts", fromLine: 1, toLine: 1, reason: "r" }],
         adjudicated: [],
+        claims: [],
         minSeverity: [],
         alternates: [],
       },
@@ -103,8 +104,6 @@ describe("measureCeiling", () => {
     expect(logs).toEqual([
       "[1/1] golden-case: failed: the case names files the change does not touch: other.ts",
     ]);
-    expect(refused).toContain(
-      "# Recall ceiling, golden cases\n\n0 expected findings in 0 case(s),",
-    );
+    expect(refused).toContain("# Recall ceiling, golden cases\n\n0 required claims in 0 case(s),");
   });
 });

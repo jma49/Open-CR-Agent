@@ -1,17 +1,20 @@
 {
   "id": "aacr-ragflow-missing-export",
   "repo": "infiniflow/ragflow",
-  "base": "469460483665000f522b6c9a6583bb34f17a954b",
+  "base": "409310aae90c12ad8a85320c4a71b2108485edc9",
   "head": "2d06022b78536bd22a0fd83f38804f39aa34cce8",
   "language": "TypeScript",
   "tier": "smoke",
   "source": {
     "kind": "aacr",
-    "ref": "https://github.com/infiniflow/ragflow/pull/5065 (Apache-2.0); hand-checked 2026-09-28"
+    "ref": "https://github.com/infiniflow/ragflow/pull/5065; hand-checked 2026-09-28; both fixed by a421becf0 in the same pull request",
+    "licence": "Apache-2.0",
+    "date": "2025-02-18"
   },
-  "rationale": "A broken import that fails the web build; not among AACR-Bench's references, found by ocra in two runs.",
+  "rationale": "An import of a name the locale module does not export, and two form labels whose translation keys no locale file defines; neither is among AACR-Bench's references, and ocra found both. ADR-0036: missing-export is optional, since the TypeScript compiler reports it (TS2305; the umi build does not type-check, so the earlier 'the build fails' was likely wrong); translation-keys is rewritten in ocra's words; base set to the merge base.",
   "expect": [
     {
+      "id": "missing-export",
       "file": "web/src/components/api-service/embed-modal/index.tsx",
       "lines": [
         21,
@@ -19,10 +22,14 @@
       ],
       "category": "correctness",
       "minSeverity": "warning",
-      "concern": "languageOptions is imported from @/locales/config, which does not export it, and nothing in the web app defines it, so the build fails.",
-      "also": []
+      "concern": "languageOptions is imported from @/locales/config, which neither exports nor defines it, so type-checking fails and the locale selector gets no options.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "gemini-3.5-flash-lite",
+      "optional": true
     },
     {
+      "id": "translation-keys",
       "file": "web/src/components/api-service/embed-modal/index.tsx",
       "lines": [
         81,
@@ -30,8 +37,11 @@
       ],
       "category": "correctness",
       "minSeverity": "suggestion",
-      "concern": "Missing translation keys for 'avatarHidden' and 'locale' in chat namespace",
-      "also": []
+      "concern": "The new embed options label their fields with t('avatarHidden') and t('locale') in the chat namespace, but no locale file defines either key, so the dialog shows raw keys instead of labels in every language.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "gemini-3.5-flash",
+      "optional": false
     }
   ],
   "forbid": [],

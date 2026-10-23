@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { ReferenceReach } from "./ceiling.js";
 import { goldenImport } from "./commands/golden-import.js";
 import { type DatasetRecord, parseRecords } from "./dataset.js";
-import { parseCase } from "./golden.js";
+import { parseCandidate, parseCase } from "./golden.js";
 import {
   byLanguage,
   type ImportCandidate,
@@ -57,6 +57,7 @@ const fixture: DatasetRecord[] = parseRecords([
 ]);
 
 const options = { maxChangeLines: 300, exclude: new Set([`0000007${"b".repeat(33)}`]) };
+const commits = { base: "c".repeat(40), date: "2025-03-01" };
 
 const reachable = (c: ImportCandidate): ReferenceReach[] =>
   c.instance.references.map((r) => ({
@@ -88,7 +89,7 @@ describe("byLanguage and pickInTurn", () => {
         seen.push(c.instance.id);
         return c.instance.language === "C"
           ? { rejected: "not reachable" }
-          : verdictFor(c, reachable(c), "c".repeat(40));
+          : verdictFor(c, reachable(c), commits);
       },
       () => {},
     );
@@ -107,29 +108,33 @@ describe("verdictFor and toGoldenCase", () => {
       ...r,
       reach: "no_domain_reviewer" as const,
     }));
-    expect(verdictFor(security, reaches, "c".repeat(40))).toEqual({
+    expect(verdictFor(security, reaches, commits)).toEqual({
       rejected: "not reachable: server/handler.go (no_domain_reviewer)",
     });
   });
 
-  it("writes a valid case that names its rows and says it is unverified", () => {
-    const golden = toGoldenCase(security, "c".repeat(40));
-    expect(parseCase(JSON.parse(JSON.stringify(golden)), "round trip")).toEqual(golden);
+  it("writes a candidate that names its rows and says it is unverified", () => {
+    const golden = toGoldenCase(security, commits);
+    expect(parseCandidate(JSON.parse(JSON.stringify(golden)), "round trip")).toEqual(golden);
     expect(golden).toMatchObject({
       id: "aacr-api-0000008",
       base: "c".repeat(40),
       head: `0000008${"b".repeat(33)}`,
       tier: "full",
-      source: { kind: "aacr" },
+      source: { kind: "aacr", licence: "NOASSERTION", date: "2025-03-01" },
       adjudicated: [],
       forbid: [],
       expect: [
         {
+          id: "row-12",
           file: "server/handler.go",
           lines: [10, 10],
           category: "security",
           minSeverity: "suggestion",
           concern: "nil map write panics when the cache is cold",
+          origin: "human-review",
+          producer: "human",
+          optional: false,
         },
       ],
     });
@@ -138,10 +143,29 @@ describe("verdictFor and toGoldenCase", () => {
     expect(golden.rationale).toMatch(/^Unverified/);
   });
 
+  it("records a model-written comment as the model's", () => {
+    const [ai] = parseRecords([
+      record(11, { is_ai_comment: true, source_model: "GLM-4.7", category: "Code Defect" }),
+    ]);
+    const [candidate] = importCandidates(ai ? [ai] : [], options);
+    if (!candidate) throw new Error("fixture lost PR 11");
+    expect(toGoldenCase(candidate, commits).expect[0]).toMatchObject({
+      origin: "ai-reference-vetted",
+      producer: "GLM-4.7",
+    });
+  });
+
+  it("leaves the licence for a person to check: no case loads without one", () => {
+    const golden = toGoldenCase(security, commits);
+    expect(() => parseCase(JSON.parse(JSON.stringify(golden)), "candidate.json")).toThrow(
+      "candidate.json: source.licence: check the repository's licence",
+    );
+  });
+
   it("shortens a long comment to a concern", () => {
     const long = candidates.find((c) => c.instance.prUrl.endsWith("/10"));
     if (!long) throw new Error("fixture lost PR 10");
-    const concern = toGoldenCase(long, "c".repeat(40)).expect[0]?.concern ?? "";
+    const concern = toGoldenCase(long, commits).expect[0]?.concern ?? "";
     expect(concern.length).toBeLessThanOrEqual(502);
     expect(concern.endsWith(" …") || concern.endsWith("…")).toBe(true);
   });
@@ -163,7 +187,7 @@ describe("ocra-eval golden-import", () => {
   };
   const deps = {
     records: async () => fixture,
-    judge: async (c: ImportCandidate) => verdictFor(c, reachable(c), "c".repeat(40)),
+    judge: async (c: ImportCandidate) => verdictFor(c, reachable(c), commits),
   };
 
   it("writes the candidates and a summary by language, category and severity", async () => {
@@ -172,7 +196,9 @@ describe("ocra-eval golden-import", () => {
     const argv = ["--from", "aacr", "--limit", "3", "--out", out, "--golden-dir", tmp()];
     expect(await goldenImport(argv, stdout, buffer(), deps)).toBe(0);
     const files = readdirSync(out).filter((f) => f.endsWith(".json"));
-    const cases = files.map((f) => parseCase(JSON.parse(readFileSync(join(out, f), "utf8")), f));
+    const cases = files.map((f) =>
+      parseCandidate(JSON.parse(readFileSync(join(out, f), "utf8")), f),
+    );
     expect(cases.map((c) => c.language).sort()).toEqual(["C", "Go", "Rust"]);
     expect(readdirSync(out)).toContain("summary.md");
     expect(stdout.text()).toContain("| C | 1 |");
@@ -183,9 +209,10 @@ describe("ocra-eval golden-import", () => {
     const golden = tmp();
     const existing = toGoldenCase(
       importCandidates(fixture, options)[0] as ImportCandidate,
-      "c".repeat(40),
+      commits,
     );
-    writeFileSync(join(golden, `${existing.id}.json`), JSON.stringify(existing));
+    const vetted = { ...existing, source: { ...existing.source, licence: "MIT" } };
+    writeFileSync(join(golden, `${existing.id}.json`), JSON.stringify(vetted));
     const out = join(tmp(), "candidates");
     const argv = ["--from", "aacr", "--languages", "go", "--out", out, "--golden-dir", golden];
     await goldenImport(argv, buffer(), buffer(), deps);

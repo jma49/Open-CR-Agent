@@ -7,11 +7,14 @@
   "tier": "smoke",
   "source": {
     "kind": "aacr",
-    "ref": "https://github.com/ollama/ollama/pull/9379 (MIT); hand-checked 2026-09-28"
+    "ref": "https://github.com/ollama/ollama/pull/9379; hand-checked 2026-09-28; the pull request's next commit, 927a601cb, fixed nested-path, files-omitted-error and nested-test-case",
+    "licence": "MIT",
+    "date": "2025-02-28"
   },
-  "rationale": "Path handling in model creation: a real failure on nested paths (not in AACR-Bench's references) and the Windows separator gap the references do name.",
+  "rationale": "Path handling in model creation: a real failure on nested paths (not in AACR-Bench's references) and the Windows separator gap the references do name. ADR-0036: file-path-error is optional, since the 400 list it names is outside the change (the change does introduce errFilePath and the nested-path failure that reaches it); files-omitted-error and nested-test-case are optional, each found in a single run, though the author's next commit fixed both. windows-separator is marked for vetting again: os.Root still contains such paths, so on Windows the only effect is file-path-error's 500 instead of a 400, the same defense-in-depth class as three adapter-path findings labelled invalid, and the merged pull request kept the gap. Of the two labels on fingerprint 165fe552, the invalid one stays: the valid one restated files-omitted-error, which a matching finding reaches before any label.",
   "expect": [
     {
+      "id": "nested-path",
       "file": "server/create.go",
       "lines": [
         277,
@@ -20,9 +23,13 @@
       "category": "correctness",
       "minSeverity": "warning",
       "concern": "root.OpenFile creates the file before any parent directory exists (MkdirAll runs later, in createLink), so a nested path such as dir/model.safetensors fails with ENOENT and is reported as an invalid path.",
-      "also": []
+      "also": [],
+      "origin": "author-fix",
+      "producer": "gemini-3.5-flash",
+      "optional": false
     },
     {
+      "id": "windows-separator",
       "file": "server/create.go",
       "lines": [
         161,
@@ -31,9 +38,13 @@
       "category": "security",
       "minSeverity": "suggestion",
       "concern": "validRelative only treats '/' as a separator, so on Windows backslash and drive-letter paths pass the early check; os.Root still contains them, so it is defense in depth that is lost.",
-      "also": []
+      "also": [],
+      "origin": "ai-reference-vetted",
+      "producer": "Gemini-3-Pro",
+      "optional": false
     },
     {
+      "id": "file-path-error",
       "file": "server/create.go",
       "lines": [
         99,
@@ -41,10 +52,14 @@
       ],
       "category": "correctness",
       "minSeverity": "suggestion",
-      "concern": "Missing errFilePath handling in the badRequest error checking loop for base model files",
-      "also": []
+      "concern": "The 400 list for base-model file errors omits errFilePath, which the adapters' list includes, so a bad path in files gets a 500 instead of a 400.",
+      "also": [],
+      "origin": "model-found-vetted",
+      "producer": "gemini-3.5-flash",
+      "optional": true
     },
     {
+      "id": "files-omitted-error",
       "file": "server/create.go",
       "lines": [
         50,
@@ -52,10 +67,14 @@
       ],
       "category": "correctness",
       "minSeverity": "suggestion",
-      "concern": "Wrong error returned when 'files' is omitted from CreateRequest because r.Files is overwritten with a non-nil empty map",
-      "also": []
+      "concern": "files is always replaced with a non-nil map, so a request without files skips the neither-from-nor-files check and gets an unknown-type error instead.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "gemini-3.5-flash",
+      "optional": true
     },
     {
+      "id": "nested-test-case",
       "file": "server/create_test.go",
       "lines": [
         90,
@@ -63,8 +82,11 @@
       ],
       "category": "correctness",
       "minSeverity": "suggestion",
-      "concern": "Unit test case ValidNestedWithValidParentRef is inconsistent with the handler's path validation",
-      "also": []
+      "concern": "The test passes nested/../ and ./ paths straight to convertFromSafetensors, which the handler's validRelative rejects, so it covers inputs production never sends.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "Claude-4.5-Sonnet",
+      "optional": true
     }
   ],
   "forbid": [],
@@ -81,12 +103,6 @@
       "label": "invalid",
       "reason": "Defense in depth only: adapter keys still pass the os.Root containment check and errFilePath returns 400. (checked against the code by the agent, 2026-09-28)",
       "title": "Missing early path validation for adapters keys in CreateHandler"
-    },
-    {
-      "fingerprint": "165fe552fc6f1d23",
-      "label": "valid",
-      "reason": "Real: files is always a non-nil map, so r.Files != nil always holds and the errNeitherFromOrFiles branch is unreachable; omitting files gives the wrong error. (checked against the code by the agent, 2026-09-28)",
-      "title": "Wrong error returned when 'files' is omitted from CreateRequest because r.Files is overwritten with a non-nil empty map"
     },
     {
       "fingerprint": "aa8fe6e1c25e62ad",

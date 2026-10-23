@@ -6,7 +6,7 @@ import { serializeOutput } from "@open-cr-agent/core/internal";
 import { describe, expect, it } from "vitest";
 import { writeSummary } from "./commands/summary.js";
 import { base, finding, reviewed } from "./golden.fakes.js";
-import { parseCase, toInstance } from "./golden.js";
+import { toInstance } from "./golden.js";
 import { scoreGolden } from "./golden-score.js";
 import { createJudge, MockJudge } from "./judges.js";
 import { renderMarkdown } from "./report.js";
@@ -22,22 +22,29 @@ const CONCERNS = {
 } as const;
 type Stage = keyof typeof CONCERNS;
 
-const kase = toInstance(
-  parseCase(
-    {
-      ...base,
-      id: "funnel",
-      expect: Object.entries(CONCERNS).map(([stage, concern]) => ({
-        file: `src/${stage}.ts`,
-        lines: [10, 12],
-        category: "correctness",
-        minSeverity: "warning",
-        concern,
-      })),
-    },
-    "funnel.json",
-  ),
-);
+// One claim per stage: more than a case may require (ADR-0036), so the case
+// is built as loading would leave it, past the schema's caps.
+const kase = toInstance({
+  ...base,
+  id: "funnel",
+  tier: "smoke" as const,
+  source: { ...base.source, kind: "ocra-history" as const, licence: "Apache-2.0" as const },
+  expect: Object.entries(CONCERNS).map(([stage, concern]) => ({
+    id: stage,
+    file: `src/${stage}.ts`,
+    lines: [10, 12],
+    category: "correctness" as const,
+    minSeverity: "warning" as const,
+    concern,
+    also: [],
+    origin: "maintainer" as const,
+    producer: "human",
+    optional: false,
+  })),
+  forbid: [],
+  clean: false,
+  adjudicated: [],
+});
 
 // A finding as a review task reports it, before Verify and the judge.
 function raisedOn(stage: Stage, fingerprint: string): Finding {
@@ -126,11 +133,17 @@ describe("the recall funnel", () => {
       new Map([["funnel", trace]]),
     );
     expect(summary.cases?.funnel?.claims).toEqual([
-      { concern: CONCERNS.found, found: true, stage: "found" },
-      { concern: CONCERNS.dropped, found: false, stage: "dropped", droppedBy: "verify" },
-      { concern: CONCERNS.raised, found: false, stage: "raised" },
-      { concern: CONCERNS.looked, found: false, stage: "looked" },
-      { concern: CONCERNS.missed, found: false, stage: "not-looked" },
+      { id: "found", concern: CONCERNS.found, found: true, stage: "found" },
+      {
+        id: "dropped",
+        concern: CONCERNS.dropped,
+        found: false,
+        stage: "dropped",
+        droppedBy: "verify",
+      },
+      { id: "raised", concern: CONCERNS.raised, found: false, stage: "raised" },
+      { id: "looked", concern: CONCERNS.looked, found: false, stage: "looked" },
+      { id: "missed", concern: CONCERNS.missed, found: false, stage: "not-looked" },
     ]);
     expect(summary.funnel).toEqual({
       "not-looked": 1,
@@ -145,8 +158,8 @@ describe("the recall funnel", () => {
       { ...(await score([], [], new MockJudge())), golden: summary },
     );
     expect(markdown).toContain("| 1 | 1 | 1 | 1 | 1 | 0 |");
-    expect(markdown).toContain(`- funnel#2 (dropped by verify): ${CONCERNS.dropped}`);
-    expect(markdown).toContain(`- funnel#5 (not-looked): ${CONCERNS.missed}`);
+    expect(markdown).toContain(`- funnel#dropped (dropped by verify): ${CONCERNS.dropped}`);
+    expect(markdown).toContain(`- funnel#missed (not-looked): ${CONCERNS.missed}`);
   });
 
   it("counts a finding dropped outside its task's bundle, or by the judge, as dropped", async () => {
@@ -186,8 +199,20 @@ describe("the recall funnel", () => {
       new Map([["funnel", trace]]),
     );
     expect(summary.cases?.funnel?.claims.slice(1, 3)).toEqual([
-      { concern: CONCERNS.dropped, found: false, stage: "dropped", droppedBy: "judge" },
-      { concern: CONCERNS.raised, found: false, stage: "dropped", droppedBy: "outside_bundle" },
+      {
+        id: "dropped",
+        concern: CONCERNS.dropped,
+        found: false,
+        stage: "dropped",
+        droppedBy: "judge",
+      },
+      {
+        id: "raised",
+        concern: CONCERNS.raised,
+        found: false,
+        stage: "dropped",
+        droppedBy: "outside_bundle",
+      },
     ]);
   });
 
@@ -214,6 +239,7 @@ describe("the recall funnel", () => {
       new Map([["funnel", trace]]),
     );
     expect(summary.cases?.funnel?.claims[2]).toEqual({
+      id: "raised",
       concern: CONCERNS.raised,
       found: false,
       stage: "dropped",
@@ -248,7 +274,11 @@ describe("the recall funnel", () => {
     const dir = await mkdtemp(join(tmpdir(), "ocra-funnel-"));
     expect(await readSessionTrace(join(dir, "missing.jsonl"))).toBeUndefined();
     const summary = await scoreGolden([kase], [report], new MockJudge());
-    expect(summary.cases?.funnel?.claims[0]).toEqual({ concern: CONCERNS.found, found: true });
+    expect(summary.cases?.funnel?.claims[0]).toEqual({
+      id: "found",
+      concern: CONCERNS.found,
+      found: true,
+    });
     expect(summary.funnel).toEqual({
       "not-looked": 0,
       looked: 0,

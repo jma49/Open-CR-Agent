@@ -1,6 +1,7 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { main } from "./cli.js";
 import { loadGolden, parseCase, toInstance, untouchedPaths } from "./golden.js";
@@ -13,10 +14,18 @@ const valid = {
   head: "b".repeat(40),
   language: "TypeScript",
   tier: "smoke",
-  source: { kind: "ocra-history", ref: "fixed by c".padEnd(20, "0") },
+  source: {
+    kind: "ocra-history",
+    ref: "fixed by c".padEnd(20, "0"),
+    licence: "Apache-2.0",
+    date: "2026-09-27",
+  },
   rationale: "Anchoring broke on CRLF files.",
   expect: [
     {
+      id: "crlf-quote",
+      origin: "author-fix",
+      producer: "human",
       file: "packages/core/src/anchor.ts",
       lines: [10, 12],
       category: "correctness",
@@ -88,6 +97,87 @@ describe("golden cases", () => {
     expect(() => parseCase({ ...valid, ...change }, "case.json")).toThrow(/^case\.json: /);
   });
 
+  const claim = (id: string, optional = false) => ({ ...valid.expect[0], id, optional });
+
+  it.each([
+    [
+      "a fourth required claim",
+      { expect: ["a", "b", "c", "d"].map((id) => claim(id)) },
+      "case: a case has at most 3 required claims",
+    ],
+    [
+      "a sixth optional claim",
+      { expect: ["a", "b", "c", "d", "e", "f"].map((id) => claim(id, true)) },
+      "case: a case has at most 5 optional claims",
+    ],
+    [
+      "a fourth forbid range",
+      { forbid: [1, 2, 3, 4].map((n) => ({ ...valid.forbid[0], lines: [n, n] })) },
+      "forbid: Too big",
+    ],
+    [
+      "two claims with one id",
+      { expect: [claim("a"), claim("a", true)] },
+      "case: claim ids are unique",
+    ],
+    ["a claim id that is not a slug", { expect: [claim("Fix #1")] }, "expect.0.id: must be"],
+    [
+      "a claim without an origin",
+      { expect: [{ ...claim("a"), origin: undefined }] },
+      "expect.0.origin",
+    ],
+    [
+      "a claim without a producer",
+      { expect: [{ ...claim("a"), producer: "" }] },
+      "expect.0.producer",
+    ],
+  ])("caps and identifies claims: rejects %s", (_name, change, message) => {
+    expect(() => parseCase({ ...valid, ...change }, "case.json")).toThrow(`case.json: ${message}`);
+  });
+
+  it("accepts three required and five optional claims, with raters", () => {
+    const required = ["a", "b", "c"].map((id) => claim(id));
+    const optional = ["d", "e", "f", "g", "h"].map((id) => claim(id, true));
+    const parsed = parseCase(
+      {
+        ...valid,
+        expect: [...required, ...optional],
+        raters: [{ by: "second-rater", date: "2026-10-23" }],
+      },
+      "case.json",
+    );
+    expect(toInstance(parsed).golden?.claims.filter((c) => c.optional)).toHaveLength(5);
+  });
+
+  it.each([
+    ["SSPL-1.0"],
+    ["BUSL-1.1"],
+    ["Elastic-2.0"],
+    ["LicenseRef-n8n-Sustainable-Use-1.0"],
+    ["MIT OR Apache-2.0"],
+    ["NOASSERTION"],
+  ])("refuses a licence outside the allowlist: %s", (licence) => {
+    expect(() =>
+      parseCase({ ...valid, source: { ...valid.source, licence } }, "case.json"),
+    ).toThrow("case.json: source.licence");
+  });
+
+  it.each([
+    ["a missing date", undefined],
+    ["a date that is not a day", "2025-02-30"],
+    ["a date with a time", "2025-02-18T10:00:00Z"],
+  ])("refuses %s on the source", (_name, date) => {
+    expect(() => parseCase({ ...valid, source: { ...valid.source, date } }, "case.json")).toThrow(
+      "case.json: source.date",
+    );
+  });
+
+  it("loads every committed case", async () => {
+    const committed = fileURLToPath(new URL("../../../evals/golden", import.meta.url));
+    const instances = await loadGolden(committed);
+    expect(instances.filter((i) => i.golden?.tier !== "adversarial").length).toBeGreaterThan(0);
+  });
+
   it("refuses two labels for one claim on the same code", () => {
     const label = { fingerprint: "0000000000000009", label: "valid", reason: "r", title: "t" };
     expect(() =>
@@ -138,14 +228,16 @@ describe("golden cases", () => {
   });
 
   it("lists golden cases from the command line, with no network", async () => {
-    const dir = await caseDir(valid, {
-      ...valid,
-      id: "clean-refactor",
-      tier: "full",
-      expect: [],
-      forbid: [],
-      clean: true,
-    });
+    const dir = await caseDir(
+      valid,
+      { ...valid, id: "clean-refactor", tier: "full", expect: [], forbid: [], clean: true },
+      {
+        ...valid,
+        id: "build-error",
+        tier: "full",
+        expect: [{ ...valid.expect[0], optional: true }],
+      },
+    );
     const out = output();
     const err = output();
     const list = (...args: string[]) =>
@@ -155,6 +247,10 @@ describe("golden cases", () => {
     expect(out.text()).not.toContain("clean-refactor");
     expect(await list()).toBe(0);
     expect(out.text()).toContain("clean-refactor\tTypeScript\tfull\tclean\t0 issues");
+    expect(out.text()).toContain(
+      "build-error\tTypeScript\tfull\t1 forbidden\t1 issues (1 optional)",
+    );
+    expect(out.text()).toContain("3 case(s), 1 required and 1 optional claim(s)");
   });
 
   it("refuses --tier without the golden dataset", async () => {

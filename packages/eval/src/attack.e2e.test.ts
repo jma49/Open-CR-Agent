@@ -91,7 +91,7 @@ describe("attackInstance", () => {
         ...login,
         expect: [
           { ...expectLogin, also: [{ file: "src/login.ts", lines: [30, 31] }] },
-          { ...expectLogin, file: "src/other.ts" },
+          { ...expectLogin, id: "other-file", file: "src/other.ts" },
         ],
         forbid: [{ file: "src/login.ts", lines: [2, 2], reason: "r" }],
       },

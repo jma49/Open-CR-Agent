@@ -182,9 +182,9 @@ function funnelSection(golden: GoldenSummary): string[] {
   }
   const lost = Object.entries(golden.cases ?? {}).flatMap(([id, c]) =>
     c.claims.flatMap((claim, k) =>
-      claim.stage && claim.stage !== "found"
+      claim.stage && claim.stage !== "found" && !claim.optional
         ? [
-            `- ${id}#${k + 1} (${claim.droppedBy ? `dropped by ${claim.droppedBy}` : claim.stage}): ${claim.concern.replace(/\s+/g, " ").trim()}`,
+            `- ${id}#${claim.id ?? k + 1} (${claim.droppedBy ? `dropped by ${claim.droppedBy}` : claim.stage}): ${claim.concern.replace(/\s+/g, " ").trim()}`,
           ]
         : [],
     ),

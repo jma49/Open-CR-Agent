@@ -1,6 +1,6 @@
 # ADR-0011: Quality decisions on an ocra-owned golden set; AACR-Bench stays the external number
 
-- Status: accepted; point 2 amended by [ADR-0012](0012-golden-labels-per-claim.md) (a label belongs to one claim)
+- Status: accepted; point 2 amended by [ADR-0012](0012-golden-labels-per-claim.md) (a label belongs to one claim); points 1 and 5 amended by [ADR-0036](0036-golden-case-set-policy.md) (sources, provenance, licences, vetting, caps; most AACR-Bench references are written by models, not people)
 - Date: 2026-09-27
 
 ## Context

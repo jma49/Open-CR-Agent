@@ -1,17 +1,20 @@
 {
   "id": "aacr-keycloak-priority-fallthrough",
   "repo": "keycloak/keycloak",
-  "base": "8521b9952a989d0dac17697278610b053c613528",
+  "base": "b3b30a8620dcce0b0d5caee429d07789afbad147",
   "head": "805c204a9dbfb5b8128de8f70c9f3fbd6d6583f9",
   "language": "Java",
   "tier": "smoke",
   "source": {
     "kind": "aacr",
-    "ref": "https://github.com/keycloak/keycloak/pull/38723 (Apache-2.0); hand-checked 2026-09-29"
+    "ref": "https://github.com/keycloak/keycloak/pull/38723; hand-checked 2026-09-29; merged with the bug, fixed upstream by b807a45091c (#43132)",
+    "licence": "Apache-2.0",
+    "date": "2025-04-07"
   },
-  "rationale": "The change adds a switch case right after one that had no break because it used to be last, so every guide that sets a priority also has its tile hidden. ocra reported it in all four runs on this pull request, and an AACR-Bench reference names the missing break.",
+  "rationale": "The change adds a switch case right after one that had no break because it used to be last, so every guide that sets a priority also has its tile hidden. ocra reported it in all four runs on this pull request. ADR-0036: kept; the AACR-Bench reference, written by a model, asks for a break after the last case rather than the one that falls through; upstream added the missing break in 2025-10; base set to the merge base.",
   "expect": [
     {
+      "id": "priority-fallthrough",
       "file": "docs/maven-plugin/src/main/java/org/keycloak/guides/maven/GuideParser.java",
       "lines": [
         79,
@@ -19,7 +22,14 @@
       ],
       "category": "correctness",
       "minSeverity": "warning",
-      "concern": "The priority case has no break, so it falls through into the new tileVisible case: a guide that sets priority also calls setTileVisible(Boolean.parseBoolean(null)), which is false, and its tile is hidden."
+      "concern": "The priority case has no break, so it falls through into the new tileVisible case: a guide that sets priority also calls setTileVisible(Boolean.parseBoolean(null)), which is false, and its tile is hidden.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "gemini-flash-lite-latest",
+      "optional": false
     }
-  ]
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
 }

@@ -109,7 +109,11 @@ const golden = (found: boolean[], casesHash = "h1", recall = 0): SavedSummary =>
             found: found.filter(Boolean).length,
             reported: 1,
             right: 1,
-            claims: found.map((f, k) => ({ concern: `claim ${k + 1} | x`, found: f })),
+            claims: found.map((f, k) => ({
+              id: `claim-${k + 1}`,
+              concern: `claim ${k + 1} | x`,
+              found: f,
+            })),
           },
         },
       },
@@ -151,7 +155,7 @@ describe("ocra-eval compare on repeated golden runs", () => {
     expect(text).toContain(
       "2 found more often by the run, 0 less often, 0 as often; two-sided p = 0.500: no change",
     );
-    expect(text).toContain("| c#1 | claim 1 \\| x | 2/3 | 3/3 |");
-    expect(text).toContain("| c#2 | claim 2 \\| x | 0/3 | 1/3 |");
+    expect(text).toContain("| c#claim-1 | claim 1 \\| x | 2/3 | 3/3 |");
+    expect(text).toContain("| c#claim-2 | claim 2 \\| x | 0/3 | 1/3 |");
   });
 });

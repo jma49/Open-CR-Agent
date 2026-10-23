@@ -7,11 +7,14 @@
   "tier": "smoke",
   "source": {
     "kind": "ocra-history",
-    "ref": "fixed by b58993d"
+    "ref": "fixed by b58993d (#102)",
+    "licence": "Apache-2.0",
+    "date": "2026-09-26"
   },
-  "rationale": "The change documents that the sessions directory carries a .gitignore, but no code writes it; the test passes vacuously because git status collapses the untracked directory to .ocra/.",
+  "rationale": "The change documents that the sessions directory carries a .gitignore, but no code writes it; the test passes vacuously because git status collapses the untracked directory to .ocra/. ADR-0036: kept.",
   "expect": [
     {
+      "id": "gitignore-unwritten",
       "file": "packages/cli/src/run.test.ts",
       "lines": [
         118,
@@ -42,7 +45,13 @@
             28
           ]
         }
-      ]
+      ],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": false
     }
-  ]
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
 }

@@ -72,9 +72,10 @@ export interface ApplyResult {
   alreadyRecorded: number;
 }
 
-// A valid finding also becomes an expect entry, at the lowest severity, so a
-// later run is scored on it; the maintainer can raise the severity by hand.
-// Every case is updated and validated before any file is written.
+// A valid finding also becomes an optional claim (ADR-0036: a model-found
+// claim is required only after a second rater and repeated runs), so a later
+// run counts a match for precision. Every case is updated and validated
+// before any file is written.
 export async function applyLabels(labels: LabelsFile, goldenDir: string): Promise<ApplyResult> {
   const result: ApplyResult = { applied: 0, pending: 0, alreadyRecorded: 0 };
   const ready = labels.entries.filter((e) => {
@@ -110,6 +111,7 @@ export async function applyLabels(labels: LabelsFile, goldenDir: string): Promis
         // A real issue on a case thought clean means the case was not clean.
         golden.clean = false;
         golden.expect.push({
+          id: foundClaimId(golden, entry.fingerprint),
           file: entry.file,
           lines: [entry.lines.start, entry.lines.end],
           category: (CASE_CATEGORIES.has(entry.category)
@@ -118,6 +120,10 @@ export async function applyLabels(labels: LabelsFile, goldenDir: string): Promis
           minSeverity: "suggestion",
           concern: entry.title,
           also: [],
+          origin: "model-found-vetted",
+          // The run does not record which model reported it.
+          producer: "ocra",
+          optional: true,
         });
       }
       result.applied += 1;
@@ -129,4 +135,13 @@ export async function applyLabels(labels: LabelsFile, goldenDir: string): Promis
     await writeFile(path, `${JSON.stringify(golden, null, 2)}\n`);
   }
   return result;
+}
+
+// found-<fingerprint>, numbered when the same code drew another claim.
+function foundClaimId(golden: GoldenCase, fingerprint: string): string {
+  const stem = `found-${fingerprint.slice(0, 8)}`;
+  const taken = new Set(golden.expect.map((e) => e.id));
+  let id = stem;
+  for (let n = 2; taken.has(id); n++) id = `${stem}-${n}`;
+  return id;
 }

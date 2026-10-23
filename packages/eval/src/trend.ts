@@ -1,6 +1,6 @@
 import { formatValue } from "./compare.js";
 import { countFunnel, FUNNEL_STAGES, type Funnel } from "./funnel.js";
-import type { GoldenCaseScore } from "./golden-score.js";
+import type { GoldenCaseScore, GoldenClaimScore } from "./golden-score.js";
 
 // Many golden runs over time, grouped by series: how much the same setup
 // varies from run to run, and how two setups differ. Runs are often partial
@@ -63,6 +63,7 @@ export interface Trend {
   claims: {
     id: string;
     concern: string;
+    optional?: true;
     hits: Record<string, { hits: number; runs: number }>;
     // Over every scored run of every series: a claim found always or never
     // tells two setups apart less than one found about half the time.
@@ -178,7 +179,9 @@ function score(run: TrendRun & { cases: Record<string, GoldenCaseScore> }, ids: 
       turns: ids.reduce((t, id) => t + (run.wrapUps[id]?.turns ?? 0), 0),
       findings: ids.reduce((t, id) => t + (run.wrapUps[id]?.findings ?? 0), 0),
     },
-    funnel: countFunnel(ids.flatMap((id) => run.cases[id]?.claims ?? [])),
+    funnel: countFunnel(
+      ids.flatMap((id) => run.cases[id]?.claims.filter((c) => !c.optional) ?? []),
+    ),
   };
   if (expected > 0) scored.recall = sum((c) => c.found) / expected;
   if (reported > 0) scored.precision = sum((c) => c.right) / reported;
@@ -200,32 +203,49 @@ function meanWrapUps(scored: readonly Scored[]): WrapUps {
   return { turns: mean((w) => w.turns), findings: mean((w) => w.findings) };
 }
 
-// Each expected finding of the common cases, and how many runs of each
-// series found it.
+// Each claim of the common cases, and how many runs of each series found
+// it. Claims pair by id (ADR-0036), so reordering a case's claims moves
+// nothing; a run whose summary predates ids, or that lacks the claim, does
+// not count for it. Optional claims are listed too, marked: whether runs find
+// one is what promotes it to required.
 function claims(series: readonly SeriesTrend[], common: readonly string[]): Trend["claims"] {
   const rows: Trend["claims"] = [];
+  const scored = series.flatMap((s) => s.runs.filter(hasCases));
   for (const id of common) {
-    const sample = series.flatMap((s) => s.runs.filter(hasCases))[0]?.cases?.[id];
-    for (const [k, claim] of (sample?.claims ?? []).entries()) {
+    const first = new Map<string, GoldenClaimScore>();
+    for (const run of scored) {
+      for (const claim of run.cases[id]?.claims ?? []) {
+        if (claim.id !== undefined && !first.has(claim.id)) first.set(claim.id, claim);
+      }
+    }
+    for (const [claimId, { concern, optional }] of first) {
       const hits: Trend["claims"][number]["hits"] = {};
       const stability = { hits: 0, runs: 0 };
       const misses: Trend["claims"][number]["misses"] = {};
       for (const s of series) {
-        const runs = s.runs.filter(hasCases);
-        if (runs.length === 0) continue;
-        const outcomes = runs.map((r) => r.cases[id]?.claims[k]);
-        const found = outcomes.filter((c) => c?.found === true).length;
-        hits[s.name] = { hits: found, runs: runs.length };
+        const outcomes = s.runs
+          .filter(hasCases)
+          .flatMap((r) => r.cases[id]?.claims.find((c) => c.id === claimId) ?? []);
+        if (outcomes.length === 0) continue;
+        const found = outcomes.filter((c) => c.found).length;
+        hits[s.name] = { hits: found, runs: outcomes.length };
         stability.hits += found;
-        stability.runs += runs.length;
+        stability.runs += outcomes.length;
         const missed: Record<string, number> = {};
-        for (const c of outcomes.filter((c) => c?.found !== true)) {
-          const stage = c?.stage === "found" ? "underrated" : (c?.stage ?? "unknown");
+        for (const c of outcomes.filter((c) => !c.found)) {
+          const stage = c.stage === "found" ? "underrated" : (c.stage ?? "unknown");
           missed[stage] = (missed[stage] ?? 0) + 1;
         }
         misses[s.name] = missed;
       }
-      rows.push({ id: `${id}#${k + 1}`, concern: claim.concern, hits, stability, misses });
+      rows.push({
+        id: `${id}#${claimId}`,
+        concern,
+        ...(optional ? { optional } : {}),
+        hits,
+        stability,
+        misses,
+      });
     }
   }
   return rows;
@@ -301,7 +321,7 @@ export function renderTrend(trend: Trend): string {
           const h = c.hits[n];
           return h ? `${h.hits}/${h.runs}${missesOf(c.misses[n] ?? {})}` : "–";
         });
-        return `| ${c.id} | ${concernCell(c.concern)} | ${cells.join(" | ")} | ${pct(c.stability.hits / c.stability.runs)} |`;
+        return `| ${c.id}${c.optional ? " (optional)" : ""} | ${concernCell(c.concern)} | ${cells.join(" | ")} | ${pct(c.stability.hits / c.stability.runs)} |`;
       }),
       "",
     );

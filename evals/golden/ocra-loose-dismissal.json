@@ -7,11 +7,14 @@
   "tier": "full",
   "source": {
     "kind": "ocra-history",
-    "ref": "fixed by 74652ee (explicit decline) and 14284c4 (who may dismiss)"
+    "ref": "fixed by 74652ee (explicit decline, #127) and 14284c4 (who may dismiss, #71); found by the maintainer's audits",
+    "licence": "Apache-2.0",
+    "date": "2026-09-26"
   },
-  "rationale": "The first version of human dismissals matched decline words anywhere in any person's reply, so maintainers' questions and the PR author could silence findings.",
+  "rationale": "The first version of human dismissals matched decline words anywhere in any person's reply, so maintainers' questions and the PR author could silence findings. ADR-0036: kept.",
   "expect": [
     {
+      "id": "decline-words",
       "file": "packages/vcs-github/src/adapter.ts",
       "lines": [
         44,
@@ -19,9 +22,14 @@
       ],
       "category": "correctness",
       "minSeverity": "warning",
-      "concern": "The dismissal pattern matches 'intended', 'intentional' and 'acknowledged' anywhere in a reply, so 'This is not intended, good catch' or 'Is this intended?' dismisses the finding."
+      "concern": "The dismissal pattern matches 'intended', 'intentional' and 'acknowledged' anywhere in a reply, so 'This is not intended, good catch' or 'Is this intended?' dismisses the finding.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": false
     },
     {
+      "id": "anyone-dismisses",
       "file": "packages/vcs-github/src/adapter.ts",
       "lines": [
         102,
@@ -29,7 +37,14 @@
       ],
       "category": "security",
       "minSeverity": "warning",
-      "concern": "Any non-bot account, including the pull request's author or an outsider, can dismiss a finding by resolving its thread or replying, so the author can clear findings, critical ones included, on their own change."
+      "concern": "Any non-bot account, including the pull request's author or an outsider, can dismiss a finding by resolving its thread or replying, so the author can clear findings, critical ones included, on their own change.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": false
     }
-  ]
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
 }

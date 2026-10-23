@@ -7,7 +7,7 @@ import { base, expectLogin } from "./golden.fakes.js";
 import { parseCase } from "./golden.js";
 
 describe("adjudication", () => {
-  it("records labels once, turns valid findings into expectations and keeps typed labels", async () => {
+  it("records labels once, turns valid findings into optional claims and keeps typed labels", async () => {
     const dir = await mkdtemp(join(tmpdir(), "ocra-adjudicate-"));
     await writeFile(join(dir, "clean.json"), JSON.stringify({ ...base, id: "clean", clean: true }));
     const found = (fingerprint: string) => ({
@@ -45,12 +45,16 @@ describe("adjudication", () => {
     ]);
     expect(saved.expect).toEqual([
       {
+        id: "found-00000000",
         file: "src/login.ts",
         lines: [5, 6],
         category: "security",
         minSeverity: "suggestion",
         concern: "title 0000000000000001",
         also: [],
+        origin: "model-found-vetted",
+        producer: "ocra",
+        optional: true,
       },
     ]);
   });
@@ -86,6 +90,33 @@ describe("adjudication", () => {
     expect(saved.adjudicated.map((a) => [a.title, a.label])).toEqual([
       ["Session kept", "valid"],
       ["Adapters unchecked", "invalid"],
+    ]);
+  });
+
+  it("gives two valid claims on the same code their own ids", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "ocra-adjudicate-"));
+    await writeFile(
+      join(dir, "login.json"),
+      JSON.stringify({ ...base, id: "login", expect: [expectLogin] }),
+    );
+    const valid = (title: string) => ({
+      case: "login",
+      fingerprint: "00000000000000ab",
+      category: "correctness",
+      severity: "warning" as const,
+      file: "src/login.ts",
+      lines: { start: 80, end: 80 },
+      title,
+      body: "b",
+      label: "valid" as const,
+      reason: "real",
+    });
+    await applyLabels({ goldenDir: dir, entries: [valid("first"), valid("second")] }, dir);
+    const saved = parseCase(JSON.parse(await readFile(join(dir, "login.json"), "utf8")), "login");
+    expect(saved.expect.map((e) => [e.id, e.optional])).toEqual([
+      ["session-kept", false],
+      ["found-00000000", true],
+      ["found-00000000-2", true],
     ]);
   });
 

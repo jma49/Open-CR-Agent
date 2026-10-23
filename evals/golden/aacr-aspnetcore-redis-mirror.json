@@ -7,11 +7,14 @@
   "tier": "smoke",
   "source": {
     "kind": "aacr",
-    "ref": "https://github.com/dotnet/aspnetcore/pull/62936 (MIT); hand-checked 2026-09-28"
+    "ref": "https://github.com/dotnet/aspnetcore/pull/62936; hand-checked 2026-09-28",
+    "licence": "MIT",
+    "date": "2025-07-25"
   },
-  "rationale": "The change moves the Redis test containers to an internal mirror but misses one; AACR-Bench's references do not mention it, ocra found it in two runs. The defect is a line the change did not touch (an omission), so the ceiling counts it outside the changed lines; reviewers see it in the file.",
+  "rationale": "The change moves the Redis test containers to an internal mirror but misses one; AACR-Bench's references do not mention it, ocra found it in two runs. The defect is a line the change did not touch (an omission), so the ceiling counts it outside the changed lines; reviewers see it in the file. ADR-0036: optional rather than kept as first proposed: the line is outside the change, the claim is a model's, and upstream still runs the public image on that line at its 2026-09 head, so the upstream-history rule makes it optional.",
   "expect": [
     {
+      "id": "monitor-image",
       "file": "src/SignalR/server/StackExchangeRedis/test/Docker.cs",
       "lines": [
         138,
@@ -19,7 +22,14 @@
       ],
       "category": "correctness",
       "minSeverity": "suggestion",
-      "concern": "The monitor container still runs the public redis image while the server container was switched to the mirror image, so the test still pulls from Docker Hub, which the change set out to avoid."
+      "concern": "The monitor container still runs the public redis image while the server container was switched to the mirror image, so the test still pulls from Docker Hub, which the change set out to avoid.",
+      "also": [],
+      "origin": "model-found-vetted",
+      "producer": "gemini-flash-lite-latest",
+      "optional": true
     }
-  ]
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
 }

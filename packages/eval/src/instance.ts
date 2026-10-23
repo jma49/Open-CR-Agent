@@ -46,6 +46,11 @@ export interface Adjudication {
   title: string;
 }
 
+interface GoldenClaim {
+  id: string;
+  optional: boolean;
+}
+
 interface Location {
   path: string;
   fromLine: number;
@@ -57,6 +62,9 @@ interface GoldenInfo {
   clean: boolean;
   forbid: ForbiddenRange[];
   adjudicated: Adjudication[];
+  // One per reference, in their order: the claim's id within the case, and
+  // whether it is optional (counted for precision, never for recall).
+  claims: GoldenClaim[];
   // The lowest severity that counts, one per reference, in their order.
   minSeverity: Severity[];
   // Other places the same issue can rightly be reported (the docs that

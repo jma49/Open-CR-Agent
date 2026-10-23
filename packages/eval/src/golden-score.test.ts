@@ -60,7 +60,7 @@ describe("scoreGolden", () => {
         found: 1,
         reported: 5,
         right: 2,
-        claims: [{ concern: expectLogin.concern, found: true }],
+        claims: [{ id: "session-kept", concern: expectLogin.concern, found: true }],
       },
     });
   });
@@ -298,5 +298,73 @@ describe("alternate locations", () => {
     );
     expect(both.counts).toMatchObject({ expected: 1, matched: 1, correct: 2 });
     expect([both.precision, both.recall]).toEqual([1, 1]);
+  });
+});
+
+describe("optional claims", () => {
+  // Real, but not required of a review (ADR-0036): a compiler reports it.
+  const compiles = {
+    ...expectLogin,
+    id: "missing-import",
+    lines: [30, 32],
+    concern: "The import names an export that does not exist.",
+    optional: true,
+  };
+  const kase = () =>
+    toInstance(parseCase({ ...base, id: "login", expect: [expectLogin, compiles] }, "login.json"));
+
+  it("leaves an optional claim out of recall, found or not", async () => {
+    const missed = await scoreGolden([kase()], [reviewed("login", [])], judge);
+    expect(missed.counts).toMatchObject({ expected: 1, matched: 0 });
+    const onlyOptional = await scoreGolden(
+      [kase()],
+      [reviewed("login", [finding("0000000000000001", { lines: { start: 31, end: 31 } })])],
+      judge,
+    );
+    expect(onlyOptional.counts).toMatchObject({ expected: 1, matched: 0, correct: 1 });
+    expect(onlyOptional.recall).toBe(0);
+    expect(onlyOptional.cases?.login).toMatchObject({ expected: 1, found: 0, right: 1 });
+    // The recall funnel follows recall: one required claim, no session log.
+    expect(onlyOptional.funnel).toMatchObject({ found: 0, unknown: 1 });
+  });
+
+  it("counts a finding that matches an optional claim as correct, not noise", async () => {
+    const summary = await scoreGolden(
+      [kase()],
+      [
+        reviewed("login", [
+          finding("0000000000000001", { lines: { start: 11, end: 11 } }),
+          finding("0000000000000002", { lines: { start: 31, end: 31 } }),
+        ]),
+      ],
+      judge,
+    );
+    expect(summary.counts).toMatchObject({
+      expected: 1,
+      matched: 1,
+      correct: 2,
+      unadjudicated: 0,
+    });
+    expect([summary.precision, summary.recall]).toEqual([1, 1]);
+    expect(summary.cases?.login?.claims).toEqual([
+      { id: "session-kept", concern: expectLogin.concern, found: true },
+      { id: "missing-import", concern: compiles.concern, found: true, optional: true },
+    ]);
+  });
+
+  it("matches required claims first, so an optional one takes no finding from them", async () => {
+    const overlapping = toInstance(
+      parseCase(
+        { ...base, id: "login", expect: [{ ...compiles, lines: [10, 12] }, expectLogin] },
+        "login.json",
+      ),
+    );
+    const summary = await scoreGolden(
+      [overlapping],
+      [reviewed("login", [finding("0000000000000001", { lines: { start: 11, end: 11 } })])],
+      judge,
+    );
+    expect(summary.counts).toMatchObject({ expected: 1, matched: 1, correct: 1 });
+    expect(summary.recall).toBe(1);
   });
 });

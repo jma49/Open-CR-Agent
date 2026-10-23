@@ -1,15 +1,18 @@
 {
   "id": "aacr-gofr-probe-panic",
   "repo": "gofr-dev/gofr",
-  "base": "d0300073f685bb1154f7437f3172799d31bfddbe",
+  "base": "717443dc91dbf04169789d41bd4998a6ac858a14",
   "head": "c1a26ade6db7da96622c9bdca7674ef7094c122f",
   "language": "Go",
   "tier": "full",
   "source": {
     "kind": "aacr",
-    "ref": "https://github.com/gofr-dev/gofr/pull/1681 (Apache-2.0); hand-checked 2026-09-28"
+    "ref": "https://github.com/gofr-dev/gofr/pull/1681; hand-checked 2026-09-28",
+    "licence": "Apache-2.0",
+    "date": "2025-05-05"
   },
-  "rationale": "A plausible-sounding but false claim ocra made: skipping the logger for probe routes does not skip panic recovery. Checks that it is not reported.",
+  "rationale": "A plausible-sounding but false claim ocra made: skipping the logger for probe routes does not skip panic recovery. Checks that it is not reported. ADR-0036: stays forbid-only; the reason still holds at head (handler.go recovers panics for every route registered through app.add); base set to the merge base.",
+  "expect": [],
   "forbid": [
     {
       "file": "pkg/gofr/http/middleware/logger.go",
@@ -19,5 +22,7 @@
       ],
       "reason": "Probe routes are wrapped by handler.ServeHTTP, which recovers panics itself (handler.go:79); skipping the logger middleware skips only logging."
     }
-  ]
+  ],
+  "clean": false,
+  "adjudicated": []
 }

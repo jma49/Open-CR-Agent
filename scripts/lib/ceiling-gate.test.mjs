@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { baselineOf, compareCeiling, renderComparison } from "./ceiling-gate.mjs";
 
-/** @param {{ instance: string, path: string, reach: string }[]} reaches */
+/** @param {{ instance: string, claim?: string, optional?: boolean, reach: string }[]} reaches */
 function ceiling(reaches) {
   const instances = new Set(reaches.map((r) => r.instance));
+  const counted = reaches.filter((r) => !r.optional);
   return {
     summary: {
       instances: instances.size,
-      references: reaches.length,
-      byReach: { reachable: reaches.filter((r) => r.reach === "reachable").length },
+      references: counted.length,
+      byReach: { reachable: counted.filter((r) => r.reach === "reachable").length },
     },
     reaches,
   };
@@ -16,20 +17,53 @@ function ceiling(reaches) {
 
 const BASE = baselineOf(
   ceiling([
-    { instance: "a", path: "x.ts", reach: "reachable" },
-    { instance: "a", path: "x.ts", reach: "outside_diff" },
-    { instance: "b", path: "y.go", reach: "reachable" },
+    { instance: "a", claim: "stray-entry", reach: "reachable" },
+    { instance: "a", claim: "exit-order", reach: "outside_diff" },
+    { instance: "b", claim: "missing-break", reach: "reachable" },
   ]),
 );
 
 describe("ceiling gate", () => {
-  it("numbers repeated references on one path", () => {
+  it("keys each claim by its case and id", () => {
     expect(BASE.reaches).toEqual({
-      "a x.ts #1": "reachable",
-      "a x.ts #2": "outside_diff",
-      "b y.go #1": "reachable",
+      "a exit-order": "outside_diff",
+      "a stray-entry": "reachable",
+      "b missing-break": "reachable",
     });
     expect(BASE.reachable).toBe(2);
+  });
+
+  it("keeps the keys when a case's claims are reordered", () => {
+    const reordered = baselineOf(
+      ceiling([
+        { instance: "a", claim: "exit-order", reach: "outside_diff" },
+        { instance: "b", claim: "missing-break", reach: "reachable" },
+        { instance: "a", claim: "stray-entry", reach: "reachable" },
+      ]),
+    );
+    expect(compareCeiling(BASE, reordered)).toEqual({
+      changes: [],
+      problems: [],
+      improved: false,
+    });
+  });
+
+  it("leaves optional claims out of the baseline", () => {
+    const withOptional = baselineOf(
+      ceiling([
+        { instance: "a", claim: "stray-entry", reach: "reachable" },
+        { instance: "a", claim: "exit-order", reach: "outside_diff" },
+        { instance: "a", claim: "old-bypass", optional: true, reach: "outside_diff" },
+        { instance: "b", claim: "missing-break", reach: "reachable" },
+      ]),
+    );
+    expect(withOptional).toEqual(BASE);
+  });
+
+  it("refuses a measurement whose reaches have no claim id", () => {
+    expect(() => baselineOf(ceiling([{ instance: "a", reach: "reachable" }]))).toThrow(
+      "a: a reach without a claim id",
+    );
   });
 
   it("passes an unchanged measurement", () => {
@@ -37,50 +71,50 @@ describe("ceiling gate", () => {
     expect(result).toEqual({ changes: [], problems: [], improved: false });
   });
 
-  it("fails when a reachable reference stops being reachable, and shows it", () => {
+  it("fails when a reachable claim stops being reachable, and shows it", () => {
     const now = baselineOf(
       ceiling([
-        { instance: "a", path: "x.ts", reach: "file_excluded" },
-        { instance: "a", path: "x.ts", reach: "outside_diff" },
-        { instance: "b", path: "y.go", reach: "reachable" },
+        { instance: "a", claim: "stray-entry", reach: "file_excluded" },
+        { instance: "a", claim: "exit-order", reach: "outside_diff" },
+        { instance: "b", claim: "missing-break", reach: "reachable" },
       ]),
     );
     const result = compareCeiling(BASE, now);
     expect(result.problems).toEqual([
       "1 reachable, the baseline has 2",
-      "no longer reachable: a x.ts #1 (file_excluded)",
+      "no longer reachable: a stray-entry (file_excluded)",
     ]);
     expect(renderComparison(BASE, now, result)).toContain(
-      "| a x.ts #1 | reachable | file_excluded |",
+      "| a stray-entry | reachable | file_excluded |",
     );
   });
 
   it("fails when a case could not be classified", () => {
-    const now = baselineOf(ceiling([{ instance: "a", path: "x.ts", reach: "reachable" }]));
+    const now = baselineOf(ceiling([{ instance: "a", claim: "stray-entry", reach: "reachable" }]));
     const result = compareCeiling(BASE, now);
     expect(result.problems[0]).toMatch(/1 case\(s\) classified, the baseline has 2/);
-    expect(result.problems).toContain("no longer reachable: b y.go #1 (absent)");
+    expect(result.problems).toContain("no longer reachable: b missing-break (absent)");
   });
 
   it("fails a loss hidden behind a gain", () => {
     const now = baselineOf(
       ceiling([
-        { instance: "a", path: "x.ts", reach: "outside_diff" },
-        { instance: "a", path: "x.ts", reach: "reachable" },
-        { instance: "b", path: "y.go", reach: "reachable" },
+        { instance: "a", claim: "stray-entry", reach: "outside_diff" },
+        { instance: "a", claim: "exit-order", reach: "reachable" },
+        { instance: "b", claim: "missing-break", reach: "reachable" },
       ]),
     );
     const result = compareCeiling(BASE, now);
     expect(now.reachable).toBe(BASE.reachable);
-    expect(result.problems).toEqual(["no longer reachable: a x.ts #1 (outside_diff)"]);
+    expect(result.problems).toEqual(["no longer reachable: a stray-entry (outside_diff)"]);
   });
 
   it("asks to record an improvement", () => {
     const now = baselineOf(
       ceiling([
-        { instance: "a", path: "x.ts", reach: "reachable" },
-        { instance: "a", path: "x.ts", reach: "reachable" },
-        { instance: "b", path: "y.go", reach: "reachable" },
+        { instance: "a", claim: "stray-entry", reach: "reachable" },
+        { instance: "a", claim: "exit-order", reach: "reachable" },
+        { instance: "b", claim: "missing-break", reach: "reachable" },
       ]),
     );
     const result = compareCeiling(BASE, now);

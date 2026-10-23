@@ -22,8 +22,10 @@ const caseScoreSchema = z.object({
   right: z.int().nonnegative(),
   claims: z.array(
     z.object({
+      id: z.string().exactOptional(),
       concern: z.string(),
       found: z.boolean(),
+      optional: z.literal(true).exactOptional(),
       stage: z.enum(FUNNEL_STAGES).exactOptional(),
       droppedBy: z.enum(DROP_STAGES).exactOptional(),
     }),

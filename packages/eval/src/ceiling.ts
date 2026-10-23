@@ -38,6 +38,12 @@ const DOMAIN_REVIEWER: Record<string, string> = {
 
 export interface ReferenceReach {
   instance: string;
+  // A golden claim's id within its case (ADR-0036), which the ceiling gate
+  // keys on.
+  claim?: string;
+  // An optional golden claim: classified, but left out of the bound on
+  // recall, which never counts it.
+  optional?: true;
   path: string;
   category: string;
   reach: Reachability;
@@ -60,8 +66,15 @@ export function classifyReferences(
     }
   }
 
-  return instance.references.map((ref): ReferenceReach => {
-    const base = { instance: instance.id, path: ref.path, category: ref.category };
+  return instance.references.map((ref, k): ReferenceReach => {
+    const claim = instance.golden?.claims[k];
+    const base = {
+      instance: instance.id,
+      ...(claim ? { claim: claim.id } : {}),
+      ...(claim?.optional ? { optional: true as const } : {}),
+      path: ref.path,
+      category: ref.category,
+    };
     const reason = excluded.get(ref.path);
     if (reason) return { ...base, reach: "file_excluded", detail: reason };
     if (!selected.has(ref.path)) return { ...base, reach: "not_in_change" };
@@ -104,6 +117,8 @@ export interface CeilingSummary {
   // The tier decides which reviewers run, so it is the cost side of the ceiling.
   byTier: Record<RiskTier, number>;
   references: number;
+  // Optional golden claims, classified in the reaches but not counted here.
+  optional: number;
   byReach: Record<Reachability, number>;
   excludedBy: Record<string, number>;
   byCategory: Record<string, { total: number; reachable: number }>;
@@ -122,7 +137,8 @@ export function summarizeCeiling(
   >;
   const excludedBy: Record<string, number> = {};
   const byCategory: Record<string, { total: number; reachable: number }> = {};
-  for (const r of reaches) {
+  const counted = reaches.filter((r) => !r.optional);
+  for (const r of counted) {
     byReach[r.reach] += 1;
     if (r.reach === "file_excluded" && r.detail)
       excludedBy[r.detail] = (excludedBy[r.detail] ?? 0) + 1;
@@ -135,7 +151,8 @@ export function summarizeCeiling(
     dataset,
     instances: tiers.length,
     byTier,
-    references: reaches.length,
+    references: counted.length,
+    optional: reaches.length - counted.length,
     byReach,
     excludedBy,
     byCategory,
@@ -159,7 +176,8 @@ const SCOPE: Record<Dataset, { title: string; count(summary: CeilingSummary): st
   },
   golden: {
     title: "golden cases",
-    count: (s) => `${s.references} expected findings in ${s.instances} case(s)`,
+    count: (s) =>
+      `${s.references} required claims in ${s.instances} case(s)${s.optional > 0 ? ` (and ${s.optional} optional ones, which recall does not count)` : ""}`,
   },
 };
 

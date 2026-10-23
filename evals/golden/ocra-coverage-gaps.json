@@ -7,22 +7,29 @@
   "tier": "smoke",
   "source": {
     "kind": "ocra-history",
-    "ref": "fixed by b5dcdb3 (stray plugin) and eadf263 (exit code order)"
+    "ref": "fixed by b5dcdb3 (stray plugin, #141) and eadf263 (exit code order, #162); the nothing-reviewed claim fixed by a512827 and 30f2558 after ocra runs reported it; safeMarkdown fixed earlier by 0981bbd",
+    "licence": "Apache-2.0",
+    "date": "2026-09-27"
   },
-  "rationale": "A sed edit added a function to the built-in plugin list, and the new incomplete-review check sits after the blocking return, so both bugs are visible in the diff.",
+  "rationale": "A sed edit added a function to the built-in plugin list, and the new incomplete-review check sits after the blocking return, so both bugs are visible in the diff. ADR-0036: the two claims on report.ts (one range, one fingerprint) are merged into one optional claim, found once each by a model and in no other run; the safeMarkdown claim is optional, since it is pre-existing code the change does not touch; stray-plugin's minSeverity drops to suggestion, since its fix calls it harmless. exit-order is marked for vetting again: the same return order already stood at base for other checks, the same diff documents exit 3 as applying only without a blocking verdict, and the harm shows in action.yml, outside the change.",
   "expect": [
     {
+      "id": "stray-plugin",
       "file": "packages/cli/src/review/command.ts",
       "lines": [
         39,
         39
       ],
       "category": "correctness",
-      "minSeverity": "warning",
+      "minSeverity": "suggestion",
       "concern": "coverageGaps is a helper function, not a plugin, yet it was added to BUILTIN_PLUGINS; it type-checks because functions have a name, and registers nothing.",
-      "also": []
+      "also": [],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": false
     },
     {
+      "id": "exit-order",
       "file": "packages/cli/src/review/command.ts",
       "lines": [
         192,
@@ -31,9 +38,13 @@
       "category": "correctness",
       "minSeverity": "warning",
       "concern": "A blocking verdict returns exit 1 before the new coverage check, so a review that left files unreviewed exits 1 instead of 3, and the action lets 1 pass by default.",
-      "also": []
+      "also": [],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": false
     },
     {
+      "id": "nothing-reviewed",
       "file": "packages/core/src/pipeline/report.ts",
       "lines": [
         22,
@@ -41,10 +52,22 @@
       ],
       "category": "correctness",
       "minSeverity": "suggestion",
-      "concern": "coverageGaps incorrectly treats unchanged files as unreviewed, leading to incorrect \"Nothing was reviewed\" status",
-      "also": []
+      "concern": "coverageGaps calls a run nothing-reviewed whenever no file ends up reviewed, so a run that reviewed only unchanged files carried over, or files one reviewer finished while another reviewer's task on them failed, replaces the summary with 'Nothing was reviewed' and skips judge_finished while its findings and verdict stand.",
+      "also": [
+        {
+          "file": "packages/core/src/pipeline/run.ts",
+          "lines": [
+            171,
+            185
+          ]
+        }
+      ],
+      "origin": "model-found-vetted",
+      "producer": "gemini-3.5-flash or -flash-lite",
+      "optional": true
     },
     {
+      "id": "reference-links",
       "file": "packages/vcs-github/src/render.ts",
       "lines": [
         44,
@@ -52,19 +75,11 @@
       ],
       "category": "security",
       "minSeverity": "suggestion",
-      "concern": "Reference-Style Markdown Link Bypass in safeMarkdown",
-      "also": []
-    },
-    {
-      "file": "packages/core/src/pipeline/report.ts",
-      "lines": [
-        22,
-        26
-      ],
-      "category": "correctness",
-      "minSeverity": "suggestion",
-      "concern": "Incorrect nothingReviewed evaluation in multi-reviewer scenarios with partial task failures",
-      "also": []
+      "concern": "safeMarkdown breaks inline links only, so a reference-style link in model text ([text][1] with a [1]: definition) still renders as a live link whose label hides its target.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": true
     }
   ],
   "forbid": [],

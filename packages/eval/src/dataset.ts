@@ -14,6 +14,9 @@ const recordSchema = z.object({
   pr_target_commit: z.string().regex(/^[0-9a-f]{7,64}$/),
   pr_change_line_count: z.coerce.number(),
   pr_category: z.string(),
+  // Most references were written by a model, not a person.
+  is_ai_comment: z.boolean().optional(),
+  source_model: z.string().optional(),
   note: z.string(),
   path: z.string(),
   side: z.enum(["left", "right"]),

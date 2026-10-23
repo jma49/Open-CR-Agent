@@ -1,17 +1,20 @@
 {
   "id": "aacr-elasticsearch-project-delta",
   "repo": "elastic/elasticsearch",
-  "base": "3594ade2a9ce3dac2abda77add51cc88990ce43a",
+  "base": "b8d741765f1a38d07bb503a6129899ac13242222",
   "head": "2adcb2d510ac8667f771842572c4b2c8bcaf2992",
   "language": "Java",
   "tier": "smoke",
   "source": {
     "kind": "aacr",
-    "ref": "https://github.com/elastic/elasticsearch/pull/127697 (AGPL-3.0, SSPL or Elastic License 2.0); hand-checked 2026-09-29"
+    "ref": "https://github.com/elastic/elasticsearch/pull/127697 (licensed AGPL-3.0-only, SSPL-1.0 or Elastic License 2.0 at the user's election; the AGPL option is recorded); hand-checked 2026-09-29; 869a9e0c5b in the same pull request added the identity shortcut",
+    "licence": "AGPL-3.0-only",
+    "date": "2025-05-05"
   },
-  "rationale": "A cluster state update is a hot path, and the new delta copies both project-id sets on every update with more than the default project, even when nothing changed. ocra reported it in all four runs on this pull request, and an AACR-Bench reference makes the same point. The first performance expectation in the set.",
+  "rationale": "A cluster state update is a hot path, and the new delta copies both project-id sets on every update with more than the default project, even when nothing changed. ocra reported it in all four runs on this pull request, and an AACR-Bench reference written by a person makes the same point. The first performance expectation in the set. ADR-0036: kept; the pull request's next commit added the identity check the reference asked for; base set to the merge base.",
   "expect": [
     {
+      "id": "delta-copies",
       "file": "server/src/main/java/org/elasticsearch/cluster/ClusterChangedEvent.java",
       "lines": [
         351,
@@ -19,7 +22,14 @@
       ],
       "category": "performance",
       "minSeverity": "suggestion",
-      "concern": "calculateProjectDelta builds two Sets.difference copies of the project ids on every cluster state update with more than the default project, even when the projects did not change; a check for the same metadata or equal key sets would skip them."
+      "concern": "calculateProjectDelta builds two Sets.difference copies of the project ids on every cluster state update with more than the default project, even when the projects did not change; a check for the same metadata or equal key sets would skip them.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
     }
-  ]
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
 }

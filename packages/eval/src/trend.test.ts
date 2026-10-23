@@ -15,8 +15,8 @@ const kase = (hits: [boolean, boolean], reported: number, right: number): Golden
   reported,
   right,
   claims: [
-    { concern: "first | issue", found: hits[0] },
-    { concern: "second issue", found: hits[1] },
+    { id: "first", concern: "first | issue", found: hits[0] },
+    { id: "second", concern: "second issue", found: hits[1] },
   ],
 });
 
@@ -138,19 +138,19 @@ describe("trend", () => {
     ]);
     expect(trend.claims.map((c) => [c.id, c.hits])).toEqual([
       [
-        "a#1",
+        "a#first",
         { "free-m@feat-x-smoke": { hits: 1, runs: 1 }, "free-m@main-smoke": { hits: 1, runs: 2 } },
       ],
       [
-        "a#2",
+        "a#second",
         { "free-m@feat-x-smoke": { hits: 1, runs: 1 }, "free-m@main-smoke": { hits: 0, runs: 2 } },
       ],
       [
-        "b#1",
+        "b#first",
         { "free-m@feat-x-smoke": { hits: 1, runs: 1 }, "free-m@main-smoke": { hits: 2, runs: 2 } },
       ],
       [
-        "b#2",
+        "b#second",
         { "free-m@feat-x-smoke": { hits: 0, runs: 1 }, "free-m@main-smoke": { hits: 2, runs: 2 } },
       ],
     ]);
@@ -204,7 +204,7 @@ describe("trend", () => {
     );
     expect(text).toContain("- Golden recall: 62.5% (SD 17.7%; 50.0% to 75.0%)");
     expect(text).toContain("## Across series, on the 2 case(s) every scored run reviewed");
-    expect(text).toContain("| a#1 | first \\| issue | 1/1 | 1/2 |");
+    expect(text).toContain("| a#first | first \\| issue | 1/1 | 1/2 |");
     expect(err.join("")).toContain("skipped unscored: not scored yet");
   });
 
@@ -233,8 +233,35 @@ describe("trend", () => {
     const text = out.join("");
     expect(text).toContain("| s-1 | 0123456789ab | 1 | 50.0% | 100.0% | 0 | 0 | 0/1/0/0/1 |");
     expect(text).toContain("| s-3 | 0123456789ab | 1 | 50.0% | 100.0% | 0 | 0 | unknown |");
-    expect(text).toContain("| a#1 | first \\| issue | 2/3 (dropped 1) |");
-    expect(text).toContain("| a#2 | second issue | 0/3 (looked 1, underrated 1, unknown 1) |");
+    expect(text).toContain("| a#first | first \\| issue | 2/3 (dropped 1) |");
+    expect(text).toContain("| a#second | second issue | 0/3 (looked 1, underrated 1, unknown 1) |");
+  });
+
+  it("pairs claims by id across runs that list them in another order, and marks optional ones", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ocra-trend-"));
+    const [first, second] = kase([true, false], 1, 1).claims;
+    if (!first || !second) throw new Error("fixture lost a claim");
+    const extra = {
+      id: "extra",
+      concern: "found by a model",
+      found: true,
+      optional: true as const,
+    };
+    await writeRun(join(root, "s-1"), {
+      runId: "s-1",
+      cases: { a: { ...kase([true, false], 1, 1), claims: [first, second, extra] } },
+    });
+    await writeRun(join(root, "s-2"), {
+      runId: "s-2",
+      cases: { a: { ...kase([true, false], 1, 1), claims: [second, first] } },
+    });
+    const trend = buildTrend((await loadTrendRuns(root)).runs);
+    expect(trend.claims.map((c) => [c.id, c.optional, c.stability])).toEqual([
+      ["a#first", undefined, { hits: 2, runs: 2 }],
+      ["a#second", undefined, { hits: 0, runs: 2 }],
+      ["a#extra", true, { hits: 1, runs: 1 }],
+    ]);
+    expect(trend.series[0]?.runs[0]).toMatchObject({ scored: { funnel: { unknown: 2 } } });
   });
 
   it("fails when there is no golden run", async () => {

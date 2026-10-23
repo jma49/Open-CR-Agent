@@ -192,3 +192,7 @@ _Avoid_: Test case, fixture
 **Golden tier**:
 A named set of golden cases of growing cost: `smoke`, `full` or `adversarial`.
 _Avoid_: Tier (alone), suite
+
+**Claim**:
+One issue a golden case expects, with an id stable within its case, an origin and a producer; required claims count for recall, optional ones only for precision (ADR-0036).
+_Avoid_: Reference (an AACR-Bench comment)

@@ -35,7 +35,66 @@ const linesSchema = z
 const commitSchema = z.string().regex(/^[0-9a-f]{7,64}$/);
 const idSchema = z.string().regex(/^[a-z0-9][a-z0-9._-]{0,99}$/);
 
-const caseSchema = z
+// ADR-0036: a case stores ids, paths, line ranges and ocra's own sentence,
+// so any OSI licence will do, copyleft included. Source-available licences
+// (Sustainable Use, Timescale, BUSL, SSPL or ELv2 alone) are not on the list;
+// for a choice of licences, the case records the OSI option.
+const LICENCES = [
+  "0BSD",
+  "AGPL-3.0-only",
+  "AGPL-3.0-or-later",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "BSL-1.0",
+  "EPL-2.0",
+  "GPL-2.0-only",
+  "GPL-2.0-or-later",
+  "GPL-3.0-only",
+  "GPL-3.0-or-later",
+  "ISC",
+  "LGPL-2.0-or-later",
+  "LGPL-2.1-only",
+  "LGPL-2.1-or-later",
+  "LGPL-3.0-only",
+  "LGPL-3.0-or-later",
+  "MIT",
+  "MIT-0",
+  "MPL-2.0",
+  "PHP-3.01",
+  "PostgreSQL",
+  "Python-2.0",
+  "Unlicense",
+  "Zlib",
+] as const;
+
+// Where a claim came from (ADR-0036). author-fix wins whenever upstream later
+// fixed the code: the fix is the strongest evidence that the claim is real.
+const CLAIM_ORIGINS = [
+  "human-review",
+  "author-fix",
+  "ai-reference-vetted",
+  "model-found-vetted",
+  "maintainer",
+] as const;
+
+// Per case, so no case can dominate a tier's recall or precision.
+const MAX_REQUIRED_CLAIMS = 3;
+const MAX_OPTIONAL_CLAIMS = 5;
+const MAX_FORBID_RANGES = 3;
+
+// The head commit's date, for splitting metrics at a model's training cutoff.
+const dateSchema = z.iso.date();
+const claimIdSchema = z
+  .string()
+  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "must be a short kebab-case slug")
+  .max(40);
+
+// SPDX's word for a licence nobody determined: what an imported candidate
+// carries until someone checks it. No case loads with it.
+export const UNCHECKED_LICENCE = "NOASSERTION";
+
+const candidateSchema = z
   .object({
     id: idSchema,
     repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/, "must be owner/name on GitHub"),
@@ -44,25 +103,43 @@ const caseSchema = z
     language: z.string().min(1),
     tier: z.enum(["smoke", "full"]),
     source: z
-      .object({ kind: z.enum(["ocra-history", "dogfood", "aacr"]), ref: z.string().min(1) })
+      .object({
+        kind: z.enum(["ocra-history", "dogfood", "aacr", "github", "reviewbench"]),
+        ref: z.string().min(1),
+        licence: z.enum([...LICENCES, UNCHECKED_LICENCE]),
+        date: dateSchema,
+      })
       .strict(),
     rationale: z.string().min(1),
+    // Who vetted the case and when; the second rater of ADR-0036's protocol.
+    raters: z.array(z.object({ by: z.string().min(1), date: dateSchema }).strict()).optional(),
     expect: z
       .array(
         z
           .object({
+            // Stable within the case: scores, the ceiling and trends pair
+            // claims by it, never by position.
+            id: claimIdSchema,
             file: pathSchema,
             lines: linesSchema,
             category: z.enum(["correctness", "security", "performance"]),
             minSeverity: severitySchema,
             concern: z.string().min(1),
             also: z.array(z.object({ file: pathSchema, lines: linesSchema }).strict()).default([]),
+            origin: z.enum(CLAIM_ORIGINS),
+            // "human", a model id, or a tool.
+            producer: z.string().min(1),
+            // Real, but outside what the reviewers are asked to report, or
+            // not vetted enough to require: a match counts for precision,
+            // never for recall.
+            optional: z.boolean().default(false),
           })
           .strict(),
       )
       .default([]),
     forbid: z
       .array(z.object({ file: pathSchema, lines: linesSchema, reason: z.string().min(1) }).strict())
+      .max(MAX_FORBID_RANGES)
       .default([]),
     clean: z.boolean().default(false),
     // The maintainer's verdict on findings that matched no expect entry,
@@ -91,7 +168,24 @@ const caseSchema = z
   .refine(
     (c) => c.clean || c.expect.length > 0 || c.forbid.length > 0,
     "a case needs expect, forbid or clean: true",
+  )
+  .refine(
+    (c) => new Set(c.expect.map((e) => e.id)).size === c.expect.length,
+    "claim ids are unique within a case",
+  )
+  .refine(
+    (c) => c.expect.filter((e) => !e.optional).length <= MAX_REQUIRED_CLAIMS,
+    `a case has at most ${MAX_REQUIRED_CLAIMS} required claims`,
+  )
+  .refine(
+    (c) => c.expect.filter((e) => e.optional).length <= MAX_OPTIONAL_CLAIMS,
+    `a case has at most ${MAX_OPTIONAL_CLAIMS} optional claims`,
   );
+
+const caseSchema = candidateSchema.refine((c) => c.source.licence !== UNCHECKED_LICENCE, {
+  message: "check the repository's licence at head and record one from the allowlist",
+  path: ["source", "licence"],
+});
 
 export type GoldenCase = z.infer<typeof caseSchema>;
 
@@ -143,7 +237,16 @@ function parseAttackCase(data: unknown, source: string): AttackCase {
 }
 
 export function parseCase(data: unknown, source: string): GoldenCase {
-  const result = caseSchema.safeParse(data);
+  return parseWith(caseSchema, data, source);
+}
+
+// What golden-import writes: a case whose licence nobody has checked yet.
+export function parseCandidate(data: unknown, source: string): GoldenCase {
+  return parseWith(candidateSchema, data, source);
+}
+
+function parseWith(schema: typeof caseSchema, data: unknown, source: string): GoldenCase {
+  const result = schema.safeParse(data);
   if (!result.success) {
     const issue = result.error.issues[0];
     throw new Error(`${source}: ${issue?.path.join(".") || "case"}: ${issue?.message}`);
@@ -212,6 +315,7 @@ export function toInstance(golden: GoldenCase): Instance {
         reason: f.reason,
       })),
       adjudicated: golden.adjudicated,
+      claims: golden.expect.map((e) => ({ id: e.id, optional: e.optional })),
       minSeverity: golden.expect.map((e) => e.minSeverity),
       alternates: golden.expect.map((e) =>
         e.also.map((a) => ({ path: a.file, fromLine: a.lines[0], toLine: a.lines[1] })),

@@ -91,12 +91,41 @@ describe("classifyReferences", () => {
     );
   });
 
-  it("names golden cases as cases with expected findings", () => {
+  it("names golden cases as cases with required claims", () => {
     const summary = summarizeCeiling("golden", classifyReferences(instance, preview, diffs), [
       "lite",
     ]);
     expect(renderCeiling(summary)).toContain(
-      "# Recall ceiling, golden cases\n\n7 expected findings in 1 case(s),",
+      "# Recall ceiling, golden cases\n\n7 required claims in 1 case(s),",
+    );
+  });
+
+  it("keys golden claims by id and leaves optional ones out of the bound", () => {
+    const golden: Instance = {
+      ...instance,
+      references: [ref("src/a.ts", "Code Defect", 11), ref("src/a.ts", "Code Defect", 200)],
+      golden: {
+        tier: "smoke",
+        clean: false,
+        forbid: [],
+        adjudicated: [],
+        claims: [
+          { id: "in-diff", optional: false },
+          { id: "pre-existing", optional: true },
+        ],
+        minSeverity: ["suggestion", "suggestion"],
+        alternates: [[], []],
+      },
+    };
+    const reaches = classifyReferences(golden, preview, diffs);
+    expect(reaches.map((r) => [r.claim, r.optional, r.reach])).toEqual([
+      ["in-diff", undefined, "reachable"],
+      ["pre-existing", true, "outside_diff"],
+    ]);
+    const summary = summarizeCeiling("golden", reaches, ["lite"]);
+    expect([summary.references, summary.optional, summary.byReach.outside_diff]).toEqual([1, 1, 0]);
+    expect(renderCeiling(summary)).toContain(
+      "1 required claims in 1 case(s) (and 1 optional ones, which recall does not count)",
     );
   });
 });

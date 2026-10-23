@@ -57,17 +57,26 @@ export function compareClaims(
   const common = Object.keys(scored[0] ?? {})
     .filter((id) => scored.every((c) => id in c))
     .sort();
-  const side = (summaries: readonly SavedSummary[], id: string, k: number): ClaimHits => ({
-    hits: summaries.filter((s) => s.summary.golden?.cases?.[id]?.claims[k]?.found === true).length,
+  // By claim id (ADR-0036); optional claims never count for recall.
+  const side = (summaries: readonly SavedSummary[], id: string, claim: string): ClaimHits => ({
+    hits: summaries.filter((s) =>
+      s.summary.golden?.cases?.[id]?.claims.some((c) => c.id === claim && c.found),
+    ).length,
     runs: summaries.length,
   });
   const rows: ClaimRow[] = common.flatMap((id) =>
-    (scored[0]?.[id]?.claims ?? []).map((claim, k) => ({
-      id: `${id}#${k + 1}`,
-      concern: claim.concern,
-      baseline: side(baselines, id, k),
-      run: side(runs, id, k),
-    })),
+    (scored[0]?.[id]?.claims ?? []).flatMap((claim) =>
+      claim.id === undefined || claim.optional
+        ? []
+        : [
+            {
+              id: `${id}#${claim.id}`,
+              concern: claim.concern,
+              baseline: side(baselines, id, claim.id),
+              run: side(runs, id, claim.id),
+            },
+          ],
+    ),
   );
   const rate = (h: ClaimHits) => h.hits / h.runs;
   const differing = rows.filter((r) => rate(r.run) !== rate(r.baseline));
@@ -111,7 +120,7 @@ export function renderClaimComparison(comparison: ClaimComparison): string {
   const t = comparison.test;
   if (t) {
     lines.push(
-      `Sign test over the ${comparison.claims} expected finding(s) of the cases every run reviewed: ${t.better} found more often by the run, ${t.worse} less often, ${t.tied} as often; two-sided p = ${t.pValue.toFixed(3)}: ${t.verdict}.`,
+      `Sign test over the ${comparison.claims} required claim(s) of the cases every run reviewed: ${t.better} found more often by the run, ${t.worse} less often, ${t.tied} as often; two-sided p = ${t.pValue.toFixed(3)}: ${t.verdict}.`,
       "",
     );
   }

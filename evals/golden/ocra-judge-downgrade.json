@@ -7,19 +7,44 @@
   "tier": "full",
   "source": {
     "kind": "ocra-history",
-    "ref": "fixed by 4d27271"
+    "ref": "fixed by 4d27271 (#120, closes #116); found by the maintainer's first 2026-09-27 audit",
+    "licence": "Apache-2.0",
+    "date": "2026-09-26"
   },
-  "rationale": "The verdict change protects confirmed critical findings from being dropped by the judge but lets the judge downgrade them, which clears the blocking verdict just the same; the judge reads author-controlled text.",
+  "rationale": "The verdict change protects confirmed critical findings from being dropped by the judge but lets the judge downgrade them, which clears the blocking verdict just the same; the judge reads author-controlled text. ADR-0036: kept, with the 67-line range narrowed to the comment and check that allow the downgrade, and the loop that applies it and the test that asserts it as alternates. At head the downgrade was a documented, tested design; the maintainer reversed it later (#116), hence author-fix.",
   "expect": [
     {
+      "id": "downgrade-allowed",
       "file": "packages/core/src/judge/judge.ts",
       "lines": [
         97,
-        163
+        102
       ],
       "category": "security",
       "minSeverity": "warning",
-      "concern": "The new protection keeps the judge from dropping a confirmed critical finding but explicitly lets it downgrade one, and the recalibration loop applies any downgrade; a downgrade to suggestion clears significant_concerns just the same, and the judge reads text the PR's author controls."
+      "concern": "The judge may not drop a critical finding Verify confirmed but may downgrade it, and the severity loop applies any downgrade, so a judge that reads text the PR's author controls can clear significant_concerns by lowering the finding to warning or suggestion.",
+      "also": [
+        {
+          "file": "packages/core/src/judge/judge.ts",
+          "lines": [
+            149,
+            163
+          ]
+        },
+        {
+          "file": "packages/core/src/judge/judge.test.ts",
+          "lines": [
+            138,
+            145
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": false
     }
-  ]
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
 }

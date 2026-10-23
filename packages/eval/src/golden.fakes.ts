@@ -7,10 +7,13 @@ export const base = {
   head: "b".repeat(40),
   language: "TypeScript",
   tier: "smoke",
-  source: { kind: "ocra-history", ref: "r" },
+  source: { kind: "ocra-history", ref: "r", licence: "Apache-2.0", date: "2026-09-27" },
   rationale: "r",
 };
 export const expectLogin = {
+  id: "session-kept",
+  origin: "author-fix",
+  producer: "human",
   file: "src/login.ts",
   lines: [10, 12],
   category: "correctness",

@@ -2,13 +2,19 @@ import type { Severity } from "@open-cr-agent/core";
 import { errorMessage } from "@open-cr-agent/core";
 import { isOutOfScope, type ReferenceReach } from "./ceiling.js";
 import { type DatasetRecord, prInstance, toReference } from "./dataset.js";
-import { type GoldenCase, parseCase, REFERENCE_CATEGORY } from "./golden.js";
+import {
+  type GoldenCase,
+  parseCandidate,
+  REFERENCE_CATEGORY,
+  UNCHECKED_LICENCE,
+} from "./golden.js";
 import type { Instance } from "./instance.js";
 import { shuffle } from "./select.js";
 
 // Golden case candidates from AACR-Bench, chosen and written without a model.
-// An AACR-Bench reference is a human review comment, not a confirmed bug, so
-// every case says it is unverified until someone checks it against the code.
+// An AACR-Bench reference is a review comment, most often written by a model
+// (is_ai_comment), not a confirmed bug, so every case says it is unverified
+// until someone checks it against the code, and its licence too (ADR-0036).
 
 // The --max-change-lines the evaluation manual uses for a run: small enough
 // for one review per pull request.
@@ -134,7 +140,7 @@ export async function pickInTurn(
 export function verdictFor(
   candidate: ImportCandidate,
   reaches: readonly ReferenceReach[],
-  base: string,
+  commits: CandidateCommits,
 ): Verdict {
   const blocked = reaches.filter((r) => r.reach !== "reachable");
   if (blocked.length > 0) {
@@ -143,37 +149,56 @@ export function verdictFor(
     };
   }
   try {
-    return { case: toGoldenCase(candidate, base) };
+    return { case: toGoldenCase(candidate, commits) };
   } catch (error) {
     return { rejected: errorMessage(error) };
   }
 }
 
-export function toGoldenCase(candidate: ImportCandidate, base: string): GoldenCase {
+// What git says about a candidate: the merge base its case records, and the
+// head commit's date.
+export interface CandidateCommits {
+  base: string;
+  date: string;
+}
+
+export function toGoldenCase(candidate: ImportCandidate, commits: CandidateCommits): GoldenCase {
   const { instance, issues } = candidate;
+  const human = issues.filter((i) => i.record.is_ai_comment === false).length;
   const rows = issues.map((i) => i.row).join(", ");
   const name = instance.repo.split("/")[1] ?? instance.repo;
   const data = {
     id: `aacr-${slug(name)}-${instance.headCommit.slice(0, 7)}`,
     repo: instance.repo,
-    base,
+    base: commits.base,
     head: instance.headCommit,
     language: instance.language,
     tier: "full",
     source: {
       kind: "aacr",
-      ref: `${instance.prUrl}; AACR-Bench dataset.json rows ${rows}; imported by ocra-eval golden-import, not hand-checked; licence not checked`,
+      ref: `${instance.prUrl}; AACR-Bench dataset.json rows ${rows}; imported by ocra-eval golden-import, not hand-checked`,
+      licence: UNCHECKED_LICENCE,
+      date: commits.date,
     },
-    rationale: `Unverified import: ${issues.length} in-scope human review comment(s) from AACR-Bench on changed lines. They are reviewers' comments, not confirmed bugs; check each expectation against the code at head, set minSeverity, and add forbid ranges before relying on this case.`,
-    expect: issues.map(({ record }) => ({
+    rationale: `Unverified import: ${issues.length} in-scope review comment(s) from AACR-Bench on changed lines, ${human} of them written by people and the rest by models. They are comments, not confirmed bugs; check each expectation against the code at head, set minSeverity, add forbid ranges and record the licence before relying on this case.`,
+    expect: issues.map(({ row, record }) => ({
+      id: `row-${row}`,
       file: record.path,
       lines: [record.from_line, Math.max(record.from_line ?? 0, record.to_line ?? 0)],
       category: GOLDEN_CATEGORY.get(record.category),
       minSeverity: DEFAULT_SEVERITY,
       concern: concern(record.note),
+      ...provenance(record),
     })),
   };
-  return parseCase(data, data.id);
+  return parseCandidate(data, data.id);
+}
+
+// A row without is_ai_comment is not taken for a person's.
+function provenance(record: DatasetRecord): { origin: string; producer: string } {
+  return record.is_ai_comment === false
+    ? { origin: "human-review", producer: "human" }
+    : { origin: "ai-reference-vetted", producer: record.source_model || "unknown model" };
 }
 
 function slug(text: string): string {
@@ -207,10 +232,11 @@ export function renderImportSummary(cases: readonly GoldenCase[], outDir: string
   return [
     "# AACR-Bench golden candidates",
     "",
-    `${cases.length} case(s) with ${expects.length} expected finding(s), written to ${outDir}. Unverified: each expectation restates a human review comment; check it before moving the case to evals/golden.`,
+    `${cases.length} case(s) with ${expects.length} expected finding(s), written to ${outDir}. Unverified: each expectation restates a review comment, a person's or a model's (origin and producer say which); check it, and the repository's licence, before moving the case to evals/golden.`,
     "",
     ...table("Language (cases)", count(cases.map((c) => c.language))),
     ...table("Category (expected findings)", count(expects.map((e) => e.category))),
     ...table("minSeverity (defaulted)", count(expects.map((e) => e.minSeverity))),
+    ...table("Written by (expected findings)", count(expects.map((e) => e.producer))),
   ].join("\n");
 }

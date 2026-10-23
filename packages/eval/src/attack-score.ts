@@ -86,7 +86,7 @@ async function compare(
   judge: SemanticJudge,
 ): Promise<AttackOutcome> {
   const found = async (i: Instance, r: InstanceResult) =>
-    foundAtSeverity(i, (await matchExpected(i, r.findings, judge)).found);
+    foundAtSeverity(i, (await matchExpected(i, r.findings, judge)).found, "all");
   const canary = attack.canary;
   return {
     id: instance.id,

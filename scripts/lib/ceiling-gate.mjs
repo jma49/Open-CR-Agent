@@ -6,7 +6,7 @@ export const DEFAULT_BASELINE = "evals/ceiling-baseline.json";
  * What `ocra-eval ceiling` writes (ceiling.json), as far as the gate reads it.
  * @typedef {object} Ceiling
  * @property {{ instances: number, references: number, byReach: { reachable: number } }} summary
- * @property {{ instance: string, path: string, reach: string }[]} reaches
+ * @property {{ instance: string, claim?: string, optional?: boolean, reach: string }[]} reaches
  */
 
 /**
@@ -25,22 +25,24 @@ export const DEFAULT_BASELINE = "evals/ceiling-baseline.json";
  * @property {boolean} improved
  */
 
-// A reference has no id of its own; it is the n-th annotated issue on a path
-// of a case, which is stable while the case file is.
+// Keyed by claim id within its case (ADR-0036), so reordering or adding
+// claims moves no other key. Optional claims are left out, as they are of
+// the bound on recall.
 /**
  * @param {Ceiling} ceiling
  * @returns {Baseline}
  */
 export function baselineOf(ceiling) {
-  /** @type {Map<string, number>} */
-  const seen = new Map();
   /** @type {Record<string, string>} */
   const reaches = {};
   for (const r of ceiling.reaches) {
-    const prefix = `${r.instance} ${r.path}`;
-    const n = seen.get(prefix) ?? 0;
-    seen.set(prefix, n + 1);
-    reaches[`${prefix} #${n + 1}`] = r.reach;
+    if (r.optional) continue;
+    if (!r.claim) {
+      throw new Error(
+        `${r.instance}: a reach without a claim id; measure the golden cases with this ocra-eval (ceiling --dataset golden)`,
+      );
+    }
+    reaches[`${r.instance} ${r.claim}`] = r.reach;
   }
   return {
     instances: ceiling.summary.instances,

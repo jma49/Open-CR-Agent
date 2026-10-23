@@ -100,7 +100,16 @@ async function classifyCandidate(
     if (mergeBase.exitCode !== 0) {
       return { rejected: `git merge-base failed: ${mergeBase.stderr.trim()}` };
     }
-    return verdictFor(candidate, reaches, mergeBase.stdout.trim());
+    const date = await exec(
+      "git",
+      ["log", "-1", "--format=%cs", "--end-of-options", instance.headCommit],
+      { cwd: dir },
+    );
+    if (date.exitCode !== 0) return { rejected: `git log failed: ${date.stderr.trim()}` };
+    return verdictFor(candidate, reaches, {
+      base: mergeBase.stdout.trim(),
+      date: date.stdout.trim(),
+    });
   } catch (error) {
     return { rejected: errorMessage(error).split("\n")[0] ?? "failed" };
   }

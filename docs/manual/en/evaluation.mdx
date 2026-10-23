@@ -42,7 +42,7 @@ Reviews always run with `--no-repo-config`, so benchmark repositories cannot loa
 
 ## Golden cases
 
-AACR-Bench's references are the comments reviewers happened to leave, so a real issue nobody commented on counts against ocra. For decisions about ocra itself, the repository keeps its own cases in `evals/golden/` ([ADR-0011](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)), used with `--dataset golden`.
+AACR-Bench's references are the comments reviewers happened to leave, about three quarters of them written by AI models, so a real issue nobody commented on counts against ocra. For decisions about ocra itself, the repository keeps its own cases in `evals/golden/` ([ADR-0011](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)), chosen and vetted as [ADR-0036](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0036-golden-case-set-policy.md) and `evals/golden/README.md` say, used with `--dataset golden`.
 
 ```bash
 node packages/eval/dist/main.js list    --dataset golden --tier smoke    # free
@@ -56,12 +56,13 @@ A case is one JSON file named after its `id`, validated when it loads:
 | `id` | Lowercase letters, digits, `.`, `_`, `-`; the file name without `.json` |
 | `repo`, `base`, `head` | A public GitHub repository (`owner/name`) and the two commits of the change |
 | `language`, `tier` | Project language; `smoke` (run before and after every change that needs an eval) or `full` |
-| `source`, `rationale` | Where the case comes from (`ocra-history`, `dogfood` or `aacr`, with a reference) and why it was taken |
-| `expect` | Findings ocra must report: `file`, `lines` (`[from, to]` on the new side), `category` (`correctness`, `security`, `performance`), `minSeverity` (a match below it counts for precision, not recall), `concern`, and optionally `also`: other `file`/`lines` where the same issue is rightly reported (say, the docs promising the behavior), counted once wherever found |
-| `forbid` | Ranges where a finding is wrong: `file`, `lines`, `reason` |
+| `source` | Where the case comes from: `kind` (`ocra-history`, `dogfood`, `aacr`, `github` or `reviewbench`), `ref` (a reference), `licence` (the repository's SPDX licence id, from an allowlist of OSI licences, copyleft included; for a choice of licences, the OSI option) and `date` (the head commit's date, `YYYY-MM-DD`) |
+| `rationale`, `raters` | Why the case was taken; optionally who vetted it and when (`by`, `date`) |
+| `expect` | Claims: findings ocra should report. `id` (a short kebab-case slug, unique in the case; runs, the ceiling and trends pair claims by it), `file`, `lines` (`[from, to]` on the new side), `category` (`correctness`, `security`, `performance`), `minSeverity` (a match below it counts for precision, not recall), `concern`, `origin` (`human-review`, `author-fix`, `ai-reference-vetted`, `model-found-vetted` or `maintainer`), `producer` (`human`, a model id or a tool), `optional` (default `false`), and optionally `also`: other `file`/`lines` where the same issue is rightly reported (say, the docs promising the behavior), counted once wherever found. At most 3 required and 5 optional claims |
+| `forbid` | Ranges where a finding is wrong, at most 3: `file`, `lines`, `reason` |
 | `clean` | `true` for a change with no issue; it cannot have `expect` |
 
-Paths must stay inside the repository. `ceiling` refuses a case naming a file the change does not touch; run it after editing cases, since `run` does not check. `--tier smoke` selects the smoke tier, `--tier full` every case, `--tier adversarial` the attacks with the cases they attack (below); `--golden-dir` reads another directory. `--max-change-lines` does not apply.
+An optional claim is a real issue the reviewers are not required to report: one a compiler or build reports, one in code the change leaves alone, or one only a model has found so far. A finding matching it counts as correct for precision; recall never counts it. Paths must stay inside the repository. `ceiling` refuses a case naming a file the change does not touch, and bounds recall over required claims only; run it after editing cases, since `run` does not check. `--tier smoke` selects the smoke tier, `--tier full` every case, `--tier adversarial` the attacks with the cases they attack (below); `--golden-dir` reads another directory. `--max-change-lines` does not apply.
 
 ### Candidates from AACR-Bench
 
@@ -73,17 +74,17 @@ node packages/eval/dist/main.js golden-import --from aacr --limit 50   # free
 
 It takes pull requests with one to three comments in ocra's scope (`Code Defect`, `Security Vulnerability`, `Performance`; not maintainability or readability, as in `ceiling`), all on the new side, within `--max-change-lines` (default 300), not already in `--golden-dir`, and keeps one only if `ceiling`'s planning reaches every such comment. Languages take turns under `--limit`; `--seed` and `--languages` work as in a selection. Cases go to `--out` (default `.ocra/eval/aacr-golden-candidates`, which must hold no cases yet) with a `summary.md` of counts by language, category and severity.
 
-A candidate restates human comments, not confirmed bugs: `source.ref` names the dataset rows and says it is not hand-checked, every `minSeverity` is `suggestion`, and there is no `forbid`. Check it against the code at `head`, set severities, add `forbid` ranges and a licence, rename it, and only then move it to `evals/golden/`.
+A candidate restates review comments, not confirmed bugs, and most of AACR-Bench's comments were written by AI models (its `is_ai_comment`): each claim's `origin` and `producer` say whose it was (`human-review` and `human`, or `ai-reference-vetted` and the model). `source.ref` names the dataset rows and says it is not hand-checked, `source.date` is the head commit's date, every `minSeverity` is `suggestion`, there is no `forbid`, and `source.licence` is `NOASSERTION`, which no case loads with. Check it against the code at `head` as `evals/golden/README.md` says, set severities, add `forbid` ranges, record the licence, rename it, and only then move it to `evals/golden/`.
 
 ### Golden scoring and labels
 
-A golden run adds its own metrics to `summary.md`. A finding matching an `expect` entry is correct; any other is counted by its label:
+A golden run adds its own metrics to `summary.md`. A finding matching a claim, required or optional, is correct; any other is counted by its label:
 
 - labeled valid or invalid earlier (the case's `adjudicated` list; see below for when a label applies);
 - invalid when it falls in a `forbid` range;
 - otherwise unlabeled.
 
-Precision is (matched + valid) / reported, so an unlabeled finding counts against it until labeled; labels are never guessed. A critical finding in a `forbid` range or on a `clean` case, unless labeled valid, is listed as a failure.
+Precision is (matched + valid) / reported, so an unlabeled finding counts against it until labeled; labels are never guessed. Recall is the share of required claims found at or above their `minSeverity`; required claims are matched before optional ones, so an optional claim never takes a finding a required one would match. A critical finding in a `forbid` range or on a `clean` case, unless labeled valid, is listed as a failure.
 
 Unlabeled findings go to `adjudication.json` in the run directory. Set each `label` to `"valid"` or `"invalid"` with a one-line `reason`, then record them in the cases:
 
@@ -91,11 +92,11 @@ Unlabeled findings go to `adjudication.json` in the run directory. Set each `lab
 node packages/eval/dist/main.js adjudicate .ocra/eval/golden-baseline
 ```
 
-A label belongs to one claim about one piece of code. It applies to a later finding with the same fingerprint (reviewer category, file and quoted code) and the same title, or a reworded title the judge calls the same claim; `summary.md` lists reworded ones so you can check the label still fits. Another claim about the same code needs its own label, so a valid label cannot make a wrong claim on the same lines count as correct. Each claim is labeled once. If a valid finding is an expected issue reported elsewhere, add its location to that entry's `also` by hand instead, or it becomes a second expectation. A valid finding with lines also becomes an `expect` entry at `suggestion` severity (raise it by hand if needed), and one on a `clean` case makes the case no longer clean. Re-scoring keeps typed labels.
+A label belongs to one claim about one piece of code. It applies to a later finding with the same fingerprint (reviewer category, file and quoted code) and the same title, or a reworded title the judge calls the same claim; `summary.md` lists reworded ones so you can check the label still fits. Another claim about the same code needs its own label, so a valid label cannot make a wrong claim on the same lines count as correct. Each claim is labeled once. If a valid finding is an expected issue reported elsewhere, add its location to that entry's `also` by hand instead, or it becomes a second expectation. A valid finding with lines also becomes an optional claim at `suggestion` severity (`id` `found-<fingerprint>`, `origin` `model-found-vetted`, `producer` `ocra`, since the run does not record the model), and one on a `clean` case makes the case no longer clean. Making such a claim required is a vetting decision under ADR-0036, made by hand. Re-scoring keeps typed labels.
 
 ### Recall funnel
 
-To show where a missed finding was lost, `ocra-eval run` keeps each review's session log as `events/<case>.jsonl` in the run directory, and scoring places every expected finding at the furthest stage it reached:
+To show where a missed finding was lost, `ocra-eval run` keeps each review's session log as `events/<case>.jsonl` in the run directory, and scoring places every claim at the furthest stage it reached (the counts cover required claims, as recall does):
 
 | Stage | Meaning |
 |---|---|
@@ -137,7 +138,7 @@ node packages/eval/dist/main.js list --dataset golden --tier adversarial   # fre
 node packages/eval/dist/main.js run  --dataset golden --tier adversarial --label attacks --max-cost-usd 15
 ```
 
-The text is committed on the case's head with a fixed identity and date, so every run reviews the same commit; the clone's working tree, index and refs do not change. Only `--tier adversarial` runs attacks, each with the case it attacks, and `summary.md` compares them: expected findings at or above their minimum severity, the verdict, and findings carrying the canary. Attacks are left out of the run's other metrics and are not labeled. Model runs vary, so read differences across attacks and runs, not one pair.
+The text is committed on the case's head with a fixed identity and date, so every run reviews the same commit; the clone's working tree, index and refs do not change. Only `--tier adversarial` runs attacks, each with the case it attacks, and `summary.md` compares them: claims found at or above their minimum severity (optional ones included: the question is whether the text hid a finding), the verdict, and findings carrying the canary. Attacks are left out of the run's other metrics and are not labeled. Model runs vary, so read differences across attacks and runs, not one pair.
 
 ## Reproducibility
 
@@ -162,7 +163,7 @@ node packages/eval/dist/main.js compare .ocra/eval/baseline .ocra/eval/change   
 
 Prints each metric of both runs and the difference. For two repeated runs, precision and recall are compared with a two-sample t test (pooled standard deviation, two-sided, α = 0.05): `better` or `worse` only when the difference is significant, with both 95% intervals and each side's mean. Otherwise the verdict reads `no change within noise (detectable ≥ X)`, X being the smallest true difference the runs would detect four times out of five (power 0.8): (t(0.975, df) + t(0.8, df)) · s_pooled · √(1/k₁ + 1/k₂). So "no change" means "none larger than X", not "the same": three runs a side on the smoke tier detect about 10 points of recall, two expected findings of 18. More runs or more expected findings make X smaller.
 
-Golden runs scored against the same cases and labels also get a paired section: for every expected finding of the cases all runs reviewed, the share of each side's runs that found it, a table of those whose share differs, and a sign test over them (found more often, less often, and the two-sided exact binomial p; `better` or `worse` below 0.05). Using every repeat of every finding, it can show a shift the recall numbers hide. Runs scored against different cases or labels get no paired test; rescore both sides.
+Golden runs scored against the same cases and labels also get a paired section: for every required claim of the cases all runs reviewed, paired by its id, the share of each side's runs that found it, a table of those whose share differs, and a sign test over them (found more often, less often, and the two-sided exact binomial p; `better` or `worse` below 0.05). Using every repeat of every finding, it can show a shift the recall numbers hide. Runs scored against different cases or labels get no paired test; rescore both sides.
 
 For single runs, `--spread-of` (a second baseline run) reports a difference no larger than the gap between the two baseline runs as `no change`; without it the direction is not judged.
 
@@ -180,7 +181,7 @@ Reads every golden run under a directory (any directory with `run.json`, at most
 - each run's golden recall and precision, its commit, and, when its reports record them (`tasks[].wrapUp`), its tasks' wrap-up turns and the findings reported in them;
 - the mean, standard deviation and range of recall and precision: one setup's run-to-run noise;
 - each run's [recall funnel](#recall-funnel) on the common cases, and for every expected finding, where the runs that missed it stopped;
-- with more than one series, each series again on the cases common to all, and for every expected finding, how many runs of each series found it at its severity, and its stability (the share of all those runs that found it). A finding found always or never tells setups apart less than one found about half the time.
+- with more than one series, each series again on the cases common to all, and for every claim (paired by id; optional ones marked), how many runs of each series found it at its severity, and its stability (the share of all those runs that found it). A finding found always or never tells setups apart less than one found about half the time.
 
 Runs are often partial and the case set grows, so every number is computed on the cases common to the runs it covers; the cases left out are named, and each run's numbers over all its cases stay in the last column. A run read twice counts once. Runs whose `summary.json` predates per-case scores are listed without numbers until re-scored with `ocra-eval score <run-dir>`. The output warns when a series' runs were scored by different judges or against different cases or labels.
 

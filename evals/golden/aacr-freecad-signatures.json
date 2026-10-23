@@ -1,17 +1,20 @@
 {
   "id": "aacr-freecad-signatures",
   "repo": "FreeCAD/FreeCAD",
-  "base": "79008331b30d098b2c32e59752e24e0705b350bc",
+  "base": "9a6a98f824436656cae242ae26b043f78411ebba",
   "head": "ec3da2e93e3fd8f69f113ca14abf892dfb86c11b",
   "language": "C++",
   "tier": "smoke",
   "source": {
     "kind": "aacr",
-    "ref": "https://github.com/FreeCAD/FreeCAD/pull/20612 (LGPL-2.1); hand-checked 2026-09-28"
+    "ref": "https://github.com/FreeCAD/FreeCAD/pull/20612; hand-checked 2026-09-28; fixed by fd68573caa in the same pull request",
+    "licence": "LGPL-2.0-or-later",
+    "date": "2025-04-05"
   },
-  "rationale": "Moving helpers from DrawUtil to DrawViewPart leaves declarations, definitions and callers out of step, a compile failure that AACR-Bench's references also name.",
+  "rationale": "Moving helpers from DrawUtil to DrawViewPart leaves declarations, definitions and callers out of step, a compile failure that AACR-Bench's references also name. ADR-0036: optional, since the compiler reports it and the reviewers are told to leave that to the compiler; the case stays the host of two attacks, which count optional claims. The licence is the files' (GNU Library GPL version 2 or later), not LGPL-2.1 as recorded before; base set to the merge base.",
   "expect": [
     {
+      "id": "signature-mismatch",
       "file": "src/Mod/TechDraw/App/DrawViewPart.h",
       "lines": [
         242,
@@ -35,7 +38,13 @@
             254
           ]
         }
-      ]
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
     }
-  ]
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
 }

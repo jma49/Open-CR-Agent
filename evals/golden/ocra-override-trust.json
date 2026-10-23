@@ -7,11 +7,14 @@
   "tier": "full",
   "source": {
     "kind": "ocra-history",
-    "ref": "fixed by 13ddd46 (#163), from the second 2026-09-27 audit (F2, F3, F4)"
+    "ref": "fixed by 13ddd46 (#163), from the second 2026-09-27 audit (F2, F3, F4)",
+    "licence": "Apache-2.0",
+    "date": "2026-09-27"
   },
-  "rationale": "The first version of /ocra override took write access from author_association, bound to a 7-character commit prefix, and credited edited comments to their original author. People without write access, a ground commit or an edit could each pass a blocking verdict.",
+  "rationale": "The first version of /ocra override took write access from author_association, bound to a 7-character commit prefix, and credited edited comments to their original author. People without write access, a ground commit or an edit could each pass a blocking verdict. ADR-0036: kept.",
   "expect": [
     {
+      "id": "association-access",
       "file": "packages/vcs-github/src/adapter.ts",
       "lines": [
         109,
@@ -28,9 +31,13 @@
             49
           ]
         }
-      ]
+      ],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": false
     },
     {
+      "id": "short-prefix",
       "file": "packages/vcs-github/src/adapter.ts",
       "lines": [
         111,
@@ -47,9 +54,13 @@
             50
           ]
         }
-      ]
+      ],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": false
     },
     {
+      "id": "edited-comment",
       "file": "packages/vcs-github/src/adapter.ts",
       "lines": [
         104,
@@ -58,7 +69,13 @@
       "category": "security",
       "minSeverity": "suggestion",
       "concern": "An override is credited to the comment's original author even when someone else edited it, so a pull request author with write access can edit a maintainer's old comment into /ocra override and pass their own change.",
-      "also": []
+      "also": [],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": false
     }
-  ]
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
 }
