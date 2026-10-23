@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReferenceComment } from "./instance.js";
-import { MockJudge, parseJudgeAnswer } from "./judges.js";
+import { MockJudge } from "./judges.js";
 import { type GeneratedComment, matchComments, type SemanticJudge } from "./match.js";
 import { countMatches, qualityMetrics } from "./metrics.js";
 
@@ -137,17 +137,6 @@ describe("qualityMetrics", () => {
 });
 
 describe("judges", () => {
-  it.each([
-    ["Yes", true],
-    ["yes, both flag the null dereference", true],
-    ["They describe the same issue.", true],
-    ["No", false],
-    ["No, they are not the same issue.", false],
-    ["Not really; different concerns", false],
-  ])("parses %j as %s", (answer, expected) => {
-    expect(parseJudgeAnswer(answer)).toBe(expected);
-  });
-
   it("mock judge uses word overlap", async () => {
     const judge = new MockJudge();
     expect(

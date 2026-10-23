@@ -67,7 +67,8 @@ Run:
   --mock-judge             Offline approximate judge (numbers not comparable)
 
 Models come from OCRA_MODEL_TOP / OCRA_MODEL_STANDARD / OCRA_MODEL_LIGHT.
-The judge uses JUDGE_BASE_URL / JUDGE_API_KEY / JUDGE_MODEL, or GEMINI_API_KEY.
+The judge uses JUDGE_BASE_URL / JUDGE_API_KEY / JUDGE_MODEL, or GEMINI_API_KEY
+with JUDGE_MODEL; JUDGE_MODEL has no default.
 `;
 
 export async function main(

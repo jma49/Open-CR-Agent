@@ -10,6 +10,9 @@ description: Measure review quality on AACR-Bench and on ocra's golden cases wit
 ```bash
 export GEMINI_API_KEY=...
 export OCRA_MODEL_STANDARD=google/gemini-flash-lite-latest
+export JUDGE_BASE_URL=https://api.anthropic.com/v1   # the judge (see Scoring)
+export JUDGE_API_KEY=...
+export JUDGE_MODEL=claude-haiku-5-5
 
 node packages/eval/dist/main.js list --limit 20 --max-change-lines 300          # free preview
 node packages/eval/dist/main.js run  --limit 20 --max-change-lines 300 --label baseline --max-cost-usd 5
@@ -207,4 +210,26 @@ A port of the benchmark's official matching: same file, same diff side, line ran
 
 Reports also give a lenient diagnostic, not the benchmark's metric: the same concern in the same file at any line. A gap means findings were anchored away from the reference (the benchmark allows one line), not missed.
 
-The judge uses `JUDGE_BASE_URL`, `JUDGE_API_KEY` and `JUDGE_MODEL`, or a Gemini key; answers are cached per run, so re-scoring is free. Reports break results down by language, issue category and context level, with tokens, cost, latency and anchoring (the share left at file level, relocation calls).
+Reports break results down by language, issue category and context level, with tokens, cost, latency and anchoring (the share left at file level, relocation calls).
+
+### The judge
+
+The judge is any OpenAI-compatible chat completions endpoint:
+
+| Variable | Meaning |
+|---|---|
+| `JUDGE_API_KEY` | The endpoint's key. Without it, a Gemini key (`GEMINI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY` or `GOOGLE_API_KEY`) is used with Google's endpoint |
+| `JUDGE_BASE_URL` | The endpoint, up to `/chat/completions`; default Google's Gemini endpoint |
+| `JUDGE_MODEL` | The model. Required: there is no default, and scoring stops naming the variable when it is missing |
+
+For Claude through Anthropic's OpenAI-compatible endpoint:
+
+```bash
+export JUDGE_BASE_URL=https://api.anthropic.com/v1
+export JUDGE_API_KEY=...            # an Anthropic API key
+export JUDGE_MODEL=claude-haiku-5-5
+```
+
+The prompt is the benchmark's, with a last line asking for one word, yes or no. The request sends no sampling parameters (Claude refuses `temperature`, `top_p` and `top_k`) and allows 4,000 output tokens, so a model that thinks first has room to answer. Only the answer's first word counts: "yes" is a match, "no" or "not" is not. The official scorer looks for "same" or "similar" anywhere in the answer and so counts "Not the same issue" as a match; on the same answers, ocra's reading can score lower. When an answer is empty, cut off, refused or not a yes or no, the question is asked once more; if the second answer is no better, the pair counts as no match and the summary says how many did. More than 2% of a scoring's questions without a usable answer fails the scoring instead of printing a wrong score.
+
+A request that fails with HTTP 408, 429 or 5xx, or gets no answer in 2 minutes, is tried up to 4 times, with growing pauses or the `Retry-After` the endpoint asks for; a wait over a minute, or any other error, fails the scoring. Answers are kept in `judge-cache.<model>.jsonl` in the run directory as they arrive, so re-scoring asks only what is missing, after a failure too. They are keyed by the model and the judge's version (`judge v2` in the run's judge line), so another model or a later prompt asks again, and `compare` and `trend` warn about runs scored by different judges. The summary's Cost and latency section counts the judge's questions, answers from the cache, requests and tokens.

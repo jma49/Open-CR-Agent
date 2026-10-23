@@ -21,7 +21,7 @@ Run it from a build: `npm run build`, then `node packages/eval/dist/main.js <com
 | `reviewer.ts` | Runs the `ocra` CLI on one instance and reads its JSON report |
 | `runner.ts` | The run loop: resume, quota detection, one `instances/<id>.json` per result |
 | `results.ts` | The schema of an `instances/<id>.json` result, and reading one back to resume or rescore |
-| `match.ts`, `judges.ts` | AACR-Bench scoring: matches findings to reference comments by location, then by an LLM judge |
+| `match.ts`, `judges.ts`, `judge-cache.ts` | AACR-Bench scoring: matches findings to reference comments by location, then by an LLM judge; its client, answer parsing and answer cache |
 | `score.ts`, `metrics.ts` | Precision, recall and the counts behind them |
 | `golden-score.ts`, `attack-score.ts` | Golden and adversarial scoring against expectations and forbidden ranges |
 | `adjudicate.ts` | Labels typed into a run's `adjudication.json`, written back into the golden cases |
@@ -41,7 +41,7 @@ Run it from a build: `npm run build`, then `node packages/eval/dist/main.js <com
 | `reports/<id>.json` | ocra's own JSON report for the instance; its `runId` names the session below |
 | `summary.json`, `summary.md` | Scores, written when the run ends |
 | `adjudication.json` | Golden runs: unlabeled findings to label, then `ocra-eval adjudicate <run-dir>` |
-| `judge-cache.<model>.json` | Judge answers, so rescoring does not ask again |
+| `judge-cache.<model>.jsonl` | Judge answers, appended as they arrive and keyed by model and judge version, so rescoring does not ask again |
 
 A run with `--repeat k` holds `k` such runs in `r1/` … `rk/`, with `repeats.json` (each metric's values and interval) and `summary.md` beside them; the judge cache is shared at the top. `compare` and `score` take either kind of directory.
 

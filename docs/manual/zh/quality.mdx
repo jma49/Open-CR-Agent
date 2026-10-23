@@ -119,7 +119,7 @@ AACR-Bench 用基准自己的匹配规则：同一文件、diff 的同一侧、�
 
 - **样本小。** 8 个改动、16 个预期问题，其中只有 4 个是独立于 ocra 自身发现写下的。当前配置只跑过一次，full 档还没有跑过。
 - **不独立。** 用例和标注都是项目自己的，标注由参与 ocra 开发的 AI agent 对照代码核查每条问题并记录理由。另一个模型（Claude Fable 5.1）在不知道原标注的情况下，重新判断了当时 11 条标注中的 5 条，结论全部一致；项目之外还没有人审阅过。最近的改动（包括 30 步上限）是在这些用例上选定的，这会让当前配置的成绩偏好看。
-- **匹配由模型判定：**`gemini-flash-lite-latest`。判定结果有缓存，重新计分结果不变，但换一个判定模型可能得出不同结论。
+- **匹配由模型判定：**Gemini 的运行用 `gemini-flash-lite-latest`。判定结果有缓存，用同一个判定模型重新计分结果不变，但换一个判定模型可能得出不同结论。这些运行都在 `ocra-eval` 的 judge v2 之前评分；v2 只看回答的第一个词，之前的解析会把 "Not the same issue" 这类回答算作命中，所以精确率和召回率可能偏高。Vertex AI 已不再提供这个模型别名，重新计分需要换一个判定模型（见[判定模型](./evaluation#判定模型)）。
 - **两个模型家族，互不可比。** 2026-10-01 之前的运行用 Vertex AI 上的 Gemini；两次免费模型的运行每一步都用 Space Bunny Alpha，包括计分。换成别的模型，成绩会不同。
 - **每次运行有波动。** 同一配置的两次运行，精确率相差一条问题。
 - **召回率是短板。** 在这里 ocra 漏掉了一半以上的预期问题，其中大多被定为 suggestion；在 AACR-Bench 上，它命中的标注问题不到 10%。
@@ -138,4 +138,4 @@ ocra 能找到真实的 bug，也很少误报，但漏掉的比找到的多。�
 node packages/eval/dist/main.js run --dataset golden --tier smoke --label mine --max-cost-usd 20 --pr-max-cost-usd 6
 ```
 
-在 OpenRouter 的免费模型上，加上按[OpenRouter 上的免费模型](./providers#openrouter-上的免费模型)写的 `--config <file>`，判定模型的变量按[评测](./evaluation#评分方式)设置。这样不花钱，但一次 smoke 运行超过一天的免费配额，所以用 `--retry-failed` 跨天接着跑。
+在 OpenRouter 的免费模型上，加上按[OpenRouter 上的免费模型](./providers#openrouter-上的免费模型)写的 `--config <file>`，判定模型的变量按[评测](./evaluation#判定模型)设置。这样不花钱，但一次 smoke 运行超过一天的免费配额，所以用 `--retry-failed` 跨天接着跑。

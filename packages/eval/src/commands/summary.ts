@@ -5,7 +5,8 @@ import { scoreAttacks } from "../attack-score.js";
 import type { SavedSummary } from "../compare.js";
 import { scoreGolden } from "../golden-score.js";
 import type { Instance } from "../instance.js";
-import { CachedJudge, type JudgeSetup } from "../judges.js";
+import { CachedJudge } from "../judge-cache.js";
+import { type JudgeSetup, usageSince } from "../judges.js";
 import { summarizeProvenance } from "../provenance.js";
 import { REPEATS_FILE, type Repetition, renderRepeats, summarizeRepeats } from "../repeat.js";
 import { type RunInfo, renderMarkdown } from "../report.js";
@@ -23,8 +24,9 @@ export async function writeSummary(
   judge: JudgeSetup,
   cacheDir: string,
 ): Promise<{ markdown: string; saved: SavedSummary }> {
-  const cache = new CachedJudge(judge.judge, join(cacheDir, judge.cacheFile));
+  const cache = new CachedJudge(judge.judge, join(cacheDir, judge.cacheFile), judge.id);
   await cache.load();
+  const spentBefore = judge.usage();
   const summary: SavedSummary["summary"] = await score(instances, results, cache);
   const goldenDir = info.selection.goldenDir;
   if (typeof goldenDir === "string") {
@@ -36,12 +38,15 @@ export async function writeSummary(
     );
     const attacks = await scoreAttacks(instances, results, cache);
     if (attacks) summary.attacks = attacks;
+  }
+  cache.checkAnswers();
+  summary.judgeUsage = { ...cache.tally(), ...usageSince(spentBefore, judge.usage()) };
+  if (typeof goldenDir === "string" && summary.golden) {
     const labels = labelsFor(goldenDir, summary.golden.unadjudicated, await readLabels(runDir));
     await writeFile(join(runDir, LABELS_FILE), `${JSON.stringify(labels, null, 2)}\n`);
   }
   const provenance = summarizeProvenance(results);
   if (provenance) summary.provenance = provenance;
-  await cache.save();
   const markdown = renderMarkdown(info, summary);
   await writeFile(join(runDir, "summary.json"), `${JSON.stringify({ info, summary }, null, 2)}\n`);
   await writeFile(join(runDir, "summary.md"), markdown);

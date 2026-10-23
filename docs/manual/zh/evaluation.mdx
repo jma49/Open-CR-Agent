@@ -10,6 +10,9 @@ description: 用 ocra-eval 在 AACR-Bench 和 ocra 的黄金用例上衡量审�
 ```bash
 export GEMINI_API_KEY=...
 export OCRA_MODEL_STANDARD=google/gemini-flash-lite-latest
+export JUDGE_BASE_URL=https://api.anthropic.com/v1   # 判定模型（见评分方式）
+export JUDGE_API_KEY=...
+export JUDGE_MODEL=claude-haiku-5-5
 
 node packages/eval/dist/main.js list --limit 20 --max-change-lines 300          # 免费预览
 node packages/eval/dist/main.js run  --limit 20 --max-change-lines 300 --label baseline --max-cost-usd 5
@@ -207,4 +210,26 @@ node packages/eval/dist/main.js ceiling --limit 20 --max-change-lines 300
 
 报告还给出一个宽松的诊断指标（不是基准的官方指标）：同一文件、同一问题，任意行都算命中。与官方数字的差距说明问题的行离标准答案太远（基准只容许一行），而不是没找到。
 
-判定模型使用 `JUDGE_BASE_URL`、`JUDGE_API_KEY` 和 `JUDGE_MODEL`，或 Gemini key；判定结果按运行缓存，重新评分不花钱。报告按语言、问题类别和上下文层级拆分，附上 token、花费、耗时和锚定情况（留在文件级别的比例、重新定位调用次数）。
+报告按语言、问题类别和上下文层级拆分，附上 token、花费、耗时和锚定情况（留在文件级别的比例、重新定位调用次数）。
+
+### 判定模型
+
+判定模型可以是任何 OpenAI 兼容的 chat completions 端点：
+
+| 变量 | 含义 |
+|---|---|
+| `JUDGE_API_KEY` | 端点的 key。不设时使用 Gemini key（`GEMINI_API_KEY`、`GOOGLE_GENERATIVE_AI_API_KEY` 或 `GOOGLE_API_KEY`）和 Google 的端点 |
+| `JUDGE_BASE_URL` | 端点地址，写到 `/chat/completions` 之前；默认是 Google 的 Gemini 端点 |
+| `JUDGE_MODEL` | 模型。必须设置：没有默认值，缺少时评分会停下并指出这个变量 |
+
+通过 Anthropic 的 OpenAI 兼容端点使用 Claude：
+
+```bash
+export JUDGE_BASE_URL=https://api.anthropic.com/v1
+export JUDGE_API_KEY=...            # Anthropic API key
+export JUDGE_MODEL=claude-haiku-5-5
+```
+
+提示词沿用基准的原文，只在最后加一行，要求只答一个词：yes 或 no。请求不带任何采样参数（Claude 拒绝 `temperature`、`top_p` 和 `top_k`），输出上限 4,000 token，让先思考再回答的模型有足够空间。只看回答的第一个词："yes" 算命中，"no" 或 "not" 不算。官方评分在回答中任意位置找 "same" 或 "similar"，所以会把 "Not the same issue" 算作命中；对同样的回答，ocra 的读法可能得分更低。回答为空、被截断、被拒绝或不是 yes/no 时，同一个问题再问一次；第二次仍然不行，这一对按未命中计，摘要会写明有几次。一次评分中超过 2% 的问题得不到可用回答时，评分直接失败，而不是输出错误的分数。
+
+请求遇到 HTTP 408、429 或 5xx，或 2 分钟内没有回答时，最多尝试 4 次，间隔逐次加长，或按端点给出的 `Retry-After` 等待；需要等待超过一分钟，或遇到其他错误，评分失败。回答一到就写入运行目录下的 `judge-cache.<model>.jsonl`，所以重新评分（包括失败之后）只问缺少的部分。缓存按模型和判定版本区分（运行的判定说明里写作 `judge v2`），换模型或提示词更新后会重新提问，`compare` 和 `trend` 也会提示这些运行由不同的判定模型评分。摘要的“Cost and latency”部分列出判定模型的提问数、来自缓存的回答数、请求数和 token。

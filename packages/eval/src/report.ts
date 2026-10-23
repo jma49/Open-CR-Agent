@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { AttackSummary } from "./attack-score.js";
 import { FUNNEL_STAGES } from "./funnel.js";
 import type { GoldenSummary } from "./golden-score.js";
+import type { JudgeSpend } from "./judge-cache.js";
 import { ocraBuildSchema, renderBuild } from "./ocra-build.js";
 import { type ProvenanceSummary, renderProvenance } from "./provenance.js";
 import type { Summary } from "./score.js";
@@ -10,6 +11,7 @@ export type RunSummary = Summary & {
   golden?: GoldenSummary;
   attacks?: AttackSummary;
   provenance?: ProvenanceSummary;
+  judgeUsage?: JudgeSpend;
 };
 
 export const runInfoSchema = z.strictObject({
@@ -59,6 +61,7 @@ export function renderMarkdown(info: RunInfo, summary: RunSummary): string {
     "",
     `- Total $${summary.usage.costUsd.toFixed(4)}, $${summary.costPerReviewedUsd.toFixed(4)} per reviewed PR`,
     `- Tokens: ${summary.usage.inputTokens} in (${summary.usage.cachedTokens} cached), ${summary.usage.outputTokens} out, ${summary.usage.reasoningTokens} reasoning`,
+    ...(summary.judgeUsage ? [judgeLine(summary.judgeUsage)] : []),
     `- Duration per PR: median ${summary.durationSeconds.median.toFixed(0)} s, p90 ${summary.durationSeconds.p90.toFixed(0)} s`,
     ...(summary.anchoring
       ? [
@@ -197,4 +200,11 @@ function funnelSection(golden: GoldenSummary): string[] {
     "",
     ...(lost.length === 0 ? [] : ["Where the others stopped:", "", ...lost, ""]),
   ];
+}
+
+function judgeLine(judge: JudgeSpend): string {
+  const unusable = judge.unusable
+    ? `; ${judge.unusable} unusable answer(s) scored as no match`
+    : "";
+  return `- Judge: ${judge.questions} question(s), ${judge.fromCache} from the cache, ${judge.requests} request(s); ${judge.inputTokens} tokens in (${judge.cachedTokens} cached), ${judge.outputTokens} out, ${judge.reasoningTokens} reasoning${unusable}`;
 }

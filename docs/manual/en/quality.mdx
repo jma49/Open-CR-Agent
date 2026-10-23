@@ -119,7 +119,7 @@ Cost grows with the change's size and the reviewers its risk tier runs. `--max-c
 
 - **Small.** 8 changes and 16 expected issues, of which only 4 were written independently of ocra's own findings. The current configuration ran once, and the full tier has not run.
 - **Not independent.** The cases and labels are the project's own, the labels made by an AI agent working on ocra that checked each finding against the code and recorded its reason. A second model (Claude Fable 5.1), not told the labels, re-judged 5 of the 11 labels recorded by then and agreed with all 5; no person outside the project has reviewed them. Recent changes, the 30-step limit among them, were chosen on these cases, which flatters the current configuration.
-- **A model decides matches:** `gemini-flash-lite-latest`. Its answers are cached, so re-scoring a run gives the same result, but another judge could decide differently.
+- **A model decides matches:** `gemini-flash-lite-latest` for the Gemini runs. Its answers are cached, so re-scoring a run with the same judge gives the same result, but another judge could decide differently. These runs were scored before `ocra-eval`'s judge v2, whose parser reads only the answer's first word; the earlier one counted answers such as "Not the same issue" as matches, so precision and recall may be overstated. Vertex AI no longer serves that model alias, so a re-score needs another judge ([The judge](./evaluation#the-judge)).
 - **Two model families, not comparable.** Runs until 2026-10-01 used Gemini on Vertex AI; the two free-model runs used Space Bunny Alpha for every step, scoring included. Other models will score differently.
 - **Runs vary.** Two runs of the same configuration differed by one finding in precision.
 - **Recall is the weak point.** ocra missed more than half of the expected issues here, most of them rated as suggestions, and on AACR-Bench it matched under 10% of the annotated issues.
@@ -138,4 +138,4 @@ The cases and labels are in [`evals/golden`](https://github.com/jma49/Open-CR-Ag
 node packages/eval/dist/main.js run --dataset golden --tier smoke --label mine --max-cost-usd 20 --pr-max-cost-usd 6
 ```
 
-On a free OpenRouter model, add `--config <file>` with the recipe from [Free models through OpenRouter](./providers#free-models-through-openrouter) and the judge variables from [Evaluation](./evaluation#scoring). It costs nothing, but a smoke run exceeds a day's free quota, so it resumes across days with `--retry-failed`.
+On a free OpenRouter model, add `--config <file>` with the recipe from [Free models through OpenRouter](./providers#free-models-through-openrouter) and the judge variables from [Evaluation](./evaluation#the-judge). It costs nothing, but a smoke run exceeds a day's free quota, so it resumes across days with `--retry-failed`.

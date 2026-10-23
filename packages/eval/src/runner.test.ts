@@ -403,9 +403,24 @@ describe("runInstances", () => {
         judge: "test",
         review: ["--ultra", "--reviewers", "correctness"],
       },
-      summary,
+      {
+        ...summary,
+        judgeUsage: {
+          questions: 9,
+          fromCache: 4,
+          unusable: 1,
+          requests: 6,
+          inputTokens: 1200,
+          cachedTokens: 0,
+          outputTokens: 30,
+          reasoningTokens: 20,
+        },
+      },
     );
     expect(flagged).toContain("- Review flags: --ultra --reviewers correctness");
+    expect(flagged).toContain(
+      "- Judge: 9 question(s), 4 from the cache, 6 request(s); 1200 tokens in (0 cached), 30 out, 20 reasoning; 1 unusable answer(s) scored as no match",
+    );
   });
 
   it("marks PRs whose commits can no longer be fetched as unavailable, not failed", async () => {
