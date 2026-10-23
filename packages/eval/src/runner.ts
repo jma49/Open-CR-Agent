@@ -6,18 +6,13 @@ import { addUsage, errorMessage } from "@open-cr-agent/core";
 import { EVENTS_FILE, isNotFound } from "@open-cr-agent/core/internal";
 import { plantAttack } from "./attack.js";
 import type { Instance } from "./instance.js";
+import { type LostTasks, logLine, lostTo } from "./provider-limits.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
 import { type InstanceResult, readResult } from "./results.js";
 import { carriedEvents } from "./resumed-log.js";
-import { reviewInstance } from "./reviewer.js";
+import { type ReviewOutcome, reviewInstance } from "./reviewer.js";
 import { sessionLogPath } from "./session-trace.js";
-
-// What ocra's runtime reports when a provider refuses for quota. A free-tier
-// daily limit refuses every later PR too, and each ocra process would first
-// wait out the provider's retry hint, so the run stops instead. Kept as text:
-// eval sees ocra's report, not the runtime's types.
-const QUOTA_ERROR =
-  /out of quota for this run|exceeded your current quota|quota exceeded|resource[_ ]exhausted|rate limit[^)]*per[- ]day/i;
+import { timedOut } from "./truncation.js";
 
 export interface RunOptions {
   runDir: string;
@@ -26,8 +21,8 @@ export interface RunOptions {
   reviewArgs?: readonly string[];
   timeoutMs: number;
   maxCostUsd?: number;
-  // Run PRs again whose previous attempt failed, or lost tasks to a spent
-  // quota, instead of reusing that result.
+  // Run PRs again whose previous attempt failed, or lost tasks to the
+  // provider's limits, instead of reusing that result.
   retryFailed?: boolean;
   prepare?: (reposDir: string, instance: Instance) => Promise<string>;
   log(message: string): void;
@@ -60,12 +55,14 @@ export async function runInstances(
       options.log(`${instance.id}: running again: ${errorMessage(error)}`);
       return undefined;
     });
+    // Results written before such reviews counted as failed may be reviewed
+    // and still have lost tasks to the provider.
     const retry =
       previous?.status === "skipped_budget" ||
       previous?.status === "skipped_quota" ||
       (options.retryFailed === true &&
         previous !== undefined &&
-        (previous.status === "failed" || cutByQuota(previous)));
+        (previous.status === "failed" || lostTo(previous) !== undefined));
     if (previous && !retry) {
       results.push(previous);
       spent += previous.usage.costUsd;
@@ -78,7 +75,7 @@ export async function runInstances(
       continue;
     }
     if (quotaSpent) {
-      options.log(`${label}: skipped, the model quota is spent`);
+      options.log(`${label}: skipped, the model's credit or quota is spent`);
       results.push(skipped(instance.id, "skipped_quota"));
       continue;
     }
@@ -99,10 +96,13 @@ export async function runInstances(
     );
     await writeFile(path, `${JSON.stringify(result, null, 2)}\n`);
     results.push(result);
-    if (failedOnQuota(result) || cutByQuota(result)) {
+    // Credit, a spend limit or a daily quota refuses every later PR too; a
+    // rate limit fails only this PR, which --retry-failed reviews again.
+    const lost = lostTo(result);
+    if (lost?.limit === "quota") {
       quotaSpent = true;
       options.log(
-        "the model quota is spent; the remaining PRs are skipped (rerun later to resume)",
+        `the model's credit or quota is spent (${logLine(lost.error)}); the remaining PRs are skipped (rerun later to resume)`,
       );
     }
   }
@@ -157,13 +157,21 @@ async function reviewOne(
   await keepSessionLog(repoDir, report?.runId, logPath, earlierLog).catch((error: unknown) => {
     options.log(`${instance.id}: the session log was not kept: ${errorMessage(error)}`);
   });
-  const completed = report?.tasks.some((t) => t.status === "completed") ?? false;
-  // Timed out or interrupted (130), the CLI still writes a partial report;
-  // it is a failure to retry, not a review to score.
+  const tasks = (report?.tasks ?? []).map((t) => {
+    const task: InstanceResult["tasks"][number] = { taskId: t.taskId, status: t.status };
+    if (t.error !== undefined) task.error = t.error;
+    if (t.ended !== undefined) task.ended = t.ended;
+    return task;
+  });
+  const lost = lostTo({ tasks, ...(outcome.error ? { error: outcome.error } : {}) });
+  const completed = tasks.some((t) => t.status === "completed");
+  // Timed out or interrupted (130), the CLI still writes a partial report,
+  // and tasks the provider refused were never reviewed: a failure to retry,
+  // not a review to score.
   const finished = outcome.exitCode === 0 || outcome.exitCode === 1 || outcome.exitCode === 3;
   const result: InstanceResult = {
     id: instance.id,
-    status: completed && finished ? "reviewed" : "failed",
+    status: completed && finished && !outcome.timedOut && !lost ? "reviewed" : "failed",
     exitCode: outcome.exitCode,
     durationMs: outcome.durationMs,
     findings: report?.findings ?? [],
@@ -171,19 +179,36 @@ async function reviewOne(
       reused > 0 && previous
         ? addUsage(previous.usage, report?.usage ?? NO_USAGE)
         : (report?.usage ?? NO_USAGE),
-    tasks: (report?.tasks ?? []).map((t) => {
-      const task: InstanceResult["tasks"][number] = { taskId: t.taskId, status: t.status };
-      if (t.error !== undefined) task.error = t.error;
-      if (t.ended !== undefined) task.ended = t.ended;
-      return task;
-    }),
+    tasks,
   };
+  const cut = cutShortBy(outcome, lost);
+  if (cut.length > 0) result.cutShortBy = cut;
   if (report?.anchoring) result.anchoring = report.anchoring;
   if (report) result.verdict = report.verdict;
   if (report?.provenance) result.provenance = report.provenance;
   if (outcome.error) result.error = outcome.error;
+  else if (lost) {
+    const by = lost.limit === "quota" ? "credit or quota" : "rate limit";
+    result.error = `tasks lost to the provider's ${by}: ${logLine(lost.error)}`;
+  }
   if (report?.runId) result.runId = report.runId;
   return resumed ? { result, resumed: { runId: resumed, reused } } : { result };
+}
+
+// The per-PR spend cap counts once ocra reports it reached, whether it
+// stopped running tasks or kept tasks or checks from starting.
+function cutShortBy(
+  outcome: ReviewOutcome,
+  lost: LostTasks | undefined,
+): NonNullable<InstanceResult["cutShortBy"]> {
+  const cut: NonNullable<InstanceResult["cutShortBy"]> = [];
+  if (outcome.report?.spendLimit?.reached !== undefined) cut.push("spend_cap");
+  const interrupted = outcome.exitCode === 130;
+  if (outcome.timedOut || (!interrupted && outcome.report?.tasks.some(timedOut))) {
+    cut.push("timeout");
+  }
+  if (lost) cut.push(lost.limit);
+  return cut;
 }
 
 async function resumableRun(
@@ -244,22 +269,4 @@ async function exists(path: string): Promise<boolean> {
 
 function skipped(id: string, status: "skipped_budget" | "skipped_quota"): InstanceResult {
   return { id, status, durationMs: 0, findings: [], usage: NO_USAGE, tasks: [] };
-}
-
-// A review that finished (an incomplete report, exit 3) after the quota
-// refused some of its tasks: not a measurement of the configuration, and the
-// PRs after it would be refused too.
-function cutByQuota(result: InstanceResult): boolean {
-  return (
-    result.status === "reviewed" &&
-    result.tasks.some((t) => t.status === "failed" && QUOTA_ERROR.test(t.error ?? ""))
-  );
-}
-
-function failedOnQuota(result: InstanceResult): boolean {
-  return (
-    result.status === "failed" &&
-    result.tasks.length > 0 &&
-    result.tasks.every((t) => t.status === "completed" || QUOTA_ERROR.test(t.error ?? ""))
-  );
 }

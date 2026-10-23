@@ -57,7 +57,8 @@ export async function run(
   const base = {
     reposDir: values["repos-dir"] ?? join(CACHE_DIR, "repos"),
     command: defaultOcraCommand(),
-    timeoutMs: (number(values["timeout-minutes"], "--timeout-minutes") ?? 30) * 60_000,
+    // Bounds a whole review, every task of it: long PRs took over half an hour.
+    timeoutMs: (number(values["timeout-minutes"], "--timeout-minutes") ?? 60) * 60_000,
     log: (message: string) => err.write(`[ocra-eval] ${message}\n`),
     reviewArgs,
     ...(values["retry-failed"] ? { retryFailed: true } : {}),

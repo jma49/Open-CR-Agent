@@ -10,6 +10,8 @@ import type { Instance } from "./instance.js";
 export interface ReviewOutcome {
   exitCode: number;
   durationMs: number;
+  // The PR's own timeout stopped the review.
+  timedOut?: true;
   report?: ReportOutput;
   error?: string;
 }
@@ -74,8 +76,10 @@ export async function reviewInstance(
   }
   const outcome: ReviewOutcome = { exitCode: result.exitCode, durationMs };
   if (report) outcome.report = report;
-  if (result.timedOut) outcome.error = `timed out after ${Math.round(options.timeoutMs / 1000)}s`;
-  else if (!report || result.exitCode === 2)
+  if (result.timedOut) {
+    outcome.timedOut = true;
+    outcome.error = `timed out after ${Math.round(options.timeoutMs / 1000)}s`;
+  } else if (!report || result.exitCode === 2)
     outcome.error = lastLines(result.stderr) || unreadable || `exit code ${result.exitCode}`;
   return outcome;
 }

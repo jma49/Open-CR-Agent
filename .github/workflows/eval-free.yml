@@ -84,10 +84,10 @@ jobs:
       UNDER_TEST: ${{ github.workspace }}/under-test
       RESERVE: ${{ vars.OCRA_EVAL_FREE_RESERVE || '150' }}
       MIN_RUN: "100"
-      # ocra-eval's own test for a quota failure (QUOTA_ERROR in
-      # packages/eval/src/runner.ts): a case it matches is retried, so only
-      # that keeps a cycle open.
-      QUOTA_RE: "out of quota for this run|exceeded your current quota|quota exceeded|resource[_ ]exhausted|rate limit[^)]*per[- ]day"
+      # ocra-eval's own test for a task the provider refused (BILLING and
+      # LIMIT in packages/eval/src/provider-limits.ts): a case it matches is
+      # retried, so only that keeps a cycle open.
+      QUOTA_RE: "credit balance is too low|billing_error|specified (?:workspace )?API usage limits?|insufficient[_ ](?:quota|credits)|requires more credits|quota|rate[ _-]?limit|resource[_ ]exhausted|too many requests|HTTP 429|overloaded"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

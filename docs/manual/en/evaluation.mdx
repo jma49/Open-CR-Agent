@@ -21,9 +21,9 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--limit`, `--seed`, `--languages`, `--max-change-lines`, `--ids` | Seeded, reproducible selection |
 | `--label` | Run name; rerunning the same label resumes |
 | `--out`, `--repos-dir` | Runs directory (default `.ocra/eval`) and clone cache (default `~/.cache/ocra/aacr-bench/repos`) |
-| `--timeout-minutes` | Timeout per PR (default 30) |
+| `--timeout-minutes` | Timeout per PR, for its whole review (default 60). ocra's own limits still apply: `taskTimeoutMinutes` (default 10) and `runTimeoutMinutes` (default 25), which a `--config` file can raise |
 | `--max-cost-usd` | Stop starting new PRs once review spend reaches the cap |
-| `--retry-failed` | Review again PRs that failed, or lost tasks to a spent quota, in an earlier attempt; when that attempt's session is still in the clone, with `ocra review --resume`, so only its unfinished tasks run. The PR's `usage` is then both attempts' |
+| `--retry-failed` | Review again PRs that failed in an earlier attempt, on a rate limit for example; when that attempt's session is still in the clone, with `ocra review --resume`, so only its unfinished tasks run. The PR's `usage` is then both attempts' |
 | `--reviewers` | Passed to `ocra review --reviewers`, for comparing reviewer sets |
 | `--ultra` | Passed to `ocra review --ultra` (recall mode, about twice the cost); recorded in the run |
 | `--config` | Passed to `ocra review --config`: your configuration file (declared providers, limits) |
@@ -33,7 +33,9 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--repeat <k>` | Review the selection `k` times and report the mean and a 95% confidence interval of precision and recall; see [Repeated runs](#repeated-runs) |
 | `--mock-judge` | Offline word-overlap judge for pipeline checks (not comparable) |
 
-When the model's quota is spent (a free-tier daily limit, for example), the run stops starting PRs and marks the rest `skipped_quota`; rerun the same command later to resume.
+When the provider refuses for money or a spent quota (Anthropic's "credit balance is too low" or a spend limit, OpenAI's spent credit, a free tier's daily limit), the run stops starting PRs, logs the provider's answer, and marks the rest `skipped_quota`; rerun the same command once the credit or quota is back to resume. A rate limit, or a provider out of capacity (HTTP 429 or 529), that outlasts ocra's own waits fails only the PR that lost tasks to it: the run goes on with the next PR, and `--retry-failed` reviews the failed one again.
+
+Each PR's result (`instances/<id>.json`) says what cut its review short in `cutShortBy`: `spend_cap` (`--pr-max-cost-usd`), `timeout` (the PR's, or ocra's run or task timeout), `rate_limit` or `quota`. A review cut short by the spend cap or ocra's timeouts, or with tasks that ended at the step cap, is scored as it is, as a user would get it; the summary's "Cut short" line gives the share of reviewed PRs that were incomplete (exit code 3) and of their tasks that ended at the step cap, at the spend cap or on a timeout. A PR stopped by `--timeout-minutes` failed and is not scored.
 
 Reviews always run with `--no-repo-config`, so benchmark repositories cannot load plugins; models come from `OCRA_MODEL_*` or a `--config` file, which is how a run uses a [declared endpoint](./providers#your-own-endpoint). Repositories are cached as blobless clones. PRs whose commits can no longer be fetched are reported as unavailable and not scored.
 

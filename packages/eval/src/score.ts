@@ -16,6 +16,7 @@ import {
   qualityMetrics,
 } from "./metrics.js";
 import type { InstanceResult } from "./results.js";
+import { type Truncation, truncationOf } from "./truncation.js";
 
 interface Scored {
   counts: Counts;
@@ -31,6 +32,8 @@ export interface Summary {
     skippedBudget: number;
     skippedQuota: number;
   };
+  // How far the reviews scored were cut short.
+  truncation: Truncation;
   overall: Scored;
   byLanguage: Record<string, Scored>;
   recallByCategory: Record<string, { expected: number; matched: number; recall: number }>;
@@ -106,6 +109,7 @@ export async function score(
       skippedBudget: results.filter((r) => r.status === "skipped_budget").length,
       skippedQuota: results.filter((r) => r.status === "skipped_quota").length,
     },
+    truncation: truncationOf(results),
     overall: { counts: overall, metrics: qualityMetrics(overall) },
     byLanguage: Object.fromEntries(
       [...languages]

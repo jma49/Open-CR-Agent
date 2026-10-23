@@ -19,7 +19,7 @@ Run it from a build: `npm run build`, then `node packages/eval/dist/main.js <com
 | `select.ts` | Which instances a run takes (`--ids`, `--limit`, `--max-change-lines`, tiers) |
 | `repos.ts` | Clones and checks out each repository in the cache; `GIT_ENV` keeps LFS and drivers off |
 | `reviewer.ts` | Runs the `ocra` CLI on one instance and reads its JSON report |
-| `runner.ts` | The run loop: resume, quota detection, one `instances/<id>.json` per result |
+| `runner.ts`, `provider-limits.ts` | The run loop: resume, one `instances/<id>.json` per result; which refusals of the provider stop the run (credit, a spend limit, a daily quota) and which fail one PR (a rate limit) |
 | `results.ts` | The schema of an `instances/<id>.json` result, and reading one back to resume or rescore |
 | `match.ts`, `judges.ts` | AACR-Bench scoring: matches findings to reference comments by location, then by an LLM judge |
 | `score.ts`, `metrics.ts` | Precision, recall and the counts behind them |
@@ -27,7 +27,7 @@ Run it from a build: `npm run build`, then `node packages/eval/dist/main.js <com
 | `adjudicate.ts` | Labels typed into a run's `adjudication.json`, written back into the golden cases |
 | `ceiling.ts`, `ceiling-run.ts` | The recall ceiling of the deterministic stages, without a model |
 | `golden-import.ts` | `golden-import --from aacr`: unverified case candidates from AACR-Bench pull requests whose in-scope comments the ceiling reaches |
-| `compare.ts`, `report.ts` | Side-by-side comparison of runs; the `summary.md` of one run |
+| `compare.ts`, `report.ts`, `truncation.ts` | Side-by-side comparison of runs; the `summary.md` of one run, with how far its reviews were cut short |
 | `trend.ts`, `trend-load.ts` | `trend`: golden runs grouped into series by label, compared on shared cases |
 
 ## A run on disk
@@ -37,7 +37,7 @@ Run it from a build: `npm run build`, then `node packages/eval/dist/main.js <com
 | Path | What it holds |
 |---|---|
 | `run.json` | The run's options and the ids it covers |
-| `instances/<id>.json` | One result per instance: status, duration, findings, task outcomes, usage, error |
+| `instances/<id>.json` | One result per instance: status, duration, findings, task outcomes, usage, error, what cut it short (`cutShortBy`) |
 | `reports/<id>.json` | ocra's own JSON report for the instance; its `runId` names the session below |
 | `summary.json`, `summary.md` | Scores, written when the run ends |
 | `adjudication.json` | Golden runs: unlabeled findings to label, then `ocra-eval adjudicate <run-dir>` |

@@ -21,9 +21,9 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--limit`、`--seed`、`--languages`、`--max-change-lines`、`--ids` | 用固定随机种子抽样，可复现 |
 | `--label` | 运行名称；用同一个名称再次运行会接着上次继续 |
 | `--out`、`--repos-dir` | 运行结果目录（默认 `.ocra/eval`）和克隆缓存（默认 `~/.cache/ocra/aacr-bench/repos`） |
-| `--timeout-minutes` | 每个 PR 的超时时间（默认 30） |
+| `--timeout-minutes` | 每个 PR 的超时时间，管整个审查（默认 60）。ocra 自己的上限照样生效：`taskTimeoutMinutes`（默认 10）和 `runTimeoutMinutes`（默认 25），可以在 `--config` 文件里调高 |
 | `--max-cost-usd` | 审查花费达到上限后，不再开始新的 PR |
-| `--retry-failed` | 重新审查之前失败、或因配额用尽而丢了任务的 PR；那次尝试的会话还在克隆里时，用 `ocra review --resume` 接着跑，只运行没完成的任务。这时该 PR 的 `usage` 是两次尝试之和 |
+| `--retry-failed` | 重新审查之前失败的 PR（比如因限流失败的）；那次尝试的会话还在克隆里时，用 `ocra review --resume` 接着跑，只运行没完成的任务。这时该 PR 的 `usage` 是两次尝试之和 |
 | `--reviewers` | 透传给 `ocra review --reviewers`，用来比较不同的审查员组合 |
 | `--ultra` | 透传给 `ocra review --ultra`（召回模式，花费约两倍）；运行记录会注明 |
 | `--config` | 透传给 `ocra review --config`：你的配置文件（声明的供应商、各种上限） |
@@ -33,7 +33,9 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--repeat <k>` | 把选中的 PR 审查 `k` 遍，报告精确率和召回率的均值与 95% 置信区间；见[重复运行](#重复运行) |
 | `--mock-judge` | 离线的词重叠判定，只用来检查流程是否跑通（结果不可比） |
 
-模型额度用尽时（比如免费档的每日上限），运行不再开始新的 PR，把剩下的标为 `skipped_quota`；之后重新运行同一条命令即可接着跑。
+供应商因为钱或额度用尽而拒绝时（Anthropic 的 "credit balance is too low" 或花费上限、OpenAI 的余额用尽、免费档的每日上限），运行不再开始新的 PR，在日志里写出供应商的原话，把剩下的标为 `skipped_quota`；余额或额度恢复后重新运行同一条命令即可接着跑。限流或供应商容量不足（HTTP 429 或 529）若在 ocra 自己的等待之后仍未解除，只让丢了任务的那个 PR 失败：运行继续下一个 PR，`--retry-failed` 会重新审查失败的那个。
+
+每个 PR 的结果（`instances/<id>.json`）在 `cutShortBy` 里写明审查被什么截断：`spend_cap`（`--pr-max-cost-usd`）、`timeout`（PR 的超时，或 ocra 的运行、任务超时）、`rate_limit` 或 `quota`。被花费上限或 ocra 的超时截断、或有任务用完步数上限的审查照常计分，和用户实际拿到的一样；汇总里的 "Cut short" 一行给出不完整（退出码 3）的已审查 PR 所占比例，以及其中任务停在步数上限、花费上限或超时的比例。被 `--timeout-minutes` 停下的 PR 算失败，不计分。
 
 审查总是带着 `--no-repo-config` 运行，基准仓库无法加载插件；模型来自 `OCRA_MODEL_*` 或 `--config` 文件，[声明的端点](./providers#你自己的端点)就是这样使用的。仓库以 blobless clone 缓存。commit 已拉取不到的 PR 标为不可用，不计入评分。
 

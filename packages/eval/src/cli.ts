@@ -50,9 +50,9 @@ Run:
   --repos-dir <dir>        Clone cache (default ~/.cache/ocra/aacr-bench/repos)
   --max-cost-usd <n>       Stop starting new PRs once review spend reaches this
   --pr-max-cost-usd <n>    Spend limit per PR, passed to ocra review --max-cost-usd
-  --timeout-minutes <n>    Per-PR timeout (default 30)
-  --retry-failed           Review again PRs that failed, or lost tasks to a spent
-                           quota, in an earlier attempt
+  --timeout-minutes <n>    Per-PR timeout, the whole review (default 60)
+  --retry-failed           Review again PRs that failed in an earlier attempt,
+                           on a rate limit for example
   --reviewers <ids>        Passed to ocra review --reviewers
   --ultra                  Passed to ocra review --ultra (recall mode; about twice the cost)
   --config <file>          Passed to ocra review --config: your own configuration

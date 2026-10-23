@@ -5,6 +5,7 @@ import type { GoldenSummary } from "./golden-score.js";
 import { ocraBuildSchema, renderBuild } from "./ocra-build.js";
 import { type ProvenanceSummary, renderProvenance } from "./provenance.js";
 import type { Summary } from "./score.js";
+import { renderTruncation } from "./truncation.js";
 
 export type RunSummary = Summary & {
   golden?: GoldenSummary;
@@ -44,6 +45,7 @@ export function renderMarkdown(info: RunInfo, summary: RunSummary): string {
     ...(info.ocra ? [`- ocra: ${renderBuild(info.ocra)}`] : []),
     `- Provenance: ${renderProvenance(summary.provenance)}`,
     `- Instances: ${summary.instances.reviewed} reviewed, ${summary.instances.failed} failed, ${summary.instances.unavailable} unavailable in the dataset, ${summary.instances.skippedBudget} skipped for budget, ${summary.instances.skippedQuota} skipped for spent quota (of ${summary.instances.selected})`,
+    renderTruncation(summary.truncation),
     "",
     summary.golden ? "## Quality, benchmark matching (ignores labels)" : "## Quality",
     "",
