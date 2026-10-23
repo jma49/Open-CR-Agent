@@ -264,6 +264,20 @@ describe("trend", () => {
     expect(trend.series[0]?.runs[0]).toMatchObject({ scored: { funnel: { unknown: 2 } } });
   });
 
+  it("says which runs were scored before claims had ids and leaves them out of the claims", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ocra-trend-"));
+    const old = kase([true, true], 1, 1);
+    const unnumbered = { ...old, claims: old.claims.map(({ id: _id, ...claim }) => claim) };
+    await writeRun(join(root, "s-1"), { runId: "s-1", cases: { a: unnumbered } });
+    await writeRun(join(root, "s-2"), { runId: "s-2", cases: { a: kase([false, false], 1, 1) } });
+    const trend = buildTrend((await loadTrendRuns(root)).runs);
+    expect(trend.warnings.join("\n")).toContain("s-1 was scored before claims had ids");
+    expect(trend.claims.map((c) => [c.id, c.stability])).toEqual([
+      ["a#first", { hits: 0, runs: 1 }],
+      ["a#second", { hits: 0, runs: 1 }],
+    ]);
+  });
+
   it("fails when there is no golden run", async () => {
     const err: string[] = [];
     const code = await main(

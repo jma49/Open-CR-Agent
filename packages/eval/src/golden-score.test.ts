@@ -301,6 +301,24 @@ describe("alternate locations", () => {
   });
 });
 
+describe("the cases' hash", () => {
+  const login = (claims: Record<string, unknown>[]) =>
+    toInstance(parseCase({ ...base, id: "login", expect: claims }, "login.json"));
+  const other = { ...expectLogin, id: "other", lines: [30, 32] };
+
+  it("does not depend on the order of a case's claims, which runs pair by id", async () => {
+    const ordered = await scoreGolden([login([expectLogin, other])], [], judge);
+    const reordered = await scoreGolden([login([other, expectLogin])], [], judge);
+    expect(reordered.casesHash).toBe(ordered.casesHash);
+    const optional = await scoreGolden(
+      [login([expectLogin, { ...other, optional: true }])],
+      [],
+      judge,
+    );
+    expect(optional.casesHash).not.toBe(ordered.casesHash);
+  });
+});
+
 describe("optional claims", () => {
   // Real, but not required of a review (ADR-0036): a compiler reports it.
   const compiles = {

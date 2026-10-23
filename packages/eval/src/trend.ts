@@ -1,6 +1,6 @@
 import { formatValue } from "./compare.js";
 import { countFunnel, FUNNEL_STAGES, type Funnel } from "./funnel.js";
-import type { GoldenCaseScore, GoldenClaimScore } from "./golden-score.js";
+import { type GoldenCaseScore, type GoldenClaimScore, lacksClaimIds } from "./golden-score.js";
 
 // Many golden runs over time, grouped by series: how much the same setup
 // varies from run to run, and how two setups differ. Runs are often partial
@@ -92,6 +92,11 @@ export function buildTrend(all: readonly TrendRun[], only?: readonly string[]): 
     return seriesTrend(name, members, warnings);
   });
   const usable = series.flatMap((s) => s.runs.filter(hasCases));
+  for (const r of usable.filter((r) => lacksClaimIds(r.cases))) {
+    warnings.push(
+      `${r.runId} was scored before claims had ids, so the claim table leaves it out; rescore it with ocra-eval score ${r.dir}`,
+    );
+  }
   const common = commonCases(usable);
   const trend: Trend = { series, claims: claims(series, common), warnings };
   if (series.filter((s) => s.runs.some(hasCases)).length > 1) {

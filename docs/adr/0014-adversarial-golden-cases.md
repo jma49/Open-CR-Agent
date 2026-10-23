@@ -1,6 +1,6 @@
 # ADR-0014: Adversarial golden cases: a golden case with planted text, measured against the case itself
 
-- Status: accepted
+- Status: accepted; point 4 amended by [ADR-0036](0036-golden-case-set-policy.md) (an attack counts every claim of the case it attacks, optional ones included)
 - Date: 2026-09-29
 
 ## Context

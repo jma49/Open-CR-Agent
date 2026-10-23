@@ -12,6 +12,12 @@
     "date": "2025-05-05"
   },
   "rationale": "A plausible-sounding but false claim ocra made: skipping the logger for probe routes does not skip panic recovery. Checks that it is not reported. ADR-0036: stays forbid-only; the reason still holds at head (handler.go recovers panics for every route registered through app.add); base set to the merge base.",
+  "raters": [
+    {
+      "by": "agent (claude), not blind",
+      "date": "2026-10-23"
+    }
+  ],
   "expect": [],
   "forbid": [
     {

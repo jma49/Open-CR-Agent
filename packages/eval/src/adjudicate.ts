@@ -2,7 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { isNotFound } from "@open-cr-agent/core/internal";
 import { z } from "zod";
-import { type GoldenCase, parseCase, readJson } from "./golden.js";
+import { type GoldenCase, MAX_OPTIONAL_CLAIMS, parseCase, readJson } from "./golden.js";
 import type { GoldenFinding } from "./golden-score.js";
 
 export const LABELS_FILE = "adjudication.json";
@@ -108,6 +108,11 @@ export async function applyLabels(labels: LabelsFile, goldenDir: string): Promis
         title: entry.title,
       });
       if (label === "valid" && entry.lines) {
+        if (golden.expect.filter((e) => e.optional).length >= MAX_OPTIONAL_CLAIMS) {
+          throw new Error(
+            `${path}: "${entry.title}" would be the case's ${MAX_OPTIONAL_CLAIMS + 1}th optional claim; if it is an issue a claim already names, add its location to that claim's also by hand, otherwise make room by vetting one of the optional claims first`,
+          );
+        }
         // A real issue on a case thought clean means the case was not clean.
         golden.clean = false;
         golden.expect.push({
@@ -121,8 +126,7 @@ export async function applyLabels(labels: LabelsFile, goldenDir: string): Promis
           concern: entry.title,
           also: [],
           origin: "model-found-vetted",
-          // The run does not record which model reported it.
-          producer: "ocra",
+          producer: "ocra (model not recorded)",
           optional: true,
         });
       }

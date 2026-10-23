@@ -12,18 +12,32 @@
     "date": "2025-09-05"
   },
   "rationale": "Removing a request field and a profile field leaves tests that still set or omit them, a compile failure in the test targets that AACR-Bench's references do not name. The same change stops serializing a reasoning item's id that deserializing still requires, so resumed sessions drop their reasoning; two AACR-Bench references, both written by models, point at that field without stating the round trip. ADR-0036: the test compile failure is optional, since rustc reports it (E0063) and the reviewers are told to leave that to the compiler; base set to the merge base.",
+  "raters": [
+    {
+      "by": "agent (claude), not blind",
+      "date": "2026-10-23"
+    }
+  ],
   "expect": [
     {
       "id": "test-store-field",
       "file": "codex-rs/core/src/client_common.rs",
       "lines": [
-        190,
-        226
+        195,
+        199
       ],
       "category": "correctness",
       "minSeverity": "warning",
       "concern": "ResponsesApiRequest still declares store, but the test initializers had store removed, so the core unit tests fail to compile with a missing field.",
-      "also": [],
+      "also": [
+        {
+          "file": "codex-rs/core/src/client_common.rs",
+          "lines": [
+            224,
+            228
+          ]
+        }
+      ],
       "origin": "author-fix",
       "producer": "gemini-3.5-flash",
       "optional": true

@@ -12,6 +12,12 @@
     "date": "2026-09-27"
   },
   "rationale": "A small, fully tested change (count agent steps in the attempt summary) with no known issue in the changed code. ADR-0036: the manual's progress example (docs/manual/en/cli.mdx, which the change does not touch) went stale with it and was fixed in 60011f7; a finding saying so is real but cannot be a claim on a file outside the change. Earlier runs' findings here are still to be labelled.",
+  "raters": [
+    {
+      "by": "agent (claude), not blind",
+      "date": "2026-10-23"
+    }
+  ],
   "expect": [],
   "forbid": [],
   "clean": true,

@@ -12,6 +12,12 @@
     "date": "2025-02-18"
   },
   "rationale": "An import of a name the locale module does not export, and two form labels whose translation keys no locale file defines; neither is among AACR-Bench's references, and ocra found both. ADR-0036: missing-export is optional, since the TypeScript compiler reports it (TS2305; the umi build does not type-check, so the earlier 'the build fails' was likely wrong); translation-keys is rewritten in ocra's words; base set to the merge base.",
+  "raters": [
+    {
+      "by": "agent (claude), not blind",
+      "date": "2026-10-23"
+    }
+  ],
   "expect": [
     {
       "id": "missing-export",

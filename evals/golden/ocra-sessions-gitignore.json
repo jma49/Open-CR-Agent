@@ -12,6 +12,12 @@
     "date": "2026-09-26"
   },
   "rationale": "The change documents that the sessions directory carries a .gitignore, but no code writes it; the test passes vacuously because git status collapses the untracked directory to .ocra/. ADR-0036: kept.",
+  "raters": [
+    {
+      "by": "agent (claude), not blind",
+      "date": "2026-10-23"
+    }
+  ],
   "expect": [
     {
       "id": "gitignore-unwritten",

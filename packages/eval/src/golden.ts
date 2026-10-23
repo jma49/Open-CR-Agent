@@ -80,8 +80,13 @@ const CLAIM_ORIGINS = [
 
 // Per case, so no case can dominate a tier's recall or precision.
 const MAX_REQUIRED_CLAIMS = 3;
-const MAX_OPTIONAL_CLAIMS = 5;
+export const MAX_OPTIONAL_CLAIMS = 5;
 const MAX_FORBID_RANGES = 3;
+// A required claim names the defect's lines, not the function around them;
+// other places the issue is rightly reported go in `also`.
+const MAX_REQUIRED_SPAN = 15;
+// Claims only a model vouches for (ADR-0036 point 5).
+const MODEL_ORIGINS: ReadonlySet<string> = new Set(["model-found-vetted", "ai-reference-vetted"]);
 
 // The head commit's date, for splitting metrics at a model's training cutoff.
 const dateSchema = z.iso.date();
@@ -180,12 +185,26 @@ const candidateSchema = z
   .refine(
     (c) => c.expect.filter((e) => e.optional).length <= MAX_OPTIONAL_CLAIMS,
     `a case has at most ${MAX_OPTIONAL_CLAIMS} optional claims`,
+  )
+  .refine(
+    (c) =>
+      c.expect.every(
+        (e) => e.optional || !MODEL_ORIGINS.has(e.origin) || e.minSeverity !== "suggestion",
+      ),
+    "a claim only a model vouches for is required only at warning or above; make it optional",
   );
 
-const caseSchema = candidateSchema.refine((c) => c.source.licence !== UNCHECKED_LICENCE, {
-  message: "check the repository's licence at head and record one from the allowlist",
-  path: ["source", "licence"],
-});
+// What a candidate still lacks: a checked licence, and required claims
+// narrowed to the defect's lines.
+const caseSchema = candidateSchema
+  .refine((c) => c.source.licence !== UNCHECKED_LICENCE, {
+    message: "check the repository's licence at head and record one from the allowlist",
+    path: ["source", "licence"],
+  })
+  .refine(
+    (c) => c.expect.every((e) => e.optional || e.lines[1] - e.lines[0] + 1 <= MAX_REQUIRED_SPAN),
+    `a required claim spans at most ${MAX_REQUIRED_SPAN} lines; put other places in also`,
+  );
 
 export type GoldenCase = z.infer<typeof caseSchema>;
 

@@ -12,6 +12,12 @@
     "date": "2025-05-05"
   },
   "rationale": "A cluster state update is a hot path, and the new delta copies both project-id sets on every update with more than the default project, even when nothing changed. ocra reported it in all four runs on this pull request, and an AACR-Bench reference written by a person makes the same point. The first performance expectation in the set. ADR-0036: kept; the pull request's next commit added the identity check the reference asked for; base set to the merge base.",
+  "raters": [
+    {
+      "by": "agent (claude), not blind",
+      "date": "2026-10-23"
+    }
+  ],
   "expect": [
     {
       "id": "delta-copies",

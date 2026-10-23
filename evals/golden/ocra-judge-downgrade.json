@@ -12,6 +12,12 @@
     "date": "2026-09-26"
   },
   "rationale": "The verdict change protects confirmed critical findings from being dropped by the judge but lets the judge downgrade them, which clears the blocking verdict just the same; the judge reads author-controlled text. ADR-0036: kept, with the 67-line range narrowed to the comment and check that allow the downgrade, and the loop that applies it and the test that asserts it as alternates. At head the downgrade was a documented, tested design; the maintainer reversed it later (#116), hence author-fix.",
+  "raters": [
+    {
+      "by": "agent (claude), not blind",
+      "date": "2026-10-23"
+    }
+  ],
   "expect": [
     {
       "id": "downgrade-allowed",

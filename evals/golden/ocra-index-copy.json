@@ -11,7 +11,13 @@
     "licence": "Apache-2.0",
     "date": "2026-09-26"
   },
-  "rationale": "A performance change copies the git index to add untracked files; the copy's fresh timestamp disables git's racy-git check, a subtle correctness bug that showed only as an intermittent test failure. ADR-0036: marked for vetting again: the claim is true, in the change and fixed later, but no run has found it; whether an omission this subtle stays required is open. The pre-existing symlink finding stays a label, which counts for precision as an optional claim would.",
+  "rationale": "A performance change copies the git index to add untracked files; the copy's fresh timestamp disables git's racy-git check, a subtle correctness bug that showed only as an intermittent test failure. ADR-0036: optional and marked for vetting again, until the second rater has seen it. The claim is true, in the change and fixed later; that no run has found it is not a reason to retire it, only a vetting defect would be. The pre-existing symlink finding stays a label, which counts for precision as an optional claim would.",
+  "raters": [
+    {
+      "by": "agent (claude), not blind",
+      "date": "2026-10-23"
+    }
+  ],
   "expect": [
     {
       "id": "index-mtime",
@@ -26,7 +32,7 @@
       "also": [],
       "origin": "author-fix",
       "producer": "vitest",
-      "optional": false
+      "optional": true
     }
   ],
   "forbid": [],

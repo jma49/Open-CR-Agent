@@ -143,7 +143,7 @@ describe("verdictFor and toGoldenCase", () => {
     expect(golden.rationale).toMatch(/^Unverified/);
   });
 
-  it("records a model-written comment as the model's", () => {
+  it("records a model-written comment as the model's, and optional until vetted", () => {
     const [ai] = parseRecords([
       record(11, { is_ai_comment: true, source_model: "GLM-4.7", category: "Code Defect" }),
     ]);
@@ -152,6 +152,7 @@ describe("verdictFor and toGoldenCase", () => {
     expect(toGoldenCase(candidate, commits).expect[0]).toMatchObject({
       origin: "ai-reference-vetted",
       producer: "GLM-4.7",
+      optional: true,
     });
   });
 

@@ -11,7 +11,13 @@
     "licence": "MIT",
     "date": "2025-04-18"
   },
-  "rationale": "A draw path starts reading a cached text size that only lv_label fills in, which looked like a defect for other widgets that draw expanded text. ADR-0036: the claim is retired for a vetting defect and the case becomes forbid-only: with LV_TEXT_FLAG_EXPAND, lv_text_get_next_line ignores max_width (src/misc/lv_text.c:336-344) and alignment uses the object's width, so the cached width is never used and nothing is laid out at width 0. A finding that says it is, as ocra's did, is wrong. The first C case; base set to the merge base.",
+  "rationale": "A draw path starts reading a cached text size that only lv_label fills in, which looked like a defect for other widgets that draw expanded text. ADR-0036: the claim is retired for a vetting defect and the case becomes forbid-only: with LV_TEXT_FLAG_EXPAND, lv_text_get_next_line ignores max_width (src/misc/lv_text.c:336-344) and alignment uses the object's width, so the cached width is never used and nothing is laid out at width 0. A finding that says it is, as ocra's did, is wrong. The first C case; base set to the merge base. The forbid range targets that zero-width claim: any finding on those lines counts against precision unless it is labelled valid.",
+  "raters": [
+    {
+      "by": "agent (claude), not blind",
+      "date": "2026-10-23"
+    }
+  ],
   "expect": [],
   "forbid": [
     {

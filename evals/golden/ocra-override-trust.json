@@ -12,6 +12,12 @@
     "date": "2026-09-27"
   },
   "rationale": "The first version of /ocra override took write access from author_association, bound to a 7-character commit prefix, and credited edited comments to their original author. People without write access, a ground commit or an edit could each pass a blocking verdict. ADR-0036: kept.",
+  "raters": [
+    {
+      "by": "agent (claude), not blind",
+      "date": "2026-10-23"
+    }
+  ],
   "expect": [
     {
       "id": "association-access",

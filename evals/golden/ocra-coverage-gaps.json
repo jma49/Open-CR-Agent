@@ -11,7 +11,13 @@
     "licence": "Apache-2.0",
     "date": "2026-09-27"
   },
-  "rationale": "A sed edit added a function to the built-in plugin list, and the new incomplete-review check sits after the blocking return, so both bugs are visible in the diff. ADR-0036: the two claims on report.ts (one range, one fingerprint) are merged into one optional claim, found once each by a model and in no other run; the safeMarkdown claim is optional, since it is pre-existing code the change does not touch; stray-plugin's minSeverity drops to suggestion, since its fix calls it harmless. exit-order is marked for vetting again: the same return order already stood at base for other checks, the same diff documents exit 3 as applying only without a blocking verdict, and the harm shows in action.yml, outside the change.",
+  "rationale": "A sed edit added a function to the built-in plugin list, and the new incomplete-review check sits after the blocking return, so both bugs are visible in the diff. ADR-0036: the two claims on report.ts (one range, one fingerprint) are merged into one optional claim, found once each by a model and in no other run; the safeMarkdown claim is optional, since it is pre-existing code the change does not touch; stray-plugin's minSeverity drops to suggestion, since its fix calls it harmless. exit-order is optional and marked for vetting again, until the second rater has seen it: the same return order already stood at base for other checks, the same diff documents exit 3 as applying only without a blocking verdict, and the harm shows in action.yml, outside the change.",
+  "raters": [
+    {
+      "by": "agent (claude), not blind",
+      "date": "2026-10-23"
+    }
+  ],
   "expect": [
     {
       "id": "stray-plugin",
@@ -41,7 +47,7 @@
       "also": [],
       "origin": "author-fix",
       "producer": "claude (version not recorded)",
-      "optional": false
+      "optional": true
     },
     {
       "id": "nothing-reviewed",
@@ -63,7 +69,7 @@
         }
       ],
       "origin": "model-found-vetted",
-      "producer": "gemini-3.5-flash or -flash-lite",
+      "producer": "gemini-3.5-flash chain (model not recorded)",
       "optional": true
     },
     {

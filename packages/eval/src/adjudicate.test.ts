@@ -53,7 +53,7 @@ describe("adjudication", () => {
         concern: "title 0000000000000001",
         also: [],
         origin: "model-found-vetted",
-        producer: "ocra",
+        producer: "ocra (model not recorded)",
         optional: true,
       },
     ]);
@@ -118,6 +118,33 @@ describe("adjudication", () => {
       ["found-00000000", true],
       ["found-00000000-2", true],
     ]);
+  });
+
+  it("names the case and what to do when a valid finding would pass the optional claims' cap", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "ocra-adjudicate-"));
+    const optional = ["a", "b", "c", "d", "e"].map((id) => ({
+      ...expectLogin,
+      id,
+      optional: true,
+    }));
+    const original = JSON.stringify({ ...base, id: "login", expect: optional });
+    await writeFile(join(dir, "login.json"), original);
+    const entry = {
+      case: "login",
+      fingerprint: "00000000000000cd",
+      category: "correctness",
+      severity: "warning" as const,
+      file: "src/login.ts",
+      lines: { start: 80, end: 80 },
+      title: "Sixth",
+      body: "b",
+      label: "valid" as const,
+      reason: "real",
+    };
+    await expect(applyLabels({ goldenDir: dir, entries: [entry] }, dir)).rejects.toThrow(
+      `${join(dir, "login.json")}: "Sixth" would be the case's 6th optional claim; if it is an issue a claim already names, add its location to that claim's also`,
+    );
+    expect(await readFile(join(dir, "login.json"), "utf8")).toBe(original);
   });
 
   it("keeps typed labels with their claim when two claims quote the same code", () => {

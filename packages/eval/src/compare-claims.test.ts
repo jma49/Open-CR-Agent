@@ -100,6 +100,22 @@ describe("compareClaims", () => {
     expect(compareClaims([unhashed([true])], [unhashed([false])])?.refused).toMatch(/hashed/);
   });
 
+  it("refuses to pair runs scored before claims had ids, rather than finding no change", () => {
+    const old = (found: boolean[]): SavedSummary => {
+      const saved = run(found);
+      for (const claim of saved.summary.golden?.cases?.c?.claims ?? []) {
+        delete (claim as { id?: string }).id;
+      }
+      return saved;
+    };
+    const result = compareClaims([old([true, true])], [old([false, false])]);
+    expect(result).toMatchObject({
+      claims: 0,
+      refused: "some runs were scored before claims had ids",
+    });
+    expect(result?.test).toBeUndefined();
+  });
+
   it("does nothing without per-case scores", () => {
     const old = { summary: { golden: { casesHash: "h1" } } } as unknown as SavedSummary;
     expect(compareClaims([old], [old])).toBeUndefined();

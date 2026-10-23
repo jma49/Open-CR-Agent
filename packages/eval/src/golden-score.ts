@@ -79,6 +79,12 @@ export type GoldenClaimScore = {
   optional?: true;
 } & Partial<ClaimStage>;
 
+// Scored before claims had ids: nothing pairs such a run's claims with
+// another run's, so a claim-by-claim comparison must refuse it.
+export function lacksClaimIds(cases: Record<string, GoldenCaseScore> | undefined): boolean {
+  return Object.values(cases ?? {}).some((c) => c.claims.some((claim) => claim.id === undefined));
+}
+
 const RANK: Record<Severity, number> = { suggestion: 0, warning: 1, critical: 2 };
 
 // ADR-0011: precision from recorded labels, never from a judge's guess, and
@@ -304,16 +310,23 @@ function atRequiredSeverity(instance: Instance, k: number, finding?: OutputFindi
   return finding !== undefined && RANK[finding.severity] >= RANK[required];
 }
 
+// Claims are hashed in id order, so reordering a case's claims changes
+// nothing that runs compare: they pair claims by id.
 function casesHash(instances: readonly Instance[]): string {
   const cases = instances
-    .filter((i) => i.golden)
-    .map((i) => ({
-      id: i.id,
-      base: i.baseCommit,
-      head: i.headCommit,
-      references: i.references,
-      golden: i.golden,
-    }))
+    .flatMap((i) => (i.golden ? [{ ...i, golden: i.golden }] : []))
+    .map(({ id, baseCommit, headCommit, references, golden }) => {
+      const { claims, minSeverity, alternates, ...rest } = golden;
+      const byId = references
+        .map((reference, k) => ({
+          ...claims[k],
+          reference,
+          minSeverity: minSeverity[k],
+          also: alternates[k],
+        }))
+        .sort((a, b) => (a.id ?? "").localeCompare(b.id ?? ""));
+      return { id, base: baseCommit, head: headCommit, claims: byId, golden: rest };
+    })
     .sort((a, b) => a.id.localeCompare(b.id));
   return shortHash(JSON.stringify(cases));
 }

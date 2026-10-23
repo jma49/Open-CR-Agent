@@ -11,7 +11,13 @@
     "licence": "MIT",
     "date": "2025-02-28"
   },
-  "rationale": "Path handling in model creation: a real failure on nested paths (not in AACR-Bench's references) and the Windows separator gap the references do name. ADR-0036: file-path-error is optional, since the 400 list it names is outside the change (the change does introduce errFilePath and the nested-path failure that reaches it); files-omitted-error and nested-test-case are optional, each found in a single run, though the author's next commit fixed both. windows-separator is marked for vetting again: os.Root still contains such paths, so on Windows the only effect is file-path-error's 500 instead of a 400, the same defense-in-depth class as three adapter-path findings labelled invalid, and the merged pull request kept the gap. Of the two labels on fingerprint 165fe552, the invalid one stays: the valid one restated files-omitted-error, which a matching finding reaches before any label.",
+  "rationale": "Path handling in model creation: a real failure on nested paths (not in AACR-Bench's references) and the Windows separator gap the references do name. ADR-0036: file-path-error is optional, since the 400 list it names is outside the change (the change does introduce errFilePath and the nested-path failure that reaches it). files-omitted-error is required: true at head, in the change, fixed by the author's next commit, and now in ocra's own words. nested-test-case stays optional: a test exercising inputs production never sends is a minor defect, found in one run, and waits for the second rater. windows-separator is optional and marked for vetting again: os.Root still contains such paths, so on Windows the only effect is file-path-error's 500 instead of a 400, the same defense-in-depth class as three adapter-path findings labelled invalid, the merged pull request kept the gap, and only a model's reference vouches for it, at suggestion; its range is narrowed to the separator checks. Fingerprint 165fe552 keeps both labels: they are two claims on the same code (ADR-0012), and a label applies to its own title first.",
+  "raters": [
+    {
+      "by": "agent (claude), not blind",
+      "date": "2026-10-23"
+    }
+  ],
   "expect": [
     {
       "id": "nested-path",
@@ -32,16 +38,31 @@
       "id": "windows-separator",
       "file": "server/create.go",
       "lines": [
-        161,
-        188
+        166,
+        168
       ],
       "category": "security",
       "minSeverity": "suggestion",
-      "concern": "validRelative only treats '/' as a separator, so on Windows backslash and drive-letter paths pass the early check; os.Root still contains them, so it is defense in depth that is lost.",
-      "also": [],
+      "concern": "validRelative checks only '/' as a separator, so on Windows a drive-letter or backslash path passes the early check; os.Root still contains it, so the request ends in a 500 instead of a 400.",
+      "also": [
+        {
+          "file": "server/create.go",
+          "lines": [
+            171,
+            174
+          ]
+        },
+        {
+          "file": "server/create.go",
+          "lines": [
+            181,
+            185
+          ]
+        }
+      ],
       "origin": "ai-reference-vetted",
       "producer": "Gemini-3-Pro",
-      "optional": false
+      "optional": true
     },
     {
       "id": "file-path-error",
@@ -71,7 +92,7 @@
       "also": [],
       "origin": "author-fix",
       "producer": "gemini-3.5-flash",
-      "optional": true
+      "optional": false
     },
     {
       "id": "nested-test-case",
@@ -103,6 +124,12 @@
       "label": "invalid",
       "reason": "Defense in depth only: adapter keys still pass the os.Root containment check and errFilePath returns 400. (checked against the code by the agent, 2026-09-28)",
       "title": "Missing early path validation for adapters keys in CreateHandler"
+    },
+    {
+      "fingerprint": "165fe552fc6f1d23",
+      "label": "valid",
+      "reason": "Real: files is always a non-nil map, so r.Files != nil always holds and the errNeitherFromOrFiles branch is unreachable; omitting files gives the wrong error. (checked against the code by the agent, 2026-09-28)",
+      "title": "Wrong error returned when 'files' is omitted from CreateRequest because r.Files is overwritten with a non-nil empty map"
     },
     {
       "fingerprint": "aa8fe6e1c25e62ad",

@@ -194,11 +194,20 @@ export function toGoldenCase(candidate: ImportCandidate, commits: CandidateCommi
   return parseCandidate(data, data.id);
 }
 
-// A row without is_ai_comment is not taken for a person's.
-function provenance(record: DatasetRecord): { origin: string; producer: string } {
+// A row without is_ai_comment is not taken for a person's. A comment a
+// model wrote is optional until vetting promotes it (ADR-0036 point 5).
+function provenance(record: DatasetRecord): {
+  origin: string;
+  producer: string;
+  optional: boolean;
+} {
   return record.is_ai_comment === false
-    ? { origin: "human-review", producer: "human" }
-    : { origin: "ai-reference-vetted", producer: record.source_model || "unknown model" };
+    ? { origin: "human-review", producer: "human", optional: false }
+    : {
+        origin: "ai-reference-vetted",
+        producer: record.source_model || "unknown model",
+        optional: true,
+      };
 }
 
 function slug(text: string): string {

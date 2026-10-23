@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { main } from "./cli.js";
-import { loadGolden, parseCase, toInstance, untouchedPaths } from "./golden.js";
+import { loadGolden, parseCandidate, parseCase, toInstance, untouchedPaths } from "./golden.js";
 import { selectInstances } from "./select.js";
 
 const valid = {
@@ -131,8 +131,30 @@ describe("golden cases", () => {
       { expect: [{ ...claim("a"), producer: "" }] },
       "expect.0.producer",
     ],
+    [
+      "a required suggestion only a model vouches for",
+      { expect: [{ ...claim("a"), origin: "model-found-vetted", minSeverity: "suggestion" }] },
+      "case: a claim only a model vouches for is required only at warning or above",
+    ],
+    [
+      "a required claim over 15 lines",
+      { expect: [{ ...claim("a"), lines: [10, 25] }] },
+      "case: a required claim spans at most 15 lines",
+    ],
   ])("caps and identifies claims: rejects %s", (_name, change, message) => {
     expect(() => parseCase({ ...valid, ...change }, "case.json")).toThrow(`case.json: ${message}`);
+  });
+
+  it("leaves model-vouched suggestions and wide ranges to optional claims and candidates", () => {
+    const suggestion = {
+      ...claim("a", true),
+      origin: "ai-reference-vetted",
+      minSeverity: "suggestion",
+    };
+    expect(() => parseCase({ ...valid, expect: [suggestion] }, "case.json")).not.toThrow();
+    const wide = { ...claim("b"), lines: [10, 40] };
+    expect(() => parseCase({ ...valid, expect: [{ ...wide, optional: true }] }, "c")).not.toThrow();
+    expect(() => parseCandidate({ ...valid, expect: [wide] }, "candidate.json")).not.toThrow();
   });
 
   it("accepts three required and five optional claims, with raters", () => {
