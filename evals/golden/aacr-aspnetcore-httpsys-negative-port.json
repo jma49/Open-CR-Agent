@@ -1,0 +1,89 @@
+{
+  "id": "aacr-aspnetcore-httpsys-negative-port",
+  "repo": "dotnet/aspnetcore",
+  "base": "f83c97fa0b91f83bd20511d1abf235dc48b596e2",
+  "head": "0ce67cdee87e9fee014ba95c11e8e36b8913041c",
+  "language": "C#",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/dotnet/aspnetcore/pull/61006; AACR-Bench dataset.json rows 961, 962, 963, 965, 966; licence MIT read from LICENSE.txt and the touched files' headers at head; hand-checked 2026-10-23 by vetter A and vetter B (blind) and by adjudicator; the negative port was fixed upstream by 8f2c205b0ccd (#62506, 2025-06-30)",
+    "licence": "MIT",
+    "date": "2025-03-20"
+  },
+  "rationale": "The change rewrites Http.Sys's SocketAddress over CsWin32's SOCKADDR_IN and SOCKADDR_IN6 structs and reads ports through IPAddress.NetworkToHostOrder on a short, where the old byte arithmetic was unsigned. row-963 is required at warning: true at head for both families, so ports from 32768 up come back negative as RemotePort and LocalPort in Http.Sys and IIS, and ForwardedHeadersMiddleware and ConnectionInfo.ToString then build an IPEndPoint from it, which throws; it is in the diff, and upstream fixed it in 8f2c205b0ccd (#62506) with a ushort cast, so the origin is author-fix (first stated by a model). The IPv4 twin is in also. row-965, the one comment a person wrote, is optional (vetters disagreed; the adjudicator sided with keeping it optional): the IPv6 scope id really is discarded, but the code before the change discarded it too under the same TODO, so the change does not make it worse, which is outside the reviewers' contract, and upstream main still omits it (ADR-0036 point 5 makes such true pre-existing claims optional). row-962 is dropped and its lines are forbidden: IPAddress(long) takes the 32-bit value as read from the network-order bytes in memory, which is what S_addr holds, so the IPv4 address is correct, and upstream kept the line. row-961 is dropped and its lines are forbidden: the only caller, GetEndPointHelper, returns null before the call when the native address pointer is null. row-966 is dropped: the cast yields the same pointer the old IntPtr did, the old code already read the family through a typed pointer, and the struct copies read no more bytes than the old loops, so no misalignment or overread is shown. No forbid seeds were listed for this pull request. Base is the merge base.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-963",
+      "file": "src/Shared/HttpSys/NativeInterop/SocketAddress.cs",
+      "lines": [
+        59,
+        63
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "GetPort casts the network-order port to short and returns the signed result of NetworkToHostOrder widened to int, so any port from 32768 to 65535, which covers most clients' ephemeral ports, is reported as a negative RemotePort or LocalPort and makes callers that build an IPEndPoint from it, such as the forwarded-headers middleware, throw.",
+      "also": [
+        {
+          "file": "src/Shared/HttpSys/NativeInterop/SocketAddress.cs",
+          "lines": [
+            37,
+            41
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "Deepseek-V3.2",
+      "optional": false
+    },
+    {
+      "id": "row-965",
+      "file": "src/Shared/HttpSys/NativeInterop/SocketAddress.cs",
+      "lines": [
+        70,
+        70
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "The IPv6 address is built from the sixteen address bytes alone and sin6_scope_id is discarded, so a link-local client's address loses its interface scope and compares unequal to the same address carrying its scope id, as it already did before this change.",
+      "also": [],
+      "origin": "human-review",
+      "producer": "human",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "src/Shared/HttpSys/NativeInterop/SocketAddress.cs",
+      "lines": [
+        43,
+        47
+      ],
+      "reason": "Not a byte-order bug: IPAddress(long) expects the 32-bit value as read from the address's network-order bytes in memory, which is what S_addr holds, so the IPv4 address is correct on little-endian machines."
+    },
+    {
+      "file": "src/Shared/HttpSys/NativeInterop/SocketAddress.cs",
+      "lines": [
+        15,
+        20
+      ],
+      "reason": "No null dereference: the only caller, GetEndPointHelper, returns before calling CopyOutAddress when the native address pointer is null and otherwise passes that address relocated into the request buffer."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

@@ -1,0 +1,70 @@
+{
+  "id": "aacr-typescript-go-fprintln-spaces",
+  "repo": "microsoft/typescript-go",
+  "base": "15def0236938e25ec7822755444f4d58c68045be",
+  "head": "ae447d3b2a6db00072941e1992a09981b6096061",
+  "language": "Go",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/microsoft/typescript-go/pull/1354; AACR-Bench dataset.json rows 140, 141, forbid seeds rows 1605-1609; hand-checked 2026-10-23 by vetter A; the pull request's next commit, d83519214f (Fix spaces), fixed row-140 before merge",
+    "licence": "Apache-2.0",
+    "date": "2025-07-02"
+  },
+  "rationale": "The change removes System.NewLine and rewrites output calls to fmt.Fprintln and literal newlines. row-140 is kept as required: at head both watch-mode status lines pass a literal ending in a space to Fprintln, which adds its own separator, so the output gains a doubled space; it is in the diff, no linter reports it, and the author fixed it in the pull request's next commit (author-fix). AACR-Bench marks the comment as a person's, but on GitHub it was posted by the Copilot reviewer, so the producer names it; its stated detail (a space before the newline) was also wrong and is corrected here. row-141 is dropped: line 83 of watcher.go is a commented-out call, so it has no runtime consequence. The five forbid seeds (rows 1605-1609, written by a model) say the literal newlines bypass sys.NewLine or break CRLF handling; that method no longer exists, the pull request description states that output now uses a line feed on every platform on purpose, fmtMain is unreachable, and the blank-line check compares against the same literal every line is built with. Three of them become forbid ranges: the formatter settings, the trailing blank-line check and the help header and examples.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-140",
+      "file": "internal/execute/watch.go",
+      "lines": [
+        45,
+        48
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "Fprintln always inserts a space between operands, so the literals that already end in a space make watch mode print a doubled space before the build start time and before the build duration.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "github-copilot (model not recorded)",
+      "optional": false
+    }
+  ],
+  "forbid": [
+    {
+      "file": "internal/execute/tsc.go",
+      "lines": [
+        66,
+        66
+      ],
+      "reason": "fmtMain is unreachable (its only caller is commented out) and the pull request deliberately uses a line feed everywhere, as the language service already does; a hardcoded LF here is not a regression."
+    },
+    {
+      "file": "internal/execute/outputs.go",
+      "lines": [
+        261,
+        263
+      ],
+      "reason": "Every line the help generator builds now ends in the same literal line feed, so the trailing blank-line check cannot mis-detect anything on CRLF systems."
+    },
+    {
+      "file": "internal/execute/outputs.go",
+      "lines": [
+        147,
+        161
+      ],
+      "reason": "Help output uses a line feed on every platform on purpose, as the pull request description states; System.NewLine no longer exists, so there is no abstraction being bypassed."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

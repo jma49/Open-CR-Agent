@@ -1,0 +1,64 @@
+{
+  "id": "aacr-svelte-maybe-runes",
+  "repo": "sveltejs/svelte",
+  "base": "2af7ba21563f1b7f011ffa9f0c08e4acb473eef3",
+  "head": "44bec4c8b172a47ff300f754463555bbb694bb05",
+  "language": "JavaScript",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/sveltejs/svelte/pull/16232; AACR-Bench dataset.json rows 510, 511, 514 (forbid seeds 1755, 1756); licence MIT read from LICENSE.md and package.json at head; hand-checked 2026-10-23 by adjudicator after two blind vetters; head is the pull request's first commit, and its later commits 5ec63e7809 (LabeledStatement check) and 19bc230b22 (spread keys) were squash-merged as 922bee9a6d",
+    "licence": "MIT",
+    "date": "2025-06-24"
+  },
+  "rationale": "The change adds maybe_runes, which gives a non-runes component without legacy markers fine-grained template expressions. row-510 is required, author-fix: at head the instance check ignores $: statements, so a plainly legacy component falls into maybe-runes and build_expression skips coarse-grained tracking for it; a maintainer said so in review and the author added the LabeledStatement check before merge, which upstream keeps. iterator-some is optional, author-fix: calling some() on Map.keys() needs iterator helpers that Node 18 and 20 lack, both in the package's engines range and CI matrix, and the author spread the keys before merge; no review comment raised it, so the producer is the author whose fix states it. It stays optional because the project's type check (TypeScript 5.5.4, without iterator-helper typings) reports it, which is outside the reviewers' contract. row-511 is dropped: at head build_expression already checks maybe_runes, and the person's comment there only proposed an explanatory code comment. row-514 is dropped: the only object literal typed ComponentAnalysis sets maybe_runes, and a missing property would be the compiler's to report. Forbid seeds: 1755 is a readability remark, not a false defect claim, on row-510's range. 1756 (wrong scope for $$props) is false, since undeclared names in the instance script and template bubble up to module.scope.references, which uses_props and upstream's merged code rely on; it is still not a forbid range, because its line also carries iterator-some and sits inside row-510, and matching is one finding per claim, so a duplicate or broader correct finding there would be counted forbidden, or listed as a failure if critical.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-510",
+      "file": "packages/svelte/src/compiler/phases/2-analyze/index.js",
+      "lines": [
+        438,
+        452
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "maybe_runes rules out only export let and $$props/$$restProps, not $: reactive statements, so a component that is plainly legacy because it uses $: is treated as maybe-runes and its template expressions lose legacy coarse-grained dependency tracking, changing when they re-run.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    },
+    {
+      "id": "iterator-some",
+      "file": "packages/svelte/src/compiler/phases/2-analyze/index.js",
+      "lines": [
+        441,
+        441
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "Calling some() directly on the iterator from Map.keys() needs iterator helpers that Node 18 and 20 lack although the package supports them, so compiling any component that is neither in runes mode nor set to runes: false throws a TypeError there.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
+}

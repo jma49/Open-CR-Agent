@@ -1,0 +1,84 @@
+{
+  "id": "aacr-vllm-unhashable-log-arg",
+  "repo": "vllm-project/vllm",
+  "base": "7489ec0bab2904dcc4001af59a942a16756fdbbc",
+  "head": "134705b1474ddcfac234a0a01313874f7c8b59bc",
+  "language": "Python",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/vllm-project/vllm/pull/17425; AACR-Bench dataset.json rows 912, 913, 914, 917, 918, 919 (forbid seeds 1924, 1925, 1926); hand-checked 2026-10-23 by vetter A; the pull request's later commit 7830858fa1 wrapped the token-count mapping in str() before the merge (da4e7687b5)",
+    "licence": "Apache-2.0",
+    "date": "2025-04-30"
+  },
+  "rationale": "The change lets info_once and warning_once take format arguments, which the lru_cache-wrapped helpers make part of the cache key, and the multimodal profiler passes a dict as one of them. row-919 (a person's comment) is required: true at head, reached from the V0 profile run, in the change, and fixed by the author's next commits (author-fix). Dropped, all model-written: row-912 (caching on the arguments drops repeats exactly as the pre-formatted f-strings did), row-913 (a bare lru_cache is bounded at 128 entries, and the cache predates the change), row-914 (warning_once accepts positional arguments since this change), row-917 and row-918 (style, and %d would be wrong for a mapping). Forbid: logger.py's info helper, where three model comments (rows 912, 913 and seed 1925, which calls Logger unhashable) are false; weight_utils.py's first warning, from row-914. Seeds 1924 (style on a correct call) and 1926 (on the real defect's line) are not forbid ranges.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-919",
+      "file": "vllm/multimodal/profiling.py",
+      "lines": [
+        242,
+        250
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "_get_mm_num_tokens returns a dict, and warning_once now forwards its arguments into an lru_cache-wrapped helper, so when a V0 profiling run hits this warning the call raises TypeError (unhashable dict) instead of logging, and engine startup fails.",
+      "also": [
+        {
+          "file": "vllm/multimodal/profiling.py",
+          "lines": [
+            217,
+            225
+          ]
+        },
+        {
+          "file": "vllm/logger.py",
+          "lines": [
+            61,
+            64
+          ]
+        },
+        {
+          "file": "vllm/logger.py",
+          "lines": [
+            83,
+            88
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    }
+  ],
+  "forbid": [
+    {
+      "file": "vllm/logger.py",
+      "lines": [
+        55,
+        58
+      ],
+      "reason": "Logger objects hash by identity, a bare lru_cache holds at most 128 entries, and keying on the format arguments drops repeats exactly as the old pre-formatted strings did; no info_once caller passes an unhashable argument."
+    },
+    {
+      "file": "vllm/model_executor/model_loader/weight_utils.py",
+      "lines": [
+        718,
+        721
+      ],
+      "reason": "warning_once takes positional format arguments since this change, and both arguments here are strings, so the call neither raises nor mis-formats."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

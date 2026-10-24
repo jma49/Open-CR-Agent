@@ -1,0 +1,66 @@
+{
+  "id": "aacr-immich-service-worker-cache",
+  "repo": "immich-app/immich",
+  "base": "15d431ba6a9caf6ba8f4a97ea357bfcd00c7245b",
+  "head": "9032c7e021872a913e28de2e79bd9ab9806e7413",
+  "language": "TypeScript",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/immich-app/immich/pull/18043; AACR-Bench dataset.json rows 860, 861, 862, 863, 864, forbid seeds 1903, 1904, 1905; hand-checked 2026-10-23 by adjudicator after two blind vetters; head is the pull request's first commit, its commit 298ec912e replaced the route list with a catch-all that still answers with the root page (merged as ed5b260ee, reverted wholesale upstream in #19227); licence from LICENSE (the AGPL v3 text, no or-later grant) and web/server package.json (version 3)",
+    "licence": "AGPL-3.0-only",
+    "date": "2025-05-02"
+  },
+  "rationale": "First commit of the change that precaches SvelteKit's build and static files and answers a list of app routes with the cached root page. None of the five AACR comments holds at head: row 860 restates the author's note that build is empty in development, and the code already caches both build and files; row 861 is false, since an extendable event takes several waitUntil promises and install waits for all of them (upstream kept both calls); row 862 is a URL-parsing micro-optimization the performance reviewer is told to skip; row 863 describes SvelteKit's documented all-or-nothing precache, which upstream kept and whose failure only keeps the previous worker; row 864 has no consequence, since a rejected respondWith promise yields the same network error the code returns elsewhere. Forbid ranges: seed 1904 is false because the web app is an adapter-static SPA (index.html fallback, ssr off) whose server returns the same shell for every non-API path, and upstream kept answering with the root page; seed 1905 is false because a path string given to cache.match resolves against the worker's origin exactly as cache.addAll stored the entries. Seed 1903 is a question whose lines hold a real defect, so it gets no range, and no forbid range is put at the call site next to that defect. Both blind vetters independently found the optional claim: the route list names maps while the page is /map (AppRoute.MAP); the author's next commit replaced the list with a catch-all (author-fix). It stays optional at suggestion because its only effect is that one page skips the cached shell and fails offline. Forbid-only for required recall.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "map-route-missed",
+      "file": "web/src/service-worker/index.ts",
+      "lines": [
+        40,
+        45
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "The route pattern names maps while the map page lives at /map, so that page alone bypasses the cached app shell and cannot load offline, unlike every other app route.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "claude-opus-5-5",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "web/src/service-worker/index.ts",
+      "lines": [
+        62,
+        65
+      ],
+      "reason": "Answering every listed app route with the cached root page is correct: the web app is a client-rendered SPA whose server returns the same index.html shell for these paths, and the router renders the requested path from the location; upstream kept the design."
+    },
+    {
+      "file": "web/src/service-worker/index.ts",
+      "lines": [
+        110,
+        110
+      ],
+      "reason": "Looking up the cache by pathname works: cache.match resolves the path against the worker's origin, the same way cache.addAll stored the precached entries, as in SvelteKit's documented service worker example."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

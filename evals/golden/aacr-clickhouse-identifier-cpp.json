@@ -1,0 +1,58 @@
+{
+  "id": "aacr-clickhouse-identifier-cpp",
+  "repo": "ClickHouse/ClickHouse",
+  "base": "4ff4869e3bdd97f7de69f51f994fc7089c6fd412",
+  "head": "36ea28ab28fd93258143ab4312e60e2b5e244843",
+  "language": "C++",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/ClickHouse/ClickHouse/pull/75218; AACR-Bench dataset.json rows 1045, 1047; hand-checked 2026-10-23 by adjudicator after two blind vetters; licence Apache-2.0 read from LICENSE at head; the pull request's commit 5f3596784ad, after head, replaced the remaining assert with chassert, and master keeps chassert in all four pop methods",
+    "licence": "Apache-2.0",
+    "date": "2025-01-30"
+  },
+  "rationale": "A compile-time refactor that moves Identifier's and IdentifierView's constructors and pop methods from the header into Identifier.cpp and turns their asserts into chassert. row-1047 is true at head and the author fixed it in the same pull request (author-fix), but it stays optional: the check in IdentifierView::popLast behaves exactly as it did at base and only misses the sanitizer-build coverage its three siblings gained, so no build behaves worse; the reference's second half (move the methods back to the header for inlining) is a design choice the pull request rejected on purpose and upstream kept, so it is dropped, and the range is narrowed to the method's head and assertion. row-1045 is false at head: both full-name constructors fill parts by splitting the member full_name in their bodies (the person's comment on that line was a formatting suggestion, which AACR-Bench restated as a missing initialization). Following ADR-0036's lvgl precedent, the claim is retired for a vetting defect and its range becomes a forbid range: AACR-Bench's annotators accepted the misreading, and the rvalue overload, which splits right after a std::move, is a common use-after-move false positive. Adjudicated: vetter A kept the case as forbid plus one optional claim, vetter B dropped it for lack of a forbid range; the adjudicator sides with A. forbid-seeds.json has no entries for this pull request; the rest of the change only moves includes.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-1047",
+      "file": "src/Analyzer/Identifier.cpp",
+      "lines": [
+        74,
+        76
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "IdentifierView::popLast keeps a plain assert where the three other moved pop methods now use chassert, so sanitizer builds compiled with NDEBUG do not catch a call that removes more parts than the view holds, which moves parts_end_it before parts_start_it.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "src/Analyzer/Identifier.cpp",
+      "lines": [
+        21,
+        31
+      ],
+      "reason": "Both full-name constructors fill parts in their bodies by splitting the already-initialized member full_name, not the moved-from parameter, so a finding that parts is left empty or that the split reads a moved-from string is false."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

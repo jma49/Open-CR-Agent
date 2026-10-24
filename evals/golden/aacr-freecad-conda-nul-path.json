@@ -1,0 +1,81 @@
+{
+  "id": "aacr-freecad-conda-nul-path",
+  "repo": "FreeCAD/FreeCAD",
+  "base": "855ad6c70904f911b2ce7114dd1a5bc24da98bd1",
+  "head": "39c5968bdc6c0b20d94d4a629cd43eafee1e56d0",
+  "language": "C++",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/FreeCAD/FreeCAD/pull/19977; AACR-Bench dataset.json rows 96, 98, 100 (forbid seeds: rows 1588, 1589, 1590); hand-checked 2026-10-23 by adjudicator; the pull request's Redundant c_str() commit (8ff4b1b) broke startup on conda and pixi builds (FreeCAD/FreeCAD#20068) and upstream reverted it in dbfc0b47b6e (2025-03-16)",
+    "licence": "LGPL-2.0-or-later",
+    "date": "2025-03-03"
+  },
+  "rationale": "A batch of clang-tidy cleanups in src/App/Application.cpp. Both blind vetters independently added conda-nul-path (under different ids) and the adjudicator confirms it as required: the change replaced the c_str() round trip in the RESOURCEDIR, LIBRARYDIR and DOCDIR getters, right under the #6892 comment that explains it, so the string keeps the literal's compile-time length, issue #20068 then reported FreeCAD failing to start with an embedded-NUL path error, and upstream reverted that commit two weeks later (author-fix, producer human). It is on changed lines, inside the correctness contract, and required at warning. The three imported claims are dropped. row-96 (a person's) asks for a different string type in the new exception helper: a micro-optimization in run-once startup code, resting on a wrong premise (the init-capture is already a C string pointer), and the merged pull request kept it. row-98 (a model's) is false at head: the file has a using-directive for Base and only Base declares the PyExc_FC_* globals, and a build failure would be the compiler's to report. row-100 (a model's) is false at head: the macOS executable-path buffer is freed on both branches, realpath cannot throw, and the change only moved the declaration into the if. Models raise rows 98 and 100, so their ranges become forbid ranges, as ADR-0036 did for lvgl (line 421 is left out, since that exception's Python name really changed). Forbid seed 1588 is not a range: the inconsistent Base:: qualification is a true style point the author fixed before merge, though the static calls behave as before. Seed 1589 describes the added reserve without naming a defect, and 1590 proposes a simplification the code already has: neither is a range. Licence: LICENSE is the GNU Library GPL v2 and the touched file's header grants version 2 or any later version.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "conda-nul-path",
+      "file": "src/App/Application.cpp",
+      "lines": [
+        1166,
+        1167
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "Dropping the c_str() round trip removes the #6892 workaround, so the string keeps the literal's compile-time length and, on conda or pixi builds whose relocated install prefix is padded with NUL bytes, the resource, library and help paths carry embedded NULs and FreeCAD fails to start.",
+      "also": [
+        {
+          "file": "src/App/Application.cpp",
+          "lines": [
+            1181,
+            1182
+          ]
+        },
+        {
+          "file": "src/App/Application.cpp",
+          "lines": [
+            1195,
+            1196
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    }
+  ],
+  "forbid": [
+    {
+      "file": "src/App/Application.cpp",
+      "lines": [
+        409,
+        420
+      ],
+      "reason": "The unqualified exception globals resolve to Base's through the file's using-directive and nothing else declares those names, so these assignments set the same objects as before."
+    },
+    {
+      "file": "src/App/Application.cpp",
+      "lines": [
+        3488,
+        3503
+      ],
+      "reason": "The executable-path buffer is freed on both branches and nothing between the allocation and the delete can throw, so it does not leak; the change only moved its declaration into the if statement."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

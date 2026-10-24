@@ -1,0 +1,69 @@
+{
+  "id": "aacr-vllm-untouch-lru-order",
+  "repo": "vllm-project/vllm",
+  "base": "dd66fd2b01e1195b7ccc8ffcd4b5d49ff1946a56",
+  "head": "075f1b5b8015e343f25b45d36ccff571cb39739b",
+  "language": "Python",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/vllm-project/vllm/pull/12608; AACR-Bench dataset.json rows 901, 904 (forbid seed row 1919 not used); hand-checked 2026-10-23 by vetter A; the author removed _untouch and moved the touch after the capacity check later in the same pull request (merged as f8ece6e17f)",
+    "licence": "Apache-2.0",
+    "date": "2025-01-31"
+  },
+  "rationale": "The change merges append_slots into allocate_slots and touches prefix-hit blocks before the capacity check, undoing the touch with a new _untouch when the request does not fit. untouch-lru-order (row 901) is required: true at head, since _untouch re-appends evictable blocks at the free queue's tail in chain order, against FreeKVCacheBlockQueue's documented LRU and tail-first eviction order, every step a waiting request fails to fit; a person raised it and the author removed _untouch in favour of counting evictable hits before touching (author-fix); rewritten in ocra's words, since the benchmark's paraphrase (move the blocks to the front) is not what the fix did. row-904 is dropped and its range becomes a forbid range: a running request's blocks, prefix hits included, are already in req_to_blocks, so the empty list is right, and upstream kept it (the merged code only made the argument default to None). The forbid seed (row 1919) asks for a shorter error message: style, which no reviewer is asked to report, and upstream adopted the wording, so it is not a forbid range.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "untouch-lru-order",
+      "file": "vllm/v1/core/kv_cache_manager.py",
+      "lines": [
+        433,
+        438
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "When allocate_slots cannot fit a request, _untouch puts its evictable prefix-hit blocks back at the tail of the free queue in chain order, so a request that was never scheduled makes them look most recently used and has each chain's first block evicted before its tail, breaking the queue's LRU, tail-first eviction order and costing prefix-cache hits under memory pressure.",
+      "also": [
+        {
+          "file": "vllm/v1/core/kv_cache_manager.py",
+          "lines": [
+            163,
+            166
+          ]
+        },
+        {
+          "file": "vllm/v1/core/kv_cache_manager.py",
+          "lines": [
+            146,
+            148
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    }
+  ],
+  "forbid": [
+    {
+      "file": "vllm/v1/core/scheduler.py",
+      "lines": [
+        141,
+        142
+      ],
+      "reason": "Passing an empty list for a running request is right: its blocks, prefix hits included, are already in req_to_blocks, and looking computed blocks up again would count them twice."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

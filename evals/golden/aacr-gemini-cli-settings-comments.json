@@ -1,0 +1,54 @@
+{
+  "id": "aacr-gemini-cli-settings-comments",
+  "repo": "google-gemini/gemini-cli",
+  "base": "bd0f085ae896e97373b451180f70ff551142fd7e",
+  "head": "0fa1bd7ac417366f321ed2554caeaef550321959",
+  "language": "TypeScript",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/google-gemini/gemini-cli/pull/8154; AACR-Bench dataset.json rows 587, 588, 589, 590, 591, 594, 595, forbid seeds 1793, 1794, 1795; hand-checked 2026-10-23 by vetter A; upstream later mutated arrays in place to keep their comments (b92e3bca50, #10098)",
+    "licence": "Apache-2.0",
+    "date": "2025-09-11"
+  },
+  "rationale": "Settings saves go through comment-json so the file keeps its comments and env-var references. Licence Apache-2.0 from LICENSE and the touched files' SPDX headers; base is already the merge base. Kept: row-595 (a person's comment), required at suggestion as author-fix: applyUpdates replaces arrays wholesale, which drops the comments comment-json keeps on the array, and the same author later switched to in-place mutation for exactly that reason. Dropped: row-587, false, since env-var resolution always yields a string and mappings are only recorded for strings, so a non-string value at a mapped path is a user's own update; row-588 and row-589, speculative, since the only caller passes typed settings and loadSettings already refuses a file that is not a JSON object; row-590, deliberate (commit e34b01cab refuses to rewrite an unparsable file) and kept on upstream main; row-591, formatting only and kept on upstream main; row-594, false at head, since the explicit __proto__/constructor/prototype guard is in place and getOwnPropertyNames would add no protection. Forbid: seed 1795, false since the CLI requires Node 20 or later, already used structuredClone before this change, and clones plain JSON data. Seeds 1793 (store unresolved settings instead, which upstream later did) and 1794 (a duplication remark) are not false claims and give no forbid range. Not a claim, left for the maintainer: applyUpdates never deletes keys missing from the update, so 'gemini mcp remove' no longer persists (fixed upstream by #10098); no reference names it.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-595",
+      "file": "packages/cli/src/utils/commentJson.ts",
+      "lines": [
+        63,
+        76
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "applyUpdates assigns every array from the update over the parsed one instead of updating it in place, so any comments inside an array in the settings file are lost whenever a setting is saved, defeating the comment preservation the change adds.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    }
+  ],
+  "forbid": [
+    {
+      "file": "packages/cli/src/config/settings.ts",
+      "lines": [
+        663,
+        665
+      ],
+      "reason": "structuredClone is a global on every Node version the CLI supports (engines require 20 or later), the CLI already used it before this change, and the settings it clones are plain JSON data, so these calls cannot throw."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

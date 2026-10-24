@@ -1,0 +1,156 @@
+{
+  "id": "aacr-kestra-file-exists-empty",
+  "repo": "kestra-io/kestra",
+  "base": "2e09777790d4a64d746175f94f8e2861844aaede",
+  "head": "0ec45f028467c99d8d1efeee6c201210d9433e6d",
+  "language": "Java",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/kestra-io/kestra/pull/7191; AACR-Bench dataset.json rows 984, 987, 988, 989, 990, 991 (row 986, the same error-message comment on FileEmptyFunction, folded into row-989's also); hand-checked 2026-10-23 by adjudicator after two blind vetters; the pull request's later commits d57c86d208 and 98dcfd87b3 (squash-merged as 88a5cd69e3) fixed both error messages and the whole-file read; upstream dfe5552a1e (2025-03) passes the parent's namespace, 8ac27db36a (2026-05) wraps the IllegalArgumentException in PebbleException, and ad7bd65703 (2026-05) makes the storage traversal guard check the decoded path; licence Apache-2.0 read from LICENSE at head",
+    "licence": "Apache-2.0",
+    "date": "2025-02-05"
+  },
+  "rationale": "New fileExists and fileEmpty Pebble functions copied from fileSize. Row 989, the one comment written by a person, bundles three of the maintainer's review points, all fixed by the author before merge (author-fix, producer human), and is split into three claims: the wrong function named in the missing-path error (required; fileEmpty's message names read, in also), fileEmpty reading the whole file into memory to answer an emptiness question (required, performance), and isBlank counting a whitespace-only file as empty (optional: the head test asserts it as intended). Row 987 is optional, recategorized as correctness: true at head and fixed upstream (dfe5552a1e), but the namespace matters only to a namespace-isolating storage not in this repository, and the pattern is copied from read and fileSize. Row 988 is optional: the IllegalArgumentException escapes VariableRenderer, which catches only IOException and PebbleException, and upstream later wrapped it, but it mirrors the existing functions and their tests and only changes how the error is reported. Row 991 is optional (the vetters split optional and drop; the adjudicator kept it): true at head, since startsWith on the raw URI lets a percent-encoded .. pass, and LocalStorage's guard at head tests the encoded string while resolving the decoded path, a hole upstream later closed in the storage guard (ad7bd65703) while keeping this prefix check; it stays optional because only a model vouches for it, at suggestion, and the same check already guards read, which returns content, so the change exposes nothing new. Dropped: row 984 (both functions are singletons injected like fileSize; no failure path) and row 990 (flow and execution exist wherever these functions render; upstream keeps the casts). No forbid seeds for this pull request.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-989",
+      "file": "core/src/main/java/io/kestra/core/runners/pebble/functions/FileExistsFunction.java",
+      "lines": [
+        19,
+        19
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "The error thrown when fileExists is called without a path names the fileSize function (and fileEmpty's names read), so the user is pointed at a function they did not call.",
+      "also": [
+        {
+          "file": "core/src/main/java/io/kestra/core/runners/pebble/functions/FileEmptyFunction.java",
+          "lines": [
+            22,
+            22
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    },
+    {
+      "id": "row-989-reads-whole-file",
+      "file": "core/src/main/java/io/kestra/core/runners/pebble/functions/FileEmptyFunction.java",
+      "lines": [
+        74,
+        76
+      ],
+      "category": "performance",
+      "minSeverity": "suggestion",
+      "concern": "fileEmpty loads the entire internal-storage file into a byte array and then a String only to decide whether it is empty, so calling it on a large output such as a download costs memory in proportion to the file where reading one byte would answer the question.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    },
+    {
+      "id": "row-989-blank-not-empty",
+      "file": "core/src/main/java/io/kestra/core/runners/pebble/functions/FileEmptyFunction.java",
+      "lines": [
+        75,
+        75
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "fileEmpty tests the decoded content with isBlank, so a file holding only spaces or newlines is reported as empty although it has content, unlike what the documentation added in the same change promises.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
+    },
+    {
+      "id": "row-987",
+      "file": "core/src/main/java/io/kestra/core/runners/pebble/functions/FileEmptyFunction.java",
+      "lines": [
+        69,
+        74
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "When the file is allowed only because it belongs to the parent execution, storage is still queried with the current flow's namespace, so with a storage that isolates namespaces a subflow in another namespace than its parent looks for the parent's file in the wrong place.",
+      "also": [
+        {
+          "file": "core/src/main/java/io/kestra/core/runners/pebble/functions/FileExistsFunction.java",
+          "lines": [
+            66,
+            72
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "GPT-5.2",
+      "optional": true
+    },
+    {
+      "id": "row-988",
+      "file": "core/src/main/java/io/kestra/core/runners/pebble/functions/FileEmptyFunction.java",
+      "lines": [
+        84,
+        89
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "A file outside the current or parent execution is refused with an IllegalArgumentException, which VariableRenderer does not catch, so the failure escapes without the template name and line instead of becoming an IllegalVariableEvaluationException.",
+      "also": [
+        {
+          "file": "core/src/main/java/io/kestra/core/runners/pebble/functions/FileExistsFunction.java",
+          "lines": [
+            80,
+            85
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "GPT-5.2",
+      "optional": true
+    },
+    {
+      "id": "row-991",
+      "file": "core/src/main/java/io/kestra/core/runners/pebble/functions/FileExistsFunction.java",
+      "lines": [
+        96,
+        97
+      ],
+      "category": "security",
+      "minSeverity": "suggestion",
+      "concern": "The ownership check runs startsWith on the raw URI string, so a percent-encoded .. segment after the execution's prefix passes it and the storage's literal-'../' guard, and local storage, which resolves the decoded path, then probes a file outside that execution.",
+      "also": [
+        {
+          "file": "core/src/main/java/io/kestra/core/runners/pebble/functions/FileEmptyFunction.java",
+          "lines": [
+            100,
+            101
+          ]
+        }
+      ],
+      "origin": "ai-reference-vetted",
+      "producer": "GPT-5.2",
+      "optional": true
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
+}

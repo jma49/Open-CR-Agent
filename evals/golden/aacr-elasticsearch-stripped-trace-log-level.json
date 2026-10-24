@@ -1,0 +1,45 @@
+{
+  "id": "aacr-elasticsearch-stripped-trace-log-level",
+  "repo": "elastic/elasticsearch",
+  "base": "930b4ab9957ed4a6376bcac7ba17f7bb2e82d125",
+  "head": "e38d20c726cffb1ef9563d3146951a5356596464",
+  "language": "Java",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/elastic/elasticsearch/pull/125732; AACR-Bench dataset.json rows 1214, 1215, 1216; hand-checked 2026-10-23 by vetter A; merged as 9f6eb1d4e3d, which logs failures with status 500 or above at warn (other statuses and node or shard unavailable at debug) before their traces are stripped; licence: SearchService.java and the repository default are triple-licensed AGPL-3.0-only, SSPL-1.0 and Elastic-2.0, recorded as the OSI option; the diff's x-pack test file is Elastic-2.0 only and no claim touches it",
+    "licence": "AGPL-3.0-only",
+    "date": "2025-03-26"
+  },
+  "rationale": "The change, titled and changelogged as a bug fix that logs data-node stack traces before they are cleared for transport, logs them only at debug, so with default log levels server errors still lose their traces. row-1214 (a person's comment) is kept as required: true at head on the default path (no error_trace header means header is false and every failure goes through the debug-only branch), in the diff, and the author fixed it before merge by logging 5xx failures at warn (author-fix); the claim is about the change failing its stated purpose, not about missing logging, so it is inside the correctness contract, at suggestion. row-1215 (model) is dropped: the supplier lambda only captures references, localNode() and shardId() are evaluated only when debug is enabled, and this is the failure path anyway. row-1216 (model) is dropped: ClusterService.localNode() never returns null (it throws when no local node exists), a node executing a shard search has applied a cluster state that contains it, and the supplier runs only at debug; the merged version even calls localNode() eagerly on every request. No forbid seeds exist for this pull request, and the two false claims sit on the required claim's lines, so no forbid range is added.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-1214",
+      "file": "server/src/main/java/org/elasticsearch/search/SearchService.java",
+      "lines": [
+        556,
+        560
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "Every failure whose stack trace is about to be stripped is logged only at debug, so under default log levels a server error (5xx) on the data node still loses its stack trace and the change does not preserve the diagnostics it sets out to keep.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
+}

@@ -1,0 +1,72 @@
+{
+  "id": "aacr-react-form-hook-rebuild",
+  "repo": "facebook/react",
+  "base": "8e9a5fc6c1a6252ca1727ab8fe0d4ee13f2568ec",
+  "head": "be58f26f9a6e579d8df36d901a59249d9ac1393f",
+  "language": "JavaScript",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/facebook/react/pull/33059; AACR-Bench dataset.json row 686; licence MIT read from LICENSE and the touched files' headers; hand-checked 2026-10-23 by adjudicator after blind vetters A and B disagreed; before merge the author removed the hooks change (fbdd204466) in favour of #33055 (88b9767404), which reads the alternate fiber's intact hooks instead of rebuilding them, and unfocused the test (58a09a3206); the merged pull request adds only the test",
+    "licence": "MIT",
+    "date": "2025-04-29"
+  },
+  "rationale": "The change works around a crash in requestFormReset when the form fiber that the DOM node maps to (fibers are cached on the node only at creation) is the work-in-progress whose render suspended after its first hook: renderWithHooks clears memoizedState and useThenable suspends after one cloned hook whose next is null. row-686 is required (vetter A; vetter B had optional). It is true at head and in the diff: the new condition sends that partial list down the upgrade path, which builds fresh status and reset hooks with new queues and writes them onto both fibers, so the committed hooks and the updates still queued on them are discarded. The consequence is visible: after a requestFormReset that hits this state during an in-flight async action, the action's optimistic pending status is gone from the committed hooks, so any re-render shows the form as not pending while the action runs. In the double-submit path the test covers, entanglement and the second submission's own dispatches mask it, so minSeverity stays suggestion. The reference is the PR author's own doubt about this line, and upstream replaced the approach: #33055 reads the alternate's hooks because the work-in-progress is in an inconsistent state, and main still checks only existingStateHook !== null. Origin is author-fix and the producer is human, so the required bar (true, in the contract, a named consequence, 4 lines) is met without the model-only restrictions. focused-test is optional (both vetters agree): it.only is real and the author removed it in the next commit, but jest/no-focused-tests from plugin:jest/recommended is enabled for __tests__ files and reports it, which puts it outside the reviewers' contract. There are no forbid seeds for this pull request.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-686",
+      "file": "packages/react-reconciler/src/ReactFiberHooks.js",
+      "lines": [
+        3263,
+        3266
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "When the form fiber is a work-in-progress whose render suspended after its first hook, the added next !== null check sends it down the upgrade path, which writes fresh hooks onto both fibers and so discards the committed status and reset hooks with the updates still queued on them, such as an in-flight action's pending status.",
+      "also": [
+        {
+          "file": "packages/react-reconciler/src/ReactFiberHooks.js",
+          "lines": [
+            3321,
+            3325
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    },
+    {
+      "id": "focused-test",
+      "file": "packages/react-dom/src/__tests__/ReactDOMForm-test.js",
+      "lines": [
+        1673,
+        1673
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "The new test is declared with it.only, so Jest skips every other test in ReactDOMForm-test.js and the rest of the form suite silently stops running.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
+}

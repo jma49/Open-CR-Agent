@@ -1,0 +1,62 @@
+{
+  "id": "aacr-gemini-cli-run-command",
+  "repo": "google-gemini/gemini-cli",
+  "base": "570b0086b606d2a6d55a2bdcd08b8a91c8092c8d",
+  "head": "c6e624883852318b71baa2a060c933bb5de591ef",
+  "language": "TypeScript",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/google-gemini/gemini-cli/pull/9177; AACR-Bench dataset.json rows 564, 566, 567, 568, 569 (claims) and 1787 (forbid seed); hand-checked 2026-10-23 by vetter A; merged as 463e5d5b7e with runCommand unchanged; upstream added a spawn error listener, a timeout and UTF-8 decoding to runCommand in 8030404b08 (#16047, 2026-01-14); licence Apache-2.0 from LICENSE and the touched files' SPDX headers",
+    "licence": "Apache-2.0",
+    "date": "2025-09-22"
+  },
+  "rationale": "The change adds runCommand to the integration-test rig, a copy of run without the prompt handling, and a test that installs, lists, updates and uninstalls a local extension. ADR-0036 vetting, blind: no required claim survives. row-564, the person's comment, is dropped: without setup() testDir is null and spawn treats a null cwd as unset, so nothing throws; the only caller calls setup() first, run has the same shape, and upstream still passes testDir unchecked. row-566 is dropped: with piped stdio the child's stdin, stdout and stderr are never null. row-567 is dropped: no caller passes an empty stdin, the subcommands called without stdin never read it (update reinstalls without asking for consent), and upstream kept the truthy check. row-568 is dropped: adding a Buffer to a string decodes it as UTF-8, it never yields an object tag. row-569 is kept optional with origin author-fix: with only a close listener, a failed spawn raises an unhandled error event and close never fires, and upstream added an error listener in 8030404b08; it stays optional because node failing to spawn in the test environment is not a state the change makes reachable, and run has the same gap. Forbid 351-353 comes from row 1787, which AACR-Bench labels incorrect: the rejection already carries the exit code and stderr, and there is no underlying error object to keep.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-569",
+      "file": "integration-tests/test-helper.ts",
+      "lines": [
+        342,
+        343
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "runCommand listens only for close, so if spawning node fails the child emits an unhandled error event and close never fires, leaving the returned promise pending until the test times out.",
+      "also": [
+        {
+          "file": "integration-tests/test-helper.ts",
+          "lines": [
+            315,
+            318
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "GPT-5.2",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "integration-tests/test-helper.ts",
+      "lines": [
+        351,
+        353
+      ],
+      "reason": "The rejection already reports the exit code and stderr; a close handler has no original error or stack to preserve, so asking to wrap one is a style preference, not a defect."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

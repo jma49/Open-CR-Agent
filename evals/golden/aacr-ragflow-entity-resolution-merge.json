@@ -1,0 +1,66 @@
+{
+  "id": "aacr-ragflow-entity-resolution-merge",
+  "repo": "infiniflow/ragflow",
+  "base": "e2b66628f4728aeda0c1db5aa8e75d5d6729f3db",
+  "head": "a63caa1087852ada98964678be26b7c4d8363af6",
+  "language": "Python",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/infiniflow/ragflow/pull/6691; AACR-Bench dataset.json rows 608, 609, 610, 612, 613; licence Apache-2.0 read from LICENSE at head; hand-checked 2026-10-23 by adjudicator after two blind vetters; the pull request's next commit 36881278bf (merged as ece59034f7) restored concurrent edge deletion, which upstream kept (v0.18.0, v0.20.0 behind a limiter); upstream 20b8ccd1e9 (#6705) later fixed removed_nodes.extend",
+    "licence": "Apache-2.0",
+    "date": "2025-03-31"
+  },
+  "rationale": "Entity resolution merge fixes in graphrag, vetted under ADR-0036. row-608 dropped: at head line 114 lists the component set directly; the missing .nodes was the base's bug, which this change fixes. row-609 dropped and made a forbid range: trio's start_soon calls the lambda at once to build the coroutine, so each merge task gets that iteration's merging_nodes and nothing binds late. row-610 dropped and made a forbid range: index.py gives every entity a source_id and tidy_graph purges nodes without one, so no KeyError is reachable. row-612 dropped: tidy_graph guarantees edge keywords and source_id, nothing reads them in order, and it is a consistency remark. row-613 (vetters split: optional against required) is optional, origin author-fix. The awaited per-edge deletes are serial and the author restored concurrency in the next commit. But at head no removed edge reaches set_graph: removed_edges is filled only in _merge_graph_nodes after extractor.py line 196, which raises AttributeError (extend on a set) for every merge. Base never deleted concurrently either: start_soon on a synchronous delete raised TypeError. The path is a background indexing job whose per-edge LLM summaries cost far more than the deletes. The performance reviewer is told not to report parallelism ideas without a demonstrated cost, so a review that follows its prompt may rightly skip this. The line 196 crash, made reachable by this change and fixed upstream in #6705, is the change's main real defect. It is not a candidate claim and lies outside the diff's hunks, so it is left for curation.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-613",
+      "file": "graphrag/utils.py",
+      "lines": [
+        440,
+        442
+      ],
+      "category": "performance",
+      "minSeverity": "suggestion",
+      "concern": "Inside the nursery each removed edge's relation chunks are deleted by an awaited worker-thread call, so the deletions run one after another and set_graph pays a full doc-store delete round trip per merged-away edge.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "graphrag/entity_resolution.py",
+      "lines": [
+        115,
+        115
+      ],
+      "reason": "trio's start_soon calls the lambda immediately to create the coroutine, so each merge task receives its own merging_nodes list; a late-binding closure finding here is wrong."
+    },
+    {
+      "file": "graphrag/general/extractor.py",
+      "lines": [
+        204,
+        205
+      ],
+      "reason": "index.py gives every entity a source_id list and tidy_graph purges nodes without one before entity resolution runs, so a missing-key failure on source_id cannot happen here."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

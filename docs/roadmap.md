@@ -139,7 +139,7 @@ What a company checks before adopting a code review tool, and where ocra is.
 | Policy | Repository and remote configuration; no organization policy the repository cannot override (M12) |
 | Integrations | Versioned JSON report with a JSON Schema; SARIF 2.1.0 out and in (`--import-sarif`); no sinks contract (M10) |
 | Observability | Session files with cost, tokens and latency; one run id across session, report, progress output, summary comment and SARIF; `ocra metrics`; no published event schema (M12) |
-| Quality evidence | 38 golden cases (34 required issues; 22 added 2026-10-23, vetted blind by two agents): one run on Gemini, two smoke-tier runs on a free model (not comparable); nightly live smoke and daily free golden evaluation (M11) |
+| Quality evidence | 58 golden cases (52 required issues; 42 added 2026-10-23, vetted blind by two agents): one run on Gemini, two smoke-tier runs on a free model (not comparable); nightly live smoke and daily free golden evaluation (M11) |
 | Support and stability | Early 0.x; the Stability and support page names the contracts; one maintainer |
 | Production use | Dogfood on two repositories; no external user yet (M13) |
 

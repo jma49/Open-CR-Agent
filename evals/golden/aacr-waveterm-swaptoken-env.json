@@ -1,0 +1,161 @@
+{
+  "id": "aacr-waveterm-swaptoken-env",
+  "repo": "wavetermdev/waveterm",
+  "base": "900f4a3ff7574246b188a716f55afe65694d5c40",
+  "head": "90a57d552d15f1b2a4d92cdfc3a4308efcf5c57b",
+  "language": "Go",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/wavetermdev/waveterm/pull/1793; AACR-Bench dataset.json rows 717, 718, 719, 721 (forbid seeds from rows 1844, 1848, 1854); hand-checked 2026-10-23 by vetter A; wsl-jwt-dropped fixed upstream by bba94a62 (#1841, 2025-01-24), ssh-nowsh-ignored fixed in the pull request's merge commit ec07b172",
+    "licence": "Apache-2.0",
+    "date": "2025-01-20"
+  },
+  "rationale": "The change moves cmd:env and init scripts into the swap token and routes shell start through a new ConnUnion. Licence Apache-2.0 (LICENSE, package.json and SPDX headers of the touched files); base is the merge base. ADR-0036 vetting, blind: row-717 dropped, the err == fs.ErrNotExist checks are unchanged code the change only renamed constants in, and WriteFile returns the sentinel unwrapped, so nothing is missed. row-718 dropped, createCmdStrAndOpts' space check is moved verbatim, cmd comes from the user's own block meta with no untrusted path, and args are shell-quoted. row-719 dropped, the packed token holds only the one-time swap id, socket name and RPC context (no JWT or env), the WSL Debugf call writes nothing because StartWslShellProc gets a context without a block id, and the change replaced logging the JWT itself in the full-command log line. row-721 kept optional: Debugf really calls Infof, upstream still has it, and at head no caller makes the difference visible. Two required claims were found while checking the diff and are confirmed by the authors' own fixes (author-fix): wsl-jwt-dropped (the WSL connserver runs in router mode, whose HandleClientProxyAuth leaves authenticatetoken as a TODO, so the swap token cannot be redeemed; upstream added WAVETERM_JWT back for WSL two days later) and ssh-nowsh-ignored (the merged pull request switched the SSH branch to connUnion.WshEnabled). local-nowsh-shellpath and cmd-env-dropped are real at head but upstream kept the behaviour and only a model vouches for them, so they are optional. Forbid ranges: GetConn never returns nil and the status check moved into getConnUnion (row 1848); block meta is decoded from JSON, so a nested override is always map[string]any (row 1854); the bash cascade already goes from specific to generic (row 1844). Seed 1851 (nil SwapToken) is false too but overlaps wsl-jwt-dropped, so it is not a forbid range; the other seeds are style or logging notes outside the reviewers' contract.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "wsl-jwt-dropped",
+      "file": "pkg/shellexec/shellexec.go",
+      "lines": [
+        258,
+        264
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "StartWslShellProc no longer puts WAVETERM_JWT on the command line and relies on the swap token alone, but the WSL connserver's socket proxy rejects authenticatetoken, so wsh token fails and wsh, cmd:env and init scripts stop working in WSL terminals.",
+      "also": [
+        {
+          "file": "pkg/blockcontroller/blockcontroller.go",
+          "lines": [
+            527,
+            530
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "claude-opus-5-5",
+      "optional": false
+    },
+    {
+      "id": "ssh-nowsh-ignored",
+      "file": "pkg/blockcontroller/blockcontroller.go",
+      "lines": [
+        544,
+        558
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "The SSH branch checks conn.WshEnabled rather than connUnion.WshEnabled, so a block with cmd:nowsh on a wsh-enabled SSH connection still starts the wsh shell and is handed a JWT, unlike the WSL and local branches.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "claude-opus-5-5",
+      "optional": false
+    },
+    {
+      "id": "row-721",
+      "file": "pkg/wslconn/wslconn.go",
+      "lines": [
+        120,
+        122
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "WslConn.Debugf forwards to blocklogger.Infof, so WSL debug lines would ignore the block's verbose flag, though its only caller at head passes a context without a block id.",
+      "also": [],
+      "origin": "ai-reference-vetted",
+      "producer": "Qwen-Coder-480B",
+      "optional": true
+    },
+    {
+      "id": "local-nowsh-shellpath",
+      "file": "pkg/blockcontroller/blockcontroller.go",
+      "lines": [
+        400,
+        403
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "With cmd:nowsh on a local block, getRemoteInfoAndShellType returns before resolving the shell, so ShellPath stays empty and the shell set by term:localshellpath is replaced by the detected default.",
+      "also": [
+        {
+          "file": "pkg/blockcontroller/blockcontroller.go",
+          "lines": [
+            583,
+            584
+          ]
+        }
+      ],
+      "origin": "model-found-vetted",
+      "producer": "claude-opus-5-5",
+      "optional": true
+    },
+    {
+      "id": "cmd-env-dropped",
+      "file": "pkg/blockcontroller/blockcontroller.go",
+      "lines": [
+        354,
+        360
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "cmd:env and the block's env file now reach the process only through the swap token, which a cmd block's shell -c command never redeems, so cmd blocks start without the variables they were configured with.",
+      "also": [
+        {
+          "file": "pkg/shellexec/shellexec.go",
+          "lines": [
+            506,
+            510
+          ]
+        },
+        {
+          "file": "pkg/shellexec/shellexec.go",
+          "lines": [
+            548,
+            552
+          ]
+        }
+      ],
+      "origin": "model-found-vetted",
+      "producer": "claude-opus-5-5",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "pkg/blockcontroller/blockcontroller.go",
+      "lines": [
+        441,
+        448
+      ],
+      "reason": "GetConn never returns nil (getConnInternal creates the entry), and the connection status is still checked here before any shell starts: the check moved into getConnUnion, it was not removed."
+    },
+    {
+      "file": "pkg/waveobj/metamap.go",
+      "lines": [
+        27,
+        29
+      ],
+      "reason": "Block meta reaches the controller decoded from JSON, so a nested connection override is always map[string]any; nothing stores a MetaMapType value inside meta."
+    },
+    {
+      "file": "pkg/blockcontroller/blockcontroller.go",
+      "lines": [
+        219,
+        220
+      ],
+      "reason": "The bash cascade already tries the bash-specific key, then the sh key, then the generic one: most specific first, as intended."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

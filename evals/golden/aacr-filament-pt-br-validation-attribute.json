@@ -1,0 +1,46 @@
+{
+  "id": "aacr-filament-pt-br-validation-attribute",
+  "repo": "filamentphp/filament",
+  "base": "8b44845f2bfab244f650d38e1b0ac00e733612e7",
+  "head": "912f080f3bf9873c1d059bcb9df485e3d8939220",
+  "language": "PHP",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/filamentphp/filament/pull/15756; AACR-Bench dataset.json row 953; licence MIT from LICENSE.md at head; hand-checked 2026-10-23 by vetter A; upstream 3.x still has the translated value",
+    "licence": "MIT",
+    "date": "2025-03-02"
+  },
+  "rationale": "A pt_BR translation-only change. The one AACR comment (row 953, written by a person) says validation_attribute must stay 'password'; it is false at head: Register and ResetPassword pass the value to validationAttribute(), which only supplies the display name for the field's state path in validation messages, so translating it is what es, fr, nl, pt_PT and ar already do, and upstream kept 'senha'. The claim is dropped and its range, with the identical line in reset-password.php, becomes a forbid range: a person raised it, so a reviewer plausibly would. No forbid seeds existed for this case.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [],
+  "forbid": [
+    {
+      "file": "packages/panels/resources/lang/pt_BR/pages/auth/register.php",
+      "lines": [
+        30,
+        30
+      ],
+      "reason": "validation_attribute is the field's display name in validation messages, not a key, so translating it to the Portuguese word is correct and breaks nothing."
+    },
+    {
+      "file": "packages/panels/resources/lang/pt_BR/pages/auth/password-reset/reset-password.php",
+      "lines": [
+        17,
+        17
+      ],
+      "reason": "Same as register.php: the translated validation_attribute only changes the name shown in validation messages."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

@@ -1,0 +1,126 @@
+{
+  "id": "aacr-appwrite-console-domain",
+  "repo": "appwrite/appwrite",
+  "base": "e267283fa9981f6f1e7af73d77437ad0bec5a255",
+  "head": "710b8bda565c411ecb23e8b670d0ba7f45d2b3f3",
+  "language": "PHP",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/appwrite/appwrite/pull/9999; AACR-Bench dataset.json rows 625, 627, 628, 630, 631, 636, 638, 641, forbid seeds rows 1803 and 1804; hand-checked 2026-10-23 by adjudicator after two blind vetters; before merge (32903d9a81) the pull request's later commits 5e345c0388, cee6420fa2 and b7ffd2ca94 put _APP_DOMAIN back in console.php, the four runtime API endpoints, the router's main-domain and certificate checks, the proxy rules and the executor, and kept _APP_CONSOLE_DOMAIN only for console links; licence BSD-3-Clause from LICENSE and composer.json at head",
+    "licence": "BSD-3-Clause",
+    "date": "2025-06-12"
+  },
+  "rationale": "The change, meant to drop the region prefix from links, swaps _APP_DOMAIN (the instance's API host) for _APP_CONSOLE_DOMAIN, falling back to _APP_DOMAIN, everywhere a host is built, including where the API host is meant; it matters exactly in the deployment the pull request targets, where the two hosts differ. row-627 is required (adjudicated; vetter A had it optional): true at head and in the diff, the runtime SDK endpoint loses the regional API host, a maintainer said so on that line in the pull request's own review before AACR's GPT-5.2 note restated it (so the producer is human), and the author reverted all four endpoint sites before merge (author-fix); like row-628 it needs the two hosts to differ, which is the change's purpose rather than an unusual deployment. row-628 is required: when the hosts differ, requests on _APP_DOMAIN stop counting as the main domain and pay a rules lookup each, and router protection then refuses them since its allowlist names only the console host; reverted by the author (author-fix). Its minSeverity stays at suggestion because router protection is off by default, leaving the lookup as the default effect. row-625 is optional: also reverted, but it only changes the console's custom-domain flag when exactly one of the two hosts is a public domain. Dropped: rows 636, 638 and 641 say an empty _APP_CONSOLE_DOMAIN is used as is, but utopia-php/system 0.9.0's getEnv returns the default for an empty value, so the fallback applies; their lines still carry a change the author reverted for another reason, so they get no forbid range. Rows 630 and 631 need both variables unset, which base already handled the same way. Forbid: general.php line 79 (seed 1804) feeds only /console links and upstream kept it; site.php line 10 (seed 1803) builds template screenshot URLs on a host that serves them, and upstream kept it. Not a claim (no reference states it): with the hosts apart, the proxy rule endpoints no longer deny _APP_DOMAIN itself as a custom domain; the author reverted that too.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-627",
+      "file": "app/controllers/general.php",
+      "lines": [
+        451,
+        452
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "The API endpoint given to function and site runtimes is now built on the console host, so when _APP_CONSOLE_DOMAIN differs from _APP_DOMAIN the server SDK calls a function or site makes go to the console host instead of the instance's own (regional) API host.",
+      "also": [
+        {
+          "file": "src/Appwrite/Platform/Modules/Functions/Http/Executions/Create.php",
+          "lines": [
+            354,
+            355
+          ]
+        },
+        {
+          "file": "src/Appwrite/Platform/Workers/Functions.php",
+          "lines": [
+            487,
+            488
+          ]
+        },
+        {
+          "file": "src/Appwrite/Platform/Modules/Functions/Workers/Builds.php",
+          "lines": [
+            597,
+            598
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    },
+    {
+      "id": "row-628",
+      "file": "app/controllers/general.php",
+      "lines": [
+        812,
+        814
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "The router's main-domain check now compares the request host with the console host, so when _APP_CONSOLE_DOMAIN differs from _APP_DOMAIN every API request on _APP_DOMAIN runs through the custom-domain router, paying a rules lookup each time and being refused when router protection is on and no rule names that host.",
+      "also": [
+        {
+          "file": "app/controllers/general.php",
+          "lines": [
+            861,
+            864
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    },
+    {
+      "id": "row-625",
+      "file": "app/controllers/api/console.php",
+      "lines": [
+        46,
+        47
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "The console's custom-domain flag now checks whether the console host, rather than the API host in _APP_DOMAIN, is a public domain, so custom domains can be offered or withheld based on the wrong host.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "app/controllers/general.php",
+      "lines": [
+        79,
+        79
+      ],
+      "reason": "Every use of this $url in the router builds a /console link (the call-to-action buttons on error pages), so the console host is intended there, and upstream kept the line; a finding that it misdirects non-console links is wrong."
+    },
+    {
+      "file": "app/config/templates/site.php",
+      "lines": [
+        10,
+        10
+      ],
+      "reason": "The template screenshots are static images the console host serves, and upstream kept the line; a finding that the screenshot URLs break is wrong."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

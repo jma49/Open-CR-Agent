@@ -1,0 +1,70 @@
+{
+  "id": "aacr-ollama-parallel-blobs",
+  "repo": "ollama/ollama",
+  "base": "16fca86c4a6c43e2752062e7f82d20f00d9fd292",
+  "head": "0b52f186fb4af8fa7d4f6a71967f922eb6b69cdc",
+  "language": "Go",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/ollama/ollama/pull/10135; AACR-Bench dataset.json rows 1233, 1234, 1235, forbid seeds 2058, 2059, 2060; licence MIT read from LICENSE at head; hand-checked 2026-10-23 by vetter A; the merged squash d931ee8f22 renders the last rows instead of the first",
+    "licence": "MIT",
+    "date": "2025-04-08"
+  },
+  "rationale": "The change uploads model files in parallel, one progress spinner per file, and caps the progress block at the terminal height. row-1235 is required: at head render draws the first termHeight-1 states, so with more files than rows the newest progress and the final success status never show; the pull request's merged version draws the last rows instead (author-fix, first stated by a model). row-1234 is dropped: go.mod declares go 1.24, so the range loop's f and digest are per iteration and the goroutines do not share them; being false and a classic false positive, it becomes a forbid range on the loop header. row-1233 is dropped: replacing the mutex-guarded map with a slice is a refactoring with no measurable cost (one lock per uploaded file), and upstream kept a mutex-guarded map (types/syncmap). Forbid seeds: 2058 (mutex unnecessary) is false, since concurrent writes to a Go map need it, and kept; 2059 (worker limit defeats parallelism) is kept, since the limit is never below 1 and sequential uploads on small machines are what the code did before, a bound upstream kept; 2060 (redundant files map in CreateRequest) is dropped: false, since the handler needs the full paths to upload, but a refactoring idea no reviewer is asked to raise.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-1235",
+      "file": "progress/progress.go",
+      "lines": [
+        118,
+        119
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "render draws only the first termHeight-1 progress states, so once a create has more states than the terminal has rows (one copy spinner per model file, then the server's statuses), the newest lines, including the final success status, are never shown.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "GLM-4.7",
+      "optional": false
+    }
+  ],
+  "forbid": [
+    {
+      "file": "cmd/cmd.go",
+      "lines": [
+        128,
+        128
+      ],
+      "reason": "The module declares go 1.24, so each iteration of the range loop has its own f and digest and the upload goroutines never see another iteration's values."
+    },
+    {
+      "file": "cmd/cmd.go",
+      "lines": [
+        122,
+        122
+      ],
+      "reason": "The mutex is needed: the upload goroutines write the shared Files and Adapters maps concurrently, which a Go map does not allow unguarded."
+    },
+    {
+      "file": "cmd/cmd.go",
+      "lines": [
+        124,
+        124
+      ],
+      "reason": "The worker limit is never below 1, so on one or two cores the uploads run one at a time as they did before the change; the bound is deliberate and was kept upstream, not a regression."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

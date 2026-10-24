@@ -1,0 +1,107 @@
+{
+  "id": "aacr-mpv-display-vflip",
+  "repo": "mpv-player/mpv",
+  "base": "a55ae5d6cdba0f96968b56e91a3999db40e31e61",
+  "head": "ff45a8103e3c5ec3e786b950b4852c2750de936f",
+  "language": "C",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/mpv-player/mpv/pull/16090; AACR-Bench dataset.json rows 1289, 1290, 1291, 1292, 1294, 1299, forbid seeds 2077, 2078, 2079, 2080, 2081; hand-checked 2026-10-23 by vetter A; head is an earlier revision of the pull request, whose merged revision 5fe9a42c added the frame->current check in gpu-next, a dmabuf-wayland transform table and vflip in mp_image_copy_attributes and mp_image_params_equal; licence LGPL-2.1-or-later from the touched files' headers and the Copyright file (mpv as a whole builds as GPL-2.0-or-later by default)",
+    "licence": "LGPL-2.1-or-later",
+    "date": "2025-03-22"
+  },
+  "rationale": "The change reads a vertical flip from the display matrix and lets VOs that claim VO_CAP_VFLIP render it. row-1299 (a person's comment) is required: do_redraw passes a frame with no current image after reconfig and in the --force-window idle window, so gpu-next dereferences NULL; the merged revision added the check (author-fix). dmabuf-flip-transform comes from forbid seed 2080, which AACR-Bench labels incorrect but which holds at head: adding 4 selects the left-right mirror, wrong for rotation 0 and 180, and the merged revision replaced it with a table (0 -> 6, 180 -> 4), so it is required as author-fix. vflip-not-copied comes from forbid seed 2078, also labelled incorrect but true at head and fixed in the merged revision; it is optional because its natural location (mp_image_copy_attributes) is outside the changed lines. Dropped: row-1289 (non-video frames never reach the video output chain, the frame stays in sub.frame and is unreferenced on reset, and autorotate has the same branch), row-1290 (the lavfi round trip rebuilds the display matrix from rotation only, so the vflip filter's output already has vflip 0, and VOs without the capability ignore the flag), row-1291 (mp_subfilter_reset frees the filter only while draining and TA_FREEP nulls it, so no double free), row-1292 (a nonzero mask converts to bool correctly and a created VO always has a driver), row-1294 (both upload paths flip once and consistently, a design remark upstream kept). Forbid: seed 2077 (when av_display_rotation_get returns NaN a column of the matrix is zero, so the determinant is zero and vflip would be 0 anyway) and seed 2081 (vo_gpu flips in pass_upload_image on both the hwdec and software paths and screenshots render through it; upstream kept the capability). Seed 2079 is not a forbid: the merged revision did add VO_CAP_VFLIP to dmabuf-wayland.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-1299",
+      "file": "video/out/vo_gpu_next.c",
+      "lines": [
+        923,
+        927
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "draw_frame reads frame->current->params.vflip without checking frame->current, which vo.c's do_redraw leaves NULL when no frame is queued (right after a reconfig, or in the --force-window idle window), so gpu-next dereferences NULL and crashes.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    },
+    {
+      "id": "dmabuf-flip-transform",
+      "file": "video/out/vo_dmabuf_wayland.c",
+      "lines": [
+        713,
+        713
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "Adding 4 to the rotation index selects a flip around the vertical axis, so at rotation 0 or 180 a vertically flipped hardware-decoded video is mirrored left-right instead (the compositor needs FLIPPED_180 at 0 and FLIPPED at 180).",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "Gemini-3-Pro",
+      "optional": false
+    },
+    {
+      "id": "vflip-not-copied",
+      "file": "video/mp_image.c",
+      "lines": [
+        508,
+        518
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "mp_image_copy_attributes copies rotate but not the new vflip field (and mp_image_params_equal ignores it), so frames that go through hwdec copy-back or a swscale conversion lose the flip and are shown unflipped.",
+      "also": [
+        {
+          "file": "video/mp_image.h",
+          "lines": [
+            60,
+            61
+          ]
+        },
+        {
+          "file": "video/mp_image.c",
+          "lines": [
+            843,
+            843
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "video/mp_image.c",
+      "lines": [
+        1103,
+        1106
+      ],
+      "reason": "Setting vflip only when the rotation is valid loses nothing: av_display_rotation_get returns NaN only when a column of the matrix is zero, and then the determinant is zero and vflip would be 0 anyway."
+    },
+    {
+      "file": "video/out/vo_gpu.c",
+      "lines": [
+        330,
+        330
+      ],
+      "reason": "vo_gpu does handle the flag it advertises: pass_upload_image flips on both the hwdec and the software path, and screenshots render through the same path; upstream kept the capability."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}
