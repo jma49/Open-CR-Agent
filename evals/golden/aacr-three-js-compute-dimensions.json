@@ -1,0 +1,95 @@
+{
+  "id": "aacr-three-js-compute-dimensions",
+  "repo": "mrdoob/three.js",
+  "base": "de413e2112ff1ae80599f145b101354a1476976c",
+  "head": "b55b9e97f6d0f5829e4d8fc364949e72b0d9e98c",
+  "language": "JavaScript",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/mrdoob/three.js/pull/31402; AACR-Bench dataset.json rows 273, 274, 275, 276, 277, 278, 279, 281 (forbid seed row 1645 not used); licence MIT read from LICENSE and package.json at head; hand-checked 2026-10-23 by adjudicator after two blind vetters; head is an intermediate commit of the pull request: its next commit 93850e9b13 fixed row-276 and row-279, commit 18422b41c8 (merged as f3769ebafb) gave computeAsync() the dispatch size and upstream later made compute() forward it",
+    "licence": "MIT",
+    "date": "2025-07-14"
+  },
+  "rationale": "The change lets compute nodes take a three-dimensional workgroup size and lets renderer.compute() take an explicit dispatch size. ADR-0036; two blind vetters and an adjudicator. row-279 is required at warning: at head the WGSL builder throws for any workgroup size that is not exactly three entries, a regression for one- and two-entry sizes that compiled before and that the repository's own ComputeBuiltinNode examples use, fixed by the author's next commit (author-fix). row-276 is required at suggestion: an explicit dispatch of one or two entries is silently ignored and the node's count-based dispatch runs instead (zero workgroups for a node built from a workgroup-size array), fixed in the same commit. row-275 is optional (a model's comment, outside the diff hunks but made reachable by the new parameter): compute() before initialization hands off to computeAsync() without the dispatch size; upstream fixed it. Dropped: row-273 (a null count gives dispatchCount 0, not NaN, and count-less kernels are the design upstream kept), row-274 (the [0, 0, 0] default is a deliberate sentinel for the count-based dispatch), row-277 (an explicit dispatch over the device limit is the caller's error, reported by WebGPU validation; the merged code does not clamp either), row-278 (the fallback does bind the node's whole backend data object instead of its dispatchSize, but undefined y and z take dispatchWorkgroups' default of 1, so the predicted runtime error does not happen, the stale y already existed at base, and the line went away in the later redesign rather than in a fix; adjudicated drop because no consequence remains, and not a forbid range because the wrong-object observation itself is accurate), row-281 (WGSL integer literals are abstract and convert to u32; upstream kept the code). Forbid seed row 1645 (deprecate the number form) is not used: a design suggestion outside the reviewers' contract rather than a false claim, upstream kept the number form, and its lines are row-279's alternate location.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-279",
+      "file": "src/renderers/webgpu/nodes/WGSLNodeBuilder.js",
+      "lines": [
+        1901,
+        1903
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "The WGSL builder now throws unless the workgroup size has exactly three entries, so a compute node given a one- or two-entry size, which WGSL accepts, the previous code compiled, and the repository's own compute(512, [128]) examples use, fails to build.",
+      "also": [
+        {
+          "file": "src/nodes/gpgpu/ComputeNode.js",
+          "lines": [
+            228,
+            237
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    },
+    {
+      "id": "row-276",
+      "file": "src/renderers/webgpu/WebGPUBackend.js",
+      "lines": [
+        1327,
+        1329
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "An explicit dispatch size is honoured only when all three entries are positive, so a one- or two-dimensional dispatch such as [16] or [16, 16] is silently ignored in favour of the node's count-based dispatch, which is zero workgroups for a node created from a workgroup-size array.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    },
+    {
+      "id": "row-275",
+      "file": "src/renderers/common/Renderer.js",
+      "lines": [
+        2318,
+        2322
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "When compute() runs before the renderer is initialized it hands off to computeAsync(), which takes no dispatch size, so an explicit dispatch is dropped and a node created from a workgroup-size array dispatches zero workgroups.",
+      "also": [
+        {
+          "file": "src/renderers/common/Renderer.js",
+          "lines": [
+            2412,
+            2416
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "Gemini-3-Pro",
+      "optional": true
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
+}

@@ -1,0 +1,110 @@
+{
+  "id": "aacr-langflow-parser-inputs",
+  "repo": "langflow-ai/langflow",
+  "base": "3d5c00c613cbeb162044778ec2ad15b3032e4d02",
+  "head": "623929065f9ae45792afce2eb3185dad353df78e",
+  "language": "Python",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/langflow-ai/langflow/pull/6652; AACR-Bench dataset.json rows 1500, 1501, 1502, 1503, 1504; hand-checked 2026-10-23 by vetter A and vetter B, disagreement on row-1503 hand-checked 2026-10-23 by adjudicator; licence MIT from LICENSE and both pyproject.toml files at head; row-1500 and row-1503 fixed before merge by 0b6ab6ef21 and 1fcdf34785 (squash-merged as e3cf852307), row-1502 fixed upstream by 85787cf53e (#7303)",
+    "licence": "MIT",
+    "date": "2025-03-06"
+  },
+  "rationale": "The pull request adds a Parser component that formats a Data or DataFrame with a template or stringifies it. row-1502 is required: a Data input is formatted with only its text, so the Data keys the Template field's info tells users to reference raise KeyError; upstream switched to the Data's own keys in #7303 (author-fix). row-1500 is required, rewritten with its consequence: _clean_args rejects every list before the stringify check, so a list of Data (the Data output of URL, Directory, API Request and others) cannot be stringified although convert_to_string handles lists; the pull request's later commit moved the stringify check first (author-fix). row-1503 is optional (the vetters split; adjudicated): it is true at head and _validate_input was removed before merge (author-fix), but no flow can deliver a dict to input_data, since it is a HandleInput of field type other, which build_params never fills from a template value, apply_tweaks spreads a dict tweak into the field's keys, and edges carry Data or DataFrame; only a direct Python caller reaches it, and the correctness reviewer is told to skip inputs it cannot show are reachable. AACR marks row-1503 human, but the pull request thread shows the GitHub Copilot bot posted it. row-1501 is dropped: the columns-key heuristic only sees plain dicts, which flows do not deliver, and a Data instance is matched before it. row-1504 is dropped: hasattr cannot raise, since Component.__getattr__ raises AttributeError for a missing field and cleaning is then skipped. No forbid seeds for this pull request.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-1502",
+      "file": "src/backend/base/langflow/components/processing/parser.py",
+      "lines": [
+        129,
+        131
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "A Data input is formatted with only text=data.get_text(), so any placeholder other than {text}, including the Data's own keys that the Template field's info tells users to reference, raises a KeyError.",
+      "also": [
+        {
+          "file": "src/backend/base/langflow/components/processing/parser.py",
+          "lines": [
+            36,
+            38
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "Claude-Code/Claude-4.5-Sonnet",
+      "optional": false
+    },
+    {
+      "id": "row-1500",
+      "file": "src/backend/base/langflow/components/processing/parser.py",
+      "lines": [
+        118,
+        121
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "parse_combined_text runs _clean_args, which rejects every list, before it checks stringify, so with Stringify enabled a list of Data from an upstream component fails with a ValueError and convert_to_string's list branch can never run.",
+      "also": [
+        {
+          "file": "src/backend/base/langflow/components/processing/parser.py",
+          "lines": [
+            96,
+            98
+          ]
+        },
+        {
+          "file": "src/backend/base/langflow/components/processing/parser.py",
+          "lines": [
+            176,
+            177
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "Deepseek-V3.2",
+      "optional": false
+    },
+    {
+      "id": "row-1503",
+      "file": "src/backend/base/langflow/components/processing/parser.py",
+      "lines": [
+        142,
+        144
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "With Stringify enabled, a dict with a data key passes _clean_args but then fails _validate_input, which does not allow dict, so an input template mode accepts raises a TypeError in stringify mode.",
+      "also": [
+        {
+          "file": "src/backend/base/langflow/components/processing/parser.py",
+          "lines": [
+            174,
+            174
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "github-copilot (model not recorded)",
+      "optional": true
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
+}

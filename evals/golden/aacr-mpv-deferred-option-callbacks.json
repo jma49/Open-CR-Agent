@@ -1,0 +1,67 @@
+{
+  "id": "aacr-mpv-deferred-option-callbacks",
+  "repo": "mpv-player/mpv",
+  "base": "e4b64fba9c5c6ca97189f32c056d05c2b47cebd6",
+  "head": "0729afe8d7067f0e4d69000309ec6f3e24ac3926",
+  "language": "C",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/mpv-player/mpv/pull/15828; AACR-Bench dataset.json rows 1270, 1272, 1273, 1274, 1275, 1276 (forbid seed row 2068 not used); hand-checked 2026-10-23 by vetter A; merged as bbac628a1b with the deferral, which upstream limited to options from parsed config files in 533a684381 (#15913) after scripts broke on the new timing; licence: every touched file's header is LGPL-2.1-or-later (the program as a whole defaults to GPL-2.0-or-later)",
+    "licence": "LGPL-2.1-or-later",
+    "date": "2025-02-08"
+  },
+  "rationale": "The change stops running option handlers when an option is set and queues them for the playloop. row-1276 (a person's review comment) is required: true at head, in the change, and upstream later restored immediate handling for runtime changes because scripts depended on the old timing (author-fix); rewritten as a correctness claim about stale state, since matching ignores category. Dropped, all model-written and false at head: row-1270 (each queued entry is compared before the shift overwrites it, so none is skipped), row-1272 (mp_option_run_callbacks checks co for NULL before reading co->data), row-1273 (the same pull request starts IPC in mp_initialize, so init no longer needs the callback), row-1274 (resetting the count reuses the talloc buffer, which MP_TARRAY_APPEND only grows past its capacity and which is freed with mpctx), row-1275 (NULL is the normal no-IPC result and mp_uninit_ipc accepts it, as before the change). Forbid seed row 2068 is not a forbid range: the redundant second comparison it names is real, only without consequence, so its claim is not false at head.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-1276",
+      "file": "player/playloop.c",
+      "lines": [
+        1292,
+        1292
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "Option change handlers now only run when the playloop next calls mp_option_run_callbacks, and queuing them does not wake the core, so an option set through the client API takes effect late and a script that sets an option and immediately runs a command relying on its effect acts on the old state.",
+      "also": [
+        {
+          "file": "player/playloop.c",
+          "lines": [
+            1305,
+            1305
+          ]
+        },
+        {
+          "file": "player/command.c",
+          "lines": [
+            7721,
+            7724
+          ]
+        },
+        {
+          "file": "player/command.c",
+          "lines": [
+            7727,
+            7729
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
+}

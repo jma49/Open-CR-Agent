@@ -1,0 +1,54 @@
+{
+  "id": "aacr-elasticsearch-max-offset-zero",
+  "repo": "elastic/elasticsearch",
+  "base": "d3f2956116eea89543dc4979bd3cdfc5c54d8bd7",
+  "head": "a6a4623f4a0216b515a8cb323110305504431459",
+  "language": "Java",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/elastic/elasticsearch/pull/118895; AACR-Bench dataset.json rows 1197, 1199, forbid seed row 2047; hand-checked 2026-10-23 by vetter A; the merged squash commit 93c349cc76d rejects 0 again (a positive integer, or -1); licence: every touched file is under Elastic-2.0, AGPL-3.0-only or SSPL-1.0 at the user's election, the OSI option recorded",
+    "licence": "AGPL-3.0-only",
+    "date": "2025-01-02"
+  },
+  "rationale": "The change lets max_analyzed_offset be -1 (use the index setting) by relaxing the builder's check from <= 0 to < -1, which also starts accepting 0. zero-offset-accepted is required: true at head (0 reaches QueryMaxAnalyzedOffset unchanged and caps highlighting at offset 0 without the length error), in the change, stated by a person, and the author rejected 0 again before merge (author-fix); the change's own testInvalidMaxAnalyzedOffset still draws from -100..0 and expects rejection. row-1197 is dropped: the misplaced comment in the private constructor has no effect, since create() is its only caller and already maps negatives, comments are outside the reviewers' contract, and upstream kept it. Forbid seed row 2047 becomes a forbid range: the null check precedes getNotNull() in the same || expression, so a reported NullPointerException there is wrong.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "zero-offset-accepted",
+      "file": "server/src/main/java/org/elasticsearch/search/fetch/subphase/highlight/AbstractHighlighterBuilder.java",
+      "lines": [
+        564,
+        570
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "The relaxed check rejects only values below -1, so max_analyzed_offset 0, a 400 before this change, is now accepted and silently limits highlighting to terms starting at offset 0 instead of reporting an invalid value.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    }
+  ],
+  "forbid": [
+    {
+      "file": "server/src/main/java/org/elasticsearch/lucene/search/uhighlight/CustomUnifiedHighlighter.java",
+      "lines": [
+        128,
+        128
+      ],
+      "reason": "The null check comes first in the same || expression, so getNotNull() is never called on a null queryMaxAnalyzedOffset; there is no NullPointerException here."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

@@ -1,0 +1,45 @@
+{
+  "id": "aacr-cline-azure-deepseek-client",
+  "repo": "cline/cline",
+  "base": "283d7d6928755ce5f62827e25c437a7a77964549",
+  "head": "cb4d5c90460885942cbbae0298b95f4ee5682086",
+  "language": "TypeScript",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/cline/cline/pull/1808; AACR-Bench dataset.json rows 461, 463 (forbid seeds 1716, 1717); hand-checked 2026-10-23 by vetter A; licence Apache-2.0 confirmed from LICENSE and package.json at head; after review the author replaced the URL check with a model-id check (8f02995, merged in 9a5a0e1), and upstream still keys on the model id",
+    "licence": "Apache-2.0",
+    "date": "2025-02-15"
+  },
+  "rationale": "The change routes OpenAI-compatible endpoints whose base URL contains 'deepseek' to the plain OpenAI client so that DeepSeek deployed on Azure stops failing. row-461 is required: true at head, in the changed condition, it names a consequence (Azure DeepSeek endpoints with other names keep the AzureOpenAI client and its deployment-path rewrite, and Azure OpenAI endpoints whose names contain the word lose the Azure client), and the author replaced the URL check with a model-id check after the review, which upstream keeps (author-fix); suggestion, since how often each endpoint shape occurs is not shown in the code. row-463 is dropped: the model-written note on substring matching names no harmful false positive (any id containing deepseek-r1 is an R1 variant, for which the R1 format is fine), the case-sensitivity half has no shown consequence because the author confirmed Azure DeepSeek works with no R1 detection at all, and upstream removed the check in favour of an explicit flag. No forbid ranges: seed 1716 (the deepseek-r1 check in deepseek.ts is not needed) is true, since DeepSeekHandler.getModel only returns deepseek-chat or deepseek-reasoner and the author reverted it; seed 1717 is a refactoring opinion, not a false claim.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-461",
+      "file": "src/api/providers/openai.ts",
+      "lines": [
+        17,
+        22
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "The plain OpenAI client is chosen by finding 'deepseek' in the base URL rather than in the model id, so an Azure DeepSeek endpoint whose name lacks that word still gets the AzureOpenAI client with its deployment-path rewrite and keeps failing, while an Azure OpenAI endpoint whose name contains it loses the Azure client and its api-version.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
+}

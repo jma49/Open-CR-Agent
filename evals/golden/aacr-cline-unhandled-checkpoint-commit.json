@@ -1,0 +1,45 @@
+{
+  "id": "aacr-cline-unhandled-checkpoint-commit",
+  "repo": "cline/cline",
+  "base": "a1bf1f95a30ca95581d9811488636aec42dd2f80",
+  "head": "419534ccd4241fc11827741eb0d76ba0c9d21277",
+  "language": "TypeScript",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/cline/cline/pull/5177; AACR-Bench dataset.json row 412; licence Apache-2.0 read from LICENSE and package.json at head; hand-checked 2026-10-23 by vetter A; fixed upstream by cb1bda9b5c (#4452, 2025-09-05), which adds a catch to the background commit and binds the hash to the message by ts",
+    "licence": "Apache-2.0",
+    "date": "2025-07-25"
+  },
+  "rationale": "The change stops awaiting the checkpoint commit: it posts checkpoint_created first and attaches the hash in a detached then() with no rejection handler, while CheckpointTracker.commit() rethrows every git failure. unhandled-commit-rejection is required: true at head, introduced by the change, not reported by the repository's lint rules or the compiler, written by a person, and fixed upstream by the checkpoints refactor (author-fix); minSeverity is suggestion since a failing shadow-git commit is uncommon and the extension host only logs the rejection. Its range covers the detached promise chain, where a catch belongs. Base is the merge base (the head's parent). No forbid seeds for this pull request.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-412",
+      "file": "src/core/task/index.ts",
+      "lines": [
+        1322,
+        1334
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "The detached commit().then() has no rejection handler although commit() rethrows every git failure, so a failed checkpoint commit becomes an unhandled rejection and leaves the already-posted checkpoint message without a hash, which the diff view cannot use and restore replaces with an earlier checkpoint.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
+}

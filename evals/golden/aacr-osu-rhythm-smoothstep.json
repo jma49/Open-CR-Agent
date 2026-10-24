@@ -1,0 +1,66 @@
+{
+  "id": "aacr-osu-rhythm-smoothstep",
+  "repo": "ppy/osu",
+  "base": "366f2469efcddd825baef8c41e03099bab9e0acb",
+  "head": "748ab3d4863f6ea4bf6a3fffccb50e5cd616937b",
+  "language": "C#",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/ppy/osu/pull/33423; AACR-Bench dataset.json rows 1303, 1305, 1308; licence MIT read from LICENCE and the touched files' headers; hand-checked 2026-10-23 by adjudicator after two blind vetters; the pull request's next commit, 3a9293774a, replaced the long cast with Math.Truncate",
+    "licence": "MIT",
+    "date": "2025-06-10"
+  },
+  "rationale": "The change replaces the rhythm bonus's squared sine of the delta ratio with a smoothstep bell curve over the ratio's fractional part: both are 0 at whole multiples, peak at half multiples and are capped at 0.5, so it is an intended balancing and speed change, not a defect, and no reference names a defect a review should be required to report. The case is kept forbid-only, as ADR-0036 did for lvgl: rows 1303 and 1308 were written by a model (GPT-5.2), are false at head, and become forbid ranges because a reviewer did raise them. The ratio's divisor is never zero since StrainTime is floored at MIN_DELTA_TIME (25 ms), the fractional part of a finite ratio of at least 1 is exact and in [0, 1), and SmoothstepBellCurve's only caller uses the default width of 0.5, so a zero or negative width needs an input that cannot be reached (the correctness reviewer is told to skip such issues); upstream still has both unguarded. row-1305 (a person's comment) is optional with origin author-fix: the author applied the Math.Truncate suggestion in the next commit, but the overflow it guards against is unreachable, since the 25 ms floor and parsed start times keep the ratio near 1e8 at most, far inside long's range. The vetters agreed on every claim and differed only on keeping the case; the forbid ranges stay off line 74 so they never contradict row-1305.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-1305",
+      "file": "osu.Game.Rulesets.Osu/Difficulty/Evaluators/RhythmEvaluator.cs",
+      "lines": [
+        74,
+        74
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "Taking the fractional part through a cast to long assumes the delta ratio fits in a long and would yield a wrong fraction beyond that range, which Math.Truncate avoids, although StrainTime's 25 ms floor keeps real ratios far below the limit.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "osu.Game.Rulesets.Osu/Difficulty/Evaluators/RhythmEvaluator.cs",
+      "lines": [
+        71,
+        71
+      ],
+      "reason": "No division by zero: StrainTime is floored at MIN_DELTA_TIME (25 ms), so the smaller delta is never zero and the ratio is never infinite or NaN."
+    },
+    {
+      "file": "osu.Game/Rulesets/Difficulty/Utils/DifficultyCalculationUtils.cs",
+      "lines": [
+        76,
+        81
+      ],
+      "reason": "A zero or negative width is unreachable: the only caller passes the default width of 0.5, and the existing BellCurve and Smoothstep helpers rely on a positive width the same way."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

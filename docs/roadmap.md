@@ -11,7 +11,7 @@ Model runs cost money, and there is little. So: **ship what tests prove without 
 **What peers have that ocra lacks**, largest first:
 
 1. **Platforms.** PR-Agent and Kodus support five or more (GitHub, GitLab, Bitbucket, Azure DevOps, Gitea); ocra supports GitHub and GitLab.
-2. **Published quality numbers at scale.** Alibaba reports SEM-F1 25.1% on AACR-Bench (recall 12–20%); Kodus published how it raised recall from 53% to 62%. ocra publishes one run on 16 golden cases, too few to decide changes.
+2. **Published quality numbers at scale.** Alibaba reports SEM-F1 25.1% on AACR-Bench (recall 12–20%); Kodus published how it raised recall from 53% to 62%. ocra publishes one run on 8 golden cases (16 expected issues), too few to decide changes.
 3. **Beyond one-shot review.** Chat commands in the pull request, learning from corrections, code graphs, IDE plugins.
 4. **Production mileage.** Cloudflare runs 130k reviews a month at $1.19 each; ocra reviews its own pull requests and one other repository's, and has no external user.
 
@@ -139,7 +139,7 @@ What a company checks before adopting a code review tool, and where ocra is.
 | Policy | Repository and remote configuration; no organization policy the repository cannot override (M12) |
 | Integrations | Versioned JSON report with a JSON Schema; SARIF 2.1.0 out and in (`--import-sarif`); no sinks contract (M10) |
 | Observability | Session files with cost, tokens and latency; one run id across session, report, progress output, summary comment and SARIF; `ocra metrics`; no published event schema (M12) |
-| Quality evidence | 16 golden cases: one run on Gemini, two smoke-tier runs on a free model (not comparable); nightly live smoke and daily free golden evaluation (M11) |
+| Quality evidence | 38 golden cases (34 required issues; 22 added 2026-10-23, vetted blind by two agents): one run on Gemini, two smoke-tier runs on a free model (not comparable); nightly live smoke and daily free golden evaluation (M11) |
 | Support and stability | Early 0.x; the Stability and support page names the contracts; one maintainer |
 | Production use | Dogfood on two repositories; no external user yet (M13) |
 

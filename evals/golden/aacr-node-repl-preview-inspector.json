@@ -1,0 +1,57 @@
+{
+  "id": "aacr-node-repl-preview-inspector",
+  "repo": "nodejs/node",
+  "base": "e57841f87e4cc3f4393a1c14cd8ca71dde11b99e",
+  "head": "e8b6c183d46c41b2992c4f5cafceb7f9c6f8710d",
+  "language": "JavaScript",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/nodejs/node/pull/57691; AACR-Bench dataset.json rows 494 (claim, dropped) and 1746 (forbid seed, not used); hand-checked 2026-10-23 by adjudicator; merged as 1f7cfb7a36, reverted by a6cc2400a2 (#57793) after CI failures, re-landed by d6dade5bc5 (#57850) with the preview tests moved to test-repl-custom-eval-previews.js behind common.skipIfInspectorDisabled()",
+    "licence": "MIT",
+    "date": "2025-03-30"
+  },
+  "rationale": "A test-only change adding REPL custom eval tests. preview-needs-inspector is required (author-fix, producer human): showPreview in lib/internal/repl/utils.js returns early when process.features.inspector is false, configure.py disables the inspector under --without-inspector and --without-ssl, every other REPL preview test calls common.skipIfInspectorDisabled(), and this file does not; upstream's ubuntu2204_sharedlibs_withoutssl CI job failed on exactly this assertion with no preview in the output, the change was reverted, and the re-land put the preview tests behind the skip. minSeverity stays suggestion since only a test breaks. Row 494 (enable concurrency, avoid the shared global) is dropped: the suite's subtests run one at a time at head, so global.foo cannot race, and running them in parallel is a test-speed preference outside the reviewers' contract, even though the author adopted it. Forbid seed row 1746 (add a TODO for RegExp.escape) gives no forbid range: it asks for a comment, which reviewers are told not to raise, and it is not false (the author added that TODO before merge); the adjudicator did not turn it into a different hypothetical claim. Licence MIT from the root LICENSE and the touched files' headers; base is the merge base. Vetters A and B both kept the inspector claim as required; they differed on its range (one 13-line range taken here) and on a forbid range at line 104 (not kept).",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "preview-needs-inspector",
+      "file": "test/parallel/test-repl-custom-eval.js",
+      "lines": [
+        96,
+        108
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "The preview test requires a preview line that the REPL only writes when the V8 inspector is present, and nothing skips it otherwise, so it fails on Node builds configured without the inspector or without SSL.",
+      "also": [
+        {
+          "file": "test/parallel/test-repl-custom-eval.js",
+          "lines": [
+            3,
+            3
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
+}

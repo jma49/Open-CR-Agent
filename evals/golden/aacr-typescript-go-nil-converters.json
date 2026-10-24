@@ -1,0 +1,60 @@
+{
+  "id": "aacr-typescript-go-nil-converters",
+  "repo": "microsoft/typescript-go",
+  "base": "a06d95b0fe0346851ada34b05d1af901b2e28ab3",
+  "head": "45c0de96a08812aff07974b859bc2327e7fe25ed",
+  "language": "Go",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/microsoft/typescript-go/pull/1000; AACR-Bench dataset.json row 173; licence Apache-2.0 read from LICENSE and package.json at head; hand-checked 2026-10-23 by vetter A; fixed before merge by the pull request's next commit 9e170a897a3 (Converters), which passes l.converters through",
+    "licence": "Apache-2.0",
+    "date": "2025-05-30"
+  },
+  "rationale": "The change folds the per-kind conversion loops into a new toLSPDiagnostics helper that passes nil where the old code passed l.converters. toLSPDiagnostic dereferences converters unconditionally (ToLSPRange reads c.getLineMap for every diagnostic's range), and neither handleDocumentDiagnostic nor the dispatch loop recovers, so the first document with any diagnostic panics the server. row-173 is kept required: true at head, in the diff, inside the correctness contract (a crash, not something the compiler reports), and fixed by the author's next commit before merge, so its origin is author-fix; minSeverity is warning, conservative for a crash on a common path. No forbid seeds exist for this pull request; the dropped Kind field is a zero-size struct whose zero value marshals the same, so it is not a claim.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-173",
+      "file": "internal/ls/diagnostics.go",
+      "lines": [
+        44,
+        44
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "toLSPDiagnostics calls toLSPDiagnostic with a nil *Converters, which then always calls converters.ToLSPRange and dereferences it, so any document with at least one diagnostic panics the diagnostics request and, with no recover in the server, crashes the language server.",
+      "also": [
+        {
+          "file": "internal/ls/diagnostics.go",
+          "lines": [
+            30,
+            30
+          ]
+        },
+        {
+          "file": "internal/ls/diagnostics.go",
+          "lines": [
+            86,
+            86
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
+}

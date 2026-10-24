@@ -1,0 +1,120 @@
+{
+  "id": "aacr-localai-machine-tag-hostname",
+  "repo": "mudler/LocalAI",
+  "base": "20edd44463c15baa305d8cb988f05a5600baa13b",
+  "head": "e466450c007539a2b1e4d2951c6756ff004a2b52",
+  "language": "Go",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/mudler/LocalAI/pull/4577; AACR-Bench dataset.json rows 689, 690, 691, 692, 694, 699, 703, forbid seed row 1832; hand-checked 2026-10-23 by vetter A; licence MIT confirmed from LICENSE at head; the pull request's next commit (4f9ed3af26, merged as 96f8ec0402) dropped the hostname fallback and sets the header only for an explicit tag; the completion token totals are still not summed on upstream master",
+    "licence": "MIT",
+    "date": "2025-01-10"
+  },
+  "rationale": "Machine tag and inference timings. row-703 is required: a maintainer's review comment, true at head (run.go always calls WithMachineTag, which falls back to os.Hostname, and about 25 handlers set the header unconditionally), a new exposure the change introduces, and fixed by the author in the pull request's next commit, so origin author-fix; its range moves to the hostname fallback, with the reviewer's anchor and the main endpoints in also. row-699, imported past the cap and added here, is real: the non-streaming completion loop lost its Prompt and Completion sums, so usage is always zero; only a model's reference states it and upstream master still has it, so it stays optional until a second rater and runs confirm it. Dropped: row-690 and row-692, since timings exist only in the final result and get_formated_timings always builds an object, so at() and value() cannot throw; row-689 and row-691, a double lookup once per response is a micro-optimization the performance reviewer is told to skip; row-694, a failing hostname lookup is an environment state the change gives no sign of and would only send an empty tag, and upstream removed the fallback for another reason. Forbid: seed row 1832, whose fields are plain float64 members of a value struct and always present. Seed row 1833 is not used: it questions the header on file endpoints rather than naming a defect, and a forbid there would overlap row-703's locations.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-703",
+      "file": "core/config/application_config.go",
+      "lines": [
+        100,
+        107
+      ],
+      "category": "security",
+      "minSeverity": "suggestion",
+      "concern": "With LOCALAI_MACHINE_TAG unset the machine tag defaults to the server's hostname, and the handlers send it in a LocalAI-Machine-Tag header on every response, so any API client learns the host's name without the operator opting in.",
+      "also": [
+        {
+          "file": "core/http/endpoints/openai/files.go",
+          "lines": [
+            125,
+            125
+          ]
+        },
+        {
+          "file": "core/http/endpoints/openai/files.go",
+          "lines": [
+            26,
+            26
+          ]
+        },
+        {
+          "file": "core/http/endpoints/openai/chat.go",
+          "lines": [
+            174,
+            174
+          ]
+        },
+        {
+          "file": "core/http/endpoints/openai/completion.go",
+          "lines": [
+            66,
+            66
+          ]
+        },
+        {
+          "file": "core/http/endpoints/openai/edit.go",
+          "lines": [
+            28,
+            28
+          ]
+        },
+        {
+          "file": "core/http/endpoints/openai/list.go",
+          "lines": [
+            17,
+            17
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    },
+    {
+      "id": "row-699",
+      "file": "core/http/endpoints/openai/completion.go",
+      "lines": [
+        183,
+        184
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "The non-streaming completion loop now adds only the timing fields to totalTokenUsage and no longer adds Prompt and Completion, so every non-streaming completion response reports zero prompt, completion and total tokens.",
+      "also": [
+        {
+          "file": "core/http/endpoints/openai/completion.go",
+          "lines": [
+            188,
+            192
+          ]
+        }
+      ],
+      "origin": "ai-reference-vetted",
+      "producer": "Gemini-3-Pro",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "core/http/endpoints/openai/completion.go",
+      "lines": [
+        40,
+        43
+      ],
+      "reason": "The timing values are float64 fields of a value struct, always present and zero when the backend sends none, so there is nothing to check before copying them."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

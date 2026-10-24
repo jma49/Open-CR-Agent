@@ -1,0 +1,66 @@
+{
+  "id": "aacr-react-activity-element-type",
+  "repo": "facebook/react",
+  "base": "2980f27779cf37a9656b25418a3c5cfca989e244",
+  "head": "b045f18e378341876ee69e729fc855cab501c3cd",
+  "language": "JavaScript",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/facebook/react/pull/32499; AACR-Bench dataset.json rows 671, 673, 674, 675, 677, 683, 685; vetted blind by vetters A and B, hand-checked 2026-10-23 by adjudicator; licence MIT read from LICENSE at head; the pull request's later commit 7fc2637cbb (merged as 1a191701fe) shows Activity in DevTools as its own element type (row 671) and keeps createFiberFromActivity and the isValidElementType check as they are at head",
+    "licence": "MIT",
+    "date": "2025-03-02"
+  },
+  "rationale": "The change, a refactor, moves unstable_Activity off the Offscreen symbol onto its own element type and fiber tag, which wraps an Offscreen child. row-671 (a person's comment) is true at head and the author fixed it before merge, so its origin is author-fix, but it is optional (the vetters split required/optional; adjudicated optional): before the change Activity rendered an OffscreenComponent fiber, which DevTools already hid, so hiding the new tag keeps what users saw; showing Activity is an improvement the change could have made rather than a defect it introduces or worsens, and the reviewer approved the change as landable with this as a follow-up. row-673 (a person's comment) is retired as false: child reconciliation reuses a fiber only when its elementType equals the element's type, a lazy component resolving to Activity throws in mountLazyComponent before any fiber is made, and upstream main still sets it. row-675 is retired as false: nothing reads an Activity fiber's stateNode, since the Offscreen child that updateActivityComponent mounts carries the OffscreenInstance; upstream main still sets none. row-674 is dropped: a Flow annotation with no runtime effect, and OffscreenProps has the same shape as Activity's props at head. These three share one forbid range over createFiberFromActivity, as the lvgl precedent in ADR-0036 does for a retired claim. row-685 is retired as false and its line becomes a forbid range: no enableActivity runtime flag exists at head (only a test gate), and the Offscreen check beside it and the reconciler accept the type ungated. row-677 and row-683 are dropped: they ask questions or for double-checks and name no defect. AACR-Bench has no forbid seeds for this pull request. base is the merge base.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-671",
+      "file": "packages/react-devtools-shared/src/backend/fiber/renderer.js",
+      "lines": [
+        1491,
+        1495
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "shouldFilterFiber puts the new ActivityComponent tag in the always-hidden list next to internal fibers such as Offscreen, so an Activity boundary the user rendered never appears in the DevTools component tree and cannot be filtered as its own type.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "packages/react-reconciler/src/ReactFiber.js",
+      "lines": [
+        881,
+        891
+      ],
+      "reason": "createFiberFromActivity is right as written: reconciliation reuses the fiber by matching elementType against the element's type and a lazy component resolving to Activity throws before reaching it, the Activity fiber needs no stateNode because its Offscreen child holds the OffscreenInstance, and its props have the same shape as OffscreenProps; upstream kept all of it."
+    },
+    {
+      "file": "packages/shared/isValidElementType.js",
+      "lines": [
+        54,
+        54
+      ],
+      "reason": "Leaving the Activity check ungated is right: ReactFeatureFlags has no enableActivity flag at head (it is only a test gate), the Offscreen check beside it and the reconciler accept the type without a flag, and the merged pull request kept it."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

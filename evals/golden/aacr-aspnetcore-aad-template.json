@@ -1,0 +1,62 @@
+{
+  "id": "aacr-aspnetcore-aad-template",
+  "repo": "dotnet/aspnetcore",
+  "base": "3fe06183a8d3ef32de0d16863d232d5652b1fe9b",
+  "head": "8ac940ff581aa344ab8f859874f6d4c0ecaec6b6",
+  "language": "C#",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/dotnet/aspnetcore/pull/59322; AACR-Bench dataset.json rows 976, 977, 978, 979, 980, forbid seed row 1942; licence MIT read from LICENSE.txt and the touched file's header at head; hand-checked 2026-10-23 by vetter A; the pull request's later commit a046b3fa0d (merged 2025-01-08 as dba6cd892d) replaced the pool rental with stackalloc for up to 32 purposes",
+    "licence": "MIT",
+    "date": "2024-12-05"
+  },
+  "rationale": "A performance rewrite of the additional authenticated data template behind NET10_0_OR_GREATER; the new bytes match the old BinaryWriter output, so no candidate names a real defect. stackalloc-lengths (row 979, a person's) is true at head and upstream adopted it in the same pull request (author-fix), but it is a micro-optimization in protector construction, which the pull request itself says is not a hot path, so it is optional. Dropped: row 976 (a person's) because the BitOperations and span GetBytes code is compiled only for net10.0 at head, and a missing API would be a compiler error anyway; row 977 because every production caller rejects a null purpose and the old code threw on null too; row 978 because purposes are chosen by the application, overflow needs gigabytes of purpose text, and span writes are bounds-checked, so at worst it throws; row 980 because an unreturned pooled array is only garbage-collected and upstream kept no try/finally. Forbid: seed row 1942 suggests the write index can run past the buffer, but both lengths come from the same encoding over the same immutable strings and every write goes through a bounds-checked slice.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-979",
+      "file": "src/DataProtection/DataProtection/src/KeyManagement/KeyRingBasedDataProtector.cs",
+      "lines": [
+        365,
+        365
+      ],
+      "category": "performance",
+      "minSeverity": "suggestion",
+      "concern": "Every template construction rents and returns an ArrayPool buffer just to hold a few purpose lengths, an overhead a stackalloc with a pool fallback for large purpose counts would avoid.",
+      "also": [
+        {
+          "file": "src/DataProtection/DataProtection/src/KeyManagement/KeyRingBasedDataProtector.cs",
+          "lines": [
+            397,
+            397
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "src/DataProtection/DataProtection/src/KeyManagement/KeyRingBasedDataProtector.cs",
+      "lines": [
+        393,
+        394
+      ],
+      "reason": "The write index cannot pass the buffer end: the buffer is sized from GetByteCount over the same strings with the same encoding, and each write goes through a bounds-checked span slice, so a mismatch would throw rather than overrun."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

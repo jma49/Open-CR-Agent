@@ -1,0 +1,45 @@
+{
+  "id": "aacr-comfyui-directml-causal-mask",
+  "repo": "comfyanonymous/ComfyUI",
+  "base": "fca304debf5a4e6c71f8def10ac41cf69519fde3",
+  "head": "b55c2247654476fbc744e572ba7a834fd9378745",
+  "language": "Python",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/comfyanonymous/ComfyUI/pull/6542; AACR-Bench dataset.json row 270; hand-checked 2026-10-23 by vetter A; the pull request's next commit (update casual mask calculation, squashed into b1242568) fixed row-270, and upstream's d9f0fcdb then removed the DirectML branch; licence GPL-3.0-or-later (LICENSE is the GPLv3 text, and the touched comfy/model_management.py and 15 other files state version 3 or any later version)",
+    "licence": "GPL-3.0-or-later",
+    "date": "2025-02-06"
+  },
+  "rationale": "The change adds a DirectML branch that builds CLIP's causal mask from torch.empty and only zeroes the lower triangle, so the upper triangle is uninitialized memory and the text encoder's attention is no longer causally masked on that backend. ADR-0036: row-270, written by a person, is kept as required: true at head (the mask feeds CLIPEncoder's attention on every DirectML text encode), in the diff, with a stated consequence, and the author fixed it in the pull request's next commit by filling the mask with the dtype's most negative value, so its origin is author-fix; the range is moved from the else line to the if and the DirectML line, and the concern rewritten in ocra's words. The else branch also reverts master's switch from -inf to the dtype's most negative value; upstream restored it, but no concrete failure follows from -inf here (the diagonal is never -inf, so no attention row becomes all -inf), so it is not a claim. No forbid seeds exist for this pull request.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-270",
+      "file": "comfy/clip_model.py",
+      "lines": [
+        107,
+        108
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "On DirectML the causal mask comes from torch.empty and is only passed through triu_(1), never filled, so the entries above the diagonal hold uninitialized memory instead of a large negative value and the CLIP text encoder attends to future tokens or to garbage, corrupting the text conditioning on that backend.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
+}

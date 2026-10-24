@@ -1,0 +1,66 @@
+{
+  "id": "aacr-elasticsearch-entitlement-debug-logs",
+  "repo": "elastic/elasticsearch",
+  "base": "6b27e420fed187de0add194eb32bb940688af26f",
+  "head": "4d9b96f4ac1af0cb871f1d3b77169f9f1e83d194",
+  "language": "Java",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/elastic/elasticsearch/pull/123744; AACR-Bench dataset.json rows 1192, 1193, 1194, 1195, forbid seed row 2046; hand-checked 2026-10-23 by vetters A and B (blind) and adjudicator; the pull request's next commit, c37af7b2cdfd, lowered the new checkPath, isParent and isPathOnDefaultFilesystem logs from debug to trace before the merge (b3464275ce38); licence: both touched files carry the Elastic-2.0 / AGPL-3.0-only / SSPL-1.0 triple header, the repository default outside x-pack, recorded as its OSI option",
+    "licence": "AGPL-3.0-only",
+    "date": "2025-02-28"
+  },
+  "rationale": "The change skips file entitlement checks for paths on a non-default file system and adds debug lines to FileAccessTree's per-check path matching. ADR-0036 vetting: rows 1192 and 1194 (people's comments) are one root cause, debug-level detail on the per-check matching path, so they are merged into one claim at checkPath with isParent as also. It is true at head and in the diff: checkPath runs on every file read and write check through canRead and canWrite, and isParent runs inside each check and while the tree is built. The author lowered both lines to trace in the next commit (author-fix). Vetters A and B split on whether it is required; the adjudicator kept it optional. The log call takes a supplier, so at the default level nothing is formatted, and the package already logs each entitlement decision at debug (isTriviallyAllowed, the Entitled lines), so debug was already per-check before this change. The cost appears only when an operator turns on debug, which makes this a log-level convention, not a measurable regression the performance reviewer is asked to report. Row 1193 (model) is dropped: readPaths and writePaths are always non-null arrays built in the constructor, the join runs only inside the lazy supplier, and the length check would fail on null anyway. Row 1195 (model) is dropped: the repeated getFileSystem().getClass() call is a micro-optimization with no consequence, outside the reviewers' contract. Forbid seed row 2046 becomes a forbid range: logger is a private static final field, so the static isParent compiles, and a reviewer reading only the hunk could plausibly claim otherwise. The case is kept for its forbid range.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-1192",
+      "file": "libs/entitlement/src/main/java/org/elasticsearch/entitlement/runtime/policy/FileAccessTree.java",
+      "lines": [
+        206,
+        206
+      ],
+      "category": "performance",
+      "minSeverity": "suggestion",
+      "concern": "The new debug lines in checkPath and isParent run on every file entitlement check, checkPath's joining the component's whole permitted-path list, so turning on debug for the entitlement package adds that join and several log lines to every file access, detail that belongs at trace.",
+      "also": [
+        {
+          "file": "libs/entitlement/src/main/java/org/elasticsearch/entitlement/runtime/policy/FileAccessTree.java",
+          "lines": [
+            224,
+            224
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "libs/entitlement/src/main/java/org/elasticsearch/entitlement/runtime/policy/FileAccessTree.java",
+      "lines": [
+        223,
+        224
+      ],
+      "reason": "logger is declared private static final in FileAccessTree, so the debug call inside the static isParent compiles; a finding that the static method cannot use the logger is wrong."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

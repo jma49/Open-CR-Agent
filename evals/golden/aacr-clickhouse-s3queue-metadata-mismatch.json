@@ -1,0 +1,79 @@
+{
+  "id": "aacr-clickhouse-s3queue-metadata-mismatch",
+  "repo": "ClickHouse/ClickHouse",
+  "base": "6a1676ef28d3522eb4f74ad3423ad09752c232dc",
+  "head": "79224f240cf020f73a9f492ce293d046fc0b7949",
+  "language": "C++",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/ClickHouse/ClickHouse/pull/74715; AACR-Bench dataset.json rows 1105, 1106, 1108 (forbid seeds 2021, 2022, 2023); hand-checked 2026-10-23 by adjudicator after two blind vetters; licence Apache-2.0 read from LICENSE at head; metadata-misaligned fixed upstream by 8344cd2e64c (#75127, merged 262101ea4ab on 2025-01-29), the row 1108 suggestion applied by 9bacaff3540 before #74715 merged",
+    "licence": "Apache-2.0",
+    "date": "2025-01-17"
+  },
+  "rationale": "The change lets the batched set-processing path of unordered S3Queue/AzureQueue skip a file that another table on the same server holds, then compacts new_batch but not file_metadatas. metadata-misaligned is not among AACR-Bench's references: both blind vetters found it independently while checking the callers at head. It is true (next() returns object_infos[index] with file_metadatas[index], and the source then commits through that metadata), in the diff, and fixed by the author eleven days later in #75127 by compacting both vectors, so it is required as author-fix. row-1108 (a person's comment) is optional: resize then indexed assignment through a const reference does default-construct every slot and copy each pointer, and the author applied the suggestion before merge, but it is a micro-optimization off any demonstrated hot path, outside the performance reviewer's contract; the adjudicator sided with vetter B over dropping it, as ADR-0036 keeps true out-of-contract claims optional. Dropped by both vetters: row 1105, since releasing the processing lock before the keeper multi runs has no wrong outcome (the ephemeral processing-node create makes a conflicting multi fail and fall back to per-file trySetProcessing, and upstream kept this scope); row 1106, since log wording is style and its only caller already treats nullopt as a skip. No forbid range: seed 2021 is praise; seed 2022's premise (no direct include of optional in the header) is true at head, and include hygiene the build already satisfies is compiler or style territory, not a false claim; seed 2023's log count is true at head, since new_batch still holds the null slots when it logs.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "metadata-misaligned",
+      "file": "src/Storages/ObjectStorageQueue/ObjectStorageQueueSource.cpp",
+      "lines": [
+        240,
+        252
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "When a skipped file precedes a kept one, new_batch is compacted but file_metadatas keeps its original positions, so next() pairs later objects with another file's metadata: debug builds abort on the path-mismatch assertion and release builds record the object's processed or failed state under the wrong file.",
+      "also": [
+        {
+          "file": "src/Storages/ObjectStorageQueue/ObjectStorageQueueSource.cpp",
+          "lines": [
+            206,
+            209
+          ]
+        },
+        {
+          "file": "src/Storages/ObjectStorageQueue/ObjectStorageQueueSource.cpp",
+          "lines": [
+            268,
+            275
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "claude-opus-5-5",
+      "optional": false
+    },
+    {
+      "id": "row-1108",
+      "file": "src/Storages/ObjectStorageQueue/ObjectStorageQueueSource.cpp",
+      "lines": [
+        242,
+        250
+      ],
+      "category": "performance",
+      "minSeverity": "suggestion",
+      "concern": "The compaction default-constructs every slot with resize and then copies each pointer, because std::move on a const reference does not move, where reserve and push_back over non-const elements would do neither.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
+    }
+  ],
+  "forbid": [],
+  "clean": false,
+  "adjudicated": []
+}

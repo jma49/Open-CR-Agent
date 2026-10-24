@@ -1,0 +1,77 @@
+{
+  "id": "aacr-mpv-forced-sdh-tags",
+  "repo": "mpv-player/mpv",
+  "base": "6c4218252278c582c7a40654c66f8216aac43326",
+  "head": "0b0330fa9d5d70c78f36e1010a3b826fa7046387",
+  "language": "C",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/mpv-player/mpv/pull/16061; AACR-Bench dataset.json rows 1278, 1279, 1280 (forbid seeds rows 2069-2073); hand-checked 2026-10-23 by vetter A; the single tag guard was replaced before merge (upstream f608780032 parses every trailing tag and tests both orders); licence from the headers of every touched source file (LGPL-2.1-or-later; mpv as a whole is GPL-2.0-or-later by default)",
+    "licence": "LGPL-2.1-or-later",
+    "date": "2025-03-16"
+  },
+  "rationale": "The change adds a forced tag next to the hearing-impaired ones in mp_guess_lang_from_filename but keeps one guard for both. row-1278 is required: true at head (a name with both tags loses a flag and gets the other tag, or nothing, as its language; before the change such names simply had no language), in the changed lines, and the author replaced the guard before merge after this review comment, so author-fix. row-1279 restates the same root cause on the same lines and is merged into row-1278 (its lines are row-1278's range). row-1280 is dropped: every subfn entry sets forced where it is created and the list terminator is zeroed, so nothing uninitialized is read. Forbid ranges come from seeds 2072 (forced is declared only in sub-add's own flags list) and 2073 (the parsed flag reaches forced_track, which subtitle selection reads). Seeds not used: 2069 (the triple backtick it names exists, on an unchanged line), 2070 (a refactor upstream adopted, not a false claim), 2071 (a readability request on lines next to the real defect; the index rewind is correct for all three delimiters).",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-1278",
+      "file": "misc/language.c",
+      "lines": [
+        340,
+        341
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "One checked_tag guard stops tag parsing after the last tag, so a file name carrying both a hearing-impaired tag and forced keeps only one flag and either takes the other tag as its language (movie.en.sdh.forced.srt reads as language sdh, movie.en.hi.forced.srt as Hindi) or finds no language at all (movie.en.forced.sdh.srt).",
+      "also": [
+        {
+          "file": "misc/language.c",
+          "lines": [
+            332,
+            332
+          ]
+        },
+        {
+          "file": "misc/language.c",
+          "lines": [
+            350,
+            356
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    }
+  ],
+  "forbid": [
+    {
+      "file": "player/command.c",
+      "lines": [
+        7159,
+        7160
+      ],
+      "reason": "The forced flag is added only to sub-add's own flags list; audio-add and video-add declare separate lists without it, so they do not accept it."
+    },
+    {
+      "file": "player/external_files.c",
+      "lines": [
+        159,
+        160
+      ],
+      "reason": "The parsed forced flag is not write-only: it is stored in the subfn entry, becomes TRACK_FORCED when autoloading, and sets forced_track, which subtitle auto-selection reads."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

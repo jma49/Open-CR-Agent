@@ -1,0 +1,107 @@
+{
+  "id": "aacr-typescript-go-manual-tests",
+  "repo": "microsoft/typescript-go",
+  "base": "5e6bd1efcfb0020fc221d06492248db780d68eb1",
+  "head": "892b4a3f6b701352047ceb019fc0683ab1146bb3",
+  "language": "Go",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/microsoft/typescript-go/pull/1446; AACR-Bench dataset.json rows 157, 158, 160, 161, 162, 164, 165, 166, forbid seeds 1612-1615; hand-checked 2026-10-23 by vetter A; the merged pull request (6d19ac2df96) added the existence check and committed manualTests.txt, made both scripts use the base test name, and added a usage message",
+    "licence": "Apache-2.0",
+    "date": "2025-07-24"
+  },
+  "rationale": "A manual-tests list for the fourslash conversion scripts (first commit of the pull request; base is the merge base). ADR-0036, vetted blind. row-157 is required: manualTests.txt is neither in the tree nor un-ignored (*.txt is ignored), so convertfourslash and updatefailing throw after deleting tests/gen; upstream fixed it before merging (author-fix). row-160 is required: makemanual can only succeed with the generated file name, which never equals the capitalised name convertfourslash looks up, so the skip list is inert; upstream made both sides use the base name before merging (author-fix; first stated by a model's reference, so producer GLM-4.7). row-158 is dropped as the same root cause stated hypothetically. row-164 is optional: true and fixed upstream, but a missing usage message is outside the correctness contract. row-161 (an empty file name), row-165 (path traversal through the developer's own command-line argument) and row-166 (no _test.go check on a file the developer names) are dropped as speculative or without a trust boundary. row-162 is false (generateGoTest always returns a non-empty template) and, with seeds 1613 and 1614 (an empty string skipping a test, a missing brace), becomes the one forbid range. Seed 1612 is true (manualOutputDir is unused, and upstream removed it) and seed 1615 is a naming opinion contradicted by the sibling script names, so neither is a forbid range.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-157",
+      "file": "internal/fourslash/_scripts/convertFourslash.mts",
+      "lines": [
+        26,
+        29
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "getManualTests reads manualTests.txt unconditionally although the file is not in the repository and *.txt is git-ignored, so on any checkout where makemanual has not run, convertfourslash (and updatefailing) throws ENOENT after main has already deleted tests/gen, leaving the generated tests removed and none regenerated.",
+      "also": [
+        {
+          "file": "internal/fourslash/_scripts/convertFourslash.mts",
+          "lines": [
+            47,
+            47
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    },
+    {
+      "id": "row-160",
+      "file": "internal/fourslash/_scripts/convertFourslash.mts",
+      "lines": [
+        70,
+        74
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "makemanual records the generated file name it is given (such as foo_test.go) in manualTests.txt, while convertfourslash looks up the capitalised base name (Foo), so the skip never matches and the next conversion regenerates every test moved to tests/manual back into tests/gen.",
+      "also": [
+        {
+          "file": "internal/fourslash/_scripts/makeManual.mts",
+          "lines": [
+            16,
+            18
+          ]
+        },
+        {
+          "file": "internal/fourslash/_scripts/makeManual.mts",
+          "lines": [
+            38,
+            42
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "GLM-4.7",
+      "optional": false
+    },
+    {
+      "id": "row-164",
+      "file": "internal/fourslash/_scripts/makeManual.mts",
+      "lines": [
+        12,
+        14
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "Called without arguments, makemanual exits with status 1 and prints nothing, so the user is not told that it needs the name of a generated test.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "internal/fourslash/_scripts/convertFourslash.mts",
+      "lines": [
+        76,
+        79
+      ],
+      "reason": "generateGoTest always returns a non-empty Go source template and this block's braces balance, so the guard neither skips a real test, nor lets a whitespace-only file through, nor leaves a syntax error."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

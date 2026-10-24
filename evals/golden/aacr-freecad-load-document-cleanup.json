@@ -1,0 +1,54 @@
+{
+  "id": "aacr-freecad-load-document-cleanup",
+  "repo": "FreeCAD/FreeCAD",
+  "base": "f3e1e6cec065f0295e38d36a68e0390f1b977a32",
+  "head": "82fef4a22503dd3affdd39e7120b6f71e9423f86",
+  "language": "C++",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/FreeCAD/FreeCAD/pull/22744; AACR-Bench dataset.json row 40 (claim), rows 1534 and 1535 (forbid seeds); hand-checked 2026-10-23 by vetter A; merged upstream as eea9f81a90, and main still writes \"\\n\" to std::cerr and keeps the resolver in these lines",
+    "licence": "LGPL-2.0-or-later",
+    "date": "2025-07-25"
+  },
+  "rationale": "A cleanup of ParameterManager::LoadDocument: unique_ptr instead of new/delete, a no-op entity resolver, and \"\\n\" instead of std::endl on std::cerr. No in-contract defect was found in the change, so the case is forbid-only. Row 40 (a person's comment that \"\\n\" delays error output) is retired as false at head: std::cerr is unit-buffered, so each insertion flushes, also after MainGui swaps its streambuf (rdbuf() leaves the flags), and upstream kept \"\\n\"; as with lvgl in ADR-0036, its range becomes a forbid range. Seed 1535 (the resolver may silently not block entities through a wrong signature) is false: override on the pure virtual SAX resolveEntity makes a mismatch a compile error, and with setDisableDefaultEntityResolution(true) Xerces resolves nothing when the resolver returns null, so it forbids the resolver and where it is installed. Seed 1534 praises make_unique and states no defect, so it adds no range. Licence: the root LICENSE is the LGPL v2 text and the touched files' headers say version 2 or any later version.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [],
+  "forbid": [
+    {
+      "file": "src/Base/Parameter.cpp",
+      "lines": [
+        1866,
+        1868
+      ],
+      "reason": "The resolver overrides the SAX resolveEntity signature exactly (override would not compile otherwise), and with default entity resolution disabled a null return resolves nothing, so external entities stay blocked."
+    },
+    {
+      "file": "src/Base/Parameter.cpp",
+      "lines": [
+        1886,
+        1887
+      ],
+      "reason": "Default entity resolution is disabled before the no-op resolver is installed, so no external entity is fetched, whatever the resolver returns."
+    },
+    {
+      "file": "src/Base/Parameter.cpp",
+      "lines": [
+        1901,
+        1911
+      ],
+      "reason": "std::cerr is unit-buffered, so writing \"\\n\" instead of std::endl flushes the error message just as soon; nothing is delayed or lost."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

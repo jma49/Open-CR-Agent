@@ -1,0 +1,69 @@
+{
+  "id": "aacr-dbeaver-databricks-default-catalog",
+  "repo": "dbeaver/dbeaver",
+  "base": "1faab74be397e7577708fa64f0ec6bc5c6057b78",
+  "head": "8224826969254a49e68e025cae82d3cf1574de38",
+  "language": "Java",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/dbeaver/dbeaver/pull/38915; AACR-Bench dataset.json rows 948, 949, 950, forbid seed row 1938; licence Apache-2.0 read from LICENSE.md and the touched files' headers; hand-checked 2026-10-23 by vetter A; the pull request's next commit 57406653f9 removed the bootstrap write, upstream devel still swallows the catalog-switch error",
+    "licence": "Apache-2.0",
+    "date": "2025-08-12"
+  },
+  "rationale": "Databricks execution context that tracks the current catalog. Forbid-only case for now. row-950 (a person's comment) is true at head and the author removed the block in the pull request's next commit (author-fix), but it is kept optional: the write lands in the per-connection resolved copy of the configuration (getActualConnectionConfiguration, rebuilt on every connect, never serialized) and nothing on the Databricks path reads the bootstrap default catalog, so no observable failure follows and a reviewer following its prompt may skip it; the second rater may promote it. row-949 (a model's comment) is true at head and has a consequence, but upstream kept the swallow deliberately (devel later dropped the throws clause), so it stays optional; its stated consequence about a half-set state was replaced by the real one. row-948 is dropped: getDefaultCatalog is @Nullable in DBCExecutionContextDefaults, the generic implementation returns null in the same situations, and the callers in the change check for null, so no NullPointerException follows. Forbid seed row 1938 becomes a forbid range: copying only the catalog drops no schema the generic implementation copied before for Databricks, and GenericExecutionContext.setDefaultCatalog ignores its schema argument, so the suggested fix changes nothing.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "row-950",
+      "file": "plugins/org.jkiss.dbeaver.ext.databricks/src/org/jkiss/dbeaver/ext/databricks/DatabricksExecutionContext.java",
+      "lines": [
+        88,
+        94
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "refreshDefaults writes the server's current catalog into the connection's bootstrap settings when none is configured, so runtime state is recorded as if the user had chosen that default catalog for the rest of the session.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
+    },
+    {
+      "id": "row-949",
+      "file": "plugins/org.jkiss.dbeaver.ext.databricks/src/org/jkiss/dbeaver/ext/databricks/DatabricksExecutionContext.java",
+      "lines": [
+        65,
+        70
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "setDefaultCatalog catches the exception from the catalog switch and only logs it at debug level, so a failed switch requested from the navigator or editor reports success and the user sees no error while the session stays on the previous catalog.",
+      "also": [],
+      "origin": "ai-reference-vetted",
+      "producer": "GLM-4.7",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "plugins/org.jkiss.dbeaver.ext.databricks/src/org/jkiss/dbeaver/ext/databricks/DatabricksDataSource.java",
+      "lines": [
+        92,
+        94
+      ],
+      "reason": "Copying only the catalog into a new context is not a defect of this change: the generic implementation never copied a schema for Databricks either, and GenericExecutionContext.setDefaultCatalog ignores its schema argument, so passing the source context's schema would change nothing."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

@@ -1,0 +1,134 @@
+{
+  "id": "aacr-clickhouse-s3queue-retries",
+  "repo": "ClickHouse/ClickHouse",
+  "base": "d144f444affac79d6b43b45fc1d68c46a7766750",
+  "head": "40a4654d7b114f1d42f48680d57007ae80897cd1",
+  "language": "C++",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/ClickHouse/ClickHouse/pull/73546; AACR-Bench dataset.json rows 1034, 1035, 1037, 1038, 1039, 1042, 1043 and forbid seeds 1970-1985 (1973 and 1984 kept as one claim, 1978, 1979 and 1981 as forbid ranges); hand-checked 2026-10-23 by vetters A and B, blind, and by adjudicator; licence Apache-2.0 from LICENSE at head; resetProcessing's indices rewritten by the pull request's next commit aa463f36c07; the rethrow on a mid-file read error restored by the author in 12766d8a74b (2025-02-07, with test_failure_in_the_middle)",
+    "licence": "Apache-2.0",
+    "date": "2025-01-07"
+  },
+  "rationale": "s3queue: fix retries after a failed insert. Required: read-error-partial-insert, a regression the change introduces (the base rethrew a read error once rows of the file had been returned; head ends the source, the insert commits the partial rows, and the file is marked failed and retried), found independently by both blind vetters and fixed by the author a month later with a test asserting that no row of a file failing mid-read is inserted. row-1973 restates a reviewer's comment AACR-Bench labels incorrect but that is true at head: the check request was dropped from the keeper transactions while the response indices still count it, in resetProcessing (now the path for every failed insert; rewritten in the next commit) and in the unordered and ordered setProcessedImpl (also, the same root cause, which covers seed 1984). Optional: row-1034, applied by the author, but only a log line and one atomic load. Dropped: row-1035 (a failed keeper multi always carries the failing operation's error and tryMulti throws on hardware errors, so the else branch with the empty message is reached only through the out-of-range index read; no consequence, and the author removed the whole chain for the index bug), row-1037 (a successful get in a multi-read is always a GetResponse; upstream changed it for readability), row-1038 (a file is always pulled once before the next cancellation check; upstream keeps the assertion), row-1039 (the invariant holds by construction; asks only for an assertion), row-1042 and row-1043 (in-flight files of a failed insert are reset without spending a retry on purpose, the point of the change; read errors take the ErrorOnRead path, which does). Forbid ranges from seeds 1978, 1981 and 1979; the other seeds are style, compiler concerns, too vague to refute, or overlap a claim.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "read-error-partial-insert",
+      "file": "src/Storages/ObjectStorageQueue/ObjectStorageQueueSource.cpp",
+      "lines": [
+        599,
+        609
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "When reading a file fails after some of its chunks were already returned, the source now ends normally instead of rethrowing, so the insert commits that file's partial rows while the file is marked failed and later read again from the start, duplicating those rows (or leaving a partial file once its retries run out).",
+      "also": [
+        {
+          "file": "src/Storages/ObjectStorageQueue/ObjectStorageQueueSource.cpp",
+          "lines": [
+            690,
+            695
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "claude-opus-5-5 (vetters A and B)",
+      "optional": false
+    },
+    {
+      "id": "row-1973",
+      "file": "src/Storages/ObjectStorageQueue/ObjectStorageQueueIFileMetadata.cpp",
+      "lines": [
+        279,
+        285
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "The change drops the check request from the keeper transactions that release a file's processing nodes but keeps response indices that still count it, so a failed removal of the processing node (normal after an expired keeper session) is taken for a failed removal of the processing-id node and thrown as LOGICAL_ERROR, while the branch meant for it reads the wrong response or one past the end.",
+      "also": [
+        {
+          "file": "src/Storages/ObjectStorageQueue/ObjectStorageQueueIFileMetadata.cpp",
+          "lines": [
+            311,
+            322
+          ]
+        },
+        {
+          "file": "src/Storages/ObjectStorageQueue/ObjectStorageQueueUnorderedFileMetadata.cpp",
+          "lines": [
+            123,
+            133
+          ]
+        },
+        {
+          "file": "src/Storages/ObjectStorageQueue/ObjectStorageQueueOrderedFileMetadata.cpp",
+          "lines": [
+            442,
+            448
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    },
+    {
+      "id": "row-1034",
+      "file": "src/Storages/ObjectStorageQueue/ObjectStorageQueueIFileMetadata.cpp",
+      "lines": [
+        233,
+        234
+      ],
+      "category": "performance",
+      "minSeverity": "suggestion",
+      "concern": "The skip log reloads the atomic file state instead of using the value just tested, an extra atomic read that can also print a different state from the one that made the file non-processable.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "src/Storages/ObjectStorageQueue/ObjectStorageQueueOrderedFileMetadata.cpp",
+      "lines": [
+        289,
+        295
+      ],
+      "reason": "Without MULTI_READ the failed-node lookup runs only when a processed node exists, but it is only a shortcut: the transaction built below always checks that the failed node is absent, so a failed file is never set processing."
+    },
+    {
+      "file": "src/Storages/ObjectStorageQueue/ObjectStorageQueueSource.cpp",
+      "lines": [
+        565,
+        566
+      ],
+      "reason": "The cast cannot yield null: the queue's file iterator only hands out ObjectStorageQueueObjectInfo objects and an empty result ends the loop before the cast; upstream still dereferences it unchecked."
+    },
+    {
+      "file": "src/Storages/ObjectStorageQueue/ObjectStorageQueueSource.cpp",
+      "lines": [
+        479,
+        484
+      ],
+      "reason": "At most one file is ever in Processing: a file is appended only after the previous one became Processed, and a read error ends the source, so marking only the last entry Cancelled leaves no other file unfinished."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

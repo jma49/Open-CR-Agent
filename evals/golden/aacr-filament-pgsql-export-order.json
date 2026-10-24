@@ -1,0 +1,89 @@
+{
+  "id": "aacr-filament-pgsql-export-order",
+  "repo": "filamentphp/filament",
+  "base": "753ceeac007a0d0aa4423971b01d651288720873",
+  "head": "77874d0c3782a257101c3fb578144a6950f3dc9c",
+  "language": "PHP",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/filamentphp/filament/pull/15181; AACR-Bench dataset.json rows 955, 957 (row 954 is on removed lines); licence MIT read from LICENSE.md and packages/actions/composer.json at head; hand-checked 2026-10-23 by adjudicator after two blind vetters; the crash was reported upstream in issue #16184 and fixed by d06a5b5345 (#16752), which handles Raw orders and replaces the index-0 read with first()",
+    "licence": "MIT",
+    "date": "2024-12-26"
+  },
+  "rationale": "The pull request makes the PostgreSQL export keep the table's sort by reordering on the first remaining order, and applies DISTINCT only when the key sorts first. raw-order-crash is required: the new branch reads index 0's column and direction without the guard the loop below keeps, so an orderByRaw sort (no column key; a sortable column's custom sort query or inRandomOrder) or a leading qualified-key order followed by another (reject keeps indexes, so index 0 is gone) fails the job with an undefined-key ErrorException, where the base skipped such orders. Issue #16184 reported the raw case on that line and d06a5b5345 fixed both, so the origin is author-fix. The two triggers are one root cause on the same line, so they are one claim (vetter B had split the index-0 trigger into an optional claim). pgsql-tiebreak is optional: the key no longer follows the table's sort on PostgreSQL, so chunk()'s offset pages over a non-unique column can repeat or skip tied rows; it is true at head and new on PostgreSQL, but upstream kept it on 3.x and 4.x, other drivers already page this way, and only a vetter vouches for it. row-955 is dropped: a one-element in_array versus === changes nothing for column names or Expressions, a style nit the author applied in 3726be63. row-957 is dropped and its line becomes a forbid range: the null-coalescing operator guards the whole orders[0]['column'] lookup, so a missing or empty orders list yields null. The other finding on that line, that DISTINCT is skipped for non-key sorts, is explained as intended in the pull request's description and kept upstream, so the forbid range does not penalise an in-contract finding.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "adjudicator (claude)",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "raw-order-crash",
+      "file": "packages/actions/src/Exports/Jobs/PrepareCsvExport.php",
+      "lines": [
+        78,
+        80
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "On PostgreSQL the new branch reads the first remaining order's column and direction at index 0 without the guard the loop keeps, so a sort added with orderByRaw (which has no column key), or a leading primary-key order followed by another (reject keeps the original indexes, so index 0 is gone), makes the export job fail with an undefined-key error.",
+      "also": [
+        {
+          "file": "packages/actions/src/Exports/Jobs/PrepareCsvExport.php",
+          "lines": [
+            72,
+            73
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    },
+    {
+      "id": "pgsql-tiebreak",
+      "file": "packages/actions/src/Exports/Jobs/PrepareCsvExport.php",
+      "lines": [
+        78,
+        83
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "On PostgreSQL the export now orders only by the table's sort column and no longer adds the primary key as a tie-breaker, so chunk()'s offset pages over a non-unique column can return tied rows in a different order on each page and repeat or skip records in the file.",
+      "also": [
+        {
+          "file": "packages/actions/src/Exports/Jobs/PrepareCsvExport.php",
+          "lines": [
+            72,
+            72
+          ]
+        }
+      ],
+      "origin": "model-found-vetted",
+      "producer": "claude-opus-5-5 (vetter A)",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "packages/actions/src/Exports/Jobs/PrepareCsvExport.php",
+      "lines": [
+        153,
+        153
+      ],
+      "reason": "The null-coalescing operator guards the whole first-order column lookup, so a query with no orders, or a first order without a column, yields null here rather than an undefined-index or null-access error (AACR row 957, false at head)."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}

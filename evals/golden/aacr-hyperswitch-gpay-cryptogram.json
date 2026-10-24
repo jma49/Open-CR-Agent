@@ -1,0 +1,92 @@
+{
+  "id": "aacr-hyperswitch-gpay-cryptogram",
+  "repo": "juspay/hyperswitch",
+  "base": "24beaa224a08301b40ee18c617cbf116049eb3d5",
+  "head": "0231de6ae6795ef7fa85e5ab87b6fe46a4955333",
+  "language": "Rust",
+  "tier": "full",
+  "source": {
+    "kind": "aacr",
+    "ref": "https://github.com/juspay/hyperswitch/pull/9130; AACR-Bench dataset.json rows 1020, 1021, 1022 (candidate claims) and 1954-1964 (comments labelled incorrect); hand-checked 2026-10-23 by vetter A; licence Apache-2.0 confirmed from LICENSE and the workspace Cargo.toml at head; the pull request's later commits 496f5a0558 and 22f6b0e5c8 made the cryptogram optional before the merge (96e44a75dc), and c8c6f2a8d2 (#13736, 2026-08) took the ECI from the token",
+    "licence": "Apache-2.0",
+    "date": "2025-09-02"
+  },
+  "rationale": "Checkout gains a network-token path for Google Pay tokens Hyperswitch decrypts, and every shipped config turns it on. missing-cryptogram is required: row 1956, written by a person and labelled incorrect by AACR-Bench, is true at head (the cryptogram is optional in GPayPredecryptData and absent for PAN_ONLY tokens, and the transformer turns its absence into an error after connector tokenization was skipped), and the author made the cryptogram optional before merging. hardcoded-eci is optional: row 1959 is a model's request for confirmation; the token's eci_indicator is ignored at head, but the author tried it and reverted to 06 before merging, and only c8c6f2a8d2 later used the token's ECI. Dropped: row 1020 (application_primary_account_number is already a CardNumber, and type errors are the compiler's), row 1021 (get_expiry_month rejects months outside 1-12 and validate_card_expiry checks merchant-supplied expiry), row 1022 (the enum has two variants, so the negative match behaves like a positive one; a future variant is speculative, and the merged code kept the negative form). Forbid: row 1021's range, and the config field (seeds 1960 and 1962), where a missing key already reads as None and None means connector tokenization. The other seeds are style or naming, or sit on lines that carry missing-cryptogram.",
+  "raters": [
+    {
+      "by": "vetter A (claude), blind",
+      "date": "2026-10-23"
+    },
+    {
+      "by": "vetter B (claude), blind",
+      "date": "2026-10-23"
+    }
+  ],
+  "expect": [
+    {
+      "id": "missing-cryptogram",
+      "file": "crates/hyperswitch_connectors/src/connectors/checkout/transformers.rs",
+      "lines": [
+        356,
+        361
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "A decrypted Google Pay token without a cryptogram, which is what a PAN_ONLY token is, now fails the Checkout authorization with a missing-field error, because the new config sends every decrypted Google Pay token down this network-token path instead of letting Checkout tokenize it.",
+      "also": [
+        {
+          "file": "crates/hyperswitch_connectors/src/connectors/checkout/transformers.rs",
+          "lines": [
+            227,
+            227
+          ]
+        },
+        {
+          "file": "crates/router/src/core/payments.rs",
+          "lines": [
+            6909,
+            6916
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "human",
+      "optional": false
+    },
+    {
+      "id": "hardcoded-eci",
+      "file": "crates/hyperswitch_connectors/src/connectors/checkout/transformers.rs",
+      "lines": [
+        369,
+        369
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "The ECI sent to Checkout is fixed at 06 and ignores the decrypted token's eci_indicator, which the Apple Pay branch passes through, so a token whose network supplied another ECI goes out with the wrong authentication indicator.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "Qwen-Coder-480B",
+      "optional": true
+    }
+  ],
+  "forbid": [
+    {
+      "file": "crates/hyperswitch_connectors/src/connectors/checkout/transformers.rs",
+      "lines": [
+        346,
+        355
+      ],
+      "reason": "Expiry values are already range-checked before they reach this code: get_expiry_month rejects months outside 1-12, and merchant-supplied decrypted data goes through validate_card_expiry (month, year and expiry), so out-of-range expiry values cannot reach Checkout."
+    },
+    {
+      "file": "crates/router/src/configs/settings.rs",
+      "lines": [
+        640,
+        640
+      ],
+      "reason": "Without serde(default), the Option field still reads as None when a connector's entry omits the key, as apple_pay_pre_decrypt_flow already does, and the predicate treats None as connector tokenization, so no config fails to load or changes behaviour."
+    }
+  ],
+  "clean": false,
+  "adjudicated": []
+}
