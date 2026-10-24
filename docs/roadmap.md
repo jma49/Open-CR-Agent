@@ -83,7 +83,7 @@ The milestones below keep their lists; the order of work is the one above.
 
 **M11 — Evidence** (a standing credit line; the free OpenRouter model covers what it can).
 
-1. A nightly live smoke test. Running: `nightly-live.yml` on the free OpenRouter model with the `direct` runtime (gated by `OCRA_LIVE_SMOKE` and `OPENROUTER_API_KEY`), and `eval-free.yml` running the golden tiers on the rest of the free daily quota, in lanes of a model and a branch.
+1. A nightly live smoke test. Running: `nightly-live.yml` on the free OpenRouter model with the `direct` runtime (gated by `OCRA_LIVE_SMOKE` and `OPENROUTER_API_KEY`), failing when it reviewed nothing. The free-model golden evaluation was retired on 2026-10-23: the free daily quota of about 50 requests let it review almost nothing; golden runs are made locally on a paid model.
 2. The golden set grown until a five-point change is visible; precision and recall per reviewer, model and language, with cost per change, as a trend across releases.
 3. M5 and M6 under that evidence.
 4. Only then: prompts, rules and reviewers unfreeze, one measured change at a time.
@@ -139,7 +139,7 @@ What a company checks before adopting a code review tool, and where ocra is.
 | Policy | Repository and remote configuration; no organization policy the repository cannot override (M12) |
 | Integrations | Versioned JSON report with a JSON Schema; SARIF 2.1.0 out and in (`--import-sarif`); no sinks contract (M10) |
 | Observability | Session files with cost, tokens and latency; one run id across session, report, progress output, summary comment and SARIF; `ocra metrics`; no published event schema (M12) |
-| Quality evidence | 58 golden cases (52 required issues; 42 added 2026-10-23, vetted blind by two agents): one run on Gemini, two smoke-tier runs on a free model (not comparable); nightly live smoke and daily free golden evaluation (M11) |
+| Quality evidence | 58 golden cases (52 required issues; 42 added 2026-10-23, vetted blind by two agents): one run on Gemini, two smoke-tier runs on a free model (not comparable); nightly live smoke (M11) |
 | Support and stability | Early 0.x; the Stability and support page names the contracts; one maintainer |
 | Production use | Dogfood on two repositories; no external user yet (M13) |
 

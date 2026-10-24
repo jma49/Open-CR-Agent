@@ -180,7 +180,7 @@ node packages/eval/dist/main.js compare .ocra/eval/baseline .ocra/eval/change   
 
 ```bash
 node packages/eval/dist/main.js trend .ocra/eval
-node packages/eval/dist/main.js trend .ocra/eval --series free-nvidia-nemotron-3-ultra-550b-a55b-free@main-smoke,free-thinkingmachines-inkling-free@main-smoke
+node packages/eval/dist/main.js trend .ocra/eval --series main-smoke,change-smoke
 ```
 
 读取一个目录下的所有黄金集运行（任何含 `run.json` 的目录，最多向下四层，所以运行目录或下载的 artifact 文件夹都可以），按去掉末尾 `-<n>` 的标签分成系列：`nightly-1`、`nightly-2`、`nightly-3` 是同一个系列，重复运行的 `r1/` … `rk/` 归入它的标签。`--series` 只保留列出的系列。每个系列输出：
@@ -191,12 +191,6 @@ node packages/eval/dist/main.js trend .ocra/eval --series free-nvidia-nemotron-3
 - 有多个系列时，各系列在全体共同用例上的对比，每条断言（按 id 配对；可选断言另行标出）被各系列多少次运行在要求的严重级别上找到，以及它的稳定度（所有这些运行中找到它的比例）。断言还没有 id 时评分的运行不进入这张表，并附一条提示，请重新评分。总能找到或从来找不到的问题，比约一半时候能找到的更难区分两种设置。
 
 运行常常不完整，用例集也在增加，所以每个数字都只在所涉及运行的共同用例上计算；被排除的用例会列出，每次运行在全部用例上的数字留在最后一列。同一次运行读到两次只算一次。`summary.json` 早于按用例计分的运行会列出但没有数字，用 `ocra-eval score <run-dir>` 重新评分后才有。同一系列的运行用了不同的 judge，或针对不同的用例或标注评分时，某次运行的审查用了不同的设置（`compare` 会拒绝的情况）时，以及同一系列的运行在 ocra 构建或 `compare` 会警告的其他设置上不同时，都会给出警告。
-
-### 每日免费评估（本仓库）
-
-仓库的 `eval-free.yml` 工作流在 OpenRouter 的免费模型上运行黄金用例。它们不收费，但共用每日额度（账号没有充值时，`:free` 模型每个 UTC 日约 50 次请求，00:00 UTC 重置；一个黄金用例要 30 到 210 次，所以一条通道每天约完成一个用例）。它在 01:00 UTC 运行，20:00 UTC 再用剩下的额度运行一次，并为当天的拉取请求审查留出余量（仓库变量 `OCRA_EVAL_FREE_RESERVE`，默认 150）。OpenRouter 报告剩余请求数时，只有剩余不少于余量加 100 次才开始运行，所以在每天 50 次的额度下，要先调低余量才会有运行开始。
-
-每次运行评估一条通道，即某个分支上的一个模型。定时运行轮流使用 `.github/eval-free-lanes.json` 里的通道；`workflow_dispatch` 指定一条（`model`、`ref`、`tier`）。运行标签为 `free-<model>@<branch>-<tier>-<n>`，跨天续跑直到每个用例都审查过，由工作流自己的 `ocra-eval` 按默认分支的用例评分，judge 用通道的模型，除非 `OCRA_EVAL_JUDGE_MODEL` 另行指定。因为任务持有 OpenRouter 密钥，分支从不来自拉取请求。模型被 OpenRouter 下架（HTTP 404）或只对充值账号提供（HTTP 402）时，运行失败并写明是哪个模型。完成的运行作为 artifact 保留 90 天；`scripts/eval-free-download.sh [dir] [pattern]` 用 `gh` 下载它们并输出趋势。
 
 ## 召回率上限（免费）
 

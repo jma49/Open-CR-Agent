@@ -180,7 +180,7 @@ For single runs, `--spread-of` (a second baseline run) reports a difference no l
 
 ```bash
 node packages/eval/dist/main.js trend .ocra/eval
-node packages/eval/dist/main.js trend .ocra/eval --series free-nvidia-nemotron-3-ultra-550b-a55b-free@main-smoke,free-thinkingmachines-inkling-free@main-smoke
+node packages/eval/dist/main.js trend .ocra/eval --series main-smoke,change-smoke
 ```
 
 Reads every golden run under a directory (any directory with `run.json`, at most four levels down, so a runs directory or a folder of downloaded artifacts) and groups them into series by label without a trailing `-<n>`: `nightly-1`, `nightly-2` and `nightly-3` are one series, and a repeated run's `r1/` … `rk/` belong to its label. `--series` keeps only the series named. For each series it prints:
@@ -191,12 +191,6 @@ Reads every golden run under a directory (any directory with `run.json`, at most
 - with more than one series, each series again on the cases common to all, and for every claim (paired by id; optional ones marked), how many runs of each series found it at its severity, and its stability (the share of all those runs that found it). Runs scored before claims had ids are left out of that table, with a warning to rescore them. A finding found always or never tells setups apart less than one found about half the time.
 
 Runs are often partial and the case set grows, so every number is computed on the cases common to the runs it covers; the cases left out are named, and each run's numbers over all its cases stay in the last column. A run read twice counts once. Runs whose `summary.json` predates per-case scores are listed without numbers until re-scored with `ocra-eval score <run-dir>`. The output warns when a series' runs were scored by different judges or against different cases or labels, when a run's reviews were made on different setups (what `compare` refuses), and when a series' runs differ in ocra build or any other part of their setup that `compare` warns about.
-
-### The daily free evaluation (this repository)
-
-The repository's `eval-free.yml` workflow runs the golden tiers on OpenRouter's free models, which cost nothing but share a daily quota (about 50 requests a UTC day for `:free` models on an account without credits, reset at 00:00 UTC; a golden case takes 30 to 210, so a lane finishes about one case a day). It runs at 01:00 UTC and again at 20:00 UTC on what is left, keeping a reserve for the day's pull request reviews (repository variable `OCRA_EVAL_FREE_RESERVE`, default 150). When OpenRouter reports how many requests are left, a run starts only with at least the reserve plus 100 requests left, so on the 50-request quota no run starts until the reserve is lowered.
-
-Each run evaluates one lane, a model on a branch. Scheduled runs take turns over the lanes in `.github/eval-free-lanes.json`; `workflow_dispatch` names one (`model`, `ref`, `tier`). Runs are labeled `free-<model>@<branch>-<tier>-<n>`, resume across days until every case is reviewed, and are scored by the workflow's own `ocra-eval` against the default branch's cases, judged by the lane's model unless `OCRA_EVAL_JUDGE_MODEL` names another. The branch never comes from a pull request, since the job holds the OpenRouter key. A model OpenRouter no longer serves (HTTP 404) or serves only with credits (HTTP 402) fails the run naming the model. Finished runs are kept as artifacts for 90 days; `scripts/eval-free-download.sh [dir] [pattern]` downloads them with `gh` and prints their trend.
 
 ## Recall ceiling (free)
 
