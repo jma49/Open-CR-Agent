@@ -74,12 +74,12 @@ node packages/eval/dist/main.js ceiling --dataset golden                 # 免�
 node packages/eval/dist/main.js golden-import --from aacr --limit 50   # 免费
 ```
 
-它只取这样的拉取请求：属于 ocra 范围的评论（`Code Defect`、`Security Vulnerability`、`Performance`；不含可维护性与可读性，与 `ceiling` 一致）中由人写的不超过三条，改动行数不超过 `--max-change-lines`（默认 300），且不在 `--golden-dir` 中；模型写的评论不计入这三条。每条范围内的评论单独判断：位于删除行或没有行号的、按 `ceiling` 的规划不可达的、以及超出每个用例最多五条可选断言的模型评论都会被略去，用例的 `rationale` 逐条写明行号和原因；只有一条都不剩时才跳过整个拉取请求。有人写评论的拉取请求排在前面，只有模型评论的排在后面，每组内各语言在 `--limit` 下轮流入选；`--seed` 和 `--languages` 与选择参数含义相同，同一数据集文件和种子写出的字节完全相同。用例写入 `--out`（默认 `.ocra/eval/aacr-golden-candidates`，其中不能已有用例），并附带：
+它只取这样的拉取请求：有属于 ocra 范围的评论（`Code Defect`、`Security Vulnerability`、`Performance`；不含可维护性与可读性，与 `ceiling` 一致），改动行数不超过 `--max-change-lines`（默认 300），且不在 `--golden-dir` 中。按行号顺序，由人写的前三条评论成为必需断言（一个用例最多要求三条）；其余由人写的评论，以及之后由模型写的评论，成为可选断言，每个用例最多五条。每条范围内的评论单独判断：位于删除行或没有行号的、按 `ceiling` 的规划不可达的、以及超出五条可选断言上限的评论都会被略去，用例的 `rationale` 逐条写明行号和原因，并说明哪些由人写的评论是可选的；只有一条都不剩时才跳过整个拉取请求。有人写评论的拉取请求排在前面，只有模型评论的排在后面，每组内各语言在 `--limit` 下轮流入选；`--seed` 和 `--languages` 与选择参数含义相同，同一数据集文件和种子写出的字节完全相同。用例写入 `--out`（默认 `.ocra/eval/aacr-golden-candidates`，其中不能已有用例），并附带：
 
-- `summary.md`：按语言和类别（人写与模型写的断言分开）、作者、许可证和略去原因的计数，以及核查顺序（有人写评论的用例在前）。
+- `summary.md`：按语言和类别（人写与模型写的断言分开）、作者、许可证和略去原因的计数，以及核查顺序（有由人写的必需断言的用例在前）。
 - `forbid-seeds.json`：已导入拉取请求上被 AACR-Bench 标为错误（label 0）的评论，含用例、行号、文件、侧、行范围、类别和作者，供核查后转为 `forbid` 范围。它们不进入任何用例。
 
-候选只是复述评审评论，不是已确认的缺陷，而且 AACR-Bench 的评论大多由 AI 模型写成（见其 `is_ai_comment` 字段）：每条断言的 `origin` 和 `producer` 写明评论出自谁（`human-review` 与 `human`，或 `ai-reference-vetted` 与模型名），模型写的评论在核查把它改为必需之前都是可选的。`source.ref` 写明数据集行号、许可证是如何读出的，并注明未经人工核对；`source.date` 是 head 提交的日期；每个 `minSeverity` 都是 `suggestion`，没有 `forbid`。`source.licence` 取自仓库在 `head` 处根目录的文件（`LICENSE`、`COPYING` 等许可证文本，以及 `package.json`、`composer.json`、`Cargo.toml` 或 `pyproject.toml` 的 license 字段），前提是它们一致指向允许清单上的同一个许可证。其他情况一律保留 `NOASSERTION`，带着它的用例无法加载：没有许可证文件、无法识别的文本、多个许可证可选、未写明 `-only` 或 `-or-later` 的 GNU 文本，或不在允许清单上的许可证（名称写在 `source.ref` 中）。请按 `evals/golden/README.md` 对照 `head` 处的代码核对用例，设置严重级别，补充 `forbid` 范围，确认许可证，重新命名，再移入 `evals/golden/`。
+候选只是复述评审评论，不是已确认的缺陷，而且 AACR-Bench 的评论大多由 AI 模型写成（见其 `is_ai_comment` 字段）：每条断言的 `origin` 和 `producer` 写明评论出自谁（`human-review` 与 `human`，或 `ai-reference-vetted` 与模型名），模型写的评论，以及由人写但排在前三条之后的评论，在核查把它改为必需之前都是可选的。`source.ref` 写明数据集行号、许可证是如何读出的，并注明未经人工核对；`source.date` 是 head 提交的日期；每个 `minSeverity` 都是 `suggestion`，没有 `forbid`。`source.licence` 取自仓库在 `head` 处根目录的文件（`LICENSE`、`COPYING` 等许可证文本，以及 `package.json`、`composer.json`、`Cargo.toml` 或 `pyproject.toml` 的 license 字段），前提是它们一致指向允许清单上的同一个许可证。其他情况一律保留 `NOASSERTION`，带着它的用例无法加载：没有许可证文件、无法识别的文本、多个许可证可选、未写明 `-only` 或 `-or-later` 的 GNU 文本，或不在允许清单上的许可证（名称写在 `source.ref` 中）。请按 `evals/golden/README.md` 对照 `head` 处的代码核对用例，设置严重级别，补充 `forbid` 范围，确认许可证，重新命名，再移入 `evals/golden/`。
 
 ### 黄金集计分与标注
 

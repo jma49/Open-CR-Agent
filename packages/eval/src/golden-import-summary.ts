@@ -46,11 +46,12 @@ export function renderImportSummary(imported: readonly Imported[]): string {
   const cases = vettingOrder(imported);
   const claims = cases.flatMap((c) => c.expect);
   const seeds = imported.flatMap((i) => i.forbidSeeds);
-  const people = claims.filter(isPersons).length;
+  const people = claims.filter(isPersons);
+  const required = people.filter((e) => !e.optional).length;
   return [
     "# AACR-Bench golden candidates",
     "",
-    `${cases.length} case(s) with ${claims.length} expected finding(s): ${people} restate a person's review comment and ${claims.length - people} a model's (optional until vetted). Unverified: check each expectation, and the repository's licence, before moving the case to evals/golden. forbid-seeds.json holds ${seeds.length} comment(s) AACR-Bench labels incorrect on ${new Set(seeds.map((s) => s.case)).size} of these pull requests, to vet into forbid ranges.`,
+    `${cases.length} case(s) with ${claims.length} expected finding(s): ${people.length} restate a person's review comment (${required} required, ${people.length - required} optional past the 3 a case may require) and ${claims.length - people.length} a model's (optional until vetted). Unverified: check each expectation, and the repository's licence, before moving the case to evals/golden. forbid-seeds.json holds ${seeds.length} comment(s) AACR-Bench labels incorrect on ${new Set(seeds.map((s) => s.case)).size} of these pull requests, to vet into forbid ranges.`,
     "",
     ...table(
       ["Language", "Cases", "People's claims", "Models' claims"],
@@ -73,14 +74,24 @@ export function renderImportSummary(imported: readonly Imported[]): string {
     "## Vetting order",
     "",
     "Cases with a person's comment first, then those with models' only.",
+    "Human-written required claims come first: vet them before a case's optional claims.",
     "",
     ...table(
-      ["#", "Case", "Language", "People's claims", "Models' claims", "Licence"],
+      [
+        "#",
+        "Case",
+        "Language",
+        "Required (people's)",
+        "Optional (people's)",
+        "Optional (models')",
+        "Licence",
+      ],
       cases.map((c, n) => [
         n + 1,
         c.id,
         c.language,
-        c.expect.filter(isPersons).length,
+        c.expect.filter((e) => isPersons(e) && !e.optional).length,
+        c.expect.filter((e) => isPersons(e) && e.optional).length,
         c.expect.filter((e) => !isPersons(e)).length,
         c.source.licence,
       ]),

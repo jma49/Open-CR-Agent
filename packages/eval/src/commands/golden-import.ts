@@ -4,7 +4,7 @@ import { errorMessage, proxiedFetch } from "@open-cr-agent/core";
 import { classifyChange } from "../ceiling-run.js";
 import { type DatasetRecord, loadRecords } from "../dataset.js";
 import { exec } from "../exec.js";
-import { loadGolden, MAX_REQUIRED_CLAIMS } from "../golden.js";
+import { loadGolden } from "../golden.js";
 import {
   byLanguage,
   DEFAULT_MAX_CHANGE_LINES,
@@ -63,7 +63,7 @@ export async function goldenImport(
   const [withPeople, modelsOnly] = humanFirst(candidates);
   const log = (message: string) => err.write(`[ocra-eval] ${message}\n`);
   log(
-    `${candidates.length} candidate PR(s) with at most ${MAX_REQUIRED_CLAIMS} in-scope comments written by people and <= ${maxChangeLines} changed lines: ${withPeople.length} with a person's comment, ${modelsOnly.length} with models' only`,
+    `${candidates.length} candidate PR(s) with in-scope comments and <= ${maxChangeLines} changed lines: ${withPeople.length} with a person's comment, ${modelsOnly.length} with models' only`,
   );
 
   const reposDir = values["repos-dir"] ?? join(CACHE_DIR, "repos");

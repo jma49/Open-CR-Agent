@@ -81,9 +81,7 @@ function lineRange(record: DatasetRecord): [number, number] | null {
 }
 
 // Golden expectations sit on the new side, so a comment on removed lines, or
-// one without lines, is left out of its case. A person's comment becomes a
-// required claim, so a pull request with more of them than a case may
-// require is skipped; models' comments become optional claims.
+// one without lines, is left out of its case.
 export function importCandidates(
   records: readonly DatasetRecord[],
   options: CandidateOptions,
@@ -105,7 +103,6 @@ export function importCandidates(
     const placed = (i: AacrIssue) => i.record.side === "right" && lineRange(i.record) !== null;
     const issues = all.filter(placed);
     if (issues.length === 0) continue;
-    if (issues.filter((i) => isHuman(i.record)).length > MAX_REQUIRED_CLAIMS) continue;
     const instance = prInstance(first);
     instance.references = issues.map((i) => toReference(i.record));
     const leftOut = all
@@ -118,6 +115,13 @@ export function importCandidates(
     candidates.push({ instance, issues, leftOut, incorrect });
   }
   return candidates.sort((a, b) => a.instance.id.localeCompare(b.instance.id));
+}
+
+// A case requires at most three claims (ADR-0036 point 7): the first three
+// comments people wrote, in row order. Vetting may require others instead.
+function requiredRows(issues: readonly AacrIssue[]): ReadonlySet<number> {
+  const people = issues.filter((i) => isHuman(i.record));
+  return new Set(people.slice(0, MAX_REQUIRED_CLAIMS).map((i) => i.row));
 }
 
 function hasHumanIssue(candidate: ImportCandidate): boolean {
@@ -210,8 +214,9 @@ export interface CandidateFacts {
 
 // Each in-scope comment counts on its own: one ocra's deterministic stages
 // cannot reach, as the recall ceiling decides it, is left out with its
-// reason, and a pull request is skipped only when none is reachable.
-// Models' comments past the cap on optional claims are left out in row order.
+// reason, and a pull request is skipped only when none is reachable. The
+// optional claims are people's comments past the three required, then
+// models', in row order; those past the cap on optional claims are left out.
 export function verdictFor(
   candidate: ImportCandidate,
   reaches: readonly ReferenceReach[],
@@ -234,7 +239,12 @@ export function verdictFor(
       rejected: `not reachable: ${leftOut.map((l) => `${l.path} (${l.reason})`).join(", ")}`,
     };
   }
-  const overCap = new Set(reached.filter((i) => !isHuman(i.record)).slice(MAX_OPTIONAL_CLAIMS));
+  const required = requiredRows(reached);
+  const optional = [
+    ...reached.filter((i) => isHuman(i.record) && !required.has(i.row)),
+    ...reached.filter((i) => !isHuman(i.record)),
+  ];
+  const overCap = new Set(optional.slice(MAX_OPTIONAL_CLAIMS));
   for (const issue of overCap) {
     const reason = `past the cap of ${MAX_OPTIONAL_CLAIMS} optional claims`;
     leftOut.push({ row: issue.row, path: issue.record.path, reason });
@@ -250,6 +260,7 @@ export function verdictFor(
 
 export function toGoldenCase(candidate: ImportCandidate, facts: CandidateFacts): GoldenCase {
   const { instance, issues } = candidate;
+  const required = requiredRows(issues);
   const rows = issues.map((i) => i.row).join(", ");
   const name = instance.repo.split("/")[1] ?? instance.repo;
   const data = {
@@ -273,20 +284,27 @@ export function toGoldenCase(candidate: ImportCandidate, facts: CandidateFacts):
       category: GOLDEN_CATEGORY.get(record.category),
       minSeverity: DEFAULT_SEVERITY,
       concern: excerpt(record.note),
-      ...provenance(record),
+      ...provenance(record, required.has(row)),
     })),
   };
   return parseCandidate(data, data.id);
 }
 
 function rationale({ issues, leftOut, incorrect }: ImportCandidate): string {
-  const human = issues.filter((i) => isHuman(i.record)).length;
+  const human = issues.filter((i) => isHuman(i.record));
+  const required = requiredRows(issues);
+  const extra = human.filter((i) => !required.has(i.row)).map((i) => i.row);
   const left = [...leftOut].sort((a, b) => a.row - b.row);
   return [
-    `Unverified import: ${issues.length} in-scope review comment(s) from AACR-Bench on changed lines, ${human} of them written by people and the rest by models.`,
+    `Unverified import: ${issues.length} in-scope review comment(s) from AACR-Bench on changed lines, ${human.length} of them written by people and the rest by models.`,
     "They are comments, not confirmed bugs; check each expectation against the code at head, set minSeverity, add forbid ranges and confirm the licence before relying on this case.",
-    ...(human === 0
+    ...(human.length === 0
       ? ["Every claim restates a model's comment: vet this case after those with people's."]
+      : []),
+    ...(extra.length > 0
+      ? [
+          `People wrote more comments than the ${MAX_REQUIRED_CLAIMS} claims a case may require: the first ${MAX_REQUIRED_CLAIMS} in row order are required, and row(s) ${extra.join(", ")} optional; vetting may require others instead.`,
+        ]
       : []),
     ...(incorrect.length > 0
       ? [
@@ -301,13 +319,16 @@ function rationale({ issues, leftOut, incorrect }: ImportCandidate): string {
 
 // A comment a model wrote is optional until vetting promotes it (ADR-0036
 // point 5).
-function provenance(record: DatasetRecord): {
+function provenance(
+  record: DatasetRecord,
+  required: boolean,
+): {
   origin: string;
   producer: string;
   optional: boolean;
 } {
   return isHuman(record)
-    ? { origin: "human-review", producer: "human", optional: false }
+    ? { origin: "human-review", producer: "human", optional: !required }
     : { origin: "ai-reference-vetted", producer: producer(record), optional: true };
 }
 

@@ -23,20 +23,19 @@ const prs = (rows = fixture) =>
 
 describe("importCandidates", () => {
   it("keeps pull requests with an in-scope comment on the new side", () => {
-    expect(prs()).toEqual(["1", "8", "9", "10"]);
+    expect(prs()).toEqual(["1", "5", "8", "9", "10"]);
     const first = candidateFor(1, fixture);
     expect(first.issues.map((i) => i.row)).toEqual([0]);
     expect(first.instance.references).toHaveLength(1);
   });
 
-  it("caps the comments people wrote, not the ones models wrote", () => {
+  it("keeps a pull request with more comments people wrote than a case may require", () => {
     const rows = parseRecords([
-      record(11),
-      ...[20, 30, 40, 50].map((line) => record(11, { from_line: line, ...model() })),
-      ...[10, 20, 30, 40].map((line) => record(12, { from_line: line })),
+      ...[10, 20, 30, 40, 50].map((line) => record(11, { from_line: line })),
+      ...[60, 70, 80, 90].map((line) => record(11, { from_line: line, ...model() })),
     ]);
     expect(prs(rows)).toEqual(["11"]);
-    expect(candidateFor(11, rows).issues).toHaveLength(5);
+    expect(candidateFor(11, rows).issues).toHaveLength(9);
   });
 
   it("leaves out a comment on removed lines instead of the pull request", () => {
@@ -65,7 +64,7 @@ describe("byLanguage and pickInTurn", () => {
       },
       () => {},
     );
-    expect(picked.map((p) => p.case.language)).toEqual(["Go", "Rust", "Rust"]);
+    expect(picked.map((p) => p.case.language)).toEqual(["Go", "Rust", "Go"]);
     expect(seen).toHaveLength(4);
   });
 });
@@ -120,6 +119,32 @@ describe("verdictFor", () => {
         note: "wrong: the map is guarded",
       },
     ]);
+  });
+
+  it("requires the first three of people's comments, then fills the optional ones people's first", () => {
+    const rows = parseRecords([
+      ...[10, 20, 30, 40, 50].map((line) => record(16, { from_line: line })),
+      ...[60, 70, 80, 90].map((line) => record(16, { from_line: line, ...model() })),
+    ]);
+    const c = candidateFor(16, rows);
+    const verdict = verdictFor(c, reaches(c), facts);
+    if (!("case" in verdict)) throw new Error(verdict.rejected);
+    expect(verdict.case.expect.map((e) => [e.id, e.origin, e.optional])).toEqual([
+      ["row-0", "human-review", false],
+      ["row-1", "human-review", false],
+      ["row-2", "human-review", false],
+      ["row-3", "human-review", true],
+      ["row-4", "human-review", true],
+      ["row-5", "ai-reference-vetted", true],
+      ["row-6", "ai-reference-vetted", true],
+      ["row-7", "ai-reference-vetted", true],
+    ]);
+    expect(verdict.case.rationale).toContain(
+      "the first 3 in row order are required, and row(s) 3, 4 optional",
+    );
+    expect(verdict.case.rationale).toContain(
+      "row 8 (server/handler.go, past the cap of 5 optional claims)",
+    );
   });
 
   it("keeps at most five of the models' comments, in row order", () => {

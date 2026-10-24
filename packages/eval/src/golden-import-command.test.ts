@@ -55,7 +55,8 @@ describe("ocra-eval golden-import", () => {
     expect(cases.map((c) => c.language).sort()).toEqual(["C", "Go", "Rust"]);
     expect(readdirSync(out)).toContain("summary.md");
     expect(stdout).toContain("| C | 1 | 1 | 0 |");
-    expect(stdout).toContain("| suggestion | 3 |");
+    const claims = cases.flatMap((c) => c.expect).length;
+    expect(stdout).toContain(`| suggestion | ${claims} |`);
     expect(stdout).toContain("| MIT | 3 |");
   });
 
@@ -72,7 +73,8 @@ describe("ocra-eval golden-import", () => {
         .sort(),
     ).toEqual(["aacr-api-0000022.json", "aacr-api-0000023.json"]);
     const all = await run([], depsFor(rows));
-    expect(all.stdout).toMatch(/\| 3 \| aacr-api-0000021 \| C \| 0 \| 1 \| MIT \|\n$/);
+    expect(all.stdout).toContain("Human-written required claims come first");
+    expect(all.stdout).toMatch(/\| 3 \| aacr-api-0000021 \| C \| 0 \| 0 \| 1 \| MIT \|\n$/);
   });
 
   it("writes the comments labelled incorrect next to the cases, not in them", async () => {
@@ -113,9 +115,11 @@ describe("ocra-eval golden-import", () => {
     const out = join(tmp(), "candidates");
     const argv = ["--from", "aacr", "--languages", "go", "--out", out, "--golden-dir", golden];
     await goldenImport(argv, buffer(), buffer(), deps);
-    expect(readdirSync(out).filter((f) => f.startsWith("aacr-"))).toEqual([
-      "aacr-api-0000007.json",
-    ]);
+    expect(
+      readdirSync(out)
+        .filter((f) => f.startsWith("aacr-"))
+        .sort(),
+    ).toEqual(["aacr-api-0000005.json", "aacr-api-0000007.json"]);
   });
 
   it("refuses to write over earlier candidates or without a source", async () => {
