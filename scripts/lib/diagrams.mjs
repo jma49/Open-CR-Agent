@@ -1,32 +1,33 @@
 // The README diagrams: the system overview and the review agents, in
-// English and Chinese, light and dark. Deterministic code is blue and model
-// calls are amber in both. Written by scripts/diagrams.mjs.
+// English and Chinese, light and dark, in the site's desk palette: printed
+// paper and ink by day, the evening desk by night. Deterministic code is
+// teal ink and model calls are amber in both. Written by scripts/diagrams.mjs.
 
 /** @typedef {"code" | "llm" | "plain"} Kind */
 /** @typedef {"en" | "zh"} Lang */
 
 const THEMES = {
   light: {
-    bg: "#ffffff",
-    fg: "#17202b",
-    muted: "#5a6575",
-    line: "#d4d9e1",
-    sunk: "#f1f3f6",
-    code: "#2e55c4",
-    codeSoft: "#e8eefc",
-    llm: "#b06508",
-    llmSoft: "#fcf0dd",
+    bg: "#faf8f2",
+    fg: "#1c2226",
+    muted: "#545c5f",
+    line: "#dcd6ca",
+    sunk: "#f0ece3",
+    code: "#1f5d68",
+    codeSoft: "#e4eeec",
+    llm: "#935508",
+    llmSoft: "#f7e9d3",
   },
   dark: {
-    bg: "#0d1117",
-    fg: "#e4e9f0",
-    muted: "#97a3b3",
-    line: "#30363d",
-    sunk: "#161b22",
-    code: "#86a5ff",
-    codeSoft: "#18233d",
+    bg: "#0f1b1e",
+    fg: "#eef2f0",
+    muted: "#9aa7a8",
+    line: "#2a3d42",
+    sunk: "#17272c",
+    code: "#86c5cc",
+    codeSoft: "#15313a",
     llm: "#f0ae4f",
-    llmSoft: "#33250f",
+    llmSoft: "#33260f",
   },
 };
 
