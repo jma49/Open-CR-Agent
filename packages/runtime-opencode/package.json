@@ -33,11 +33,11 @@
     "!dist/**/*.map"
   ],
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.31.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@open-cr-agent/core": "0.7.0",
     "@opencode-ai/sdk": "1.18.32",
     "opencode-ai": "1.18.32",
-    "undici": "^8.12.3",
+    "undici": "^8.12.4",
     "zod": "^4.6.6"
   },
   "publishConfig": {
