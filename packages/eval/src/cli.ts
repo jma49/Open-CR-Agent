@@ -8,6 +8,7 @@ import type { Output } from "./commands/options.js";
 import { run } from "./commands/run.js";
 import { rescore } from "./commands/score.js";
 import { trend } from "./commands/trend.js";
+import { verdict } from "./commands/verdict.js";
 
 const USAGE = `Usage: ocra-eval <command> [options]
 
@@ -22,6 +23,12 @@ Commands:
                        Refuses a side whose reviews ran on different setups (ocra
                        builds, runtime, models, OpenCode, catalog, configuration)
                        unless --allow-mixed
+  verdict <baseline-run> <run> [--margin <share>] [--allow-mixed]
+                       Golden recall merge verdict: a paired bootstrap over
+                       cases (10,000 resamples, fixed seed), one-sided 97.5%
+                       bounds against --margin (default 0.1, 10 points), a
+                       sign-test veto over cases, the cost ratio. Exit 0
+                       pass, 1 worse, 3 inconclusive, 2 no verdict
   trend <runs-dir> [--series <a,b>]
                        Golden runs over time, per series (label without its
                        trailing -<n>): recall, precision and wrap-up turns per
@@ -100,6 +107,7 @@ export async function main(
     if (command === "adjudicate") return await adjudicate(rest, out);
     if (command === "compare") return await compare(rest, out);
     if (command === "trend") return await trend(rest, out, err);
+    if (command === "verdict") return await verdict(rest, out);
     if (command === "golden-import") return await goldenImport(rest, out, err);
     out.write(USAGE);
     return command === undefined || command === "--help" || command === "-h" ? 0 : 2;

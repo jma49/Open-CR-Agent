@@ -38,6 +38,7 @@ const OPTIONS = {
   "allow-mixed": { type: "boolean" },
   repo: { type: "string" },
   "repo-dir": { type: "string" },
+  margin: { type: "string" },
   series: { type: "string" },
   temperature: { type: "string" },
   "model-seed": { type: "string" },

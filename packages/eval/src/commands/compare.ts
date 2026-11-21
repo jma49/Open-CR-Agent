@@ -1,4 +1,9 @@
-import { compareSummaries, comparisonWarnings, renderComparison } from "../compare.js";
+import {
+  compareSummaries,
+  comparisonWarnings,
+  renderComparison,
+  type SavedSummary,
+} from "../compare.js";
 import { compareClaims, renderClaimComparison } from "../compare-claims.js";
 import { mixedSetups } from "../provenance.js";
 import { loadRuns } from "../repeat.js";
@@ -23,14 +28,7 @@ export async function compare(argv: string[], out: Output): Promise<number> {
     },
     { name: runDir, summaries: run.summaries },
   ];
-  const mixed = sides.flatMap(({ name, summaries }) =>
-    mixedSetups(summaries.map((s) => s.summary.provenance)).map((m) => `${name}: ${m}`),
-  );
-  if (mixed.length > 0 && values["allow-mixed"] !== true) {
-    throw new Error(
-      `a side of the comparison is not one setup, so its numbers measure none:\n${mixed.map((m) => `- ${m}`).join("\n")}\nReview those PRs again on one setup (a new --label), or pass --allow-mixed to compare anyway`,
-    );
-  }
+  const mixed = mixedSides(sides, values["allow-mixed"] === true);
   const warnings = [
     ...(same(baseline.ids, run.ids) ? [] : ["the runs reviewed different PRs"]),
     ...(other && !same(baseline.ids, other.ids) ? ["the baselines reviewed different PRs"] : []),
@@ -46,4 +44,22 @@ export async function compare(argv: string[], out: Output): Promise<number> {
   const claims = compareClaims(baseline.summaries, run.summaries);
   if (claims) out.write(renderClaimComparison(claims));
   return 0;
+}
+
+interface Side {
+  name: string;
+  summaries: readonly SavedSummary[];
+}
+
+// The differences within a side; throws on any unless they are allowed.
+export function mixedSides(sides: readonly Side[], allowMixed: boolean): string[] {
+  const mixed = sides.flatMap(({ name, summaries }) =>
+    mixedSetups(summaries.map((s) => s.summary.provenance)).map((m) => `${name}: ${m}`),
+  );
+  if (mixed.length > 0 && !allowMixed) {
+    throw new Error(
+      `a side of the comparison is not one setup, so its numbers measure none:\n${mixed.map((m) => `- ${m}`).join("\n")}\nReview those PRs again on one setup (a new --label), or pass --allow-mixed to compare anyway`,
+    );
+  }
+  return mixed;
 }
