@@ -31,6 +31,7 @@ const SECTIONS = [
   "finding",
   "diff",
   "file_excerpt",
+  "related_code",
   "callers",
   "review_plan",
   "reply",

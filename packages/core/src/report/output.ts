@@ -98,6 +98,7 @@ function outputFinding(f: Finding): OutputFinding {
     };
   }
   if (f.lowConfidence) output.lowConfidence = true;
+  if (f.preExisting) output.preExisting = true;
   output.provenance =
     f.provenance.model === undefined
       ? { task: f.provenance.task }

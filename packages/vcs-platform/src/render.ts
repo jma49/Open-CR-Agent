@@ -112,7 +112,7 @@ export const FINDING_MARKER = /<!-- ocra:finding ([0-9a-f]{16}) -->/;
 export function inlineBody(f: Finding, fence: SuggestionFence): string {
   const parts = [
     `<!-- ocra:finding ${f.fingerprint} -->`,
-    `${ICON[f.severity]} **${safeLine(f.title)}** · ${f.severity} · ${verification(f)} · ${f.reviewer}${f.lowConfidence ? " · low confidence" : ""}`,
+    `${ICON[f.severity]} **${safeLine(f.title)}** · ${f.severity} · ${verification(f)} · ${f.reviewer}${f.lowConfidence ? " · low confidence" : ""}${f.preExisting ? " · pre-existing" : ""}`,
     "",
     safeMarkdown(f.body, { startsLine: true }),
   ];
@@ -247,7 +247,7 @@ function outsideDiff(findings: readonly Finding[], commented: ReadonlySet<string
     "### Findings outside the diff",
     ...inSummary.map(
       (f) =>
-        `- ${ICON[f.severity]} ${location(f)} **${safeLine(f.title)}** _(${verification(f)}${f.lowConfidence ? ", low confidence" : ""})_: ${safeLine(f.body)}`,
+        `- ${ICON[f.severity]} ${location(f)} **${safeLine(f.title)}** _(${verification(f)}${f.lowConfidence ? ", low confidence" : ""}${f.preExisting ? ", pre-existing" : ""})_: ${safeLine(f.body)}`,
     ),
   ];
 }
