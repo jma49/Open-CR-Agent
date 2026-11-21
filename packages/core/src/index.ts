@@ -29,11 +29,13 @@ export type {
   IncompleteEnding,
   ModelChains,
   ModelTier,
+  ReferenceIndex,
   ReviewContext,
   Sampling,
   SymbolDefinition,
   SymbolExtractor,
   SymbolKind,
+  SymbolReference,
   Usage,
 } from "./contracts.js";
 export { MODEL_TIERS, SYMBOL_KINDS } from "./contracts.js";

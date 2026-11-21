@@ -54,6 +54,15 @@ describe("parseReviewArgs", () => {
     );
   });
 
+  it("takes a --scip index, and refuses it empty or with --plan", () => {
+    expect(parseReviewArgs(["--scip", "index.scip"])).toMatchObject({ scip: "index.scip" });
+    expect(parseReviewArgs([])).not.toHaveProperty("scip");
+    expect(() => parseReviewArgs(["--scip", ""])).toThrow("--scip needs a file");
+    expect(() => parseReviewArgs(["--plan", "--scip", "index.scip"])).toThrow(
+      "--scip is not used by --plan",
+    );
+  });
+
   it("returns help", () => {
     expect(parseReviewArgs(["-h"])).toBe("help");
     expect(parseReviewArgs(["--no-repo-config"])).toMatchObject({ ignoreRepoConfig: true });

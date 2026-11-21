@@ -31,6 +31,8 @@ export interface ReviewArgs {
   full?: true;
   plan?: true;
   importSarif?: string[];
+  // A SCIP index of the repository, for precise callers.
+  scip?: string;
   // Read this file instead of the repository's .ocra/config.json.
   configFile?: string;
   // Do not send this review's counts to ocra Cloud.
@@ -63,6 +65,9 @@ Options:
   --max-cost-usd <n> Spend limit: reviews use 80%, verification and judging the rest
   --import-sarif <file>  Add the results of a SARIF 2.1.0 log (Semgrep, CodeQL, …)
                      that fall on the change; repeatable; not with --plan
+  --scip <file>      Find callers of changed symbols in this SCIP index
+                     (scip-typescript, scip-java, …; built at the repository root)
+                     before searching; not with --plan
   --plan             Show files, bundles, review tasks and prompt sizes; call no model
   --ultra            Favor recall: all reviewers at every tier, two samples each (about 2x cost)
   --temperature <n>  Sampling temperature, 0 to 2 (default: the provider's, or sampling in config)
@@ -149,6 +154,11 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
     if (values.plan) throw new UsageError("--import-sarif is not used by --plan");
     args.importSarif = values["import-sarif"];
   }
+  if (values.scip !== undefined) {
+    if (values.scip === "") throw new UsageError("--scip needs a file");
+    if (values.plan) throw new UsageError("--scip is not used by --plan");
+    args.scip = values.scip;
+  }
   if (values.resume !== undefined) {
     if (values.resume === "") throw new UsageError("--resume needs a run id");
     if (values.plan) throw new UsageError("--resume is not used by --plan");
@@ -182,6 +192,7 @@ function parse(argv: string[]) {
       reviewers: { type: "string" },
       "max-cost-usd": { type: "string" },
       "import-sarif": { type: "string", multiple: true },
+      scip: { type: "string" },
       ultra: { type: "boolean" },
       temperature: { type: "string" },
       seed: { type: "string" },

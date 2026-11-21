@@ -42,6 +42,10 @@ function withHunk(path: string, hunk: Hunk): FileDiff {
   return { ...diff(path, []), hunks: [hunk] };
 }
 
+async function names(...args: Parameters<typeof changedSymbols>): Promise<string[]> {
+  return (await changedSymbols(...args)).map((s) => s.name);
+}
+
 function extractor(files: Record<string, FileSymbols>): SymbolExtractor {
   return { symbols: async (path) => files[path] };
 }
@@ -69,7 +73,7 @@ describe("changedSymbols without an extractor", () => {
       diff("b.py", ["def load_config(path):"]),
       diff("c.go", ["func (s *Server) HandleLogin(w http.ResponseWriter) {"]),
     ];
-    expect(await changedSymbols(files, NO_FILES)).toEqual([
+    expect(await names(files, NO_FILES)).toEqual([
       "parseRetries",
       "toLimit",
       "RetryPolicy",
@@ -82,7 +86,7 @@ describe("changedSymbols without an extractor", () => {
     const files = [
       diff("a.ts", ["function go() {}", "function main() {}"], ["function kept() {}"]),
     ];
-    expect(await changedSymbols(files, NO_FILES)).toEqual([]);
+    expect(await names(files, NO_FILES)).toEqual([]);
   });
 });
 
@@ -111,7 +115,7 @@ describe("changedSymbols with an extractor", () => {
         { kind: "add", content: "  // a note between methods", newLine: 18 },
       ],
     });
-    expect(await changedSymbols([file], context, extractor({ "src/retry.ts": symbols }))).toEqual([
+    expect(await names([file], context, extractor({ "src/retry.ts": symbols }))).toEqual([
       "parseRetries",
       "backoff",
       "RetryPolicy",
@@ -131,7 +135,7 @@ describe("changedSymbols with an extractor", () => {
         { kind: "delete", content: "  function legacyLimit() {}", oldLine: 14 },
       ],
     });
-    expect(await changedSymbols([file], context, extractor({ "src/retry.ts": symbols }))).toEqual([
+    expect(await names([file], context, extractor({ "src/retry.ts": symbols }))).toEqual([
       "legacyLimit",
       "parseRetries",
     ]);
@@ -139,7 +143,7 @@ describe("changedSymbols with an extractor", () => {
 
   it("falls back to definition patterns for a file it does not read", async () => {
     const files = [diff("b.rb", ["def load_config(path)"])];
-    expect(await changedSymbols(files, context, extractor({}))).toEqual(["load_config"]);
+    expect(await names(files, context, extractor({}))).toEqual(["load_config"]);
   });
 });
 
@@ -184,7 +188,7 @@ describe("findCallers", () => {
         uses: new Map([["parseRetries", [3]]]),
       },
     });
-    expect(await findCallers(files, context, symbols)).toEqual([
+    expect(await findCallers(files, context, { symbols })).toEqual([
       {
         symbol: "parseRetries",
         uses: [
@@ -192,5 +196,38 @@ describe("findCallers", () => {
         ],
       },
     ]);
+  });
+});
+
+describe("findCallers with a reference index", () => {
+  const files = [diff("src/retry.ts", ["export function parseRetries(x) {"])];
+  const context = repository({
+    "src/retry.ts": "export function parseRetries(x) {\n}",
+    "src/api.ts": "export function handle(h) {\n  return parseRetries(h);\n}",
+    "src/moved.ts": "// the call moved away\nexport const x = 1;",
+    "src/legacy.ts": "parseRetries(old);",
+  });
+
+  it("lists the uses the index resolves, not every file that names the symbol", async () => {
+    const usesOf = async (path: string, name: string) =>
+      path === "src/retry.ts" && name === "parseRetries"
+        ? [
+            { path: "src/api.ts", line: 2 },
+            { path: "src/moved.ts", line: 1 },
+            { path: "src/retry.ts", line: 1 },
+          ]
+        : undefined;
+    expect(await findCallers(files, context, { references: { usesOf } })).toEqual([
+      {
+        symbol: "parseRetries",
+        uses: [{ path: "src/api.ts", line: 2, text: "  return parseRetries(h);" }],
+      },
+    ]);
+  });
+
+  it("searches as before for a symbol the index does not know", async () => {
+    const usesOf = async () => undefined;
+    const callers = await findCallers(files, context, { references: { usesOf } });
+    expect(callers[0]?.uses.map((u) => u.path)).toEqual(["src/api.ts", "src/legacy.ts"]);
   });
 });
