@@ -1,4 +1,5 @@
 import type { ChangeRequest, FileDiff, Hunk } from "../domain.js";
+import type { Learning } from "../knowledge/learning.js";
 import type { MemoryEntry } from "../memory/memory.js";
 import type { SymbolUse } from "./impact.js";
 import {
@@ -29,6 +30,7 @@ export interface ReviewPromptInput {
   rules: string;
   guidelines?: string | undefined;
   accepted?: readonly MemoryEntry[];
+  learnings?: readonly Learning[];
   // --ultra: where the rest of the repository uses symbols this bundle changes.
   callers?: readonly SymbolUse[];
   // --ultra: the plan phase's checklist for this bundle.
@@ -57,6 +59,9 @@ export function buildReviewPrompt(input: ReviewPromptInput): ReviewPrompt {
   }
   if (input.rules.trim()) sections.push(section("review_rules", data(input.rules)));
   if (input.accepted && input.accepted.length > 0) sections.push(renderAccepted(input.accepted));
+  if (input.learnings && input.learnings.length > 0) {
+    sections.push(renderLearnings(input.learnings));
+  }
   sections.push(
     section("review_files", input.bundle.map(renderFile)),
     ...(input.callers && input.callers.length > 0 ? [renderCallers(input.callers)] : []),
@@ -113,6 +118,21 @@ function renderAccepted(entries: readonly MemoryEntry[]): PromptText {
   return section("accepted_findings", [
     ocraText("The team has accepted these; do not report them again."),
     ...lines,
+  ]);
+}
+
+function renderLearnings(learnings: readonly Learning[]): PromptText {
+  return section("team_learnings", [
+    ocraText(
+      "What the team learned from earlier changes to this code. Check whether this change repeats a mistake one describes; report only what the change itself gets wrong, never a learning alone.",
+    ),
+    ...learnings.map((l) =>
+      section("learning", [data(oneLine(l.title)), data(l.body)], {
+        id: l.id,
+        paths: l.paths.join(", "),
+        ...(l.critical ? { critical: "true" } : {}),
+      }),
+    ),
   ]);
 }
 

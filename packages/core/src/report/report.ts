@@ -10,6 +10,7 @@ import type {
   Verdict,
 } from "../domain.js";
 import type { JudgeDecisions } from "../judge/judge.js";
+import type { LearningUse } from "../knowledge/learning.js";
 import type { SkippedCell } from "../matrix/matrix.js";
 import type { RememberedEntry } from "../memory/memory.js";
 import type { ExclusionReason } from "../select/select.js";
@@ -136,6 +137,8 @@ export interface ReviewReport {
   refuted: RefutedFinding[];
   // Findings the repository's or the account's memory marks as accepted.
   remembered: RememberedEntry[];
+  // The team's learnings its tasks were given (ADR-0037); absent when none applied.
+  learnings?: LearningUse[];
   // What the judge merged, dropped or recalibrated; absent when it did not run.
   judgement?: JudgeDecisions;
   // With an earlier review: whether this run reviewed only what changed since.

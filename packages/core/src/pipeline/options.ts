@@ -5,6 +5,7 @@ import type { BundlePolicy } from "../bundle/bundle.js";
 import type { FileGrouper } from "../bundle/grouping.js";
 import type { AgentRuntime, ModelChains } from "../contracts.js";
 import { OcraError } from "../errors.js";
+import type { Learning } from "../knowledge/learning.js";
 import type { MemoryEntry } from "../memory/memory.js";
 import type { ReviewEvent } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
@@ -37,6 +38,9 @@ export interface ReviewOptions {
   // (ADR-0028), applied with .ocra/memory.json's; a fingerprint both list is
   // reported as the repository's.
   accountMemory?: readonly MemoryEntry[];
+  // The team's learnings, which the caller reads from the same trusted
+  // revision as the rules (ADR-0037); each task is given those that apply.
+  learnings?: readonly Learning[];
   // Which files are reviewed; what is left out is defaultSelectionPolicy's.
   selection?: Partial<SelectionPolicy>;
   limits?: ReviewLimits;

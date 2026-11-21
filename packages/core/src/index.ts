@@ -64,6 +64,7 @@ export {
   type OcraErrorCode,
 } from "./errors.js";
 export type { JudgeDecisions } from "./judge/judge.js";
+export type { Learning, LearningSource, LearningUse } from "./knowledge/learning.js";
 export type { SkippedCell, SkipReason } from "./matrix/matrix.js";
 export type { MemoryEntry, MemorySource, RememberedEntry } from "./memory/memory.js";
 export { type ProxyEnv, proxiedFetch } from "./net/proxied-fetch.js";

@@ -552,6 +552,48 @@ export interface JudgeDecisions {
 export type Language = "typescript" | "python" | "go" | "java";
 
 // @public (undocumented)
+export interface Learning {
+    // (undocumented)
+    body: string;
+    // (undocumented)
+    critical: boolean;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    keywords: readonly string[];
+    // (undocumented)
+    paths: readonly string[];
+    // (undocumented)
+    source?: LearningSource;
+    // (undocumented)
+    symbols: readonly string[];
+    // (undocumented)
+    title: string;
+}
+
+// @public (undocumented)
+export interface LearningSource {
+    // (undocumented)
+    kind: string;
+    // (undocumented)
+    ref?: string;
+}
+
+// @public (undocumented)
+export interface LearningUse {
+    // (undocumented)
+    bundles: string[];
+    // (undocumented)
+    critical: boolean;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    source?: LearningSource;
+    // (undocumented)
+    title: string;
+}
+
+// @public (undocumented)
 export type LineRange = z.infer<typeof lineRangeSchema>;
 
 // @public (undocumented)
@@ -990,6 +1032,16 @@ export const reportOutputSchema: z.ZodObject<{
             repository: "repository";
         }>>;
     }, z.core.$strip>>;
+    learnings: z.ZodExactOptional<z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        title: z.ZodString;
+        critical: z.ZodBoolean;
+        source: z.ZodExactOptional<z.ZodObject<{
+            kind: z.ZodString;
+            ref: z.ZodExactOptional<z.ZodString>;
+        }, z.core.$strict>>;
+        bundles: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>>>;
     judgement: z.ZodExactOptional<z.ZodObject<{
         merged: z.ZodArray<z.ZodObject<{
             kept: z.ZodString;
@@ -1423,6 +1475,8 @@ export interface ReviewOptions {
     // (undocumented)
     identity?: RunIdentity;
     // (undocumented)
+    learnings?: readonly Learning[];
+    // (undocumented)
     limits?: ReviewLimits;
     // (undocumented)
     mode?: ReviewMode;
@@ -1473,6 +1527,8 @@ export interface ReviewReport {
     findings: Finding[];
     // (undocumented)
     judgement?: JudgeDecisions;
+    // (undocumented)
+    learnings?: LearningUse[];
     // (undocumented)
     provenance?: RunProvenance;
     // (undocumented)

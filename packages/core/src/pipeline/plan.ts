@@ -4,6 +4,7 @@ import { runtimeGrouper } from "../bundle/runtime-grouper.js";
 import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
 import type { ChangeRequest, FileDiff, PriorReview, RiskTier } from "../domain.js";
 import { errorMessage } from "../errors.js";
+import { learningSelector, type SelectLearnings } from "../knowledge/select.js";
 import { rank } from "../matrix/matrix.js";
 import { MEMORY_PATH, mergeMemory, parseMemory, type RememberedEntry } from "../memory/memory.js";
 import type { ReviewEvent, ReviewReport } from "../report/report.js";
@@ -46,6 +47,7 @@ export interface ReviewPlan {
   guidelines: string | undefined;
   repoRules: SourcedRule[];
   memory: RememberedEntry[];
+  learnings: SelectLearnings;
   usage: Usage[];
   warnings: string[];
 }
@@ -57,6 +59,7 @@ export type PlanOptions = Pick<
   | "rules"
   | "readTrusted"
   | "accountMemory"
+  | "learnings"
   | "selection"
   | "bundling"
   | "grouper"
@@ -162,6 +165,7 @@ export async function planReview(
       memoryText === undefined ? [] : parseMemory(memoryText),
       options.accountMemory ?? [],
     ),
+    learnings: learningSelector(options.learnings ?? []),
     usage,
     warnings: binaryText ? [binaryText, ...bundled.warnings] : bundled.warnings,
   };

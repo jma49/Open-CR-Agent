@@ -25,6 +25,8 @@ const SECTIONS = [
   "repository_guidelines",
   "review_rules",
   "accepted_findings",
+  "team_learnings",
+  "learning",
   "review_files",
   "file",
   "findings",

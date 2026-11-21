@@ -39,6 +39,7 @@ export function taskPrompt(cell: MatrixCell, plan: ReviewPlan, ultra: boolean): 
     rules: resolveRules(files, plan.repoRules, cell.reviewer.rules),
     guidelines: plan.guidelines,
     accepted: memoryFor(files, plan.memory),
+    learnings: plan.learnings(cell.bundle.files).selected,
   };
   const prompt = buildReviewPrompt(input);
   const callers = ultra || plan.tier === "full";

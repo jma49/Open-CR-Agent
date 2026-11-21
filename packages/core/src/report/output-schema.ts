@@ -212,6 +212,19 @@ export const reportOutputSchema = z.strictObject({
   remembered: z.array(
     memoryEntrySchema.extend({ source: z.enum(["repository", "account"]).exactOptional() }),
   ),
+  learnings: z
+    .array(
+      z.strictObject({
+        id: z.string(),
+        title: z.string(),
+        critical: z.boolean(),
+        source: z
+          .strictObject({ kind: z.string(), ref: z.string().exactOptional() })
+          .exactOptional(),
+        bundles: z.array(z.string()),
+      }),
+    )
+    .exactOptional(),
   judgement: judgeDecisionsSchema.exactOptional(),
   rereview: z
     .strictObject({
