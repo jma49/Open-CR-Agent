@@ -66,6 +66,7 @@ export async function executeRun(
       onEvent: (event) => {
         run.registry.emit(event);
         progress.onEvent(event);
+        deps.onEvent?.(event);
       },
     });
     return {

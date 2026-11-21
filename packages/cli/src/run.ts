@@ -10,6 +10,7 @@ import { parseReviewArgs, REVIEW_USAGE } from "./commands/review/args.js";
 import type { ReviewDeps } from "./commands/review/deps.js";
 import { BUILTIN_RUNTIMES } from "./commands/review/runtimes.js";
 import { BUILTIN_PLUGINS, reviewCommand } from "./commands/review.js";
+import { parseServeArgs, SERVE_USAGE, serveCommand } from "./commands/serve.js";
 import { EXIT } from "./io/exit.js";
 import type { Output } from "./io/output.js";
 import { forTerminal } from "./io/terminal.js";
@@ -24,6 +25,7 @@ const USAGE = `Usage: ocra <command> [options]
 Commands:
   init        Set up ocra for this repository, and its GitHub workflow with --github
   review      Review code changes (run "ocra review --help" for options)
+  serve       Run a local review service that streams each review's events (run "ocra serve --help")
   memory      Remember findings the team accepts (run "ocra memory --help")
   metrics     Counts over past reviews: runs, cost, findings, per reviewer (run "ocra metrics --help")
   plugins     Allow plugins your ocra Cloud settings name on this machine (run "ocra plugins --help")
@@ -71,6 +73,7 @@ export async function run(
 ): Promise<number> {
   const [command, ...rest] = argv;
   if (command === "review") return review(rest, out, err, deps);
+  if (command === "serve") return serve(rest, out, err, deps);
   if (command === "init") {
     try {
       return await initCommand(rest, out, { cwd: deps.cwd, env: deps.env });
@@ -150,6 +153,21 @@ async function review(argv: string[], out: Output, err: Output, deps: ReviewDeps
     } else {
       err.write(failure(error));
     }
+    return EXIT.error;
+  }
+}
+
+async function serve(argv: string[], out: Output, err: Output, deps: ReviewDeps): Promise<number> {
+  try {
+    const port = parseServeArgs(argv);
+    if (port === "help") {
+      out.write(SERVE_USAGE);
+      return EXIT.ok;
+    }
+    return await serveCommand(port, err, deps);
+  } catch (error) {
+    if (error instanceof UsageError) err.write(`${error.message}\n\n${SERVE_USAGE}`);
+    else err.write(failure(error));
     return EXIT.error;
   }
 }

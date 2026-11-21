@@ -193,6 +193,10 @@ Every review (not `--plan`) writes `.ocra/sessions/<id>/events.jsonl` (one event
 
 Each line of `events.jsonl` ends with a `seal`: an HMAC keyed by a secret of yours that ocra makes on first use in `~/.config/ocra/session-key` (`$XDG_CONFIG_HOME/ocra/`, or `%APPDATA%\ocra\` on Windows), readable only by you. `--resume` reads only lines with a valid seal, so it resumes a session only on the machine and account that wrote it; deleting the key makes earlier sessions impossible to resume, nothing else. If ocra cannot make or read the key, a review warns and its session cannot be resumed; a key file it cannot read (another user's, say, after `sudo ocra`) is left as it is.
 
+## ocra serve
+
+A local review service: start reviews over HTTP and follow their events live. See [ocra serve](./serve).
+
 ## ocra metrics
 
 Counts over the finished reviews in `.ocra/sessions/`, from each session's `report.json`; no model is called:

@@ -145,7 +145,7 @@ Repository guidelines come from `AGENTS.md`; path-scoped rules from `.ocra/rules
 { "rules": [{ "path": "api/**", "rule": "Handlers must check tenant ownership." }] }
 ```
 
-Also: `extends` shares configuration over https; `--config <file>` reads your own file instead of the repository's; `ocra memory` stops reporting accepted findings; `ocra metrics` summarizes runs, cost and findings. `ocra login` / `logout` / `whoami` connect ocra Cloud (in development): your [account settings](docs/manual/en/configuration.mdx#account-settings) apply under the repository's configuration, never providers or plugins, and findings are uploaded only when the account opts in and the machine signed in while it did, secrets redacted first ([CLI](docs/manual/en/cli.mdx#ocra-login-ocra-logout-ocra-whoami)). Every key: [Configuration](docs/manual/en/configuration.mdx), [Rules](docs/manual/en/rules.mdx).
+Also: `extends` shares configuration over https; `--config <file>` reads your own file instead of the repository's; `ocra memory` stops reporting accepted findings; `ocra metrics` summarizes runs, cost and findings; `ocra serve` runs reviews on request on 127.0.0.1 and streams each one's events ([ocra serve](docs/manual/en/serve.mdx)). `ocra login` / `logout` / `whoami` connect ocra Cloud (in development): your [account settings](docs/manual/en/configuration.mdx#account-settings) apply under the repository's configuration, never providers or plugins, and findings are uploaded only when the account opts in and the machine signed in while it did, secrets redacted first ([CLI](docs/manual/en/cli.mdx#ocra-login-ocra-logout-ocra-whoami)). Every key: [Configuration](docs/manual/en/configuration.mdx), [Rules](docs/manual/en/rules.mdx).
 
 ## Extending ocra
 

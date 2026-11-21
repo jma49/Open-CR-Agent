@@ -1,0 +1,51 @@
+---
+title: ocra serve
+description: 本地审查服务：通过 HTTP 发起审查，实时跟随它的事件。
+---
+
+`ocra serve` 在一个仓库里常驻运行，按请求审查它。编辑器插件或脚本通过 HTTP 发起一次审查，并实时跟随：每个阶段、每个审查任务、每个文件的最终状态、每条发现，以及目前的花费。这样运行的审查与 `ocra review` 相同：同样的配置、信任规则、花费上限、会话记录和 ocra Cloud 上传。
+
+```bash
+ocra serve              # 127.0.0.1 上的空闲端口
+ocra serve --port 7420  # 固定端口
+```
+
+它只监听 `127.0.0.1`，每次启动生成一个随机 token。地址和 token 写在只有你能读的文件里：`~/.config/ocra/serve/<id>.json`（或 `$XDG_CONFIG_HOME`，Windows 上是 `%APPDATA%`），文件里也写明了仓库；服务停止时删除。按 Ctrl-C 会取消正在进行的审查，然后停止。
+
+## 路由
+
+每个请求都要带 `Authorization: Bearer <token>`；主机名不是 `127.0.0.1` 或 `localhost` 的请求会被拒绝（421），所以网页无法通过 DNS rebinding 访问这个服务。
+
+| 路由 | 作用 |
+|---|---|
+| `POST /runs` | 发起一次审查；开始后返回 `201 {"runId": …}`，无法开始时（不是仓库、配置有误）返回 `422` 和原因，已有两次审查在进行时返回 `429` |
+| `GET /runs/<id>/events` | 以 [Server-Sent Events](https://html.spec.whatwg.org/multipage/server-sent-events.html) 返回这次审查的事件：从第一条开始，实时推送直到结束；带 `Last-Event-ID` 时只返回它之后的事件 |
+| `GET /runs/<id>` | 当前状态（`running`、`finished`、`failed`），结束后附上报告，格式与 `ocra review --format json` 相同 |
+| `POST /runs/<id>/cancel` | 取消；已有的发现会保留，最后以 `failed`（`cancelled`）结束 |
+| `POST /runs/<id>/commands` | `{"command": "cancel"}`，目前唯一的指令 |
+| `DELETE /runs/<id>` | 丢掉一次已结束的审查；服务保留最近 20 次 |
+
+`POST /runs` 的请求体只能收窄审查，不能扩大它能做的事：
+
+```json
+{
+  "target": { "mode": "range", "from": "main", "to": "HEAD" },
+  "reviewers": ["correctness", "security"],
+  "maxCostUsd": 2
+}
+```
+
+`target` 可以是 `{"mode": "workspace"}`（默认：未提交的改动）、`{"mode": "range", "from", "to"}`（`to` 默认为 `HEAD`）或 `{"mode": "commit", "commit"}`。其他字段一律拒绝。
+
+## 事件
+
+每条事件是一个 JSON 对象，格式带版本号，定义在 [`@open-cr-agent/cloud-contract`](https://www.npmjs.com/package/@open-cr-agent/cloud-contract)（`reviewEventSchema`，用 `readReviewEvent` 读取）：
+
+```json
+{ "version": 1, "runId": "20261121T080000Z-a1b2c3", "seq": 9, "at": "2026-11-21T08:00:43.010Z",
+  "kind": "file.finished", "data": { "path": "src/auth/session.ts", "status": "reviewed" } }
+```
+
+`seq` 从 1 开始连续递增，也是事件的 SSE id。每次审查恰好以一条 `finished`（结论、审查是否完整、总用量）或 `failed`（`cancelled`、`budget` 或 `error`）结束。事件种类有 `started`、`stage`、`task.started`、`task.finished`、`file.finished`、`finding`、`warning`、`usage`（目前为止的花费）、`finished` 和 `failed`。发现会在任务报告时发一次，审查结束时（Verify 和判官之后）再发一次；后来的会替换同一 `id` 的先前那条，`dropped` 表示判官没有保留它。新版本的 ocra 可能增加种类和字段而不改 `version`：遇到不认识的种类直接跳过。
+
+文本字段经过与共享给 ocra Cloud 的发现相同的脱敏处理，事件里从不包含密钥、token 或模型的请求与回答。

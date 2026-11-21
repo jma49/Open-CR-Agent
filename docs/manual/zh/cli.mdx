@@ -193,6 +193,10 @@ ocra 不运行任何分析工具：你自己运行 Semgrep、CodeQL 或其他工
 
 `events.jsonl` 的每一行末尾都有一个 `seal`：用你自己的密钥计算的 HMAC。这个密钥由 ocra 在首次使用时生成，存放在 `~/.config/ocra/session-key`（`$XDG_CONFIG_HOME/ocra/`，Windows 上是 `%APPDATA%\ocra\`），只有你能读取。`--resume` 只读取 seal 有效的行，因此一个会话只能在写下它的那台机器、那个账户上恢复；删除这个密钥只会让之前的会话无法恢复，不影响其他功能。如果 ocra 无法生成或读取密钥，审查会给出警告，这次的会话不能恢复；读不了的密钥文件（例如 `sudo ocra` 之后属于另一个用户）保持原样，不会被替换。
 
+## ocra serve
+
+本地审查服务：通过 HTTP 发起审查并实时跟随它的事件。见 [ocra serve](./serve)。
+
 ## ocra metrics
 
 对 `.ocra/sessions/` 下已完成的审查做统计，数据来自每个会话的 `report.json`，不调用任何模型：

@@ -1,24 +1,24 @@
 {
-  "about": "One review's live events, in order, as `ocra serve` streams them. Written by hand until the CLI's mapper (toReviewEvent) exists; its test will then write it. A reader must accept every event and skip the last one, whose kind it does not know.",
+  "about": "One review's live events, in order, as `ocra serve` streams them: what ReviewEventMapper makes of a sample run (packages/cli/src/serve/review-events.test.ts; OCRA_UPDATE_FIXTURES=1 rewrites it). A reader must accept every event and skip the last one, whose kind it does not know.",
   "events": [
     {
       "version": 1,
       "runId": "run-2026-11-21-c3d4",
       "seq": 1,
-      "at": "2026-11-21T08:00:00.000Z",
+      "at": "2026-11-21T08:00:00.100Z",
       "kind": "started",
-      "data": { "target": "workspace", "tier": "full" }
+      "data": {
+        "target": "workspace"
+      }
     },
     {
       "version": 1,
       "runId": "run-2026-11-21-c3d4",
       "seq": 2,
-      "at": "2026-11-21T08:00:00.120Z",
+      "at": "2026-11-21T08:00:00.200Z",
       "kind": "stage",
       "data": {
-        "stage": "select",
-        "files": ["src/auth/session.ts", "src/auth/session.test.ts"],
-        "excluded": ["package-lock.json"]
+        "stage": "select"
       }
     },
     {
@@ -26,25 +26,19 @@
       "runId": "run-2026-11-21-c3d4",
       "seq": 3,
       "at": "2026-11-21T08:00:00.300Z",
-      "kind": "file.finished",
-      "data": { "path": "package-lock.json", "status": "excluded" }
+      "kind": "stage",
+      "data": {
+        "stage": "review"
+      }
     },
     {
       "version": 1,
       "runId": "run-2026-11-21-c3d4",
       "seq": 4,
-      "at": "2026-11-21T08:00:00.410Z",
-      "kind": "stage",
-      "data": { "stage": "review" }
-    },
-    {
-      "version": 1,
-      "runId": "run-2026-11-21-c3d4",
-      "seq": 5,
-      "at": "2026-11-21T08:00:00.420Z",
+      "at": "2026-11-21T08:00:00.400Z",
       "kind": "task.started",
       "data": {
-        "taskId": "security:b1",
+        "taskId": "security-1",
         "reviewer": "security",
         "files": ["src/auth/session.ts", "src/auth/session.test.ts"]
       }
@@ -52,12 +46,12 @@
     {
       "version": 1,
       "runId": "run-2026-11-21-c3d4",
-      "seq": 6,
-      "at": "2026-11-21T08:00:41.900Z",
+      "seq": 5,
+      "at": "2026-11-21T08:00:00.500Z",
       "kind": "finding",
       "data": {
         "id": "f1",
-        "fingerprint": "security:session.ts:token-compare",
+        "fingerprint": "a1b2c3d4e5f60718",
         "reviewer": "security",
         "severity": "critical",
         "category": "security",
@@ -72,8 +66,28 @@
     {
       "version": 1,
       "runId": "run-2026-11-21-c3d4",
+      "seq": 6,
+      "at": "2026-11-21T08:00:00.600Z",
+      "kind": "finding",
+      "data": {
+        "id": "f2",
+        "fingerprint": "a1b2c3d4e5f60718",
+        "reviewer": "security",
+        "severity": "critical",
+        "category": "security",
+        "file": "src/auth/session.ts",
+        "lineStart": 50,
+        "lineEnd": 50,
+        "title": "Token compared twice",
+        "body": "The comparison returns early on the first differing byte, so its timing tells an attacker how much of a guessed token is right.",
+        "suggestion": "Compare with crypto.timingSafeEqual on equal-length buffers."
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
       "seq": 7,
-      "at": "2026-11-21T08:00:42.010Z",
+      "at": "2026-11-21T08:00:00.700Z",
       "kind": "usage",
       "data": {
         "inputTokens": 18200,
@@ -87,47 +101,75 @@
       "version": 1,
       "runId": "run-2026-11-21-c3d4",
       "seq": 8,
-      "at": "2026-11-21T08:00:43.000Z",
+      "at": "2026-11-21T08:00:00.800Z",
       "kind": "task.finished",
-      "data": { "taskId": "security:b1", "status": "completed", "steps": 7 }
+      "data": {
+        "taskId": "security-1",
+        "status": "completed"
+      }
     },
     {
       "version": 1,
       "runId": "run-2026-11-21-c3d4",
       "seq": 9,
-      "at": "2026-11-21T08:00:43.010Z",
-      "kind": "file.finished",
-      "data": { "path": "src/auth/session.ts", "status": "reviewed" }
+      "at": "2026-11-21T08:00:00.900Z",
+      "kind": "stage",
+      "data": {
+        "stage": "filter"
+      }
     },
     {
       "version": 1,
       "runId": "run-2026-11-21-c3d4",
       "seq": 10,
-      "at": "2026-11-21T08:00:43.020Z",
+      "at": "2026-11-21T08:00:01.000Z",
       "kind": "file.finished",
       "data": {
-        "path": "src/auth/session.test.ts",
-        "status": "failed",
-        "error": "the model's answer did not fit the schema"
+        "path": "src/auth/session.ts",
+        "status": "reviewed"
       }
     },
     {
       "version": 1,
       "runId": "run-2026-11-21-c3d4",
       "seq": 11,
-      "at": "2026-11-21T08:00:43.100Z",
-      "kind": "stage",
-      "data": { "stage": "verify" }
+      "at": "2026-11-21T08:00:01.100Z",
+      "kind": "file.finished",
+      "data": {
+        "path": "src/auth/session.test.ts",
+        "status": "failed"
+      }
     },
     {
       "version": 1,
       "runId": "run-2026-11-21-c3d4",
       "seq": 12,
-      "at": "2026-11-21T08:00:51.000Z",
+      "at": "2026-11-21T08:00:01.200Z",
+      "kind": "file.finished",
+      "data": {
+        "path": "package-lock.json",
+        "status": "excluded"
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 13,
+      "at": "2026-11-21T08:00:01.300Z",
+      "kind": "stage",
+      "data": {
+        "stage": "verify"
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 14,
+      "at": "2026-11-21T08:00:01.400Z",
       "kind": "finding",
       "data": {
         "id": "f1",
-        "fingerprint": "security:session.ts:token-compare",
+        "fingerprint": "a1b2c3d4e5f60718",
         "reviewer": "security",
         "severity": "critical",
         "category": "security",
@@ -143,44 +185,61 @@
     {
       "version": 1,
       "runId": "run-2026-11-21-c3d4",
-      "seq": 13,
-      "at": "2026-11-21T08:00:51.100Z",
-      "kind": "stage",
-      "data": { "stage": "judge" }
-    },
-    {
-      "version": 1,
-      "runId": "run-2026-11-21-c3d4",
-      "seq": 14,
-      "at": "2026-11-21T08:00:55.000Z",
-      "kind": "warning",
-      "data": { "message": "1 file not reviewed: src/auth/session.test.ts" }
-    },
-    {
-      "version": 1,
-      "runId": "run-2026-11-21-c3d4",
       "seq": 15,
-      "at": "2026-11-21T08:00:55.200Z",
-      "kind": "finished",
+      "at": "2026-11-21T08:00:01.500Z",
+      "kind": "finding",
       "data": {
-        "verdict": "significant_concerns",
-        "complete": false,
-        "usage": {
-          "inputTokens": 30100,
-          "cachedTokens": 19000,
-          "outputTokens": 1700,
-          "reasoningTokens": 800,
-          "costUsd": 0.072
-        }
+        "id": "f2",
+        "fingerprint": "a1b2c3d4e5f60718",
+        "reviewer": "security",
+        "severity": "critical",
+        "category": "security",
+        "file": "src/auth/session.ts",
+        "lineStart": 50,
+        "lineEnd": 50,
+        "title": "Token compared twice",
+        "body": "The comparison returns early on the first differing byte, so its timing tells an attacker how much of a guessed token is right.",
+        "suggestion": "Compare with crypto.timingSafeEqual on equal-length buffers.",
+        "dropped": true
       }
     },
     {
       "version": 1,
       "runId": "run-2026-11-21-c3d4",
       "seq": 16,
-      "at": "2026-11-21T08:00:55.300Z",
+      "at": "2026-11-21T08:00:01.600Z",
+      "kind": "warning",
+      "data": {
+        "message": "1 file not reviewed: src/auth/session.test.ts"
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 17,
+      "at": "2026-11-21T08:00:01.700Z",
+      "kind": "finished",
+      "data": {
+        "verdict": "significant_concerns",
+        "complete": false,
+        "usage": {
+          "inputTokens": 18200,
+          "cachedTokens": 12000,
+          "outputTokens": 900,
+          "reasoningTokens": 400,
+          "costUsd": 0.041
+        }
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 18,
+      "at": "2026-11-21T08:00:01.700Z",
       "kind": "comment.added",
-      "data": { "by": "a newer server" }
+      "data": {
+        "by": "a newer server"
+      }
     }
   ]
 }

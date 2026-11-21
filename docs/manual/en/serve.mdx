@@ -1,0 +1,51 @@
+---
+title: ocra serve
+description: A local review service: start a review over HTTP and follow its events as they happen.
+---
+
+`ocra serve` keeps running in a repository and reviews it on request. An editor extension or a script starts a review over HTTP and follows it live: each stage, each review task, each file's last state, each finding, and the spend so far. A review run this way is the same as `ocra review`: the same configuration, trust rules, spend limit, session and ocra Cloud upload.
+
+```bash
+ocra serve              # a free port on 127.0.0.1
+ocra serve --port 7420  # a fixed port
+```
+
+It listens on `127.0.0.1` only, with a random token per start. The address and the token are in a file only you can read, `~/.config/ocra/serve/<id>.json` (`$XDG_CONFIG_HOME`, or `%APPDATA%` on Windows), which also names the repository; it is removed when the service stops. Ctrl-C cancels the running reviews and stops.
+
+## Routes
+
+Every request carries `Authorization: Bearer <token>`; a request for another host name than `127.0.0.1` or `localhost` is refused (421), so a web page cannot reach the service through DNS rebinding.
+
+| Route | Does |
+|---|---|
+| `POST /runs` | Starts a review; answers `201 {"runId": …}` once it has started, `422` with why when it cannot (no repository, a bad configuration), `429` when two reviews are already running |
+| `GET /runs/<id>/events` | The run's events as [Server-Sent Events](https://html.spec.whatwg.org/multipage/server-sent-events.html), from the first, and live until it ends; with `Last-Event-ID`, only the events after it |
+| `GET /runs/<id>` | The run's state (`running`, `finished`, `failed`) and, once it ended, its report as `ocra review --format json` prints it |
+| `POST /runs/<id>/cancel` | Cancels it; what it found so far is kept, and it ends with `failed` (`cancelled`) |
+| `POST /runs/<id>/commands` | `{"command": "cancel"}`, the only command for now |
+| `DELETE /runs/<id>` | Forgets an ended run; the service keeps the last 20 |
+
+The body of `POST /runs` can only narrow a review, never widen what it may do:
+
+```json
+{
+  "target": { "mode": "range", "from": "main", "to": "HEAD" },
+  "reviewers": ["correctness", "security"],
+  "maxCostUsd": 2
+}
+```
+
+`target` is `{"mode": "workspace"}` (the default: uncommitted changes), `{"mode": "range", "from", "to"}` (`to` defaults to `HEAD`) or `{"mode": "commit", "commit"}`. Any other field is refused.
+
+## Events
+
+Each event is one JSON object, versioned in [`@open-cr-agent/cloud-contract`](https://www.npmjs.com/package/@open-cr-agent/cloud-contract) (`reviewEventSchema`, read with `readReviewEvent`):
+
+```json
+{ "version": 1, "runId": "20261121T080000Z-a1b2c3", "seq": 9, "at": "2026-11-21T08:00:43.010Z",
+  "kind": "file.finished", "data": { "path": "src/auth/session.ts", "status": "reviewed" } }
+```
+
+`seq` counts from 1 without gaps and is the event's SSE id. A run ends with exactly one `finished` (verdict, whether the review is complete, total usage) or `failed` (`cancelled`, `budget` or `error`). The kinds are `started`, `stage`, `task.started`, `task.finished`, `file.finished`, `finding`, `warning`, `usage` (the run's spend so far), `finished` and `failed`. Findings are sent as tasks report them and again when the run ends, after Verify and the judge; the later one replaces the earlier one with the same `id`, and `dropped` marks one the judge left out. A newer ocra may add kinds and fields without changing `version`: skip a kind you do not know.
+
+Text fields pass the same redaction as findings shared with ocra Cloud, and no event carries a key, a token or a model's request or answer.
