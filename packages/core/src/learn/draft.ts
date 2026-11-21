@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { parseJsonAnswer } from "../agent/json.js";
 import { oneShot } from "../agent/model-call.js";
-import type { AgentCallSettings } from "../agent/settings.js";
+import { type AgentSettings, roleCall } from "../agent/settings.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
 import type { FileDiff } from "../domain.js";
 import type { LearningSource } from "../knowledge/learning.js";
 import { join, labelled, oneLine, section, truncated } from "../review/prompt-text.js";
+import { isSecretPath } from "../select/select.js";
 
 const DRAFT_TIMEOUT_MS = 60_000;
 const MAX_SUBJECT = 200;
@@ -24,7 +25,7 @@ export interface LearningEvidence {
 
 // A learning as drafted, before it is checked against the selection and
 // written. Never critical: a person decides what every review must be given.
-interface LearningDraft {
+export interface LearningDraft {
   source: LearningSource;
   title: string;
   body: string;
@@ -64,23 +65,25 @@ const answerSchema = z.union([
   }),
 ]);
 
-// One helper call per piece of evidence (ADR-0038). Undefined when the
+// One helper call per piece of evidence (ADR-0040). Undefined when the
 // runtime makes no plain completions.
 export function learningDrafter(
   runtime: AgentRuntime,
   onUsage: (usage: Usage) => void,
-  call?: AgentCallSettings,
+  settings: AgentSettings = {},
 ): DraftLearning | undefined {
   const ask = oneShot(runtime, onUsage);
   if (!ask) return undefined;
   return async (evidence, signal) => {
-    const files = evidence.files.filter((f) => !f.isBinary);
+    const files = evidence.files.filter(
+      (f) => !f.isBinary && !isSecretPath(f.oldPath) && !isSecretPath(f.newPath),
+    );
     if (files.length === 0) return undefined;
     const answer = await ask(
       {
         tier: "light",
         agent: "helper",
-        call,
+        call: roleCall("helper", settings),
         system: DRAFT_SYSTEM_PROMPT,
         user: draftPrompt(evidence.subject, evidence.message, files),
         timeoutMs: DRAFT_TIMEOUT_MS,

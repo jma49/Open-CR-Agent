@@ -105,7 +105,7 @@ function resumedRun(run: ResolvedRun, runId: string): Promise<ResumedRun> {
 }
 
 // The runtime the configuration names, with ocra Cloud's providers when signed in.
-async function startRuntime(
+export async function startRuntime(
   run: ResolvedRun,
   deps: ReviewDeps,
   sampling: ReturnType<typeof requestedSampling>,

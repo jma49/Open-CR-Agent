@@ -9,6 +9,13 @@ export { parseUnifiedDiff } from "./diff/parse.js";
 export { RISK_TIERS, severitySchema, verificationSchema } from "./domain.js";
 export { errnoCode, isNotFound } from "./errors.js";
 export { shortHash } from "./hash.js";
+export { learningSelector } from "./knowledge/select.js";
+export {
+  type DraftLearning,
+  type LearningDraft,
+  type LearningEvidence,
+  learningDrafter,
+} from "./learn/draft.js";
 export {
   MEMORY_PATH,
   memoryEntrySchema,
