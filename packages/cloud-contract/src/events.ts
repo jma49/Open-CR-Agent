@@ -40,8 +40,10 @@ export const FILE_STATUSES = [
   "excluded",
 ] as const;
 export const fileStatusSchema = z.enum(FILE_STATUSES);
+export type FileStatus = z.infer<typeof fileStatusSchema>;
 
 export const TASK_STATUSES = ["completed", "failed", "timed_out", "cancelled"] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
 
 /** Why a run ended without a verdict. */
 export const FAILURE_REASONS = ["cancelled", "budget", "error"] as const;

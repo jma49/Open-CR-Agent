@@ -25,6 +25,7 @@ export {
   ENDING_KINDS,
   FAILURE_REASONS,
   FILE_STATUSES,
+  type FileStatus,
   fileStatusSchema,
   type LiveFinding,
   liveFindingSchema,
@@ -38,6 +39,7 @@ export {
   type Stage,
   stageSchema,
   TASK_STATUSES,
+  type TaskStatus,
   usageSchema,
 } from "./events.js";
 export {
