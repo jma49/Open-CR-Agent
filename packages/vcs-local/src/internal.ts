@@ -1,5 +1,6 @@
 // "@open-cr-agent/vcs-local/internal": what the CLI uses beyond the public
 // entry. Not a contract: any release may change it.
+export { fetchRemoteBranches } from "./branches.js";
 export { ensureCommits } from "./commits.js";
 export {
   type FixCommit,

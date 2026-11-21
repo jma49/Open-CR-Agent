@@ -244,7 +244,7 @@ jobs:
 
 - **token 决定合并方式。** 用 workflow 自己的 token 开的 pull request 不会触发任何 workflow，必需的检查永远不会报告结果：使用 `github.token` 时，Action 会传 `--require-review`，把 pull request 留给人合并，并给出提示。把 GitHub App 的安装 token（contents 和 pull request 写权限）作为 `github-token` 传入，例如用 `actions/create-github-app-token` 生成，它就会在检查通过后合并。分支规则要求审批时，仍要等人审批。
 - **允许 Actions 开 pull request**（使用 workflow 自己的 token 时）：Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"。
-- 每份草稿是一次辅助模型调用，每次运行最多 `--max`（20）份；`args` 把 `--max 5`、`--max-cost-usd 1` 等参数传给 `ocra learn`。默认分支上已有 learning 记录过的内容不会再起草。
+- 每份草稿是一次辅助模型调用，每次运行最多 `--max`（20）份；`args` 把 `--max 5`、`--max-cost-usd 1` 等参数传给 `ocra learn`。默认分支上、或尚未合并也未删除的提议分支上已有 learning 记录过的内容不会再起草。
 
 ## PR 能改变什么、不能改变什么
 

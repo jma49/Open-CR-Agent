@@ -11,6 +11,9 @@ import { originUrl } from "../review/target.js";
 import type { ProposalPlace } from "./args.js";
 import { freeLearningPath, learningFile } from "./write.js";
 
+// A proposal's branch: this prefix and the time it was opened.
+export const PROPOSAL_BRANCH = "ocra/learnings-";
+
 export interface Proposed extends ProposedChange {
   platform: ProposalPlace["platform"];
 }
@@ -47,7 +50,7 @@ export async function proposeLearnings(
       signal: run.interrupt.signal,
     },
     {
-      branch: `ocra/learnings-${stamp}`,
+      branch: `${PROPOSAL_BRANCH}${stamp}`,
       title: `chore(ocra): add ${files.length} learning(s) from ${from}`,
       commitMessage: `chore(ocra): add ${files.length} learning(s) from ${from}`,
       body: [

@@ -137,6 +137,45 @@ describe("ocra learn mine", () => {
     expect(result.out + result.err).not.toContain("ghs_test");
   });
 
+  it("skips a fix a proposal waiting on origin already records", async () => {
+    const repo = repoWithFix();
+    const origin = repos.create();
+    origin.git("fetch", "-q", repo.dir, "main");
+    origin.git("checkout", "-q", "-b", "ocra/learnings-20261120000000", "FETCH_HEAD");
+    origin.commit("chore(ocra): add 1 learning(s) from fix commits", {
+      ".ocra/learnings/release-pooled-connections.md": [
+        "---",
+        "title: Release pooled connections",
+        "paths:",
+        "  - src/db/**",
+        "source:",
+        "  kind: fix-commit",
+        `  ref: ${repo.git("rev-parse", "HEAD~1")}`,
+        "created: 2026-11-20",
+        "---",
+        "",
+        "Release them in a finally.",
+        "",
+      ].join("\n"),
+    });
+    repo.git("remote", "add", "origin", origin.dir);
+    const seen: CompletionRequest[] = [];
+    const result = await learn(repo.dir, seen);
+    expect(seen).toEqual([]);
+    expect(result.out).toBe("");
+    expect(result.err).toContain("1 already proposed");
+    expect(repo.git("branch", "--all", "--list", "*learnings*")).toBe("");
+  });
+
+  it("drafts as before, with a warning, when origin cannot be read", async () => {
+    const repo = repoWithFix();
+    repo.git("remote", "add", "origin", join(repo.dir, "no-such-remote"));
+    const seen: CompletionRequest[] = [];
+    const result = await learn(repo.dir, seen);
+    expect(seen).toHaveLength(1);
+    expect(result.err).toContain("a lesson waiting in one may be drafted again");
+  });
+
   it("opens no pull request when no learning was kept", async () => {
     const repo = repoWithFix();
     await learn(repo.dir, []);

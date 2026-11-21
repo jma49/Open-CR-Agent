@@ -224,7 +224,7 @@ ocra learn mine --max-cost-usd 0.5 # stop drafting at a spend limit
 A fix is a commit whose subject says so (`fix:`, `revert`, "fixes", "bug") and that changes at most 5 source files; docs, tests and data files are left out. For each one, one call on the helper role reads its subject, message and diff (cut to fixed sizes, as data) and drafts a title, a body, symbols and keywords, or answers that the fix holds no lesson for other changes. ocra then checks the draft without a model:
 
 - symbols must appear in the diff; the paths are the directories the fix touched, never the model's;
-- a fix an existing learning records in `source.ref` is not drafted again, and a draft that covers a path of an existing learning with mostly the same title words is dropped;
+- a fix an existing learning records in `source.ref` is not drafted again, and a draft that covers a path of an existing learning with mostly the same title words is dropped; so are the learnings on origin's `ocra/learnings-*` branches (the 20 newest), which an open or closed proposal leaves there: what waits for review is not drafted twice, and what a person closed without merging is not drafted again until its branch is deleted;
 - the draft is kept only if the selection would give it to the fix it came from.
 
 Each kept learning is written to `.ocra/learnings/<title>.md` in the working tree, with `source: { kind: fix-commit, ref: <sha> }` and never `critical`, and its path printed. Read, edit and commit them like any file. The last line counts what was written, declined, duplicate or left by the spend limit, and what the calls cost. `ocra learn` uses the runtime and models of `.ocra/config.json` (the helper role's), reviews nothing and writes no session.
