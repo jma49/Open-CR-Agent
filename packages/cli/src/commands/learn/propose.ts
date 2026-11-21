@@ -28,10 +28,18 @@ export async function proposeLearnings(
   deps: Pick<ReviewDeps, "env" | "fetch" | "now">,
   // What they were drafted from, for the title: "fix commits".
   from: string,
-  options: { named?: ProposalPlace | undefined; requireReview?: boolean } = {},
+  options: {
+    named?: ProposalPlace | undefined;
+    requireReview?: boolean;
+    // Paths other proposals hold: the same name would conflict when both merge.
+    taken?: readonly string[];
+  } = {},
 ): Promise<Proposed> {
   const { named } = options;
-  const taken = new Set(await run.target.trusted.listFiles(LEARNINGS_DIR));
+  const taken = new Set([
+    ...(await run.target.trusted.listFiles(LEARNINGS_DIR)),
+    ...(options.taken ?? []),
+  ]);
   const files = kept.map((draft) => {
     const path = freeLearningPath(draft.title, taken);
     taken.add(path);

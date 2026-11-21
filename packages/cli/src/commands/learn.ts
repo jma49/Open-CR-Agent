@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { LEARNINGS_DIR } from "@open-cr-agent/cloud-contract";
 import { OcraError } from "@open-cr-agent/core";
 import { learningDrafter } from "@open-cr-agent/core/internal";
 import { EXIT } from "../io/exit.js";
@@ -110,6 +111,7 @@ export async function learnCommand(
         `the ${run.config.runtime} runtime makes no plain completions, which drafting needs`,
       );
     }
+    const proposed = await proposedLearnings(run.root, run.warn);
     const result = await learnFrom(
       await SOURCES[args.source as Source].candidates(
         run,
@@ -117,7 +119,7 @@ export async function learnCommand(
       ),
       {
         existing: run.learnings,
-        proposed: await proposedLearnings(run.root, run.warn),
+        proposed,
         max: args.max,
         concurrency: maxCostUsd === undefined ? CONCURRENCY : 1,
         draft,
@@ -128,18 +130,22 @@ export async function learnCommand(
     );
     const created = new Date(deps.now()).toISOString().slice(0, 10);
     if (args.propose && result.kept.length > 0) {
-      const proposed = await proposeLearnings(
+      const opened = await proposeLearnings(
         run,
         result.kept,
         created,
         deps,
         SOURCES[args.source as Source].what,
-        { named: args.proposeOn, requireReview: args.requireReview },
+        {
+          named: args.proposeOn,
+          requireReview: args.requireReview,
+          taken: proposed.map((l) => learningPath(l.id)),
+        },
       );
-      for (const warning of proposed.warnings) run.warn(warning);
-      io.out.write(`${forTerminal(proposed.webUrl)}\n`);
-      const noun = proposed.platform === "gitlab" ? "Merge request" : "Pull request";
-      io.err.write(`[ocra] ${noun} ${MERGE[proposed.merge]}\n`);
+      for (const warning of opened.warnings) run.warn(warning);
+      io.out.write(`${forTerminal(opened.webUrl)}\n`);
+      const noun = opened.platform === "gitlab" ? "Merge request" : "Pull request";
+      io.err.write(`[ocra] ${noun} ${MERGE[opened.merge]}\n`);
     } else {
       for (const kept of result.kept) {
         const text = learningFile(kept, created);
@@ -154,6 +160,8 @@ export async function learnCommand(
     await runtime.dispose?.();
   }
 }
+
+const learningPath = (id: string) => `${LEARNINGS_DIR}/${id}.md`;
 
 const MERGE = {
   enabled: "opened; it merges once its checks pass",
