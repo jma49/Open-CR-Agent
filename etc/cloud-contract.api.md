@@ -246,6 +246,9 @@ export const effortSchema: z.ZodEnum<{
 // @public (undocumented)
 export type EffortStyle = (typeof EFFORT_STYLES)[number];
 
+// @public
+export const ENDING_KINDS: readonly ["finished", "failed"];
+
 // @public (undocumented)
 export const ERROR_CODES: readonly ["invalid_body", "body_too_large", "unauthenticated", "bad_origin", "forbidden_for_session", "not_found", "daily_limit", "stale", "version_no_longer_valid", "memory_full", "unknown_provider", "no_key", "path_not_allowed", "upstream_unreachable", "upstream_redirect", "confirm_with_login", "bad_state", "github_exchange", "github_user", "unknown_or_expired", "already_decided", "internal", "invalid_request", "invalid_grant", "expired_token", "authorization_pending", "slow_down", "access_denied"];
 
@@ -323,6 +326,22 @@ export const errorCodeSchema: z.ZodEnum<{
 }>;
 
 // @public
+export const FAILURE_REASONS: readonly ["cancelled", "budget", "error"];
+
+// @public
+export const FILE_STATUSES: readonly ["reviewed", "unchanged", "incomplete", "failed", "unreviewed", "excluded"];
+
+// @public (undocumented)
+export const fileStatusSchema: z.ZodEnum<{
+    excluded: "excluded";
+    failed: "failed";
+    incomplete: "incomplete";
+    reviewed: "reviewed";
+    unchanged: "unchanged";
+    unreviewed: "unreviewed";
+}>;
+
+// @public
 export const FINGERPRINT: RegExp;
 
 // @public
@@ -330,6 +349,35 @@ export const GATEWAY_PATH: RegExp;
 
 // @public
 export function isCloudModel(model: string): boolean;
+
+// @public (undocumented)
+export type LiveFinding = z.infer<typeof liveFindingSchema>;
+
+// @public
+export const liveFindingSchema: z.ZodObject<{
+    id: z.ZodString;
+    fingerprint: z.ZodString;
+    reviewer: z.ZodString;
+    severity: z.ZodEnum<{
+        critical: "critical";
+        suggestion: "suggestion";
+        warning: "warning";
+    }>;
+    category: z.ZodOptional<z.ZodString>;
+    file: z.ZodString;
+    lineStart: z.ZodOptional<z.ZodNumber>;
+    lineEnd: z.ZodOptional<z.ZodNumber>;
+    title: z.ZodString;
+    body: z.ZodString;
+    suggestion: z.ZodOptional<z.ZodString>;
+    verification: z.ZodOptional<z.ZodEnum<{
+        confirmed: "confirmed";
+        uncertain: "uncertain";
+        unchecked: "unchecked";
+    }>>;
+    preExisting: z.ZodOptional<z.ZodLiteral<true>>;
+    dropped: z.ZodOptional<z.ZodLiteral<true>>;
+}, z.core.$strip>;
 
 // @public
 export const MAX_CHAIN = 4;
@@ -681,6 +729,9 @@ export const providersAnswerSchema: z.ZodObject<{
 }, z.core.$strip>;
 
 // @public
+export function readReviewEvent(value: unknown): ReviewEvent | undefined;
+
+// @public
 export function redact(text: string): {
     text: string;
     redacted: boolean;
@@ -713,6 +764,9 @@ export const rememberRequestSchema: z.ZodObject<{
 // @public
 export const REPO_HASH: RegExp;
 
+// @public (undocumented)
+export const REVIEW_EVENT_VERSION = 1;
+
 // @public
 export const REVIEW_SOURCES: readonly ["local", "github", "gitlab"];
 
@@ -735,6 +789,155 @@ export const reviewerCountsSchema: z.ZodObject<{
     fixed: z.ZodCatch<z.ZodNumber>;
     dismissed: z.ZodCatch<z.ZodNumber>;
 }, z.core.$strip>;
+
+// @public (undocumented)
+export type ReviewEvent = z.infer<typeof reviewEventSchema>;
+
+// @public
+export const reviewEventEnvelopeSchema: z.ZodObject<{
+    version: z.ZodLiteral<1>;
+    runId: z.ZodString;
+    seq: z.ZodNumber;
+    at: z.ZodISODateTime;
+}, z.core.$strip>;
+
+// @public (undocumented)
+export type ReviewEventKind = ReviewEvent["kind"];
+
+// @public (undocumented)
+export const reviewEventSchema: z.ZodIntersection<z.ZodObject<{
+    version: z.ZodLiteral<1>;
+    runId: z.ZodString;
+    seq: z.ZodNumber;
+    at: z.ZodISODateTime;
+}, z.core.$strip>, z.ZodDiscriminatedUnion<readonly [z.ZodObject<{
+    kind: z.ZodLiteral<"started">;
+    data: z.ZodObject<{
+        target: z.ZodString;
+        tier: z.ZodOptional<z.ZodEnum<{
+            full: "full";
+            lite: "lite";
+            trivial: "trivial";
+        }>>;
+    }, z.core.$strip>;
+}, z.core.$strip>, z.ZodObject<{
+    kind: z.ZodLiteral<"stage">;
+    data: z.ZodObject<{
+        stage: z.ZodEnum<{
+            anchor: "anchor";
+            bundle: "bundle";
+            filter: "filter";
+            judge: "judge";
+            plan: "plan";
+            review: "review";
+            select: "select";
+            verify: "verify";
+        }>;
+        files: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        excluded: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    }, z.core.$strip>;
+}, z.core.$strip>, z.ZodObject<{
+    kind: z.ZodLiteral<"task.started">;
+    data: z.ZodObject<{
+        taskId: z.ZodString;
+        reviewer: z.ZodString;
+        files: z.ZodArray<z.ZodString>;
+    }, z.core.$strip>;
+}, z.core.$strip>, z.ZodObject<{
+    kind: z.ZodLiteral<"task.finished">;
+    data: z.ZodObject<{
+        taskId: z.ZodString;
+        status: z.ZodEnum<{
+            cancelled: "cancelled";
+            completed: "completed";
+            failed: "failed";
+            timed_out: "timed_out";
+        }>;
+        steps: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strip>;
+}, z.core.$strip>, z.ZodObject<{
+    kind: z.ZodLiteral<"file.finished">;
+    data: z.ZodObject<{
+        path: z.ZodString;
+        status: z.ZodEnum<{
+            excluded: "excluded";
+            failed: "failed";
+            incomplete: "incomplete";
+            reviewed: "reviewed";
+            unchanged: "unchanged";
+            unreviewed: "unreviewed";
+        }>;
+        error: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>;
+}, z.core.$strip>, z.ZodObject<{
+    kind: z.ZodLiteral<"finding">;
+    data: z.ZodObject<{
+        id: z.ZodString;
+        fingerprint: z.ZodString;
+        reviewer: z.ZodString;
+        severity: z.ZodEnum<{
+            critical: "critical";
+            suggestion: "suggestion";
+            warning: "warning";
+        }>;
+        category: z.ZodOptional<z.ZodString>;
+        file: z.ZodString;
+        lineStart: z.ZodOptional<z.ZodNumber>;
+        lineEnd: z.ZodOptional<z.ZodNumber>;
+        title: z.ZodString;
+        body: z.ZodString;
+        suggestion: z.ZodOptional<z.ZodString>;
+        verification: z.ZodOptional<z.ZodEnum<{
+            confirmed: "confirmed";
+            uncertain: "uncertain";
+            unchecked: "unchecked";
+        }>>;
+        preExisting: z.ZodOptional<z.ZodLiteral<true>>;
+        dropped: z.ZodOptional<z.ZodLiteral<true>>;
+    }, z.core.$strip>;
+}, z.core.$strip>, z.ZodObject<{
+    kind: z.ZodLiteral<"warning">;
+    data: z.ZodObject<{
+        message: z.ZodString;
+    }, z.core.$strip>;
+}, z.core.$strip>, z.ZodObject<{
+    kind: z.ZodLiteral<"usage">;
+    data: z.ZodObject<{
+        inputTokens: z.ZodNumber;
+        cachedTokens: z.ZodNumber;
+        outputTokens: z.ZodNumber;
+        reasoningTokens: z.ZodNumber;
+        costUsd: z.ZodNumber;
+    }, z.core.$strip>;
+}, z.core.$strip>, z.ZodObject<{
+    kind: z.ZodLiteral<"finished">;
+    data: z.ZodObject<{
+        verdict: z.ZodEnum<{
+            approved: "approved";
+            approved_with_comments: "approved_with_comments";
+            minor_issues: "minor_issues";
+            significant_concerns: "significant_concerns";
+        }>;
+        complete: z.ZodBoolean;
+        usage: z.ZodObject<{
+            inputTokens: z.ZodNumber;
+            cachedTokens: z.ZodNumber;
+            outputTokens: z.ZodNumber;
+            reasoningTokens: z.ZodNumber;
+            costUsd: z.ZodNumber;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+}, z.core.$strip>, z.ZodObject<{
+    kind: z.ZodLiteral<"failed">;
+    data: z.ZodObject<{
+        reason: z.ZodEnum<{
+            budget: "budget";
+            cancelled: "cancelled";
+            error: "error";
+        }>;
+        message: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>;
+}, z.core.$strip>], "kind">>;
 
 // @public (undocumented)
 export type ReviewSettings = z.output<typeof reviewSettingsSchema>;
@@ -992,6 +1195,27 @@ export const sharedFindingSchema: z.ZodObject<{
 }, z.core.$strip>;
 
 // @public (undocumented)
+export type Stage = z.infer<typeof stageSchema>;
+
+// @public
+export const STAGES: readonly ["select", "bundle", "plan", "review", "anchor", "filter", "verify", "judge"];
+
+// @public (undocumented)
+export const stageSchema: z.ZodEnum<{
+    anchor: "anchor";
+    bundle: "bundle";
+    filter: "filter";
+    judge: "judge";
+    plan: "plan";
+    review: "review";
+    select: "select";
+    verify: "verify";
+}>;
+
+// @public (undocumented)
+export const TASK_STATUSES: readonly ["completed", "failed", "timed_out", "cancelled"];
+
+// @public (undocumented)
 export type TokenAnswer = z.infer<typeof tokenAnswerSchema>;
 
 // @public
@@ -1017,6 +1241,15 @@ export const uploadAnswerSchema: z.ZodObject<{
         reviewers: z.ZodOptional<z.ZodCatch<z.ZodNumber>>;
     }, z.core.$strip>>>;
     findingsSkipped: z.ZodCatch<z.ZodOptional<z.ZodLiteral<"account_limit">>>;
+}, z.core.$strip>;
+
+// @public
+export const usageSchema: z.ZodObject<{
+    inputTokens: z.ZodNumber;
+    cachedTokens: z.ZodNumber;
+    outputTokens: z.ZodNumber;
+    reasoningTokens: z.ZodNumber;
+    costUsd: z.ZodNumber;
 }, z.core.$strip>;
 
 // @public (undocumented)

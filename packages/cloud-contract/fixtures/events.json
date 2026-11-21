@@ -1,0 +1,186 @@
+{
+  "about": "One review's live events, in order, as `ocra serve` streams them. Written by hand until the CLI's mapper (toReviewEvent) exists; its test will then write it. A reader must accept every event and skip the last one, whose kind it does not know.",
+  "events": [
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 1,
+      "at": "2026-11-21T08:00:00.000Z",
+      "kind": "started",
+      "data": { "target": "workspace", "tier": "full" }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 2,
+      "at": "2026-11-21T08:00:00.120Z",
+      "kind": "stage",
+      "data": {
+        "stage": "select",
+        "files": ["src/auth/session.ts", "src/auth/session.test.ts"],
+        "excluded": ["package-lock.json"]
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 3,
+      "at": "2026-11-21T08:00:00.300Z",
+      "kind": "file.finished",
+      "data": { "path": "package-lock.json", "status": "excluded" }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 4,
+      "at": "2026-11-21T08:00:00.410Z",
+      "kind": "stage",
+      "data": { "stage": "review" }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 5,
+      "at": "2026-11-21T08:00:00.420Z",
+      "kind": "task.started",
+      "data": {
+        "taskId": "security:b1",
+        "reviewer": "security",
+        "files": ["src/auth/session.ts", "src/auth/session.test.ts"]
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 6,
+      "at": "2026-11-21T08:00:41.900Z",
+      "kind": "finding",
+      "data": {
+        "id": "f1",
+        "fingerprint": "security:session.ts:token-compare",
+        "reviewer": "security",
+        "severity": "critical",
+        "category": "security",
+        "file": "src/auth/session.ts",
+        "lineStart": 42,
+        "lineEnd": 44,
+        "title": "Session token compared with ===",
+        "body": "The comparison returns early on the first differing byte, so its timing tells an attacker how much of a guessed token is right.",
+        "suggestion": "Compare with crypto.timingSafeEqual on equal-length buffers."
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 7,
+      "at": "2026-11-21T08:00:42.010Z",
+      "kind": "usage",
+      "data": {
+        "inputTokens": 18200,
+        "cachedTokens": 12000,
+        "outputTokens": 900,
+        "reasoningTokens": 400,
+        "costUsd": 0.041
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 8,
+      "at": "2026-11-21T08:00:43.000Z",
+      "kind": "task.finished",
+      "data": { "taskId": "security:b1", "status": "completed", "steps": 7 }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 9,
+      "at": "2026-11-21T08:00:43.010Z",
+      "kind": "file.finished",
+      "data": { "path": "src/auth/session.ts", "status": "reviewed" }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 10,
+      "at": "2026-11-21T08:00:43.020Z",
+      "kind": "file.finished",
+      "data": {
+        "path": "src/auth/session.test.ts",
+        "status": "failed",
+        "error": "the model's answer did not fit the schema"
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 11,
+      "at": "2026-11-21T08:00:43.100Z",
+      "kind": "stage",
+      "data": { "stage": "verify" }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 12,
+      "at": "2026-11-21T08:00:51.000Z",
+      "kind": "finding",
+      "data": {
+        "id": "f1",
+        "fingerprint": "security:session.ts:token-compare",
+        "reviewer": "security",
+        "severity": "critical",
+        "category": "security",
+        "file": "src/auth/session.ts",
+        "lineStart": 42,
+        "lineEnd": 44,
+        "title": "Session token compared with ===",
+        "body": "The comparison returns early on the first differing byte, so its timing tells an attacker how much of a guessed token is right.",
+        "suggestion": "Compare with crypto.timingSafeEqual on equal-length buffers.",
+        "verification": "confirmed"
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 13,
+      "at": "2026-11-21T08:00:51.100Z",
+      "kind": "stage",
+      "data": { "stage": "judge" }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 14,
+      "at": "2026-11-21T08:00:55.000Z",
+      "kind": "warning",
+      "data": { "message": "1 file not reviewed: src/auth/session.test.ts" }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 15,
+      "at": "2026-11-21T08:00:55.200Z",
+      "kind": "finished",
+      "data": {
+        "verdict": "significant_concerns",
+        "complete": false,
+        "usage": {
+          "inputTokens": 30100,
+          "cachedTokens": 19000,
+          "outputTokens": 1700,
+          "reasoningTokens": 800,
+          "costUsd": 0.072
+        }
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 16,
+      "at": "2026-11-21T08:00:55.300Z",
+      "kind": "comment.added",
+      "data": { "by": "a newer server" }
+    }
+  ]
+}
