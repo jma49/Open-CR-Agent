@@ -27,6 +27,7 @@ const SECTIONS = [
   "accepted_findings",
   "team_learnings",
   "learning",
+  "learning_index",
   "review_files",
   "file",
   "findings",

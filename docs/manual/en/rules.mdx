@@ -71,7 +71,7 @@ created: 2026-11-21
 - `critical`: always given when a path matches.
 - `source`: where it came from (`kind`: `fix-commit`, `review-feedback`, `document`, `remember`, `incident` or `manual`; `ref`: a commit, pull request or link).
 
-Each review task gets the learnings that apply to its files, chosen before any model runs: a path match ranks first, then a symbol, then a keyword. At most 5 are given, within 8,000 characters of body, plus every critical one whose path matches (up to 10). Reviewers read them as data and report only what the change itself gets wrong. The report's `learnings` lists each one given, with the bundles it went to.
+Each review task gets the learnings that apply to its files, chosen before any model runs: a path match ranks first, then a symbol, then a keyword. At most 5 are given, within 8,000 characters of body, plus every critical one whose path matches (up to 10). Learnings that apply but do not fit are listed by title only, up to 10, with a count of the rest. Reviewers read them as data and report only what the change itself gets wrong. The report's `learnings` lists each one given, with the bundles it went to.
 
 Learnings are read at the revision under review, and for pull requests from the base commit, like `rules.json`, so a pull request cannot add one that steers its own review. A file that is not a valid learning is skipped with a warning; at most 500 files of up to 16 KB are read.
 
