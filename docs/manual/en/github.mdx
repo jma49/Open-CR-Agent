@@ -191,6 +191,16 @@ Someone with push access can push a workflow that gets the repository's secrets 
 
 </Callout>
 
+## Asking ocra to remember
+
+Anyone with write access, the author too, can comment on a pull request:
+
+```
+/ocra remember Amounts are integer cents; never parse them as floats.
+```
+
+The rest of the comment is the note. A review does nothing with it; [`ocra learn remember --pr <n>`](./cli#from-pull-request-notes) drafts a learning from each note with the files of the diff it names, and `--propose` writes them back by pull request. Notes from people without write access, comments someone else edited and ocra's own summary do not count.
+
 ## What the pull request can and cannot change
 
 `.ocra/config.json`, `.ocra/rules.json`, `.ocra/memory.json`, `.ocra/learnings/` and `AGENTS.md` come from the **base** commit, and repository plugins never load. The diff, title and description reach reviewers as [untrusted data](./security#untrusted-input).

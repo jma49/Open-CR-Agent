@@ -225,6 +225,10 @@ Each kept learning is written to `.ocra/learnings/<title>.md` in the working tre
 
 `ocra learn import docs/postmortems/*.md` drafts from the team's own writing: postmortems, guidelines, design notes. Each `##` section of each Markdown file (the text before the first one under the document's title) is one candidate, given with up to 5 repository files it names by path (`src/db/pool.ts`), read at the trusted revision. A section that names no file of the repository is not drafted: no review could be given it. A lesson is written only for what a reviewer can check in a diff of those files; its paths are their directories and its `source` is `{ kind: document, ref: <file>#<section> }`. A file is at most 256 KB.
 
+### From pull request notes
+
+`ocra learn remember --pr <n>` (or `--mr <iid>`, with `--repo` or `--project` as for a review) drafts from each [`/ocra remember <note>`](./github#asking-ocra-to-remember) on the pull or merge request by someone with write access, unedited by anyone else (at most 20). Each call is given the pull request's title, the note, and the files of its diff the note names by path, else the whole diff when it has at most 5 files; a note about neither is not drafted. Configuration comes from the base, as for a review. A note asking for anything but a lesson (to approve, to change settings) is declined. Its `source` is `{ kind: remember, ref: <repository>#<number>/<comment id> }`.
+
 ### Writing them back by pull request
 
 `ocra learn mine --propose` writes nothing to the working tree: it opens a GitHub pull request with the kept learnings instead, one commit on a new `ocra/learnings-<time>` branch from the default branch, made through the GitHub API (nothing is pushed from the checkout). It needs `GITHUB_TOKEN` (or `GH_TOKEN`) with contents and pull request write access; the repository is `GITHUB_REPOSITORY`, else origin's. The pull request lists each learning and the commit it came from, and the command prints its address.

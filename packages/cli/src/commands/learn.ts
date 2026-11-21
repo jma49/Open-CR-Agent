@@ -1,25 +1,25 @@
 import { resolve } from "node:path";
-import { parseArgs } from "node:util";
 import { OcraError } from "@open-cr-agent/core";
 import { learningDrafter } from "@open-cr-agent/core/internal";
 import { EXIT } from "../io/exit.js";
 import { forTerminal } from "../io/terminal.js";
 import { UsageError } from "../io/usage-error.js";
 import { acceptedFindingCandidates } from "./learn/accepted-findings.js";
+import { DEFAULT_MAX, parseLearnArgs } from "./learn/args.js";
 import { documentCandidates } from "./learn/documents.js";
 import { fixCandidates } from "./learn/fix-commits.js";
 import { type LearnResult, learnFrom } from "./learn/pipeline.js";
 import { proposeLearnings } from "./learn/propose.js";
+import { rememberedCandidates } from "./learn/remembered.js";
 import { learningFile, writeLearning } from "./learn/write.js";
 import type { ReviewArgs } from "./review/args.js";
 import type { ReviewDeps } from "./review/deps.js";
 import { startRuntime } from "./review/execute-run.js";
 import { type ResolvedRun, type ReviewIo, resolveRun } from "./review/resolve-run.js";
 
-const DEFAULT_MAX = 20;
 const CONCURRENCY = 4;
 
-export const LEARN_USAGE = `Usage: ocra learn <mine|feedback|import <file.md>...> [options]
+export const LEARN_USAGE = `Usage: ocra learn <mine|feedback|import <file.md>...|remember> [options]
 
 Drafts learnings for .ocra/learnings/, one helper model call each:
   mine        from the fix commits on HEAD's first-parent line, newest first
@@ -27,6 +27,8 @@ Drafts learnings for .ocra/learnings/, one helper model call each:
               with the reason it gave, newest first
   import      from each ## section of the Markdown files named that names
               files of the repository
+  remember    from each "/ocra remember <note>" on --pr or --mr by someone
+              with write access
 
 A draft is kept when it is not a duplicate and the selection gives it to
 the change or file it came from. Kept learnings are written to the working
@@ -36,6 +38,8 @@ leaves it to a person). What an existing learning records is skipped.
 
 Options:
   --propose           Open a pull request with them instead (needs GITHUB_TOKEN)
+  --pr <n>, --repo    With remember: the GitHub pull request (needs GITHUB_TOKEN)
+  --mr <n>, --project With remember: the GitLab merge request (needs GITLAB_TOKEN)
   --max <n>           Drafts at most (default: ${DEFAULT_MAX})
   --max-cost-usd <n>  Spend limit (default: the configuration's maxCostUsd)
   -h, --help          Show help
@@ -48,6 +52,10 @@ const SOURCES = {
     what: "accepted findings",
     candidates: (run: ResolvedRun) => acceptedFindingCandidates(run.target.trusted),
   },
+  remember: {
+    what: "remembered notes",
+    candidates: (run: ResolvedRun) => rememberedCandidates(run.vcs),
+  },
   import: {
     what: "documents",
     candidates: (run: ResolvedRun, documents: readonly string[]) =>
@@ -56,27 +64,27 @@ const SOURCES = {
 } as const;
 type Source = keyof typeof SOURCES;
 
-interface LearnArgs {
-  source: Source;
-  documents: string[];
-  max: number;
-  propose: boolean;
-  maxCostUsd?: number;
-}
-
 export async function learnCommand(
   argv: string[],
   io: ReviewIo,
   deps: ReviewDeps,
 ): Promise<number> {
-  const args = parseLearnArgs(argv);
+  const args = parseLearnArgs(argv, Object.keys(SOURCES));
   if (args === "help") {
     io.out.write(LEARN_USAGE);
     return EXIT.ok;
   }
+  if ((args.source === "remember") !== (args.change !== undefined)) {
+    throw new UsageError(
+      args.source === "remember"
+        ? "ocra learn remember needs --pr or --mr"
+        : "--pr and --mr go with ocra learn remember",
+    );
+  }
   const reviewArgs: ReviewArgs = {
     target: { mode: "workspace" },
     format: "text",
+    ...args.change,
     ...(args.maxCostUsd !== undefined ? { maxCostUsd: args.maxCostUsd } : {}),
   };
   const run = await resolveRun(reviewArgs, io, deps, { logged: false });
@@ -96,7 +104,7 @@ export async function learnCommand(
       );
     }
     const result = await learnFrom(
-      await SOURCES[args.source].candidates(
+      await SOURCES[args.source as Source].candidates(
         run,
         args.documents.map((d) => resolve(deps.cwd, d)),
       ),
@@ -117,7 +125,7 @@ export async function learnCommand(
         result.kept,
         created,
         deps,
-        SOURCES[args.source].what,
+        SOURCES[args.source as Source].what,
       );
       for (const warning of proposed.warnings) run.warn(warning);
       io.out.write(`${forTerminal(proposed.webUrl)}\n`);
@@ -155,41 +163,4 @@ function summary(result: LearnResult, spent: number): string {
     result.recorded > 0 ? `${result.recorded} already recorded` : "",
   ].filter((p) => p !== "");
   return `${parts.join(", ")}; $${spent.toFixed(4)}`;
-}
-
-function parseLearnArgs(argv: string[]): LearnArgs | "help" {
-  const { values, positionals } = parseArgs({
-    args: argv,
-    allowPositionals: true,
-    strict: true,
-    options: {
-      max: { type: "string" },
-      "max-cost-usd": { type: "string" },
-      propose: { type: "boolean" },
-      help: { type: "boolean", short: "h" },
-    },
-  });
-  if (values.help) return "help";
-  const [action, ...rest] = positionals;
-  if (
-    action === undefined ||
-    !Object.hasOwn(SOURCES, action) ||
-    (action !== "import" && rest.length > 0)
-  ) {
-    throw new UsageError(
-      action === undefined ? "" : `Unknown learn command: ${positionals.join(" ")}`,
-    );
-  }
-  const max = values.max === undefined ? DEFAULT_MAX : Number(values.max);
-  if (!Number.isInteger(max) || max < 1) {
-    throw new UsageError(`--max must be a positive whole number, got ${values.max}`);
-  }
-  const propose = values.propose === true;
-  const cost = values["max-cost-usd"];
-  if (cost === undefined) return { source: action as Source, documents: rest, max, propose };
-  const maxCostUsd = Number(cost);
-  if (!(maxCostUsd > 0)) {
-    throw new UsageError(`--max-cost-usd must be a positive number, got ${cost}`);
-  }
-  return { source: action as Source, documents: rest, max, propose, maxCostUsd };
 }

@@ -225,6 +225,10 @@ ocra learn mine --max-cost-usd 0.5 # 花费到上限就停止起草
 
 `ocra learn import docs/postmortems/*.md` 从团队自己写的东西起草：事故复盘、规范、设计笔记。每个 Markdown 文件的每个 `##` 小节（第一个小节之前的文字归在文档标题下）是一个候选，连同它按路径提到的最多 5 个仓库文件（如 `src/db/pool.ts`），从受信任的版本读取。没有提到仓库文件的小节不会起草：没有审查能拿到它。只有审查员能在这些文件的 diff 里检查的内容才会写成经验；路径取这些文件所在目录，`source` 是 `{ kind: document, ref: <文件>#<小节> }`。单个文件最大 256 KB。
 
+### 从 pull request 备注
+
+`ocra learn remember --pr <n>`（或 `--mr <iid>`，`--repo`、`--project` 与审查时相同）从 PR 或 MR 上有写权限的人留下、且没被他人编辑过的每条 [`/ocra remember <备注>`](./github#让-ocra-记住) 起草（最多 20 条）。每次调用拿到 PR 标题、备注，以及备注按路径提到的 diff 文件；没提到时，diff 不超过 5 个文件就用整个 diff，否则不起草。配置和审查一样从 base 读取。要求经验以外东西的备注（批准、改设置）会被拒绝。`source` 是 `{ kind: remember, ref: <仓库>#<编号>/<评论 id> }`。
+
 ### 通过 pull request 写回
 
 `ocra learn mine --propose` 不写工作区：它把保留的 learning 开成一个 GitHub pull request，在默认分支上新建 `ocra/learnings-<时间>` 分支并提交一次，全部通过 GitHub API 完成（不从本地 push）。需要有 contents 和 pull request 写权限的 `GITHUB_TOKEN`（或 `GH_TOKEN`）；仓库取 `GITHUB_REPOSITORY`，否则取 origin。pull request 列出每条 learning 和它来自的提交，命令打印它的地址。

@@ -38,6 +38,9 @@ export interface PlatformReviewOptions {
 
 const OVERRIDE = /^\/ocra override ([0-9a-fA-F]{40}(?:[0-9a-fA-F]{24})?)\s+(\S.*)$/m;
 const MAX_OVERRIDE_REASON = 300;
+const REMEMBER = /^\/ocra remember\s+(\S[\s\S]*)$/m;
+const MAX_NOTE = 2_000;
+const MAX_NOTES = 20;
 const MAX_REPLIES = 3;
 const MAX_REPLY_CHARS = 1_000;
 
@@ -80,6 +83,7 @@ export class PlatformReview implements VcsAdapter {
   async getChangeRequest(): Promise<ChangeRequest> {
     const cr = await this.changeRequest();
     const override = await this.override(cr);
+    const remember = await this.remembered(cr);
     return {
       id: cr.id,
       title: cr.title,
@@ -87,7 +91,29 @@ export class PlatformReview implements VcsAdapter {
       baseSha: cr.baseSha,
       headSha: cr.headSha,
       ...(override ? { override } : {}),
+      ...(remember.length > 0 ? { remember } : {}),
     };
+  }
+
+  // `/ocra remember <note>`: the rest of the comment, from someone with
+  // write access, unedited by anyone else. Any writer may, the author too:
+  // the note only becomes a learning through `ocra learn remember`, whose
+  // pull request the team can require a person to review.
+  private async remembered(
+    cr: PlatformChangeRequest,
+  ): Promise<NonNullable<ChangeRequest["remember"]>> {
+    const comments = await this.comments().catch(() => []);
+    const bot = await this.bot();
+    const notes: NonNullable<ChangeRequest["remember"]> = [];
+    for (const c of comments) {
+      if (notes.length >= MAX_NOTES) break;
+      const login = c.author;
+      const note = REMEMBER.exec(c.body)?.[1]?.trim();
+      if (!note || !login || bot.is(login) || c.body.includes(SUMMARY_MARKER)) continue;
+      if (!(await this.unedited(c, login)) || !(await this.canWrite(login))) continue;
+      notes.push({ by: login, note: note.slice(0, MAX_NOTE), ref: `${cr.id}/${c.id}` });
+    }
+    return notes;
   }
 
   // "Break glass": `/ocra override <commit> <reason>` from someone with

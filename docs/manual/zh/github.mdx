@@ -191,6 +191,16 @@ jobs:
 
 </Callout>
 
+## 让 ocra 记住
+
+任何有写权限的人（包括作者）都可以在 PR 上评论：
+
+```
+/ocra remember 金额一律用整数分，绝不解析成浮点数。
+```
+
+评论的其余部分就是这条备注。审查本身不处理它；[`ocra learn remember --pr <n>`](./cli#从-pull-request-备注) 用每条备注和它提到的 diff 文件起草 learning，`--propose` 通过 pull request 写回。没有写权限的人的备注、被他人编辑过的评论和 ocra 自己的摘要都不算数。
+
 ## PR 能改变什么、不能改变什么
 
 `.ocra/config.json`、`.ocra/rules.json`、`.ocra/memory.json`、`.ocra/learnings/` 和 `AGENTS.md` 都从 **base** 提交读取，仓库插件从不加载。diff、标题和描述作为[不可信的数据](./security#不可信的输入)交给审查员。

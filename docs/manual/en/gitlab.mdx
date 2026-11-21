@@ -81,6 +81,10 @@ Someone with the Developer role or higher, other than the author, can let one co
 
 It works as on [GitHub](./github#overriding-a-blocking-verdict): only for that commit, only from a comment nobody else edited, and never from ocra's own summary.
 
+### Asking ocra to remember
+
+`/ocra remember <note>` from someone with the Developer role or higher works as on [GitHub](./github#asking-ocra-to-remember), with `ocra learn remember --mr <iid>`.
+
 ## What the merge request cannot change
 
 ocra runs nothing from the merge request: configuration, `.ocra/rules.json`, `.ocra/learnings/` and `AGENTS.md` come from its base commit, and repository plugins never load. Every posted line that starts with a slash gets a zero-width space before it, so a finding cannot become a quick action such as `/merge` or `/approve`, which GitLab would run with the token's rights. The pipeline that runs ocra is another matter (next section).
