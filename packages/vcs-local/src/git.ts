@@ -49,12 +49,7 @@ export function git(args: readonly string[], options: GitOptions): Promise<strin
         maxBuffer: options.truncateAt ?? MAX_OUTPUT_BYTES,
         timeout: options.timeoutMs ?? GIT_TIMEOUT_MS,
         killSignal: "SIGKILL",
-        env: {
-          ...gitEnvironment(process.env),
-          LC_ALL: "C",
-          GIT_OPTIONAL_LOCKS: "0",
-          ...options.env,
-        },
+        env: childEnvironment(options.env),
       },
       (error, stdout, stderr) => {
         if (
@@ -84,6 +79,12 @@ export function git(args: readonly string[], options: GitOptions): Promise<strin
     if (options.input === undefined) child.stdin?.end();
     else child.stdin?.end(options.input);
   });
+}
+
+export function childEnvironment(
+  extra: Readonly<Record<string, string>> = {},
+): Record<string, string> {
+  return { ...gitEnvironment(process.env), LC_ALL: "C", GIT_OPTIONAL_LOCKS: "0", ...extra };
 }
 
 // git and what it starts (ssh, credential helpers, proxies) see only what
@@ -162,18 +163,31 @@ function pick(
 // has no --attr-source; there the work tree's apply, and the review warns
 // about text files it excluded as binary.
 const ATTR_SOURCE_SINCE = [2, 41] as const;
-let attrSource: Promise<boolean> | undefined;
+const BATCH_COMMAND_SINCE = [2, 36] as const;
+let version: Promise<string> | undefined;
+
+function gitVersion(root: string): Promise<string> {
+  version ??= git(["version"], { cwd: root }).catch(() => "");
+  return version;
+}
 
 export async function attributesFrom(root: string, commit: string): Promise<string[]> {
-  attrSource ??= git(["version"], { cwd: root }).then(supportsAttrSource, () => false);
-  return (await attrSource) ? [`--attr-source=${commit}`] : [];
+  return supportsAttrSource(await gitVersion(root)) ? [`--attr-source=${commit}`] : [];
 }
 
 export function supportsAttrSource(version: string): boolean {
+  return versionAtLeast(version, ATTR_SOURCE_SINCE);
+}
+
+/** Whether git has `cat-file --batch-command`. */
+export async function hasBatchCommand(root: string): Promise<boolean> {
+  return versionAtLeast(await gitVersion(root), BATCH_COMMAND_SINCE);
+}
+
+function versionAtLeast(version: string, [sinceMajor, sinceMinor]: readonly [number, number]) {
   const match = /(\d+)\.(\d+)/.exec(version);
   if (!match) return false;
   const [major, minor] = [Number(match[1]), Number(match[2])];
-  const [sinceMajor, sinceMinor] = ATTR_SOURCE_SINCE;
   return major > sinceMajor || (major === sinceMajor && minor >= sinceMinor);
 }
 
