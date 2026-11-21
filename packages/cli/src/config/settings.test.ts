@@ -124,6 +124,7 @@ describe("listSettings", () => {
       "maxTasks",
       "verify",
       "judge",
+      "showPreExisting",
       "sampling",
       "include",
       "exclude",

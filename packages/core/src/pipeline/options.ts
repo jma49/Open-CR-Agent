@@ -73,6 +73,9 @@ export interface ReviewStages {
   verify?: boolean;
   // Merge, filter and recalibrate findings across reviewers on the top tier.
   judge?: boolean;
+  // Report findings Verify traced to code from before the change (true by
+  // default). They never count towards the verdict either way.
+  showPreExisting?: boolean;
 }
 
 export interface ReviewMode {
@@ -146,6 +149,7 @@ export interface RunSettings {
   full: boolean;
   verify: boolean;
   judge: boolean;
+  showPreExisting: boolean;
 }
 
 export function runSettings(
@@ -169,5 +173,6 @@ export function runSettings(
     full: options.mode?.full === true,
     verify: options.stages?.verify !== false,
     judge: options.stages?.judge !== false,
+    showPreExisting: options.stages?.showPreExisting !== false,
   };
 }

@@ -86,6 +86,7 @@ const MERGE: {
   maxTasks: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   verify: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   judge: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
+  showPreExisting: { merge: "replace", from: ["shared", "file"], plan: ALWAYS },
   sampling: { merge: "replace", from: ["file", "account"], plan: ALWAYS },
   include: { merge: "concat", from: NOT_ENV, plan: ALWAYS },
   exclude: { merge: "concat-unless-set", from: NOT_ENV, plan: ALWAYS },

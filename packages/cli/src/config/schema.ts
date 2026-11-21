@@ -86,6 +86,7 @@ export const configSchema = z
     runTimeoutMinutes: timeoutMinutes,
     verify: z.boolean().optional(),
     judge: z.boolean().optional(),
+    showPreExisting: z.boolean().optional(),
     maxCostUsd: z.number().positive().optional(),
     maxTasks: z.number().int().min(1).max(1_000).optional(),
     // Unset: each provider's default. A seed makes sampling repeatable only
