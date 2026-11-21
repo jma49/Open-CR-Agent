@@ -1,4 +1,4 @@
-import type { OcraPlugin } from "@open-cr-agent/core";
+import type { OcraPlugin, ReviewEvent } from "@open-cr-agent/core";
 import type { CloudDeps } from "../../cloud/deps.js";
 import type { NpmRunner } from "../../plugins/npm.js";
 import type { RuntimeLoaders } from "./runtimes.js";
@@ -23,4 +23,6 @@ export interface ReviewDeps {
   sessionKey?(): Promise<string>;
   // Calls the handler on Ctrl-C or SIGTERM; returns a function that stops listening.
   onInterrupt?(handler: () => void): () => void;
+  // Each review event, after the plugins and the progress lines: ocra serve streams them.
+  onEvent?(event: ReviewEvent): void;
 }

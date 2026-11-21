@@ -5,7 +5,8 @@ import { MAX_FIELD } from "./limits.js";
 
 const events = fixture.events;
 const known = events.slice(0, -1);
-const at = (i: number) => structuredClone(known[i]) as Record<string, unknown>;
+const first = (kind: string) =>
+  structuredClone(known.find((e) => e.kind === kind)) as Record<string, unknown>;
 
 describe("the live review events", () => {
   it("keep every field of a run's events", () => {
@@ -27,25 +28,27 @@ describe("the live review events", () => {
   });
 
   it("refuse a known kind whose data does not fit", () => {
-    const finding = at(5);
+    const finding = first("finding");
     finding.data = { ...(finding.data as object), severity: "fatal" };
     expect(() => readReviewEvent(finding)).toThrow();
-    const file = at(2);
+    const file = first("file.finished");
     file.data = { path: "a.ts", status: "skipped" };
     expect(() => readReviewEvent(file)).toThrow();
   });
 
   it("refuse an event without the envelope", () => {
     for (const key of ["version", "runId", "seq", "at"]) {
-      const event = at(0);
+      const event = first("started");
       delete event[key];
       expect(reviewEventSchema.safeParse(event).success, key).toBe(false);
     }
-    expect(reviewEventSchema.safeParse({ ...at(0), runId: "has spaces" }).success).toBe(false);
+    expect(reviewEventSchema.safeParse({ ...first("started"), runId: "has spaces" }).success).toBe(
+      false,
+    );
   });
 
   it("bound the text a finding carries", () => {
-    const finding = at(5);
+    const finding = first("finding");
     finding.data = { ...(finding.data as object), body: "x".repeat(MAX_FIELD + 1) };
     expect(reviewEventSchema.safeParse(finding).success).toBe(false);
   });
