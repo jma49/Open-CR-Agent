@@ -56,6 +56,8 @@ Callers are found with [tree-sitter](https://tree-sitter.github.io/) for TypeScr
 
 With `--scip <file>`, a [SCIP](https://github.com/scip-code/scip) index of the repository (from `scip-typescript`, `scip-java`, `scip-python` and the like, run at the repository root) answers first: a symbol it knows gets exactly the uses the compiler resolved, so two methods named `run` no longer share callers. The index describes the revision it was built from, typically the main branch; a use whose line no longer names the symbol is left out, and a symbol it does not know (new in the change, or in a language it does not cover) is searched for as above. An index that cannot be read (512 MB at most) gives one warning and the review goes on without it. ocra never builds an index itself.
 
+With `--graph <file>`, a code graph that [`ocra graph`](./cli#ocra-graph) wrote answers next: the uses of the name in every file of the revision it describes, without a search per review. It matches names as the search does, so it does not keep same-named symbols apart. Like an index, it describes its own revision: lines that no longer name the symbol are left out, and a symbol in a file it does not hold is searched for.
+
 ## Reviewers and tools
 
 A reviewer is an agent with a focused prompt, its own rules, and a scope that tells the matrix where to run it:

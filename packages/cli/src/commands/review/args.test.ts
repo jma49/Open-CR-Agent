@@ -54,6 +54,15 @@ describe("parseReviewArgs", () => {
     );
   });
 
+  it("takes a --graph file, and refuses it empty or with --plan", () => {
+    expect(parseReviewArgs(["--graph", "graph.json"])).toMatchObject({ graph: "graph.json" });
+    expect(parseReviewArgs([])).not.toHaveProperty("graph");
+    expect(() => parseReviewArgs(["--graph", ""])).toThrow("--graph needs a file");
+    expect(() => parseReviewArgs(["--plan", "--graph", "g.json"])).toThrow(
+      "--graph is not used by --plan",
+    );
+  });
+
   it("takes a --scip index, and refuses it empty or with --plan", () => {
     expect(parseReviewArgs(["--scip", "index.scip"])).toMatchObject({ scip: "index.scip" });
     expect(parseReviewArgs([])).not.toHaveProperty("scip");

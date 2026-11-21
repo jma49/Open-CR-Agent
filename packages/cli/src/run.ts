@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util";
 import { errorMessage, isOcraError } from "@open-cr-agent/core";
 import { defaultCloudDeps } from "./cloud/deps.js";
+import { GRAPH_USAGE, graphCommand } from "./commands/graph.js";
 import { INIT_USAGE, initCommand } from "./commands/init.js";
 import { LEARN_USAGE, learnCommand } from "./commands/learn.js";
 import { LOGIN_USAGE, loginCommand } from "./commands/login.js";
@@ -27,6 +28,7 @@ Commands:
   init        Set up ocra for this repository, and its GitHub workflow with --github
   review      Review code changes (run "ocra review --help" for options)
   serve       Run a local review service that streams each review's events (run "ocra serve --help")
+  graph       Write or update the code graph of a commit, for review --graph
   memory      Remember findings the team accepts (run "ocra memory --help")
   learn       Draft the team's learnings from its fix commits (run "ocra learn --help")
   metrics     Counts over past reviews: runs, cost, findings, per reviewer (run "ocra metrics --help")
@@ -92,6 +94,15 @@ export async function run(
       if (error instanceof UsageError) {
         err.write(`${error.message ? `${error.message}\n\n` : ""}${LEARN_USAGE}`);
       } else err.write(failure(error));
+      return EXIT.error;
+    }
+  }
+  if (command === "graph") {
+    try {
+      return await graphCommand(rest, out, err, deps.cwd);
+    } catch (error) {
+      if (error instanceof UsageError) err.write(`${error.message}\n\n${GRAPH_USAGE}`);
+      else err.write(failure(error));
       return EXIT.error;
     }
   }

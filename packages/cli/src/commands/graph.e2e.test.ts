@@ -1,0 +1,68 @@
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { graphReferences, parseGraph } from "@open-cr-agent/code-graph";
+import { scratchRepos } from "@open-cr-agent/test-support";
+import { afterEach, describe, expect, it } from "vitest";
+import { graphCommand } from "./graph.js";
+
+const repos = scratchRepos("ocra-graph-");
+afterEach(repos.removeAll);
+
+function capture() {
+  let text = "";
+  return { write: (chunk: string) => (text += chunk), text: () => text };
+}
+
+const RETRY = "export function parseRetries(input: string): number {\n  return Number(input);\n}\n";
+const API =
+  "import { parseRetries } from './retry';\nexport const handle = (h: string) => parseRetries(h);\n";
+
+describe("ocra graph", () => {
+  it("writes a commit's graph, then updates it parsing only what changed", async () => {
+    const r = repos.create();
+    const first = r.commit("c", { "src/retry.ts": RETRY, "src/api.ts": API, "README.md": "# app" });
+    const file = join(repos.create().dir, "graph.json");
+    const out = capture();
+    expect(await graphCommand(["--out", file], out, capture(), r.dir)).toBe(0);
+    expect(out.text()).toBe(
+      `Code graph of ${first.slice(0, 12)}: 2 files (2 parsed, 0 reused) in ${file}\n`,
+    );
+    const second = r.commit("c", { "src/api.ts": `${API}// more\n` });
+    const again = capture();
+    await graphCommand(["--out", file], again, capture(), r.dir);
+    expect(again.text()).toContain("2 files (1 parsed, 1 reused)");
+    const graph = parseGraph(readFileSync(file, "utf8"));
+    if (!graph) throw new Error("not a graph");
+    expect(graph.revision).toBe(second);
+    expect(await graphReferences(graph).usesOf("src/retry.ts", "parseRetries")).toEqual([
+      { path: "src/api.ts", line: 1 },
+      { path: "src/api.ts", line: 2 },
+    ]);
+  });
+
+  it("builds an older commit with --rev, and starts over from a file it cannot read", async () => {
+    const r = repos.create();
+    const first = r.commit("c", { "a.ts": RETRY });
+    r.commit("c", { "b.ts": API });
+    const file = join(repos.create().dir, "graph.json");
+    writeFileSync(file, "{not a graph");
+    const out = capture();
+    const err = capture();
+    await graphCommand(["--out", file, "--rev", first], out, err, r.dir);
+    expect(err.text()).toContain("Building the graph again");
+    expect(out.text()).toContain(
+      `Code graph of ${first.slice(0, 12)}: 1 file (1 parsed, 0 reused)`,
+    );
+  });
+
+  it("refuses a missing --out or an empty --rev", async () => {
+    const r = repos.create();
+    r.commit("c", { "a.ts": RETRY });
+    await expect(graphCommand([], capture(), capture(), r.dir)).rejects.toThrow(
+      "--out needs a file",
+    );
+    await expect(
+      graphCommand(["--out", "g.json", "--rev", ""], capture(), capture(), r.dir),
+    ).rejects.toThrow("--rev needs a commit");
+  });
+});
