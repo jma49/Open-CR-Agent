@@ -11,6 +11,7 @@ import {
 } from "@open-cr-agent/core";
 import { isNotFound, parseUnifiedDiff } from "@open-cr-agent/core/internal";
 import { attributesFrom, GitError, git, isShallow, SHALLOW_HINT } from "./git.js";
+import { CodeSearch } from "./search.js";
 import { MAX_READ_BYTES, WorkingTree } from "./working-tree.js";
 
 export type LocalTarget =
@@ -31,8 +32,6 @@ interface ResolvedTarget {
 }
 
 const WORKING_TREE = "working-tree";
-const SEARCH_RESULT_LIMIT = 100;
-const SEARCH_OUTPUT_BYTES = 4 * 1024 * 1024;
 
 // Explicit prefixes and flags keep the output parseable whatever the user's
 // diff configuration (noprefix, mnemonicPrefix, external drivers, relative).
@@ -57,6 +56,7 @@ export class LocalGitAdapter implements VcsAdapter {
   readonly name = "local";
   private resolved: Promise<ResolvedTarget> | undefined;
   private workingTree: WorkingTree | undefined;
+  private search: CodeSearch | undefined;
 
   private readonly options: LocalGitOptions;
 
@@ -131,40 +131,12 @@ export class LocalGitAdapter implements VcsAdapter {
     return [...new Set(direct)].sort();
   }
 
-  async searchCode(literal: string): Promise<CodeMatch[]> {
-    const { root, base, head } = await this.target();
-    const attributes = head === undefined ? [] : await attributesFrom(root, base);
-    const args = [
-      ...attributes,
-      "grep",
-      "-n",
-      "-z",
-      "-I",
-      "--no-color",
-      "--full-name",
-      "-F",
-      "-m",
-      "20",
-    ];
-    if (head === undefined) args.push("--untracked");
-    args.push("-e", literal);
-    if (head !== undefined) args.push(head);
-    const out = await git([...args, "--"], {
-      cwd: root,
-      okExitCodes: [0, 1],
-      truncateAt: SEARCH_OUTPUT_BYTES,
+  searchCode(literal: string): Promise<CodeMatch[]> {
+    this.search ??= new CodeSearch(async () => {
+      const { root, base, head } = await this.target();
+      return { root, head, attributes: head === undefined ? [] : await attributesFrom(root, base) };
     });
-    const prefix = head === undefined ? "" : `${head}:`;
-    const lines = out.split("\n");
-    // Output cut at the byte cap ends inside a line.
-    if (!out.endsWith("\n")) lines.pop();
-    return lines
-      .filter((line) => line !== "")
-      .slice(0, SEARCH_RESULT_LIMIT)
-      .map((line) => {
-        const [path = "", lineNumber = "0", ...text] = line.split("\0");
-        return { path: path.slice(prefix.length), line: Number(lineNumber), text: text.join("\0") };
-      });
+    return this.search.search(literal);
   }
 
   async remoteUrl(remote: string): Promise<string> {
