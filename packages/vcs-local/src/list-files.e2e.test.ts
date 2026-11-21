@@ -1,3 +1,5 @@
+import { symlinkSync } from "node:fs";
+import { join } from "node:path";
 import { scratchRepos } from "@open-cr-agent/test-support";
 import { afterEach, describe, expect, it } from "vitest";
 import { LocalGitAdapter } from "./local-adapter.js";
@@ -18,6 +20,17 @@ describe("LocalGitAdapter.listFiles", () => {
     const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "commit", commit: first } });
     expect(await adapter.listFiles("notes")).toEqual(["notes/a.md", "notes/b.md"]);
     expect(await adapter.readFile("notes/a.md")).toBe("a\n");
+  });
+
+  it("leaves out symbolic links in a commit", async () => {
+    const r = scratch.create();
+    r.write("notes/a.md", "a\n");
+    r.git("add", "-A");
+    r.git("commit", "-q", "-m", "first");
+    symlinkSync("a.md", join(r.dir, "notes", "link.md"));
+    const head = r.commit("link");
+    const adapter = new LocalGitAdapter({ cwd: r.dir, target: { mode: "commit", commit: head } });
+    expect(await adapter.listFiles("notes")).toEqual(["notes/a.md"]);
   });
 
   it("lists tracked and untracked files of the workspace, leaving out ignored ones", async () => {
