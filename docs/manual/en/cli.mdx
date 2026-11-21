@@ -92,6 +92,7 @@ ocra review [options]
 | `--max-cost-usd <n>` | Spend limit for the run. At 80%, review tasks still running stop, keeping what they found; their files count as not reviewed (exit `3`), unless the task had already finished its review. Verification and judging use the rest; past it, remaining findings are *not verified* and cannot block. Tasks report spend about every 10 seconds, so a run can overshoot by that much per task plus its step in progress. Tasks run bundle by bundle, so a limited run finishes some files; with `--pr` the next review continues with the rest |
 | `--plan` | Free, no model call: show selected and excluded files, bundles, review tasks and each first prompt's size (with the plan call a task makes under `--ultra` or for a bundle of five or more files). Where a task's chain is known, estimate those prompts' input cost at the first model's price, per task and in total: a [declared provider's](./providers#your-own-endpoint) price, `input unpriced` for a price of 0 or ocra Cloud, else `input price unknown`. Output, later turns, verification and judging are not estimated. Light-model grouping is skipped, so a large change shows one file per bundle (by directory past 20 files). With `--pr` or `--mr` it plans what the review would cover: only what changed since the previous review when it can tell, as the review does, and it says so (`--full` plans everything). No session log |
 | `--import-sarif <file>` | Add the results of an analyzer's SARIF 2.1.0 log (Semgrep, CodeQL and others) to the review; repeatable. See [SARIF input](#sarif-input). Not with `--plan` |
+| `--graph <file>` | Find the callers of changed symbols in this [code graph](#ocra-graph), after `--scip` and before searching. Not with `--plan` |
 | `--scip <file>` | Find the callers of changed symbols in this [SCIP](https://github.com/scip-code/scip) index first (see [Modes](./how-it-works#modes)). Not with `--plan` |
 | `--ultra` | Favor recall over cost; see [Modes](./how-it-works#modes) |
 | `--reviewers <ids>` | Run only these reviewers, comma-separated (for example `security`) |
@@ -194,6 +195,17 @@ Tested with Semgrep 1.178.0's log; other tools' logs follow the same standard.
 Every review (not `--plan`) writes `.ocra/sessions/<id>/events.jsonl` (one event per line, as the run progresses) and `report.json`. The run id `<id>` is in the first progress line, the JSON report (`runId`), the summary comment (Coverage and cost) and the SARIF log (`automationDetails.id`, `ocra/<id>`). Each task attempt's event records in `attempt` the files the reviewer read, its searches and its final text (bounded), so you can tell a file never opened from one read without findings; none of it goes into the report. The directory has its own `.gitignore`.
 
 Each line of `events.jsonl` ends with a `seal`: an HMAC keyed by a secret of yours that ocra makes on first use in `~/.config/ocra/session-key` (`$XDG_CONFIG_HOME/ocra/`, or `%APPDATA%\ocra\` on Windows), readable only by you. `--resume` reads only lines with a valid seal, so it resumes a session only on the machine and account that wrote it; deleting the key makes earlier sessions impossible to resume, nothing else. If ocra cannot make or read the key, a review warns and its session cannot be resumed; a key file it cannot read (another user's, say, after `sudo ocra`) is left as it is.
+
+## ocra graph
+
+Writes the code graph of a commit: each source file's definitions and the lines its names are used on, as [How it works](./how-it-works#modes) describes, for `ocra review --graph`. It reads git objects only and runs nothing from the repository.
+
+```bash
+ocra graph --out ~/.cache/ocra/graph.json             # HEAD
+ocra graph --out graph.json --rev origin/main         # another commit
+```
+
+An existing graph at `--out` is updated: a file whose content it already holds is not read again, so after the first run an update costs only the files that changed. A graph it cannot read (another format, or more than 512 MB) is built again with a warning. Files over 1 MB, and files that are not UTF-8 text, are left out. The graph holds names, kinds and line numbers, never code. Build it on the main branch after each push, keep the file between runs (an Actions cache, for example), and pass it to reviews of pull requests against that branch.
 
 ## ocra serve
 

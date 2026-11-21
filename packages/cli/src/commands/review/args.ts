@@ -33,6 +33,7 @@ export interface ReviewArgs {
   importSarif?: string[];
   // A SCIP index of the repository, for precise callers.
   scip?: string;
+  graph?: string;
   // Read this file instead of the repository's .ocra/config.json.
   configFile?: string;
   // Do not send this review's counts to ocra Cloud.
@@ -68,6 +69,8 @@ Options:
   --scip <file>      Find callers of changed symbols in this SCIP index
                      (scip-typescript, scip-java, …; built at the repository root)
                      before searching; not with --plan
+  --graph <file>     Find callers of changed symbols in this code graph (ocra graph),
+                     after --scip and before searching; not with --plan
   --plan             Show files, bundles, review tasks and prompt sizes; call no model
   --ultra            Favor recall: all reviewers at every tier, two samples each (about 2x cost)
   --temperature <n>  Sampling temperature, 0 to 2 (default: the provider's, or sampling in config)
@@ -159,6 +162,11 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
     if (values.plan) throw new UsageError("--scip is not used by --plan");
     args.scip = values.scip;
   }
+  if (values.graph !== undefined) {
+    if (values.graph === "") throw new UsageError("--graph needs a file");
+    if (values.plan) throw new UsageError("--graph is not used by --plan");
+    args.graph = values.graph;
+  }
   if (values.resume !== undefined) {
     if (values.resume === "") throw new UsageError("--resume needs a run id");
     if (values.plan) throw new UsageError("--resume is not used by --plan");
@@ -193,6 +201,7 @@ function parse(argv: string[]) {
       "max-cost-usd": { type: "string" },
       "import-sarif": { type: "string", multiple: true },
       scip: { type: "string" },
+      graph: { type: "string" },
       ultra: { type: "boolean" },
       temperature: { type: "string" },
       seed: { type: "string" },

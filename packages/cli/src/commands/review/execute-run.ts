@@ -3,6 +3,7 @@ import { directoryCache, scipReferences, treeSitterSymbols } from "@open-cr-agen
 import {
   type AgentRuntime,
   OcraError,
+  type ReferenceIndex,
   type ResumedRun,
   type ReviewOptions,
   type ReviewReport,
@@ -14,6 +15,7 @@ import { withCloudProviders } from "../../cloud/providers.js";
 import { type CloudReview, prepareCloudReview } from "../../cloud/review.js";
 import { agentChains } from "../../config/cli-config.js";
 import { ocraCacheDir } from "../../config/user-dir.js";
+import { firstReferences, graphFileReferences } from "../../graph/references.js";
 import { VERSION } from "../../version.js";
 import type { ReviewArgs } from "./args.js";
 import type { ReviewDeps } from "./deps.js";
@@ -69,9 +71,7 @@ export async function executeRun(
       symbols: treeSitterSymbols({
         cache: directoryCache(join(ocraCacheDir(deps.env), "symbols")),
       }),
-      ...(args.scip
-        ? { references: scipReferences(resolve(deps.cwd, args.scip), { warn: run.warn }) }
-        : {}),
+      ...referencesOf(args, deps.cwd, run.warn),
       onEvent: (event) => {
         run.registry.emit(event);
         progress.onEvent(event);
@@ -165,4 +165,16 @@ function prepareReview(
     ...(sarif.length > 0 ? { sarif } : {}),
     ...(cloudReview?.memory.length ? { accountMemory: cloudReview.memory } : {}),
   };
+}
+
+function referencesOf(
+  args: ReviewArgs,
+  cwd: string,
+  warn: (message: string) => void,
+): { references?: ReferenceIndex } {
+  const references = firstReferences([
+    ...(args.scip ? [scipReferences(resolve(cwd, args.scip), { warn })] : []),
+    ...(args.graph ? [graphFileReferences(resolve(cwd, args.graph), warn)] : []),
+  ]);
+  return references ? { references } : {};
 }
