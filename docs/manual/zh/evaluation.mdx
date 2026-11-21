@@ -184,6 +184,21 @@ node packages/eval/dist/main.js compare .ocra/eval/baseline .ocra/eval/change   
 
 `compare` 适用于 AACR-Bench 和黄金集的运行。如果某一方不是同一套设置，它会拒绝比较并以退出码 2 结束：一次运行、它的各次重复，或者基线和它的 `--spread-of` 运行，其中的审查在 ocra 版本或构建（提交、未提交的改动、步数上限）、提示词、配置、采样、运行时、OpenCode 安装、模型链或目录条目上不同，或其中一部分没有记录这些；也就是运行在重新构建、改了设置或目录刷新之后被接着跑过。请用新的 `--label` 重新审查这些 PR，或加 `--allow-mixed` 照样比较，这些差异作为警告列出。两次运行审查的 PR 不同或数量不同、读取的 AACR-Bench 文件不同、评分的 judge 不同、黄金用例或标注不同、还有未标注的问题，或 ocra 版本、提示词（`promptHash`）、配置（`configHash`）、采样、运行时、OpenCode 安装、模型链或目录条目不同，某次运行出自有未提交改动的检出，或其中一次没有记录这些时，都会给出警告。参与比较的两次运行通常是两个提交，所以不比较它们的构建。标注之后，请把参与比较的每次运行都重新评分（`ocra-eval score <run-dir>`）。
 
+## 黄金集召回率的合并结论
+
+```bash
+node packages/eval/dist/main.js verdict .ocra/eval/baseline .ocra/eval/change
+node packages/eval/dist/main.js verdict .ocra/eval/baseline .ocra/eval/change --margin 0.05
+```
+
+`verdict` 根据两次用同一套用例和标注评分的黄金集运行（通常各自重复，`--repeat 3`），判断一个改动能否按黄金集召回率合并。被抽样的单位是用例，所以它对用例重抽样，而不是对断言或运行：所有运行共有的每个用例，以它在每一方找到的必需断言数的均值进入，与自身配对，召回率按断言汇总。对用例做配对 bootstrap（10,000 次重抽样，固定种子，同样的运行总给出同样的界），得到召回率差值的单侧 97.5% 上下界。
+
+- `pass`：下界高于 `-margin`（`--margin`，比例，默认 0.1，即 10 个百分点）。
+- `worse`：变差的用例比变好的多，且单侧精确符号检验 p 低于 0.05；或整个区间都低于 `-margin`。符号检验是一票否决：少数几个大幅提升不能掩盖多数用例的退步。
+- `inconclusive`：都不是；两边再多跑几次重复。
+
+它还给出每个已审查 PR 的成本与基线之比；超过 1.25 倍时，`pass` 会注明 PR 必须写明这个取舍；以及找到数变化了的用例表。退出码：0 pass，1 worse，3 inconclusive，2 无结论（运行用不同的用例或标注评分、评分时断言还没有 id，或没有共有的带必需断言的用例）。和 `compare` 一样，某一方不是同一套设置时它会拒绝，除非加 `--allow-mixed`，并给出同样的警告。
+
 ## 多次运行的趋势
 
 ```bash

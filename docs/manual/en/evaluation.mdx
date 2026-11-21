@@ -184,6 +184,21 @@ For single runs, `--spread-of` (a second baseline run) reports a difference no l
 
 `compare` works on AACR-Bench and golden runs. It refuses, with exit code 2, a side that is not one setup: a run, its repetitions, or a baseline and its `--spread-of` run whose reviews differ in ocra version or build (commit, uncommitted changes, step cap), prompts, configuration, sampling, runtime, OpenCode install, model chains or catalog entries, or of which some recorded none; that is a run resumed after a rebuild, a change of setup or a catalog refresh. Review those PRs again under a new `--label`, or pass `--allow-mixed` to compare anyway, with those differences as warnings. It warns when the runs reviewed different or differently many pull requests, read different AACR-Bench files, were scored by different judges or against different golden cases or labels, still have unlabeled findings, or differ in ocra version, prompts (`promptHash`), configuration (`configHash`), sampling, runtime, OpenCode install, model chains or catalog entries, when a run was made from a checkout with uncommitted changes, or when one recorded none of that. The two runs compared are usually two commits, so their builds are not compared. After labeling, re-score every run you compare (`ocra-eval score <run-dir>`).
 
+## Merge verdict on golden recall
+
+```bash
+node packages/eval/dist/main.js verdict .ocra/eval/baseline .ocra/eval/change
+node packages/eval/dist/main.js verdict .ocra/eval/baseline .ocra/eval/change --margin 0.05
+```
+
+`verdict` decides whether a change may merge on golden recall, from two golden runs (each usually repeated, `--repeat 3`) scored against the same cases and labels. Cases are what was sampled, so it resamples cases, not claims or runs: each case common to every run enters with its mean number of required claims found on each side, paired with itself, and recall is pooled over claims. A paired bootstrap over cases (10,000 resamples, fixed seed, so the same runs always give the same bounds) gives one-sided 97.5% bounds of the recall difference.
+
+- `pass`: the lower bound is above `-margin` (`--margin`, a share, default 0.1: 10 points).
+- `worse`: more cases got worse than better with a one-sided exact sign test p below 0.05, or the whole interval lies below `-margin`. The sign test is a veto: a few large gains cannot carry a change that lost in most cases.
+- `inconclusive`: neither; run more repeats on both sides.
+
+It also prints the cost per reviewed PR as a ratio to the baseline's; above 1.25× a pass says the pull request must name the trade-off, and the table of cases whose found count moved. Exit codes: 0 pass, 1 worse, 3 inconclusive, 2 no verdict (runs scored against different cases or labels, or before claims had ids, or no common case with required claims). Like `compare`, it refuses a side that is not one setup unless `--allow-mixed`, and prints the same warnings.
+
 ## Trends across runs
 
 ```bash
