@@ -1,4 +1,4 @@
-import { readFile, stat } from "node:fs/promises";
+import { readFile, realpath, stat } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import type { FileDiff } from "@open-cr-agent/core";
 import { UsageError } from "../../io/usage-error.js";
@@ -23,12 +23,15 @@ export async function documentCandidates(
 ): Promise<Candidate[]> {
   if (documents.length === 0) throw new UsageError("ocra learn import needs a document");
   const candidates: Candidate[] = [];
+  const realRoot = await realpath(root);
   for (const document of documents) {
     const path = resolve(root, document);
     if ((await stat(path)).size > MAX_DOCUMENT_BYTES) {
       throw new UsageError(`${document} is larger than ${MAX_DOCUMENT_BYTES} bytes`);
     }
-    const name = relative(root, path).split("\\").join("/");
+    const name = relative(realRoot, await realpath(path))
+      .split("\\")
+      .join("/");
     for (const section of sectionsOf(await readFile(path, "utf8"))) {
       candidates.push({
         ref: `${name}#${section.slug}`,
