@@ -9,8 +9,8 @@ import { z } from "zod";
 // took out. The recall funnel (funnel.ts) is read from it.
 
 // Where the run took a reported finding out: Filter (memory), Verify, the
-// judge, or the task itself, for a finding on a file outside its bundle.
-export const DROP_STAGES = ["outside_bundle", "filter", "verify", "judge"] as const;
+// judge, or the task itself, for a finding on a file outside the review.
+export const DROP_STAGES = ["outside_review", "filter", "verify", "judge"] as const;
 export type DropStage = (typeof DROP_STAGES)[number];
 
 export interface SessionTrace {
@@ -19,9 +19,9 @@ export interface SessionTrace {
   // Every finding a task reported, in the shape matching reads.
   raised: (MatchableFinding & { fingerprint: string })[];
   // Findings dropped before they became one, by file and title only.
-  outsideBundle: MatchableFinding[];
+  outsideReview: MatchableFinding[];
   // Fingerprints of reported findings a later stage took out.
-  removed: Map<string, Exclude<DropStage, "outside_bundle">>;
+  removed: Map<string, Exclude<DropStage, "outside_review">>;
 }
 
 export type MatchableFinding = Pick<
@@ -87,7 +87,7 @@ function traceOf(text: string): SessionTrace {
   const trace: SessionTrace = {
     read: new Set(),
     raised: [],
-    outsideBundle: [],
+    outsideReview: [],
     removed: new Map(),
   };
   for (const line of text.split("\n")) {
@@ -107,7 +107,7 @@ function traceOf(text: string): SessionTrace {
       }
       case "finding_dropped":
         // The log keeps no body or severity for these: matched on the title.
-        trace.outsideBundle.push({
+        trace.outsideReview.push({
           file: event.file,
           title: event.title,
           body: "",

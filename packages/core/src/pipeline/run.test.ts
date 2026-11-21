@@ -415,21 +415,24 @@ describe("review", () => {
     expect(report.warnings).toContain("grouping failed: quota exceeded; reviewing per file");
   });
 
-  it("drops findings on files outside the task's bundle", async () => {
+  it("keeps a finding on another bundle's file once, and drops one outside the change", async () => {
     const diff = ["a", "b", "c", "d"]
       .map((n) => patch(`src/${n}.ts`, `const ${n} = 1;`))
       .join("\n");
     const rt = runtime(async function* (spec) {
+      if (spec.taskId === "correctness-1" || spec.taskId === "correctness-2") {
+        // Both the task on a.ts and the one on b.ts report the same issue on b.ts.
+        yield {
+          type: "finding",
+          taskId: spec.taskId,
+          finding: finding("src/b.ts", "const b = 1;", { title: "Across bundles" }),
+        };
+      }
       if (spec.taskId === "correctness-1") {
         yield {
           type: "finding",
           taskId: spec.taskId,
-          finding: finding("src/b.ts", "const b = 1;", { title: "Elsewhere", body: "secret" }),
-        };
-        yield {
-          type: "finding",
-          taskId: spec.taskId,
-          finding: finding("src/a.ts", "const a = 1;"),
+          finding: finding("src/z.ts", "const z = 1;", { title: "Elsewhere", body: "secret" }),
         };
       }
       yield { type: "done", taskId: spec.taskId };
@@ -440,17 +443,17 @@ describe("review", () => {
       runtime: rt,
       onEvent: (e) => events.push(e),
     });
-    expect(report.findings.map((f) => f.file)).toEqual(["src/a.ts"]);
+    expect(report.findings.map((f) => [f.file, f.title])).toEqual([["src/b.ts", "Across bundles"]]);
     expect(report.warnings).toContain(
-      "correctness-1: dropped 1 finding(s) on files outside its bundle",
+      "correctness-1: dropped 1 finding(s) on files outside the review",
     );
     // The session log says what was dropped: its file and title, nothing more.
     expect(events.filter((e) => e.type === "finding_dropped")).toEqual([
       {
         type: "finding_dropped",
         taskId: "correctness-1",
-        reason: "outside_bundle",
-        file: "src/b.ts",
+        reason: "outside_review",
+        file: "src/z.ts",
         title: "Elsewhere",
       },
     ]);

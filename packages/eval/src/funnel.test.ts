@@ -162,14 +162,14 @@ describe("the recall funnel", () => {
     expect(markdown).toContain(`- funnel#missed (not-looked): ${CONCERNS.missed}`);
   });
 
-  it("counts a finding dropped outside its task's bundle, or by the judge, as dropped", async () => {
+  it("counts a finding dropped outside the review, or by the judge, as dropped", async () => {
     const trace = await readSessionTrace(
       await recorded([
         ...session.slice(0, 4),
         {
           type: "finding_dropped",
           taskId,
-          reason: "outside_bundle",
+          reason: "outside_review",
           file: "src/raised.ts",
           title: CONCERNS.raised,
         },
@@ -211,7 +211,7 @@ describe("the recall funnel", () => {
         concern: CONCERNS.raised,
         found: false,
         stage: "dropped",
-        droppedBy: "outside_bundle",
+        droppedBy: "outside_review",
       },
     ]);
   });

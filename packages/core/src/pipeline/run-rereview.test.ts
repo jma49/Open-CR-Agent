@@ -240,6 +240,22 @@ describe("review against the previous review", () => {
     ]);
   });
 
+  it("drops a finding on a file an incremental review left out", async () => {
+    const diff = [patch("src/a.ts", "const a = 1;"), patch("src/b.ts", "const b = 2;")].join("\n");
+    const adapter = vcs({}, diff);
+    adapter.getPriorReview = async () => ({
+      findings: [],
+      changedSince: { head: "h0", files: ["src/b.ts"] },
+    });
+    const report = await review({
+      vcs: adapter,
+      runtime: reporting(finding("src/a.ts", "const a = 1;"), finding("src/b.ts", "const b = 2;")),
+      stages: { verify: false, judge: false },
+    });
+    expect(report.scope).toEqual({ mode: "incremental", since: "h0" });
+    expect(report.findings.map((f) => f.file)).toEqual(["src/b.ts"]);
+  });
+
   it("shows the judge people's replies to a finding reported again", async () => {
     const reporting = runtime(async function* (spec) {
       yield {

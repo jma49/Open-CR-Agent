@@ -1348,7 +1348,7 @@ export type ReviewEvent = {
 } | {
     type: "finding_dropped";
     taskId: string;
-    reason: "outside_bundle";
+    reason: "outside_review";
     file: string;
     title: string;
 } | {
