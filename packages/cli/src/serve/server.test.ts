@@ -122,6 +122,21 @@ describe("ocra serve", () => {
     expect((await start({ config: "elsewhere.json" })).status).toBe(400);
   });
 
+  it("counts a review still starting against the limit", async () => {
+    const slow = (): ReviewStarter => async (_signal, onEvent) => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      onEvent({
+        type: "run_started",
+        runId: `run-${Math.random()}`.replace(".", ""),
+        changeRequest: reviewReport().changeRequest,
+      });
+      return new Promise(() => {});
+    };
+    const { start } = await serve(slow, 1);
+    const statuses = (await Promise.all([start(), start()])).map((r) => r.status);
+    expect(statuses.sort()).toEqual([201, 429]);
+  });
+
   it("forgets a run only once it ended", async () => {
     const gated = gatedReview();
     const { start, call, events } = await serve(gated.review);
