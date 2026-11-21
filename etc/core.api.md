@@ -875,6 +875,12 @@ export interface QuoteSignature {
 }
 
 // @public (undocumented)
+export interface ReferenceIndex {
+    // (undocumented)
+    usesOf(path: string, name: string): Promise<readonly SymbolReference[] | undefined>;
+}
+
+// @public (undocumented)
 export interface RefutedFinding {
     // (undocumented)
     file: string;
@@ -1495,6 +1501,8 @@ export interface ReviewOptions {
     // (undocumented)
     readTrusted?: (path: string) => Promise<string | undefined>;
     // (undocumented)
+    references?: ReferenceIndex;
+    // (undocumented)
     resume?: ResumedRun;
     // (undocumented)
     reviewerOverrides?: ReviewerOverrides;
@@ -1854,6 +1862,14 @@ export interface SymbolExtractor {
 
 // @public (undocumented)
 export type SymbolKind = (typeof SYMBOL_KINDS)[number];
+
+// @public (undocumented)
+export interface SymbolReference {
+    // (undocumented)
+    line: number;
+    // (undocumented)
+    path: string;
+}
 
 // @public (undocumented)
 export interface TaskAttempt extends AttemptOutcome {

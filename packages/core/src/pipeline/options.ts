@@ -3,7 +3,7 @@ import type { ReviewerOverrides, RoleSettings, TierEfforts } from "../agent/sett
 import type { AnchorContext } from "../anchor/anchor.js";
 import type { BundlePolicy } from "../bundle/bundle.js";
 import type { FileGrouper } from "../bundle/grouping.js";
-import type { AgentRuntime, ModelChains, SymbolExtractor } from "../contracts.js";
+import type { AgentRuntime, ModelChains, ReferenceIndex, SymbolExtractor } from "../contracts.js";
 import { OcraError } from "../errors.js";
 import type { Learning } from "../knowledge/learning.js";
 import type { MemoryEntry } from "../memory/memory.js";
@@ -53,6 +53,9 @@ export interface ReviewOptions {
   // Parses files for the impact analysis (review/impact.ts); absent:
   // definition patterns and whole-word search.
   symbols?: SymbolExtractor;
+  // Resolves callers precisely where it knows the changed symbol, ahead of
+  // the extractor's name matching.
+  references?: ReferenceIndex;
   // SARIF logs of external analyzers; their results on the change join the
   // findings (pipeline/imports.ts).
   sarif?: readonly SarifLog[];

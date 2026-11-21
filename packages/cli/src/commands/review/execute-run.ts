@@ -1,5 +1,5 @@
-import { join } from "node:path";
-import { directoryCache, treeSitterSymbols } from "@open-cr-agent/code-graph";
+import { join, resolve } from "node:path";
+import { directoryCache, scipReferences, treeSitterSymbols } from "@open-cr-agent/code-graph";
 import {
   type AgentRuntime,
   OcraError,
@@ -69,6 +69,9 @@ export async function executeRun(
       symbols: treeSitterSymbols({
         cache: directoryCache(join(ocraCacheDir(deps.env), "symbols")),
       }),
+      ...(args.scip
+        ? { references: scipReferences(resolve(deps.cwd, args.scip), { warn: run.warn }) }
+        : {}),
       onEvent: (event) => {
         run.registry.emit(event);
         progress.onEvent(event);

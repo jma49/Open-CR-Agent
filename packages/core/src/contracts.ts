@@ -37,6 +37,19 @@ export interface SymbolExtractor {
   symbols(path: string, content: string): Promise<FileSymbols | undefined>;
 }
 
+export interface SymbolReference {
+  path: string;
+  line: number;
+}
+
+// Uses of a symbol as a precise index of the repository resolves them
+// (SCIP), at the revision it was built from: the uses of the symbol `name`
+// that `path` defines, outside that file; undefined when the index has no
+// such definition.
+export interface ReferenceIndex {
+  usesOf(path: string, name: string): Promise<readonly SymbolReference[] | undefined>;
+}
+
 // The model tiers, strongest first.
 export const MODEL_TIERS = ["top", "standard", "light"] as const;
 export type ModelTier = (typeof MODEL_TIERS)[number];

@@ -1,8 +1,10 @@
 import type {
   FileSymbols,
+  ReferenceIndex,
   ReviewContext,
   SymbolDefinition,
   SymbolExtractor,
+  SymbolReference,
 } from "../contracts.js";
 import type { FileDiff } from "../domain.js";
 
@@ -44,61 +46,141 @@ export interface SymbolUse {
   uses: CallerSite[];
 }
 
+interface ChangedSymbol {
+  name: string;
+  // The file that defines it, on the side of the change it was found on.
+  path: string;
+}
+
 // A changed signature breaks callers more often than a changed body, so
 // those names come first when the cap cuts the list.
 export async function changedSymbols(
   files: readonly FileDiff[],
   context: ImpactContext,
   extractor?: SymbolExtractor,
-): Promise<string[]> {
-  const signatures: string[] = [];
-  const bodies: string[] = [];
+): Promise<ChangedSymbol[]> {
+  const signatures: ChangedSymbol[] = [];
+  const bodies: ChangedSymbol[] = [];
   for (const file of files) {
-    for (const line of file.hunks.flatMap((h) => h.lines)) {
-      if (line.kind === "delete") signatures.push(...definedOn(line.content));
+    const lines = file.hunks.flatMap((h) => h.lines);
+    for (const line of lines) {
+      if (line.kind !== "delete") continue;
+      signatures.push(...definedOn(line.content).map((name) => ({ name, path: file.oldPath })));
     }
     const symbols =
       file.kind === "deleted" ? undefined : await read(file.newPath, context, extractor);
     if (!symbols) {
-      for (const line of file.hunks.flatMap((h) => h.lines)) {
-        if (line.kind === "add") signatures.push(...definedOn(line.content));
+      for (const line of lines) {
+        if (line.kind !== "add") continue;
+        signatures.push(...definedOn(line.content).map((name) => ({ name, path: file.newPath })));
       }
       continue;
     }
     for (const line of touchedLines(file)) {
       const definition = innermost(symbols.definitions, line);
-      if (definition) (line === definition.startLine ? signatures : bodies).push(definition.name);
+      if (!definition) continue;
+      (line === definition.startLine ? signatures : bodies).push({
+        name: definition.name,
+        path: file.newPath,
+      });
     }
   }
-  return [...new Set([...signatures, ...bodies])]
-    .filter((name) => name.length >= 3 && !IGNORED.has(name.toLowerCase()))
+  const seen = new Set<string>();
+  return [...signatures, ...bodies]
+    .filter(({ name }) => {
+      if (seen.has(name) || name.length < 3 || IGNORED.has(name.toLowerCase())) return false;
+      seen.add(name);
+      return true;
+    })
     .slice(0, MAX_SYMBOLS);
 }
 
+export interface CallerSources {
+  symbols?: SymbolExtractor | undefined;
+  references?: ReferenceIndex | undefined;
+}
+
 // Uses outside the bundle's own files: inside them the reviewer already sees
-// the code.
+// the code. The reference index answers first where it knows the symbol;
+// a use it lists whose line no longer names the symbol is from a file
+// changed since the index was built, and is left out.
 export async function findCallers(
   files: readonly FileDiff[],
   context: ImpactContext,
-  extractor?: SymbolExtractor,
+  sources: CallerSources = {},
 ): Promise<SymbolUse[]> {
   const own = new Set(files.map((f) => f.newPath));
   const result: SymbolUse[] = [];
-  for (const symbol of await changedSymbols(files, context, extractor)) {
-    const matches = await context.searchCode(symbol).catch(() => []);
-    const uses: CallerSite[] = [];
-    const paths = [...new Set(matches.map((m) => m.path))].filter((p) => !own.has(p));
-    for (const path of paths.slice(0, MAX_FILES_PER_SYMBOL)) {
-      const symbols = await read(path, context, extractor);
-      const found = symbols
-        ? await usesIn(path, symbol, symbols, context)
-        : matches.filter((m) => m.path === path && wholeWord(symbol).test(m.text));
-      uses.push(...found);
-      if (uses.length >= MAX_CALLERS_PER_SYMBOL) break;
+  for (const changed of await changedSymbols(files, context, sources.symbols)) {
+    const indexed = await sources.references
+      ?.usesOf(changed.path, changed.name)
+      .catch(() => undefined);
+    const uses = indexed
+      ? await indexedUses(changed.name, indexed, own, context, sources.symbols)
+      : await searchedUses(changed.name, own, context, sources.symbols);
+    if (uses.length > 0) {
+      result.push({ symbol: changed.name, uses: uses.slice(0, MAX_CALLERS_PER_SYMBOL) });
     }
-    if (uses.length > 0) result.push({ symbol, uses: uses.slice(0, MAX_CALLERS_PER_SYMBOL) });
   }
   return result;
+}
+
+async function indexedUses(
+  symbol: string,
+  references: readonly SymbolReference[],
+  own: ReadonlySet<string>,
+  context: ImpactContext,
+  extractor: SymbolExtractor | undefined,
+): Promise<CallerSite[]> {
+  const uses: CallerSite[] = [];
+  const byPath = new Map<string, SymbolReference[]>();
+  for (const reference of references) {
+    if (own.has(reference.path)) continue;
+    byPath.set(reference.path, [...(byPath.get(reference.path) ?? []), reference]);
+  }
+  for (const [path, here] of [...byPath].slice(0, MAX_FILES_PER_SYMBOL)) {
+    const content = await context.readFile(path).catch(() => undefined);
+    if (content === undefined) continue;
+    const text = content.split("\n");
+    const symbols = await read(path, context, extractor);
+    for (const { line } of here) {
+      const at = text[line - 1];
+      if (at === undefined || !wholeWord(symbol).test(at)) continue;
+      uses.push(site(path, line, at, symbols));
+    }
+    if (uses.length >= MAX_CALLERS_PER_SYMBOL) break;
+  }
+  return uses;
+}
+
+async function searchedUses(
+  symbol: string,
+  own: ReadonlySet<string>,
+  context: ImpactContext,
+  extractor: SymbolExtractor | undefined,
+): Promise<CallerSite[]> {
+  const matches = await context.searchCode(symbol).catch(() => []);
+  const uses: CallerSite[] = [];
+  const paths = [...new Set(matches.map((m) => m.path))].filter((p) => !own.has(p));
+  for (const path of paths.slice(0, MAX_FILES_PER_SYMBOL)) {
+    const symbols = await read(path, context, extractor);
+    const found = symbols
+      ? await usesIn(path, symbol, symbols, context)
+      : matches.filter((m) => m.path === path && wholeWord(symbol).test(m.text));
+    uses.push(...found);
+    if (uses.length >= MAX_CALLERS_PER_SYMBOL) break;
+  }
+  return uses;
+}
+
+function site(
+  path: string,
+  line: number,
+  text: string,
+  symbols: FileSymbols | undefined,
+): CallerSite {
+  const within = symbols && innermost(symbols.definitions, line)?.name;
+  return { path, line, text, ...(within ? { within } : {}) };
 }
 
 async function read(
@@ -122,10 +204,7 @@ async function usesIn(
   const lines = symbols.uses.get(symbol) ?? [];
   if (lines.length === 0) return [];
   const text = ((await context.readFile(path).catch(() => undefined)) ?? "").split("\n");
-  return lines.map((line) => {
-    const within = innermost(symbols.definitions, line)?.name;
-    return { path, line, text: text[line - 1] ?? "", ...(within ? { within } : {}) };
-  });
+  return lines.map((line) => site(path, line, text[line - 1] ?? "", symbols));
 }
 
 // New-side lines a hunk adds, and the line a removal leaves its gap before.

@@ -120,6 +120,7 @@ function executeOptions(
         spendLimit.mayCall() ? relocator(request) : undefined),
     ultra: settings.ultra,
     symbols: options.symbols,
+    references: options.references,
     plans: new Map(),
     agents: options,
     keyInputs: keyInputs(options),

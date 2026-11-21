@@ -54,6 +54,8 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Fi
 
 调用方用 [tree-sitter](https://tree-sitter.github.io/) 查找，支持 TypeScript、JavaScript、Python、Go、Rust 和 Java：符号体内任何一行改动都算这个符号改了，不只是签名；签名改动的排在前面，最多 8 个符号。用法指代码里出现的名字（注释和字符串不算），附上它所在的函数或类，每个符号最多 10 处。其他语言退回到按改动行匹配定义模式、再整词搜索。每个文件解析出的内容按文件内容缓存在 `~/.cache/ocra/symbols/`（`$XDG_CACHE_HOME/ocra/`，Windows 上是 `%LOCALAPPDATA%\ocra\`，或 `$OCRA_CACHE_DIR`，CI 可以在多次运行之间保留它）；删掉它只会多花解析时间。
 
+加上 `--scip <文件>` 时，仓库的 [SCIP](https://github.com/scip-code/scip) 索引（由 `scip-typescript`、`scip-java`、`scip-python` 等在仓库根目录生成）优先回答：它认识的符号得到的是编译器解析出的确切用法，两个同名的 `run` 方法不再共用调用方。索引描述的是它生成时的版本，通常是主分支；某处用法所在的行已不再出现这个符号时会被去掉，它不认识的符号（改动里新增的，或它不覆盖的语言）照上面的方式搜索。读不了的索引（最大 512 MB）只给一条警告，审查照常进行。ocra 自己从不生成索引。
+
 ## 审查员与工具
 
 审查员是一个带有专门提示词的 agent，有自己的规则，以及告诉 Matrix 在哪里运行它的适用范围：

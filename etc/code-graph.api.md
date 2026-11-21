@@ -5,6 +5,7 @@
 ```ts
 
 import type { FileSymbols } from '@open-cr-agent/core';
+import { ReferenceIndex } from '@open-cr-agent/core';
 import type { SymbolExtractor } from '@open-cr-agent/core';
 
 // @public (undocumented)
@@ -12,6 +13,15 @@ export function directoryCache(dir: string): SymbolCache;
 
 // @public (undocumented)
 export function gitBlobId(content: string): string;
+
+// @public (undocumented)
+export interface ScipOptions {
+    // (undocumented)
+    warn?: (message: string) => void;
+}
+
+// @public (undocumented)
+export function scipReferences(file: string, options?: ScipOptions): ReferenceIndex;
 
 // @public (undocumented)
 export interface SymbolCache {
