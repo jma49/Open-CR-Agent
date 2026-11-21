@@ -116,7 +116,7 @@ node packages/eval/dist/main.js adjudicate .ocra/eval/golden-baseline
 | not looked | 没有任何任务的任何一次尝试用 `read_file` 打开过它所在的文件（提示词里的 diff 不算） |
 | looked | 读过它所在的文件，但没有在它的行上报告任何问题 |
 | raised | 有任务在它的行上报告了问题，但没有作为这个问题进入报告 |
-| dropped | 它的行上报告的问题被拿掉了：被 Verify、judge（丢弃或并入别的问题）、记忆过滤拿掉，或者因为它指向任务 bundle 之外的文件而被丢弃（只按文件匹配） |
+| dropped | 它的行上报告的问题被拿掉了：被 Verify、judge（丢弃或并入别的问题）、记忆过滤拿掉，或者因为它指向审查范围之外的文件而被丢弃（只按文件匹配） |
 | found | 进入了报告，不论严重级别；黄金集召回率仍只计达到用例最低严重级别的 |
 
 `summary.md` 列出各阶段的数量和每个漏掉的问题停在哪一步；`summary.json` 记录各阶段（`golden.cases.<case>.claims[].stage` 和 `droppedBy`）和计数（`golden.funnel`）。raised 和 dropped 只按位置匹配（同一文件，行号与预期范围相差不超过一行），从不调用 judge，所以漏斗不增加模型调用，那里的问题也可能说的是别的事。没有保存日志的审查（旧版 `ocra-eval` 的运行）计为 unknown，而不是漏报。

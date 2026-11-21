@@ -116,7 +116,7 @@ To show where a missed finding was lost, `ocra-eval run` keeps each review's ses
 | not looked | no attempt of any task opened its file with `read_file` (the diff in the prompt does not count) |
 | looked | its file was read, and nothing was reported at its lines |
 | raised | a task reported a finding at its lines that did not reach the report as this issue |
-| dropped | a finding at its lines was taken out: by Verify, the judge (dropped or merged into another), the memory filter, or because it named a file outside its task's bundle (by file only) |
+| dropped | a finding at its lines was taken out: by Verify, the judge (dropped or merged into another), the memory filter, or because it named a file outside the review (by file only) |
 | found | it reached the report, at any severity; the golden recall still counts only those at the case's minimum severity |
 
 `summary.md` prints the counts and where each missed finding stopped; `summary.json` records each stage (`golden.cases.<case>.claims[].stage`, and `droppedBy`) and the counts (`golden.funnel`). Raised and dropped match by location alone (same file, lines within one of the expected range), never by the judge, so the funnel adds no model call, and a finding there may be about something else. Reviews without a kept log (older `ocra-eval` runs) count as unknown, not as misses.

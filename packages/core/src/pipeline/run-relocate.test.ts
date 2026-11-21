@@ -90,34 +90,38 @@ describe("review relocation", () => {
     ]);
   });
 
-  it("does not relocate a quote on a file outside the task's bundle", async () => {
-    let calls = 0;
-    const elsewhere: AgentRuntime = {
-      ...runtime,
-      async *runTask(spec) {
-        if (spec.userPrompt.includes('path="src/a.ts"')) {
-          yield {
-            type: "finding",
-            taskId: spec.taskId,
-            finding: finding("src/b.ts", "retries is set to minus one"),
-          };
-        }
-        yield { type: "done", taskId: spec.taskId };
-      },
-      complete: async (request) => {
-        if (request.system.includes("You locate the code")) calls += 1;
-        return { text: "{}", usage: { ...usage, costUsd: 0 } };
-      },
+  it("relocates a quote on another changed file, never one outside the change", async () => {
+    const relocations = async (file: string) => {
+      let calls = 0;
+      const elsewhere: AgentRuntime = {
+        ...runtime,
+        async *runTask(spec) {
+          if (spec.userPrompt.includes('path="src/a.ts"')) {
+            yield {
+              type: "finding",
+              taskId: spec.taskId,
+              finding: finding(file, "retries is set to minus one"),
+            };
+          }
+          yield { type: "done", taskId: spec.taskId };
+        },
+        complete: async (request) => {
+          if (request.system.includes("You locate the code")) calls += 1;
+          return { text: "{}", usage: { ...usage, costUsd: 0 } };
+        },
+      };
+      await reviewWithHooks({
+        vcs: vcs(
+          {},
+          [patch("src/a.ts", "const retries = -1;"), patch("src/b.ts", "const b = 2;")].join("\n"),
+        ),
+        runtime: elsewhere,
+        bundling: { groupingMinFiles: 100, maxFilesPerBundle: 1, maxBundleChars: 100_000 },
+        stages: { verify: false, judge: false },
+      });
+      return calls;
     };
-    await reviewWithHooks({
-      vcs: vcs(
-        {},
-        [patch("src/a.ts", "const retries = -1;"), patch("src/b.ts", "const b = 2;")].join("\n"),
-      ),
-      runtime: elsewhere,
-      bundling: { groupingMinFiles: 100, maxFilesPerBundle: 1, maxBundleChars: 100_000 },
-      stages: { verify: false, judge: false },
-    });
-    expect(calls).toBe(0);
+    expect(await relocations("src/b.ts")).toBe(1);
+    expect(await relocations("src/z.ts")).toBe(0);
   });
 });

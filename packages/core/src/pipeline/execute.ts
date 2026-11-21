@@ -235,25 +235,28 @@ async function anchorFindings(
     readNewFile: plan.context.readFile,
   };
   if (options.relocate) anchorContext.relocate = options.relocate;
-  // A finding on a file outside the bundle belongs to the task that reviews
-  // that file; keeping it would report the same issue once per bundle that
-  // happened to read the file.
-  const bundleFiles = new Set(job.bundle.files.map((f) => f.newPath));
+  // A finding on another file of the change is kept: a bug often shows where
+  // a changed caller meets a changed callee in another bundle, and dropping
+  // it lost the finding outright. A copy the task owning that file also
+  // reports shares its fingerprint, so the run keeps one (dedupeFindings).
+  // A file outside the change, or left out of an incremental review, is
+  // not under review.
+  const reviewed = new Set(plan.bundles.flatMap((b) => b.files.map((f) => f.newPath)));
   let outside = 0;
   for (const { reported, model } of reportedFindings) {
-    // Relocating a quote on a file outside the bundle would pay for an
+    // Relocating a quote on a file outside the review would pay for an
     // answer the next check throws away.
-    const context = bundleFiles.has(reported.file)
+    const context = reviewed.has(reported.file)
       ? anchorContext
       : { diffs: anchorContext.diffs, readNewFile: anchorContext.readNewFile };
     const anchor = await anchorFinding(reported, context);
     if (anchor.warning) warnings.push(`${job.taskId}: ${anchor.warning}`);
-    if (!bundleFiles.has(anchor.file)) {
+    if (!reviewed.has(anchor.file)) {
       outside += 1;
       options.emit({
         type: "finding_dropped",
         taskId: job.taskId,
-        reason: "outside_bundle",
+        reason: "outside_review",
         file: anchor.file,
         title: reported.title,
       });
@@ -268,7 +271,7 @@ async function anchorFindings(
     options.emit({ type: "finding", taskId: job.taskId, finding });
   }
   if (outside > 0) {
-    warnings.push(`${job.taskId}: dropped ${outside} finding(s) on files outside its bundle`);
+    warnings.push(`${job.taskId}: dropped ${outside} finding(s) on files outside the review`);
   }
   return { findings, warnings };
 }

@@ -52,7 +52,7 @@
         "end": 2
       },
       "provenance": {
-        "task": "correctness-5"
+        "task": "correctness-1"
       }
     }
   ],
@@ -68,7 +68,7 @@
         ".ocra/config.json"
       ],
       "status": "completed",
-      "findings": 0,
+      "findings": 1,
       "durationMs": 0,
       "usage": {
         "inputTokens": 0,
@@ -86,7 +86,7 @@
         ".ocra/evil.mjs"
       ],
       "status": "completed",
-      "findings": 0,
+      "findings": 1,
       "durationMs": 0,
       "usage": {
         "inputTokens": 0,
@@ -104,7 +104,7 @@
         ".ocra/rules.json"
       ],
       "status": "completed",
-      "findings": 0,
+      "findings": 1,
       "durationMs": 0,
       "usage": {
         "inputTokens": 0,
@@ -122,7 +122,7 @@
         "AGENTS.md"
       ],
       "status": "completed",
-      "findings": 0,
+      "findings": 1,
       "durationMs": 0,
       "usage": {
         "inputTokens": 0,
@@ -292,12 +292,7 @@
     "cachedTokens": 0,
     "costUsd": 0
   },
-  "warnings": [
-    "correctness-1: dropped 1 finding(s) on files outside its bundle",
-    "correctness-2: dropped 1 finding(s) on files outside its bundle",
-    "correctness-3: dropped 1 finding(s) on files outside its bundle",
-    "correctness-4: dropped 1 finding(s) on files outside its bundle"
-  ],
+  "warnings": [],
   "anchoring": {
     "byMethod": {
       "hunk": 1,

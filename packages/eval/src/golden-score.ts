@@ -226,8 +226,8 @@ async function funnelOf(
     const by = trace.removed.get(f.fingerprint);
     if (by) dropped.set(k, by);
   }
-  for (const k of (await at(trace.outsideBundle)).keys()) {
-    if (!dropped.has(k)) dropped.set(k, "outside_bundle");
+  for (const k of (await at(trace.outsideReview)).keys()) {
+    if (!dropped.has(k)) dropped.set(k, "outside_review");
   }
   const raised = await at(trace.raised.filter((f) => !trace.removed.has(f.fingerprint)));
   return claimStages(instance, trace, { found, dropped, raised });

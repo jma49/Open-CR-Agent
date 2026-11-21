@@ -76,7 +76,7 @@ Models are unreliable with line numbers, so they quote code, and ocra resolves t
 4. a light model is shown the finding and the file's diff and answers with the lines it means, which are matched like any quote (one small call per unmatched finding);
 5. otherwise the finding stays attached to its file, as a file-level finding.
 
-A finding that resolves to a file outside the reviewer's bundle is dropped with a warning: that reviewer was not shown the file.
+A finding that resolves to another changed file, outside the reviewer's bundle, is kept: a bug often shows where a change in one bundle meets a change in another. When the reviewer of that file reports the same issue, the run keeps one copy. A finding on a file outside the change, or on a file an incremental review left out, is dropped with a warning.
 
 Whole lines are matched first. Part of a line counts only when it is at least 12 characters long and only one line contains it, so a fragment like `err` does not land on the first line containing it. A quote that fits several places equally well (three identical `return err;` lines) stays at file level and is counted under `anchoring.ambiguous`. The JSON report (`--format json`, a session's `report.json`) gives `anchoring` for the run: findings per method (`hunk`, `file`, `cross_file`, `relocated`, `file_level`), the ambiguous ones, and the number of relocation calls.
 

@@ -173,12 +173,13 @@ export type ReviewEvent =
   // attempt: what a finished attempt read, searched for and answered.
   | { type: "task_progress"; taskId: string; message: string; attempt?: AttemptRecord }
   | { type: "finding"; taskId: string; finding: Finding }
-  // A reported finding the run did not keep: on a file outside the task's
-  // bundle. File and title only, so a later analysis can tell what was lost.
+  // A reported finding the run did not keep: on a file outside the files
+  // under review. File and title only, so a later analysis can tell what
+  // was lost.
   | {
       type: "finding_dropped";
       taskId: string;
-      reason: "outside_bundle";
+      reason: "outside_review";
       file: string;
       title: string;
     }
