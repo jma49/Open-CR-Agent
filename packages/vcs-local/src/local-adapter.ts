@@ -10,7 +10,8 @@ import {
   type VcsAdapter,
 } from "@open-cr-agent/core";
 import { isNotFound, parseUnifiedDiff } from "@open-cr-agent/core/internal";
-import { attributesFrom, GitError, git, isShallow, SHALLOW_HINT } from "./git.js";
+import { BlobReader } from "./blob-reader.js";
+import { attributesFrom, GitError, git, hasBatchCommand, isShallow, SHALLOW_HINT } from "./git.js";
 import { CodeSearch } from "./search.js";
 import { MAX_READ_BYTES, WorkingTree } from "./working-tree.js";
 
@@ -57,6 +58,7 @@ export class LocalGitAdapter implements VcsAdapter {
   private resolved: Promise<ResolvedTarget> | undefined;
   private workingTree: WorkingTree | undefined;
   private search: CodeSearch | undefined;
+  private blobs: BlobReader | undefined;
 
   private readonly options: LocalGitOptions;
 
@@ -93,14 +95,30 @@ export class LocalGitAdapter implements VcsAdapter {
       return this.workingTree.read(inside);
     }
 
+    const name = `${head}:${inside.split(sep).join("/")}`;
+    const batched = await this.readBatched(root, name);
+    if (batched !== "alone") return batched;
     try {
-      return await git(["cat-file", "blob", `${head}:${inside.split(sep).join("/")}`], {
+      return await git(["cat-file", "blob", name], {
         cwd: root,
         truncateAt: MAX_READ_BYTES,
       });
     } catch (error) {
       if (error instanceof GitError && error.exitCode === 128) return undefined;
       throw error;
+    }
+  }
+
+  // "alone": read with a process of its own, as a blob over the read limit
+  // (its start is read) or a name the batch protocol cannot carry is.
+  private async readBatched(root: string, name: string): Promise<string | undefined | "alone"> {
+    if (/[\r\n]/.test(name) || !(await hasBatchCommand(root))) return "alone";
+    this.blobs ??= new BlobReader(root);
+    try {
+      const read = await this.blobs.read(name, MAX_READ_BYTES);
+      return read === undefined ? undefined : "text" in read ? read.text : "alone";
+    } catch {
+      return "alone";
     }
   }
 
