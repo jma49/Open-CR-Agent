@@ -37,6 +37,7 @@ export function configuredOptions(run: ResolvedRun, args: ReviewArgs): Configure
     stages: {
       ...(config.verify !== undefined ? { verify: config.verify } : {}),
       ...(config.judge !== undefined ? { judge: config.judge } : {}),
+      ...(config.showPreExisting !== undefined ? { showPreExisting: config.showPreExisting } : {}),
     },
     mode: { ...(run.ultra ? { ultra: true } : {}), ...(args.full ? { full: true } : {}) },
   };

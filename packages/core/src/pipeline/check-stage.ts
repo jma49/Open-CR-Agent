@@ -19,7 +19,7 @@ export async function checkStage(
   filtered: FilterStage,
   context: StageContext,
 ): Promise<CheckStage> {
-  const verification = await verify(filtered, context);
+  const verification = hidePreExisting(await verify(filtered, context), context.settings);
   const judged = await judge(verification, filtered, context);
   return {
     verification,
@@ -60,6 +60,24 @@ async function verify(
     });
   }
   return verification;
+}
+
+function hidePreExisting(
+  verification: VerificationResult,
+  settings: StageContext["settings"],
+): VerificationResult {
+  if (settings.showPreExisting) return verification;
+  const kept = verification.kept.filter((f) => !f.preExisting);
+  const hidden = verification.kept.length - kept.length;
+  if (hidden === 0) return verification;
+  return {
+    ...verification,
+    kept,
+    warnings: [
+      ...verification.warnings,
+      `${hidden} pre-existing finding(s) not shown (showPreExisting is false)`,
+    ],
+  };
 }
 
 async function judge(

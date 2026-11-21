@@ -78,6 +78,9 @@ describe("decideVerdict", () => {
     expect(decideVerdict([critical("unchecked"), critical("confirmed")])).toBe(
       "significant_concerns",
     );
+    expect(decideVerdict([{ ...critical("confirmed"), preExisting: true }])).toBe(
+      "approved_with_comments",
+    );
   });
 });
 

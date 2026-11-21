@@ -20,6 +20,7 @@ const remoteConfigSchema = z
     runTimeoutMinutes: z.unknown().optional(),
     verify: z.unknown().optional(),
     judge: z.unknown().optional(),
+    showPreExisting: z.unknown().optional(),
     maxCostUsd: z.unknown().optional(),
     maxTasks: z.unknown().optional(),
     include: z.array(z.string()).optional(),

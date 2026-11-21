@@ -1513,6 +1513,8 @@ export interface ReviewStages {
     // (undocumented)
     judge?: boolean;
     // (undocumented)
+    showPreExisting?: boolean;
+    // (undocumented)
     verify?: boolean;
 }
 

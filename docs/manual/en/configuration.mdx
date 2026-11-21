@@ -103,6 +103,7 @@ For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Gro
 | `maxCostUsd` | none | Spend limit for the run: review tasks use up to 80% of it, verification and judging the rest (see `--max-cost-usd`) |
 | `maxTasks` | `60` | Most review tasks one run starts. Past it, `--ultra`'s second passes go first, then later reviewers, so every file keeps its first reviewer as long as possible; skipped files are reported as not reviewed (exit code `3`) |
 | `judge` | `true` | Merge, filter and recalibrate findings across reviewers (one top-tier call per run with findings) |
+| `showPreExisting` | `true` | Report findings Verify traced to code from before the change, marked *pre-existing*. They never count towards the verdict; `false` leaves them out, with a warning giving their number |
 | `verify` | `true` | Fact-check findings before reporting them (one standard-tier call per file with findings) |
 | `sampling` | none | `{ "temperature": 0–2, "seed": n }` for every model call, each optional (unset: the provider's default); `--temperature` and `--seed` override it. `direct` sends both. `opencode` passes the temperature only to models its catalog says accept one ([declared models](./providers#your-own-endpoint) do) and reports a seed as not applied. `provenance.sampling` says what was applied. A seed makes runs repeatable only where the provider honors it |
 
@@ -135,7 +136,7 @@ Repositories can extend an organization's common settings:
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned) and `rules` (shaped like `.ocra/rules.json` entries). It cannot list plugins or choose a runtime, since it must not run code. The repository's values win; `include`, `exclude` and `rules` combine, and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` merge key by key.
+The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `showPreExisting`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned) and `rules` (shaped like `.ocra/rules.json` entries). It cannot list plugins or choose a runtime, since it must not run code. The repository's values win; `include`, `exclude` and `rules` combine, and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` merge key by key.
 
 Only `https` URLs, without redirects, up to 256 KB. `#sha256=` pins the exact content; a file declaring `providers` must be pinned, since a provider decides where your code goes ([Model providers](./providers#your-own-endpoint)). If the file cannot be loaded or is invalid, ocra warns and uses the repository's settings alone, so limits set only there (such as `maxCostUsd`) do not apply; set must-hold limits in the repository too.
 

@@ -120,6 +120,9 @@
     "judge": {
       "type": "boolean"
     },
+    "showPreExisting": {
+      "type": "boolean"
+    },
     "maxCostUsd": {
       "type": "number",
       "exclusiveMinimum": 0
