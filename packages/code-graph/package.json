@@ -1,0 +1,42 @@
+{
+  "name": "@open-cr-agent/code-graph",
+  "version": "0.7.0",
+  "description": "Tree-sitter symbols for Open-CR-Agent's impact analysis, cached by git blob id",
+  "keywords": [
+    "code-review",
+    "tree-sitter"
+  ],
+  "license": "Apache-2.0",
+  "homepage": "https://ocracloud.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jma49/Open-CR-Agent.git",
+    "directory": "packages/code-graph"
+  },
+  "bugs": "https://github.com/jma49/Open-CR-Agent/issues",
+  "engines": {
+    "node": ">=22.19"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "@open-cr-agent/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "dependencies": {
+    "@open-cr-agent/core": "0.7.0",
+    "@vscode/tree-sitter-wasm": "0.3.1",
+    "zod": "^4.6.6"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

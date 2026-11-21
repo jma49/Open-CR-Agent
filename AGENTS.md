@@ -18,6 +18,7 @@ Open-CR-Agent is an open-source multi-agent code review system. Deterministic en
 | `@open-cr-agent/vcs-github` | `VcsAdapter` for GitHub pull requests, over `vcs-platform` |
 | `@open-cr-agent/vcs-gitlab` | `VcsAdapter` for GitLab merge requests, over `vcs-platform` |
 | `@open-cr-agent/vcs-local` | `VcsAdapter` for the local git repository (workspace, range, commit) |
+| `@open-cr-agent/code-graph` | `SymbolExtractor` backed by tree-sitter (WASM): definitions and uses per file, cached by git blob id |
 | `@open-cr-agent/cloud-contract` | The wire contract with ocra Cloud: Zod schemas, limits, vocabularies, error codes, the redaction pass and its test vectors |
 | `@open-cr-agent/cli` | The `ocra` command |
 | `@open-cr-agent/eval` | Benchmark replay (AACR-Bench) and quality metrics |

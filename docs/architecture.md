@@ -151,6 +151,7 @@ packages/
   vcs-github/        VcsAdapter for GitHub, over vcs-platform
   vcs-gitlab/        VcsAdapter for GitLab merge requests, over vcs-platform
   vcs-local/         VcsAdapter for the local git repository
+  code-graph/        SymbolExtractor on tree-sitter (WASM), cached by git blob id
   cloud-contract/    the wire contract with ocra Cloud: schemas, limits, redaction
   cli/               `ocra` command
   eval/              AACR-Bench and golden replay, precision / recall / cost

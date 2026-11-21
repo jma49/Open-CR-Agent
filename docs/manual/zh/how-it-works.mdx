@@ -52,6 +52,8 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Fi
 
 两种模式下的核查（Verify）完全一样。
 
+调用方用 [tree-sitter](https://tree-sitter.github.io/) 查找，支持 TypeScript、JavaScript、Python、Go、Rust 和 Java：符号体内任何一行改动都算这个符号改了，不只是签名；签名改动的排在前面，最多 8 个符号。用法指代码里出现的名字（注释和字符串不算），附上它所在的函数或类，每个符号最多 10 处。其他语言退回到按改动行匹配定义模式、再整词搜索。每个文件解析出的内容按文件内容缓存在 `~/.cache/ocra/symbols/`（`$XDG_CACHE_HOME/ocra/`，Windows 上是 `%LOCALAPPDATA%\ocra\`，或 `$OCRA_CACHE_DIR`，CI 可以在多次运行之间保留它）；删掉它只会多花解析时间。
+
 ## 审查员与工具
 
 审查员是一个带有专门提示词的 agent，有自己的规则，以及告诉 Matrix 在哪里运行它的适用范围：

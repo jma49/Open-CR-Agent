@@ -6,7 +6,7 @@ import {
 } from "../agent/settings.js";
 import { addUsage, emptyUsage } from "../agent/usage.js";
 import { type AnchorContext, anchorFinding } from "../anchor/anchor.js";
-import type { AgentRuntime, Usage } from "../contracts.js";
+import type { AgentRuntime, SymbolExtractor, Usage } from "../contracts.js";
 import type { Finding, TaskFinding } from "../domain.js";
 import type { MatrixCell } from "../matrix/matrix.js";
 import type { ReviewEvent, TaskOutcome } from "../report/report.js";
@@ -34,6 +34,7 @@ export interface ExecuteOptions {
   taskTimeoutMs: number;
   abortGraceMs?: number | undefined;
   relocate?: AnchorContext["relocate"] | undefined;
+  symbols?: SymbolExtractor | undefined;
   // One plan per reviewer and bundle, shared by --ultra's two samples.
   plans?: Map<string, Promise<PlannedBundle>>;
   emit: (event: ReviewEvent) => void;
@@ -210,7 +211,9 @@ async function preparePrompt(
   task: TaskPrompt,
 ): Promise<PreparedPrompt> {
   const { planCall } = task;
-  const callers = task.callers ? await findCallers(job.bundle.files, plan.context) : [];
+  const callers = task.callers
+    ? await findCallers(job.bundle.files, plan.context, options.symbols)
+    : [];
   if (!planCall) {
     const prompt = callers.length > 0 ? buildReviewPrompt({ ...task.input, callers }) : task.prompt;
     return { prompt, usage: [], warnings: [] };

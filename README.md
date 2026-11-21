@@ -220,6 +220,7 @@ Users install only `@open-cr-agent/cli`; the rest are for embedding:
 | `@open-cr-agent/vcs-github` | `VcsAdapter` for GitHub pull requests |
 | `@open-cr-agent/vcs-gitlab` | `VcsAdapter` for GitLab merge requests |
 | `@open-cr-agent/vcs-local` | `VcsAdapter` for the local git repository |
+| `@open-cr-agent/code-graph` | Tree-sitter symbols for the impact analysis, cached by git blob id |
 | `@open-cr-agent/cloud-contract` | The wire contract with ocra Cloud |
 | `@open-cr-agent/cli` | The `ocra` command |
 | `@open-cr-agent/eval` | Benchmark replay and quality metrics |

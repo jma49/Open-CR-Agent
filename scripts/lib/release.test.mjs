@@ -168,6 +168,7 @@ describe("readWorkspaces", () => {
     expect(names(publishOrder(workspaces))).toEqual([
       "@open-cr-agent/cloud-contract",
       "@open-cr-agent/core",
+      "@open-cr-agent/code-graph",
       "@open-cr-agent/runtime-direct",
       "@open-cr-agent/vcs-platform",
       "@open-cr-agent/vcs-github",

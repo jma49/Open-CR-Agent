@@ -140,7 +140,9 @@ function renderCallers(callers: readonly SymbolUse[]): PromptText {
   const lines = callers.flatMap(({ symbol, uses }) => [
     data(`${oneLine(symbol)}:`),
     ...uses.map((u) =>
-      data(`  ${oneLine(u.path)}:${u.line}: ${oneLine(u.text.trim()).slice(0, 200)}`),
+      data(
+        `  ${oneLine(u.path)}:${u.line}${u.within ? ` (in ${oneLine(u.within)})` : ""}: ${oneLine(u.text.trim()).slice(0, 200)}`,
+      ),
     ),
   ]);
   return section("callers", [

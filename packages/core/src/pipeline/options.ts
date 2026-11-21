@@ -3,7 +3,7 @@ import type { ReviewerOverrides, RoleSettings, TierEfforts } from "../agent/sett
 import type { AnchorContext } from "../anchor/anchor.js";
 import type { BundlePolicy } from "../bundle/bundle.js";
 import type { FileGrouper } from "../bundle/grouping.js";
-import type { AgentRuntime, ModelChains } from "../contracts.js";
+import type { AgentRuntime, ModelChains, SymbolExtractor } from "../contracts.js";
 import { OcraError } from "../errors.js";
 import type { Learning } from "../knowledge/learning.js";
 import type { MemoryEntry } from "../memory/memory.js";
@@ -50,6 +50,9 @@ export interface ReviewOptions {
   // An earlier run of this review: its completed tasks whose inputs have not
   // changed are reused, not run and paid for again (ADR-0031).
   resume?: ResumedRun;
+  // Parses files for the impact analysis (review/impact.ts); absent:
+  // definition patterns and whole-word search.
+  symbols?: SymbolExtractor;
   // SARIF logs of external analyzers; their results on the change join the
   // findings (pipeline/imports.ts).
   sarif?: readonly SarifLog[];

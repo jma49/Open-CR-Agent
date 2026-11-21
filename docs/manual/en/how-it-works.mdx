@@ -52,6 +52,8 @@ The default mode favors precision. `--ultra` trades cost for recall:
 
 Verification works the same in both modes.
 
+Callers are found with [tree-sitter](https://tree-sitter.github.io/) for TypeScript, JavaScript, Python, Go, Rust and Java: a symbol counts as changed when any line of its body changes, not only its signature; changed signatures come first, eight symbols at most. A use is a name in code (comments and strings do not count), shown with the function or class it sits in, ten per symbol at most. Other languages fall back to definition patterns on changed lines and a whole-word search. What each file holds is cached by its content in `~/.cache/ocra/symbols/` (`$XDG_CACHE_HOME/ocra/`, `%LOCALAPPDATA%\ocra\` on Windows, or `$OCRA_CACHE_DIR`, which a CI job can keep between runs); deleting it costs only parsing time.
+
 ## Reviewers and tools
 
 A reviewer is an agent with a focused prompt, its own rules, and a scope that tells the matrix where to run it:

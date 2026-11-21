@@ -119,6 +119,7 @@ function executeOptions(
       (async (request: RelocationRequest) =>
         spendLimit.mayCall() ? relocator(request) : undefined),
     ultra: settings.ultra,
+    symbols: options.symbols,
     plans: new Map(),
     agents: options,
     keyInputs: keyInputs(options),
