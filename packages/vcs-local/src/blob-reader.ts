@@ -4,7 +4,7 @@ import { childEnvironment } from "./git.js";
 // How long a read may take before the reader gives up on its process.
 const READ_TIMEOUT_MS = 60_000;
 // An idle process is ended so a finished review leaves none behind.
-const IDLE_MS = 2_000;
+const IDLE_MS = 250;
 
 type Pending =
   | { kind: "info"; resolve: (info: BlobInfo | undefined) => void; reject: (e: Error) => void }
