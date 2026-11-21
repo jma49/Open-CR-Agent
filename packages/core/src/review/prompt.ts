@@ -141,14 +141,16 @@ function renderLearnings(given: readonly Learning[], more: readonly Learning[]):
   ]);
 }
 
-// Titles are written as the rule itself, so a reviewer can still apply a
-// learning the budget left out.
+// Titles are written as the rule itself, so a reviewer can apply a learning
+// the budget left out, or read it when the title is not enough.
 function renderLearningIndex(more: readonly Learning[]): PromptText {
   const listed = more.slice(0, MAX_LISTED_LEARNINGS);
   const unlisted = more.length - listed.length;
   return section("learning_index", [
-    ocraText("More learnings that match this change, by title only:"),
-    ...listed.map((l) => data(`- ${oneLine(l.title)}`)),
+    ocraText(
+      `More learnings that match this change, by id and title; read one that may apply with ${REVIEW_TOOLS.readLearning}:`,
+    ),
+    ...listed.map((l) => data(`- ${l.id}: ${oneLine(l.title)}`)),
     ...(unlisted > 0 ? [ocraText(`and ${unlisted} more.`)] : []),
   ]);
 }

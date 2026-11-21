@@ -2,6 +2,7 @@ import { posix } from "node:path";
 import type { CodeMatch, ReviewContext } from "../contracts.js";
 import type { FileDiff } from "../domain.js";
 import { OcraError } from "../errors.js";
+import type { Learning } from "../knowledge/learning.js";
 import { foldPath, isSecretPath } from "../select/select.js";
 import type { VcsAdapter } from "../vcs.js";
 
@@ -19,7 +20,12 @@ const WINDOWS = process.platform === "win32";
 // nothing outside the repository, whatever a prompt injection asks for.
 // Reads are memoized: the revision under review does not change during a run,
 // and anchoring and every agent re-read the same files.
-export function reviewContext(vcs: VcsAdapter, diffs: readonly FileDiff[]): ReviewContext {
+export function reviewContext(
+  vcs: VcsAdapter,
+  diffs: readonly FileDiff[],
+  learnings: readonly Learning[] = [],
+): ReviewContext {
+  const byId = new Map(learnings.map((l) => [l.id, l]));
   const reads = new Map<string, Promise<string | undefined>>();
   const searches = new Map<string, Promise<CodeMatch[]>>();
   // A file renamed away from a secret name still holds the secret, and
@@ -56,6 +62,11 @@ export function reviewContext(vcs: VcsAdapter, diffs: readonly FileDiff[]): Revi
     readDiff(path) {
       const allowed = allowedPath(path);
       return diffs.find((d) => d.newPath === allowed || d.oldPath === allowed)?.patch;
+    },
+    // From the trusted revision the run read them from, never the reviewed one.
+    readLearning(id) {
+      const learning = byId.get(id);
+      return learning && `${learning.title}\n\n${learning.body}`;
     },
     // Agents in parallel often search for the same symbol.
     searchCode(literal) {

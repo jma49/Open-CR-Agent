@@ -60,6 +60,7 @@ describe("tool server", () => {
       "read_file",
       "read_diff",
       "code_search",
+      "read_learning",
       "report_finding",
       "task_done",
       "explode",

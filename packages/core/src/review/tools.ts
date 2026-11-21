@@ -2,6 +2,7 @@ export const REVIEW_TOOLS = {
   readFile: "read_file",
   readDiff: "read_diff",
   codeSearch: "code_search",
+  readLearning: "read_learning",
   reportFinding: "report_finding",
   taskDone: "task_done",
 } as const;
