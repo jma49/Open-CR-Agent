@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, utimes, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { FileSymbols } from "@open-cr-agent/core";
 import { SYMBOL_KINDS } from "@open-cr-agent/core";
@@ -57,13 +57,21 @@ function deserialize(text: string): FileSymbols | undefined {
 
 // One JSON file per key under `dir`. Every failure reads as a miss or a
 // skipped write: the cache only saves parsing. Writes go through a temporary
-// file, so concurrent runs never read half an entry.
+// file, so concurrent runs never read half an entry. A hit touches its
+// entry, so a cache kept between CI runs can drop what no run read lately
+// by modification time.
 export function directoryCache(dir: string): SymbolCache {
   const path = (key: string) => join(dir, key.slice(0, 2), `${key}.json`);
   return {
     async get(key) {
-      const text = await readFile(path(key), "utf8").catch(() => undefined);
-      return text === undefined ? undefined : deserialize(text);
+      const file = path(key);
+      const text = await readFile(file, "utf8").catch(() => undefined);
+      const symbols = text === undefined ? undefined : deserialize(text);
+      if (symbols) {
+        const now = new Date();
+        await utimes(file, now, now).catch(() => {});
+      }
+      return symbols;
     },
     async set(key, symbols) {
       const target = path(key);

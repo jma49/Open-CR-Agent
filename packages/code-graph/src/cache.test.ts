@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { FileSymbols } from "@open-cr-agent/core";
@@ -40,6 +48,17 @@ describe("directoryCache", () => {
     await directoryCache(dir).set(KEY, SYMBOLS);
     expect(await directoryCache(dir).get(KEY)).toEqual(SYMBOLS);
     expect(readdirSync(join(dir, "ab"))).toEqual([`${KEY}.json`]);
+  });
+
+  it("touches an entry it reads, so a kept cache can drop the unread ones", async () => {
+    const dir = scratch();
+    const cache = directoryCache(dir);
+    await cache.set(KEY, SYMBOLS);
+    const entry = join(dir, "ab", `${KEY}.json`);
+    const old = new Date("2020-01-01T00:00:00Z");
+    utimesSync(entry, old, old);
+    await cache.get(KEY);
+    expect(statSync(entry).mtimeMs).toBeGreaterThan(old.getTime());
   });
 
   it("misses on an absent, corrupt or malformed entry", async () => {
