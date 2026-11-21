@@ -1,9 +1,10 @@
 import type { CodeMatch, ReviewContext } from "../contracts.js";
 import type { FileDiff } from "../domain.js";
 
-// --ultra's impact analysis: the symbols a bundle defines or changes, and
-// where the rest of the repository uses them, so reviewers see the callers a
-// change can break without spending their own steps to find them. Symbols
+// Impact analysis (--ultra and the full tier): the symbols a bundle defines
+// or changes, and where the rest of the repository uses them, so reviewers
+// see the callers a change can break without spending their own steps to
+// find them. Symbols
 // are found by definition patterns common to the languages we review; a miss
 // only costs that hint, never a finding.
 const MAX_SYMBOLS = 8;

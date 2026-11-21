@@ -11,11 +11,16 @@ const PLAN_MIN_FILES = 5;
 const PLAN_MIN_PATCH_CHARS = 40_000;
 
 export interface TaskPrompt {
-  // What the prompt is built from; a plan phase and --ultra's callers are
-  // added to it before the task runs.
+  // What the prompt is built from; a plan phase and the callers are added to
+  // it before the task runs.
   input: ReviewPromptInput;
   // The first prompt, before a plan phase or callers.
   prompt: ReviewPrompt;
+  // Whether the task is shown the callers of the symbols its bundle changes
+  // (impact.ts): under --ultra, and at the full tier, where a change risky
+  // enough to get every reviewer is most likely to break a caller the
+  // reviewer would otherwise have to find with its own steps.
+  callers: boolean;
   // The plan phase's call, when the task has one: one per reviewer and
   // bundle (key), shared by --ultra's two samples, so its prompt is built
   // only by the call that runs it.
@@ -36,10 +41,12 @@ export function taskPrompt(cell: MatrixCell, plan: ReviewPlan, ultra: boolean): 
     accepted: memoryFor(files, plan.memory),
   };
   const prompt = buildReviewPrompt(input);
-  if (!ultra && !isLargeBundle(cell.bundle)) return { input, prompt };
+  const callers = ultra || plan.tier === "full";
+  if (!ultra && !isLargeBundle(cell.bundle)) return { input, prompt, callers };
   return {
     input,
     prompt,
+    callers,
     planCall: {
       key: `${cell.reviewer.id}\0${cell.bundle.label}`,
       prompt: () => buildReviewPrompt({ ...input, forPlanning: true }),

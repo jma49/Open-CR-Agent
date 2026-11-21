@@ -29,8 +29,8 @@ function runtime(plan: () => Promise<string>): AgentRuntime & { prompts: AgentTa
   };
 }
 
-function change() {
-  const adapter = vcs({}, patch("src/retry.ts", "export function parseRetries(x) { return x; }"));
+function change(path = "src/retry.ts") {
+  const adapter = vcs({}, patch(path, "export function parseRetries(x) { return x; }"));
   adapter.searchCode = async () => [
     { path: "src/api.ts", line: 12, text: "const n = parseRetries(header);" },
   ];
@@ -71,10 +71,23 @@ describe("review --ultra", () => {
     expect(report.warnings.some((w) => w.includes("plan phase for correctness failed"))).toBe(true);
   });
 
-  it("adds neither outside --ultra", async () => {
+  it("adds neither outside --ultra below the full tier", async () => {
     const rt = runtime(async () => "- plan");
-    await review({ vcs: change(), runtime: rt, stages: { verify: false } });
+    const report = await review({ vcs: change(), runtime: rt, stages: { verify: false } });
+    expect(report.tier).not.toBe("full");
     expect(rt.prompts[0]?.userPrompt).not.toMatch(/<ocra_callers>|<ocra_review_plan>/);
+  });
+
+  it("shows the callers, without a plan, at the full tier in default mode", async () => {
+    const rt = runtime(async () => "- plan");
+    const adapter = change("src/auth/retry.ts");
+    const report = await review({ vcs: adapter, runtime: rt, stages: { verify: false } });
+    expect(report.tier).toBe("full");
+    expect(rt.prompts.length).toBeGreaterThan(0);
+    for (const { userPrompt } of rt.prompts) {
+      expect(userPrompt).toContain("src/api.ts:12: const n = parseRetries(header);");
+      expect(userPrompt).not.toContain("<ocra_review_plan>");
+    }
   });
 
   it("keeps model and repository text inside the new sections", async () => {

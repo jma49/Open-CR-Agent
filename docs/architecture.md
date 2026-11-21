@@ -97,7 +97,7 @@ Fingerprints let a re-review compare with the previous run (ADR-0009, ADR-0010);
 | Reviewers | By tier and matrix | All, every bundle |
 | Plan phase | Large bundles only (≥5 files or ≥40,000 diff characters) | Always: one short call per task, its checklist added to the prompt |
 | Sampling | One run per cell | Two runs per cell, merged |
-| Impact analysis | Off | Callers of changed symbols searched outside the bundle |
+| Impact analysis | At the `full` tier only | Callers of changed symbols searched outside the bundle |
 | Judge threshold | Strict | Relaxed; extra findings marked low confidence |
 
 ## Contracts
