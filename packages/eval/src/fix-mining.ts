@@ -48,22 +48,29 @@ export function rewrittenRanges(diff: string): OldRange[] {
 
 export interface BlamedLine {
   commit: string;
-  // The line's number in the commit that introduced it.
+  // The file and line number in the commit that introduced it: blame
+  // follows renames, so the file can differ from the one blamed.
+  file: string;
   line: number;
   text: string;
 }
 
 // `git blame --porcelain` output: a header per line ("<sha> <orig> <final>
-// [<count>]"), header fields, then the line itself after a tab.
-export function parseBlame(porcelain: string): BlamedLine[] {
+// [<count>]"), header fields, then the line itself after a tab. A commit's
+// `filename` field comes only with its first header.
+export function parseBlame(porcelain: string, blamedFile: string): BlamedLine[] {
   const lines: BlamedLine[] = [];
+  const fileOf = new Map<string, string>();
   let current: { commit: string; line: number } | undefined;
   for (const row of porcelain.split("\n")) {
     const header = /^([0-9a-f]{40}) (\d+) \d+/.exec(row);
     if (header?.[1] && header[2]) {
       current = { commit: header[1], line: Number(header[2]) };
+    } else if (row.startsWith("filename ") && current) {
+      fileOf.set(current.commit, row.slice("filename ".length));
     } else if (row.startsWith("\t") && current) {
-      lines.push({ ...current, text: row.slice(1) });
+      const file = fileOf.get(current.commit) ?? blamedFile;
+      lines.push({ ...current, file, text: row.slice(1) });
       current = undefined;
     }
   }
@@ -91,18 +98,17 @@ export interface MinedClaim {
 
 // Runs of consecutive introduced lines in one file become one claim each;
 // a run longer than a required claim may span is left out.
-export function claimsFrom(
-  fix: FixCommit,
-  file: string,
-  blamed: readonly BlamedLine[],
-): MinedClaim[] {
-  const byCommit = new Map<string, number[]>();
+export function claimsFrom(fix: FixCommit, blamed: readonly BlamedLine[]): MinedClaim[] {
+  const byPlace = new Map<string, { introduced: string; file: string; numbers: number[] }>();
   for (const b of blamed) {
-    if (b.commit === fix.sha || isTrivialLine(b.text)) continue;
-    byCommit.set(b.commit, [...(byCommit.get(b.commit) ?? []), b.line]);
+    if (b.commit === fix.sha || isTrivialLine(b.text) || !isMinedPath(b.file)) continue;
+    const key = `${b.commit}\0${b.file}`;
+    const place = byPlace.get(key) ?? { introduced: b.commit, file: b.file, numbers: [] };
+    place.numbers.push(b.line);
+    byPlace.set(key, place);
   }
   const claims: MinedClaim[] = [];
-  for (const [introduced, numbers] of byCommit) {
+  for (const { introduced, file, numbers } of byPlace.values()) {
     const sorted = [...new Set(numbers)].sort((a, b) => a - b);
     let start = sorted[0];
     for (let i = 0; i < sorted.length; i++) {
