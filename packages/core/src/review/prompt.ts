@@ -31,6 +31,8 @@ export interface ReviewPromptInput {
   guidelines?: string | undefined;
   accepted?: readonly MemoryEntry[];
   learnings?: readonly Learning[];
+  // Learnings that apply but did not fit, best first: listed by title only.
+  moreLearnings?: readonly Learning[];
   // --ultra: where the rest of the repository uses symbols this bundle changes.
   callers?: readonly SymbolUse[];
   // --ultra: the plan phase's checklist for this bundle.
@@ -59,9 +61,9 @@ export function buildReviewPrompt(input: ReviewPromptInput): ReviewPrompt {
   }
   if (input.rules.trim()) sections.push(section("review_rules", data(input.rules)));
   if (input.accepted && input.accepted.length > 0) sections.push(renderAccepted(input.accepted));
-  if (input.learnings && input.learnings.length > 0) {
-    sections.push(renderLearnings(input.learnings));
-  }
+  const given = input.learnings ?? [];
+  const more = input.moreLearnings ?? [];
+  if (given.length > 0 || more.length > 0) sections.push(renderLearnings(given, more));
   sections.push(
     section("review_files", input.bundle.map(renderFile)),
     ...(input.callers && input.callers.length > 0 ? [renderCallers(input.callers)] : []),
@@ -121,18 +123,33 @@ function renderAccepted(entries: readonly MemoryEntry[]): PromptText {
   ]);
 }
 
-function renderLearnings(learnings: readonly Learning[]): PromptText {
+export const MAX_LISTED_LEARNINGS = 10;
+
+function renderLearnings(given: readonly Learning[], more: readonly Learning[]): PromptText {
   return section("team_learnings", [
     ocraText(
       "What the team learned from earlier changes to this code. Check whether this change repeats a mistake one describes; report only what the change itself gets wrong, never a learning alone.",
     ),
-    ...learnings.map((l) =>
+    ...given.map((l) =>
       section("learning", [data(oneLine(l.title)), data(l.body)], {
         id: l.id,
         paths: l.paths.join(", "),
         ...(l.critical ? { critical: "true" } : {}),
       }),
     ),
+    ...(more.length > 0 ? [renderLearningIndex(more)] : []),
+  ]);
+}
+
+// Titles are written as the rule itself, so a reviewer can still apply a
+// learning the budget left out.
+function renderLearningIndex(more: readonly Learning[]): PromptText {
+  const listed = more.slice(0, MAX_LISTED_LEARNINGS);
+  const unlisted = more.length - listed.length;
+  return section("learning_index", [
+    ocraText("More learnings that match this change, by title only:"),
+    ...listed.map((l) => data(`- ${oneLine(l.title)}`)),
+    ...(unlisted > 0 ? [ocraText(`and ${unlisted} more.`)] : []),
   ]);
 }
 
