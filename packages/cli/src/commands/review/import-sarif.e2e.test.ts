@@ -94,15 +94,21 @@ describe("ocra review --sarif-evidence", () => {
     expect(report.analyzerEvidence).toMatchObject([{ tool: "Semgrep OSS", results: 1 }]);
     expect(seen.join("\n")).toContain("Semgrep OSS negative-retries (suggestion, on the change)");
 
-    const plan = capture();
-    expect(
-      await run(
-        ["review", "--plan", "--sarif-evidence", "scan.sarif"],
-        plan,
-        capture(),
-        deps(cwd, recording),
-      ),
-    ).toBe(0);
+    const promptTokens = async (extra: string[]) => {
+      const plan = capture();
+      expect(
+        await run(
+          ["review", "--plan", "--format", "json", ...extra],
+          plan,
+          capture(),
+          deps(cwd, recording),
+        ),
+      ).toBe(0);
+      return JSON.parse(plan.text()).promptTokens as number;
+    };
+    expect(await promptTokens(["--sarif-evidence", "scan.sarif"])).toBeGreaterThan(
+      await promptTokens([]),
+    );
 
     const err = capture();
     expect(
