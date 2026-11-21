@@ -6,6 +6,38 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-21
+
+The first release on npm since 0.7.0: 0.8.0 was never published, so this release also carries its changes below. The Action's new tag is `jma49/Open-CR-Agent@v0.9.0`.
+
+### Added
+
+- The Action's `learn` input (`mine` or `remember`) drafts learnings and opens them as a pull request, with a `proposal` output; with the workflow's own token the pull request is left for a person to merge.
+- `ocra learn --propose --require-review` leaves the pull or merge request for a person whatever `learnings.requireReview` says.
+- The GitHub Action keeps ocra's symbol cache in the Actions cache between runs (`symbol-cache`, on by default) and drops entries no run read for 30 days; reading a cached entry now touches it.
+- `updateGraph` builds the symbols of every file of a revision from a tree listing, parsing only files the previous graph lacks; `graphReferences` answers a review's callers from it, and `serializeGraph` / `parseGraph` store it in a versioned, deterministic format.
+- `ocra learn feedback` drafts learnings from the findings the team accepted in `.ocra/memory.json`, with the reason it gave (ADR-0040).
+- `ocra learn import <file.md>...` drafts learnings from each `##` section of the team's documents that names files of the repository (ADR-0040).
+- `ocra learn --propose` opens a GitLab merge request that merges when its pipeline succeeds; `--repo` or `--project` names where it opens.
+- `proposeOnGitLab` in `@open-cr-agent/vcs-gitlab`, and an optional `sleep` in `ProposeOptions`.
+- `ocra learn mine --propose` opens the kept learnings as a GitHub pull request, set to merge once its checks pass; `learnings.requireReview: true` in `.ocra/config.json` leaves it for a person (ADR-0040).
+- `proposeOnGitHub` (`vcs-github`) and the `FileProposal` and `ProposedChange` types (`vcs-platform`).
+- `/ocra remember <note>` on a pull or merge request, from someone with write access, and `ocra learn remember --pr <n>` (or `--mr <iid>`) to draft learnings from those notes (ADR-0040).
+- `ChangeRequest.remember`: the notes, as the platform adapters read them.
+- `ocra graph --out <file> [--rev <commit>]` writes the code graph of a commit, and updates an existing one by parsing only the files it lacks.
+- `ocra review --graph <file>` takes the callers of changed symbols from that graph, after `--scip` and before searching.
+- `ocra review --sarif-evidence <file>` shows the reviewers an analyzer's SARIF results on and near the change as evidence to confirm, not as findings; the report's `analyzerEvidence` lists what each tool contributed.
+
+### Changed
+
+- Files at a revision are read through one long-lived `git cat-file --batch-command` (git 2.36 or later) instead of a process per file.
+- `ocra learn` skips what a learning on origin's `ocra/learnings-*` proposal branches records, so a proposal waiting for review, or one closed without merging, is not drafted again; `--propose` names its files apart from theirs, so two proposals never conflict.
+- A run renders its list of changed files once for all its tasks and checks each path against the access policy once; a scripted review of 669 files spent a fifth less time.
+
+### Fixed
+
+- `ocra serve` writes its address and token file in one rename, so a client that finds the file never reads it empty or half written.
+
 ## [0.8.0] - 2026-11-21
 
 ### Added
@@ -439,7 +471,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.5.0...v0.6.0
