@@ -62,7 +62,11 @@ export function scratchRepos(prefix = "ocra-repo-"): {
       return repo;
     },
     removeAll() {
-      for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+      // On Windows a directory stays locked while a git process runs in it,
+      // as an adapter's blob reader does until it goes idle.
+      for (const dir of dirs.splice(0)) {
+        rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      }
     },
   };
 }
