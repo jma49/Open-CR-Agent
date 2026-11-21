@@ -438,6 +438,8 @@ export interface Finding extends ReportedFinding {
     // (undocumented)
     lowConfidence?: boolean;
     // (undocumented)
+    preExisting?: true;
+    // (undocumented)
     provenance: FindingProvenance;
     // (undocumented)
     quote?: QuoteSignature;
@@ -959,6 +961,7 @@ export const reportOutputSchema: z.ZodObject<{
         evidence: z.ZodArray<z.ZodString>;
         code: z.ZodString;
         lowConfidence: z.ZodExactOptional<z.ZodLiteral<true>>;
+        preExisting: z.ZodExactOptional<z.ZodLiteral<true>>;
         provenance: z.ZodExactOptional<z.ZodObject<{
             task: z.ZodString;
             model: z.ZodExactOptional<z.ZodString>;

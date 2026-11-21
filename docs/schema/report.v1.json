@@ -307,6 +307,10 @@
             "type": "boolean",
             "const": true
           },
+          "preExisting": {
+            "type": "boolean",
+            "const": true
+          },
           "provenance": {
             "type": "object",
             "properties": {

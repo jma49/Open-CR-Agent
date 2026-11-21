@@ -7,6 +7,7 @@ import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
 import type { FileDiff, Finding, Verification } from "../domain.js";
 import { errorMessage, OcraError } from "../errors.js";
 import { buildVerificationPrompt, fileExcerpt, verificationResponseSchema } from "./prompt.js";
+import { relatedCode } from "./related.js";
 
 const VERIFY_TIMEOUT_MS = 120_000;
 
@@ -81,14 +82,19 @@ export async function verifyFindings(
     result.checked += group.length;
     const refutedIndexes = new Map<number, string>();
     const outcomes = new Map<number, Verification>();
+    const preExisting = new Set<number>();
     try {
       const patch = options.diffs.find((d) => d.newPath === file)?.patch ?? "";
-      const content = await options.context.readFile(file).catch(() => undefined);
+      const [content, related] = await Promise.all([
+        options.context.readFile(file).catch(() => undefined),
+        relatedCode(file, group, options.context),
+      ]);
       const prompt = buildVerificationPrompt(
         file,
         group,
         patch,
         content === undefined ? undefined : fileExcerpt(content, group),
+        related,
       );
       const answer = await ask(
         {
@@ -110,6 +116,7 @@ export async function verifyFindings(
         if (outcomes.has(index) || refutedIndexes.has(index)) continue;
         if (entry.verdict === "refuted") refutedIndexes.set(index, entry.reason);
         else outcomes.set(index, entry.verdict);
+        if (entry.verdict !== "refuted" && entry.origin === "pre_existing") preExisting.add(index);
       }
     } catch (error) {
       result.warnings.push(
@@ -119,7 +126,11 @@ export async function verifyFindings(
     group.forEach((finding, i) => {
       const reason = refutedIndexes.get(i);
       if (reason === undefined) {
-        result.kept.push({ ...finding, verification: outcomes.get(i) ?? "unchecked" });
+        result.kept.push({
+          ...finding,
+          verification: outcomes.get(i) ?? "unchecked",
+          ...(preExisting.has(i) ? { preExisting: true as const } : {}),
+        });
       } else {
         result.refuted.push({
           fingerprint: finding.fingerprint,

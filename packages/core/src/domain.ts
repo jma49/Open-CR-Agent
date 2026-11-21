@@ -81,6 +81,9 @@ export interface Finding extends ReportedFinding {
   fix?: FindingFix;
   // Set by Verify; absent before it runs, which counts as "unchecked".
   verification?: Verification;
+  // Verify found the problem already in the code the change touches: the
+  // change did not bring it in.
+  preExisting?: true;
   // Carried from the earlier review when people replied to this finding.
   replies?: string[];
 }

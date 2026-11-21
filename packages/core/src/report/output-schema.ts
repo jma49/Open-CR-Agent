@@ -87,6 +87,7 @@ const outputFindingSchema = z.strictObject({
   evidence: z.array(z.string()),
   code: z.string(),
   lowConfidence: z.literal(true).exactOptional(),
+  preExisting: z.literal(true).exactOptional(),
   provenance: z
     .strictObject({ task: z.string(), model: z.string().exactOptional() })
     .exactOptional(),

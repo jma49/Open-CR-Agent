@@ -74,6 +74,53 @@ describe("verifyFindings", () => {
     ]);
   });
 
+  it("marks a finding the verifier traces to code the change did not bring in", async () => {
+    const rt = runtime(() =>
+      JSON.stringify([
+        { index: 0, verdict: "confirmed", origin: "pre_existing" },
+        { index: 1, verdict: "uncertain", origin: "introduced" },
+        { index: 2, verdict: "refuted", reason: "handled above", origin: "pre_existing" },
+        { index: 3, verdict: "confirmed", origin: "upstream" },
+      ]),
+    );
+    const findings = ["old", "new", "wrong", "unknown origin"].map((t) => finding("a.ts", t));
+    const result = await verifyFindings(findings, { ...base, runtime: rt });
+    expect(result.kept.map((f) => [f.title, f.verification, f.preExisting])).toEqual([
+      ["old", "confirmed", true],
+      ["new", "uncertain", undefined],
+      ["unknown origin", "confirmed", undefined],
+    ]);
+    expect(result.refuted.map((f) => f.title)).toEqual(["wrong"]);
+  });
+
+  it("shows the verifier where the quoted code's names are used outside the excerpt", async () => {
+    const rt = runtime(() => "[]");
+    const quoted = {
+      ...finding("a.ts", "retries"),
+      existingCode: "const n = parseRetries(header);",
+    };
+    await verifyFindings([quoted], {
+      ...base,
+      runtime: rt,
+      context: {
+        ...context,
+        searchCode: async (literal) =>
+          literal === "parseRetries"
+            ? [
+                { path: "src/retry.ts", line: 3, text: "export function parseRetries(x) {" },
+                // Inside the excerpt around the finding: already shown.
+                { path: "a.ts", line: 2, text: "const n = parseRetries(header);" },
+              ]
+            : [{ path: "b.ts", line: 1, text: `${literal}Suffix is a different name` }],
+      },
+    });
+    const user = rt.requests[0]?.user ?? "";
+    expect(user).toContain("<ocra_related_code>");
+    expect(user).toContain("src/retry.ts:3: export function parseRetries(x) {");
+    expect(user).not.toContain("a.ts:2:");
+    expect(user).not.toContain("Suffix");
+  });
+
   it("marks findings unchecked when verification fails or cannot run", async () => {
     const failing = runtime(() => "not json");
     const failed = await verifyFindings([finding("a.ts", "x")], { ...base, runtime: failing });

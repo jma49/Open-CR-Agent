@@ -129,6 +129,16 @@ describe("inlineBody", () => {
     expect(body).not.toMatch(/^[ \t]*\//m);
   });
 
+  it("says when Verify traced the problem to code the change did not bring in", () => {
+    const header = (preExisting: boolean) =>
+      inlineBody(
+        finding("d".repeat(16), preExisting ? { preExisting: true } : {}),
+        githubSuggestion,
+      ).split("\n")[1];
+    expect(header(true)).toMatch(/ · pre-existing$/);
+    expect(header(false)).not.toContain("pre-existing");
+  });
+
   it("posts a suggestion only from ocra's own block, not from the model's text", () => {
     const fix = { startLine: 3, endLine: 3, replacement: "y" };
     const body = inlineBody(
