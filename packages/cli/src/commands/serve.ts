@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { errorMessage, type ReviewEvent, type ReviewReport } from "@open-cr-agent/core";
@@ -7,6 +7,7 @@ import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
 import { ocraConfigDir } from "../config/user-dir.js";
 import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
+import { writePrivateFile } from "../io/private-file.js";
 import { UsageError } from "../io/usage-error.js";
 import { Runs } from "../serve/runs.js";
 import { type RunRequest, serveServer } from "../serve/server.js";
@@ -44,10 +45,8 @@ export async function serveCommand(port: number, err: Output, deps: ReviewDeps):
   const address = server.address();
   const url = `http://127.0.0.1:${typeof address === "object" && address ? address.port : port}`;
   const file = stateFile(deps.env, root);
-  await mkdir(join(file, ".."), { recursive: true, mode: 0o700 });
-  await writeFile(file, `${JSON.stringify({ url, token, pid: process.pid, root })}\n`, {
-    mode: 0o600,
-  });
+  // A client polling for the file never reads it half written.
+  await writePrivateFile(file, `${JSON.stringify({ url, token, pid: process.pid, root })}\n`);
   err.write(`[ocra] Serving reviews of ${root} at ${url}; the token is in ${file}\n`);
   await new Promise<void>((resolve) => {
     const stop = deps.onInterrupt?.(() => {
