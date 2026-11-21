@@ -1,5 +1,6 @@
 import {
   errorMessage,
+  type Learning,
   type OcraPlugin,
   type PluginRegistry,
   type ReviewerOverride,
@@ -29,6 +30,7 @@ import { pluginsDir } from "../../plugins/store.js";
 import { sessionsDir } from "../../session/store.js";
 import type { ReviewArgs } from "./args.js";
 import type { ReviewDeps } from "./deps.js";
+import { loadLearnings } from "./learnings.js";
 import type { RuntimeLoaders } from "./runtimes.js";
 import { type AccountVersion, filledByAccount } from "./settings-sources.js";
 import { type ReviewTarget, resolveReviewTarget } from "./target.js";
@@ -54,6 +56,7 @@ export interface ResolvedRun extends ResolvedConfig {
   interrupt: AbortController;
   vcs: VcsAdapter;
   rules: SourcedRule[];
+  learnings: Learning[];
   overrides: ReviewerOverrides;
 }
 
@@ -119,6 +122,7 @@ export async function resolveRun(
       ...registry.rules.map((rule): SourcedRule => ({ ...rule, source: "plugin" })),
       ...resolved.config.rules,
     ],
+    learnings: await loadLearnings(target.trusted, warn),
     overrides: reviewerOverrides(
       resolved.config,
       args,

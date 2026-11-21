@@ -3,7 +3,7 @@ title: 审查规则
 description: 用 AGENTS.md 和按路径生效的规则，把项目约定教给审查员。
 ---
 
-审查员会结合三层指引。
+审查员会结合四层指引。
 
 ## 内置规则
 
@@ -45,6 +45,35 @@ description: 用 AGENTS.md 和按路径生效的规则，把项目约定教给�
 - `rule`：交给审查员的规则文本。
 
 `rules.json` 不合法时审查会报错停止。审查 PR 时从 base 提交读取。
+
+## .ocra/learnings
+
+learning 是团队从以往改动中学到的东西：一次修复补上的 bug、评审者拒绝某种写法的原因。每条是 `.ocra/learnings/` 下的一个 Markdown 文件，文件名就是它的 id（小写字母、数字和连字符），开头是 YAML frontmatter：
+
+```markdown
+---
+title: Release pooled connections on every exit path
+paths: ["src/db/**"]
+symbols: [acquire]
+keywords: [connection pool]
+critical: true
+source: { kind: fix-commit, ref: 3f2a9c1 }
+created: 2026-11-21
+---
+
+`acquire()` hands out a connection that only `release()` returns. An early
+`return` or a `throw` between them leaks it, and the pool runs dry under load.
+```
+
+- `title`、`paths`（glob，至少一个）和 `created`（日期）必填；正文写要检查什么、为什么，最多 4,000 个字符。
+- `symbols`：补丁里用到这些标识符时，不论路径都适用；按完整标识符匹配。
+- `keywords`：在补丁里匹配的词或短语，不管写法（`connection pool` 能匹配 `ConnectionPool` 和 `connection_pool`）。
+- `critical`：路径匹配时一定交给审查员。
+- `source`：来源（`kind`：`fix-commit`、`review-feedback`、`document`、`remember`、`incident` 或 `manual`；`ref`：提交、PR 或链接）。
+
+每个审查任务拿到适用于它那些文件的 learning，在任何模型调用之前选好：路径匹配排第一，其次是符号，再次是关键词。最多给 5 条，正文合计不超过 8,000 个字符；路径匹配的 critical 条目另外全部给出（最多 10 条）。审查员把它们当作数据读，只报告这次改动本身的问题。报告的 `learnings` 列出给过的每一条，以及它去了哪些分组。
+
+learning 读取被审查的版本，审查 PR 时和 `rules.json` 一样从 base 提交读取，所以 PR 无法加一条来影响对它自己的审查。不合法的文件会被跳过并给出警告；最多读 500 个文件，每个不超过 16 KB。
 
 ## 来自插件的规则
 

@@ -104,6 +104,33 @@ export class LocalGitAdapter implements VcsAdapter {
     }
   }
 
+  // The files directly in a directory of the reviewed revision, as readFile
+  // takes their paths; in the workspace, those git tracks or would.
+  async listFiles(dir: string): Promise<string[]> {
+    const { root, head } = await this.target();
+    const inside = relativeInside(root, resolve(root, dir));
+    if (inside === undefined) return [];
+    const prefix = `${inside.split(sep).join("/")}/`;
+    const paths =
+      head === undefined
+        ? (
+            await git(
+              ["ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", prefix],
+              {
+                cwd: root,
+              },
+            )
+          ).split("\0")
+        : (await git(["ls-tree", "-z", head, "--", prefix], { cwd: root }))
+            .split("\0")
+            .filter((entry) => entry.split(" ")[1] === "blob")
+            .map((entry) => entry.slice(entry.indexOf("\t") + 1));
+    const direct = paths.filter(
+      (p) => p.startsWith(prefix) && !p.slice(prefix.length).includes("/"),
+    );
+    return [...new Set(direct)].sort();
+  }
+
   async searchCode(literal: string): Promise<CodeMatch[]> {
     const { root, base, head } = await this.target();
     const attributes = head === undefined ? [] : await attributesFrom(root, base);

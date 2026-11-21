@@ -140,6 +140,7 @@ ocra review [options]
 - `refuted`（被核查丢弃的问题及原因）、`unverifiedCriticals`（核查没能检查的 critical 数量）、`judgement`（Judge 合并、丢弃或重新定级的记录）；
 - 问题列表，以及 `rereview`：已修复、未再报告、未重新检查、未改动或已驳回的旧问题，记录了报告者时各带 `reviewer`；
 - `remembered`：被 memory 接受的问题，带来源 `source`（`repository` 表示 `.ocra/memory.json`，`account` 表示你的 [ocra Cloud memory](#ocra-cloud-账户里的-memory)）；维护者的放行在 `changeRequest.override`；
+- `learnings`：任务拿到的每条 [learning](./rules#ocralearnings)，带 `title`、`critical`、`source` 和它去过的分组 `bundles`；
 - token 用量与花费；设置了花费上限时的 `spendLimit`（`reached` 为 `review` 表示审查任务因此停止，`total` 表示整个上限用完）；警告信息。
 
 这个格式是一份约定（`"version": 1`）：后续版本只会新增可选字段和取值集合里的新值，否则就会改版本号。遇到不认识的覆盖状态时，当作没有审查。

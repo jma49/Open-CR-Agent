@@ -9,6 +9,7 @@ This page describes the mechanisms; [Threat model](./threat-model) says what a h
 
 - The reviewer's instructions, the change request title and description, and the diff of the files under review.
 - `AGENTS.md` and matching `.ocra/rules.json` rules.
+- The `.ocra/learnings/` entries selected for each task.
 - File content and search results that reviewers request through their tools.
 - Accepted findings from `.ocra/memory.json` for the files under review.
 - For verification, each file's findings with its diff and the lines around them; for judging, the findings with the change request's title and description.
@@ -56,12 +57,12 @@ Provider keys are read from environment variables only and never written to conf
 ## CI
 
 - Store keys as CI secrets.
-- `ocra review --pr`, the GitHub Action and `ocra review --mr` read `.ocra/config.json`, `.ocra/rules.json` and `AGENTS.md` from the base commit and never load repository plugins ([GitHub](./github), [GitLab](./gitlab)).
+- `ocra review --pr`, the GitHub Action and `ocra review --mr` read `.ocra/config.json`, `.ocra/rules.json`, `.ocra/learnings/` and `AGENTS.md` from the base commit and never load repository plugins ([GitHub](./github), [GitLab](./gitlab)).
 - [Pull requests from forks](./github#pull-requests-from-forks) run on `pull_request_target`, which gives the job your secrets: acceptable only because ocra runs nothing from the pull request, so never add a step that does.
 
 ## Reviewing code you do not trust
 
-`.ocra/config.json` can list plugins, and plugins run code. `ocra review --no-repo-config` ignores that file and takes models from `OCRA_MODEL_*`. `.ocra/memory.json` (which can silence findings), `.ocra/rules.json` and `AGENTS.md` then come from the `--from` commit with `--from`/`--to`, and are otherwise not used. `ocra-eval` always passes it.
+`.ocra/config.json` can list plugins, and plugins run code. `ocra review --no-repo-config` ignores that file and takes models from `OCRA_MODEL_*`. `.ocra/memory.json` (which can silence findings), `.ocra/rules.json`, `.ocra/learnings/` and `AGENTS.md` then come from the `--from` commit with `--from`/`--to`, and are otherwise not used. `ocra-eval` always passes it.
 
 ## Reporting a vulnerability
 
