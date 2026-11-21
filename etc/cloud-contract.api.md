@@ -353,6 +353,45 @@ export const GATEWAY_PATH: RegExp;
 // @public
 export function isCloudModel(model: string): boolean;
 
+// @public
+export const LEARNING_ID: RegExp;
+
+// @public (undocumented)
+export const LEARNING_SOURCES: readonly ["fix-commit", "review-feedback", "document", "remember", "incident", "manual"];
+
+// @public (undocumented)
+export type LearningFrontmatter = z.output<typeof learningFrontmatterSchema>;
+
+// @public
+export const learningFrontmatterSchema: z.ZodObject<{
+    title: z.ZodString;
+    paths: z.ZodArray<z.ZodString>;
+    symbols: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    keywords: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    critical: z.ZodDefault<z.ZodBoolean>;
+    source: z.ZodOptional<z.ZodObject<{
+        kind: z.ZodEnum<{
+            document: "document";
+            "fix-commit": "fix-commit";
+            incident: "incident";
+            manual: "manual";
+            remember: "remember";
+            "review-feedback": "review-feedback";
+        }>;
+        ref: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>;
+    created: z.ZodISODate;
+}, z.core.$strip>;
+
+// @public
+export function learningIdOf(path: string): string | undefined;
+
+// @public
+export const LEARNINGS_DIR = ".ocra/learnings";
+
+// @public (undocumented)
+export type LearningSourceKind = (typeof LEARNING_SOURCES)[number];
+
 // @public (undocumented)
 export type LiveFinding = z.infer<typeof liveFindingSchema>;
 
@@ -390,6 +429,15 @@ export const MAX_FIELD = 4096;
 
 // @public
 export const MAX_FINDINGS = 200;
+
+// @public
+export const MAX_LEARNING_BODY = 4000;
+
+// @public
+export const MAX_LEARNING_BYTES = 16384;
+
+// @public
+export const MAX_LEARNINGS = 500;
 
 // @public
 export const MAX_MEMORY_PER_REPO = 500;
@@ -1196,6 +1244,12 @@ export const sharedFindingSchema: z.ZodObject<{
     redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
 }, z.core.$strip>;
+
+// @public
+export function splitLearning(text: string): {
+    frontmatter: string;
+    body: string;
+} | undefined;
 
 // @public (undocumented)
 export type Stage = z.infer<typeof stageSchema>;

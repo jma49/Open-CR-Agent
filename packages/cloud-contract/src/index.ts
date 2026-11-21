@@ -43,6 +43,19 @@ export {
   usageSchema,
 } from "./events.js";
 export {
+  LEARNING_ID,
+  LEARNING_SOURCES,
+  LEARNINGS_DIR,
+  type LearningFrontmatter,
+  type LearningSourceKind,
+  learningFrontmatterSchema,
+  learningIdOf,
+  MAX_LEARNING_BODY,
+  MAX_LEARNING_BYTES,
+  MAX_LEARNINGS,
+  splitLearning,
+} from "./learnings.js";
+export {
   MAX_CHAIN,
   MAX_FIELD,
   MAX_FINDINGS,
