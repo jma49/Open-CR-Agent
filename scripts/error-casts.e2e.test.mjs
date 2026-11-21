@@ -19,7 +19,10 @@ function lint(name, source) {
   const file = join(dir, name);
   writeFileSync(file, source);
   const biome = join(root, "node_modules", ".bin", "biome");
-  return spawnSync(biome, ["lint", `--config-path=${root}`, file], { encoding: "utf8" });
+  // The file is outside the repository, so its ignore file cannot apply (Biome 2.6 crashes on it).
+  return spawnSync(biome, ["lint", `--config-path=${root}`, "--vcs-enabled=false", file], {
+    encoding: "utf8",
+  });
 }
 
 describe("the error-casts Biome plugin", () => {
