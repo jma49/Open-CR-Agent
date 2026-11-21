@@ -1,22 +1,12 @@
 import { createHash } from "node:crypto";
-import { createRequire } from "node:module";
 import type { FileSymbols, SymbolExtractor } from "@open-cr-agent/core";
 import { gitBlobId, type SymbolCache } from "./cache.js";
-import { allLanguages, type LanguageSpec, languageOf } from "./languages.js";
+import { type LanguageSpec, languageOf } from "./languages.js";
 import { parseSymbols } from "./parse.js";
+import { VERSION } from "./version.js";
 
 // Larger files are generated or data more often than code a change calls.
 const MAX_FILE_CHARS = 1_000_000;
-
-// Changes whenever a query or the grammars do, so no cached entry outlives
-// the parser that made it.
-const VERSION = createHash("sha256")
-  .update(
-    (createRequire(import.meta.url)("@vscode/tree-sitter-wasm/package.json") as { version: string })
-      .version,
-  )
-  .update(JSON.stringify(allLanguages()))
-  .digest("hex");
 
 export interface TreeSitterOptions {
   // Shared across runs; absent: symbols are kept for this extractor's life.
