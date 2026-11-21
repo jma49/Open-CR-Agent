@@ -2,6 +2,7 @@ import type { z } from "zod";
 import type { AppliedSampling, Usage } from "../contracts.js";
 import type { ChangeRequest, Finding, PriorFinding } from "../domain.js";
 import type { JudgeDecisions } from "../judge/judge.js";
+import type { LearningUse } from "../knowledge/learning.js";
 import type { SkippedCell } from "../matrix/matrix.js";
 import type { RememberedEntry } from "../memory/memory.js";
 import type { RefutedFinding } from "../verify/verify.js";
@@ -39,6 +40,7 @@ export function toReportOutput(report: ReviewReport): ReportOutput {
     warnings: [...report.warnings],
   };
   if (report.scope) output.scope = outputScope(report.scope);
+  if (report.learnings) output.learnings = report.learnings.map(outputLearning);
   if (report.judgement) output.judgement = outputJudgement(report.judgement);
   if (report.anchoring) output.anchoring = outputAnchoring(report.anchoring);
   if (report.spendLimit) output.spendLimit = outputSpendLimit(report.spendLimit);
@@ -54,6 +56,18 @@ export function toReportOutput(report: ReviewReport): ReportOutput {
     };
   }
   return output;
+}
+
+function outputLearning(l: LearningUse): Output<"learnings">[number] {
+  return {
+    id: l.id,
+    title: l.title,
+    critical: l.critical,
+    ...(l.source
+      ? { source: { kind: l.source.kind, ...(l.source.ref ? { ref: l.source.ref } : {}) } }
+      : {}),
+    bundles: [...l.bundles],
+  };
 }
 
 function outputChangeRequest(c: ChangeRequest): Output<"changeRequest"> {

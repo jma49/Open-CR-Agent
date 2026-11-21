@@ -2,11 +2,13 @@ import { effortWarnings, resolveAgents } from "../agent/settings.js";
 import { addUsage, emptyUsage, unpricedCalls } from "../agent/usage.js";
 import type { Usage } from "../contracts.js";
 import type { Finding, Severity } from "../domain.js";
+import type { LearningUse } from "../knowledge/learning.js";
 import { type ReviewReport, summarizeAnchoring } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { CheckStage } from "./check-stage.js";
 import type { ExecuteStage, StageContext } from "./execute-stage.js";
 import type { FilterStage } from "./filter-stage.js";
+import type { ReviewPlan } from "./plan.js";
 import { runProvenance } from "./provenance.js";
 
 export interface RunFacts {
@@ -45,6 +47,8 @@ export function assembleReport(run: RunFacts, stages: Stages, context: StageCont
     const { fixed, notReproduced, notRechecked, unchanged, dismissed } = filtered.reconciled;
     report.rereview = { fixed, notReproduced, notRechecked, unchanged, dismissed };
   }
+  const learnings = learningUses(plan);
+  if (learnings.length > 0) report.learnings = learnings;
   if (plan.scope) report.scope = plan.scope;
   if (plan.prior.warning) report.warnings.push(plan.prior.warning);
   return report;
@@ -121,4 +125,22 @@ function countMissedCriticals(findings: readonly Finding[], missed: readonly str
       f.verification === "unchecked" &&
       set.has(f.fingerprint),
   ).length;
+}
+
+function learningUses(plan: ReviewPlan): LearningUse[] {
+  const uses = new Map<string, LearningUse>();
+  for (const bundle of plan.bundles) {
+    for (const l of plan.learnings(bundle.files).selected) {
+      const use = uses.get(l.id) ?? {
+        id: l.id,
+        title: l.title,
+        critical: l.critical,
+        ...(l.source ? { source: l.source } : {}),
+        bundles: [],
+      };
+      use.bundles.push(bundle.label);
+      uses.set(l.id, use);
+    }
+  }
+  return [...uses.values()].sort((a, b) => (a.id < b.id ? -1 : 1));
 }

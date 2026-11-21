@@ -107,6 +107,9 @@ describe("output contract", () => {
       },
       spendLimit: { usd: 2, reached: "review" },
       provenance: { ocraVersion: "v", promptHash: "p", configHash: "c", sampling: {} },
+      learnings: [
+        { id: "l", title: "t", critical: true, source: { kind: "manual" }, bundles: ["b"] },
+      ],
     } as ReviewReport;
     const output = toReportOutput(full);
     expect(Object.keys(output).sort()).toEqual(
@@ -117,6 +120,7 @@ describe("output contract", () => {
         "coverage",
         "findings",
         "judgement",
+        "learnings",
         "provenance",
         "refuted",
         "remembered",
