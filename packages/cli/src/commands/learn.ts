@@ -33,13 +33,16 @@ Drafts learnings for .ocra/learnings/, one helper model call each:
 A draft is kept when it is not a duplicate and the selection gives it to
 the change or file it came from. Kept learnings are written to the working
 tree, to commit or discard, or with --propose opened as a GitHub pull
-request that merges once its checks pass (learnings.requireReview: true
-leaves it to a person). What an existing learning records is skipped.
+request or GitLab merge request that merges once its checks pass
+(learnings.requireReview: true leaves it to a person). What an existing learning records is skipped.
 
 Options:
-  --propose           Open a pull request with them instead (needs GITHUB_TOKEN)
-  --pr <n>, --repo    With remember: the GitHub pull request (needs GITHUB_TOKEN)
-  --mr <n>, --project With remember: the GitLab merge request (needs GITLAB_TOKEN)
+  --propose           Open a pull or merge request with them instead
+  --repo <owner/name> The GitHub repository: --pr's, or where --propose opens
+                      it (needs GITHUB_TOKEN)
+  --project <id|path> The GitLab project: --mr's, or where --propose opens
+                      it (needs GITLAB_TOKEN)
+  --pr <n>, --mr <n>  With remember: the pull or merge request it reads
   --max <n>           Drafts at most (default: ${DEFAULT_MAX})
   --max-cost-usd <n>  Spend limit (default: the configuration's maxCostUsd)
   -h, --help          Show help
@@ -126,10 +129,12 @@ export async function learnCommand(
         created,
         deps,
         SOURCES[args.source as Source].what,
+        args.proposeOn,
       );
       for (const warning of proposed.warnings) run.warn(warning);
       io.out.write(`${forTerminal(proposed.webUrl)}\n`);
-      io.err.write(`[ocra] Pull request ${MERGE[proposed.merge]}\n`);
+      const noun = proposed.platform === "gitlab" ? "Merge request" : "Pull request";
+      io.err.write(`[ocra] ${noun} ${MERGE[proposed.merge]}\n`);
     } else {
       for (const kept of result.kept) {
         const text = learningFile(kept, created);

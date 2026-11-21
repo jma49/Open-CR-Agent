@@ -140,7 +140,7 @@ ocra 的各个包抛出带 `code` 的 `OcraError`（或其子类）：`isOcraErr
 
 `resolveGitHubTarget` 和 `resolveGitLabTarget` 像 `--pr` 和 `--mr` 一样找到 PR 或 Merge Request。它们接收 `ref`（编号，以及你指定时的仓库或项目）、`env`（CLI 的令牌、仓库和 API 变量）、`origin()`（检出目录的 origin，只在需要时读取）、`warn` 和可选的 `fetch`，返回 base 和 head commit、拉取 head 的 refspec、变更请求的网页地址，以及 `createVcs(registry, local, settings)`：commit 进入你的克隆后用它创建适配器，`local` 提供代码和历史，`settings` 是 `GitHubSettings`（`botLogin`、`requestChanges`）或 `GitLabSettings`（暂无设置）。拉取 commit、从 base 读取配置、指南和规则（`readTrusted`）由你负责，做法见 `packages/cli/src/commands/review/target.ts`。适配器自己的 `createVcs` 选项不是约定，请通过这两个函数使用。
 
-`proposeOnGitHub(options, proposal)`（`@open-cr-agent/vcs-github`）像 `ocra learn mine --propose` 一样用新文件开一个 pull request：`options` 接受 `env`、`origin()`，以及可选的 `repository`、`fetch` 和 `signal`；`proposal`（`@open-cr-agent/vcs-platform` 的 `FileProposal`）给出分支、标题、正文、提交信息、文件，以及是否在检查通过后合并。它返回 pull request 的地址和合并方式。
+`proposeOnGitHub(options, proposal)`（`@open-cr-agent/vcs-github`）像 `ocra learn mine --propose` 一样用新文件开一个 pull request：`options` 接受 `env`、`origin()`，以及可选的 `repository`、`fetch` 和 `signal`；`proposal`（`@open-cr-agent/vcs-platform` 的 `FileProposal`）给出分支、标题、正文、提交信息、文件，以及是否在检查通过后合并。它返回 pull request 的地址和合并方式。`proposeOnGitLab(options, proposal)`（`@open-cr-agent/vcs-gitlab`）对 GitLab Merge Request 做同样的事，项目作为 `repository`；可选的 `sleep` 替换等待新 Merge Request 流水线的那几次等待，供测试使用。
 
 ## 信任
 

@@ -159,6 +159,44 @@ describe("ocra learn mine", () => {
     expect(github.calls.some((c) => c.path.endsWith("/graphql"))).toBe(false);
   });
 
+  it("with --propose --project, opens a GitLab merge request instead", async () => {
+    const repo = repoWithFix();
+    const gitlab = fakeGitLab();
+    const env = { GITLAB_TOKEN: "glpat-test", CI_API_V4_URL: "https://gitlab.example.com/api/v4" };
+    const result = await learn(repo.dir, [], ["--propose", "--project", "g/p"], {
+      env,
+      fetch: gitlab.fetch,
+    });
+    expect(result.code).toBe(0);
+    expect(result.out).toBe("https://gitlab.example.com/g/p/-/merge_requests/4\n");
+    expect(result.err).toContain("Merge request opened; it merges once its checks pass");
+    const commit = gitlab.body("POST", "/repository/commits") as {
+      actions: { action: string; file_path: string }[];
+    };
+    expect(commit.actions).toMatchObject([
+      {
+        action: "create",
+        file_path: ".ocra/learnings/release-pooled-connections-on-every-exit-path.md",
+      },
+    ]);
+    expect(gitlab.body("PUT", "/merge_requests/4/merge")).toMatchObject({
+      merge_when_pipeline_succeeds: true,
+    });
+    expect(existsSync(join(repo.dir, ".ocra"))).toBe(false);
+    expect(result.out + result.err).not.toContain("glpat-test");
+  });
+
+  it("asks which platform --propose means when nothing tells", async () => {
+    const repo = repoWithFix();
+    const env = { GITHUB_TOKEN: "ghs_test", GITLAB_TOKEN: "glpat-test" };
+    const result = await learn(repo.dir, [], ["--propose"], { env });
+    expect(result.code).not.toBe(0);
+    expect(result.err).toContain("pass --repo <owner/name> or --project <id|path>");
+    expect((await learn(repo.dir, [], ["--project", "g/p"])).err).toContain(
+      "--project with --mr or --propose",
+    );
+  });
+
   it("drafts from the findings the team accepted, with their reason", async () => {
     const repo = repos.create();
     const fingerprint = "0123456789abcdef";
@@ -272,6 +310,38 @@ function fakeGitHub() {
     calls.push(call);
     const answer = answers[`${call.method} ${path}`];
     return new Response(JSON.stringify(answer ?? { message: "Not Found" }), {
+      status: answer ? 200 : 404,
+      headers: { "Content-Type": "application/json" },
+    });
+  }) as typeof fetch;
+  return {
+    calls,
+    fetch: fetchImpl,
+    body: (method: string, path: string) =>
+      calls.find((c) => c.method === method && c.path === path)?.body,
+  };
+}
+
+function fakeGitLab() {
+  const calls: { method: string; path: string; body?: unknown }[] = [];
+  const mr = { iid: 4, web_url: "https://gitlab.example.com/g/p/-/merge_requests/4" };
+  const answers: Record<string, unknown> = {
+    "GET ": { default_branch: "main" },
+    "POST /repository/commits": { id: "c" },
+    "POST /merge_requests": mr,
+    "GET /merge_requests/4": { ...mr, merge_status: "can_be_merged", head_pipeline: { id: 1 } },
+    "PUT /merge_requests/4/merge": { ...mr, state: "opened", merge_when_pipeline_succeeds: true },
+  };
+  const fetchImpl = (async (url: string, init?: RequestInit) => {
+    const path = url.replace("https://gitlab.example.com/api/v4/projects/g%2Fp", "");
+    const call = {
+      method: init?.method ?? "GET",
+      path,
+      body: init?.body ? JSON.parse(String(init.body)) : undefined,
+    };
+    calls.push(call);
+    const answer = answers[`${call.method} ${path}`];
+    return new Response(JSON.stringify(answer ?? { message: "404 Not Found" }), {
       status: answer ? 200 : 404,
       headers: { "Content-Type": "application/json" },
     });

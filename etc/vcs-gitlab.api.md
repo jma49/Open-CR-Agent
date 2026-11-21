@@ -4,9 +4,12 @@
 
 ```ts
 
+import type { FileProposal } from '@open-cr-agent/vcs-platform';
 import { OcraError } from '@open-cr-agent/core';
 import type { OcraPlugin } from '@open-cr-agent/core';
 import type { PlatformTarget } from '@open-cr-agent/vcs-platform';
+import type { ProposedChange } from '@open-cr-agent/vcs-platform';
+import type { ProposeOptions } from '@open-cr-agent/vcs-platform';
 import type { ResolveTargetOptions } from '@open-cr-agent/vcs-platform';
 
 // @public (undocumented)
@@ -21,6 +24,9 @@ export const gitlabPlugin: OcraPlugin;
 
 // @public (undocumented)
 export type GitLabSettings = Record<string, never>;
+
+// @public (undocumented)
+export function proposeOnGitLab(options: ProposeOptions, proposal: FileProposal): Promise<ProposedChange>;
 
 // @public (undocumented)
 export function resolveGitLabTarget(options: ResolveTargetOptions): Promise<PlatformTarget<GitLabSettings>>;

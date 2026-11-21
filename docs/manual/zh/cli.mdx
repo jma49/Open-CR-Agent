@@ -243,9 +243,11 @@ ocra learn mine --max-cost-usd 0.5 # 花费到上限就停止起草
 
 ### 通过 pull request 写回
 
-`ocra learn mine --propose` 不写工作区：它把保留的 learning 开成一个 GitHub pull request，在默认分支上新建 `ocra/learnings-<时间>` 分支并提交一次，全部通过 GitHub API 完成（不从本地 push）。需要有 contents 和 pull request 写权限的 `GITHUB_TOKEN`（或 `GH_TOKEN`）；仓库取 `GITHUB_REPOSITORY`，否则取 origin。pull request 列出每条 learning 和它来自的提交，命令打印它的地址。
+`ocra learn mine --propose` 不写工作区：它把保留的 learning 开成一个 GitHub pull request 或 GitLab Merge Request，在默认分支上新建 `ocra/learnings-<时间>` 分支并提交一次，全部通过平台 API 完成（不从本地 push）。`--repo <owner/name>` 选 GitHub，`--project <id|path>` 选 GitLab；两者都没给时，平台依次取 `--pr` 或 `--mr` 的平台（用于 `remember`）、所在的 CI（GitHub Actions 或 GitLab CI）、origin 的主机（github.com 或 gitlab.com），最后是唯一设置了令牌的那个平台。在 GitHub 上需要有 contents 和 pull request 写权限的 `GITHUB_TOKEN`（或 `GH_TOKEN`）；仓库取 `--repo`，其次 `GITHUB_REPOSITORY`，否则取 origin。在 GitLab 上需要有 api scope 和 Developer 角色的 `GITLAB_TOKEN`，发往的地址与[审查](./gitlab)时相同；项目取 `--project`，其次 `CI_PROJECT_ID`，否则取 origin。变更请求列出每条 learning 和它的来源，命令打印它的地址。
 
 pull request 设为检查通过后自动合并（仓库允许 squash 就用 squash，其次 rebase，再次 merge commit）；如果它不需要任何检查，就立即合并。在 `.ocra/config.json` 里设 `"learnings": { "requireReview": true }`，就留给人来审查和合并。仓库关闭了 auto-merge，或 GitHub 拒绝时，ocra 给出警告并让 pull request 保持打开。用 workflow 自己的 `GITHUB_TOKEN` 开的 pull request 不会触发任何 workflow，必需的检查永远不会报告结果：如果分支保护要求检查，请用 GitHub App 或个人 token。
+
+在 GitLab 上，Merge Request 设为流水线成功后合并，使用项目自己的合并方式，合并后删除分支。GitLab 会立即合并没有运行中流水线的 Merge Request，所以 ocra 先最多等约 15 秒，等新分支触发的流水线；到时仍没有，就说明它不需要任何检查，立即合并。项目要求流水线成功才能合并却没有流水线，或 GitLab 拒绝时，ocra 给出警告并让 Merge Request 保持打开。用 `GITLAB_TOKEN` 做的提交和任何 push 一样会触发项目的流水线。
 
 ## ocra metrics
 
