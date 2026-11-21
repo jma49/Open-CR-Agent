@@ -81,6 +81,14 @@ node packages/eval/dist/main.js golden-import --from aacr --limit 50   # 免费
 
 候选只是复述评审评论，不是已确认的缺陷，而且 AACR-Bench 的评论大多由 AI 模型写成（见其 `is_ai_comment` 字段）：每条断言的 `origin` 和 `producer` 写明评论出自谁（`human-review` 与 `human`，或 `ai-reference-vetted` 与模型名），模型写的评论，以及由人写但排在前三条之后的评论，在核查把它改为必需之前都是可选的。`source.ref` 写明数据集行号、许可证是如何读出的，并注明未经人工核对；`source.date` 是 head 提交的日期；每个 `minSeverity` 都是 `suggestion`，没有 `forbid`。`source.licence` 取自仓库在 `head` 处根目录的文件（`LICENSE`、`COPYING` 等许可证文本，以及 `package.json`、`composer.json`、`Cargo.toml` 或 `pyproject.toml` 的 license 字段），前提是它们一致指向允许清单上的同一个许可证。其他情况一律保留 `NOASSERTION`，带着它的用例无法加载：没有许可证文件、无法识别的文本、多个许可证可选、未写明 `-only` 或 `-or-later` 的 GNU 文本，或不在允许清单上的许可证（名称写在 `source.ref` 中）。请按 `evals/golden/README.md` 对照 `head` 处的代码核对用例，设置严重级别，补充 `forbid` 范围，确认许可证，重新命名，再移入 `evals/golden/`。
 
+`golden-import --from fixes` 则从仓库自己的历史中写出候选，标签来自提交合并后发生的事，而不是任何人的判断：
+
+```bash
+node packages/eval/dist/main.js golden-import --from fixes --repo jma49/Open-CR-Agent --repo-dir ../ocra-clone   # 免费
+```
+
+它读取本地克隆的 first-parent 历史（只读 git 对象：不检出，也不运行仓库里的任何东西）。对每个最多改动 5 个源码文件（不含文档、测试、快照、锁文件和数据）的修复或回滚（主题为 `fix:`、`revert:`，或写了 fix、bug），它把修复改写或删除的行 blame 到引入这些行的提交上（SZZ 方法）。这样的提交如果只有一个父提交、改动不超过 `--max-change-lines`（默认 300）行、且还不是黄金用例，就成为一个以其父提交为基线的候选：每个修复一条断言，取它最短的一段连续行（最多 15 行，空行、括号和注释不计）作为断言，修复的其他位置放进 `also`，最多 3 个修复，`origin: "author-fix"`，`producer: "szz"`，修复主题提到安全时类别为 security，否则为 correctness，`minSeverity: "suggestion"`。许可证取自该提交根目录的文件。`--repo` 是克隆对应的 GitHub 仓库，运行时会克隆它；`--out` 默认为 `.ocra/eval/fix-golden-candidates`，`summary.md` 按原因统计被跳过的修复和被略去的提交。和所有候选一样，它们未经核实：修复也可能改写了并非缺陷所在的行。
+
 ### 黄金集计分与标注
 
 黄金集的运行会在 `summary.md` 里加上自己的指标。命中断言（必需或可选）的问题算正确，其余按标注计：
