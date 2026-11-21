@@ -54,6 +54,13 @@ describe("parseReviewArgs", () => {
     );
   });
 
+  it("collects --sarif-evidence files, with --plan too", () => {
+    expect(
+      parseReviewArgs(["--plan", "--sarif-evidence", "a.sarif", "--sarif-evidence", "b.sarif"]),
+    ).toMatchObject({ plan: true, sarifEvidence: ["a.sarif", "b.sarif"] });
+    expect(parseReviewArgs([])).not.toHaveProperty("sarifEvidence");
+  });
+
   it("takes a --graph file, and refuses it empty or with --plan", () => {
     expect(parseReviewArgs(["--graph", "graph.json"])).toMatchObject({ graph: "graph.json" });
     expect(parseReviewArgs([])).not.toHaveProperty("graph");

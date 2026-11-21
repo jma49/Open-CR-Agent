@@ -36,6 +36,7 @@ const SECTIONS = [
   "file_excerpt",
   "related_code",
   "callers",
+  "analyzer_results",
   "review_plan",
   "reply",
 ] as const;

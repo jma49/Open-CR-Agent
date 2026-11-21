@@ -7,6 +7,13 @@ import { errorMessage, OcraError } from "../errors.js";
 
 const message = z.looseObject({ text: z.string().optional() });
 
+// Tags such as "security" and CWE ids; a log that writes them in another
+// shape loses them, never the result.
+const properties = z
+  .looseObject({ tags: z.array(z.string()).optional().catch(undefined) })
+  .optional()
+  .catch(undefined);
+
 const region = z.looseObject({
   startLine: z.int().positive(),
   endLine: z.int().positive().optional(),
@@ -31,6 +38,7 @@ const rule = z.looseObject({
   fullDescription: message.optional(),
   helpUri: z.string().optional(),
   defaultConfiguration: z.looseObject({ level: z.string().optional() }).optional(),
+  properties,
 });
 
 const result = z.looseObject({
@@ -39,6 +47,7 @@ const result = z.looseObject({
   level: z.string().optional(),
   message,
   locations: z.array(location).optional(),
+  properties,
 });
 
 const sarifRunSchema = z.looseObject({

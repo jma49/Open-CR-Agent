@@ -5,6 +5,7 @@ import {
   type PluginRegistry,
   type ReviewerOverride,
   type ReviewerOverrides,
+  type SarifLog,
   type SourcedRule,
   sessionJsonlPlugin,
   startPlugins,
@@ -32,6 +33,7 @@ import type { ReviewArgs } from "./args.js";
 import type { ReviewDeps } from "./deps.js";
 import { loadLearnings } from "./learnings.js";
 import type { RuntimeLoaders } from "./runtimes.js";
+import { loadSarifLogs } from "./sarif-input.js";
 import { type AccountVersion, filledByAccount } from "./settings-sources.js";
 import { type ReviewTarget, resolveReviewTarget } from "./target.js";
 
@@ -57,6 +59,7 @@ export interface ResolvedRun extends ResolvedConfig {
   vcs: VcsAdapter;
   rules: SourcedRule[];
   learnings: Learning[];
+  sarifEvidence: SarifLog[];
   overrides: ReviewerOverrides;
 }
 
@@ -127,6 +130,7 @@ export async function resolveRun(
       ...resolved.config.rules,
     ],
     learnings: await loadLearnings(target.trusted, warn),
+    sarifEvidence: await loadSarifLogs(args.sarifEvidence ?? [], deps.cwd, "--sarif-evidence"),
     overrides: reviewerOverrides(
       resolved.config,
       args,

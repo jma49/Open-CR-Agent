@@ -5,6 +5,7 @@ import type { Finding, Severity } from "../domain.js";
 import type { LearningUse } from "../knowledge/learning.js";
 import { type ReviewReport, summarizeAnchoring } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
+import { evidenceUses } from "../sarif/evidence.js";
 import type { CheckStage } from "./check-stage.js";
 import type { ExecuteStage, StageContext } from "./execute-stage.js";
 import type { FilterStage } from "./filter-stage.js";
@@ -49,6 +50,8 @@ export function assembleReport(run: RunFacts, stages: Stages, context: StageCont
   }
   const learnings = learningUses(plan);
   if (learnings.length > 0) report.learnings = learnings;
+  const evidence = evidenceUses(plan.evidence, plan.bundles);
+  if (evidence.length > 0) report.analyzerEvidence = evidence;
   if (plan.scope) report.scope = plan.scope;
   if (plan.prior.warning) report.warnings.push(plan.prior.warning);
   return report;

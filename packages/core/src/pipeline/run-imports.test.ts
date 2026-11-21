@@ -66,4 +66,49 @@ describe("review with SARIF logs", () => {
     );
     expect(report.verdict).not.toBe("approved");
   });
+
+  it("shows a log given as evidence to the reviewers, and imports nothing from it", async () => {
+    const rt = runtime(async function* (spec) {
+      yield { type: "done", taskId: spec.taskId };
+    });
+    const log = parseSarifLog(
+      JSON.stringify({
+        version: "2.1.0",
+        runs: [
+          {
+            tool: { driver: { name: "ESLint", version: "9.0.0" } },
+            results: [
+              {
+                ruleId: "no-unused-vars",
+                level: "error",
+                message: { text: "'b' is assigned a value but never used." },
+                locations: [
+                  {
+                    physicalLocation: {
+                      artifactLocation: { uri: "src/b.ts" },
+                      region: { startLine: 2 },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    const report = await review({
+      vcs: vcs({ "src/b.ts": "keep\nconst b = 2;\n" }, twoFiles),
+      runtime: rt,
+      sarifEvidence: [log],
+      stages: { verify: false, judge: false },
+    });
+    expect(report.tasks.map((t) => t.taskId)).toEqual(["correctness-1"]);
+    expect(report.findings).toEqual([]);
+    expect(rt.specs[0]?.userPrompt).toContain(
+      "- src/b.ts:2 ESLint no-unused-vars (critical, on the change): 'b' is assigned a value but never used.",
+    );
+    expect(report.analyzerEvidence).toEqual([
+      { tool: "ESLint", version: "9.0.0", results: 1, bundles: [report.bundles[0]?.label] },
+    ]);
+  });
 });

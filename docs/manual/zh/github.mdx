@@ -175,6 +175,8 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
+噪音多的工具改用 `--sarif-evidence` 传入日志：审查员会看到落在改动上和改动附近的结果，只报告自己确认过的（[SARIF 作为证据](./cli#sarif-作为证据)）。
+
 导入用 Semgrep 1.178.0 的日志测试过；这个 workflow 还没在 CI 里端到端跑过。
 
 ## 强制放行阻塞的结论

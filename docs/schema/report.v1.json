@@ -462,6 +462,37 @@
         "additionalProperties": false
       }
     },
+    "analyzerEvidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "results": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "bundles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tool",
+          "results",
+          "bundles"
+        ],
+        "additionalProperties": false
+      }
+    },
     "judgement": {
       "type": "object",
       "properties": {

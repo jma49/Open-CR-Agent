@@ -13,6 +13,7 @@ import type { JudgeDecisions } from "../judge/judge.js";
 import type { LearningUse } from "../knowledge/learning.js";
 import type { SkippedCell } from "../matrix/matrix.js";
 import type { RememberedEntry } from "../memory/memory.js";
+import type { AnalyzerEvidenceUse } from "../sarif/evidence.js";
 import type { ExclusionReason } from "../select/select.js";
 import type { RefutedFinding } from "../verify/verify.js";
 import type { RunProvenance } from "./provenance.js";
@@ -139,6 +140,8 @@ export interface ReviewReport {
   remembered: RememberedEntry[];
   // The team's learnings its tasks were given (ADR-0037); absent when none applied.
   learnings?: LearningUse[];
+  // Analyzer results its tasks were given as evidence (ADR-0042).
+  analyzerEvidence?: AnalyzerEvidenceUse[];
   // What the judge merged, dropped or recalibrated; absent when it did not run.
   judgement?: JudgeDecisions;
   // With an earlier review: whether this run reviewed only what changed since.

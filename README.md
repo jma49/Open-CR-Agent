@@ -65,6 +65,7 @@ ocra review --plan                           # files, bundles, tasks, prompt siz
 ocra review --max-cost-usd 2                 # a spend limit; the report says what it left
 ocra review --format sarif --output out.sarif
 ocra review --import-sarif semgrep.sarif     # an analyzer's results on the change join the review
+ocra review --sarif-evidence eslint.sarif    # or reviewers see them as evidence and report what they confirm
 ocra review --pr 42 --publish                # a GitHub pull request, posted as a review
 ocra review --mr 7 --publish                 # a GitLab merge request
 ```
@@ -158,7 +159,7 @@ What ships is built on the same contracts anyone can implement:
 | `AgentRuntime` | How one isolated review task runs | OpenCode; `direct`, a tool loop over your declared endpoints |
 | Reviewer | Who reviews what, at which model tier | `correctness`, `security`, `performance`, `docs`, `agents-md` |
 | Rules and tools | Path-scoped instructions; read-only tools an agent may call | `.ocra/rules.json`; `read_file`, `read_diff`, `code_search`, `report_finding` |
-| Analyzers | Findings from non-model tools, as the SARIF 2.1.0 log a CI job hands over (`--import-sarif`); ocra runs no tool | tested with Semgrep's output |
+| Analyzers | Findings from non-model tools, as the SARIF 2.1.0 log a CI job hands over (`--import-sarif`), or the same results shown to the reviewers as evidence to confirm (`--sarif-evidence`); ocra runs no tool | tested with Semgrep's output |
 
 A plugin is a module with a name and lifecycle hooks:
 

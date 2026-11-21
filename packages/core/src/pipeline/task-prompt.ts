@@ -32,6 +32,7 @@ export interface TaskPrompt {
 export function taskPrompt(cell: MatrixCell, plan: ReviewPlan, ultra: boolean): TaskPrompt {
   const files = cell.bundle.files.map((f) => f.newPath);
   const learnings = plan.learnings(cell.bundle.files);
+  const analyzerResults = plan.evidence.forBundle(cell.bundle);
   const input: ReviewPromptInput = {
     reviewer: cell.reviewer,
     changeRequest: plan.changeRequest,
@@ -42,6 +43,7 @@ export function taskPrompt(cell: MatrixCell, plan: ReviewPlan, ultra: boolean): 
     accepted: memoryFor(files, plan.memory),
     learnings: learnings.selected,
     moreLearnings: learnings.left,
+    ...(analyzerResults.length > 0 ? { analyzerResults } : {}),
   };
   const prompt = buildReviewPrompt(input);
   const callers = ultra || plan.tier === "full";

@@ -88,6 +88,7 @@ These `ReviewOptions` fields are a contract under the [0.x rule](./stability): a
 | `mode.full` | Review every file although the platform reports what changed since the previous review |
 | `mode.ultra` | Recall over cost ([Modes](./how-it-works#modes)) |
 | `sarif` | Parsed SARIF logs (`parseSarifLog`) whose results on the change join the review ([SARIF input](./cli#sarif-input)) |
+| `sarifEvidence` | Parsed SARIF logs whose results on and near the change are shown to the reviewers as evidence, not findings; the report's `analyzerEvidence` lists what was given ([SARIF as evidence](./cli#sarif-as-evidence)) |
 | `signal` | An `AbortSignal`: the run stops, keeps what it found and writes a partial report |
 | `onEvent` | Receives each `ReviewEvent` as the run progresses |
 | `identity.runId` | Names the run in the report, the events and what is posted; generated when absent. The CLI passes its session id |
