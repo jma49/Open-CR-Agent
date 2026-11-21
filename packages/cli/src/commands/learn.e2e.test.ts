@@ -39,6 +39,35 @@ function repoWithFix() {
   return repo;
 }
 
+// An origin whose ocra/learnings-* branch, from the repository's main,
+// adds one learning.
+function withProposal(
+  repo: ReturnType<typeof repoWithFix>,
+  id: string,
+  learning: { title: string; paths: string; ref: string },
+) {
+  const origin = repos.create();
+  origin.git("fetch", "-q", repo.dir, "main");
+  origin.git("checkout", "-q", "-b", "ocra/learnings-20261120000000", "FETCH_HEAD");
+  origin.commit("chore(ocra): add 1 learning(s) from fix commits", {
+    [`.ocra/learnings/${id}.md`]: [
+      "---",
+      `title: ${learning.title}`,
+      "paths:",
+      `  - ${learning.paths}`,
+      "source:",
+      "  kind: fix-commit",
+      `  ref: ${learning.ref}`,
+      "created: 2026-11-20",
+      "---",
+      "",
+      "Body.",
+      "",
+    ].join("\n"),
+  });
+  repo.git("remote", "add", "origin", origin.dir);
+}
+
 function withDrafts(cwd: string, seen: CompletionRequest[], extra: Partial<ReviewDeps> = {}) {
   const runtime: OcraPlugin = {
     name: "runtime-opencode",
@@ -139,32 +168,33 @@ describe("ocra learn mine", () => {
 
   it("skips a fix a proposal waiting on origin already records", async () => {
     const repo = repoWithFix();
-    const origin = repos.create();
-    origin.git("fetch", "-q", repo.dir, "main");
-    origin.git("checkout", "-q", "-b", "ocra/learnings-20261120000000", "FETCH_HEAD");
-    origin.commit("chore(ocra): add 1 learning(s) from fix commits", {
-      ".ocra/learnings/release-pooled-connections.md": [
-        "---",
-        "title: Release pooled connections",
-        "paths:",
-        "  - src/db/**",
-        "source:",
-        "  kind: fix-commit",
-        `  ref: ${repo.git("rev-parse", "HEAD~1")}`,
-        "created: 2026-11-20",
-        "---",
-        "",
-        "Release them in a finally.",
-        "",
-      ].join("\n"),
+    withProposal(repo, "release-pooled-connections", {
+      title: "Release pooled connections",
+      paths: "src/db/**",
+      ref: repo.git("rev-parse", "HEAD~1"),
     });
-    repo.git("remote", "add", "origin", origin.dir);
     const seen: CompletionRequest[] = [];
     const result = await learn(repo.dir, seen);
     expect(seen).toEqual([]);
     expect(result.out).toBe("");
     expect(result.err).toContain("1 already proposed");
     expect(repo.git("branch", "--all", "--list", "*learnings*")).toBe("");
+  });
+
+  it("with --propose, names a learning apart from the files proposals on origin hold", async () => {
+    const repo = repoWithFix();
+    withProposal(repo, "release-pooled-connections-on-every-exit-path", {
+      title: "Close report cursors",
+      paths: "src/reports/**",
+      ref: "0123abc",
+    });
+    const github = fakeGitHub();
+    const env = { GITHUB_TOKEN: "ghs_test", GITHUB_REPOSITORY: "o/r" };
+    await learn(repo.dir, [], ["--propose"], { env, fetch: github.fetch });
+    const tree = github.body("POST", "/git/trees") as { tree: { path: string }[] };
+    expect(tree.tree.map((f) => f.path)).toEqual([
+      ".ocra/learnings/release-pooled-connections-on-every-exit-path-2.md",
+    ]);
   });
 
   it("drafts as before, with a warning, when origin cannot be read", async () => {
