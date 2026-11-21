@@ -15,6 +15,8 @@ export interface Candidate {
 
 export interface LearnOptions {
   existing: readonly Learning[];
+  // Learnings proposed for the default branch and not merged into it.
+  proposed: readonly Learning[];
   max: number;
   // Drafts in flight at once; under a spend limit 1, so it is never passed.
   concurrency: number;
@@ -29,6 +31,8 @@ export interface LearnResult {
   kept: LearningDraft[];
   // Candidates an existing learning already records.
   recorded: number;
+  // Candidates a proposed learning records.
+  proposed: number;
   drafted: number;
   declined: number;
   duplicates: number;
@@ -49,14 +53,18 @@ export async function learnFrom(
   candidates: readonly Candidate[],
   options: LearnOptions,
 ): Promise<LearnResult> {
-  const fresh = candidates.filter((c) => !options.existing.some((l) => records(l, c.ref)));
+  const recorded = (learnings: readonly Learning[]) => (c: Candidate) =>
+    learnings.some((l) => records(l, c.ref));
+  const unrecorded = candidates.filter((c) => !recorded(options.existing)(c));
+  const fresh = unrecorded.filter((c) => !recorded(options.proposed)(c));
   const chosen = fresh.slice(0, options.max);
   const outcomes = await mapWithConcurrency(chosen, options.concurrency, (c) =>
     draftOne(c, options),
   );
   const result: LearnResult = {
     kept: [],
-    recorded: candidates.length - fresh.length,
+    recorded: candidates.length - unrecorded.length,
+    proposed: unrecorded.length - fresh.length,
     drafted: 0,
     declined: 0,
     duplicates: 0,
@@ -64,7 +72,10 @@ export async function learnFrom(
     failed: 0,
     unaffordable: 0,
   };
-  const known: { paths: readonly string[]; title: string }[] = [...options.existing];
+  const known: { paths: readonly string[]; title: string }[] = [
+    ...options.existing,
+    ...options.proposed,
+  ];
   for (const outcome of outcomes) {
     if (outcome.kind !== "draft") {
       result[outcome.kind]++;

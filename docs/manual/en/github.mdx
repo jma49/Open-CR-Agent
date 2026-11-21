@@ -244,7 +244,7 @@ jobs:
 
 - **Which token decides how it merges.** A pull request opened with the workflow's own token starts no workflows, so required checks would never report on it: with `github.token` the Action passes `--require-review` and leaves the pull request for a person, with a notice saying so. Pass a GitHub App's installation token (contents and pull request write) as `github-token`, for example from `actions/create-github-app-token`, and it merges once its checks pass. A branch rule that requires an approving review still waits for one.
 - **Let Actions open pull requests** for the workflow's own token: Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests".
-- Each draft is one helper model call, at most `--max` (20) a run; `args` passes options such as `--max 5` or `--max-cost-usd 1` to `ocra learn`. What a learning on the default branch already records is not drafted again.
+- Each draft is one helper model call, at most `--max` (20) a run; `args` passes options such as `--max 5` or `--max-cost-usd 1` to `ocra learn`. What a learning on the default branch, or on a proposal branch not yet merged or deleted, already records is not drafted again.
 
 ## What the pull request can and cannot change
 

@@ -57,6 +57,7 @@ function options(fields: Partial<LearnOptions> = {}): LearnOptions & { drafted: 
   return {
     drafted,
     existing: [],
+    proposed: [],
     max: 20,
     concurrency: 1,
     draft: async (evidence) => {
@@ -84,6 +85,29 @@ describe("learnFrom", () => {
     const result = await learnFrom([candidate(full), candidate("f2", "lib/y.ts")], o);
     expect(o.drafted).toEqual(["f2"]);
     expect(result.recorded).toBe(1);
+  });
+
+  it("never drafts a candidate a proposed learning records, and counts it apart", async () => {
+    const o = options({
+      existing: [existing],
+      proposed: [{ ...existing, source: { kind: "fix-commit", ref: "f2" } }],
+    });
+    const result = await learnFrom(
+      [candidate("a1b2c3d"), candidate("f2"), candidate("f3", "lib/y.ts")],
+      o,
+    );
+    expect(o.drafted).toEqual(["f3"]);
+    expect(result).toMatchObject({ recorded: 1, proposed: 1 });
+  });
+
+  it("drops a draft that repeats a proposed learning on the same paths", async () => {
+    const o = options({
+      proposed: [existing],
+      draft: async (evidence) =>
+        lesson(evidence, { title: "Release the pooled connections", paths: ["src/db/**"] }),
+    });
+    const result = await learnFrom([candidate("f1")], o);
+    expect(result).toMatchObject({ kept: [], duplicates: 1 });
   });
 
   it("drafts at most max candidates, newest first", async () => {

@@ -10,6 +10,7 @@ import { documentCandidates } from "./learn/documents.js";
 import { fixCandidates } from "./learn/fix-commits.js";
 import { type LearnResult, learnFrom } from "./learn/pipeline.js";
 import { proposeLearnings } from "./learn/propose.js";
+import { proposedLearnings } from "./learn/proposed.js";
 import { rememberedCandidates } from "./learn/remembered.js";
 import { learningFile, writeLearning } from "./learn/write.js";
 import type { ReviewArgs } from "./review/args.js";
@@ -35,7 +36,8 @@ the change or file it came from. Kept learnings are written to the working
 tree, to commit or discard, or with --propose opened as a GitHub pull
 request or GitLab merge request that merges once its checks pass
 (learnings.requireReview: true or --require-review leaves it to a
-person). What an existing learning records is skipped.
+person). What a learning already records, or one waiting on a proposal
+branch of origin, is skipped.
 
 Options:
   --propose           Open a pull or merge request with them instead
@@ -115,6 +117,7 @@ export async function learnCommand(
       ),
       {
         existing: run.learnings,
+        proposed: await proposedLearnings(run.root, run.warn),
         max: args.max,
         concurrency: maxCostUsd === undefined ? CONCURRENCY : 1,
         draft,
@@ -168,6 +171,7 @@ function summary(result: LearnResult, spent: number): string {
     result.failed > 0 ? `${result.failed} failed` : "",
     result.unaffordable > 0 ? `${result.unaffordable} left by the spend limit` : "",
     result.recorded > 0 ? `${result.recorded} already recorded` : "",
+    result.proposed > 0 ? `${result.proposed} already proposed` : "",
   ].filter((p) => p !== "");
   return `${parts.join(", ")}; $${spent.toFixed(4)}`;
 }
