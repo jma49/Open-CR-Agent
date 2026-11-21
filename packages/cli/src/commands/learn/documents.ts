@@ -11,7 +11,7 @@ const MAX_DOCUMENT_BYTES = 256 * 1024;
 const MAX_NAMED_FILES = 5;
 const MAX_TRIED = 20;
 const MAX_FILE_CHARS = 4_000;
-const PATH_LIKE = /(?<![\w./-])(?:[\w@.-]+\/)+[\w@.-]+(?![\w/-])/g;
+export const PATH_LIKE = /(?<![\w./-])(?:[\w@.-]+\/)+[\w@.-]+(?![\w/-])/g;
 
 // The document source of ADR-0040: each `##` section of the Markdown documents named,
 // with the files of the repository it names. A section naming none holds

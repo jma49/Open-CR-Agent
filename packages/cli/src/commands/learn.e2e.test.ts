@@ -5,10 +5,18 @@ import { scratchRepos } from "@open-cr-agent/test-support";
 import { afterEach, describe, expect, it } from "vitest";
 import { capture, deps } from "../run.fakes.js";
 import { run } from "../run.js";
+import {
+  changeRequestFixture,
+  fakeGitHub as fakeGitHub7,
+  removeFixtures,
+} from "./review/change-request.fakes.js";
 import type { ReviewDeps } from "./review/deps.js";
 
 const repos = scratchRepos("ocra-learn-");
-afterEach(repos.removeAll);
+afterEach(() => {
+  repos.removeAll();
+  removeFixtures();
+});
 
 const lesson = {
   title: "Release pooled connections on every exit path",
@@ -193,6 +201,40 @@ describe("ocra learn mine", () => {
     const text = readFileSync(join(repo.dir, result.out.trim()), "utf8");
     expect(text).toContain("ref: docs/postmortem.md#release-connections");
     expect(result.err).toContain("1 held no lesson");
+  });
+
+  it("drafts what a maintainer asked a pull request to remember, from its base", async () => {
+    const { clone, base, head } = changeRequestFixture();
+    const note = {
+      id: 4,
+      node_id: "IC_4",
+      user: { login: "maintainer", type: "User" },
+      body: "/ocra remember Retries must never be negative in app.ts.",
+    };
+    const seen: CompletionRequest[] = [];
+    const result = await learn(
+      clone,
+      seen,
+      ["--pr", "7", "--repo", "o/r"],
+      {
+        env: { GITHUB_TOKEN: "t" },
+        fetch: fakeGitHub7(base, head, [note]).fetchImpl,
+      },
+      "remember",
+    );
+    expect(result.code).toBe(0);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.user).toContain("Retries must never be negative in app.ts.");
+    expect(seen[0]?.user).toContain("export const retries = -1;");
+    const text = readFileSync(join(clone, result.out.trim()), "utf8");
+    expect(text).toContain("kind: remember");
+    expect(text).toContain("ref: o/r#7/4");
+  });
+
+  it("refuses remember without a pull or merge request, and --pr elsewhere", async () => {
+    const dir = repos.create().dir;
+    expect((await learn(dir, [], [], {}, "remember")).err).toContain("needs --pr or --mr");
+    expect((await learn(dir, [], ["--pr", "7"])).err).toContain("go with ocra learn remember");
   });
 
   it("refuses an unknown subcommand with the usage", async () => {

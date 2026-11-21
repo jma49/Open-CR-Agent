@@ -225,6 +225,12 @@ export interface ChangeRequest {
         reason: string;
     };
     // (undocumented)
+    remember?: {
+        by: string;
+        note: string;
+        ref: string;
+    }[];
+    // (undocumented)
     title: string;
 }
 
