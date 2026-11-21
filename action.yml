@@ -24,6 +24,13 @@ inputs:
       the configuration sets "runtime": "direct": the install then leaves it
       out, and a review that needs it stops with exit code 2.
     default: "true"
+  symbol-cache:
+    description: >-
+      Keep the symbols ocra parses (definitions and uses per file, keyed by
+      the file's content) in the Actions cache between runs, so a review
+      parses only files no earlier run read. Entries no run read for 30 days
+      are dropped.
+    default: "true"
   sarif:
     description: >-
       Also write the review as SARIF 2.1.0 (for code scanning) to the file
@@ -79,6 +86,18 @@ runs:
         OCRA_INSTALL_OPENCODE: ${{ inputs.opencode }}
       run: node "$GITHUB_ACTION_PATH/scripts/action-install.mjs"
 
+    # Each run restores the newest earlier entry and saves its own (cache
+    # keys are immutable). An entry holds only names and line numbers and is
+    # validated on read, so the most a forged one can do is mislead the
+    # callers list; it never runs.
+    - name: Restore the symbol cache
+      if: inputs.symbol-cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/ocra-cache/symbols
+        key: ocra-symbols-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: ocra-symbols-${{ runner.os }}-
+
     # Inputs reach the script only through environment variables, never
     # interpolated into it, so pull request text cannot inject shell code.
     # exec: the runner signals this step's shell when the run is cancelled,
@@ -93,4 +112,13 @@ runs:
         OCRA_FAIL_ON_CONCERNS: ${{ inputs.fail-on-concerns }}
         OCRA_SARIF: ${{ inputs.sarif }}
         OCRA_MAIN: ${{ steps.install.outputs.main }}
+        OCRA_CACHE_DIR: ${{ runner.temp }}/ocra-cache
       run: exec bash "$GITHUB_ACTION_PATH/scripts/action-review.sh"
+
+    # Before the cache saves (a post step): a read touches its entry.
+    - name: Drop symbols no run read for 30 days
+      if: inputs.symbol-cache == 'true'
+      shell: bash
+      run: |
+        dir="$RUNNER_TEMP/ocra-cache/symbols"
+        if [ -d "$dir" ]; then find "$dir" -type f -mtime +30 -delete; fi
