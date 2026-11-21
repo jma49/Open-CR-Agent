@@ -117,8 +117,10 @@ export {
   isBlocking,
   isIncompleteReview,
   isUnfinished,
+  REVIEW_STAGES,
   type ReviewEvent,
   type ReviewReport,
+  type ReviewStage,
   type TaskOutcome,
   type TaskStatus,
 } from "./report/report.js";

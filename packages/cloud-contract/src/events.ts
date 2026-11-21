@@ -9,28 +9,15 @@ import {
   verificationSchema,
 } from "./vocabulary.js";
 
-// The live events of one review, as `ocra serve` streams them (SSE, one
-// event per `data:` line, `seq` as the SSE id) and as ocra Cloud stores and
-// relays them. A new kind or field keeps the version: a reader skips a kind
-// it does not know (readReviewEvent). A changed meaning raises it.
+// What `ocra serve` streams and ocra Cloud relays. A new kind or field keeps
+// the version, since readers skip unknown kinds; a changed meaning raises it.
 
 export const REVIEW_EVENT_VERSION = 1;
 
-/** The stages of a run, in order. */
-export const STAGES = [
-  "select",
-  "bundle",
-  "plan",
-  "review",
-  "anchor",
-  "filter",
-  "verify",
-  "judge",
-] as const;
+export const STAGES = ["select", "bundle", "plan", "review", "filter", "verify", "judge"] as const;
 export const stageSchema = z.enum(STAGES);
 export type Stage = z.infer<typeof stageSchema>;
 
-/** A file's last state in a run, as the report's coverage records it. */
 export const FILE_STATUSES = [
   "reviewed",
   "unchanged",
@@ -45,7 +32,6 @@ export type FileStatus = z.infer<typeof fileStatusSchema>;
 export const TASK_STATUSES = ["completed", "failed", "timed_out", "cancelled"] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
-/** Why a run ended without a verdict. */
 export const FAILURE_REASONS = ["cancelled", "budget", "error"] as const;
 
 const count = z.number().int().min(0).max(1e12);
@@ -54,11 +40,8 @@ const text = z.string().max(MAX_FIELD);
 const id = z.string().regex(/^[\w.:-]{1,128}$/);
 const line = z.number().int().positive().lt(10_000_000);
 
-/**
- * A finding as a live view shows it. The same id comes again when Verify or
- * the judge changes it, and replaces the earlier one; `dropped` says the
- * judge left it out of the report.
- */
+// A finding sent again under the same id (after Verify or the judge)
+// replaces the earlier one.
 export const liveFindingSchema = z.object({
   id,
   fingerprint: z.string().regex(FINGERPRINT),
@@ -77,7 +60,7 @@ export const liveFindingSchema = z.object({
 });
 export type LiveFinding = z.infer<typeof liveFindingSchema>;
 
-/** Tokens and dollars spent so far in the run, every model call included. */
+// Cumulative for the run.
 export const usageSchema = z.object({
   inputTokens: count,
   cachedTokens: count,
@@ -95,7 +78,6 @@ const kinds = [
     kind: z.literal("stage"),
     data: z.object({
       stage: stageSchema,
-      // On select: what the run reviews and what it left out.
       files: z.array(path).optional(),
       excluded: z.array(path).optional(),
     }),
@@ -125,11 +107,10 @@ const kinds = [
   }),
 ] as const;
 
-/** What every event carries, whatever its kind. */
 export const reviewEventEnvelopeSchema = z.object({
   version: z.literal(REVIEW_EVENT_VERSION),
   runId: z.string().regex(/^[\w.-]{1,64}$/),
-  // From 1, one more per event of the run: a gap means a lost event.
+  // From 1 without gaps, so a reader can tell it lost one.
   seq: z.number().int().positive(),
   at: z.iso.datetime(),
 });
@@ -141,16 +122,13 @@ export const reviewEventSchema = z.intersection(
 export type ReviewEvent = z.infer<typeof reviewEventSchema>;
 export type ReviewEventKind = ReviewEvent["kind"];
 
-/** The kinds that end a run; each run ends with exactly one. */
+// Each run ends with exactly one.
 export const ENDING_KINDS = ["finished", "failed"] as const satisfies readonly ReviewEventKind[];
 
 const knownKinds = new Set<string>(kinds.map((k) => k.shape.kind.value));
 
-/**
- * Reads one event as a client should: an event of a kind this version does
- * not know is skipped (`undefined`), a known kind that does not fit its
- * shape is an error.
- */
+// Undefined for a kind this version does not know; throws on a known kind
+// that does not fit.
 export function readReviewEvent(value: unknown): ReviewEvent | undefined {
   const kind = (value as { kind?: unknown } | null)?.kind;
   if (typeof kind === "string" && !knownKinds.has(kind)) {

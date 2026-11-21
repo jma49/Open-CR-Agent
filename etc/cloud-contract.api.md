@@ -246,7 +246,7 @@ export const effortSchema: z.ZodEnum<{
 // @public (undocumented)
 export type EffortStyle = (typeof EFFORT_STYLES)[number];
 
-// @public
+// @public (undocumented)
 export const ENDING_KINDS: readonly ["finished", "failed"];
 
 // @public (undocumented)
@@ -325,10 +325,10 @@ export const errorCodeSchema: z.ZodEnum<{
     version_no_longer_valid: "version_no_longer_valid";
 }>;
 
-// @public
+// @public (undocumented)
 export const FAILURE_REASONS: readonly ["cancelled", "budget", "error"];
 
-// @public
+// @public (undocumented)
 export const FILE_STATUSES: readonly ["reviewed", "unchanged", "incomplete", "failed", "unreviewed", "excluded"];
 
 // @public (undocumented)
@@ -356,7 +356,7 @@ export function isCloudModel(model: string): boolean;
 // @public (undocumented)
 export type LiveFinding = z.infer<typeof liveFindingSchema>;
 
-// @public
+// @public (undocumented)
 export const liveFindingSchema: z.ZodObject<{
     id: z.ZodString;
     fingerprint: z.ZodString;
@@ -731,7 +731,7 @@ export const providersAnswerSchema: z.ZodObject<{
     providers: z.ZodArray<z.ZodUnknown>;
 }, z.core.$strip>;
 
-// @public
+// @public (undocumented)
 export function readReviewEvent(value: unknown): ReviewEvent | undefined;
 
 // @public
@@ -796,7 +796,7 @@ export const reviewerCountsSchema: z.ZodObject<{
 // @public (undocumented)
 export type ReviewEvent = z.infer<typeof reviewEventSchema>;
 
-// @public
+// @public (undocumented)
 export const reviewEventEnvelopeSchema: z.ZodObject<{
     version: z.ZodLiteral<1>;
     runId: z.ZodString;
@@ -827,7 +827,6 @@ export const reviewEventSchema: z.ZodIntersection<z.ZodObject<{
     kind: z.ZodLiteral<"stage">;
     data: z.ZodObject<{
         stage: z.ZodEnum<{
-            anchor: "anchor";
             bundle: "bundle";
             filter: "filter";
             judge: "judge";
@@ -1200,12 +1199,11 @@ export const sharedFindingSchema: z.ZodObject<{
 // @public (undocumented)
 export type Stage = z.infer<typeof stageSchema>;
 
-// @public
-export const STAGES: readonly ["select", "bundle", "plan", "review", "anchor", "filter", "verify", "judge"];
+// @public (undocumented)
+export const STAGES: readonly ["select", "bundle", "plan", "review", "filter", "verify", "judge"];
 
 // @public (undocumented)
 export const stageSchema: z.ZodEnum<{
-    anchor: "anchor";
     bundle: "bundle";
     filter: "filter";
     judge: "judge";
@@ -1249,7 +1247,7 @@ export const uploadAnswerSchema: z.ZodObject<{
     findingsSkipped: z.ZodCatch<z.ZodOptional<z.ZodLiteral<"account_limit">>>;
 }, z.core.$strip>;
 
-// @public
+// @public (undocumented)
 export const usageSchema: z.ZodObject<{
     inputTokens: z.ZodNumber;
     cachedTokens: z.ZodNumber;

@@ -6,6 +6,7 @@ import {
   type Effort,
   type Finding,
   MODEL_TIERS,
+  REVIEW_STAGES,
   type RiskTier,
   type TaskStatus,
   type Verdict,
@@ -50,6 +51,7 @@ describe("the contract's vocabulary", () => {
     expect(contract.EFFORTS).toEqual(EFFORT_LEVELS);
     expect(contract.MODEL_TIERS).toEqual(MODEL_TIERS);
     expect(contract.AGENT_ROLES).toEqual(AGENT_ROLES);
+    expect(contract.STAGES).toEqual(REVIEW_STAGES);
   });
 });
 

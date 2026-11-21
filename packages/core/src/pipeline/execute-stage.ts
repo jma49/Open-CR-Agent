@@ -46,6 +46,7 @@ export async function executeStage(
   context: StageContext,
 ): Promise<ExecuteStage> {
   const { options, settings, plan, emit } = context;
+  emit({ type: "stage_started", stage: "plan" });
   const matrix = planTasks(plan.bundles, reviewers, plan.tier, options.reviewerOverrides, {
     ultra: settings.ultra,
     ...(settings.maxTasks !== undefined ? { maxTasks: settings.maxTasks } : {}),
@@ -59,6 +60,7 @@ export async function executeStage(
     );
   }
   emit({ type: "matrix_planned", tasks: matrix.cells.length, skipped: matrix.skipped });
+  emit({ type: "stage_started", stage: "review" });
   const relocations: Usage[] = [];
   const execute = executeOptions(context, relocations);
   const resume = options.resume;

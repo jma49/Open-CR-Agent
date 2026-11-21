@@ -19,8 +19,12 @@ export async function checkStage(
   filtered: FilterStage,
   context: StageContext,
 ): Promise<CheckStage> {
+  context.emit({ type: "stage_started", stage: "verify" });
   const verification = hidePreExisting(await verify(filtered, context), context.settings);
+  context.emit({ type: "stage_started", stage: "judge" });
   const judged = await judge(verification, filtered, context);
+  // The judge is not charged to the spend limit: its call is the last one.
+  for (const usage of judged.usage) context.emit({ type: "usage_reported", usage });
   return {
     verification,
     judged,

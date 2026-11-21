@@ -26,6 +26,7 @@ export async function filterStage(
   prior: PriorReview | undefined,
   { options, plan, emit }: StageContext,
 ): Promise<FilterStage> {
+  emit({ type: "stage_started", stage: "filter" });
   const imported =
     options.sarif && options.sarif.length > 0
       ? await importSarif(options.sarif, plan, emit)
@@ -39,6 +40,7 @@ export async function filterStage(
     executed.matrix.limited ?? [],
     executed.notStarted,
   );
+  emit({ type: "coverage_settled", coverage });
   const remembered = applyMemory(found, plan.memory);
   const reported = new Set(found.map((f) => f.fingerprint));
   const priorReview = withoutRemembered(prior, plan.memory);
