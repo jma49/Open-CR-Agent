@@ -128,6 +128,16 @@ describe("ocra learn mine", () => {
     expect(result.out + result.err).not.toContain("ghs_test");
   });
 
+  it("opens no pull request when no learning was kept", async () => {
+    const repo = repoWithFix();
+    await learn(repo.dir, []);
+    const github = fakeGitHub();
+    const env = { GITHUB_TOKEN: "ghs_test", GITHUB_REPOSITORY: "o/r" };
+    const result = await learn(repo.dir, [], ["--propose"], { env, fetch: github.fetch });
+    expect(result.out).toBe("");
+    expect(github.calls).toEqual([]);
+  });
+
   it("leaves the pull request to a person under learnings.requireReview", async () => {
     const repo = repoWithFix();
     repo.commit("chore: config", {
