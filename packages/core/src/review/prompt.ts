@@ -102,7 +102,19 @@ export function renderChangeRequest(cr: ChangeRequest, maxDescription = MAX_DESC
   ]);
 }
 
+// Every task of a run shares the list: rendered once per run.
+const changedFilesText = new WeakMap<readonly FileDiff[], PromptText>();
+
 function renderChangedFiles(files: readonly FileDiff[]): PromptText {
+  let text = changedFilesText.get(files);
+  if (text === undefined) {
+    text = renderChangedFilesOnce(files);
+    changedFilesText.set(files, text);
+  }
+  return text;
+}
+
+function renderChangedFilesOnce(files: readonly FileDiff[]): PromptText {
   const lines = files.map((f) => {
     const path = f.kind === "renamed" ? `${f.oldPath} -> ${f.newPath}` : f.newPath;
     return join(
