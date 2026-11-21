@@ -26,7 +26,7 @@ interface LearningSelection {
 interface Indexed {
   learning: Learning;
   matchesPath: (path: string) => boolean;
-  symbols: RegExp[];
+  symbols: readonly string[];
   keywords: Keyword[];
   terms: string[];
 }
@@ -81,7 +81,7 @@ function indexed(learning: Learning): Indexed {
   return {
     learning,
     matchesPath: picomatch([...learning.paths], { dot: true }),
-    symbols: learning.symbols.map(identifierPattern),
+    symbols: learning.symbols,
     keywords,
     terms: [
       ...new Set([
@@ -101,7 +101,7 @@ function match(
   return {
     indexed,
     path: paths.some((p) => indexed.matchesPath(p)),
-    symbols: indexed.symbols.filter((s) => s.test(text)).length,
+    symbols: indexed.symbols.filter((s) => containsIdentifier(text, s)).length,
     keywords: indexed.keywords.filter((k) => keywordMatches(k, words)).length,
     terms:
       indexed.terms.length === 0
@@ -144,9 +144,34 @@ function fill(ranked: readonly Match[], limits: SelectionLimits): LearningSelect
   return { selected, left };
 }
 
-function identifierPattern(symbol: string): RegExp {
-  const escaped = symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(?<![\\p{L}\\p{N}_$])${escaped}(?![\\p{L}\\p{N}_$])`, "u");
+const IDENTIFIER_CHAR = /[\p{L}\p{N}_$]/u;
+
+// A plain search with a check at each end, not a regular expression per
+// symbol: compiling one with Unicode look-behinds for each of 500 learnings'
+// symbols took seconds.
+function containsIdentifier(text: string, symbol: string): boolean {
+  if (symbol.length === 0) return false;
+  const opensWord = isIdentifierChar(codePointAt(symbol, 0));
+  const closesWord = isIdentifierChar(codePointBefore(symbol, symbol.length));
+  for (let at = text.indexOf(symbol); at !== -1; at = text.indexOf(symbol, at + 1)) {
+    const joinedBefore = opensWord && isIdentifierChar(codePointBefore(text, at));
+    const joinedAfter = closesWord && isIdentifierChar(codePointAt(text, at + symbol.length));
+    if (!joinedBefore && !joinedAfter) return true;
+  }
+  return false;
+}
+
+function isIdentifierChar(char: string): boolean {
+  return char !== "" && IDENTIFIER_CHAR.test(char);
+}
+
+function codePointAt(text: string, at: number): string {
+  const code = text.codePointAt(at);
+  return code === undefined ? "" : String.fromCodePoint(code);
+}
+
+function codePointBefore(text: string, end: number): string {
+  return [...text.slice(Math.max(0, end - 2), end)].at(-1) ?? "";
 }
 
 const TOKEN = /[\p{L}\p{N}]+/gu;

@@ -92,6 +92,31 @@ describe("which learnings apply to a bundle", () => {
     expect(select([learning("s", { symbols: ["PoolXrelease"] })], files).selected).toEqual([]);
   });
 
+  it.each([
+    ["at the start of the patch", "release(c)"],
+    ["at the end of the patch", "c.then(release"],
+    ["after a later partial match", "releaseAll(); release()"],
+    ["next to an astral-plane letter that is not part of it", "𝑥 release 𝑦"],
+  ])("matches a whole symbol %s", (_, patch) => {
+    const result = select([learning("r", { symbols: ["release"] })], [diff("a.ts", patch)]);
+    expect(ids(result.selected)).toEqual(["r"]);
+  });
+
+  it("does not match a symbol joined to an astral-plane letter", () => {
+    const result = select([learning("r", { symbols: ["release"] })], [diff("a.ts", "𝑥release")]);
+    expect(result.selected).toEqual([]);
+  });
+
+  it("compiles a full repository of learnings quickly", () => {
+    const learnings = Array.from({ length: 500 }, (_, i) =>
+      learning(`l${i}`, { symbols: Array.from({ length: 20 }, (_, j) => `helper${i}x${j}`) }),
+    );
+    const patch = Array.from({ length: 400 }, (_, i) => `+ const v${i} = query(sql${i});`);
+    const started = performance.now();
+    learningSelector(learnings)([diff("a.ts", patch.join("\n"))]);
+    expect(performance.now() - started).toBeLessThan(1_000);
+  });
+
   it("matches non-Latin symbols", () => {
     const result = select(
       [learning("s", { symbols: ["计算总价"] })],
