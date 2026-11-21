@@ -80,6 +80,8 @@ export interface RunLimits {
 /** The runs of one server: started, followed, cancelled and forgotten by id. */
 export class Runs {
   private readonly runs = new Map<string, Run>();
+  // Reviews started and not settled, those still resolving their run included.
+  private active = 0;
   private readonly limits: RunLimits;
   private readonly now: () => number;
 
@@ -110,8 +112,8 @@ export class Runs {
    * refused instead of becoming a run.
    */
   start(target: string, review: ReviewStarter): Promise<Run> {
-    const running = [...this.runs.values()].filter((r) => r.state === "running").length;
-    if (running >= this.limits.concurrent) return Promise.reject(new RunsBusy());
+    if (this.active >= this.limits.concurrent) return Promise.reject(new RunsBusy());
+    this.active += 1;
     const controller = new AbortController();
     let run: Run | undefined;
     let mapper: ReviewEventMapper | undefined;
@@ -133,23 +135,27 @@ export class Runs {
         }
         for (const wire of mapper.map(event)) run.push(wire);
       };
-      review(controller.signal, onEvent).then(
-        (report) => {
-          if (!run) return reject(new Error("the review ended before it started"));
-          run.report = report;
-          this.end(run, controller.signal.aborted ? "failed" : "finished");
-        },
-        (error: unknown) => {
-          if (!run || !mapper) return reject(error);
-          const reason = controller.signal.aborted
-            ? "cancelled"
-            : isOcraError(error) && error.code === "BUDGET_EXHAUSTED"
-              ? "budget"
-              : "error";
-          run.push(mapper.failed(reason, errorMessage(error)));
-          this.end(run, "failed");
-        },
-      );
+      review(controller.signal, onEvent)
+        .finally(() => {
+          this.active -= 1;
+        })
+        .then(
+          (report) => {
+            if (!run) return reject(new Error("the review ended before it started"));
+            run.report = report;
+            this.end(run, controller.signal.aborted ? "failed" : "finished");
+          },
+          (error: unknown) => {
+            if (!run || !mapper) return reject(error);
+            const reason = controller.signal.aborted
+              ? "cancelled"
+              : isOcraError(error) && error.code === "BUDGET_EXHAUSTED"
+                ? "budget"
+                : "error";
+            run.push(mapper.failed(reason, errorMessage(error)));
+            this.end(run, "failed");
+          },
+        );
     });
   }
 
