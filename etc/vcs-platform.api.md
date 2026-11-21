@@ -233,6 +233,8 @@ export interface ProposeOptions {
     repository?: ChangeRequestRef["repository"];
     // (undocumented)
     signal?: AbortSignal;
+    // (undocumented)
+    sleep?: (ms: number) => Promise<void>;
 }
 
 // @public (undocumented)

@@ -12,6 +12,13 @@ export interface LearnArgs {
   maxCostUsd?: number;
   // The pull or merge request `ocra learn remember` reads.
   change?: Pick<ReviewArgs, "pullRequest" | "mergeRequest">;
+  // Where --propose opens its change request, when a flag names it.
+  proposeOn?: ProposalPlace;
+}
+
+export interface ProposalPlace {
+  platform: "github" | "gitlab";
+  repository?: string;
 }
 
 export function parseLearnArgs(argv: string[], sources: readonly string[]): LearnArgs | "help" {
@@ -50,7 +57,8 @@ export function parseLearnArgs(argv: string[], sources: readonly string[]): Lear
   if (maxCostUsd !== undefined && !(maxCostUsd > 0)) {
     throw new UsageError(`--max-cost-usd must be a positive number, got ${cost}`);
   }
-  const change = changeOf(values);
+  const change = changeOf(values, values.propose === true);
+  const proposeOn = placeOf(values);
   return {
     source: action,
     documents: rest,
@@ -58,17 +66,23 @@ export function parseLearnArgs(argv: string[], sources: readonly string[]): Lear
     propose: values.propose === true,
     ...(maxCostUsd !== undefined ? { maxCostUsd } : {}),
     ...(change ? { change } : {}),
+    ...(values.propose && proposeOn ? { proposeOn } : {}),
   };
 }
 
-function changeOf(values: {
+interface ChangeFlags {
   pr?: string;
   repo?: string;
   mr?: string;
   project?: string;
-}): LearnArgs["change"] {
-  if (values.pr !== undefined && values.mr !== undefined) {
-    throw new UsageError("--pr and --mr cannot be combined");
+}
+
+function changeOf(values: ChangeFlags, propose: boolean): LearnArgs["change"] {
+  const github = values.pr !== undefined || values.repo !== undefined;
+  if (github && (values.mr !== undefined || values.project !== undefined)) {
+    throw new UsageError(
+      "GitHub's --pr and --repo cannot be combined with GitLab's --mr and --project",
+    );
   }
   if (values.pr !== undefined) {
     return {
@@ -88,8 +102,18 @@ function changeOf(values: {
       },
     };
   }
-  if (values.repo !== undefined || values.project !== undefined) {
-    throw new UsageError("--repo goes with --pr, --project with --mr");
+  if (!propose && (values.repo !== undefined || values.project !== undefined)) {
+    throw new UsageError("--repo goes with --pr or --propose, --project with --mr or --propose");
+  }
+  return undefined;
+}
+
+function placeOf(values: ChangeFlags): ProposalPlace | undefined {
+  if (values.pr !== undefined || values.repo !== undefined) {
+    return { platform: "github", ...(values.repo ? { repository: values.repo } : {}) };
+  }
+  if (values.mr !== undefined || values.project !== undefined) {
+    return { platform: "gitlab", ...(values.project ? { repository: values.project } : {}) };
   }
   return undefined;
 }

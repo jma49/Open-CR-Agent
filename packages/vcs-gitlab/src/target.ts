@@ -15,25 +15,10 @@ export type GitLabSettings = Record<string, never>;
 export async function resolveGitLabTarget(
   options: ResolveTargetOptions,
 ): Promise<PlatformTarget<GitLabSettings>> {
-  const { env, ref } = options;
-  const token = env.GITLAB_TOKEN;
-  if (!token) {
-    throw new OcraError(
-      "CONFIG_CREDENTIALS_MISSING",
-      "--mr needs a GitLab token in GITLAB_TOKEN with the api scope and the Developer role: a project access token, or on GitLab.com Free a personal access token of a dedicated account (CI_JOB_TOKEN cannot post comments)",
-    );
-  }
-  const origin = await options.origin();
-  const project = ref.repository ?? env.CI_PROJECT_ID ?? gitlabProject(origin);
-  const apiUrl = gitlabApi(env.CI_API_V4_URL, remoteHost(origin), options.warn);
+  const { ref } = options;
+  const { api, project, token, apiUrl } = await gitlabApi(options, ref.repository, "--mr");
   const fetchImpl = options.fetch;
   const signal = options.signal ? { signal: options.signal } : {};
-  const api = new GitLabApi(project, {
-    token,
-    baseUrl: apiUrl,
-    ...(fetchImpl ? { fetch: fetchImpl } : {}),
-    ...signal,
-  });
   const iid = ref.number;
   const merge = await api.getMergeRequest(iid);
   const snapshot = mergeRequestOf(merge);
@@ -58,11 +43,36 @@ export async function resolveGitLabTarget(
   };
 }
 
+type ApiOptions = Pick<ResolveTargetOptions, "env" | "origin" | "fetch" | "signal" | "warn">;
+
+// The API client for the project named, else CI_PROJECT_ID's, else origin's.
+// `what` is the flag that needs it, for the error without a token.
+export async function gitlabApi(options: ApiOptions, named: string | undefined, what: string) {
+  const { env } = options;
+  const token = env.GITLAB_TOKEN;
+  if (!token) {
+    throw new OcraError(
+      "CONFIG_CREDENTIALS_MISSING",
+      `${what} needs a GitLab token in GITLAB_TOKEN with the api scope and the Developer role: a project access token, or on GitLab.com Free a personal access token of a dedicated account (CI_JOB_TOKEN cannot post comments)`,
+    );
+  }
+  const origin = await options.origin();
+  const project = named ?? env.CI_PROJECT_ID ?? gitlabProject(origin);
+  const apiUrl = gitlabApiUrl(env.CI_API_V4_URL, remoteHost(origin), options.warn);
+  const api = new GitLabApi(project, {
+    token,
+    baseUrl: apiUrl,
+    ...(options.fetch ? { fetch: options.fetch } : {}),
+    ...(options.signal ? { signal: options.signal } : {}),
+  });
+  return { api, project, token, apiUrl };
+}
+
 // Where GITLAB_TOKEN goes: to CI_API_V4_URL, which GitLab CI sets, or else
 // to gitlab.com, but only when origin is there too or is no remote host. A
 // token for a self-managed instance must not travel to gitlab.com because
 // the address was left out.
-function gitlabApi(
+function gitlabApiUrl(
   configured: string | undefined,
   origin: string | undefined,
   warn: (message: string) => void,

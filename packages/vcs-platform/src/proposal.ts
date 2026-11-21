@@ -31,4 +31,7 @@ export interface ProposeOptions {
   origin(): Promise<string | undefined>;
   fetch?: typeof fetch;
   signal?: AbortSignal;
+  // How the platform waits for a new change request to settle; tests pass
+  // one that does not.
+  sleep?: (ms: number) => Promise<void>;
 }

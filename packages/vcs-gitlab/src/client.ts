@@ -278,7 +278,7 @@ export class GitLabApi {
     return result.data;
   }
 
-  private request(method: string, path: string, body?: unknown): Promise<unknown> {
+  request(method: string, path: string, body?: unknown): Promise<unknown> {
     const project = encodeURIComponent(String(this.project));
     const url = `${this.baseUrl}/projects/${project}${path}`;
     return sendWithRetry(this.api, { method, url, path, body });
