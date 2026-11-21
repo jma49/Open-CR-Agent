@@ -1,11 +1,13 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import * as contract from "@open-cr-agent/cloud-contract";
 import {
+  type CoverageEntry,
   EFFORT_LEVELS,
   type Effort,
   type Finding,
   MODEL_TIERS,
   type RiskTier,
+  type TaskStatus,
   type Verdict,
 } from "@open-cr-agent/core";
 import {
@@ -39,7 +41,9 @@ describe("the contract's vocabulary", () => {
     const verdicts: Same<Verdict, contract.Verdict> = true;
     const tiers: Same<RiskTier, contract.RiskTier> = true;
     const efforts: Same<Effort, contract.Effort> = true;
-    expect([verdicts, tiers, efforts]).toEqual([true, true, true]);
+    const files: Same<CoverageEntry["status"], contract.FileStatus> = true;
+    const tasks: Same<TaskStatus, contract.TaskStatus> = true;
+    expect([verdicts, tiers, efforts, files, tasks]).toEqual([true, true, true, true, true]);
     expect(contract.RISK_TIERS).toEqual(RISK_TIERS);
     expect(contract.SEVERITIES).toEqual(severitySchema.options);
     expect(contract.VERIFICATIONS).toEqual(verificationSchema.options);

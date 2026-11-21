@@ -332,6 +332,9 @@ export const FAILURE_REASONS: readonly ["cancelled", "budget", "error"];
 export const FILE_STATUSES: readonly ["reviewed", "unchanged", "incomplete", "failed", "unreviewed", "excluded"];
 
 // @public (undocumented)
+export type FileStatus = z.infer<typeof fileStatusSchema>;
+
+// @public (undocumented)
 export const fileStatusSchema: z.ZodEnum<{
     excluded: "excluded";
     failed: "failed";
@@ -1214,6 +1217,9 @@ export const stageSchema: z.ZodEnum<{
 
 // @public (undocumented)
 export const TASK_STATUSES: readonly ["completed", "failed", "timed_out", "cancelled"];
+
+// @public (undocumented)
+export type TaskStatus = (typeof TASK_STATUSES)[number];
 
 // @public (undocumented)
 export type TokenAnswer = z.infer<typeof tokenAnswerSchema>;
