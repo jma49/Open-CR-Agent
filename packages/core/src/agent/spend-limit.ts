@@ -43,6 +43,7 @@ export interface SpendLimit {
 export function spendLimit(
   maxCostUsd: number | undefined,
   initial: readonly Usage[] = [],
+  onCharge: (usage: Usage) => void = () => {},
 ): SpendLimit {
   let spent = initial.reduce((sum, u) => sum + u.costUsd, 0);
   let refusedReview = false;
@@ -52,12 +53,14 @@ export function spendLimit(
     reviewSignal: stop.signal,
     chargeReview(usage) {
       spent += usage.costUsd;
+      onCharge(usage);
       if (maxCostUsd !== undefined && over(REVIEW_SHARE) && !stop.signal.aborted) {
         stop.abort(new SpendLimitReached(maxCostUsd));
       }
     },
     charge(usage) {
       spent += usage.costUsd;
+      onCharge(usage);
     },
     mayStartReview() {
       if (!over(REVIEW_SHARE)) return true;
