@@ -83,7 +83,7 @@ export async function blameFix(
         "--",
         file,
       ]);
-      claims.push(...claimsFrom(fix, file, parseBlame(blame)));
+      claims.push(...claimsFrom(fix, parseBlame(blame, file)));
     }
   }
   return { claims };

@@ -45,6 +45,30 @@ describe("fix mining on a real history", () => {
     });
   });
 
+  it("names the file as the introducing commit had it when it was renamed since", async () => {
+    const repo = repos.create();
+    repo.commit("chore: start", { "README.md": "a\n" });
+    const feature = repo.commit("feat: half", {
+      "src/old.ts": lines("export function half(x) {", "  return x / 3;", "}"),
+    });
+    repo.git("mv", "src/old.ts", "src/half.ts");
+    repo.commit("refactor: rename");
+    const fix = repo.commit("fix: halve by two", {
+      "src/half.ts": lines("export function half(x) {", "  return x / 2;", "}"),
+    });
+    const blamed = await blameFix(repo.dir, { sha: fix, subject: "fix: halve by two" });
+    expect(blamed).toEqual({
+      claims: [
+        {
+          introduced: feature,
+          fix: { sha: fix, subject: "fix: halve by two" },
+          file: "src/old.ts",
+          lines: [2, 2],
+        },
+      ],
+    });
+  });
+
   it("skips a fix that touches no source file", async () => {
     const repo = repos.create();
     repo.commit("chore: start", { "README.md": "a\n" });

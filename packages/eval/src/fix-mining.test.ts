@@ -71,12 +71,16 @@ describe("parseBlame", () => {
       "\tconst b = 2;",
       `${B} 1 5 1`,
       "summary initial",
+      "filename old/x.ts",
       "\treturn a;",
+      `${A} 9 6`,
+      "\treturn b;",
     ].join("\n");
-    expect(parseBlame(porcelain)).toEqual([
-      { commit: A, line: 7, text: "const a = 1;" },
-      { commit: A, line: 8, text: "const b = 2;" },
-      { commit: B, line: 1, text: "return a;" },
+    expect(parseBlame(porcelain, "x.ts")).toEqual([
+      { commit: A, file: "x.ts", line: 7, text: "const a = 1;" },
+      { commit: A, file: "x.ts", line: 8, text: "const b = 2;" },
+      { commit: B, file: "old/x.ts", line: 1, text: "return a;" },
+      { commit: A, file: "x.ts", line: 9, text: "return b;" },
     ]);
   });
 });
@@ -91,20 +95,31 @@ describe("isTrivialLine", () => {
 });
 
 describe("claimsFrom", () => {
-  const line = (commit: string, n: number, text = `x${n}`) => ({ commit, line: n, text });
+  const line = (commit: string, n: number, text = `x${n}`, file = "x.ts") => ({
+    commit,
+    file,
+    line: n,
+    text,
+  });
 
   it("makes one claim per run of consecutive lines a commit introduced", () => {
     const blamed = [line(A, 4), line(A, 5), line(A, 9), line(B, 2), line(A, 6, "  }")];
-    expect(claimsFrom(fix, "x.ts", blamed)).toEqual([
+    expect(claimsFrom(fix, blamed)).toEqual([
       { introduced: A, fix, file: "x.ts", lines: [4, 5] },
       { introduced: A, fix, file: "x.ts", lines: [9, 9] },
       { introduced: B, fix, file: "x.ts", lines: [2, 2] },
     ]);
   });
 
+  it("names the file as the introducing commit had it, before a rename", () => {
+    expect(claimsFrom(fix, [line(A, 3, "x3", "old.ts"), line(A, 4, "x4", "old.ts")])).toEqual([
+      { introduced: A, fix, file: "old.ts", lines: [3, 4] },
+    ]);
+  });
+
   it("drops runs longer than a required claim and the fix's own lines", () => {
     const long = Array.from({ length: 16 }, (_, i) => line(A, i + 1));
-    expect(claimsFrom(fix, "x.ts", [...long, line(F, 40)])).toEqual([]);
+    expect(claimsFrom(fix, [...long, line(F, 40)])).toEqual([]);
   });
 });
 
