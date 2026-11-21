@@ -35,11 +35,19 @@ export function reviewContext(
       .filter((d) => d.newPath !== d.oldPath && isSecretPath(d.oldPath))
       .map((d) => foldPath(d.newPath)),
   );
+  // Every search match is checked: decided once per path.
+  const readable = new Map<string, boolean>();
   const isReadable = (path: string) => {
-    const normalized = normalize(path);
-    return (
-      normalized !== undefined && isAllowed(normalized) && !renamedSecrets.has(foldPath(normalized))
-    );
+    let allowed = readable.get(path);
+    if (allowed === undefined) {
+      const normalized = normalize(path);
+      allowed =
+        normalized !== undefined &&
+        isAllowed(normalized) &&
+        !renamedSecrets.has(foldPath(normalized));
+      readable.set(path, allowed);
+    }
+    return allowed;
   };
   const allowedPath = (path: string) => {
     const normalized = normalize(path);
