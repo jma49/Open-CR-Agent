@@ -179,6 +179,22 @@ describe("ocra learn mine", () => {
     expect(again.err).toContain("1 already recorded");
   });
 
+  it("drafts from the sections of a document that name files of the repository", async () => {
+    const repo = repoWithFix();
+    repo.write(
+      "docs/postmortem.md",
+      "# Pool outage\n\n## Release connections\n\nsrc/db/query.ts must release every connection it acquires.\n\n## Timeline\n\nIt happened on Friday.\n",
+    );
+    const seen: CompletionRequest[] = [];
+    const result = await learn(repo.dir, seen, ["docs/postmortem.md"], {}, "import");
+    expect(result.code).toBe(0);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.user).toContain("Release connections");
+    const text = readFileSync(join(repo.dir, result.out.trim()), "utf8");
+    expect(text).toContain("ref: docs/postmortem.md#release-connections");
+    expect(result.err).toContain("1 held no lesson");
+  });
+
   it("refuses an unknown subcommand with the usage", async () => {
     const result = await learn(repos.create().dir, [], ["--max", "0"]);
     expect(result.code).toBe(2);
@@ -186,7 +202,7 @@ describe("ocra learn mine", () => {
       "Unknown learn command: everything",
     );
     expect(result.err).toContain("--max must be a positive whole number");
-    expect(result.err).toContain("Usage: ocra learn <mine|feedback>");
+    expect(result.err).toContain("Usage: ocra learn <mine|feedback|import");
   });
 });
 

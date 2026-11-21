@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { OcraError } from "@open-cr-agent/core";
 import { learningDrafter } from "@open-cr-agent/core/internal";
@@ -5,6 +6,7 @@ import { EXIT } from "../io/exit.js";
 import { forTerminal } from "../io/terminal.js";
 import { UsageError } from "../io/usage-error.js";
 import { acceptedFindingCandidates } from "./learn/accepted-findings.js";
+import { documentCandidates } from "./learn/documents.js";
 import { fixCandidates } from "./learn/fix-commits.js";
 import { type LearnResult, learnFrom } from "./learn/pipeline.js";
 import { proposeLearnings } from "./learn/propose.js";
@@ -17,12 +19,14 @@ import { type ResolvedRun, type ReviewIo, resolveRun } from "./review/resolve-ru
 const DEFAULT_MAX = 20;
 const CONCURRENCY = 4;
 
-export const LEARN_USAGE = `Usage: ocra learn <mine|feedback> [options]
+export const LEARN_USAGE = `Usage: ocra learn <mine|feedback|import <file.md>...> [options]
 
 Drafts learnings for .ocra/learnings/, one helper model call each:
   mine        from the fix commits on HEAD's first-parent line, newest first
   feedback    from the findings the team accepted in .ocra/memory.json,
               with the reason it gave, newest first
+  import      from each ## section of the Markdown files named that names
+              files of the repository
 
 A draft is kept when it is not a duplicate and the selection gives it to
 the change or file it came from. Kept learnings are written to the working
@@ -44,11 +48,17 @@ const SOURCES = {
     what: "accepted findings",
     candidates: (run: ResolvedRun) => acceptedFindingCandidates(run.target.trusted),
   },
+  import: {
+    what: "documents",
+    candidates: (run: ResolvedRun, documents: readonly string[]) =>
+      documentCandidates(run.root, documents, run.target.trusted),
+  },
 } as const;
 type Source = keyof typeof SOURCES;
 
 interface LearnArgs {
   source: Source;
+  documents: string[];
   max: number;
   propose: boolean;
   maxCostUsd?: number;
@@ -85,15 +95,21 @@ export async function learnCommand(
         `the ${run.config.runtime} runtime makes no plain completions, which drafting needs`,
       );
     }
-    const result = await learnFrom(await SOURCES[args.source].candidates(run), {
-      existing: run.learnings,
-      max: args.max,
-      concurrency: maxCostUsd === undefined ? CONCURRENCY : 1,
-      draft,
-      mayCall: () => maxCostUsd === undefined || spent < maxCostUsd,
-      signal: run.interrupt.signal,
-      warn: run.warn,
-    });
+    const result = await learnFrom(
+      await SOURCES[args.source].candidates(
+        run,
+        args.documents.map((d) => resolve(deps.cwd, d)),
+      ),
+      {
+        existing: run.learnings,
+        max: args.max,
+        concurrency: maxCostUsd === undefined ? CONCURRENCY : 1,
+        draft,
+        mayCall: () => maxCostUsd === undefined || spent < maxCostUsd,
+        signal: run.interrupt.signal,
+        warn: run.warn,
+      },
+    );
     const created = new Date(deps.now()).toISOString().slice(0, 10);
     if (args.propose && result.kept.length > 0) {
       const proposed = await proposeLearnings(
@@ -155,7 +171,11 @@ function parseLearnArgs(argv: string[]): LearnArgs | "help" {
   });
   if (values.help) return "help";
   const [action, ...rest] = positionals;
-  if (action === undefined || !Object.hasOwn(SOURCES, action) || rest.length > 0) {
+  if (
+    action === undefined ||
+    !Object.hasOwn(SOURCES, action) ||
+    (action !== "import" && rest.length > 0)
+  ) {
     throw new UsageError(
       action === undefined ? "" : `Unknown learn command: ${positionals.join(" ")}`,
     );
@@ -166,10 +186,10 @@ function parseLearnArgs(argv: string[]): LearnArgs | "help" {
   }
   const propose = values.propose === true;
   const cost = values["max-cost-usd"];
-  if (cost === undefined) return { source: action as Source, max, propose };
+  if (cost === undefined) return { source: action as Source, documents: rest, max, propose };
   const maxCostUsd = Number(cost);
   if (!(maxCostUsd > 0)) {
     throw new UsageError(`--max-cost-usd must be a positive number, got ${cost}`);
   }
-  return { source: action as Source, max, propose, maxCostUsd };
+  return { source: action as Source, documents: rest, max, propose, maxCostUsd };
 }

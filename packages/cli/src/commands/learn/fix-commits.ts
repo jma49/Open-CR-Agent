@@ -6,7 +6,7 @@ import {
 } from "@open-cr-agent/vcs-local/internal";
 import type { Candidate } from "./pipeline.js";
 
-// Source 1 of ADR-0040: the fixes on HEAD's first-parent line, newest
+// The fix-commit source of ADR-0040: the fixes on HEAD's first-parent line, newest
 // first. A fix of more source files than a defect usually spans is left out.
 export async function fixCandidates(root: string): Promise<Candidate[]> {
   return (await fixCommits(root, "HEAD")).map((fix) => ({
