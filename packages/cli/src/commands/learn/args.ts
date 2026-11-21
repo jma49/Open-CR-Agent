@@ -9,6 +9,8 @@ export interface LearnArgs {
   documents: string[];
   max: number;
   propose: boolean;
+  // Leave the proposal to a person whatever learnings.requireReview says.
+  requireReview: boolean;
   maxCostUsd?: number;
   // The pull or merge request `ocra learn remember` reads.
   change?: Pick<ReviewArgs, "pullRequest" | "mergeRequest">;
@@ -30,6 +32,7 @@ export function parseLearnArgs(argv: string[], sources: readonly string[]): Lear
       max: { type: "string" },
       "max-cost-usd": { type: "string" },
       propose: { type: "boolean" },
+      "require-review": { type: "boolean" },
       pr: { type: "string" },
       repo: { type: "string" },
       mr: { type: "string" },
@@ -57,6 +60,9 @@ export function parseLearnArgs(argv: string[], sources: readonly string[]): Lear
   if (maxCostUsd !== undefined && !(maxCostUsd > 0)) {
     throw new UsageError(`--max-cost-usd must be a positive number, got ${cost}`);
   }
+  if (values["require-review"] && !values.propose) {
+    throw new UsageError("--require-review goes with --propose");
+  }
   const change = changeOf(values, values.propose === true);
   const proposeOn = placeOf(values);
   return {
@@ -64,6 +70,7 @@ export function parseLearnArgs(argv: string[], sources: readonly string[]): Lear
     documents: rest,
     max,
     propose: values.propose === true,
+    requireReview: values["require-review"] === true,
     ...(maxCostUsd !== undefined ? { maxCostUsd } : {}),
     ...(change ? { change } : {}),
     ...(values.propose && proposeOn ? { proposeOn } : {}),

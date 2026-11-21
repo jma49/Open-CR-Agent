@@ -85,6 +85,34 @@ Developer 及以上角色、且不是作者的人，可以发一条评论放行�
 
 Developer 及以上角色的人发出的 `/ocra remember <备注>` 与 [GitHub](./github#让-ocra-记住) 上相同，用 `ocra learn remember --mr <iid>`。`ocra learn ... --propose` 把 learning 开成[Merge Request](./cli#通过-pull-request-写回)，流水线成功后合并。
 
+要在 GitLab CI 里起草 learning，为[定时流水线](https://docs.gitlab.com/ci/pipelines/schedules/)加一个 job；处理备注则在 Merge Request 上加一个手动 job：
+
+```yaml
+ocra-learn:
+  image: node:22
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+  variables:
+    GIT_DEPTH: 0
+  script:
+    - npm install -g --ignore-scripts @open-cr-agent/cli@0.8.0
+    - ocra learn mine --propose
+
+ocra-remember:
+  image: node:22
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+  allow_failure: true
+  variables:
+    GIT_DEPTH: 0
+  script:
+    - npm install -g --ignore-scripts @open-cr-agent/cli@0.8.0
+    - ocra learn remember --mr "$CI_MERGE_REQUEST_IID" --propose
+```
+
+用 `GITLAB_TOKEN` 做的提交会触发项目的流水线，所以它开的 Merge Request 会在流水线成功后合并。合并到受保护的默认分支需要该分支允许合并的角色，默认是 Maintainer；只有 Developer 时，ocra 给出警告并把 Merge Request 留给人处理。
+
 ## Merge Request 不能改变什么
 
 ocra 不会执行 Merge Request 里的任何东西：配置、`.ocra/rules.json`、`.ocra/learnings/` 和 `AGENTS.md` 从它所基于的提交读取，仓库插件从不加载。发出的每一行如果以斜杠开头，前面都会加一个零宽空格，所以问题无法变成 `/merge`、`/approve` 这样的快捷操作（GitLab 会以令牌的权限执行它们）。运行 ocra 的流水线则是另一回事（见下一节）。

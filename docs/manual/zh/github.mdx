@@ -45,10 +45,11 @@ jobs:
 | 输入 | 默认值 | 含义 |
 |---|---|---|
 | `github-token` | `${{ github.token }}` | 用来读取 PR 和发布评审的 token |
-| `args` | | 额外的 `ocra review` 参数，例如 `--reviewers correctness,security`；按空格和换行拆分（不支持引号） |
+| `args` | | 额外的 `ocra review` 参数，例如 `--reviewers correctness,security`（用 `learn` 时是 `ocra learn` 的参数）；按空格和换行拆分（不支持引号） |
 | `fail-on-concerns` | `false` | 结论为 `significant_concerns`（存在经核查确认的 critical 问题）时让 job 失败。审查不完整（退出码 `3`）时 job 总会失败 |
 | `opencode` | `true` | 安装默认运行时 OpenCode。配置里设了 `"runtime": "direct"` 时可设为 `false`，见[运行时](#运行时)。v0.3.0 新增 |
 | `symbol-cache` | `true` | 在 Actions 缓存中保留 ocra 解析出的符号（每个文件的定义和使用位置，按文件内容索引），这样一次审查只解析之前的运行没读过的文件。30 天内没有运行读取过的条目会被删除。v0.8.0 新增 |
+| `learn` | | `mine` 或 `remember`：不做审查，改为起草 learning 并开成 pull request，见[从历史和备注中学习](#从历史和备注中学习)。v0.8.0 新增 |
 | `sarif` | `false` | 同时把审查结果写成 SARIF 2.1.0，用于[代码扫描](#代码扫描)，文件路径见输出 `sarif`。它会取代 `args` 里的 `--format` 和 `--output` |
 
 给这一步设置 `id`，就能读取它的输出。只要 ocra 运行过，输出就会设置，步骤失败时也一样；输出来自本次运行写下的会话：随 PR 一起提交的会话，或替代 `.ocra/sessions` 的链接，都不会被读取。
@@ -61,6 +62,7 @@ jobs:
 | `report` | JSON 报告的路径，格式同 [`--format json`](./cli#json-输出)，位于 `$RUNNER_TEMP` 下 |
 | `findings` | 报告里的问题数 |
 | `sarif` | `sarif` 为 `true` 时 SARIF 日志的路径 |
+| `proposal` | 用 `learn` 时：所开 pull request 的地址；没有保留任何 learning 时为空 |
 
 只有评审完整完成时（退出码 `0` 或 `1`）才会设置 `verdict`：没审完全部内容的运行（`2` 或 `3`）可能写出报告，但其结论不涵盖没审的文件。ocra 没写出报告时，`run-id`、`report` 和 `findings` 为空。保存报告并在 job 摘要里写明结论：
 
@@ -200,6 +202,49 @@ jobs:
 ```
 
 评论的其余部分就是这条备注。审查本身不处理它；[`ocra learn remember --pr <n>`](./cli#从-pull-request-备注) 用每条备注和它提到的 diff 文件起草 learning，`--propose` 通过 pull request 写回。没有写权限的人的备注、被他人编辑过的评论和 ocra 自己的摘要都不算数。
+
+### 从历史和备注中学习
+
+设置 `learn` 输入后，Action 不做审查，而是起草 learning 并开成 pull request（[`ocra learn ... --propose`](./cli#通过-pull-request-写回)）：`mine` 从修复提交起草，适合定时运行；`remember` 从评论所在 PR 的备注起草。下面的 workflow 两者都做：
+
+```yaml
+name: ocra learn
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  learn:
+    # 评论触发时，只处理有写权限的人在 PR 上发的 /ocra remember；
+    # ocra 起草前会再检查一次。
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event.issue.pull_request &&
+       startsWith(github.event.comment.body, '/ocra remember') &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
+    concurrency:
+      group: ocra-learn
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: jma49/Open-CR-Agent@6d4d4a21b6334c086e0f884c240d550b2e4c1f46 # v0.7.0
+        with:
+          learn: ${{ github.event_name == 'schedule' && 'mine' || 'remember' }}
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+```
+
+- **token 决定合并方式。** 用 workflow 自己的 token 开的 pull request 不会触发任何 workflow，必需的检查永远不会报告结果：使用 `github.token` 时，Action 会传 `--require-review`，把 pull request 留给人合并，并给出提示。把 GitHub App 的安装 token（contents 和 pull request 写权限）作为 `github-token` 传入，例如用 `actions/create-github-app-token` 生成，它就会在检查通过后合并。分支规则要求审批时，仍要等人审批。
+- **允许 Actions 开 pull request**（使用 workflow 自己的 token 时）：Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"。
+- 每份草稿是一次辅助模型调用，每次运行最多 `--max`（20）份；`args` 把 `--max 5`、`--max-cost-usd 1` 等参数传给 `ocra learn`。默认分支上已有 learning 记录过的内容不会再起草。
 
 ## PR 能改变什么、不能改变什么
 
