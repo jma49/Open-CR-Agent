@@ -42,10 +42,10 @@ export interface SymbolReference {
   line: number;
 }
 
-// Uses of a symbol as a precise index of the repository resolves them
-// (SCIP), at the revision it was built from: the uses of the symbol `name`
-// that `path` defines, outside that file; undefined when the index has no
-// such definition.
+// Uses of a symbol from an index of the repository built before the
+// review (a SCIP index, or ocra's code graph), at the revision it was built
+// from: the uses of the symbol `name` that `path` defines, outside that
+// file; undefined when the index has no such definition.
 export interface ReferenceIndex {
   usesOf(path: string, name: string): Promise<readonly SymbolReference[] | undefined>;
 }
