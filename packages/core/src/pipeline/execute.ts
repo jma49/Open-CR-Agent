@@ -130,8 +130,9 @@ export async function runJob(
 // for the same question: the prompt (instructions, change, bundle, rules,
 // guidelines, memory), the commits (the code around the change, which the
 // reviewer reads but the prompt does not hold), the model chain and effort,
-// --ultra (which adds a plan phase and callers, both derived from the same
-// inputs), and the caller's build and sampling.
+// --ultra (which adds a plan phase and callers; callers at the full tier,
+// like the plan, are derived from the same inputs), and the caller's build
+// and sampling.
 function taskKey(
   job: MatrixCell,
   plan: ReviewPlan,
@@ -198,8 +199,8 @@ interface PreparedPrompt {
   warnings: string[];
 }
 
-// The review prompt, with a plan phase and, under --ultra, the callers of
-// changed symbols.
+// The review prompt, with a plan phase and the callers of changed symbols
+// when the task gets them.
 async function preparePrompt(
   job: MatrixCell,
   plan: ReviewPlan,
@@ -208,8 +209,11 @@ async function preparePrompt(
   task: TaskPrompt,
 ): Promise<PreparedPrompt> {
   const { planCall } = task;
-  if (!planCall) return { prompt: task.prompt, usage: [], warnings: [] };
-  const callers = options.ultra ? await findCallers(job.bundle.files, plan.context) : [];
+  const callers = task.callers ? await findCallers(job.bundle.files, plan.context) : [];
+  if (!planCall) {
+    const prompt = callers.length > 0 ? buildReviewPrompt({ ...task.input, callers }) : task.prompt;
+    return { prompt, usage: [], warnings: [] };
+  }
   const shared = options.plans?.get(planCall.key);
   const planning =
     shared ?? planBundle(options.runtime, job.reviewer, planCall.prompt(), options.signal, call);
