@@ -102,6 +102,18 @@ const codeSearch: ToolDefinition = {
   },
 };
 
+const readLearning: ToolDefinition = {
+  name: REVIEW_TOOLS.readLearning,
+  description:
+    "Read a team learning listed in <ocra_learning_index> by its id: its title and what to check.",
+  inputSchema: z.object({ id: z.string().min(1) }),
+  async execute(args, context) {
+    const { id } = args as { id: string };
+    const learning = context.readLearning?.(id);
+    return promptData(learning ?? `No learning with id ${id}.`);
+  },
+};
+
 const reportFinding: ToolDefinition = {
   name: REVIEW_TOOLS.reportFinding,
   description: "Report one confirmed defect. Call once per issue.",
@@ -120,6 +132,7 @@ export const reviewTools: readonly ToolDefinition[] = [
   readFile,
   readDiff,
   codeSearch,
+  readLearning,
   reportFinding,
   taskDone,
 ];

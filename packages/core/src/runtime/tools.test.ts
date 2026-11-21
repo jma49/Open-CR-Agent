@@ -7,6 +7,7 @@ const context: ReviewContext = {
   readFile: async () => hostile,
   readDiff: () => hostile,
   searchCode: async () => [{ path: "a.ts", line: 1, text: hostile.replaceAll("\n", " ") }],
+  readLearning: () => hostile,
 };
 
 function tool(name: string) {
@@ -20,9 +21,20 @@ describe("review tools", () => {
     ["read_file", { path: "a.ts" }],
     ["read_diff", { path: "a.ts" }],
     ["code_search", { literal: "x" }],
+    ["read_learning", { id: "x" }],
   ])("return repository text as data: %s", async (name, args) => {
     const result = String(await tool(name).execute(args, context));
     expect(result).toContain("‹/ocra_review_files>");
     expect(result).not.toMatch(/<\/?ocra_/);
+  });
+
+  it("answers a read of an unknown learning, or one from a context that holds none", async () => {
+    const none = { ...context, readLearning: () => undefined };
+    const { readLearning: _, ...without } = context;
+    for (const c of [none, without]) {
+      expect(await tool("read_learning").execute({ id: "gone" }, c)).toBe(
+        "No learning with id gone.",
+      );
+    }
   });
 });

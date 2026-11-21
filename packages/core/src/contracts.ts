@@ -69,6 +69,9 @@ export interface ReviewContext {
   readFile(path: string): Promise<string | undefined>;
   readDiff(path: string): string | undefined;
   searchCode(literal: string): Promise<CodeMatch[]>;
+  // One of the run's learnings (ADR-0037) by id: its title, then its body.
+  // Absent, as in a context that holds none.
+  readLearning?(id: string): string | undefined;
 }
 
 // How a review task that finished without the done tool ended: its agent

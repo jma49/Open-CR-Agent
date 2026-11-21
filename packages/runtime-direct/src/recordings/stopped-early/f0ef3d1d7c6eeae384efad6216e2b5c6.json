@@ -100,6 +100,26 @@
       {
         "type": "function",
         "function": {
+          "name": "read_learning",
+          "description": "Read a team learning listed in <ocra_learning_index> by its id: its title and what to check.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
           "name": "report_finding",
           "description": "Report one confirmed defect. Call once per issue.",
           "parameters": {

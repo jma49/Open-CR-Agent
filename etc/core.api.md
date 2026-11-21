@@ -1323,6 +1323,7 @@ export const REVIEW_TOOLS: {
     readonly readFile: "read_file";
     readonly readDiff: "read_diff";
     readonly codeSearch: "code_search";
+    readonly readLearning: "read_learning";
     readonly reportFinding: "report_finding";
     readonly taskDone: "task_done";
 };
@@ -1333,6 +1334,8 @@ export interface ReviewContext {
     readDiff(path: string): string | undefined;
     // (undocumented)
     readFile(path: string): Promise<string | undefined>;
+    // (undocumented)
+    readLearning?(id: string): string | undefined;
     // (undocumented)
     searchCode(literal: string): Promise<CodeMatch[]>;
 }

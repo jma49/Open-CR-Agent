@@ -112,4 +112,22 @@ describe("reviewContext", () => {
     expect(matches.map((m) => m.path)).toEqual(["src/a.ts"]);
     expect(JSON.stringify(matches)).not.toContain("secret");
   });
+
+  it("reads the run's learnings by id, never from the revision under review", () => {
+    const vcs = fakeVcs();
+    const learning = {
+      id: "release",
+      title: "Release pooled clients",
+      body: "In finally.",
+      paths: ["src/**"],
+      symbols: [],
+      keywords: [],
+      critical: false,
+    };
+    const context = reviewContext(vcs, diffs, [learning]);
+    expect(context.readLearning?.("release")).toBe("Release pooled clients\n\nIn finally.");
+    expect(context.readLearning?.("missing")).toBeUndefined();
+    expect(context.readLearning?.(".ocra/learnings/release.md")).toBeUndefined();
+    expect(vcs.readFile).not.toHaveBeenCalled();
+  });
 });

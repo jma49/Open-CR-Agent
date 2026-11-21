@@ -155,7 +155,7 @@ export async function planReview(
       : scope.note
         ? { scope: scope.note }
         : {}),
-    context: reviewContext(vcs, diffs),
+    context: reviewContext(vcs, diffs, options.learnings),
     guidelines,
     repoRules: [
       ...(options.rules ?? []),
