@@ -10,7 +10,7 @@ inputs:
     description: Token used to read the pull request and post the review.
     default: ${{ github.token }}
   args:
-    description: Extra arguments for ocra review, such as --reviewers correctness,security.
+    description: Extra arguments for ocra review, such as --reviewers correctness,security, or for ocra learn with learn.
     default: ""
   fail-on-concerns:
     description: >-
@@ -31,6 +31,16 @@ inputs:
       parses only files no earlier run read. Entries no run read for 30 days
       are dropped.
     default: "true"
+  learn:
+    description: >-
+      Draft learnings instead of reviewing, and open them as a pull request:
+      mine drafts from the fix commits (on a schedule; check out with
+      fetch-depth 0), remember from the /ocra remember notes of the pull
+      request a comment is on (on issue_comment). One opened with the
+      workflow's own token starts no checks, so it is left for a person to
+      merge; pass a GitHub App's token as github-token to merge it once its
+      checks pass.
+    default: ""
   sarif:
     description: >-
       Also write the review as SARIF 2.1.0 (for code scanning) to the file
@@ -61,6 +71,11 @@ outputs:
   findings:
     description: The number of findings in the report.
     value: ${{ steps.review.outputs.findings }}
+  proposal:
+    description: >-
+      With learn: the address of the pull request opened, empty when no
+      learning was kept.
+    value: ${{ steps.learn.outputs.proposal }}
 
 runs:
   using: composite
@@ -91,7 +106,7 @@ runs:
     # validated on read, so the most a forged one can do is mislead the
     # callers list; it never runs.
     - name: Restore the symbol cache
-      if: inputs.symbol-cache == 'true'
+      if: inputs.symbol-cache == 'true' && inputs.learn == ''
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ runner.temp }}/ocra-cache/symbols
@@ -104,6 +119,7 @@ runs:
     # and a shell waiting on another would not pass the signal on.
     - name: Review
       id: review
+      if: inputs.learn == ''
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
@@ -115,9 +131,24 @@ runs:
         OCRA_CACHE_DIR: ${{ runner.temp }}/ocra-cache
       run: exec bash "$GITHUB_ACTION_PATH/scripts/action-review.sh"
 
+    # The comment's text never reaches the step; ocra reads the notes
+    # through the API, only those of people with write access.
+    - name: Learn
+      id: learn
+      if: inputs.learn != ''
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        OCRA_LEARN: ${{ inputs.learn }}
+        OCRA_PR: ${{ github.event.pull_request.number || (github.event.issue.pull_request && github.event.issue.number) || '' }}
+        OCRA_OWN_TOKEN: ${{ inputs.github-token == github.token }}
+        OCRA_ARGS: ${{ inputs.args }}
+        OCRA_MAIN: ${{ steps.install.outputs.main }}
+      run: exec bash "$GITHUB_ACTION_PATH/scripts/action-learn.sh"
+
     # Before the cache saves (a post step): a read touches its entry.
     - name: Drop symbols no run read for 30 days
-      if: inputs.symbol-cache == 'true'
+      if: inputs.symbol-cache == 'true' && inputs.learn == ''
       shell: bash
       run: |
         dir="$RUNNER_TEMP/ocra-cache/symbols"

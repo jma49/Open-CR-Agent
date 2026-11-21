@@ -155,8 +155,23 @@ describe("ocra learn mine", () => {
     const github = fakeGitHub();
     const env = { GITHUB_TOKEN: "ghs_test", GITHUB_REPOSITORY: "o/r" };
     const result = await learn(repo.dir, [], ["--propose"], { env, fetch: github.fetch });
-    expect(result.err).toContain("opened for review (learnings.requireReview)");
+    expect(result.err).toContain("opened for a person to review and merge");
     expect(github.calls.some((c) => c.path.endsWith("/graphql"))).toBe(false);
+  });
+
+  it("leaves the pull request to a person with --require-review, and only with --propose", async () => {
+    const repo = repoWithFix();
+    const github = fakeGitHub();
+    const env = { GITHUB_TOKEN: "ghs_test", GITHUB_REPOSITORY: "o/r" };
+    const result = await learn(repo.dir, [], ["--propose", "--require-review"], {
+      env,
+      fetch: github.fetch,
+    });
+    expect(result.err).toContain("opened for a person to review and merge");
+    expect(github.calls.some((c) => c.path.endsWith("/graphql"))).toBe(false);
+    expect((await learn(repo.dir, [], ["--require-review"])).err).toContain(
+      "--require-review goes with --propose",
+    );
   });
 
   it("with --propose --project, opens a GitLab merge request instead", async () => {

@@ -85,6 +85,34 @@ It works as on [GitHub](./github#overriding-a-blocking-verdict): only for that c
 
 `/ocra remember <note>` from someone with the Developer role or higher works as on [GitHub](./github#asking-ocra-to-remember), with `ocra learn remember --mr <iid>`. `ocra learn ... --propose` opens its learnings as a [merge request](./cli#writing-them-back-by-pull-request) that merges when its pipeline succeeds.
 
+To draft learnings from GitLab CI, add a job for a [scheduled pipeline](https://docs.gitlab.com/ci/pipelines/schedules/) and, for notes, a manual job on merge requests:
+
+```yaml
+ocra-learn:
+  image: node:22
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+  variables:
+    GIT_DEPTH: 0
+  script:
+    - npm install -g --ignore-scripts @open-cr-agent/cli@0.8.0
+    - ocra learn mine --propose
+
+ocra-remember:
+  image: node:22
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+  allow_failure: true
+  variables:
+    GIT_DEPTH: 0
+  script:
+    - npm install -g --ignore-scripts @open-cr-agent/cli@0.8.0
+    - ocra learn remember --mr "$CI_MERGE_REQUEST_IID" --propose
+```
+
+A commit made with `GITLAB_TOKEN` starts the project's pipelines, so the merge request it opens merges when they succeed. Merging into a protected default branch takes a role the branch allows to merge, Maintainer by default: with Developer, ocra warns and leaves the merge request for a person.
+
 ## What the merge request cannot change
 
 ocra runs nothing from the merge request: configuration, `.ocra/rules.json`, `.ocra/learnings/` and `AGENTS.md` come from its base commit, and repository plugins never load. Every posted line that starts with a slash gets a zero-width space before it, so a finding cannot become a quick action such as `/merge` or `/approve`, which GitLab would run with the token's rights. The pipeline that runs ocra is another matter (next section).

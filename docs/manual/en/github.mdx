@@ -45,10 +45,11 @@ Since v0.1.1 the Action installs `@open-cr-agent/cli` from npm at its own versio
 | Input | Default | Meaning |
 |---|---|---|
 | `github-token` | `${{ github.token }}` | Token for reading the pull request and posting the review |
-| `args` | | Extra `ocra review` options, such as `--reviewers correctness,security`, split on spaces and newlines (no quoting) |
+| `args` | | Extra `ocra review` options, such as `--reviewers correctness,security` (with `learn`, `ocra learn` ones), split on spaces and newlines (no quoting) |
 | `fail-on-concerns` | `false` | Fail the job when the verdict is `significant_concerns` (a critical finding the verifier confirmed). An incomplete review (exit code `3`) always fails the job |
 | `opencode` | `true` | Install OpenCode, the default runtime. Set `false` when the configuration sets `"runtime": "direct"`; see [The runtime](#the-runtime). New in v0.3.0 |
 | `symbol-cache` | `true` | Keep the symbols ocra parses (definitions and uses per file, keyed by its content) in the Actions cache between runs, so a review parses only files no earlier run read. Entries no run read for 30 days are dropped. New in v0.8.0 |
+| `learn` | | `mine` or `remember`: draft learnings and open them as a pull request instead of reviewing; see [Learning from history and notes](#learning-from-history-and-notes). New in v0.8.0 |
 | `sarif` | `false` | Also write the review as SARIF 2.1.0 for [code scanning](#code-scanning), to the file the `sarif` output names. It takes the place of `--format` and `--output` in `args` |
 
 Give the step an `id` to read its outputs. They are set whenever ocra ran, also when the step fails, and come from the session this run wrote: a session that came with the pull request, or a link in place of `.ocra/sessions`, is never read.
@@ -61,6 +62,7 @@ Give the step an `id` to read its outputs. They are set whenever ocra ran, also 
 | `report` | Path to the JSON report, the shape of [`--format json`](./cli#json-output), under `$RUNNER_TEMP` |
 | `findings` | The number of findings in the report |
 | `sarif` | Path to the SARIF log, when `sarif` is `true` |
+| `proposal` | With `learn`: the address of the pull request opened, empty when no learning was kept |
 
 `verdict` is empty unless the review completed (exit code `0` or `1`): a run that did not review everything (`2` or `3`) may write a report, but its verdict says nothing about the unreviewed files. `run-id`, `report` and `findings` are empty when ocra wrote no report. To keep the report and put the verdict in the job summary:
 
@@ -200,6 +202,49 @@ Anyone with write access, the author too, can comment on a pull request:
 ```
 
 The rest of the comment is the note. A review does nothing with it; [`ocra learn remember --pr <n>`](./cli#from-pull-request-notes) drafts a learning from each note with the files of the diff it names, and `--propose` writes them back by pull request. Notes from people without write access, comments someone else edited and ocra's own summary do not count.
+
+### Learning from history and notes
+
+With the `learn` input the Action drafts learnings instead of reviewing and opens them as a pull request ([`ocra learn ... --propose`](./cli#writing-them-back-by-pull-request)): `mine` from the fix commits, for a schedule, and `remember` from the notes of the pull request a comment is on. This workflow does both:
+
+```yaml
+name: ocra learn
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  learn:
+    # On a comment, only a /ocra remember on a pull request by someone who
+    # can write; ocra checks that again before drafting.
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event.issue.pull_request &&
+       startsWith(github.event.comment.body, '/ocra remember') &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
+    concurrency:
+      group: ocra-learn
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: jma49/Open-CR-Agent@6d4d4a21b6334c086e0f884c240d550b2e4c1f46 # v0.7.0
+        with:
+          learn: ${{ github.event_name == 'schedule' && 'mine' || 'remember' }}
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+```
+
+- **Which token decides how it merges.** A pull request opened with the workflow's own token starts no workflows, so required checks would never report on it: with `github.token` the Action passes `--require-review` and leaves the pull request for a person, with a notice saying so. Pass a GitHub App's installation token (contents and pull request write) as `github-token`, for example from `actions/create-github-app-token`, and it merges once its checks pass. A branch rule that requires an approving review still waits for one.
+- **Let Actions open pull requests** for the workflow's own token: Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests".
+- Each draft is one helper model call, at most `--max` (20) a run; `args` passes options such as `--max 5` or `--max-cost-usd 1` to `ocra learn`. What a learning on the default branch already records is not drafted again.
 
 ## What the pull request can and cannot change
 

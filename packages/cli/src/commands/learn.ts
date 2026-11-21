@@ -34,7 +34,8 @@ A draft is kept when it is not a duplicate and the selection gives it to
 the change or file it came from. Kept learnings are written to the working
 tree, to commit or discard, or with --propose opened as a GitHub pull
 request or GitLab merge request that merges once its checks pass
-(learnings.requireReview: true leaves it to a person). What an existing learning records is skipped.
+(learnings.requireReview: true or --require-review leaves it to a
+person). What an existing learning records is skipped.
 
 Options:
   --propose           Open a pull or merge request with them instead
@@ -42,6 +43,7 @@ Options:
                       it (needs GITHUB_TOKEN)
   --project <id|path> The GitLab project: --mr's, or where --propose opens
                       it (needs GITLAB_TOKEN)
+  --require-review    With --propose: leave it for a person to merge
   --pr <n>, --mr <n>  With remember: the pull or merge request it reads
   --max <n>           Drafts at most (default: ${DEFAULT_MAX})
   --max-cost-usd <n>  Spend limit (default: the configuration's maxCostUsd)
@@ -129,7 +131,7 @@ export async function learnCommand(
         created,
         deps,
         SOURCES[args.source as Source].what,
-        args.proposeOn,
+        { named: args.proposeOn, requireReview: args.requireReview },
       );
       for (const warning of proposed.warnings) run.warn(warning);
       io.out.write(`${forTerminal(proposed.webUrl)}\n`);
@@ -153,7 +155,7 @@ export async function learnCommand(
 const MERGE = {
   enabled: "opened; it merges once its checks pass",
   merged: "opened and merged: no check was required",
-  off: "opened for review (learnings.requireReview)",
+  off: "opened for a person to review and merge",
   unavailable: "opened; it waits for a person to merge it",
 } as const;
 

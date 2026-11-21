@@ -16,7 +16,8 @@ export interface Proposed extends ProposedChange {
 }
 
 // Write-back by pull request (ADR-0040): merged once its checks pass,
-// unless the configuration's learnings.requireReview leaves it to a person.
+// unless the configuration's learnings.requireReview or --require-review
+// leaves it to a person.
 export async function proposeLearnings(
   run: ResolvedRun,
   kept: readonly LearningDraft[],
@@ -24,8 +25,9 @@ export async function proposeLearnings(
   deps: Pick<ReviewDeps, "env" | "fetch" | "now">,
   // What they were drafted from, for the title: "fix commits".
   from: string,
-  named?: ProposalPlace,
+  options: { named?: ProposalPlace | undefined; requireReview?: boolean } = {},
 ): Promise<Proposed> {
+  const { named } = options;
   const taken = new Set(await run.target.trusted.listFiles(LEARNINGS_DIR));
   const files = kept.map((draft) => {
     const path = freeLearningPath(draft.title, taken);
@@ -57,7 +59,7 @@ export async function proposeLearnings(
         ),
       ].join("\n"),
       files: files.map(({ path, content }) => ({ path, content })),
-      autoMerge: run.config.learnings.requireReview !== true,
+      autoMerge: run.config.learnings.requireReview !== true && options.requireReview !== true,
     },
   );
   return { ...proposed, platform: place.platform };
