@@ -34,6 +34,7 @@ const OPTIONS = {
   reviewers: { type: "string" },
   ultra: { type: "boolean" },
   config: { type: "string" },
+  setup: { type: "string" },
   "spread-of": { type: "string" },
   "allow-mixed": { type: "boolean" },
   repo: { type: "string" },

@@ -30,6 +30,7 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--reviewers` | 透传给 `ocra review --reviewers`，用来比较不同的审查员组合 |
 | `--ultra` | 透传给 `ocra review --ultra`（召回模式，花费约两倍）；运行记录会注明 |
 | `--config` | 透传给 `ocra review --config`：你的配置文件（声明的供应商、各种上限） |
+| `--setup single-agent` | 只用一个顶级档位的审查员覆盖所有方面，不做验证也不做裁判：这是专项审查员的改动要对比的基线（用 `compare` 或 `verdict` 加 `--allow-mixed`）。`--config` 文件里的设置保留（列了插件的文件会被拒绝）；这个设置自己的配置写到运行目录下的 `setup-single-agent.config.json`，像 `--config` 文件一样被记录。不能和 `--reviewers` 一起用 |
 | `--pr-max-cost-usd` | 每个 PR 的花费上限（`ocra review --max-cost-usd`）；与 `--max-cost-usd` 一起用才能限定一次运行 |
 | `--temperature` | 透传给 `ocra review --temperature`；默认 `0` |
 | `--model-seed` | 透传给 `ocra review --seed`；默认 `1`（`--seed` 是抽样用的） |

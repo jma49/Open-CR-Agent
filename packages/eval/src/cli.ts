@@ -79,6 +79,9 @@ Run:
   --config <file>          Passed to ocra review --config: your own configuration
                            (declared providers, limits) for reviews that run with
                            --no-repo-config
+  --setup single-agent     Review with one top-tier reviewer covering every
+                           concern, no verifier and no judge: the baseline the
+                           specialists are compared with (not with --reviewers)
   --temperature <n>        Passed to ocra review --temperature (default 0)
   --model-seed <n>         Passed to ocra review --seed (default 1; --seed is
                            the selection's)
