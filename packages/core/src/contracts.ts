@@ -4,6 +4,39 @@ export interface CodeMatch {
   text: string;
 }
 
+export const SYMBOL_KINDS = [
+  "function",
+  "method",
+  "class",
+  "interface",
+  "type",
+  "enum",
+  "module",
+  "variable",
+] as const;
+export type SymbolKind = (typeof SYMBOL_KINDS)[number];
+
+// Lines are 1-based and inclusive.
+export interface SymbolDefinition {
+  name: string;
+  kind: SymbolKind;
+  startLine: number;
+  endLine: number;
+}
+
+// What a parser found in one file: its definitions, and the lines on which
+// each identifier occurs outside comments and strings.
+export interface FileSymbols {
+  definitions: readonly SymbolDefinition[];
+  uses: ReadonlyMap<string, readonly number[]>;
+}
+
+// Parses files into symbols for the impact analysis; undefined when it does
+// not know the file's language.
+export interface SymbolExtractor {
+  symbols(path: string, content: string): Promise<FileSymbols | undefined>;
+}
+
 // The model tiers, strongest first.
 export const MODEL_TIERS = ["top", "standard", "light"] as const;
 export type ModelTier = (typeof MODEL_TIERS)[number];

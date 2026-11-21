@@ -253,6 +253,7 @@ describe("pinnedLockfile", () => {
     }
     for (const name of [
       "@open-cr-agent/cli",
+      "@open-cr-agent/code-graph",
       "@open-cr-agent/core",
       "@open-cr-agent/runtime-direct",
       "@open-cr-agent/vcs-github",

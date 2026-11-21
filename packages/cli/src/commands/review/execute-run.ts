@@ -1,3 +1,5 @@
+import { join } from "node:path";
+import { directoryCache, treeSitterSymbols } from "@open-cr-agent/code-graph";
 import {
   type AgentRuntime,
   OcraError,
@@ -11,6 +13,7 @@ import { REVIEW_DEFAULTS, readResumedRun } from "@open-cr-agent/core/internal";
 import { withCloudProviders } from "../../cloud/providers.js";
 import { type CloudReview, prepareCloudReview } from "../../cloud/review.js";
 import { agentChains } from "../../config/cli-config.js";
+import { ocraCacheDir } from "../../config/user-dir.js";
 import { VERSION } from "../../version.js";
 import type { ReviewArgs } from "./args.js";
 import type { ReviewDeps } from "./deps.js";
@@ -63,6 +66,9 @@ export async function executeRun(
       signal: interrupt.signal,
       vcs: run.vcs,
       runtime,
+      symbols: treeSitterSymbols({
+        cache: directoryCache(join(ocraCacheDir(deps.env), "symbols")),
+      }),
       onEvent: (event) => {
         run.registry.emit(event);
         progress.onEvent(event);

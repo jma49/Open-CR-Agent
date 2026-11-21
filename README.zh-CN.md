@@ -219,6 +219,7 @@ ocra 的目标是成为其他审查 agent 赖以构建的引擎：一个共享�
 | `@open-cr-agent/vcs-github` | GitHub Pull Request 的 `VcsAdapter` |
 | `@open-cr-agent/vcs-gitlab` | GitLab Merge Request 的 `VcsAdapter` |
 | `@open-cr-agent/vcs-local` | 本地 git 仓库的 `VcsAdapter` |
+| `@open-cr-agent/code-graph` | 影响分析用的 tree-sitter 符号，按 git blob id 缓存 |
 | `@open-cr-agent/cloud-contract` | 与 ocra Cloud 的通信约定 |
 | `@open-cr-agent/cli` | `ocra` 命令 |
 | `@open-cr-agent/eval` | 基准回放与质量指标 |

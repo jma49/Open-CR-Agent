@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AgentRuntime, AgentTaskSpec } from "../contracts.js";
+import type { AgentRuntime, AgentTaskSpec, SymbolExtractor } from "../contracts.js";
 import { previewReview } from "./preview.js";
 import { patch, vcs } from "./run.fakes.js";
 import { review, reviewWithHooks } from "./run.js";
@@ -88,6 +88,47 @@ describe("review --ultra", () => {
       expect(userPrompt).toContain("src/api.ts:12: const n = parseRetries(header);");
       expect(userPrompt).not.toContain("<ocra_review_plan>");
     }
+  });
+
+  it("finds changed symbols and their uses with the review's symbol extractor", async () => {
+    const rt = runtime(async () => "- plan");
+    const adapter = vcs(
+      {
+        "src/retry.ts": "keep\nexport function parseRetries(x) { return x; }\n",
+        "src/api.ts":
+          "// parseRetries\nexport function handle(h) {\n  return parseRetries(h);\n}\n",
+      },
+      patch("src/retry.ts", "export function parseRetries(x) { return x; }"),
+    );
+    adapter.searchCode = async (literal) =>
+      literal === "parseRetries"
+        ? [
+            { path: "src/api.ts", line: 1, text: "// parseRetries" },
+            { path: "src/api.ts", line: 3, text: "  return parseRetries(h);" },
+          ]
+        : [];
+    const symbols: SymbolExtractor = {
+      symbols: async (path) =>
+        path === "src/api.ts"
+          ? {
+              definitions: [{ name: "handle", kind: "function", startLine: 2, endLine: 4 }],
+              uses: new Map([["parseRetries", [3]]]),
+            }
+          : {
+              definitions: [{ name: "parseRetries", kind: "function", startLine: 2, endLine: 2 }],
+              uses: new Map(),
+            },
+    };
+    await review({
+      vcs: adapter,
+      runtime: rt,
+      symbols,
+      stages: { verify: false },
+      mode: { ultra: true },
+    });
+    const prompt = rt.prompts[0]?.userPrompt ?? "";
+    expect(prompt).toContain("src/api.ts:3 (in handle): return parseRetries(h);");
+    expect(prompt).not.toContain("src/api.ts:1");
   });
 
   it("keeps model and repository text inside the new sections", async () => {

@@ -25,14 +25,18 @@ export type {
   CompletionRequest,
   CompletionResult,
   Effort,
+  FileSymbols,
   IncompleteEnding,
   ModelChains,
   ModelTier,
   ReviewContext,
   Sampling,
+  SymbolDefinition,
+  SymbolExtractor,
+  SymbolKind,
   Usage,
 } from "./contracts.js";
-export { MODEL_TIERS } from "./contracts.js";
+export { MODEL_TIERS, SYMBOL_KINDS } from "./contracts.js";
 export type {
   AnchorMethod,
   ChangeRequest,

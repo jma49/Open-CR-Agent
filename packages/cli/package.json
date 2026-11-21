@@ -43,6 +43,7 @@
   ],
   "dependencies": {
     "@open-cr-agent/cloud-contract": "0.7.0",
+    "@open-cr-agent/code-graph": "0.7.0",
     "@open-cr-agent/core": "0.7.0",
     "@open-cr-agent/runtime-direct": "0.7.0",
     "@open-cr-agent/vcs-github": "0.7.0",

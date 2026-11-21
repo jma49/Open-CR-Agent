@@ -425,6 +425,14 @@ export interface FileDiff {
 }
 
 // @public (undocumented)
+export interface FileSymbols {
+    // (undocumented)
+    definitions: readonly SymbolDefinition[];
+    // (undocumented)
+    uses: ReadonlyMap<string, readonly number[]>;
+}
+
+// @public (undocumented)
 export interface Finding extends ReportedFinding {
     // (undocumented)
     anchor: {
@@ -1507,6 +1515,8 @@ export interface ReviewOptions {
     // (undocumented)
     stages?: ReviewStages;
     // (undocumented)
+    symbols?: SymbolExtractor;
+    // (undocumented)
     vcs: VcsAdapter;
 }
 
@@ -1820,6 +1830,30 @@ export class SpendLimitReached extends OcraError {
 
 // @public (undocumented)
 export function startPlugins(plugins: readonly OcraPlugin[], options?: PluginHostOptions): Promise<PluginRegistry>;
+
+// @public (undocumented)
+export const SYMBOL_KINDS: readonly ["function", "method", "class", "interface", "type", "enum", "module", "variable"];
+
+// @public (undocumented)
+export interface SymbolDefinition {
+    // (undocumented)
+    endLine: number;
+    // (undocumented)
+    kind: SymbolKind;
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    startLine: number;
+}
+
+// @public (undocumented)
+export interface SymbolExtractor {
+    // (undocumented)
+    symbols(path: string, content: string): Promise<FileSymbols | undefined>;
+}
+
+// @public (undocumented)
+export type SymbolKind = (typeof SYMBOL_KINDS)[number];
 
 // @public (undocumented)
 export interface TaskAttempt extends AttemptOutcome {
