@@ -199,6 +199,24 @@ Each line of `events.jsonl` ends with a `seal`: an HMAC keyed by a secret of you
 
 A local review service: start reviews over HTTP and follow their events live. See [ocra serve](./serve).
 
+## ocra learn
+
+Drafts [learnings](./rules#ocralearnings) from the fix commits in your history, so reviews remember what the team already fixed once:
+
+```bash
+ocra learn mine                    # the 20 newest fixes on HEAD's first-parent line
+ocra learn mine --max 50           # more of them
+ocra learn mine --max-cost-usd 0.5 # stop drafting at a spend limit
+```
+
+A fix is a commit whose subject says so (`fix:`, `revert`, "fixes", "bug") and that changes at most 5 source files; docs, tests and data files are left out. For each one, one call on the helper role reads its subject, message and diff (cut to fixed sizes, as data) and drafts a title, a body, symbols and keywords, or answers that the fix holds no lesson for other changes. ocra then checks the draft without a model:
+
+- symbols must appear in the diff; the paths are the directories the fix touched, never the model's;
+- a fix an existing learning records in `source.ref` is not drafted again, and a draft that covers a path of an existing learning with mostly the same title words is dropped;
+- the draft is kept only if the selection would give it to the fix it came from.
+
+Each kept learning is written to `.ocra/learnings/<title>.md` in the working tree, with `source: { kind: fix-commit, ref: <sha> }` and never `critical`, and its path printed. Read, edit and commit them like any file. The last line counts what was written, declined, duplicate or left by the spend limit, and what the calls cost. `ocra learn` uses the runtime and models of `.ocra/config.json` (the helper role's), reviews nothing and writes no session.
+
 ## ocra metrics
 
 Counts over the finished reviews in `.ocra/sessions/`, from each session's `report.json`; no model is called:

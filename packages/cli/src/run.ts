@@ -2,6 +2,7 @@ import { parseArgs } from "node:util";
 import { errorMessage, isOcraError } from "@open-cr-agent/core";
 import { defaultCloudDeps } from "./cloud/deps.js";
 import { INIT_USAGE, initCommand } from "./commands/init.js";
+import { LEARN_USAGE, learnCommand } from "./commands/learn.js";
 import { LOGIN_USAGE, loginCommand } from "./commands/login.js";
 import { memoryCommand } from "./commands/memory.js";
 import { metricsCommand } from "./commands/metrics.js";
@@ -27,6 +28,7 @@ Commands:
   review      Review code changes (run "ocra review --help" for options)
   serve       Run a local review service that streams each review's events (run "ocra serve --help")
   memory      Remember findings the team accepts (run "ocra memory --help")
+  learn       Draft the team's learnings from its fix commits (run "ocra learn --help")
   metrics     Counts over past reviews: runs, cost, findings, per reviewer (run "ocra metrics --help")
   plugins     Allow plugins your ocra Cloud settings name on this machine (run "ocra plugins --help")
   login       Sign in to ocra Cloud (in development; run "ocra login --help")
@@ -80,6 +82,16 @@ export async function run(
     } catch (error) {
       if (error instanceof UsageError) err.write(`${error.message}\n\n${INIT_USAGE}`);
       else err.write(failure(error));
+      return EXIT.error;
+    }
+  }
+  if (command === "learn") {
+    try {
+      return await learnCommand(rest, { out, err }, deps);
+    } catch (error) {
+      if (error instanceof UsageError) {
+        err.write(`${error.message ? `${error.message}\n\n` : ""}${LEARN_USAGE}`);
+      } else err.write(failure(error));
       return EXIT.error;
     }
   }

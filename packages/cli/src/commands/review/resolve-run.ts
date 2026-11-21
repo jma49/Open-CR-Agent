@@ -66,10 +66,13 @@ interface RunSession {
   sealKey?: string;
 }
 
+// A review writes a session log; a plan, and `ocra learn`, which calls a
+// model but reviews nothing, do not.
 export async function resolveRun(
   args: ReviewArgs,
   io: ReviewIo,
   deps: ReviewDeps,
+  { logged = !args.plan }: { logged?: boolean } = {},
 ): Promise<ResolvedRun> {
   const root = await findRepositoryRoot(deps.cwd);
   const warn = (message: string) => io.err.write(`[ocra] Warning: ${forTerminal(message)}\n`);
@@ -98,13 +101,14 @@ export async function resolveRun(
   const session: RunSession = {
     dir: sessionsDir(root),
     id: newRunId(),
-    ...(await sealKeyOf(args, deps, warn)),
+    ...(logged ? await sealKeyOf(deps, warn) : {}),
   };
   const registry = await startRegistry(args, deps, {
     target,
     config: resolved.config,
     account: account.plugins,
     session,
+    logged,
     warn,
   });
   return {
@@ -162,11 +166,10 @@ async function withAccount(
 // The key that seals the session; without it the review still runs, and
 // only its session cannot be resumed.
 async function sealKeyOf(
-  args: ReviewArgs,
   deps: ReviewDeps,
   warn: (message: string) => void,
 ): Promise<{ sealKey?: string }> {
-  if (args.plan || !deps.sessionKey) return {};
+  if (!deps.sessionKey) return {};
   try {
     return { sealKey: await deps.sessionKey() };
   } catch (error) {
@@ -185,13 +188,15 @@ async function startRegistry(
     config: CliConfig;
     account: AccountPlugins;
     session: RunSession;
+    logged: boolean;
     warn: (message: string) => void;
   },
 ): Promise<PluginRegistry> {
-  const { target, config, warn } = run;
-  const builtins = args.plan
-    ? deps.builtinPlugins.filter((p) => p.name !== sessionJsonlPlugin.name)
-    : [...deps.builtinPlugins, ...(await builtinRuntime(deps.runtimes, config.runtime))];
+  const { target, config, logged, warn } = run;
+  const builtins = [
+    ...deps.builtinPlugins.filter((p) => logged || p.name !== sessionJsonlPlugin.name),
+    ...(args.plan ? [] : await builtinRuntime(deps.runtimes, config.runtime)),
+  ];
   const account = await loadAccountPlugins(run.account, {
     allowed: target.accountPlugins,
     configured: config.plugins,
@@ -202,9 +207,9 @@ async function startRegistry(
   // The repository's own settings win; a repository plugin's come from it alone.
   const pluginSettings = { ...account.settings, ...config.pluginSettings };
   return startPlugins([...builtins, ...target.plugins, ...account.plugins], {
-    settings: args.plan
-      ? pluginSettings
-      : { ...pluginSettings, [sessionJsonlPlugin.name]: run.session },
+    settings: logged
+      ? { ...pluginSettings, [sessionJsonlPlugin.name]: run.session }
+      : pluginSettings,
     env: deps.env,
     warn,
   });
