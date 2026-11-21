@@ -217,6 +217,10 @@ A fix is a commit whose subject says so (`fix:`, `revert`, "fixes", "bug") and t
 
 Each kept learning is written to `.ocra/learnings/<title>.md` in the working tree, with `source: { kind: fix-commit, ref: <sha> }` and never `critical`, and its path printed. Read, edit and commit them like any file. The last line counts what was written, declined, duplicate or left by the spend limit, and what the calls cost. `ocra learn` uses the runtime and models of `.ocra/config.json` (the helper role's), reviews nothing and writes no session.
 
+### From accepted findings
+
+`ocra learn feedback` drafts from the findings the team accepted with [`ocra memory add`](#ocra-memory), newest first, read from `.ocra/memory.json` at the same revision a review reads it. Each call is given the finding's title, the reason the team gave and the file it is in, and writes a lesson only when the reason holds beyond that one finding (a pattern that is intended here, a risk handled elsewhere); the learning then tells reviewers what not to report there. Its paths are the file's directory, its `source` is `{ kind: review-feedback, ref: <finding id> }`, and the same checks, limits and `--propose` apply as for `mine`.
+
 ### Writing them back by pull request
 
 `ocra learn mine --propose` writes nothing to the working tree: it opens a GitHub pull request with the kept learnings instead, one commit on a new `ocra/learnings-<time>` branch from the default branch, made through the GitHub API (nothing is pushed from the checkout). It needs `GITHUB_TOKEN` (or `GH_TOKEN`) with contents and pull request write access; the repository is `GITHUB_REPOSITORY`, else origin's. The pull request lists each learning and the commit it came from, and the command prints its address.

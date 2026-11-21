@@ -20,6 +20,7 @@ function candidate(ref: string, path = "src/db/query.ts"): Candidate {
   return {
     ref,
     evidence: async (): Promise<LearningEvidence> => ({
+      kind: "change",
       source: { kind: "fix-commit", ref },
       subject: `fix: ${ref}`,
       message: "",

@@ -15,6 +15,8 @@ export async function proposeLearnings(
   kept: readonly LearningDraft[],
   created: string,
   deps: Pick<ReviewDeps, "env" | "fetch" | "now">,
+  // What they were drafted from, for the title: "fix commits".
+  from: string,
 ): Promise<ProposedChange> {
   const taken = new Set(await run.target.trusted.listFiles(LEARNINGS_DIR));
   const files = kept.map((draft) => {
@@ -32,10 +34,10 @@ export async function proposeLearnings(
     },
     {
       branch: `ocra/learnings-${stamp}`,
-      title: `chore(ocra): add ${files.length} learning(s) from fix commits`,
-      commitMessage: `chore(ocra): add ${files.length} learning(s) from fix commits`,
+      title: `chore(ocra): add ${files.length} learning(s) from ${from}`,
+      commitMessage: `chore(ocra): add ${files.length} learning(s) from ${from}`,
       body: [
-        "Learnings `ocra learn mine` drafted from this repository's fix commits. Each one is given to the reviews of changes it applies to; edit or delete any that is wrong.",
+        `Learnings \`ocra learn\` drafted from this repository's ${from}. Each one is given to the reviews of changes it applies to; edit or delete any that is wrong.`,
         "",
         ...files.map(
           (f) =>

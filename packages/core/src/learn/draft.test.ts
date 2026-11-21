@@ -37,6 +37,7 @@ const patch = [
 ].join("\n");
 
 const evidence: LearningEvidence = {
+  kind: "change",
   source: { kind: "fix-commit", ref: "abc1234" },
   subject: "fix(db): release the connection when a query throws",
   message: "A failed query kept its connection, and the pool ran dry under errors.",
@@ -128,6 +129,19 @@ describe("learningDrafter", () => {
     expect(user.match(/<\/ocra_change_request>/g)).toHaveLength(1);
     expect(user.match(/<\/ocra_diff>/g)).toHaveLength(1);
     expect(user.length).toBeLessThan(6_000);
+  });
+
+  it("asks about an accepted finding with its own instructions and labels", async () => {
+    const { rt } = await draft('{"skip": true}', {
+      kind: "accepted-finding",
+      source: { kind: "review-feedback", ref: "0123456789abcdef" },
+      subject: "Retries are unbounded",
+      message: "The gateway caps retries for every client.",
+      files: [diff("src/http/retry.ts", " export const retries = Infinity;")],
+    });
+    expect(rt.seen[0]?.system).toContain("a review finding a team accepted");
+    expect(rt.seen[0]?.user).toContain("Why the team accepted it:");
+    expect(rt.seen[0]?.user).not.toContain("Subject:");
   });
 
   it("is undefined when the runtime makes no plain completions", () => {

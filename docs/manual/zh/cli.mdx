@@ -217,6 +217,10 @@ ocra learn mine --max-cost-usd 0.5 # 花费到上限就停止起草
 
 保留的每条 learning 写进工作区的 `.ocra/learnings/<标题>.md`，带 `source: { kind: fix-commit, ref: <sha> }`，从不设 `critical`，并打印路径。像其他文件一样阅读、修改、提交。最后一行统计写入、没有经验、重复和因花费上限没起草的数量，以及调用的花费。`ocra learn` 使用 `.ocra/config.json` 的运行时和模型（helper 角色的），不审查任何东西，也不写会话。
 
+### 从已接受的问题
+
+`ocra learn feedback` 从团队用 [`ocra memory add`](#ocra-memory) 接受的问题起草，最新的在前，和审查一样从同一个版本读取 `.ocra/memory.json`。每次调用拿到问题的标题、团队给出的理由和它所在的文件，只有理由不止适用于这一条问题时（这里有意这样写、风险在别处处理）才写成经验；这条 learning 随后告诉审查员在那里不要报告什么。路径取该文件所在目录，`source` 是 `{ kind: review-feedback, ref: <问题 id> }`，检查、限制和 `--propose` 都和 `mine` 相同。
+
 ### 通过 pull request 写回
 
 `ocra learn mine --propose` 不写工作区：它把保留的 learning 开成一个 GitHub pull request，在默认分支上新建 `ocra/learnings-<时间>` 分支并提交一次，全部通过 GitHub API 完成（不从本地 push）。需要有 contents 和 pull request 写权限的 `GITHUB_TOKEN`（或 `GH_TOKEN`）；仓库取 `GITHUB_REPOSITORY`，否则取 origin。pull request 列出每条 learning 和它来自的提交，命令打印它的地址。
