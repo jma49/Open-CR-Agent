@@ -36,6 +36,8 @@ const OPTIONS = {
   config: { type: "string" },
   "spread-of": { type: "string" },
   "allow-mixed": { type: "boolean" },
+  repo: { type: "string" },
+  "repo-dir": { type: "string" },
   series: { type: "string" },
   temperature: { type: "string" },
   "model-seed": { type: "string" },

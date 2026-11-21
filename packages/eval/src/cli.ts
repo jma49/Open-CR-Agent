@@ -35,6 +35,15 @@ Commands:
                        forbid-seeds.json (free, no model; --limit default
                        50, --max-change-lines default 300, --out default
                        .ocra/eval/aacr-golden-candidates)
+  golden-import --from fixes --repo <owner/name> [--repo-dir <clone>]
+                       Write unverified candidates from a local clone's own
+                       history: each claim is a line range of a commit that
+                       a later fix or revert rewrote (SZZ), at most 3 per
+                       commit; fixes touching more than 5 source files are
+                       skipped (free, no model, no network; --repo-dir
+                       default ., --limit default 50, --max-change-lines
+                       default 300, --out default
+                       .ocra/eval/fix-golden-candidates)
 
 Selection:
   --limit <n>              Number of PRs (default: all eligible)

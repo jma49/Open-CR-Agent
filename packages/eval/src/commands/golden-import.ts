@@ -21,6 +21,7 @@ import { renderImportSummary } from "../golden-import-summary.js";
 import { detectLicence, isLicenceSource } from "../licence.js";
 import { rootFiles } from "../repos.js";
 import { defaultOcraCommand } from "../reviewer.js";
+import { goldenImportFixes } from "./golden-import-fixes.js";
 import { CACHE_DIR, number, type Output, parse } from "./options.js";
 
 const DEFAULT_OUT = ".ocra/eval/aacr-golden-candidates";
@@ -38,7 +39,8 @@ export async function goldenImport(
   deps: ImportDeps = {},
 ): Promise<number> {
   const { values } = parse(argv);
-  if (values.from !== "aacr") throw new Error("golden-import needs --from aacr");
+  if (values.from === "fixes") return await goldenImportFixes(argv, out, err);
+  if (values.from !== "aacr") throw new Error("golden-import needs --from aacr or --from fixes");
   const limit = number(values.limit, "--limit") ?? 50;
   const seed = number(values.seed, "--seed") ?? 1;
   const maxChangeLines =
