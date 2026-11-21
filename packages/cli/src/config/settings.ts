@@ -102,6 +102,7 @@ const MERGE: {
   ultra: { merge: "replace", from: ["account", "flag"], plan: { list: "set" } },
   $schema: { merge: "replace", from: ["shared", "file"] },
   github: { merge: "entries", from: ["shared", "file"] },
+  learnings: { merge: "entries", from: ["shared", "file"], plan: { list: "set" } },
   plugins: { merge: "replace", from: ["file"] },
   pluginSettings: { merge: "replace", from: ["file"] },
   providers: { merge: "entries", from: ["shared", "file"] },

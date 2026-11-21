@@ -18,6 +18,7 @@ export type {
   PublishedFindings,
   ReviewPlatform,
 } from "./platform.js";
+export type { FileProposal, ProposedChange, ProposeOptions } from "./proposal.js";
 export { MAX_ATTEMPTS, type RetryDecision, retryDecision } from "./retry.js";
 export {
   type CodeSource,

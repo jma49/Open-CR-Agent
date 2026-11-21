@@ -213,7 +213,7 @@ async function changeRequestTarget(
   };
 }
 
-function originUrl(root: string): Promise<string | undefined> {
+export function originUrl(root: string): Promise<string | undefined> {
   return new LocalGitAdapter({ cwd: root, target: { mode: "workspace" } })
     .remoteUrl("origin")
     .catch(() => undefined);

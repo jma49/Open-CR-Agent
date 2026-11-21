@@ -108,6 +108,8 @@ export const configSchema = z
       .partial()
       .strict()
       .default({}),
+    // ADR-0040: whether a person merges what `ocra learn --propose` opens.
+    learnings: z.object({ requireReview: z.boolean() }).partial().strict().default({}),
     include: z.array(z.string().min(1)).default([]),
     exclude: z.array(z.string().min(1)).default([]),
     // Unset means "opencode"; loadConfig fills it in and records whether the

@@ -217,6 +217,12 @@ ocra learn mine --max-cost-usd 0.5 # 花费到上限就停止起草
 
 保留的每条 learning 写进工作区的 `.ocra/learnings/<标题>.md`，带 `source: { kind: fix-commit, ref: <sha> }`，从不设 `critical`，并打印路径。像其他文件一样阅读、修改、提交。最后一行统计写入、没有经验、重复和因花费上限没起草的数量，以及调用的花费。`ocra learn` 使用 `.ocra/config.json` 的运行时和模型（helper 角色的），不审查任何东西，也不写会话。
 
+### 通过 pull request 写回
+
+`ocra learn mine --propose` 不写工作区：它把保留的 learning 开成一个 GitHub pull request，在默认分支上新建 `ocra/learnings-<时间>` 分支并提交一次，全部通过 GitHub API 完成（不从本地 push）。需要有 contents 和 pull request 写权限的 `GITHUB_TOKEN`（或 `GH_TOKEN`）；仓库取 `GITHUB_REPOSITORY`，否则取 origin。pull request 列出每条 learning 和它来自的提交，命令打印它的地址。
+
+pull request 设为检查通过后自动合并（仓库允许 squash 就用 squash，其次 rebase，再次 merge commit）；如果它不需要任何检查，就立即合并。在 `.ocra/config.json` 里设 `"learnings": { "requireReview": true }`，就留给人来审查和合并。仓库关闭了 auto-merge，或 GitHub 拒绝时，ocra 给出警告并让 pull request 保持打开。用 workflow 自己的 `GITHUB_TOKEN` 开的 pull request 不会触发任何 workflow，必需的检查永远不会报告结果：如果分支保护要求检查，请用 GitHub App 或个人 token。
+
 ## ocra metrics
 
 对 `.ocra/sessions/` 下已完成的审查做统计，数据来自每个会话的 `report.json`，不调用任何模型：

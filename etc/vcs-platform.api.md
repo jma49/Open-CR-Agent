@@ -54,6 +54,25 @@ export const commitIdSchema: z.ZodString;
 export const fetchSchema: z.ZodCustom<typeof fetch, typeof fetch>;
 
 // @public (undocumented)
+export interface FileProposal {
+    // (undocumented)
+    autoMerge: boolean;
+    // (undocumented)
+    body: string;
+    // (undocumented)
+    branch: string;
+    // (undocumented)
+    commitMessage: string;
+    // (undocumented)
+    files: readonly {
+        path: string;
+        content: string;
+    }[];
+    // (undocumented)
+    title: string;
+}
+
+// @public (undocumented)
 export const githubSuggestion: SuggestionFence;
 
 // @public (undocumented)
@@ -190,6 +209,30 @@ export interface PlatformThread {
     resolved: boolean;
     // (undocumented)
     resolvedBy?: string;
+}
+
+// @public (undocumented)
+export interface ProposedChange {
+    // (undocumented)
+    merge: "enabled" | "merged" | "off" | "unavailable";
+    // (undocumented)
+    warnings: string[];
+    // (undocumented)
+    webUrl: string;
+}
+
+// @public (undocumented)
+export interface ProposeOptions {
+    // (undocumented)
+    env: Readonly<Record<string, string | undefined>>;
+    // (undocumented)
+    fetch?: typeof fetch;
+    // (undocumented)
+    origin(): Promise<string | undefined>;
+    // (undocumented)
+    repository?: ChangeRequestRef["repository"];
+    // (undocumented)
+    signal?: AbortSignal;
 }
 
 // @public (undocumented)

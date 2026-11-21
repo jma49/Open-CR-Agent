@@ -4,9 +4,12 @@
 
 ```ts
 
+import type { FileProposal } from '@open-cr-agent/vcs-platform';
 import { OcraError } from '@open-cr-agent/core';
 import type { OcraPlugin } from '@open-cr-agent/core';
 import type { PlatformTarget } from '@open-cr-agent/vcs-platform';
+import type { ProposedChange } from '@open-cr-agent/vcs-platform';
+import type { ProposeOptions } from '@open-cr-agent/vcs-platform';
 import type { ResolveTargetOptions } from '@open-cr-agent/vcs-platform';
 
 // @public (undocumented)
@@ -26,6 +29,9 @@ export interface GitHubSettings {
     // (undocumented)
     requestChanges?: boolean;
 }
+
+// @public (undocumented)
+export function proposeOnGitHub(options: ProposeOptions, proposal: FileProposal): Promise<ProposedChange>;
 
 // @public (undocumented)
 export function resolveGitHubTarget(options: ResolveTargetOptions): Promise<PlatformTarget<GitHubSettings>>;

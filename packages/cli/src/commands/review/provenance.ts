@@ -21,12 +21,22 @@ export function requestedSampling(config: CliConfig, args: ReviewArgs): Sampling
 // unset it adds nothing, so configurations that set none keep their hash.
 // The ocra Cloud account settings (ADR-0027) add their version and rules
 // only when they were layered in, so a signed-out run keeps its hash.
+// `learnings` sets up `ocra learn`, not how anything is reviewed.
 export function configHash(
   config: CliConfig,
   args: ReviewArgs,
   accountSettings?: { version: string | null },
 ): string {
-  const { sampling: _, providers, extends: shared, effort, roles, rules, ...rest } = config;
+  const {
+    sampling: _,
+    learnings: _learn,
+    providers,
+    extends: shared,
+    effort,
+    roles,
+    rules,
+    ...rest
+  } = config;
   const bare = (account: boolean) =>
     rules
       .filter((rule) => (rule.source === "account") === account)

@@ -16,27 +16,10 @@ export interface GitHubSettings {
 export async function resolveGitHubTarget(
   options: ResolveTargetOptions,
 ): Promise<PlatformTarget<GitHubSettings>> {
-  const { env, ref } = options;
-  const token = env.GITHUB_TOKEN ?? env.GH_TOKEN;
-  if (!token) {
-    throw new OcraError(
-      "CONFIG_CREDENTIALS_MISSING",
-      "--pr needs a GitHub token in GITHUB_TOKEN or GH_TOKEN",
-    );
-  }
-  const [owner = "", repo = ""] = (ref.repository ?? (await repositoryName(options))).split("/");
-  const apiUrl = env.GITHUB_API_URL;
+  const { ref } = options;
+  const { api, owner, repo, token, apiUrl } = await githubApi(options, ref.repository, "--pr");
   const fetchImpl = options.fetch;
   const signal = options.signal ? { signal: options.signal } : {};
-  const api = new GitHubApi(
-    { owner, repo },
-    {
-      token,
-      ...(apiUrl ? { baseUrl: apiUrl } : {}),
-      ...(fetchImpl ? { fetch: fetchImpl } : {}),
-      ...signal,
-    },
-  );
   const pull = await api.getPullRequest(ref.number);
   return {
     platform: "github",
@@ -62,7 +45,34 @@ export async function resolveGitHubTarget(
   };
 }
 
-async function repositoryName(options: ResolveTargetOptions): Promise<string> {
+type ApiOptions = Pick<ResolveTargetOptions, "env" | "origin" | "fetch" | "signal">;
+
+// The API client for the repository named, else GITHUB_REPOSITORY's, else
+// origin's; `what` names the command that needs the token.
+export async function githubApi(options: ApiOptions, repository: string | undefined, what: string) {
+  const { env } = options;
+  const token = env.GITHUB_TOKEN ?? env.GH_TOKEN;
+  if (!token) {
+    throw new OcraError(
+      "CONFIG_CREDENTIALS_MISSING",
+      `${what} needs a GitHub token in GITHUB_TOKEN or GH_TOKEN`,
+    );
+  }
+  const [owner = "", repo = ""] = (repository ?? (await repositoryName(options))).split("/");
+  const apiUrl = env.GITHUB_API_URL;
+  const api = new GitHubApi(
+    { owner, repo },
+    {
+      token,
+      ...(apiUrl ? { baseUrl: apiUrl } : {}),
+      ...(options.fetch ? { fetch: options.fetch } : {}),
+      ...(options.signal ? { signal: options.signal } : {}),
+    },
+  );
+  return { api, owner, repo, token, apiUrl };
+}
+
+async function repositoryName(options: Pick<ApiOptions, "env" | "origin">): Promise<string> {
   if (options.env.GITHUB_REPOSITORY) return options.env.GITHUB_REPOSITORY;
   const url = await options.origin();
   const match = url && /github\.com[:/]([\w.-]+\/[\w.-]+?)(?:\.git)?$/.exec(url);

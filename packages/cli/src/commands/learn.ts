@@ -6,6 +6,7 @@ import { forTerminal } from "../io/terminal.js";
 import { UsageError } from "../io/usage-error.js";
 import { fixCandidates } from "./learn/fix-commits.js";
 import { type LearnResult, learnFrom } from "./learn/pipeline.js";
+import { proposeLearnings } from "./learn/propose.js";
 import { learningFile, writeLearning } from "./learn/write.js";
 import type { ReviewArgs } from "./review/args.js";
 import type { ReviewDeps } from "./review/deps.js";
@@ -21,9 +22,12 @@ Drafts learnings for .ocra/learnings/ from the fix commits on HEAD's
 first-parent line, newest first: one helper model call per fix. A draft is
 kept when it is not a duplicate and the selection gives it to the fix it
 came from. Kept learnings are written to the working tree, to commit or
-discard; fixes an existing learning records are skipped.
+discard, or with --propose opened as a GitHub pull request that merges
+once its checks pass (learnings.requireReview: true leaves it to a person).
+Fixes an existing learning records are skipped.
 
 Options:
+  --propose           Open a pull request with them instead (needs GITHUB_TOKEN)
   --max <n>           Fixes to draft at most (default: ${DEFAULT_MAX})
   --max-cost-usd <n>  Spend limit (default: the configuration's maxCostUsd)
   -h, --help          Show help
@@ -31,6 +35,7 @@ Options:
 
 interface LearnArgs {
   max: number;
+  propose: boolean;
   maxCostUsd?: number;
 }
 
@@ -75,10 +80,16 @@ export async function learnCommand(
       warn: run.warn,
     });
     const created = new Date(deps.now()).toISOString().slice(0, 10);
-    for (const kept of result.kept) {
-      io.out.write(
-        `${forTerminal(await writeLearning(run.root, learningFile(kept, created), kept.title))}\n`,
-      );
+    if (args.propose && result.kept.length > 0) {
+      const proposed = await proposeLearnings(run, result.kept, created, deps);
+      for (const warning of proposed.warnings) run.warn(warning);
+      io.out.write(`${forTerminal(proposed.webUrl)}\n`);
+      io.err.write(`[ocra] Pull request ${MERGE[proposed.merge]}\n`);
+    } else {
+      for (const kept of result.kept) {
+        const text = learningFile(kept, created);
+        io.out.write(`${forTerminal(await writeLearning(run.root, text, kept.title))}\n`);
+      }
     }
     io.err.write(`[ocra] ${summary(result, spent)}\n`);
     return run.interrupt.signal.aborted ? EXIT.interrupted : EXIT.ok;
@@ -89,9 +100,16 @@ export async function learnCommand(
   }
 }
 
+const MERGE = {
+  enabled: "opened; it merges once its checks pass",
+  merged: "opened and merged: no check was required",
+  off: "opened for review (learnings.requireReview)",
+  unavailable: "opened; it waits for a person to merge it",
+} as const;
+
 function summary(result: LearnResult, spent: number): string {
   const parts = [
-    `${result.kept.length} learning(s) written from ${result.drafted} draft(s)`,
+    `${result.kept.length} learning(s) kept from ${result.drafted} draft(s)`,
     result.declined > 0 ? `${result.declined} fix(es) held no lesson` : "",
     result.duplicates > 0 ? `${result.duplicates} duplicate(s)` : "",
     result.unselected > 0 ? `${result.unselected} the selection would not give to their fix` : "",
@@ -110,6 +128,7 @@ function parseLearnArgs(argv: string[]): LearnArgs | "help" {
     options: {
       max: { type: "string" },
       "max-cost-usd": { type: "string" },
+      propose: { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
   });
@@ -124,11 +143,12 @@ function parseLearnArgs(argv: string[]): LearnArgs | "help" {
   if (!Number.isInteger(max) || max < 1) {
     throw new UsageError(`--max must be a positive whole number, got ${values.max}`);
   }
+  const propose = values.propose === true;
   const cost = values["max-cost-usd"];
-  if (cost === undefined) return { max };
+  if (cost === undefined) return { max, propose };
   const maxCostUsd = Number(cost);
   if (!(maxCostUsd > 0)) {
     throw new UsageError(`--max-cost-usd must be a positive number, got ${cost}`);
   }
-  return { max, maxCostUsd };
+  return { max, propose, maxCostUsd };
 }
