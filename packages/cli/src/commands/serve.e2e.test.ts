@@ -47,7 +47,9 @@ describe("ocra serve", () => {
     );
 
     const dir = join(home, "ocra", "serve");
-    const file = await until(() => (existsSync(dir) ? readdirSync(dir)[0] : undefined));
+    const file = await until(() =>
+      existsSync(dir) ? readdirSync(dir).find((f) => f.endsWith(".json")) : undefined,
+    );
     const { url, token } = JSON.parse(readFileSync(join(dir, file), "utf8"));
     const headers = { authorization: `Bearer ${token}` };
     const started = await fetch(`${url}/runs`, { method: "POST", headers, body: "{}" });
