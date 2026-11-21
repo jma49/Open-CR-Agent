@@ -6,6 +6,87 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-21
+
+### Added
+
+- The review learning file format: `learningFrontmatterSchema`, `splitLearning`, `learningIdOf` and their limits (ADR-0037).
+- `ocra review` reads the team's learnings from `.ocra/learnings/*.md` at the trusted revision (the base commit for `--pr` and `--mr`) and gives each task those that apply; a file that is not a valid learning is skipped with a warning (ADR-0037).
+- `ReviewOptions.learnings`: each review task is given the team's learnings that apply to its files, selected without a model, and the report lists them under `learnings` (ADR-0037).
+- `ocra serve`: a review service on 127.0.0.1 that starts reviews over HTTP and streams each one's events (Server-Sent Events, the contract's `reviewEventSchema`); cancel is its only mid-run command.
+- `AppliedSettings.unsentBecause`: why a runtime sent no reasoning effort when the cause is not the capability table. `AttemptOutcome.unreadMessages`: how many of a session's messages a runtime could not read.
+- `showPreExisting` (default `true`) in `.ocra/config.json`, and `stages.showPreExisting` in `ReviewOptions`: `false` leaves findings Verify traced to code from before the change out of the report.
+- Review events `stage_started` (each stage, in order), `coverage_settled` (each file's last state, before Verify) and `usage_reported` (every model call's spend, adding up to the run's usage).
+- The live review event schema (`reviewEventSchema`, version 1) that `ocra serve` will stream and ocra Cloud will relay, with `readReviewEvent`, which skips kinds a newer engine adds, and a fixture of one run's events.
+- A review agent that ends without `task_done` (at the step cap, or after stopping early) gets one more turn, with only `report_finding` and `task_done`, to report what it has already confirmed; the report's task records it as `wrapUp`, next to its `ended`, and its files still count as partly reviewed (`incomplete`), since the turn reads nothing more ([#469](https://github.com/jma49/Open-CR-Agent/issues/469)).
+- Runtime SPI: `ModelAttempts.task` may return a `TaskAttempt` whose `wrapUp()` continues the attempt's conversation; `WRAP_UP_MESSAGE`, `WRAP_UP_TOOLS` and `WRAP_UP_STEPS` describe the turn.
+- `isIncompleteReview(report)` and `isBlocking(report)` in `@open-cr-agent/core`: the rules the CLI's exit codes 3 and 1 apply, for embedders to gate on.
+- `@open-cr-agent/code-graph`: definitions and uses per file with tree-sitter (TypeScript, JavaScript, Python, Go, Rust, Java), cached by git blob id.
+- `ReviewOptions.symbols` takes a `SymbolExtractor` for the impact analysis.
+- A signed-in `--pr` or `--mr` review names the pull or merge request in its upload to ocra Cloud: the repository's address, the number and the head commit.
+- `@open-cr-agent/cloud-contract` exports `normaliseRemote` and `REPOSITORY_URL`; the upload schema takes `pullRequest`.
+- Verify is shown where the names in each finding's quoted code are defined and used elsewhere in the repository, so it can settle claims about callers, types and guards.
+- A finding Verify traces to code the change did not bring in is marked `preExisting` in the JSON report and "pre-existing" in review comments; the verdict is unchanged.
+
+### Changed
+
+- Review tasks at the `full` risk tier are shown the callers of the symbols their bundle changes, as under `--ultra`, without its plan phase or second sample.
+- `ocra whoami` says whether this machine sends findings to ocra Cloud.
+- Checking whether your ocra Cloud account remembers any finding asks for one entry only.
+- `isBlocking` takes the change request's `override` as typed by `ChangeRequest`, and `PreviewOptions` no longer accepts `full`, which `mode.full` already sets.
+- The workflows `ocra init --github` writes pin the Action to v0.7.0.
+- The judge sees each finding's quoted code and its verification, so it merges duplicates by the lines they quote and never drops a confirmed finding as speculative.
+- A finding a reviewer reports on another changed file, outside its bundle, is kept (once, by fingerprint) instead of dropped; only findings on files outside the review are dropped.
+- The `finding_dropped` session event's reason is now `outside_review` (was `outside_bundle`).
+- A pre-existing finding never counts towards the verdict, so it cannot block a change.
+- The live event stages no longer list `anchor`, which is part of the review stage.
+- Callers count a symbol as changed when any line of its body changes, list only uses in code with the function or class they sit in, and put changed signatures first. The CLI caches what it parses in `~/.cache/ocra/symbols/` (`$OCRA_CACHE_DIR`).
+
+### Fixed
+
+- The warning when ocra cannot remove an old ocra Cloud account salt no longer says it could not keep the salt.
+- A signed-in review whose config directory cannot be written runs anyway: it warns, uses the account's salt it was just sent, and sends nothing to ocra Cloud only when no salt can be had.
+- On `opencode`, a run longer than about 50 minutes on `ocra-` models no longer renews the ocra Cloud token at every start when a new token would last no longer.
+- Checking whether your ocra Cloud account remembers findings reads no more than it needs, and every ocra Cloud answer is read up to a size limit.
+- The ocra Cloud session and the salts are flushed to disk before they replace the old file, and on Windows the replacement is tried again while another program holds the file a moment.
+- The warning about a model priced at 0 also covers a chain that only your ocra Cloud account's settings name; it checked the configuration before the account's settings joined it.
+- A plugin package whose `exports` name an entry for `import` only loads, from the repository's dependencies and from your ocra Cloud account; a package with both entries now loads its `import` entry.
+- On Windows, a process that tried to take the ocra Cloud credentials' lock just as another process's lock was being removed could carry on without it, so two runs could refresh the session at once. It now takes the lock.
+- On Windows, an empty `credentials.json.lock.<hex>.probe` file left in the config directory by an ocra process killed at the wrong moment is removed by a later run once it is older than a stale lock.
+- On the `opencode` runtime, when OpenCode's model catalog cannot be read at start, the effort warning now gives that cause instead of saying the capability table knows no way to send the level.
+- On the `opencode` runtime, one session message in an unexpected shape no longer drops the attempt's findings and usage: it is skipped and counted in the attempt's progress line.
+- `ocra review --plan` with `--pr` or `--mr` plans what the review would cover: only what changed since the previous review when ocra can tell, as the review does, with the scope in the text and in the plan JSON's new optional `scope`; it used to plan a full review the run would not make.
+- The first Ctrl-C of a pull or merge request review no longer waits out a GitHub or GitLab rate-limit pause before stopping.
+- A request GitHub or GitLab refuses has at most 64 KB of its answer read, instead of all of it; the error still quotes its first 500 characters.
+- The GitHub and GitLab clients take an abort signal that also ends the wait before a retry (up to 60 seconds on a rate limit), not only the request in flight.
+- `OCRA_RECORD_DIR` recordings leave out a key renewed during the run and a key with a quote or backslash.
+- A recording that cannot be written is a warning; the model request is no longer sent again.
+- Redaction replaces a flag's secret argument followed by `;`, `,` or `)`, as in a shell command line.
+- Model exchange recordings leave out the key a request was sent with when the key is renewed before the answer arrives.
+- The review summary and the pull request summary no longer count memory entries without a source as hidden by your ocra Cloud memory.
+- A session key or upload salt ocra cannot read (owned by another user, say, after `sudo ocra`) is no longer replaced: the review warns, and sends nothing to ocra Cloud when it needed that salt.
+- `--resume` on a session whose log is empty says the log is empty.
+- `--output` refuses, before any model call, a path that exists but is not a regular file (a named pipe, a device), as it refuses links such as `/dev/stdout`; it leaves no temporary file when ocra exits before the rename.
+- `review()` refuses invalid `limits` (a concurrency that is not a whole number of at least 1, a timeout that is not positive, a negative or `NaN` spend limit, a fractional task cap) with `CONFIG_INVALID` before it starts; `concurrency: NaN` used to start no task and crash, and a negative timeout threw from inside the run.
+- `ocra metrics` counts a run with a critical finding it could not verify as incomplete, as the run's exit code 3 does; it counted only runs with unfinished files.
+- A working tree review lists each directory once per run instead of once per file read, which cost about 0.4 s per read in a directory of 100,000 entries.
+- A working tree review reads a file under a directory whose name is stored decomposed on disk (as on macOS) by the precomposed name git reports.
+
+### Security
+
+- The Action's outputs (`verdict`, `run-id`, `findings`, `report`) come from the session the run wrote, never from a session that came with the pull request, and are not read through a symbolic link.
+- A signed-in review sends findings and their code only when this machine agreed: `ocra login` records that when the account shares findings, and a review that finds sharing off forgets it. After turning sharing on in ocra Cloud, run `ocra login` again on each machine.
+- The account's `exclude` applies only when your configuration sets none, so a repository that lists its own exclusions (even `[]`) cannot have files hidden from review by its ocra Cloud account.
+- `GATEWAY_PATH` refuses `.`, `..` and empty segments, so a gateway path ocra Cloud lists stays under its provider.
+- `ocra metrics --format json` escapes C1 and bidirectional control characters from session data, as the other JSON outputs already did.
+- Prompt neutralization also catches tags spelled with any default-ignorable or format character, more look-alike brackets and letters, and fullwidth, mathematical and other compatibility forms, and a `<` that ends a field, so two fields cannot form a tag where they meet.
+- The redaction pass for shared findings also replaces a secret value in a JSON string whose quotes are escaped, the lines of a YAML block scalar (`password: |`), the argument after a flag such as `--password` or `--api-key`, a password glued to `mysql -p`, a quoted value cut by a line break, a `Bearer` or `Basic` credential on the next line, and a lowercase `bearer` or `basic` credential of 16 or more characters with a digit.
+- Require undici 8.12.3 or later, which fixes high-severity advisories in 8.0.0–8.12.1 (GHSA-xjj6-f33q-929c).
+- Range, commit and pull request reviews read `.gitattributes` from the base commit (git 2.41 or later), so the reviewed change cannot mark its own files binary to keep them from review.
+- A file whose name says text but that was skipped as binary gets a warning.
+- git runs with only the environment variables it needs: model keys and platform tokens no longer reach it, except the tokens credential helpers read when ocra fetches a pull request's commits.
+- Require zod 4.6.6 or later, which no longer exhausts memory validating oversized constrained collections (GHSA-mrhx-c7xc-m3w5).
+
 ## [0.7.0] - 2026-10-09
 
 Security hardening from the 2026-10-09 audit: model text in comments is neutralized from a CommonMark parse, secret paths are refused under Unicode case folding, `--resume` reuses only sessions sealed on this machine, `--output` no longer follows links, and redaction runs in linear time and covers more secret forms. Reliability for busy and shared setups: a burst of rate limits costs one wait, tasks that finish at the spend limit are kept, and concurrent processes take turns renewing the ocra Cloud session. This release also brings `ocra init` and `ocra review --resume`; the Action's tag for it is `jma49/Open-CR-Agent@v0.7.0`.
@@ -353,7 +434,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.4.0...v0.5.0
