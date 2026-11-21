@@ -18,7 +18,7 @@ import type { ReviewPlan } from "./plan.js";
 import { stableHash } from "./provenance.js";
 import type { ReusePool } from "./resume.js";
 import { executeTask } from "./task.js";
-import { type TaskPrompt, taskPrompt } from "./task-prompt.js";
+import { type TaskPrompt, type TaskSettings, taskPrompt } from "./task-prompt.js";
 
 export interface JobResult {
   outcome: TaskOutcome;
@@ -31,6 +31,8 @@ export interface ExecuteOptions {
   runtime: AgentRuntime;
   // --ultra: a plan phase and the callers of changed symbols for every task.
   ultra?: boolean;
+  // The files a security reviewer reviews in the matrix (securityReviewed).
+  securityFiles?: ReadonlySet<string>;
   taskTimeoutMs: number;
   abortGraceMs?: number | undefined;
   relocate?: AnchorContext["relocate"] | undefined;
@@ -56,7 +58,11 @@ type PlannedBundle = Awaited<ReturnType<typeof planBundle>>;
 // and an earlier run's answer is reused.
 export function jobKey(job: MatrixCell, plan: ReviewPlan, options: ExecuteOptions): string {
   const call = reviewerCall(job.reviewer, options.agents ?? {});
-  return taskKey(job, plan, taskPrompt(job, plan, options.ultra === true).prompt, call, options);
+  return taskKey(job, plan, taskPrompt(job, plan, settingsOf(options)).prompt, call, options);
+}
+
+function settingsOf(options: ExecuteOptions): TaskSettings {
+  return { ultra: options.ultra === true, securityFiles: options.securityFiles ?? new Set() };
 }
 
 // Runs one (bundle, reviewer) cell and anchors what it reports.
@@ -69,7 +75,7 @@ export async function runJob(
   const { emit } = options;
   const files = job.bundle.files.map((f) => f.newPath);
   const call = reviewerCall(job.reviewer, options.agents ?? {});
-  const task = taskPrompt(job, plan, options.ultra === true);
+  const task = taskPrompt(job, plan, settingsOf(options));
   const prepared = await preparePrompt(job, plan, options, call, task);
   emit({
     type: "task_started",

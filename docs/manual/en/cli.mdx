@@ -198,7 +198,7 @@ Tested with Semgrep 1.178.0's log; other tools' logs follow the same standard.
 
 - **Results on and near the change**: on a reviewed file, on a diff hunk's lines or within 10 lines of one. A result two logs repeat is shown once.
 - **At most 20 per bundle**, on the change first, then `error` before `warning` before `note`, results tagged `security` first, then by file and line; each message is cut to 300 characters. What is left out is counted in a warning.
-- **Every reviewer of the bundle sees those on its files**, one line each with the file and lines, tool, rule, severity and whether it is on or near the change, and is told to report one only when it is in its focus and the change introduces or worsens it.
+- **Every reviewer of the bundle sees those on its files**, except that a result tagged `security` goes only to the security reviewer when one reviews that file (to every reviewer when none does). One line each with the file and lines, tool, rule, severity and whether it is on or near the change, and is told to report one only when it is in its focus and the change introduces or worsens it.
 - **What a reviewer reports from one is its own finding**, verified, judged and counted like any other. A result no reviewer confirms is not reported; with `--import-sarif` it would have been.
 - **The report says what was given**: [`analyzerEvidence`](#json-output). Prompts grow only when a log is given, so a run without the flag reviews exactly as before.
 
