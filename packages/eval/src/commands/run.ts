@@ -10,6 +10,7 @@ import { defaultOcraCommand, ocraCliRoot } from "../reviewer.js";
 import { RUN_FILES_VERSION } from "../run-files.js";
 import { runInstances } from "../runner.js";
 import { selectInstances } from "../select.js";
+import { prepareSetup, setupName } from "../setups/setup-config.js";
 import {
   CACHE_DIR,
   dataset,
@@ -49,12 +50,24 @@ export async function run(
     seed: number(values["model-seed"], "--model-seed") ?? 1,
   };
   const prMaxCost = number(values["pr-max-cost-usd"], "--pr-max-cost-usd");
+  const setupChoice = setupName(values.setup);
+  if (setupChoice && values.reviewers) throw new Error("--setup chooses the reviewers itself");
+  const userConfig = values.config ? resolve(values.config) : undefined;
+  let configFile = userConfig;
+  let setupArgs: string[] = [];
+  if (setupChoice) {
+    await mkdir(runDir, { recursive: true });
+    const setup = await prepareSetup(setupChoice, userConfig, runDir);
+    configFile = setup.configFile;
+    setupArgs = setup.reviewArgs;
+  }
   const reviewArgs = [
     ...(values.reviewers ? ["--reviewers", values.reviewers] : []),
+    ...setupArgs,
     ...(values.ultra ? ["--ultra"] : []),
     // The run limit only stops the next PR; this caps each PR's own review.
     ...(prMaxCost !== undefined ? ["--max-cost-usd", String(prMaxCost)] : []),
-    ...(values.config ? ["--config", resolve(values.config)] : []),
+    ...(configFile ? ["--config", configFile] : []),
     ...["--temperature", String(sampling.temperature), "--seed", String(sampling.seed)],
   ];
   const base = {
@@ -79,7 +92,6 @@ export async function run(
       `the cached AACR-Bench file is not revision ${DATASET_REVISION}; delete ${join(CACHE_DIR, "dataset.json")} to download it`,
     );
   }
-  const configFile = values.config ? resolve(values.config) : undefined;
   const once = async (dir: string, label: string, maxCostUsd: number | undefined) => {
     await mkdir(dir, { recursive: true });
     const setup = await runSetup(build, dir, configFile, env, ocraCliRoot());
