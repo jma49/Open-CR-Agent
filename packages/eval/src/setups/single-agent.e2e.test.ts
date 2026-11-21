@@ -20,8 +20,8 @@ beforeAll(() => {
 
 const repos = scratchRepos("ocra-single-agent-");
 const runDirs: string[] = [];
-afterEach(() => {
-  repos.removeAll();
+afterEach(async () => {
+  await repos.removeAll();
   for (const dir of runDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 

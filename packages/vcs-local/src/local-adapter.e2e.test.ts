@@ -38,8 +38,8 @@ async function changes(cwd: string, target: LocalTarget) {
   return diffs.map((d) => [d.newPath, d.kind]);
 }
 
-afterEach(() => {
-  scratch.removeAll();
+afterEach(async () => {
+  await scratch.removeAll();
   for (const dir of outsides.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 

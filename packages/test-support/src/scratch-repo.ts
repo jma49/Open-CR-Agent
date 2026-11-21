@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -49,10 +50,10 @@ export function scratchRepo({
 }
 
 // Scratch repositories a test file makes and removes together: call
-// removeAll from afterEach (or afterAll).
+// removeAll from afterEach (or afterAll) and await it.
 export function scratchRepos(prefix = "ocra-repo-"): {
   create(options?: Omit<ScratchRepoOptions, "prefix">): ScratchRepo;
-  removeAll(): void;
+  removeAll(): Promise<void>;
 } {
   const dirs: string[] = [];
   return {
@@ -61,12 +62,15 @@ export function scratchRepos(prefix = "ocra-repo-"): {
       dirs.push(repo.dir);
       return repo;
     },
-    removeAll() {
-      // On Windows a directory stays locked while a git process runs in it,
-      // as an adapter's blob reader does until it goes idle.
-      for (const dir of dirs.splice(0)) {
-        rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
-      }
+    // On Windows a directory stays locked while a git process runs in it, as
+    // an adapter's blob reader does until it goes idle: the retries wait for
+    // it without blocking the event loop it needs to end.
+    async removeAll() {
+      await Promise.all(
+        dirs
+          .splice(0)
+          .map((dir) => rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 })),
+      );
     },
   };
 }

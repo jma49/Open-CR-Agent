@@ -6,9 +6,9 @@ import { GitError, git } from "./git.js";
 import { LocalGitAdapter } from "./local-adapter.js";
 
 const scratch = scratchRepos("ocra-blobs-");
-afterEach(() => {
+afterEach(async () => {
   delete process.env.GIT_TRACE;
-  scratch.removeAll();
+  await scratch.removeAll();
 });
 
 const FILES: Record<string, string> = {
