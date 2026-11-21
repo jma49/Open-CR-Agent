@@ -108,7 +108,7 @@ The milestones below keep their lists; the order of work is the one above.
 1. A public run of the Martian Code Review Bench on free models, precision first (part of M11).
 2. Committable suggestions. The plumbing landed ([ADR-0029](adr/0029-committable-suggestions.md)); producing the fix waits for an evaluated prompt change.
 3. Pull request commands: a maintainer's reply asking for a re-review or dismissing a finding is acted on, within `vcs-platform`'s trust rules.
-4. Semgrep as the first bundled analyzer behind SARIF in, off unless configured.
+4. Semgrep as the first bundled analyzer behind SARIF in, off unless configured. Landed: analyzer results as reviewer evidence (`--sarif-evidence`, [ADR-0042](adr/0042-analyzer-evidence.md)); whether they help is for the per-source ablation.
 5. A pull request summary from the judged findings and the change, not a second free-text pass.
 
 ### Next: driven by the numbers of the phase before

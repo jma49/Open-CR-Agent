@@ -1,8 +1,9 @@
 import { emptyUsage } from "../agent/usage.js";
 import { anchorFinding } from "../anchor/anchor.js";
-import type { FileDiff, Finding, LineRange } from "../domain.js";
+import type { Finding, LineRange } from "../domain.js";
 import type { ReviewEvent, TaskOutcome } from "../report/report.js";
 import { type SarifCandidate, sarifCandidates } from "../sarif/candidates.js";
+import { changedLines, overlaps } from "../sarif/evidence.js";
 import type { SarifLog } from "../sarif/schema.js";
 import { toFinding } from "./findings.js";
 import type { ReviewPlan } from "./plan.js";
@@ -118,22 +119,8 @@ function quoteFrom(content: string | undefined, lines: LineRange): string | unde
   return quote || undefined;
 }
 
-// The new-side lines each hunk covers, context included.
-function changedLines(diffs: readonly FileDiff[]): Map<string, LineRange[]> {
-  const windows = new Map<string, LineRange[]>();
-  for (const diff of diffs) {
-    const ranges = diff.hunks
-      .filter((h) => h.newLines > 0)
-      .map((h) => ({ start: h.newStart, end: h.newStart + h.newLines - 1 }));
-    if (ranges.length > 0) windows.set(diff.newPath, ranges);
-  }
-  return windows;
-}
-
 function touches(windows: ReadonlyMap<string, LineRange[]>, candidate: SarifCandidate): boolean {
-  const ranges = windows.get(candidate.file);
-  if (!ranges) return false;
-  return ranges.some((r) => candidate.lines.start <= r.end && candidate.lines.end >= r.start);
+  return (windows.get(candidate.file) ?? []).some((r) => overlaps(candidate.lines, r, 0));
 }
 
 function importWarnings(

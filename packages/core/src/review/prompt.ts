@@ -1,6 +1,7 @@
 import type { ChangeRequest, FileDiff, Hunk } from "../domain.js";
 import type { Learning } from "../knowledge/learning.js";
 import type { MemoryEntry } from "../memory/memory.js";
+import type { AnalyzerResult } from "../sarif/evidence.js";
 import type { SymbolUse } from "./impact.js";
 import {
   data,
@@ -35,6 +36,8 @@ export interface ReviewPromptInput {
   moreLearnings?: readonly Learning[];
   // --ultra: where the rest of the repository uses symbols this bundle changes.
   callers?: readonly SymbolUse[];
+  // Results of the team's analyzers on and near this bundle's changes.
+  analyzerResults?: readonly AnalyzerResult[];
   // --ultra: the plan phase's checklist for this bundle.
   plan?: string | undefined;
   // For the plan phase itself: the same sections without the instruction to
@@ -67,6 +70,9 @@ export function buildReviewPrompt(input: ReviewPromptInput): ReviewPrompt {
   sections.push(
     section("review_files", input.bundle.map(renderFile)),
     ...(input.callers && input.callers.length > 0 ? [renderCallers(input.callers)] : []),
+    ...(input.analyzerResults && input.analyzerResults.length > 0
+      ? [renderAnalyzerResults(input.analyzerResults)]
+      : []),
     ...(input.plan
       ? [
           section("review_plan", [
@@ -181,6 +187,30 @@ function renderCallers(callers: readonly SymbolUse[]): PromptText {
       "Uses of symbols this bundle defines or changes, outside the bundle. Check that the change does not break them.",
     ),
     ...lines,
+  ]);
+}
+
+// The reviewer cites a result it confirms by tool and rule, so the judge
+// can merge it with another reviewer's report of the same result.
+function renderAnalyzerResults(results: readonly AnalyzerResult[]): PromptText {
+  return section("analyzer_results", [
+    ocraText(
+      `Results of static analyzers the team runs, on or near the changed lines. Each is a lead, not a finding: confirm it in the code, and report it with ${REVIEW_TOOLS.reportFinding} only when it is in your focus and the change introduces or worsens it, naming the tool and rule in the evidence. Leave out results the code shows to be wrong.`,
+    ),
+    ...results.map((r) => {
+      const lines =
+        r.lines.end > r.lines.start ? `${r.lines.start}-${r.lines.end}` : `${r.lines.start}`;
+      const tags = [
+        r.severity,
+        ...(r.security ? ["security"] : []),
+        r.onChange ? "on the change" : "near the change",
+      ];
+      return data(
+        oneLine(
+          `- ${r.file}:${lines} ${r.tool.name} ${r.ruleId} (${tags.join(", ")}): ${r.message}`,
+        ),
+      );
+    }),
   ]);
 }
 

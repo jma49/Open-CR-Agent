@@ -1,7 +1,7 @@
 import type { LineRange, Severity } from "../domain.js";
 import type { SarifResult, SarifRule, SarifRun } from "./schema.js";
 
-interface SarifTool {
+export interface SarifTool {
   name: string;
   // The reviewer id and finding category the tool's findings carry.
   slug: string;
@@ -19,6 +19,10 @@ export interface SarifCandidate {
   ruleId: string;
   title: string;
   body: string;
+  // The message alone, for a reviewer's prompt.
+  message: string;
+  // Tagged "security" by the result or its rule, as code scanning reads it.
+  security: boolean;
 }
 
 export interface SarifCandidates {
@@ -70,6 +74,10 @@ export function sarifCandidates(run: SarifRun): SarifCandidates {
       ruleId,
       title: rule?.shortDescription?.text?.trim() || rule?.name || ruleId,
       body: bodyOf(text, ruleId, rule, tool),
+      message: text,
+      security: [...(result.properties?.tags ?? []), ...(rule?.properties?.tags ?? [])].some(
+        (tag) => tag.toLowerCase() === "security",
+      ),
     };
     const snippet = region.snippet?.text?.trim();
     if (snippet) candidate.snippet = snippet;

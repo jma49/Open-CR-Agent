@@ -151,4 +151,24 @@ describe("sarifCandidates", () => {
     const { tool } = sarifCandidates(run([], [], "  CodeQL (beta) "));
     expect(tool).toEqual({ name: "  CodeQL (beta) ", slug: "codeql-beta" });
   });
+
+  it("reads a security tag from the result or its rule, and survives malformed tags", () => {
+    const rules = [{ id: "r1", properties: { tags: ["CWE-79", "security"] } }];
+    const [fromRule, fromResult, malformed, none] = sarifCandidates(
+      run(
+        [
+          result("a.ts"),
+          result("a.ts", { ruleId: "r2", properties: { tags: ["Security"] } }),
+          result("a.ts", { ruleId: "r3", properties: { tags: "security" } }),
+          result("a.ts", { ruleId: "r4" }),
+        ],
+        rules,
+      ),
+    ).candidates;
+    expect(fromRule?.security).toBe(true);
+    expect(fromResult?.security).toBe(true);
+    expect(malformed?.security).toBe(false);
+    expect(none?.security).toBe(false);
+    expect(fromRule?.message).toBe("m");
+  });
 });

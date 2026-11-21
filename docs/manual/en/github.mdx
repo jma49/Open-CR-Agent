@@ -175,6 +175,8 @@ Run Semgrep, CodeQL or another SARIF-writing analyzer first and pass its log wit
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
+For a noisy tool, pass the log with `--sarif-evidence` instead: the reviewers see its results on and near the change and report only those they confirm ([SARIF as evidence](./cli#sarif-as-evidence)).
+
 The import is tested on a Semgrep 1.178.0 log; this workflow has not run end to end in CI yet.
 
 ## Overriding a blocking verdict

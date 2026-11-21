@@ -160,6 +160,7 @@ export {
 export { type ModelRef, parseModel } from "./runtime/models.js";
 export { parseQuotaError, type QuotaError } from "./runtime/quota.js";
 export { reviewTools } from "./runtime/tools.js";
+export type { AnalyzerEvidenceUse } from "./sarif/evidence.js";
 export { parseSarifLog, SarifError, type SarifLog } from "./sarif/schema.js";
 export type { ExclusionReason, SelectionPolicy } from "./select/select.js";
 export type { VcsAdapter } from "./vcs.js";

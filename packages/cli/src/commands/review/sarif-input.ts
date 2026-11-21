@@ -7,7 +7,11 @@ import { ConfigError } from "../../config/cli-config.js";
 // is bounded before it is parsed.
 const MAX_SARIF_BYTES = 20 * 1024 * 1024;
 
-export async function loadSarifLogs(paths: readonly string[], cwd: string): Promise<SarifLog[]> {
+export async function loadSarifLogs(
+  paths: readonly string[],
+  cwd: string,
+  flag = "--import-sarif",
+): Promise<SarifLog[]> {
   const logs: SarifLog[] = [];
   for (const path of paths) {
     const file = resolve(cwd, path);
@@ -15,17 +19,17 @@ export async function loadSarifLogs(paths: readonly string[], cwd: string): Prom
     try {
       const { size } = await stat(file);
       if (size > MAX_SARIF_BYTES) {
-        throw new ConfigError(`--import-sarif ${path}: larger than ${MAX_SARIF_BYTES} bytes`);
+        throw new ConfigError(`${flag} ${path}: larger than ${MAX_SARIF_BYTES} bytes`);
       }
       text = await readFile(file, "utf8");
     } catch (error) {
       if (error instanceof ConfigError) throw error;
-      throw new ConfigError(`--import-sarif ${path}: ${errorMessage(error)}`);
+      throw new ConfigError(`${flag} ${path}: ${errorMessage(error)}`);
     }
     try {
       logs.push(parseSarifLog(text));
     } catch (error) {
-      throw new ConfigError(`--import-sarif ${path}: ${errorMessage(error)}`);
+      throw new ConfigError(`${flag} ${path}: ${errorMessage(error)}`);
     }
   }
   return logs;

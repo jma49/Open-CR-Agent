@@ -31,6 +31,7 @@ export interface ReviewArgs {
   full?: true;
   plan?: true;
   importSarif?: string[];
+  sarifEvidence?: string[];
   // A SCIP index of the repository, for precise callers.
   scip?: string;
   graph?: string;
@@ -66,6 +67,8 @@ Options:
   --max-cost-usd <n> Spend limit: reviews use 80%, verification and judging the rest
   --import-sarif <file>  Add the results of a SARIF 2.1.0 log (Semgrep, CodeQL, …)
                      that fall on the change; repeatable; not with --plan
+  --sarif-evidence <file>  Show reviewers the results of a SARIF 2.1.0 log on and
+                     near the change as evidence to confirm; repeatable
   --scip <file>      Find callers of changed symbols in this SCIP index
                      (scip-typescript, scip-java, …; built at the repository root)
                      before searching; not with --plan
@@ -157,6 +160,9 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
     if (values.plan) throw new UsageError("--import-sarif is not used by --plan");
     args.importSarif = values["import-sarif"];
   }
+  if (values["sarif-evidence"] !== undefined && values["sarif-evidence"].length > 0) {
+    args.sarifEvidence = values["sarif-evidence"];
+  }
   if (values.scip !== undefined) {
     if (values.scip === "") throw new UsageError("--scip needs a file");
     if (values.plan) throw new UsageError("--scip is not used by --plan");
@@ -200,6 +206,7 @@ function parse(argv: string[]) {
       reviewers: { type: "string" },
       "max-cost-usd": { type: "string" },
       "import-sarif": { type: "string", multiple: true },
+      "sarif-evidence": { type: "string", multiple: true },
       scip: { type: "string" },
       graph: { type: "string" },
       ultra: { type: "boolean" },

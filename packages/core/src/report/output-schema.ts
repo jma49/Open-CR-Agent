@@ -225,6 +225,16 @@ export const reportOutputSchema = z.strictObject({
       }),
     )
     .exactOptional(),
+  analyzerEvidence: z
+    .array(
+      z.strictObject({
+        tool: z.string(),
+        version: z.string().exactOptional(),
+        results: z.int().nonnegative(),
+        bundles: z.array(z.string()),
+      }),
+    )
+    .exactOptional(),
   judgement: judgeDecisionsSchema.exactOptional(),
   rereview: z
     .strictObject({

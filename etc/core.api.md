@@ -101,6 +101,18 @@ export interface AgentTaskSpec {
 }
 
 // @public (undocumented)
+export interface AnalyzerEvidenceUse {
+    // (undocumented)
+    bundles: string[];
+    // (undocumented)
+    results: number;
+    // (undocumented)
+    tool: string;
+    // (undocumented)
+    version?: string;
+}
+
+// @public (undocumented)
 export interface AnchoringSummary {
     // (undocumented)
     ambiguous: number;
@@ -1062,6 +1074,12 @@ export const reportOutputSchema: z.ZodObject<{
         }, z.core.$strict>>;
         bundles: z.ZodArray<z.ZodString>;
     }, z.core.$strict>>>;
+    analyzerEvidence: z.ZodExactOptional<z.ZodArray<z.ZodObject<{
+        tool: z.ZodString;
+        version: z.ZodExactOptional<z.ZodString>;
+        results: z.ZodInt;
+        bundles: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>>>;
     judgement: z.ZodExactOptional<z.ZodObject<{
         merged: z.ZodArray<z.ZodObject<{
             kept: z.ZodString;
@@ -1526,6 +1544,8 @@ export interface ReviewOptions {
     // (undocumented)
     sarif?: readonly SarifLog[];
     // (undocumented)
+    sarifEvidence?: readonly SarifLog[];
+    // (undocumented)
     selection?: Partial<SelectionPolicy>;
     // (undocumented)
     signal?: AbortSignal;
@@ -1539,6 +1559,8 @@ export interface ReviewOptions {
 
 // @public (undocumented)
 export interface ReviewReport {
+    // (undocumented)
+    analyzerEvidence?: AnalyzerEvidenceUse[];
     // (undocumented)
     anchoring?: AnchoringSummary;
     // (undocumented)
@@ -1751,6 +1773,9 @@ const sarifLogSchema: z.ZodObject<{
                     defaultConfiguration: z.ZodOptional<z.ZodObject<{
                         level: z.ZodOptional<z.ZodString>;
                     }, z.core.$loose>>;
+                    properties: z.ZodCatch<z.ZodOptional<z.ZodObject<{
+                        tags: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodString>>>;
+                    }, z.core.$loose>>>;
                 }, z.core.$loose>>>;
             }, z.core.$loose>;
         }, z.core.$loose>;
@@ -1775,6 +1800,9 @@ const sarifLogSchema: z.ZodObject<{
                         }, z.core.$loose>>;
                     }, z.core.$loose>>;
                 }, z.core.$loose>>;
+            }, z.core.$loose>>>;
+            properties: z.ZodCatch<z.ZodOptional<z.ZodObject<{
+                tags: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodString>>>;
             }, z.core.$loose>>>;
         }, z.core.$loose>>>;
     }, z.core.$loose>>;

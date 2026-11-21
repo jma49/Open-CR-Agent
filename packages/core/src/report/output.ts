@@ -41,6 +41,14 @@ export function toReportOutput(report: ReviewReport): ReportOutput {
   };
   if (report.scope) output.scope = outputScope(report.scope);
   if (report.learnings) output.learnings = report.learnings.map(outputLearning);
+  if (report.analyzerEvidence) {
+    output.analyzerEvidence = report.analyzerEvidence.map((e) => ({
+      tool: e.tool,
+      ...(e.version ? { version: e.version } : {}),
+      results: e.results,
+      bundles: [...e.bundles],
+    }));
+  }
   if (report.judgement) output.judgement = outputJudgement(report.judgement);
   if (report.anchoring) output.anchoring = outputAnchoring(report.anchoring);
   if (report.spendLimit) output.spendLimit = outputSpendLimit(report.spendLimit);

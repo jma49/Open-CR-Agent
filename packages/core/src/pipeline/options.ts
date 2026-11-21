@@ -59,6 +59,9 @@ export interface ReviewOptions {
   // SARIF logs of external analyzers; their results on the change join the
   // findings (pipeline/imports.ts).
   sarif?: readonly SarifLog[];
+  // SARIF logs whose results on and near the change are shown to the
+  // reviewers as evidence, not reported as findings (ADR-0042).
+  sarifEvidence?: readonly SarifLog[];
   signal?: AbortSignal;
   onEvent?: (event: ReviewEvent) => void;
 }

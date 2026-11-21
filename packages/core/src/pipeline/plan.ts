@@ -14,6 +14,7 @@ import {
   type RepoRule,
   type SourcedRule,
 } from "../rules/repo-rules.js";
+import { type AnalyzerEvidence, analyzerEvidence } from "../sarif/evidence.js";
 import {
   binaryTextWarning,
   defaultSelectionPolicy,
@@ -48,6 +49,7 @@ export interface ReviewPlan {
   repoRules: SourcedRule[];
   memory: RememberedEntry[];
   learnings: SelectLearnings;
+  evidence: AnalyzerEvidence;
   usage: Usage[];
   warnings: string[];
 }
@@ -60,6 +62,7 @@ export type PlanOptions = Pick<
   | "readTrusted"
   | "accountMemory"
   | "learnings"
+  | "sarifEvidence"
   | "selection"
   | "bundling"
   | "grouper"
@@ -137,6 +140,7 @@ export async function planReview(
   });
 
   const binaryText = binaryTextWarning(decisions);
+  const evidence = analyzerEvidence(options.sarifEvidence ?? [], bundled.bundles);
   return {
     changeRequest,
     decisions,
@@ -166,8 +170,9 @@ export async function planReview(
       options.accountMemory ?? [],
     ),
     learnings: learningSelector(options.learnings ?? []),
+    evidence,
     usage,
-    warnings: binaryText ? [binaryText, ...bundled.warnings] : bundled.warnings,
+    warnings: [...(binaryText ? [binaryText] : []), ...bundled.warnings, ...evidence.warnings],
   };
 }
 
