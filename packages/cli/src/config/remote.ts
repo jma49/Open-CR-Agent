@@ -28,6 +28,7 @@ const remoteConfigSchema = z
     reviewers: z.record(z.string(), z.unknown()).optional(),
     roles: z.record(z.string(), z.unknown()).optional(),
     github: z.record(z.string(), z.unknown()).optional(),
+    learnings: z.record(z.string(), z.unknown()).optional(),
     providers: z.record(z.string(), z.unknown()).optional(),
     rules: z.array(repoRuleSchema).max(500).optional(),
   })

@@ -27,14 +27,27 @@ export function learningFile(draft: LearningDraft, created: string): string {
 // Named after its title; a name already taken gets a number, decided by
 // the file system's exclusive create rather than a look beforehand.
 export async function writeLearning(root: string, text: string, title: string): Promise<string> {
-  const slug = slugOf(title);
-  for (let n = 1; n <= MAX_SUFFIX; n++) {
-    const id = n === 1 ? slug : `${slug.slice(0, MAX_SLUG - 3)}-${n}`;
-    const path = `${LEARNINGS_DIR}/${id}.md`;
+  for (const path of learningPaths(title)) {
     if ((await writeRepositoryFile(root, path, text, { replace: false })) === "written")
       return path;
   }
-  throw new Error(`${MAX_SUFFIX} learnings are already named after "${slug}"`);
+  throw new Error(`${MAX_SUFFIX} learnings are already named after "${slugOf(title)}"`);
+}
+
+// The first of its names no file in `taken` holds, for a proposal that
+// writes no file here.
+export function freeLearningPath(title: string, taken: Set<string>): string {
+  for (const path of learningPaths(title)) {
+    if (!taken.has(path)) return path;
+  }
+  throw new Error(`${MAX_SUFFIX} learnings are already named after "${slugOf(title)}"`);
+}
+
+function* learningPaths(title: string): Generator<string> {
+  const slug = slugOf(title);
+  for (let n = 1; n <= MAX_SUFFIX; n++) {
+    yield `${LEARNINGS_DIR}/${n === 1 ? slug : `${slug.slice(0, MAX_SLUG - 3)}-${n}`}.md`;
+  }
 }
 
 function slugOf(title: string): string {

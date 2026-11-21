@@ -128,6 +128,10 @@ ocra skips binary files, likely secrets (`.env`, keys, certificates, cloud and r
 
 Pairs the matrix skips are listed under `skipped` in the JSON report; a file no reviewer covers shows up as `unreviewed` in coverage.
 
+## Learnings
+
+`learnings.requireReview` (default `false`): a pull request `ocra learn mine --propose` opens is left for a person to merge instead of merging once its checks pass ([CLI](./cli#writing-them-back-by-pull-request)). A shared configuration may set it too.
+
 ## Shared configuration
 
 Repositories can extend an organization's common settings:

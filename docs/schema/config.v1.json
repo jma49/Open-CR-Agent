@@ -162,6 +162,16 @@
       },
       "additionalProperties": false
     },
+    "learnings": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "requireReview": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
     "include": {
       "default": [],
       "type": "array",

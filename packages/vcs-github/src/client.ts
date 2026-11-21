@@ -307,7 +307,7 @@ export class GitHubApi {
 
   // GraphQL reports its rate limit as an error in a 200 response, which the
   // HTTP retry does not see; it is retried here the same bounded way.
-  private async graphql(query: string, variables: Record<string, unknown>): Promise<unknown> {
+  async graphql(query: string, variables: Record<string, unknown>): Promise<unknown> {
     const { signal } = this.options;
     const sleep = this.options.sleep ?? ((ms: number) => wait(ms, undefined, { signal }));
     let result: GraphqlResult;
@@ -348,7 +348,7 @@ export class GitHubApi {
       : `${this.baseUrl}/graphql`;
   }
 
-  private request(method: string, path: string, body?: unknown): Promise<unknown> {
+  request(method: string, path: string, body?: unknown): Promise<unknown> {
     const { owner, repo } = this.repository;
     const url = `${this.baseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}${path}`;
     return sendWithRetry(this.api, { method, url, path, body });
