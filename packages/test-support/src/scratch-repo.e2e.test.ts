@@ -21,10 +21,10 @@ describe("scratchRepo", () => {
     ).toBe("https://example.com/o/r");
   });
 
-  it("removes what it made", () => {
+  it("removes what it made", async () => {
     const own = scratchRepos();
     const { dir } = own.create();
-    own.removeAll();
+    await own.removeAll();
     expect(existsSync(dir)).toBe(false);
   });
 });

@@ -9,8 +9,8 @@ vi.mock("node:fs/promises", async (importOriginal) => {
 });
 
 const scratch = scratchRepos("ocra-workspace-reads-");
-afterEach(() => {
-  scratch.removeAll();
+afterEach(async () => {
+  await scratch.removeAll();
   vi.mocked(readdir).mockClear();
 });
 

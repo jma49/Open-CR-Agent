@@ -5,9 +5,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { LocalGitAdapter } from "./local-adapter.js";
 
 const scratch = scratchRepos("ocra-search-");
-afterEach(() => {
+afterEach(async () => {
   delete process.env.GIT_TRACE;
-  scratch.removeAll();
+  await scratch.removeAll();
 });
 
 function committed(files: Record<string, string>) {
