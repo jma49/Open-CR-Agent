@@ -3,6 +3,7 @@ import type { MatrixCell } from "../matrix/matrix.js";
 import { memoryFor } from "../memory/memory.js";
 import { buildReviewPrompt, type ReviewPrompt, type ReviewPromptInput } from "../review/prompt.js";
 import { resolveRules } from "../rules/resolve.js";
+import { evidenceForReviewer } from "../sarif/evidence.js";
 import type { ReviewPlan } from "./plan.js";
 
 // In default mode only bundles large enough that a reviewer's 30 steps may
@@ -27,12 +28,26 @@ export interface TaskPrompt {
   planCall?: { key: string; prompt: () => ReviewPrompt };
 }
 
+export interface TaskSettings {
+  ultra: boolean;
+  // The files a security reviewer reviews in the run (securityReviewed).
+  securityFiles: ReadonlySet<string>;
+}
+
 // What one task of the matrix sends: the run builds its prompt from this and
 // --plan previews it, so the preview cannot drift from the run.
-export function taskPrompt(cell: MatrixCell, plan: ReviewPlan, ultra: boolean): TaskPrompt {
+export function taskPrompt(
+  cell: MatrixCell,
+  plan: ReviewPlan,
+  { ultra, securityFiles }: TaskSettings,
+): TaskPrompt {
   const files = cell.bundle.files.map((f) => f.newPath);
   const learnings = plan.learnings(cell.bundle.files);
-  const analyzerResults = plan.evidence.forBundle(cell.bundle);
+  const analyzerResults = evidenceForReviewer(
+    plan.evidence.forBundle(cell.bundle),
+    cell.reviewer.category,
+    securityFiles,
+  );
   const input: ReviewPromptInput = {
     reviewer: cell.reviewer,
     changeRequest: plan.changeRequest,

@@ -4,6 +4,7 @@ import type { Effort } from "../contracts.js";
 import type { ChangeRequest, RiskTier } from "../domain.js";
 import { planTasks, type SkippedCell } from "../matrix/matrix.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
+import { securityReviewed } from "../sarif/evidence.js";
 import type { FileDecision } from "../select/select.js";
 import { type ReviewOptions, runSettings } from "./options.js";
 import { type PlanOptions, planReview, type ReviewPlan } from "./plan.js";
@@ -89,8 +90,9 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
   const { cells } = planned;
 
   const plannedBundles = new Set<string>();
+  const securityFiles = securityReviewed(cells);
   const tasks = cells.map((cell): PreviewTask => {
-    const prepared = taskPrompt(cell, plan, settings.ultra);
+    const prepared = taskPrompt(cell, plan, { ultra: settings.ultra, securityFiles });
     const task: PreviewTask = {
       taskId: cell.taskId,
       reviewer: cell.reviewer.id,

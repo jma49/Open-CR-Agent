@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { correctnessReviewer } from "../review/reviewers/correctness.js";
+import { securityReviewer } from "../review/reviewers/security.js";
 import { parseSarifLog } from "../sarif/schema.js";
 import { runtime, twoFiles, vcs } from "./run.fakes.js";
 import { review } from "./run.js";
@@ -110,5 +112,50 @@ describe("review with SARIF logs", () => {
     expect(report.analyzerEvidence).toEqual([
       { tool: "ESLint", version: "9.0.0", results: 1, bundles: [report.bundles[0]?.label] },
     ]);
+  });
+
+  it("gives security results to the security reviewer, and to the others only without one", async () => {
+    const result = (ruleId: string, startLine: number, tags?: string[]) => ({
+      ruleId,
+      message: { text: ruleId },
+      locations: [
+        { physicalLocation: { artifactLocation: { uri: "src/b.ts" }, region: { startLine } } },
+      ],
+      ...(tags ? { properties: { tags } } : {}),
+    });
+    const log = parseSarifLog(
+      JSON.stringify({
+        version: "2.1.0",
+        runs: [
+          {
+            tool: { driver: { name: "Semgrep" } },
+            results: [result("sql-injection", 2, ["security"]), result("unused", 2)],
+          },
+        ],
+      }),
+    );
+    const prompts = async (reviewers: (typeof correctnessReviewer)[]) => {
+      const rt = runtime(async function* (spec) {
+        yield { type: "done", taskId: spec.taskId };
+      });
+      await review({
+        vcs: vcs({ "src/b.ts": "keep\nconst b = 2;\n" }, twoFiles),
+        runtime: rt,
+        reviewers,
+        reviewerOverrides: { security: { minTier: "trivial" } },
+        sarifEvidence: [log],
+        stages: { verify: false, judge: false },
+      });
+      return new Map(rt.specs.map((s) => [s.taskId.replace(/-\d+$/, ""), s.userPrompt]));
+    };
+
+    const both = await prompts([correctnessReviewer, securityReviewer]);
+    expect(both.get("security")).toContain("Semgrep sql-injection");
+    expect(both.get("security")).toContain("Semgrep unused");
+    expect(both.get("correctness")).not.toContain("Semgrep sql-injection");
+    expect(both.get("correctness")).toContain("Semgrep unused");
+
+    const alone = await prompts([correctnessReviewer]);
+    expect(alone.get("correctness")).toContain("Semgrep sql-injection");
   });
 });

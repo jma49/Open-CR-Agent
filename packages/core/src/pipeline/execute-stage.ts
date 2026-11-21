@@ -13,6 +13,7 @@ import {
 } from "../matrix/matrix.js";
 import type { ReviewEvent, TaskOutcome } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
+import { securityReviewed } from "../sarif/evidence.js";
 import { type ExecuteOptions, type JobResult, jobKey, reuseJob, runJob } from "./execute.js";
 import type { ReviewHooks, ReviewOptions, RunSettings } from "./options.js";
 import type { ReviewPlan } from "./plan.js";
@@ -63,6 +64,7 @@ export async function executeStage(
   emit({ type: "stage_started", stage: "review" });
   const relocations: Usage[] = [];
   const execute = executeOptions(context, relocations);
+  execute.securityFiles = securityReviewed(matrix.cells);
   const resume = options.resume;
   const pool = reusePool(resume);
   if (resume) execute.reuse = { pool, runId: resume.runId };

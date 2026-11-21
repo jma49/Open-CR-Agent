@@ -128,6 +128,30 @@ function byRelevance(a: AnalyzerResult, b: AnalyzerResult): number {
   );
 }
 
+const SECURITY = "security";
+
+// The files a security reviewer reviews in this run's matrix.
+export function securityReviewed(
+  cells: readonly { reviewer: { category: string }; bundle: FileGroup }[],
+): ReadonlySet<string> {
+  return new Set(
+    cells
+      .filter((c) => c.reviewer.category === SECURITY)
+      .flatMap((c) => c.bundle.files.map((f) => f.newPath)),
+  );
+}
+
+// A security-tagged result goes to the security reviewer of its file, and to
+// the others only when no security reviewer reviews that file (ADR-0043).
+export function evidenceForReviewer(
+  results: readonly AnalyzerResult[],
+  category: string,
+  securityFiles: ReadonlySet<string>,
+): AnalyzerResult[] {
+  if (category === SECURITY) return [...results];
+  return results.filter((r) => !r.security || !securityFiles.has(r.file));
+}
+
 // The new-side lines each hunk covers, context included.
 export function evidenceUses(
   evidence: AnalyzerEvidence,
