@@ -84,6 +84,7 @@ export async function planReview(
   const scope = reviewScope(prior.review, options.full === true);
   const changeRequest = await vcs.getChangeRequest();
   emit({ type: "run_started", runId: options.runId ?? newRunId(), changeRequest });
+  emit({ type: "stage_started", stage: "select" });
 
   const diffs = await vcs.getDiff();
   const decisions = selectFiles(diffs, { ...defaultSelectionPolicy, ...options.selection });
@@ -119,6 +120,7 @@ export async function planReview(
     ? selected.filter((d) => only.has(d.newPath) || only.has(d.oldPath))
     : selected;
   const unchanged = new Set(selected.filter((d) => !inScope.includes(d)).map((d) => d.newPath));
+  emit({ type: "stage_started", stage: "bundle" });
   const resumed = options.resume && resumedBundles(options.resume, inScope);
   const bundled = resumed
     ? { bundles: resumed, strategy: "resumed", warnings: [] }

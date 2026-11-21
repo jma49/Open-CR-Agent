@@ -1,6 +1,7 @@
-import { spendLimit } from "../agent/spend-limit.js";
+import { type SpendLimit, spendLimit } from "../agent/spend-limit.js";
+import type { Usage } from "../contracts.js";
 import { OcraError } from "../errors.js";
-import type { ReviewReport } from "../report/report.js";
+import type { ReviewEvent, ReviewReport } from "../report/report.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import { assembleReport } from "./assemble-report.js";
 import { checkStage } from "./check-stage.js";
@@ -28,11 +29,12 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
   const runId = options.identity?.runId ?? newRunId();
 
   const plan = await planReview({ ...options, runId, full: settings.full }, emit, signal);
+  for (const usage of plan.usage) emit({ type: "usage_reported", usage });
   const context: StageContext = {
     options,
     settings,
     plan,
-    spendLimit: spendLimit(settings.maxCostUsd, plan.usage),
+    spendLimit: reporting(spendLimit(settings.maxCostUsd, plan.usage), emit),
     signal,
     emit,
   };
@@ -42,4 +44,19 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
   const report = assembleReport({ runId, reviewers }, { executed, filtered, checked }, context);
   emit({ type: "run_finished", report });
   return report;
+}
+
+function reporting(limit: SpendLimit, emit: (event: ReviewEvent) => void): SpendLimit {
+  const report = (usage: Usage) => emit({ type: "usage_reported", usage });
+  return {
+    ...limit,
+    chargeReview(usage) {
+      limit.chargeReview(usage);
+      report(usage);
+    },
+    charge(usage) {
+      limit.charge(usage);
+      report(usage);
+    },
+  };
 }

@@ -160,8 +160,20 @@ export interface ReviewReport {
   warnings: string[];
 }
 
+export const REVIEW_STAGES = [
+  "select",
+  "bundle",
+  "plan",
+  "review",
+  "filter",
+  "verify",
+  "judge",
+] as const;
+export type ReviewStage = (typeof REVIEW_STAGES)[number];
+
 export type ReviewEvent =
   | { type: "run_started"; runId: string; changeRequest: ChangeRequest }
+  | { type: "stage_started"; stage: ReviewStage }
   | { type: "files_selected"; selected: number; excluded: number; tier: RiskTier }
   // groups: each bundle's files, so a run resumed after this one was killed
   // keeps its bundles (ADR-0031).
@@ -191,6 +203,9 @@ export type ReviewEvent =
   // of its inputs, so a later run can reuse them (--resume, ADR-0031).
   | { type: "task_reported"; taskId: string; key: string; findings: TaskFinding[] }
   | { type: "task_finished"; outcome: TaskOutcome }
+  | { type: "coverage_settled"; coverage: CoverageEntry[] }
+  // One per model call: together they are the run's usage.
+  | { type: "usage_reported"; usage: Usage }
   | { type: "verification_finished"; checked: number; refuted: RefutedFinding[] }
   | { type: "judge_finished"; verdict: Verdict; judgement?: JudgeDecisions }
   | { type: "run_finished"; report: ReviewReport };

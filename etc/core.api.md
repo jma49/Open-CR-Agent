@@ -1256,6 +1256,9 @@ export interface ResumedTask {
 export function review(options: ReviewOptions): Promise<ReviewReport>;
 
 // @public (undocumented)
+export const REVIEW_STAGES: readonly ["select", "bundle", "plan", "review", "filter", "verify", "judge"];
+
+// @public (undocumented)
 export const REVIEW_TOOLS: {
     readonly readFile: "read_file";
     readonly readDiff: "read_diff";
@@ -1321,6 +1324,9 @@ export type ReviewEvent = {
     runId: string;
     changeRequest: ChangeRequest;
 } | {
+    type: "stage_started";
+    stage: ReviewStage;
+} | {
     type: "files_selected";
     selected: number;
     excluded: number;
@@ -1367,6 +1373,12 @@ export type ReviewEvent = {
 } | {
     type: "task_finished";
     outcome: TaskOutcome;
+} | {
+    type: "coverage_settled";
+    coverage: CoverageEntry[];
+} | {
+    type: "usage_reported";
+    usage: Usage;
 } | {
     type: "verification_finished";
     checked: number;
@@ -1507,6 +1519,9 @@ export interface ReviewReport {
     // (undocumented)
     warnings: string[];
 }
+
+// @public (undocumented)
+export type ReviewStage = (typeof REVIEW_STAGES)[number];
 
 // @public (undocumented)
 export interface ReviewStages {

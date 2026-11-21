@@ -74,14 +74,23 @@ describe("review", () => {
     });
     expect(events.map((e) => e.type)).toEqual([
       "run_started",
+      "stage_started",
       "files_selected",
+      "stage_started",
       "files_bundled",
+      "stage_started",
       "matrix_planned",
+      "stage_started",
       "task_started",
       "task_progress",
+      "usage_reported",
       "finding",
       "task_reported",
       "task_finished",
+      "stage_started",
+      "coverage_settled",
+      "stage_started",
+      "stage_started",
       "judge_finished",
       "run_finished",
     ]);
