@@ -1,0 +1,124 @@
+# The paid A/B of the review-quality plan, started by hand: the golden tier
+# reviewed by --setup single-agent (the baseline) and by today's specialists
+# with verifier and judge, the same models on both sides, then
+# `ocra-eval verdict` on golden recall: pass means the pipeline loses no more
+# than the margin against one agent, and the cost ratio says what it costs.
+# It needs the maintainer's key as the repository secret ANTHROPIC_API_KEY.
+# Each arm stops starting new PRs at max_cost_usd, so a run costs at most
+# about twice that plus the judge's calls. Prices below are Anthropic's list
+# prices per million tokens; the Console stays authoritative.
+name: eval A/B
+
+on:
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: Golden tier (smoke or full)
+        default: smoke
+        type: choice
+        options: [smoke, full]
+      repeat:
+        description: Repeats per arm
+        default: "3"
+      max_cost_usd:
+        description: Spend limit per arm, in dollars
+        default: "10"
+      model:
+        description: Model for every tier
+        default: claude-haiku-5-5
+        type: choice
+        options: [claude-haiku-5-5, claude-sonnet-5-5]
+      judge_model:
+        description: Model that matches findings to golden claims
+        default: claude-haiku-5-5
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eval-ab
+  cancel-in-progress: false
+
+jobs:
+  ab:
+    if: github.repository == 'jma49/Open-CR-Agent'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      TIER: ${{ inputs.tier }}
+      REPEAT: ${{ inputs.repeat }}
+      MAX_COST: ${{ inputs.max_cost_usd }}
+      MODEL: ${{ inputs.model }}
+      JUDGE_MODEL: ${{ inputs.judge_model }}
+      JUDGE_BASE_URL: https://api.anthropic.com/v1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: npm run build
+      # Outside the reviewed tree: the reviews run with --no-repo-config. An
+      # effort on every tier means no sampling is sent, which Anthropic's API
+      # refuses since 2026-10-21.
+      - name: Write the configuration
+        shell: bash
+        run: |
+          case "$MODEL" in
+            claude-haiku-5-5) PRICE='"input": 0.1, "output": 0.5, "cachedInput": 0.01' ;;
+            claude-sonnet-5-5) PRICE='"input": 2, "output": 10, "cachedInput": 0.1' ;;
+            *) echo "::error::no price for $MODEL"; exit 1 ;;
+          esac
+          cat > "$RUNNER_TEMP/eval.json" <<JSON
+          {
+            "runtime": "direct",
+            "models": { "top": "claude/$MODEL", "standard": "claude/$MODEL", "light": "claude/$MODEL" },
+            "effort": { "top": "medium", "standard": "medium", "light": "low" },
+            "providers": {
+              "claude": {
+                "type": "openai-compatible",
+                "baseUrl": "https://api.anthropic.com/v1",
+                "apiKeyEnv": "ANTHROPIC_API_KEY",
+                "models": { "$MODEL": { $PRICE } }
+              }
+            }
+          }
+          JSON
+      - name: Review with the specialists
+        shell: bash
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          JUDGE_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::ANTHROPIC_API_KEY is not set as a repository secret"
+            exit 1
+          fi
+          node packages/eval/dist/main.js run --dataset golden --tier "$TIER" \
+            --label specialists --repeat "$REPEAT" --max-cost-usd "$MAX_COST" \
+            --config "$RUNNER_TEMP/eval.json"
+      - name: Review with one agent
+        shell: bash
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          JUDGE_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          node packages/eval/dist/main.js run --dataset golden --tier "$TIER" \
+            --label single-agent --setup single-agent --repeat "$REPEAT" \
+            --max-cost-usd "$MAX_COST" --config "$RUNNER_TEMP/eval.json"
+      # Exit 0 pass, 1 worse, 3 inconclusive: each is a result, not a failure.
+      - name: Verdict
+        shell: bash
+        run: |
+          set +e
+          node packages/eval/dist/main.js verdict .ocra/eval/single-agent .ocra/eval/specialists \
+            --allow-mixed | tee "$RUNNER_TEMP/verdict.md"
+          code=${PIPESTATUS[0]}
+          cat "$RUNNER_TEMP/verdict.md" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$code" = 2 ]; then exit 1; fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: eval-ab
+          path: .ocra/eval/
+          retention-days: 30
