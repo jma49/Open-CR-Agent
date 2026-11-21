@@ -1,3 +1,4 @@
+import { type FixCommit, isMinedPath } from "@open-cr-agent/vcs-local/internal";
 import { MAX_REQUIRED_CLAIMS, parseCandidate } from "./golden.js";
 
 // Golden case candidates from a repository's own history, labelled by what
@@ -7,28 +8,8 @@ import { MAX_REQUIRED_CLAIMS, parseCandidate } from "./golden.js";
 // them by hand; the noise SZZ is known for is cut by the filters here, and
 // every candidate says it is unverified.
 
-// A fix touching more source files than this is usually a refactor that
-// happens to say "fix"; its blamed lines say little about one defect.
-export const MAX_FIX_FILES = 5;
 // Same bound as a required golden claim (golden.ts).
 const MAX_CLAIM_SPAN = 15;
-
-// Conventional Commits' fix and revert, plus the plain wording of
-// repositories that do not use them.
-const FIX_SUBJECT = /^(fix|revert)(\([^)]*\))?!?:|^revert\b|\b(fix(es|ed)?|bug)\b/i;
-
-export function isFixSubject(subject: string): boolean {
-  return FIX_SUBJECT.test(subject);
-}
-
-// Source files only: a defect in docs, tests, snapshots, lockfiles or
-// generated data is not what the reviewers are asked to find.
-const NOT_SOURCE =
-  /\.(md|mdx|rst|txt|json|jsonc|lock|snap|ya?ml|toml|svg|png|jpe?g|gif|csv)$|(^|\/)(CHANGELOG|LICENSE)[^/]*$|\.(test|spec|e2e)\.|(^|\/)(__snapshots__|__tests__|tests?|fixtures?|\.changeset)\//i;
-
-export function isMinedPath(path: string): boolean {
-  return !NOT_SOURCE.test(path);
-}
 
 export interface OldRange {
   start: number;
@@ -81,11 +62,6 @@ export function parseBlame(porcelain: string, blamedFile: string): BlamedLine[] 
 export function isTrivialLine(text: string): boolean {
   const t = text.trim();
   return t === "" || /^[{}()[\];,]+$/.test(t) || /^(\/\/|#|\*|\/\*|\*\/|<!--)/.test(t);
-}
-
-export interface FixCommit {
-  sha: string;
-  subject: string;
 }
 
 export interface MinedClaim {

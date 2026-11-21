@@ -1,7 +1,8 @@
 import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { fixCommits } from "@open-cr-agent/vcs-local/internal";
 import { candidateCase, type MinedClaim } from "../fix-mining.js";
-import { blameFix, fixCommits, introducingCommit } from "../fix-mining-git.js";
+import { blameFix, introducingCommit } from "../fix-mining-git.js";
 import { loadGolden } from "../golden.js";
 import { DEFAULT_MAX_CHANGE_LINES } from "../golden-import.js";
 import { detectLicence, isLicenceSource } from "../licence.js";

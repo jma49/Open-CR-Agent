@@ -1,6 +1,7 @@
 import { scratchRepos } from "@open-cr-agent/test-support";
+import { fixCommits } from "@open-cr-agent/vcs-local/internal";
 import { afterEach, describe, expect, it } from "vitest";
-import { blameFix, fixCommits, introducingCommit } from "./fix-mining-git.js";
+import { blameFix, introducingCommit } from "./fix-mining-git.js";
 
 const repos = scratchRepos("ocra-fix-mining-");
 afterEach(() => repos.removeAll());

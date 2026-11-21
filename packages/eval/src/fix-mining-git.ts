@@ -1,11 +1,8 @@
+import { type FixCommit, fixedFiles, MAX_FIX_FILES } from "@open-cr-agent/vcs-local/internal";
 import { exec } from "./exec.js";
 import {
   claimsFrom,
-  type FixCommit,
   type IntroducingCommit,
-  isFixSubject,
-  isMinedPath,
-  MAX_FIX_FILES,
   type MinedClaim,
   parseBlame,
   rewrittenRanges,
@@ -17,35 +14,12 @@ import { GIT_ENV } from "./repos.js";
 // Commit ids reach git only after the hex check of its own output.
 
 const SHA = /^[0-9a-f]{40}$/;
-// History older than this many first-parent commits is not mined.
-const MAX_COMMITS = 5_000;
-
 async function git(dir: string, args: readonly string[]): Promise<string> {
   const result = await exec("git", ["--no-pager", ...args], { cwd: dir, env: GIT_ENV });
   if (result.exitCode !== 0) {
     throw new Error(`git ${args[0]} failed: ${result.stderr.trim().split("\n")[0] ?? ""}`);
   }
   return result.stdout;
-}
-
-export async function fixCommits(dir: string, ref: string): Promise<FixCommit[]> {
-  const log = await git(dir, [
-    "log",
-    "--first-parent",
-    "--no-merges",
-    `--max-count=${MAX_COMMITS}`,
-    "--format=%H%x00%s%x00",
-    "--end-of-options",
-    ref,
-  ]);
-  const fields = log.split("\0");
-  const fixes: FixCommit[] = [];
-  for (let i = 0; i + 1 < fields.length; i += 2) {
-    const sha = fields[i]?.trim() ?? "";
-    const subject = fields[i + 1] ?? "";
-    if (SHA.test(sha) && isFixSubject(subject)) fixes.push({ sha, subject });
-  }
-  return fixes;
 }
 
 // What one fix blames: the introduced lines it rewrote, as claims, or the
@@ -55,9 +29,7 @@ export async function blameFix(
   fix: FixCommit,
 ): Promise<{ claims: MinedClaim[] } | { skipped: string }> {
   const parent = `${fix.sha}^`;
-  const names = (await git(dir, ["diff", "--name-only", "-z", "--no-renames", parent, fix.sha]))
-    .split("\0")
-    .filter((f) => f !== "" && isMinedPath(f));
+  const names = await fixedFiles(dir, fix.sha);
   if (names.length === 0) return { skipped: "no source file" };
   if (names.length > MAX_FIX_FILES) return { skipped: `more than ${MAX_FIX_FILES} source files` };
   const claims: MinedClaim[] = [];

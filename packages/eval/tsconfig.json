@@ -9,6 +9,9 @@
     },
     {
       "path": "../cloud-contract"
+    },
+    {
+      "path": "../vcs-local"
     }
   ]
 }
