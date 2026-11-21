@@ -80,9 +80,11 @@ export async function relatedCode(
     );
   const names = [...new Set(findings.flatMap((f) => quotedNames(f.existingCode)))];
   const out: string[] = [];
-  for (const name of names) {
+  // Asked together, so an adapter can answer them with one search.
+  const searches = names.map((n) => context.searchCode(n).catch(() => []));
+  for (const [i, name] of names.entries()) {
     const word = new RegExp(`(^|[^\\w$])${name.replace(/\$/g, "\\$")}($|[^\\w$])`);
-    const matches = await context.searchCode(name).catch(() => []);
+    const matches = await (searches[i] ?? []);
     const uses = matches
       .filter((m) => word.test(m.text) && !shown(m.path, m.line))
       .slice(0, MAX_USES_PER_NAME);

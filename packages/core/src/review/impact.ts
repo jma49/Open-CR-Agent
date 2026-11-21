@@ -111,16 +111,20 @@ export async function findCallers(
 ): Promise<SymbolUse[]> {
   const own = new Set(files.map((f) => f.newPath));
   const result: SymbolUse[] = [];
-  for (const changed of await changedSymbols(files, context, sources.symbols)) {
-    const indexed = await sources.references
-      ?.usesOf(changed.path, changed.name)
-      .catch(() => undefined);
-    const uses = indexed
-      ? await indexedUses(changed.name, indexed, own, context, sources.symbols)
-      : await searchedUses(changed.name, own, context, sources.symbols);
-    if (uses.length > 0) {
-      result.push({ symbol: changed.name, uses: uses.slice(0, MAX_CALLERS_PER_SYMBOL) });
-    }
+  const changed = await changedSymbols(files, context, sources.symbols);
+  // Together, so an adapter can answer the searches with one (MAX_SYMBOLS
+  // bounds them).
+  const found = await Promise.all(
+    changed.map(async ({ path, name }) => {
+      const indexed = await sources.references?.usesOf(path, name).catch(() => undefined);
+      return indexed
+        ? indexedUses(name, indexed, own, context, sources.symbols)
+        : searchedUses(name, own, context, sources.symbols);
+    }),
+  );
+  for (const [i, { name }] of changed.entries()) {
+    const uses = found[i] ?? [];
+    if (uses.length > 0) result.push({ symbol: name, uses: uses.slice(0, MAX_CALLERS_PER_SYMBOL) });
   }
   return result;
 }
