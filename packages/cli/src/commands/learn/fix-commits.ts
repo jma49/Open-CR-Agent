@@ -19,6 +19,7 @@ export async function fixCandidates(root: string): Promise<Candidate[]> {
       const [request, diff] = await Promise.all([commit.getChangeRequest(), commit.getDiff()]);
       const files = diff.filter((f) => isMinedPath(f.newPath));
       return {
+        kind: "change",
         source: { kind: "fix-commit", ref: fix.sha },
         subject: request.title,
         message: request.description,

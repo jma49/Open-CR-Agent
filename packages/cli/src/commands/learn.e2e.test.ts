@@ -67,10 +67,11 @@ async function learn(
   seen: CompletionRequest[],
   args: string[] = [],
   extra: Partial<ReviewDeps> = {},
+  command = "mine",
 ) {
   const out = capture();
   const err = capture();
-  const code = await run(["learn", "mine", ...args], out, err, withDrafts(cwd, seen, extra));
+  const code = await run(["learn", command, ...args], out, err, withDrafts(cwd, seen, extra));
   return { code, out: out.text(), err: err.text() };
 }
 
@@ -150,11 +151,42 @@ describe("ocra learn mine", () => {
     expect(github.calls.some((c) => c.path.endsWith("/graphql"))).toBe(false);
   });
 
+  it("drafts from the findings the team accepted, with their reason", async () => {
+    const repo = repos.create();
+    const fingerprint = "0123456789abcdef";
+    repo.commit("chore: accept a finding", {
+      "src/db/query.ts": "export const conn = await pool.acquire();\n",
+      ".ocra/memory.json": JSON.stringify({
+        accepted: [
+          {
+            fingerprint,
+            file: "src/db/query.ts",
+            title: "Connection is never released",
+            reason: "The pool reclaims idle connections after 30 seconds.",
+          },
+        ],
+      }),
+    });
+    const seen: CompletionRequest[] = [];
+    const result = await learn(repo.dir, seen, [], {}, "feedback");
+    expect(result.code).toBe(0);
+    expect(seen[0]?.user).toContain("The pool reclaims idle connections after 30 seconds.");
+    const text = readFileSync(join(repo.dir, result.out.trim()), "utf8");
+    expect(text).toContain("kind: review-feedback");
+    expect(text).toContain(`ref: ${fingerprint}`);
+    expect(text).toContain("  - src/db/**");
+    const again = await learn(repo.dir, [], [], {}, "feedback");
+    expect(again.err).toContain("1 already recorded");
+  });
+
   it("refuses an unknown subcommand with the usage", async () => {
     const result = await learn(repos.create().dir, [], ["--max", "0"]);
     expect(result.code).toBe(2);
+    expect((await learn(repos.create().dir, [], [], {}, "everything")).err).toContain(
+      "Unknown learn command: everything",
+    );
     expect(result.err).toContain("--max must be a positive whole number");
-    expect(result.err).toContain("Usage: ocra learn mine");
+    expect(result.err).toContain("Usage: ocra learn <mine|feedback>");
   });
 });
 

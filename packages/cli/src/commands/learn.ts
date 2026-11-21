@@ -4,6 +4,7 @@ import { learningDrafter } from "@open-cr-agent/core/internal";
 import { EXIT } from "../io/exit.js";
 import { forTerminal } from "../io/terminal.js";
 import { UsageError } from "../io/usage-error.js";
+import { acceptedFindingCandidates } from "./learn/accepted-findings.js";
 import { fixCandidates } from "./learn/fix-commits.js";
 import { type LearnResult, learnFrom } from "./learn/pipeline.js";
 import { proposeLearnings } from "./learn/propose.js";
@@ -11,29 +12,43 @@ import { learningFile, writeLearning } from "./learn/write.js";
 import type { ReviewArgs } from "./review/args.js";
 import type { ReviewDeps } from "./review/deps.js";
 import { startRuntime } from "./review/execute-run.js";
-import { type ReviewIo, resolveRun } from "./review/resolve-run.js";
+import { type ResolvedRun, type ReviewIo, resolveRun } from "./review/resolve-run.js";
 
 const DEFAULT_MAX = 20;
 const CONCURRENCY = 4;
 
-export const LEARN_USAGE = `Usage: ocra learn mine [options]
+export const LEARN_USAGE = `Usage: ocra learn <mine|feedback> [options]
 
-Drafts learnings for .ocra/learnings/ from the fix commits on HEAD's
-first-parent line, newest first: one helper model call per fix. A draft is
-kept when it is not a duplicate and the selection gives it to the fix it
-came from. Kept learnings are written to the working tree, to commit or
-discard, or with --propose opened as a GitHub pull request that merges
-once its checks pass (learnings.requireReview: true leaves it to a person).
-Fixes an existing learning records are skipped.
+Drafts learnings for .ocra/learnings/, one helper model call each:
+  mine        from the fix commits on HEAD's first-parent line, newest first
+  feedback    from the findings the team accepted in .ocra/memory.json,
+              with the reason it gave, newest first
+
+A draft is kept when it is not a duplicate and the selection gives it to
+the change or file it came from. Kept learnings are written to the working
+tree, to commit or discard, or with --propose opened as a GitHub pull
+request that merges once its checks pass (learnings.requireReview: true
+leaves it to a person). What an existing learning records is skipped.
 
 Options:
   --propose           Open a pull request with them instead (needs GITHUB_TOKEN)
-  --max <n>           Fixes to draft at most (default: ${DEFAULT_MAX})
+  --max <n>           Drafts at most (default: ${DEFAULT_MAX})
   --max-cost-usd <n>  Spend limit (default: the configuration's maxCostUsd)
   -h, --help          Show help
 `;
 
+// Where each learn command finds its evidence (ADR-0040).
+const SOURCES = {
+  mine: { what: "fix commits", candidates: (run: ResolvedRun) => fixCandidates(run.root) },
+  feedback: {
+    what: "accepted findings",
+    candidates: (run: ResolvedRun) => acceptedFindingCandidates(run.target.trusted),
+  },
+} as const;
+type Source = keyof typeof SOURCES;
+
 interface LearnArgs {
+  source: Source;
   max: number;
   propose: boolean;
   maxCostUsd?: number;
@@ -70,7 +85,7 @@ export async function learnCommand(
         `the ${run.config.runtime} runtime makes no plain completions, which drafting needs`,
       );
     }
-    const result = await learnFrom(await fixCandidates(run.root), {
+    const result = await learnFrom(await SOURCES[args.source].candidates(run), {
       existing: run.learnings,
       max: args.max,
       concurrency: maxCostUsd === undefined ? CONCURRENCY : 1,
@@ -81,7 +96,13 @@ export async function learnCommand(
     });
     const created = new Date(deps.now()).toISOString().slice(0, 10);
     if (args.propose && result.kept.length > 0) {
-      const proposed = await proposeLearnings(run, result.kept, created, deps);
+      const proposed = await proposeLearnings(
+        run,
+        result.kept,
+        created,
+        deps,
+        SOURCES[args.source].what,
+      );
       for (const warning of proposed.warnings) run.warn(warning);
       io.out.write(`${forTerminal(proposed.webUrl)}\n`);
       io.err.write(`[ocra] Pull request ${MERGE[proposed.merge]}\n`);
@@ -110,7 +131,7 @@ const MERGE = {
 function summary(result: LearnResult, spent: number): string {
   const parts = [
     `${result.kept.length} learning(s) kept from ${result.drafted} draft(s)`,
-    result.declined > 0 ? `${result.declined} fix(es) held no lesson` : "",
+    result.declined > 0 ? `${result.declined} held no lesson` : "",
     result.duplicates > 0 ? `${result.duplicates} duplicate(s)` : "",
     result.unselected > 0 ? `${result.unselected} the selection would not give to their fix` : "",
     result.failed > 0 ? `${result.failed} failed` : "",
@@ -134,7 +155,7 @@ function parseLearnArgs(argv: string[]): LearnArgs | "help" {
   });
   if (values.help) return "help";
   const [action, ...rest] = positionals;
-  if (action !== "mine" || rest.length > 0) {
+  if (action === undefined || !Object.hasOwn(SOURCES, action) || rest.length > 0) {
     throw new UsageError(
       action === undefined ? "" : `Unknown learn command: ${positionals.join(" ")}`,
     );
@@ -145,10 +166,10 @@ function parseLearnArgs(argv: string[]): LearnArgs | "help" {
   }
   const propose = values.propose === true;
   const cost = values["max-cost-usd"];
-  if (cost === undefined) return { max, propose };
+  if (cost === undefined) return { source: action as Source, max, propose };
   const maxCostUsd = Number(cost);
   if (!(maxCostUsd > 0)) {
     throw new UsageError(`--max-cost-usd must be a positive number, got ${cost}`);
   }
-  return { max, propose, maxCostUsd };
+  return { source: action as Source, max, propose, maxCostUsd };
 }
