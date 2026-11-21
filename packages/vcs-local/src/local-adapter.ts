@@ -123,7 +123,7 @@ export class LocalGitAdapter implements VcsAdapter {
           ).split("\0")
         : (await git(["ls-tree", "-z", head, "--", prefix], { cwd: root }))
             .split("\0")
-            .filter((entry) => entry.split(" ")[1] === "blob")
+            .filter((entry) => /^100(644|755) blob /.test(entry))
             .map((entry) => entry.slice(entry.indexOf("\t") + 1));
     const direct = paths.filter(
       (p) => p.startsWith(prefix) && !p.slice(prefix.length).includes("/"),
