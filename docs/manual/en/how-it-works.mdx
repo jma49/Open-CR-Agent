@@ -20,7 +20,7 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Fi
 | **Anchor** | Resolve every finding's quoted code to exact lines. |
 | **Filter** | Drop findings the repository's memory accepts or a maintainer dismissed, and compare with the previous review of the same pull request, before spending a model call on them. |
 | **Verify** | A standard-tier model checks each file's findings against its diff and surrounding code, and against where the names in each finding's quoted code are defined and used elsewhere in the repository. A finding is dropped only when the code proves it wrong; doubt or a failed check keeps it. Drops are listed in the report with the reason. A finding the verifier traces to code the change did not bring in is marked *pre-existing*; that does not change the verdict. |
-| **Judge** | One top-tier call sees every finding: merges the same root cause across reviewers, drops speculation and nitpicks, recalibrates severity and writes a short summary, with a reason for each change in the report. |
+| **Judge** | One top-tier call sees every finding, with the code its reviewer quoted and whether Verify confirmed it: merges the same root cause across reviewers, drops speculation and nitpicks, recalibrates severity and writes a short summary, with a reason for each change in the report. |
 
 ## Verdict
 

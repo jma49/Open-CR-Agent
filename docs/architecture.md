@@ -31,7 +31,7 @@ This page is for contributors; anything marked **(planned)** is not implemented.
 | 7 | Anchor | code | Resolve each finding's `existingCode` to lines by normalized matching in hunks, then full files, then other files' hunks (exact and unique only); a partial-line quote needs `MIN_PARTIAL_QUOTE_CHARS` (12). Before the file-level fallback, a light model re-locates the quote (`anchor/relocate.ts`). Models never supply line numbers. |
 | 8 | Filter | code | Drop remembered and dismissed findings and compare with the previous review, before spending on checks. |
 | 9 | Verify | LLM | Fact-check each finding against the diff. Only findings the diff proves wrong are dropped; the rest are confirmed, uncertain or unchecked. |
-| 10 | Judge | top-tier LLM | Deduplicate across reviewers, recalibrate severity, filter speculation and nitpicks, write the summary. The verdict is code (`judge/verdict.ts`). |
+| 10 | Judge | top-tier LLM | Deduplicate across reviewers (each finding with its quoted code and verification), recalibrate severity, filter speculation and nitpicks, write the summary. The verdict is code (`judge/verdict.ts`). |
 | 11 | Publish | code | Summary and inline comments, the verdict, earlier threads updated. |
 
 `reviewWithHooks` (`pipeline/run.ts`) only sequences them: `planReview` (1–4), `executeStage` (5–7, one `runJob` per cell), `filterStage` (8), `checkStage` (9–10), then `assembleReport`. Each stage returns its own warnings and usage, listed in stage order in the report; the spend tracker and the run's signal are the only shared state.
