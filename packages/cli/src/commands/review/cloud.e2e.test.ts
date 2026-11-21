@@ -26,6 +26,7 @@ describe("a review while signed in to ocra Cloud", () => {
     expect(err.text()).toContain("Sent this review's counts to ocra Cloud");
     const sent = calls.at(-1)?.body as Record<string, unknown>;
     expect(sent).toMatchObject({ source: "local", findings: { critical: 1 } });
+    expect(sent).not.toHaveProperty("pullRequest");
     expect(JSON.stringify(sent)).not.toMatch(/app\.ts|retries|Negative retry/);
   });
 

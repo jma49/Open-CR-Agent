@@ -257,7 +257,7 @@ describe("ocra review --pr", () => {
     expect(err.text()).toContain("do not load for pull or merge requests");
   });
 
-  it("names the pull request's repository to ocra Cloud, not the checkout's origin", async () => {
+  it("names the pull request to ocra Cloud by its repository, not the checkout's origin", async () => {
     const { clone, base, head } = changeRequestFixture();
     const github = fakeGitHub(base, head);
     const salt = "5".repeat(64);
@@ -276,7 +276,7 @@ describe("ocra review --pr", () => {
         }));
       },
     };
-    await run(["review", "--pr", "7", "--repo", "o/r", "--no-upload"], capture(), capture(), {
+    await run(["review", "--pr", "7", "--repo", "o/r"], capture(), capture(), {
       cwd: clone,
       env: { GITHUB_TOKEN: "t" },
       builtinPlugins: BUILTIN_PLUGINS,
@@ -289,5 +289,11 @@ describe("ocra review --pr", () => {
     const memory = cloud.calls.find((c) => c.path === "/api/memory");
     const hash = await repoHash("https://github.com/o/r", cloud.credentialsPath, salt);
     expect(memory?.query).toBe(`?repo=${hash}`);
+    const upload = cloud.calls.find((c) => c.path === "/api/reviews");
+    expect(upload?.body).toMatchObject({
+      repoHash: hash,
+      source: "github",
+      pullRequest: { repository: "https://github.com/o/r", number: 7, headSha: head },
+    });
   });
 });

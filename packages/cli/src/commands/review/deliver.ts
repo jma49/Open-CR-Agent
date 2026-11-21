@@ -66,6 +66,9 @@ export async function deliver(
     await sendToCloud(executed.report, executed.cloudReview, run.signedInCloud, {
       source: target.platform,
       durationMs: deps.now() - executed.started,
+      ...(target.changeRequestNumber === undefined
+        ? {}
+        : { changeRequestNumber: target.changeRequestNumber }),
       err: io.err,
       warn: run.warn,
     });

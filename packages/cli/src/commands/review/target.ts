@@ -69,6 +69,8 @@ export interface ReviewTarget {
   // The reviewed repository as `https://host/owner/repo` when it is not
   // the checkout's origin: the pull or merge request's (repository-id.ts).
   repository?: string;
+  // The pull or merge request's number (its iid on GitLab).
+  changeRequestNumber?: number;
 }
 
 // Where the files that steer a review are read from: AGENTS.md, rules,
@@ -207,6 +209,7 @@ async function changeRequestTarget(
     trusted,
     publish: change.publish,
     ...(repository ? { repository } : {}),
+    changeRequestNumber: change.ref.number,
   };
 }
 

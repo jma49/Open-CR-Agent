@@ -51,8 +51,28 @@ describe("the review upload", () => {
     expect(parsed.findingList?.slice(0, -1)).toEqual(body.findingList);
   });
 
-  it("is an upload of counts alone without the ADR-0028 parts", () => {
-    const { reviewers: _r, verification: _v, outcomes: _o, findingList: _f, ...counts } = body;
+  it("drops a pull request it cannot name, and keeps the counts", () => {
+    for (const pullRequest of [
+      { ...body.pullRequest, repository: "git@github.com:octo/app" },
+      { ...body.pullRequest, number: 0 },
+      { ...body.pullRequest, headSha: "HEAD" },
+      "octo/app#42",
+    ]) {
+      const parsed = reviewUploadSchema.parse({ ...body, pullRequest });
+      expect(parsed.pullRequest, JSON.stringify(pullRequest)).toBeUndefined();
+      expect(parsed.findings).toEqual(body.findings);
+    }
+  });
+
+  it("is an upload of counts alone without the ADR-0028 and ADR-0038 parts", () => {
+    const {
+      reviewers: _r,
+      verification: _v,
+      outcomes: _o,
+      findingList: _f,
+      pullRequest: _p,
+      ...counts
+    } = body;
     expect(reviewUploadSchema.parse(counts)).toEqual(counts);
   });
 });

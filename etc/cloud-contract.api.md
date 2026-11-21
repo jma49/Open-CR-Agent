@@ -506,6 +506,9 @@ export const modelTierSchema: z.ZodEnum<{
 }>;
 
 // @public
+export function normaliseRemote(url: string): string | undefined;
+
+// @public
 export const preferencesAnswerSchema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
 
 // @public (undocumented)
@@ -814,6 +817,9 @@ export const rememberRequestSchema: z.ZodObject<{
 
 // @public
 export const REPO_HASH: RegExp;
+
+// @public
+export const REPOSITORY_URL: RegExp;
 
 // @public (undocumented)
 export const REVIEW_EVENT_VERSION = 1;
@@ -1163,6 +1169,11 @@ export const reviewUploadSchema: z.ZodObject<{
         redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
         truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     }, z.core.$strip>>>>>>;
+    pullRequest: z.ZodCatch<z.ZodOptional<z.ZodObject<{
+        repository: z.ZodString;
+        number: z.ZodNumber;
+        headSha: z.ZodString;
+    }, z.core.$strip>>>;
 }, z.core.$strip>;
 
 // @public

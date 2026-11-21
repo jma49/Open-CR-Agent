@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
-import type { ReviewSource, ReviewUpload, SharedFinding } from "@open-cr-agent/cloud-contract";
+import {
+  REPOSITORY_URL,
+  type ReviewSource,
+  type ReviewUpload,
+  type SharedFinding,
+} from "@open-cr-agent/cloud-contract";
 import { coverageGaps, isIncompleteReview, type ReviewReport } from "@open-cr-agent/core";
 import { machineSecret } from "../io/private-file.js";
 import { reviewerOutcomes } from "../reviewer-outcomes.js";
@@ -16,13 +21,16 @@ import type { CloudDeps } from "./deps.js";
 // a salted hash of its `https://host/owner/repo` (repository-id.ts), so
 // the server can group reviews of one repository without learning which
 // it is: the salt stays on this machine, or is the account's while it
-// shares findings, so the hash matches on all its machines.
+// shares findings, so the hash matches on all its machines. A pull or
+// merge request's review also names it, its repository and head commit
+// (ADR-0038).
 
 export function uploadOf(
   report: ReviewReport,
   source: ReviewSource,
   repoHash: string,
   durationMs: number,
+  changeRequest?: { repository: string; number: number },
 ): ReviewUpload {
   const severity = (s: string) => report.findings.filter((f) => f.severity === s).length;
   const gaps = coverageGaps(report);
@@ -54,7 +62,17 @@ export function uploadOf(
     durationMs: Math.round(durationMs),
     ocraVersion: VERSION,
     ...perReviewer(report),
+    ...pullRequestOf(report, changeRequest),
   };
+}
+
+// None for a local review, or a repository without a host to name it by.
+function pullRequestOf(
+  report: ReviewReport,
+  changeRequest: { repository: string; number: number } | undefined,
+): Pick<ReviewUpload, "pullRequest"> {
+  if (!changeRequest || !REPOSITORY_URL.test(changeRequest.repository)) return {};
+  return { pullRequest: { ...changeRequest, headSha: report.changeRequest.headSha } };
 }
 
 // Counted as `ocra metrics` counts reports (reviewer-outcomes.ts).
