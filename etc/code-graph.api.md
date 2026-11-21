@@ -9,10 +9,46 @@ import { ReferenceIndex } from '@open-cr-agent/core';
 import type { SymbolExtractor } from '@open-cr-agent/core';
 
 // @public (undocumented)
+export interface CodeGraph {
+    // (undocumented)
+    files: ReadonlyMap<string, string>;
+    // (undocumented)
+    parser: string;
+    // (undocumented)
+    revision?: string;
+    // (undocumented)
+    symbols: ReadonlyMap<string, FileSymbols>;
+}
+
+// @public (undocumented)
 export function directoryCache(dir: string): SymbolCache;
 
 // @public (undocumented)
 export function gitBlobId(content: string): string;
+
+// @public (undocumented)
+export function graphReferences(graph: CodeGraph): ReferenceIndex;
+
+// @public (undocumented)
+export interface GraphUpdate {
+    // (undocumented)
+    graph: CodeGraph;
+    // (undocumented)
+    parsed: number;
+    // (undocumented)
+    reused: number;
+    // (undocumented)
+    skipped: {
+        path: string;
+        reason: SkipReason;
+    }[];
+}
+
+// @public (undocumented)
+export function parseGraph(text: string): CodeGraph | undefined;
+
+// @public (undocumented)
+export type ReadBlob = (blobId: string, path: string) => Promise<Uint8Array | undefined>;
 
 // @public (undocumented)
 export interface ScipOptions {
@@ -24,11 +60,27 @@ export interface ScipOptions {
 export function scipReferences(file: string, options?: ScipOptions): ReferenceIndex;
 
 // @public (undocumented)
+export function serializeGraph(graph: CodeGraph): string;
+
+// @public (undocumented)
+type SkipReason = "too-large" | "unreadable" | "not-text" | "unparsed" | "over-limit";
+
+// @public (undocumented)
 export interface SymbolCache {
     // (undocumented)
     get(key: string): Promise<FileSymbols | undefined>;
     // (undocumented)
     set(key: string, symbols: FileSymbols): Promise<void>;
+}
+
+// @public (undocumented)
+export interface TreeEntry {
+    // (undocumented)
+    blobId: string;
+    // (undocumented)
+    path: string;
+    // (undocumented)
+    size?: number;
 }
 
 // @public (undocumented)
@@ -39,6 +91,23 @@ export interface TreeSitterOptions {
 
 // @public (undocumented)
 export function treeSitterSymbols(options?: TreeSitterOptions): SymbolExtractor;
+
+// @public (undocumented)
+export function updateGraph(previous: CodeGraph | undefined, tree: readonly TreeEntry[], readBlob: ReadBlob, options?: UpdateOptions): Promise<GraphUpdate>;
+
+// @public (undocumented)
+export interface UpdateOptions {
+    // (undocumented)
+    concurrency?: number;
+    // (undocumented)
+    maxBlobBytes?: number;
+    // (undocumented)
+    maxFiles?: number;
+    // (undocumented)
+    revision?: string;
+    // (undocumented)
+    signal?: AbortSignal;
+}
 
 // (No @packageDocumentation comment for this package)
 

@@ -48,6 +48,7 @@ Since v0.1.1 the Action installs `@open-cr-agent/cli` from npm at its own versio
 | `args` | | Extra `ocra review` options, such as `--reviewers correctness,security`, split on spaces and newlines (no quoting) |
 | `fail-on-concerns` | `false` | Fail the job when the verdict is `significant_concerns` (a critical finding the verifier confirmed). An incomplete review (exit code `3`) always fails the job |
 | `opencode` | `true` | Install OpenCode, the default runtime. Set `false` when the configuration sets `"runtime": "direct"`; see [The runtime](#the-runtime). New in v0.3.0 |
+| `symbol-cache` | `true` | Keep the symbols ocra parses (definitions and uses per file, keyed by its content) in the Actions cache between runs, so a review parses only files no earlier run read. Entries no run read for 30 days are dropped. New in v0.8.0 |
 | `sarif` | `false` | Also write the review as SARIF 2.1.0 for [code scanning](#code-scanning), to the file the `sarif` output names. It takes the place of `--format` and `--output` in `args` |
 
 Give the step an `id` to read its outputs. They are set whenever ocra ran, also when the step fails, and come from the session this run wrote: a session that came with the pull request, or a link in place of `.ocra/sessions`, is never read.

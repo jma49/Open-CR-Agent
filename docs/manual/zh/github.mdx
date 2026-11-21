@@ -48,6 +48,7 @@ jobs:
 | `args` | | 额外的 `ocra review` 参数，例如 `--reviewers correctness,security`；按空格和换行拆分（不支持引号） |
 | `fail-on-concerns` | `false` | 结论为 `significant_concerns`（存在经核查确认的 critical 问题）时让 job 失败。审查不完整（退出码 `3`）时 job 总会失败 |
 | `opencode` | `true` | 安装默认运行时 OpenCode。配置里设了 `"runtime": "direct"` 时可设为 `false`，见[运行时](#运行时)。v0.3.0 新增 |
+| `symbol-cache` | `true` | 在 Actions 缓存中保留 ocra 解析出的符号（每个文件的定义和使用位置，按文件内容索引），这样一次审查只解析之前的运行没读过的文件。30 天内没有运行读取过的条目会被删除。v0.8.0 新增 |
 | `sarif` | `false` | 同时把审查结果写成 SARIF 2.1.0，用于[代码扫描](#代码扫描)，文件路径见输出 `sarif`。它会取代 `args` 里的 `--format` 和 `--output` |
 
 给这一步设置 `id`，就能读取它的输出。只要 ocra 运行过，输出就会设置，步骤失败时也一样；输出来自本次运行写下的会话：随 PR 一起提交的会话，或替代 `.ocra/sessions` 的链接，都不会被读取。
