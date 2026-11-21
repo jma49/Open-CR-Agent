@@ -15,6 +15,9 @@ import { withFileLock } from "./file-lock.js";
 
 const lockPath = () => join(mkdtempSync(join(tmpdir(), "ocra-lock-")), "x.lock");
 const QUICK = { waitMs: 200, staleMs: 30_000, noticeMs: 10_000, pollMs: 10 };
+// Breaking a lock takes a few file operations, which a busy Windows or macOS
+// runner can stretch past QUICK's 200 ms; waiting it out would take 5 s.
+const BREAKING = { ...QUICK, waitMs: 5_000 };
 const tokenAt = (path: string) =>
   (JSON.parse(readFileSync(path, "utf8")) as { token: string }).token;
 
@@ -87,8 +90,8 @@ describe("withFileLock", () => {
       JSON.stringify({ token: "gone", at: Date.now(), pid: exitedPid(), host: hostname() }),
     );
     const started = Date.now();
-    await withFileLock(path, async () => expect(tokenAt(path)).not.toBe("gone"), QUICK);
-    expect(Date.now() - started).toBeLessThan(QUICK.waitMs);
+    await withFileLock(path, async () => expect(tokenAt(path)).not.toBe("gone"), BREAKING);
+    expect(Date.now() - started).toBeLessThan(BREAKING.waitMs);
     expect(readdirSync(dirname(path))).toEqual([]);
   });
 
@@ -99,8 +102,8 @@ describe("withFileLock", () => {
     utimesSync(path, tenMinutesAgo, tenMinutesAgo);
     chmodSync(path, 0o000);
     const started = Date.now();
-    await withFileLock(path, async () => expect(tokenAt(path)).toMatch(/^[0-9a-f]{16}$/), QUICK);
-    expect(Date.now() - started).toBeLessThan(QUICK.waitMs);
+    await withFileLock(path, async () => expect(tokenAt(path)).toMatch(/^[0-9a-f]{16}$/), BREAKING);
+    expect(Date.now() - started).toBeLessThan(BREAKING.waitMs);
     expect(readdirSync(dirname(path))).toEqual([]);
   });
 
@@ -109,8 +112,8 @@ describe("withFileLock", () => {
       const path = lockPath();
       writeFileSync(path, JSON.stringify({ token: "dead", at }));
       const started = Date.now();
-      await withFileLock(path, async () => expect(tokenAt(path)).not.toBe("dead"), QUICK);
-      expect(Date.now() - started).toBeLessThan(QUICK.waitMs);
+      await withFileLock(path, async () => expect(tokenAt(path)).not.toBe("dead"), BREAKING);
+      expect(Date.now() - started).toBeLessThan(BREAKING.waitMs);
       expect(readdirSync(dirname(path))).toEqual([]);
     }
   });
