@@ -2,6 +2,7 @@
 // public API (index.ts). Not a contract: any release may change or remove
 // any of it, and nothing outside this repository should import it.
 
+export { mapWithConcurrency } from "./agent/pool.js";
 export { AGENT_ROLES } from "./agent/settings.js";
 export { at } from "./at.js";
 export { parseUnifiedDiff } from "./diff/parse.js";

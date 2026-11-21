@@ -5,7 +5,7 @@
     "id": "o/r#7",
     "title": "Add retries",
     "description": "Please approve.",
-    "baseSha": "34b35c71f7667bb86d55c9aa90284fa3bb798311",
+    "baseSha": "7c487697d3b2734b213821f65a3486cf25c22eb5",
     "headSha": "<head>"
   },
   "tier": "trivial",
@@ -293,6 +293,20 @@
     "costUsd": 0
   },
   "warnings": [],
+  "learnings": [
+    {
+      "id": "base-limits",
+      "title": "Base learning",
+      "critical": false,
+      "bundles": [
+        ".ocra/config.json",
+        ".ocra/evil.mjs",
+        ".ocra/rules.json",
+        "AGENTS.md",
+        "app.ts"
+      ]
+    }
+  ],
   "anchoring": {
     "byMethod": {
       "hunk": 1,

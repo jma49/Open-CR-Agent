@@ -32,7 +32,8 @@ export function configuredOptions(run: ResolvedRun, args: ReviewArgs): Configure
     models: config.models,
     rules: run.rules,
     selection: { include: config.include, exclude: config.exclude },
-    ...(run.target.readTrusted ? { readTrusted: run.target.readTrusted } : {}),
+    readTrusted: (path) => run.target.trusted.readFile(path),
+    learnings: run.learnings,
     limits,
     stages: {
       ...(config.verify !== undefined ? { verify: config.verify } : {}),

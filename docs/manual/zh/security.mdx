@@ -9,6 +9,7 @@ description: 哪些内容会离开你的机器，以及 ocra 如何做隔离。
 
 - 审查员的指令、变更的标题和描述，以及被审查文件的 diff。
 - `AGENTS.md` 和匹配的 `.ocra/rules.json` 规则。
+- 为每个任务选出的 `.ocra/learnings/` 条目。
 - 审查员通过工具请求的文件内容和搜索结果。
 - `.ocra/memory.json` 里与被审查文件有关的已接受问题。
 - 核查时，每个文件的问题连同它的 diff 和问题附近的代码；裁决时，所有问题以及变更的标题和描述。
@@ -56,12 +57,12 @@ PR 的文字、diff、仓库文件、规则、仓库指南、工具返回的结�
 ## CI
 
 - 把 key 存为 CI 的 secret。
-- `ocra review --pr`、GitHub Action 和 `ocra review --mr` 从 base 提交读取 `.ocra/config.json`、`.ocra/rules.json` 和 `AGENTS.md`，并且从不加载仓库插件（[GitHub](./github)、[GitLab](./gitlab)）。
+- `ocra review --pr`、GitHub Action 和 `ocra review --mr` 从 base 提交读取 `.ocra/config.json`、`.ocra/rules.json`、`.ocra/learnings/` 和 `AGENTS.md`，并且从不加载仓库插件（[GitHub](./github)、[GitLab](./gitlab)）。
 - [来自 fork 的 PR](./github#来自-fork-的-pr) 运行在 `pull_request_target` 上，会把你的 secret 交给 job：之所以可以接受，只是因为 ocra 不运行 PR 里的任何东西，所以绝不要加会运行 PR 代码的步骤。
 
 ## 审查不信任的代码
 
-`.ocra/config.json` 可以列出插件，而插件会执行代码。`ocra review --no-repo-config` 忽略这个文件，模型改从 `OCRA_MODEL_*` 读取。`.ocra/memory.json`（它可以压掉问题）、`.ocra/rules.json` 和 `AGENTS.md` 在使用 `--from`/`--to` 时从 `--from` 提交读取，其他情况下不使用。`ocra-eval` 总是带上这个开关。
+`.ocra/config.json` 可以列出插件，而插件会执行代码。`ocra review --no-repo-config` 忽略这个文件，模型改从 `OCRA_MODEL_*` 读取。`.ocra/memory.json`（它可以压掉问题）、`.ocra/rules.json`、`.ocra/learnings/` 和 `AGENTS.md` 在使用 `--from`/`--to` 时从 `--from` 提交读取，其他情况下不使用。`ocra-eval` 总是带上这个开关。
 
 ## 报告漏洞
 

@@ -64,12 +64,24 @@ export interface ReviewTarget {
   // where the repository's could.
   accountPlugins: boolean;
   createVcs(registry: PluginRegistry): VcsAdapter;
-  readTrusted?: (path: string) => Promise<string | undefined>;
+  trusted: TrustedTree;
   publish: boolean;
   // The reviewed repository as `https://host/owner/repo` when it is not
   // the checkout's origin: the pull or merge request's (repository-id.ts).
   repository?: string;
 }
+
+// Where the files that steer a review are read from: AGENTS.md, rules,
+// memory and learnings.
+export interface TrustedTree {
+  readFile(path: string): Promise<string | undefined>;
+  listFiles(dir: string): Promise<string[]>;
+}
+
+const EMPTY_TREE: TrustedTree = {
+  readFile: async () => undefined,
+  listFiles: async () => [],
+};
 
 export interface TargetOptions {
   cwd: string;
@@ -134,7 +146,9 @@ async function localTarget(args: ReviewArgs, inputs: Inputs): Promise<ReviewTarg
     plugins: await loadExternalPlugins(config.plugins, configFile ? dirname(configFile) : root),
     accountPlugins: !ignoreRepoConfig,
     createVcs: (registry) => registry.createVcs("local", { cwd, target: args.target }),
-    ...(ignoreRepoConfig ? { readTrusted: untrustedTreeReader(args, cwd) } : {}),
+    trusted: ignoreRepoConfig
+      ? untrustedTree(args, cwd)
+      : new LocalGitAdapter({ cwd, target: args.target }),
     publish: false,
   };
 }
@@ -143,13 +157,9 @@ async function localTarget(args: ReviewArgs, inputs: Inputs): Promise<ReviewTarg
 // review (.ocra/memory.json can silence findings, rules and AGENTS.md shape
 // the prompts) are not taken from it either: from the base of a range, which
 // you chose, and otherwise not at all.
-function untrustedTreeReader(
-  args: ReviewArgs,
-  cwd: string,
-): (path: string) => Promise<string | undefined> {
-  if (args.target.mode !== "range") return async () => undefined;
-  const base = new LocalGitAdapter({ cwd, target: { mode: "commit", commit: args.target.from } });
-  return (path) => base.readFile(path);
+function untrustedTree(args: ReviewArgs, cwd: string): TrustedTree {
+  if (args.target.mode !== "range") return EMPTY_TREE;
+  return new LocalGitAdapter({ cwd, target: { mode: "commit", commit: args.target.from } });
 }
 
 // The change request's own files are untrusted: configuration, guidelines
@@ -169,11 +179,10 @@ async function changeRequestTarget(
   });
   await ensureCommits(root, [found.baseSha, found.headSha], found.headRefs);
 
-  const base = new LocalGitAdapter({ cwd, target: { mode: "commit", commit: found.baseSha } });
-  const readTrusted = (path: string) => base.readFile(path);
+  const trusted = new LocalGitAdapter({ cwd, target: { mode: "commit", commit: found.baseSha } });
   const { config, layers } = await loadConfigLayers(root, inputs.env, {
     repository: !inputs.ignoreRepoConfig,
-    read: readTrusted,
+    read: (path) => trusted.readFile(path),
     ...(configFile ? { file: configFile } : {}),
     warn,
     ...(inputs.fetch ? { fetch: inputs.fetch } : {}),
@@ -195,7 +204,7 @@ async function changeRequestTarget(
     plugins: [],
     accountPlugins: false,
     createVcs: (registry) => found.createVcs(registry, local, config),
-    readTrusted,
+    trusted,
     publish: change.publish,
     ...(repository ? { repository } : {}),
   };

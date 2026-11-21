@@ -23,8 +23,12 @@ export function changeRequestFixture(baseConfig?: object) {
   const upstream = repos.create();
   writeFileSync(join(upstream.dir, "app.ts"), "export const limit = 10;\n");
   writeFileSync(join(upstream.dir, "AGENTS.md"), "Base guidelines: check limits.\n");
+  mkdirSync(join(upstream.dir, ".ocra", "learnings"), { recursive: true });
+  writeFileSync(
+    join(upstream.dir, ".ocra", "learnings", "base-limits.md"),
+    '---\ntitle: Base learning\npaths: ["**"]\ncreated: 2026-11-21\n---\nLimits must be positive.\n',
+  );
   if (baseConfig) {
-    mkdirSync(join(upstream.dir, ".ocra"));
     writeFileSync(join(upstream.dir, ".ocra", "config.json"), JSON.stringify(baseConfig));
   }
   upstream.git("add", "-A");

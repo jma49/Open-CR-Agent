@@ -83,7 +83,7 @@ It works as on [GitHub](./github#overriding-a-blocking-verdict): only for that c
 
 ## What the merge request cannot change
 
-ocra runs nothing from the merge request: configuration, `.ocra/rules.json` and `AGENTS.md` come from its base commit, and repository plugins never load. Every posted line that starts with a slash gets a zero-width space before it, so a finding cannot become a quick action such as `/merge` or `/approve`, which GitLab would run with the token's rights. The pipeline that runs ocra is another matter (next section).
+ocra runs nothing from the merge request: configuration, `.ocra/rules.json`, `.ocra/learnings/` and `AGENTS.md` come from its base commit, and repository plugins never load. Every posted line that starts with a slash gets a zero-width space before it, so a finding cannot become a quick action such as `/merge` or `/approve`, which GitLab would run with the token's rights. The pipeline that runs ocra is another matter (next section).
 
 ## Who controls the pipeline
 

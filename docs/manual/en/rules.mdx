@@ -3,7 +3,7 @@ title: Review rules
 description: Teach reviewers your project's conventions with AGENTS.md and path-scoped rules.
 ---
 
-Reviewers combine three layers of guidance.
+Reviewers combine four layers of guidance.
 
 ## Built-in rules
 
@@ -45,6 +45,35 @@ Path-scoped rules apply only when a bundle contains a matching file:
 - `rule`: free text given to the reviewer.
 
 An invalid `rules.json` stops the run with an error. For pull requests it is read from the base commit.
+
+## .ocra/learnings
+
+A learning is something the team learned from an earlier change: the bug a fix repaired, why a reviewer rejected a pattern. Each one is a Markdown file in `.ocra/learnings/`, named by its id (lowercase letters, digits and hyphens), with YAML frontmatter:
+
+```markdown
+---
+title: Release pooled connections on every exit path
+paths: ["src/db/**"]
+symbols: [acquire]
+keywords: [connection pool]
+critical: true
+source: { kind: fix-commit, ref: 3f2a9c1 }
+created: 2026-11-21
+---
+
+`acquire()` hands out a connection that only `release()` returns. An early
+`return` or a `throw` between them leaks it, and the pool runs dry under load.
+```
+
+- `title`, `paths` (globs, at least one) and `created` (a date) are required; the body says what to check and why, in at most 4,000 characters.
+- `symbols`: identifiers whose use in a patch makes the learning apply anywhere, matched as whole identifiers.
+- `keywords`: words or phrases matched in the patch whatever their spelling (`connection pool` matches `ConnectionPool` and `connection_pool`).
+- `critical`: always given when a path matches.
+- `source`: where it came from (`kind`: `fix-commit`, `review-feedback`, `document`, `remember`, `incident` or `manual`; `ref`: a commit, pull request or link).
+
+Each review task gets the learnings that apply to its files, chosen before any model runs: a path match ranks first, then a symbol, then a keyword. At most 5 are given, within 8,000 characters of body, plus every critical one whose path matches (up to 10). Reviewers read them as data and report only what the change itself gets wrong. The report's `learnings` lists each one given, with the bundles it went to.
+
+Learnings are read at the revision under review, and for pull requests from the base commit, like `rules.json`, so a pull request cannot add one that steers its own review. A file that is not a valid learning is skipped with a warning; at most 500 files of up to 16 KB are read.
 
 ## Rules from plugins
 

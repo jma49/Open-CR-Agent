@@ -85,6 +85,11 @@ describe("ocra review --pr", () => {
       (p) => /<ocra_review_rules>([\s\S]*?)<\/ocra_review_rules>/.exec(p)?.[1] ?? "",
     );
     expect(rules.some((r) => r.includes("HEAD RULE"))).toBe(false);
+    // The learnings are read from the same trusted base.
+    const learnings = prompts.map(
+      (p) => /<ocra_team_learnings>([\s\S]*?)<\/ocra_team_learnings>/.exec(p)?.[1] ?? "",
+    );
+    expect(learnings.every((l) => l.includes('id="base-limits"'))).toBe(true);
     expect(prompts.join("\n")).toContain("<ocra_title>\nAdd retries\n</ocra_title>");
 
     const review = github.calls.find((c) => c.path === "/pulls/7/reviews");

@@ -140,6 +140,7 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...`.
 - `refuted` (findings verification dropped, with the reason), `unverifiedCriticals` (critical findings it failed to check), `judgement` (what the judge merged, dropped or recalibrated);
 - findings, and `rereview`: earlier findings fixed, not reproduced, not re-checked, unchanged or dismissed, each with its `reviewer` when recorded;
 - `remembered`: findings a memory accepted, with `source` (`repository` for `.ocra/memory.json`, `account` for your [ocra Cloud memory](#memory-in-your-ocra-cloud-account)); a maintainer's override in `changeRequest.override`;
+- `learnings`: each [learning](./rules#ocralearnings) a task was given, with its `title`, `critical`, `source` and the `bundles` it went to;
 - token usage and cost; `spendLimit` with a spend limit (`reached`: `review` when review tasks stopped, `total` when it all ran out); warnings.
 
 The format is a contract (`"version": 1`): later releases only add optional fields and new values of a listed set, or change the version. Treat an unknown coverage status as not reviewed.
