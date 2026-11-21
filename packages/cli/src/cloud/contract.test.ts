@@ -96,6 +96,13 @@ const { verification: _v, ...unchecked } = finding({
 
 const report = reviewReport({
   runId: "run-2026-10-04-a1b2",
+  changeRequest: {
+    id: "42",
+    title: "t",
+    description: "",
+    baseSha: "1".repeat(40),
+    headSha: "2".repeat(40),
+  },
   tier: "full",
   verdict: "significant_concerns",
   findings: [finding({}), fileLevel, unchecked],
@@ -143,6 +150,7 @@ describe("the contract's fixtures", () => {
         "github",
         "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
         61_234.4,
+        { repository: "https://github.com/octo/app", number: 42 },
       ),
       // Not this CLI's version: the fixture would change with every release.
       ocraVersion: "0.0.0",

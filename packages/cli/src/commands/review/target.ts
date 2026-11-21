@@ -69,6 +69,8 @@ export interface ReviewTarget {
   // The reviewed repository as `https://host/owner/repo` when it is not
   // the checkout's origin: the pull or merge request's (repository-id.ts).
   repository?: string;
+  // The pull or merge request's number (its iid on GitLab).
+  changeRequestNumber?: number;
 }
 
 export interface TargetOptions {
@@ -198,6 +200,7 @@ async function changeRequestTarget(
     readTrusted,
     publish: change.publish,
     ...(repository ? { repository } : {}),
+    changeRequestNumber: change.ref.number,
   };
 }
 

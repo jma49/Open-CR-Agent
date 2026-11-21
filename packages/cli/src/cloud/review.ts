@@ -16,6 +16,8 @@ import { repoHash, uploadOf, uploadReview } from "./upload.js";
 // account remembers for the repository.
 
 export type CloudReview = {
+  // The repository as hashed: `https://host/owner/repo` (repository-id.ts).
+  repository: string;
   repoHash: string;
   // The account answered a salt, the server's signal that it shares
   // findings, and this machine agreed to send them (sharing-consent.ts).
@@ -81,7 +83,7 @@ async function prepare(
     warn(
       `could not read your ocra Cloud account (${errorMessage(error)}); this review sends no findings and applies no account memory`,
     );
-    return { repoHash: hash, shareFindings: false, memory: [] };
+    return { repository: id, repoHash: hash, shareFindings: false, memory: [] };
   }
   await keepAccountSalt(deps.credentialsPath, salt, warn);
   const hash = await repoHash(id, deps.credentialsPath, salt ?? undefined);
@@ -93,7 +95,7 @@ async function prepare(
         "your ocra Cloud account remembers findings, but applies them only while it shares findings (Settings in ocra Cloud); this review applies the repository's memory alone",
       );
     }
-    return { repoHash: hash, shareFindings: false, memory: [] };
+    return { repository: id, repoHash: hash, shareFindings: false, memory: [] };
   }
   const consented = await hasSharingConsent(deps.credentialsPath);
   if (!consented) {
@@ -102,6 +104,7 @@ async function prepare(
     );
   }
   return {
+    repository: id,
     repoHash: hash,
     shareFindings: consented,
     memory: await fetchAccountMemory(deps, hash, warn),
@@ -148,11 +151,14 @@ export async function sendToCloud(
   run: {
     source: ReviewSource;
     durationMs: number;
+    changeRequestNumber?: number;
     err: Output;
     warn: (message: string) => void;
   },
 ): Promise<void> {
-  const upload = uploadOf(report, run.source, cloud.repoHash, run.durationMs);
+  const number = run.changeRequestNumber;
+  const changeRequest = number === undefined ? undefined : { repository: cloud.repository, number };
+  const upload = uploadOf(report, run.source, cloud.repoHash, run.durationMs, changeRequest);
   const shared = cloud.shareFindings ? sharedFindings(report) : undefined;
   const sent = await uploadReview(upload, deps, run.warn, shared?.findings);
   if (!sent) return;

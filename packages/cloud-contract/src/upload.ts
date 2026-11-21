@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MAX_FIELD } from "./limits.js";
+import { REPOSITORY_URL } from "./repository.js";
 import {
   REPO_HASH,
   REVIEWER_ID,
@@ -103,6 +104,16 @@ export const reviewUploadSchema = z.object({
     .catch(undefined),
   outcomes: z.object({ fixed: count, dismissed: count }).optional().catch(undefined),
   findingList: z.array(sharedFindingSchema.nullable().catch(null)).optional().catch(undefined),
+  // A pull or merge request's review: which one, so ocra Cloud can show the
+  // verdict on it (ADR-0038).
+  pullRequest: z
+    .object({
+      repository: z.string().regex(REPOSITORY_URL),
+      number: z.number().int().positive().lt(1e9),
+      headSha: z.string().regex(/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/),
+    })
+    .optional()
+    .catch(undefined),
 });
 export type ReviewUpload = z.input<typeof reviewUploadSchema>;
 

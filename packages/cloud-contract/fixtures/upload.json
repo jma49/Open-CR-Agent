@@ -61,6 +61,11 @@
     "fixed": 1,
     "dismissed": 1
   },
+  "pullRequest": {
+    "repository": "https://github.com/octo/app",
+    "number": 42,
+    "headSha": "2222222222222222222222222222222222222222"
+  },
   "findingList": [
     {
       "fingerprint": "0123456789abcdef",

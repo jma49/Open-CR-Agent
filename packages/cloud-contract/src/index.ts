@@ -98,6 +98,7 @@ export {
   providersAnswerSchema,
 } from "./providers.js";
 export { REDACTED, redact, redactField } from "./redact.js";
+export { normaliseRemote, REPOSITORY_URL } from "./repository.js";
 export {
   FINGERPRINT,
   type ReviewerCounts,

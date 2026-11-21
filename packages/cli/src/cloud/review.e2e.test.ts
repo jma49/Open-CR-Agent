@@ -92,6 +92,7 @@ describe("prepareCloudReview", () => {
     const ready = await prepareCloudReview(root, m.deps, (w) => warnings.push(w));
     const hash = await hashOf(root, m.credentialsPath, SALT);
     expect(ready).toEqual({
+      repository: "https://github.com/org/repo",
       repoHash: hash,
       shareFindings: true,
       memory: [
@@ -306,7 +307,12 @@ describe("prepareCloudReview", () => {
     });
     writeFileSync(accountSaltPath(m.credentialsPath), `${SALT}\n`);
     const offline = await prepareCloudReview(root, m.deps, () => {});
-    expect(offline).toEqual({ repoHash: online?.repoHash, shareFindings: false, memory: [] });
+    expect(offline).toEqual({
+      repository: online?.repository,
+      repoHash: online?.repoHash,
+      shareFindings: false,
+      memory: [],
+    });
   });
 
   it("on a failure to read the salt, warns once, uses this machine's salt and skips the memory", async () => {
@@ -322,6 +328,7 @@ describe("prepareCloudReview", () => {
       const warnings: string[] = [];
       const ready = await prepareCloudReview(root, m.deps, (w) => warnings.push(w));
       expect(ready).toEqual({
+        repository: "https://github.com/org/repo",
         repoHash: await hashOf(root, m.credentialsPath),
         shareFindings: false,
         memory: [],
