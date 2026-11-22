@@ -11,6 +11,7 @@ import type { PlatformTarget } from '@open-cr-agent/vcs-platform';
 import type { ProposedChange } from '@open-cr-agent/vcs-platform';
 import type { ProposeOptions } from '@open-cr-agent/vcs-platform';
 import type { ResolveTargetOptions } from '@open-cr-agent/vcs-platform';
+import type { StackHost } from '@open-cr-agent/vcs-platform';
 
 // @public (undocumented)
 export class GitHubApiError extends OcraError {
@@ -29,6 +30,9 @@ export interface GitHubSettings {
     // (undocumented)
     requestChanges?: boolean;
 }
+
+// @public (undocumented)
+export function githubStackHost(options: ProposeOptions): Promise<StackHost>;
 
 // @public (undocumented)
 export function proposeOnGitHub(options: ProposeOptions, proposal: FileProposal): Promise<ProposedChange>;

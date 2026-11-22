@@ -15,6 +15,7 @@ import type { ReviewDeps } from "./commands/review/deps.js";
 import { BUILTIN_RUNTIMES } from "./commands/review/runtimes.js";
 import { BUILTIN_PLUGINS, reviewCommand } from "./commands/review.js";
 import { parseServeArgs, SERVE_USAGE, serveCommand } from "./commands/serve.js";
+import { STACK_USAGE, stackCommand } from "./commands/stack.js";
 import { EXIT } from "./io/exit.js";
 import type { Output } from "./io/output.js";
 import { forTerminal } from "./io/terminal.js";
@@ -34,6 +35,7 @@ Commands:
   graph       Write or update the code graph of a commit, for review --graph
   memory      Remember findings the team accepts (run "ocra memory --help")
   learn       Draft the team's learnings from its fix commits (run "ocra learn --help")
+  stack       Keep a stack of pull or merge requests (run "ocra stack --help")
   reply       Answer a comment that mentions @ocra on a pull or merge request (run "ocra reply --help")
   metrics     Counts over past reviews: runs, cost, findings, per reviewer (run "ocra metrics --help")
   plugins     Allow plugins your ocra Cloud settings name on this machine (run "ocra plugins --help")
@@ -108,6 +110,16 @@ export async function run(
     } catch (error) {
       if (error instanceof UsageError) err.write(`${error.message}\n\n${REPLY_USAGE}`);
       else err.write(failure(error));
+      return EXIT.error;
+    }
+  }
+  if (command === "stack") {
+    try {
+      return await stackCommand(rest, { out, err }, deps);
+    } catch (error) {
+      if (error instanceof UsageError) {
+        err.write(`${error.message ? `${error.message}\n\n` : ""}${STACK_USAGE}`);
+      } else err.write(failure(error));
       return EXIT.error;
     }
   }

@@ -285,6 +285,33 @@ ocra reply --mr 12 --comment 4811                 # GitLab 的 note
 
 回答是 writer 角色的一次调用，输入是描述、讨论里最近的评论；如果评论在某一行上，再加上该文件的 patch 和那一行附近的代码；否则是问题提到的文件，再否则是最小的几个 patch。文件取自审查的选择结果，并经过同样的访问策略读取，所以提问拿不到机密文件或被排除的文件。回答最多约 250 词，与审查发现一样渲染（提及和命令都会被中和）。配置和审查一样从 base 读取。`ocra reply` 不做审查，也不写会话；要更深入地看某一段，请用 `ocra review`。v0.10.0 新增。
 
+## ocra stack
+
+维护一个分支栈：每个分支是一个 PR 或 MR，base 是它下面的那个分支，这样大的改动可以分成小步审查：
+
+```bash
+ocra stack create feat/parse -m "feat: parse the input"   # 从当前分支建分支，提交已暂存的改动
+ocra stack create feat/apply -m "feat: apply it"          # 下一步，叠在 feat/parse 上
+ocra stack submit --draft                                  # 推送两者，#1 基于 main，#2 基于 feat/parse
+git switch feat/parse && git commit --amend               # 修改下层分支
+ocra stack restack                                         # 把 feat/apply 变基到它上面
+ocra stack sync                                            # #1 合并后：删除 feat/parse，把 feat/apply 移到 main 上
+ocra stack submit                                          # 推送，把 #2 的 base 改为 main
+```
+
+| 命令 | 作用 |
+|---|---|
+| `create <branch>` | 从当前分支创建该分支并叠在当前分支上；`-m <message>` 提交已暂存的改动 |
+| `track [<parent>]` | 把当前分支叠在 `<parent>` 上（默认是主干），用于不是 `create` 建的分支，或另一个克隆里的分支 |
+| `log` | 显示当前分支所在的栈，并标出需要 restack 的分支 |
+| `restack` | 自下而上把每个分支变基到其父分支的最新提交上，然后回到原来的分支 |
+| `submit` | 推送每个分支（`--force-with-lease`），为还没有变更请求的分支打开一个（`--draft` 为草稿），base 为其父分支，并更新每个 base 和每个描述里的栈列表 |
+| `sync` | 拉取远端，找出变更请求已合并的分支，把它们的子分支移到被合并分支的父分支上，删除这些分支并 restack。它不推送：接着运行 `submit` |
+
+栈是记录在本克隆 git config 里的分支树（`branch.<name>.ocraParent`，以及 `branch.<name>.ocraParentHead`，即分支所基于的父分支提交），根是主干，也就是 origin 的默认分支。restack 运行 `git rebase --onto <parent> <parentHead> <branch>`，所以被 amend 或 squash 合并的父分支不会被重放。遇到冲突时它停在那个分支：解决冲突，运行 `git rebase --continue`，再运行一次 `ocra stack restack`。除 `create` 和 `track` 外，每个命令都要求工作区干净。
+
+`submit` 和 `sync` 使用 `GITHUB_TOKEN`（或 `GH_TOKEN`）或 `GITLAB_TOKEN`，`--repo` 或 `--project` 与审查时相同；令牌需要 PR（MR）的写权限。描述里的栈列表在 `<!-- ocra:stack -->` 标记之间；标记之外你写的内容保持不变。如果栈里有分支的变更请求已经合并，`submit` 在推送任何内容之前就会拒绝：先运行 `sync`。v0.11.0 新增。
+
 ## ocra metrics
 
 对 `.ocra/sessions/` 下已完成的审查做统计，数据来自每个会话的 `report.json`，不调用任何模型：

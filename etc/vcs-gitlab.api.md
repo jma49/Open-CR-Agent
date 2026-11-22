@@ -11,6 +11,7 @@ import type { PlatformTarget } from '@open-cr-agent/vcs-platform';
 import type { ProposedChange } from '@open-cr-agent/vcs-platform';
 import type { ProposeOptions } from '@open-cr-agent/vcs-platform';
 import type { ResolveTargetOptions } from '@open-cr-agent/vcs-platform';
+import type { StackHost } from '@open-cr-agent/vcs-platform';
 
 // @public (undocumented)
 export class GitLabApiError extends OcraError {
@@ -24,6 +25,9 @@ export const gitlabPlugin: OcraPlugin;
 
 // @public (undocumented)
 export type GitLabSettings = Record<string, never>;
+
+// @public (undocumented)
+export function gitlabStackHost(options: ProposeOptions, warn: (message: string) => void): Promise<StackHost>;
 
 // @public (undocumented)
 export function proposeOnGitLab(options: ProposeOptions, proposal: FileProposal): Promise<ProposedChange>;
