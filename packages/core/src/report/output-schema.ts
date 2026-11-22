@@ -236,6 +236,15 @@ export const reportOutputSchema = z.strictObject({
     )
     .exactOptional(),
   judgement: judgeDecisionsSchema.exactOptional(),
+  walkthrough: z
+    .strictObject({
+      overview: z.string(),
+      groups: z.array(
+        z.strictObject({ title: z.string(), files: z.array(z.string()), note: z.string() }),
+      ),
+      diagram: z.string().exactOptional(),
+    })
+    .exactOptional(),
   rereview: z
     .strictObject({
       fixed: priorList,

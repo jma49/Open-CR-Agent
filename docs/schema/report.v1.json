@@ -590,6 +590,48 @@
       ],
       "additionalProperties": false
     },
+    "walkthrough": {
+      "type": "object",
+      "properties": {
+        "overview": {
+          "type": "string"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "files",
+              "note"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "diagram": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "overview",
+        "groups"
+      ],
+      "additionalProperties": false
+    },
     "rereview": {
       "type": "object",
       "properties": {

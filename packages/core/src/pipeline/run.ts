@@ -9,11 +9,12 @@ import { filterStage } from "./filter-stage.js";
 import { type ReviewHooks, type ReviewOptions, runSettings } from "./options.js";
 import { planReview } from "./plan.js";
 import { newRunId } from "./run-id.js";
+import { walkthroughStage } from "./walkthrough-stage.js";
 
 // The library entry: plan (deterministic stages) → execute (one agent task
-// per cell) → filter (memory, the previous review) → check (verify, judge)
-// → report. The `ocra` command is one caller. The manual's Embedding page
-// says which options are a contract.
+// per cell, beside the walkthrough) → filter (memory, the previous review)
+// → check (verify, judge) → report. The `ocra` command is one caller. The
+// manual's Embedding page says which options are a contract.
 export function review(options: ReviewOptions): Promise<ReviewReport> {
   return reviewWithHooks(options);
 }
@@ -39,10 +40,15 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
     signal,
     emit,
   };
+  const walkthrough = walkthroughStage(context);
   const executed = await executeStage(reviewers, context);
   const filtered = await filterStage(executed, plan.prior.review, context);
   const checked = await checkStage(filtered, context);
-  const report = assembleReport({ runId, reviewers }, { executed, filtered, checked }, context);
+  const report = assembleReport(
+    { runId, reviewers },
+    { executed, filtered, checked, walkthrough: await walkthrough },
+    context,
+  );
   emit({ type: "run_finished", report });
   return report;
 }

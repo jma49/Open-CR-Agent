@@ -157,7 +157,7 @@ ocra review [options]
 - `promptHash`：这份配置会发出的系统提示词的哈希（审查员和辅助阶段的；从不包含改动）；
 - `configHash`：实际生效的配置加上 `--reviewers`、`--ultra` 和 `--max-cost-usd` 的哈希；不含采样设置和密钥（key 只以变量名出现）；
 - `sampling`：实际应用的 `temperature` 和 `seed`，`notApplied` 列出没能应用的；
-- `agents`：每个启用的审查员和 `verifier`、`judge`、`helper` 三个角色的 `tier`、`models` 中的模型链（[自己的](./configuration#按-agent-指定模型)或所在层级的）、设置了时的[推理强度](./configuration#推理强度) `effort`、`applied`（没有发出调用时不存在），以及 `notApplied` 的采样设置；
+- `agents`：每个启用的审查员和 `verifier`、`judge`、`helper`、`writer` 四个角色的 `tier`、`models` 中的模型链（[自己的](./configuration#按-agent-指定模型)或所在层级的）、设置了时的[推理强度](./configuration#推理强度) `effort`、`applied`（没有发出调用时不存在），以及 `notApplied` 的采样设置；
 - `rules`：每条路径规则的 `path`、`rule` 和 `source`（`repository` 表示 `.ocra/rules.json`，`shared`、`account` 或 `plugin`）；
 - `accountSettings`：登录时所用[账户设置](./configuration#账户设置)的 `version`。
 

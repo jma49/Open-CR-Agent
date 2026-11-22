@@ -57,7 +57,7 @@ export interface AgentProvenance {
 }
 
 // @public (undocumented)
-export type AgentRole = "verifier" | "judge" | "helper";
+export type AgentRole = "verifier" | "judge" | "helper" | "writer";
 
 // @public (undocumented)
 export interface AgentRuntime {
@@ -1106,6 +1106,15 @@ export const reportOutputSchema: z.ZodObject<{
             reason: z.ZodString;
         }, z.core.$strict>>;
     }, z.core.$strict>>;
+    walkthrough: z.ZodExactOptional<z.ZodObject<{
+        overview: z.ZodString;
+        groups: z.ZodArray<z.ZodObject<{
+            title: z.ZodString;
+            files: z.ZodArray<z.ZodString>;
+            note: z.ZodString;
+        }, z.core.$strict>>;
+        diagram: z.ZodExactOptional<z.ZodString>;
+    }, z.core.$strict>>;
     rereview: z.ZodExactOptional<z.ZodObject<{
         fixed: z.ZodArray<z.ZodObject<{
             fingerprint: z.ZodString;
@@ -1622,6 +1631,8 @@ export interface ReviewReport {
     // (undocumented)
     verdict: Verdict;
     // (undocumented)
+    walkthrough?: Walkthrough;
+    // (undocumented)
     warnings: string[];
 }
 
@@ -1636,6 +1647,8 @@ export interface ReviewStages {
     showPreExisting?: boolean;
     // (undocumented)
     verify?: boolean;
+    // (undocumented)
+    walkthrough?: boolean;
 }
 
 // @public (undocumented)
@@ -2051,6 +2064,20 @@ const verificationSchema: z.ZodEnum<{
     uncertain: "uncertain";
     unchecked: "unchecked";
 }>;
+
+// @public (undocumented)
+export interface Walkthrough {
+    // (undocumented)
+    diagram?: string;
+    // (undocumented)
+    groups: {
+        title: string;
+        files: string[];
+        note: string;
+    }[];
+    // (undocumented)
+    overview: string;
+}
 
 // @public (undocumented)
 export function withoutSecrets(text: string, secrets: readonly string[]): string;
