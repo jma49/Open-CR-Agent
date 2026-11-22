@@ -54,11 +54,21 @@ export interface ExecuteOptions {
 
 type PlannedBundle = Awaited<ReturnType<typeof planBundle>>;
 
-// The key of a cell's inputs (taskKey), under which its answer is reported
-// and an earlier run's answer is reused.
-export function jobKey(job: MatrixCell, plan: ReviewPlan, options: ExecuteOptions): string {
+// A cell's prompt and the key of its inputs (taskKey), under which its
+// answer is reported and an earlier run's answer is reused.
+export interface PreparedJob {
+  task: TaskPrompt;
+  key: string;
+}
+
+export function prepareJob(
+  job: MatrixCell,
+  plan: ReviewPlan,
+  options: ExecuteOptions,
+): PreparedJob {
   const call = reviewerCall(job.reviewer, options.agents ?? {});
-  return taskKey(job, plan, taskPrompt(job, plan, settingsOf(options)).prompt, call, options);
+  const task = taskPrompt(job, plan, settingsOf(options));
+  return { task, key: taskKey(job, plan, task.prompt, call, options) };
 }
 
 function settingsOf(options: ExecuteOptions): TaskSettings {
@@ -70,12 +80,11 @@ export async function runJob(
   job: MatrixCell,
   plan: ReviewPlan,
   options: ExecuteOptions,
-  key: string,
+  { task, key }: PreparedJob,
 ): Promise<JobResult> {
   const { emit } = options;
   const files = job.bundle.files.map((f) => f.newPath);
   const call = reviewerCall(job.reviewer, options.agents ?? {});
-  const task = taskPrompt(job, plan, settingsOf(options));
   const prepared = await preparePrompt(job, plan, options, call, task);
   emit({
     type: "task_started",

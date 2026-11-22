@@ -14,7 +14,7 @@ import {
 import type { ReviewEvent, TaskOutcome } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { securityReviewed } from "../sarif/evidence.js";
-import { type ExecuteOptions, type JobResult, jobKey, reuseJob, runJob } from "./execute.js";
+import { type ExecuteOptions, type JobResult, prepareJob, reuseJob, runJob } from "./execute.js";
 import type { ReviewHooks, ReviewOptions, RunSettings } from "./options.js";
 import type { ReviewPlan } from "./plan.js";
 import { reusePool } from "./resume.js";
@@ -76,15 +76,15 @@ export async function executeStage(
       notStarted.add(cell.taskId);
       return skipCell(cell, "run cancelled before this task started", emit);
     }
-    const key = jobKey(cell, plan, execute);
-    const reused = await reuseJob(cell, plan, execute, key);
+    const prepared = prepareJob(cell, plan, execute);
+    const reused = await reuseJob(cell, plan, execute, prepared.key);
     if (reused) return reused;
     if (!context.spendLimit.mayStartReview()) {
       notStarted.add(cell.taskId);
       unaffordable += 1;
       return skipCell(cell, `spend limit of $${settings.maxCostUsd} reached`, emit);
     }
-    return runJob(cell, plan, execute, key);
+    return runJob(cell, plan, execute, prepared);
   });
   if (unaffordable > 0) {
     warnings.push(
