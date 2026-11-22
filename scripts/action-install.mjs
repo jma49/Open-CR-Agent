@@ -19,10 +19,11 @@
 // Usage: node scripts/action-install.mjs [--from-source]
 import { spawn, spawnSync } from "node:child_process";
 import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { npmCommand, opencodeFlags } from "./lib/action-install.mjs";
+import { cacheTrustedRoot, npmCommand, npmDir, opencodeFlags } from "./lib/action-install.mjs";
 import { errorMessage } from "./lib/error-message.mjs";
 import { pinnedLockfile } from "./lib/pinned-lock.mjs";
 import { provenanceProblems } from "./lib/provenance.mjs";
@@ -51,7 +52,8 @@ const temp = process.env.RUNNER_TEMP ?? tmpdir();
 // An npm cache of this install's own: packages and registry answers come
 // from the registry, never from a cache an earlier step or a restored
 // actions/cache left in ~/.npm.
-const CACHE = ["--cache", join(temp, "ocra-npm-cache")];
+const NPM_CACHE = join(temp, "ocra-npm-cache");
+const CACHE = ["--cache", NPM_CACHE];
 // No install scripts: they would run with the job's secrets in the
 // environment. The OpenCode binary is resolved without one.
 const INSTALL_FLAGS = [...CACHE, "--ignore-scripts", "--no-audit", "--no-fund", "--loglevel=error"];
@@ -226,6 +228,7 @@ async function fromRegistry(workspaces, version, omit) {
   // integrity hashes still hold there.
   const registry = npm(["config", "get", "registry"], dir, true).out;
   if (NPMJS.test(registry)) {
+    await trustedRootCached();
     if (!npm(["audit", "signatures", ...CACHE], dir).ok) fail("npm audit signatures failed");
     const repository = workspaces.find((w) => w.json.name === TARGET)?.json.repository?.url;
     const problem = repository
@@ -249,6 +252,17 @@ async function fromRegistry(workspaces, version, omit) {
   }
   const cli = JSON.parse(readFileSync(join(dir, "node_modules", TARGET, "package.json"), "utf8"));
   return { main: join(dir, "node_modules", TARGET, cli.bin.ocra) };
+}
+
+// Without it, npm audit signatures may report a sound attestation as
+// invalid (cacheTrustedRoot); a failure here is left for it to report.
+async function trustedRootCached() {
+  try {
+    const tuf = createRequire(join(npmDir(), "package.json"))("@sigstore/tuf");
+    await cacheTrustedRoot(NPM_CACHE, tuf);
+  } catch (error) {
+    console.log(`::notice::Could not fetch sigstore's trusted root first: ${errorMessage(error)}`);
+  }
 }
 
 async function install() {
