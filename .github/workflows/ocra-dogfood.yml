@@ -156,7 +156,7 @@ jobs:
       # Advice only: a failed or incomplete review never fails the pull request.
       - id: review
         if: steps.guard.outputs.allowed == 'true' && env.SOURCE == 'vertex'
-        uses: jma49/Open-CR-Agent@f6eac5033f94c62c12d21cf96abb8bbe069a1ef9 # v0.10.0
+        uses: jma49/Open-CR-Agent@10c8f46677de96b381d44845e406d2db551219d0 # v0.11.0
         continue-on-error: true
         env:
           GOOGLE_VERTEX_PROJECT: ${{ secrets.GOOGLE_VERTEX_PROJECT }}
@@ -194,7 +194,7 @@ jobs:
       # Advice only, as above.
       - id: review-free
         if: steps.guard.outputs.allowed == 'true' && env.SOURCE == 'openrouter'
-        uses: jma49/Open-CR-Agent@f6eac5033f94c62c12d21cf96abb8bbe069a1ef9 # v0.10.0
+        uses: jma49/Open-CR-Agent@10c8f46677de96b381d44845e406d2db551219d0 # v0.11.0
         continue-on-error: true
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
