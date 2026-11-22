@@ -89,6 +89,12 @@ describe("learningDrafter", () => {
     expect(spent).toEqual([usage]);
   });
 
+  it("covers both directories of a file the fix moved", async () => {
+    const moved = { ...diff("src/storage/query.ts", patch), oldPath: "src/db/query.ts" };
+    const { drafted } = await draft(JSON.stringify(lesson), { ...evidence, files: [moved] });
+    expect(drafted?.paths).toEqual(["src/db/**", "src/storage/**"]);
+  });
+
   it("is given the lesson by the selection for the change it came from", async () => {
     const { drafted } = await draft(JSON.stringify({ ...lesson, symbols: [], keywords: [] }));
     if (!drafted) throw new Error("no draft");

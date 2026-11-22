@@ -161,12 +161,15 @@ function draftPrompt(evidence: LearningEvidence, files: readonly FileDiff[]) {
 
 // The model never names paths: a lesson applies where the change was, to
 // the directory of each file it touched, so it reaches the next change there.
+// A moved file counts in both directories: code left behind repeats the bug.
 function pathsOf(files: readonly FileDiff[]): string[] {
-  const globs = files.map((f) => {
-    const path = f.newPath.replace(GLOB_SYNTAX, "\\$&");
-    const slash = path.lastIndexOf("/");
-    return slash < 0 ? path : `${path.slice(0, slash)}/**`;
-  });
+  const globs = files
+    .flatMap((f) => [f.oldPath, f.newPath])
+    .map((p) => {
+      const path = p.replace(GLOB_SYNTAX, "\\$&");
+      const slash = path.lastIndexOf("/");
+      return slash < 0 ? path : `${path.slice(0, slash)}/**`;
+    });
   return unique(globs).sort().slice(0, MAX_PATHS);
 }
 
