@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { CompletionRequest, OcraPlugin } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { capture, deps } from "../run.fakes.js";
@@ -92,6 +94,17 @@ describe("ocra reply", () => {
     expect(result.seen).toHaveLength(0);
     expect(result.err).toContain("[ocra] Not answering:");
     expect(calls.filter((c) => c.method === "POST" && !c.path.endsWith("/graphql"))).toEqual([]);
+  });
+
+  it("takes ocra's account from --config, as a review does", async () => {
+    const { clone, fetchImpl } = withComment("@ocra what happens when limit is negative?");
+    const config = join(clone, "..", `reply-config-${Date.now()}.json`);
+    writeFileSync(config, JSON.stringify({ github: { botLogin: "maintainer" } }));
+    const args = ["--pr", "7", "--repo", "o/r", "--comment", "4", "--config", config];
+    const result = await reply(clone, args, fetchImpl);
+    expect(result.code).toBe(0);
+    expect(result.seen).toHaveLength(0);
+    expect(result.err).toContain("[ocra] Not answering:");
   });
 
   it("refuses a call without a change request or a comment", async () => {

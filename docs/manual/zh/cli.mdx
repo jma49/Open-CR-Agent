@@ -274,7 +274,7 @@ ocra reply --pr 7 --comment 1891230045 --inline   # diff 某一行上的评论
 ocra reply --mr 12 --comment 4811                 # GitLab 的 note
 ```
 
-`--repo` 和 `--project` 与审查时一样指定仓库，令牌也相同。ocra 只回答这样的评论：在这个变更请求上、在代码之外提到 `@ocra`、确实在提问、作者有写权限（GitLab 上是 Developer 及以上角色）、没被他人编辑过、也不是 ocra 自己发的；每条评论只回答一次（回答里带 `<!-- ocra:reply <id> -->`）。其他评论只在 stderr 打印 `[ocra] Not answering: <原因>`，不调用模型，退出码为 `0`，所以 workflow 可以对每条评论都运行它。出错时（例如缺少令牌、模型调用失败）退出码为 `2`。
+`--repo` 和 `--project` 与审查时一样指定仓库，令牌也相同；`--config <file>` 读取该文件，代替 base 的 `.ocra/config.json`（例如用来设置 `github.botLogin`）。ocra 只回答这样的评论：在这个变更请求上、在代码之外提到 `@ocra`、确实在提问、作者有写权限（GitLab 上是 Developer 及以上角色）、没被他人编辑过、也不是 ocra 自己发的；每条评论只回答一次（回答里带 `<!-- ocra:reply <id> -->`）。其他评论只在 stderr 打印 `[ocra] Not answering: <原因>`，不调用模型，退出码为 `0`，所以 workflow 可以对每条评论都运行它。出错时（例如缺少令牌、模型调用失败）退出码为 `2`。
 
 回答是 writer 角色的一次调用，输入是描述、讨论里最近的评论；如果评论在某一行上，再加上该文件的 patch 和那一行附近的代码；否则是问题提到的文件，再否则是最小的几个 patch。文件取自审查的选择结果，并经过同样的访问策略读取，所以提问拿不到机密文件或被排除的文件。回答最多约 250 词，与审查发现一样渲染（提及和命令都会被中和）。配置和审查一样从 base 读取。`ocra reply` 不做审查，也不写会话；要更深入地看某一段，请用 `ocra review`。v0.10.0 新增。
 

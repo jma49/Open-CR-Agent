@@ -24,6 +24,8 @@ Options:
   --project <id|path> Its project (default: CI_PROJECT_ID or origin)
   --comment <id>      The comment's id (GitLab: the note's id)
   --inline            GitHub: the comment is on a line of the diff
+  --config <file>     Read this configuration file instead of the base's
+                      .ocra/config.json
   -h, --help          Show help
 `;
 
@@ -42,6 +44,7 @@ export async function replyCommand(
       project: { type: "string" },
       comment: { type: "string" },
       inline: { type: "boolean" },
+      config: { type: "string" },
       help: { type: "boolean", short: "h" },
     },
   });
@@ -54,8 +57,14 @@ export async function replyCommand(
   const id = values.comment?.trim();
   if (!id) throw new UsageError("ocra reply needs --comment");
   if (values.inline && !change.pullRequest) throw new UsageError("--inline goes with --pr");
+  if (values.config === "") throw new UsageError("--config needs a file");
 
-  const reviewArgs: ReviewArgs = { target: { mode: "workspace" }, format: "text", ...change };
+  const reviewArgs: ReviewArgs = {
+    target: { mode: "workspace" },
+    format: "text",
+    ...change,
+    ...(values.config !== undefined ? { configFile: values.config } : {}),
+  };
   const run = await resolveRun(reviewArgs, io, deps, { logged: false });
   if (!run.vcs.mention) {
     throw new OcraError("CONFIG_INVALID", "this platform cannot answer comments");
