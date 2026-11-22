@@ -47,15 +47,23 @@ const defaultTriagePolicy: TriagePolicy = {
 };
 
 export function triage(diffs: readonly FileDiff[], policy = defaultTriagePolicy): RiskTier {
-  const touchesSensitivePath = diffs.some(
-    (d) => isSensitivePath(d.newPath, policy) || isSensitivePath(d.oldPath, policy),
-  );
-  if (touchesSensitivePath || diffs.length > policy.maxFilesBeforeFull) return "full";
+  if (touchesSensitivePath(diffs, policy) || diffs.length > policy.maxFilesBeforeFull) {
+    return "full";
+  }
 
   const churn = diffs.reduce((sum, d) => sum + d.additions + d.deletions, 0);
   if (churn <= policy.trivialMaxLines) return "trivial";
   if (churn <= policy.liteMaxLines) return "lite";
   return "full";
+}
+
+export function touchesSensitivePath(
+  diffs: readonly FileDiff[],
+  policy = defaultTriagePolicy,
+): boolean {
+  return diffs.some(
+    (d) => isSensitivePath(d.newPath, policy) || isSensitivePath(d.oldPath, policy),
+  );
 }
 
 function isSensitivePath(path: string, policy: TriagePolicy): boolean {

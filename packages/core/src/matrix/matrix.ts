@@ -4,6 +4,7 @@ import type { ReviewerOverrides } from "../agent/settings.js";
 import type { Bundle } from "../bundle/bundle.js";
 import { RISK_TIERS, type RiskTier } from "../domain.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
+import { touchesSensitivePath } from "../triage.js";
 
 export interface MatrixCell {
   taskId: string;
@@ -35,7 +36,9 @@ export interface ReviewMatrix {
 }
 
 // Deterministic: which reviewer runs on which bundle, so cost grows with the
-// risk of the change instead of bundles × reviewers.
+// risk of the change instead of bundles × reviewers. Cells come in run order:
+// bundles on sensitive paths first, so a spend limit that ends the run early
+// has spent itself on them (ADR-0049); task ids keep the bundle's position.
 export function planMatrix(
   bundles: readonly Bundle[],
   reviewers: readonly ReviewerDefinition[],
@@ -47,7 +50,7 @@ export function planMatrix(
   const skipped: SkippedCell[] = [];
   const ignores = new Map(reviewers.map((r) => [r.id, ignoreMatcher(r)]));
 
-  bundles.forEach((bundle, i) => {
+  for (const { bundle, i } of riskOrder(bundles)) {
     for (const reviewer of reviewers) {
       const override = overrides[reviewer.id] ?? {};
       const skip = (reason: SkipReason) =>
@@ -80,8 +83,17 @@ export function planMatrix(
         bundle: files.length === bundle.files.length ? bundle : { ...bundle, files },
       });
     }
-  });
+  }
   return { cells, skipped };
+}
+
+function riskOrder(bundles: readonly Bundle[]): { bundle: Bundle; i: number }[] {
+  const indexed = bundles.map((bundle, i) => ({
+    bundle,
+    i,
+    sensitive: touchesSensitivePath(bundle.files),
+  }));
+  return [...indexed.filter((b) => b.sensitive), ...indexed.filter((b) => !b.sensitive)];
 }
 
 // Every review task is a model conversation, so a change set with hundreds
