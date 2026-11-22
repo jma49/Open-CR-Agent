@@ -8,12 +8,15 @@ import {
   resolveCommit,
   revisionFiles,
 } from "@open-cr-agent/vcs-local/internal";
+import type { CloudDeps } from "../cloud/deps.js";
+import { fetchCloudGraph } from "../cloud/graph.js";
 import { readGraphFile } from "../graph/file.js";
 import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
 import { refuseLinkedOutput, writeOutputFile } from "../io/output-file.js";
 import { forTerminal } from "../io/terminal.js";
 import { UsageError } from "../io/usage-error.js";
+import { originRepository } from "../repository-id.js";
 
 export const GRAPH_USAGE = `Usage: ocra graph --out <file> [options]
 
@@ -25,6 +28,8 @@ only; runs nothing from the repository.
 Options:
   --out <file>    The graph file to write or update
   --rev <commit>  The commit (default: HEAD)
+  --cloud         Start from the graph ocra Cloud keeps of origin's repository
+                  instead of the file at --out (self-hosted servers keep them)
   -h, --help      Show help
 `;
 
@@ -35,6 +40,7 @@ export async function graphCommand(
   out: Output,
   err: Output,
   cwd: string,
+  cloud: CloudDeps,
 ): Promise<number> {
   const { values } = parseArgs({
     args: argv,
@@ -42,6 +48,7 @@ export async function graphCommand(
     options: {
       out: { type: "string" },
       rev: { type: "string" },
+      cloud: { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
   });
@@ -55,7 +62,11 @@ export async function graphCommand(
   const file = resolve(cwd, values.out);
   await refuseLinkedOutput(root, file);
   const commit = await resolveCommit(root, values.rev ?? "HEAD");
-  const previous = await readPrevious(file, err);
+  const warn = (message: string) => err.write(forTerminal(`[ocra] ${message}\n`));
+  const fromCloud = values.cloud
+    ? await fetchCloudGraph(cloud, await originRepository(root), warn)
+    : undefined;
+  const previous = fromCloud?.graph ?? (await readPrevious(file, err));
   const update = await updateGraph(
     previous,
     await revisionFiles(root, commit),
@@ -67,9 +78,12 @@ export async function graphCommand(
   );
   await writeOutputFile(root, file, serializeGraph(update.graph));
   const skipped = update.skipped.length ? `, ${update.skipped.length} skipped` : "";
+  const base = fromCloud?.commit
+    ? `, started from ocra Cloud's graph of ${fromCloud.commit.slice(0, 12)}`
+    : "";
   out.write(
     forTerminal(
-      `Code graph of ${commit.slice(0, 12)}: ${plural(update.graph.files.size, "file")} (${update.parsed} parsed, ${update.reused} reused${skipped}) in ${values.out}\n`,
+      `Code graph of ${commit.slice(0, 12)}: ${plural(update.graph.files.size, "file")} (${update.parsed} parsed, ${update.reused} reused${skipped}${base}) in ${values.out}\n`,
     ),
   );
   return EXIT.ok;

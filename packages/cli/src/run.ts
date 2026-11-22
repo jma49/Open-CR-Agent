@@ -99,7 +99,7 @@ export async function run(
   }
   if (command === "graph") {
     try {
-      return await graphCommand(rest, out, err, deps.cwd);
+      return await graphCommand(rest, out, err, deps.cwd, defaultCloudDeps(deps.env));
     } catch (error) {
       if (error instanceof UsageError) err.write(`${error.message}\n\n${GRAPH_USAGE}`);
       else err.write(failure(error));

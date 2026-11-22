@@ -2,7 +2,7 @@ import { readFile, stat } from "node:fs/promises";
 import { type CodeGraph, parseGraph } from "@open-cr-agent/code-graph";
 
 // Larger graphs would not fit in memory once parsed.
-const MAX_GRAPH_BYTES = 512 * 1024 * 1024;
+export const MAX_GRAPH_BYTES = 512 * 1024 * 1024;
 
 /** The graph in `file`; throws when it is missing, too large or not a graph this version reads. */
 export async function readGraphFile(file: string): Promise<CodeGraph> {

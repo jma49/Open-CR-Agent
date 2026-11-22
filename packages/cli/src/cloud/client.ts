@@ -4,6 +4,8 @@ import {
   accountSchema,
   type DeviceCode,
   deviceCodeSchema,
+  GRAPH_COMMIT_HEADER,
+  graphReposAnswerSchema,
   memoryAnswerSchema,
   type ProviderEntry,
   preferencesAnswerSchema,
@@ -34,6 +36,8 @@ import { type LockTiming, withFileLock } from "./file-lock.js";
 
 const USER_AGENT = `ocra/${VERSION}`;
 const CLOUD_TIMEOUT_MS = 30_000;
+// A repository's graph runs to tens of megabytes.
+const GRAPH_TIMEOUT_MS = 120_000;
 // Above the longest answer ocra Cloud gives (a repository's 500 remembered
 // findings); a longer one is not an answer to use.
 const MAX_ANSWER_BYTES = 16 * 1024 * 1024;
@@ -227,6 +231,29 @@ export class CloudClient {
       : { kind: "malformed" };
   }
 
+  /** The repositories the account keeps a code graph of, each to be read on its own. */
+  async graphRepos(): Promise<CloudResult<unknown[]>> {
+    const answer = await this.call("/api/graphs/repos", graphReposAnswerSchema);
+    return answer.kind === "ok" ? { kind: "ok", value: answer.value.repos } : answer;
+  }
+
+  /** The newest graph the server built of a repository, as stored, with the commit it describes. */
+  async graph(
+    repoId: string,
+    maxBytes: number,
+  ): Promise<CloudResult<{ commit: string | undefined; text: string }>> {
+    const sent = await this.authorized(`/api/graphs/repos/${encodeURIComponent(repoId)}/graph`, {
+      timeoutMs: GRAPH_TIMEOUT_MS,
+    });
+    if (sent.kind !== "answered") return sent;
+    const { res } = sent;
+    if (!res.ok) return { kind: "status", status: res.status };
+    const text = await readLimited(res, maxBytes);
+    if (text === undefined) return { kind: "malformed" };
+    const commit = res.headers.get(GRAPH_COMMIT_HEADER) ?? undefined;
+    return { kind: "ok", value: { commit, text } };
+  }
+
   /** Sends a review's counts (and shared findings); answers how many findings the server kept. */
   async uploadReview(
     upload: unknown,
@@ -262,7 +289,7 @@ export class CloudClient {
 
   private async authorized(
     path: string,
-    init: { method?: string; body?: unknown } = {},
+    init: { method?: string; body?: unknown; timeoutMs?: number } = {},
   ): Promise<{ kind: "answered"; res: Response } | CloudSessionLost> {
     let session = await this.session();
     if (session.kind !== "ok") return session;
@@ -321,7 +348,7 @@ export class CloudClient {
 
   private async request(
     url: string,
-    init: { method?: string; body?: unknown; token?: string },
+    init: { method?: string; body?: unknown; token?: string; timeoutMs?: number },
   ): Promise<Response> {
     try {
       return await this.deps.fetch(url, {
@@ -332,7 +359,7 @@ export class CloudClient {
           ...(init.body !== undefined ? { "content-type": "application/json" } : {}),
         },
         ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
-        signal: AbortSignal.timeout(CLOUD_TIMEOUT_MS),
+        signal: AbortSignal.timeout(init.timeoutMs ?? CLOUD_TIMEOUT_MS),
       });
     } catch (error) {
       throw new CloudError(errorMessage(error), { cause: error });
