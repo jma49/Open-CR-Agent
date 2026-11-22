@@ -21,5 +21,6 @@ ocra Cloud shows reviews that a CLI or CI job uploaded; a team that has not set 
 
 - A team gets reviews without CI. The CLI and the Action keep working unchanged; a repository reviewed by both gets two reviews, so the console says when a repository has CI reviews too.
 - Hosted reviews inherit the CLI's caps, exit codes and security tests; the server adds the clone, the queue and the bot token, each tested in ocra Cloud.
+- The GitHub App keeps one webhook, which now carries pushes (code graphs) and pull request events (reviews) to one address.
 - A GitHub deployment needs its App's private key (`GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`) and the App's pull request webhook; a GitLab one a bot token. Neither is stored in the database.
 - Hosting reviews for ocra Cloud's own users waits for the runner platform and its budget.
