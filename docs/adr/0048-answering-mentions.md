@@ -18,4 +18,5 @@ Reviewers want to ask about a change where they read it: what a function does, w
 
 - One standard-tier call per answered comment, bounded in input and output; nothing for comments it ignores.
 - A deeper re-review of a section is still a review (`ocra review`), not a reply.
+- The marker is found by reading the thread, so two runs for the same comment at once could both answer: a caller runs one per comment (the manual's workflow has a concurrency group per comment id).
 - ocra Cloud wires the same command to its webhooks.
