@@ -1,6 +1,7 @@
 ---
 "@open-cr-agent/core": minor
 "@open-cr-agent/cli": minor
+"@open-cr-agent/cloud-contract": minor
 ---
 
 ### Added
