@@ -3,17 +3,19 @@
 # request, then sets the Action's outputs (action-outputs.mjs). Its inputs
 # arrive only as environment variables, never interpolated into the script,
 # so pull request text cannot inject shell code: OCRA_MAIN (the installed
-# CLI), OCRA_PR, OCRA_ARGS, OCRA_SARIF, OCRA_FAIL_ON_CONCERNS. action.yml
+# CLI), OCRA_PR, OCRA_FULL, OCRA_ARGS, OCRA_SARIF, OCRA_FAIL_ON_CONCERNS. action.yml
 # execs it, so the runner's cancellation signals reach its trap.
 # GitHub's options for a bash step; no -u: bash 3.2 reads an empty array as unset.
 set -eo pipefail
 if [ -z "${OCRA_PR:-}" ]; then
-  echo "::error::ocra review runs on pull_request events"
+  echo "::error::ocra review runs on pull_request events and on comments on a pull request"
   exit 2
 fi
 # Split on whitespace, across lines, without glob expansion against the
 # checkout.
 read -r -d '' -a extra <<< "${OCRA_ARGS:-}" || true
+# Asked for in a comment: everything again, not only what changed since.
+if [ "${OCRA_FULL:-}" = "true" ]; then extra+=(--full); fi
 mkdir -p "$RUNNER_TEMP/ocra"
 export OCRA_SARIF_FILE="$RUNNER_TEMP/ocra/ocra.sarif"
 rm -f "$OCRA_SARIF_FILE"

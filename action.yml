@@ -123,7 +123,10 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
-        OCRA_PR: ${{ github.event.pull_request.number }}
+        # On a comment (/ocra review), the pull request it is on, reviewed
+        # in full.
+        OCRA_PR: ${{ github.event.pull_request.number || (github.event.issue.pull_request && github.event.issue.number) || '' }}
+        OCRA_FULL: ${{ github.event_name == 'issue_comment' }}
         OCRA_ARGS: ${{ inputs.args }}
         OCRA_FAIL_ON_CONCERNS: ${{ inputs.fail-on-concerns }}
         OCRA_SARIF: ${{ inputs.sarif }}
