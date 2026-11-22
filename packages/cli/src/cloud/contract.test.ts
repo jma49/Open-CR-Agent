@@ -105,7 +105,13 @@ const report = reviewReport({
   },
   tier: "full",
   verdict: "significant_concerns",
-  findings: [finding({}), fileLevel, unchecked],
+  findings: [
+    finding({
+      fix: { startLine: 10, endLine: 12, replacement: "const q = db.query(sql, [id]);" },
+    }),
+    fileLevel,
+    unchecked,
+  ],
   coverage: [
     { path: "src/db.ts", status: "reviewed" },
     { path: "src/retry.ts", status: "reviewed" },
