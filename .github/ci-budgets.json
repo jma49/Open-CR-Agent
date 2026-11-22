@@ -1,0 +1,15 @@
+{
+  "setup": {
+    "platforms": 60,
+    "*": 25
+  },
+  "running": {
+    "verify": 150,
+    "node-matrix": 120,
+    "image": 120,
+    "platforms": 100,
+    "action": 70,
+    "packages": 70,
+    "*": 40
+  }
+}
