@@ -8,7 +8,7 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [0.12.0] - 2026-11-22
 
-A small release: ocra Cloud account settings can turn linked tasks off, GitLab under a relative URL root works from `origin`, and the Action finds Homebrew's npm. The Action's new tag is `jma49/Open-CR-Agent@v0.12.0`.
+A small release: ocra Cloud account settings can turn linked tasks off, `ocra review --mr` reads the project from the `origin` of a GitLab installed under a relative URL root, and the Action finds Homebrew's npm. The Action's new tag is `jma49/Open-CR-Agent@v0.12.0`.
 
 ### Added
 
