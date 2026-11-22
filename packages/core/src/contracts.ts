@@ -127,7 +127,7 @@ export interface Usage {
 export interface CompletionRequest {
   tier: ModelTier;
   // The agent the call is made for: a reviewer id (its plan call), or the
-  // role "verifier", "judge" or "helper".
+  // role "verifier", "judge", "helper" or "writer".
   agent?: string;
   effort?: Effort;
   // The agent's own failback chain; absent: the tier's.

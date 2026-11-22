@@ -320,6 +320,9 @@
       },
       "helper": {
         "tier": "light"
+      },
+      "writer": {
+        "tier": "standard"
       }
     }
   }

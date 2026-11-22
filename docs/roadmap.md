@@ -1,6 +1,6 @@
 # Roadmap
 
-What comes after M1–M4 ([architecture](architecture.md)), as of 2026-11-21 (0.9.0 released). The long-term direction, decided on 2026-10-01: ocra is not another review bot but the engine other review agents are built on.
+What comes after M1–M4 ([architecture](architecture.md)), as of 2026-11-22 (0.10.0 released). The long-term direction, decided on 2026-10-01: ocra is not another review bot but the engine other review agents are built on.
 
 ## The rule while evaluation is scarce
 
@@ -12,7 +12,7 @@ Model runs cost money, and there is little. So: **ship what tests prove without 
 
 1. **Platforms.** PR-Agent and Kodus support five or more (GitHub, GitLab, Bitbucket, Azure DevOps, Gitea); ocra supports GitHub and GitLab.
 2. **Published quality numbers at scale.** Alibaba reports SEM-F1 25.1% on AACR-Bench (recall 12–20%); Kodus published how it raised recall from 53% to 62%. ocra publishes one run on 8 golden cases (16 expected issues), too few to decide changes.
-3. **Beyond one-shot review.** Chat commands in the pull request, learning from corrections, code graphs, IDE plugins.
+3. **Beyond one-shot review.** Learning from corrections in the conversation, IDE plugins. ocra now answers `@ocra` questions in the thread (0.10.0) and keeps a code graph (0.9.0).
 4. **Production mileage.** Cloudflare runs 130k reviews a month at $1.19 each; ocra reviews its own pull requests and one other repository's, and has no external user.
 
 **What ocra has that none of them publish:** defense in depth for untrusted pull requests (read-only agents, configuration and memory from the base commit, neutralized output, commands only from verified comments of people with write access, a threat model and a measured adversarial tier; see the manual's security page), structured output (a versioned JSON report, SARIF), a spend limit that says what it left, and a pipeline in which code decides everything but the judgment calls.

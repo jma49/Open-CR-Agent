@@ -2,12 +2,15 @@ import type {
   ChangeRequest,
   CodeMatch,
   FileDiff,
+  Mention,
+  MentionRef,
   PriorFinding,
   PriorReview,
   ReviewReport,
   VcsAdapter,
 } from "@open-cr-agent/core";
 import { errorMessage, isUnfinished } from "@open-cr-agent/core";
+import { mentionOf } from "./conversation.js";
 import type {
   Bot,
   InlineFinding,
@@ -161,6 +164,14 @@ export class PlatformReview implements VcsAdapter {
       this.writers.set(login, known);
     }
     return known;
+  }
+
+  mention(ref: MentionRef): Promise<Mention> {
+    return mentionOf(ref, {
+      platform: this.platform,
+      bot: () => this.bot(),
+      canWrite: (login) => this.canWrite(login),
+    });
   }
 
   getDiff(): Promise<FileDiff[]> {

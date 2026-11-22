@@ -74,6 +74,7 @@ describe("review provenance", () => {
         verifier: { tier: "standard" },
         judge: { tier: "top" },
         helper: { tier: "light" },
+        writer: { tier: "standard" },
       },
     });
   });

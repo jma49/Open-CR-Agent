@@ -14,7 +14,11 @@ function onGitLab(scenario: Scenario) {
           .filter((c) => c.method === "PUT" && c.path.includes("/notes/"))
           .map((c) => (c.body as { body: string }).body),
       ].at(-1) ?? "",
+    replies: () =>
+      calls
+        .filter((c) => c.method === "POST" && /\/discussions\/[^/]+\/notes$/.test(c.path))
+        .map((c) => (c.body as { body: string }).body),
   };
 }
 
-conformance("GitLab", { conversation: onGitLab });
+conformance("GitLab", { conversation: onGitLab, commentId: (i) => String(i + 1) });

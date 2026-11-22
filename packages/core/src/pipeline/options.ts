@@ -89,6 +89,9 @@ export interface ReviewStages {
   // Report findings Verify traced to code from before the change (true by
   // default). They never count towards the verdict either way.
   showPreExisting?: boolean;
+  // Write the walkthrough of the change for its reviewers (ADR-0047). Off
+  // unless asked: the CLI asks for it on pull and merge requests.
+  walkthrough?: boolean;
 }
 
 export interface ReviewMode {
@@ -163,6 +166,7 @@ export interface RunSettings {
   verify: boolean;
   judge: boolean;
   showPreExisting: boolean;
+  walkthrough: boolean;
 }
 
 export function runSettings(
@@ -187,5 +191,6 @@ export function runSettings(
     verify: options.stages?.verify !== false,
     judge: options.stages?.judge !== false,
     showPreExisting: options.stages?.showPreExisting !== false,
+    walkthrough: options.stages?.walkthrough === true,
   };
 }

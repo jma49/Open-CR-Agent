@@ -103,6 +103,7 @@ export function fakeGitLab(scenario: Scenario, options: FakeGitLabOptions = {}) 
         author: user(spell(c.author)),
         system: false,
         type: "DiffNote",
+        position: { new_path: "src/login.ts", new_line: 2 },
         resolvable: true,
         resolved: j === 0 && t.resolvedBy !== undefined,
         resolved_by: j === 0 && t.resolvedBy ? user(t.resolvedBy) : null,
@@ -175,7 +176,11 @@ export function fakeGitLab(scenario: Scenario, options: FakeGitLabOptions = {}) 
       });
     }
     if (rest.startsWith("/merge_requests/7/notes?")) return json(notes);
-    if (rest.startsWith("/merge_requests/7/discussions?")) return json(discussions);
+    // A comment on the merge request as a whole is a discussion of its own.
+    if (rest.startsWith("/merge_requests/7/discussions?")) {
+      const individual = notes.map((n) => ({ id: `n${n.id}`, individual_note: true, notes: [n] }));
+      return json([...individual, ...discussions]);
+    }
     const member = /^\/members\/all\/(\d+)$/.exec(rest);
     if (member) {
       const level = ACCESS[Number(member[1])];
@@ -187,6 +192,9 @@ export function fakeGitLab(scenario: Scenario, options: FakeGitLabOptions = {}) 
     if (rest === "/merge_requests/7/notes" && method === "POST") return json({}, 201);
     if (rest.startsWith("/merge_requests/7/notes/") && method === "PUT") return json({});
     if (rest.startsWith("/merge_requests/7/discussions/") && method === "PUT") return json({});
+    if (/^\/merge_requests\/7\/discussions\/[^/]+\/notes$/.test(rest) && method === "POST") {
+      return json({}, 201);
+    }
     return json({ message: `unexpected ${method} ${path}` }, 404);
   }) as typeof fetch;
   return { calls, fetchImpl };

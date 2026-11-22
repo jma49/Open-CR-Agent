@@ -120,6 +120,47 @@ describe("renderSummary", () => {
   });
 });
 
+describe("the walkthrough in the summary", () => {
+  const walkthrough = {
+    overview: "Adds retries. @all /merge",
+    groups: [
+      { title: "Retry `a|b`\n<!-- ocra:review -->", files: ["src/a`.ts"], note: "x\n/approve" },
+      { title: "Tests", files: Array.from({ length: 12 }, (_, i) => `t${i}.ts`), note: "" },
+    ],
+    diagram: "sequenceDiagram\n  A->>B: call",
+  };
+
+  function summary(w: ReviewReport["walkthrough"]): string {
+    return renderSummary({
+      report: { ...report([]), ...(w ? { walkthrough: w } : {}) },
+      commented: new Set(),
+      state: { findings: [] },
+      text: gitlab,
+    });
+  }
+
+  it("neutralizes what the model wrote and keeps ocra's markers to ocra", () => {
+    const body = summary(walkthrough);
+    expect(problemsIn(body).filter((p) => /^(mention|command|carriage)/.test(p))).toEqual([]);
+    expect(body.match(/<!-- ocra:review -->/g)).toHaveLength(1);
+    expect(body).toContain("`src/aˋ.ts`");
+  });
+
+  it("folds the file groups, lists ten files of a group and counts the rest", () => {
+    const body = summary(walkthrough);
+    expect(body).toContain("<details><summary>Changes in 13 file(s)</summary>");
+    expect(body).toContain("`t9.ts` and 2 more");
+    expect(body).toContain("- **Tests**\n");
+  });
+
+  it("puts the diagram in a mermaid fence of its own", () => {
+    expect(summary(walkthrough)).toContain("```mermaid\nsequenceDiagram\n  A->>B: call\n```");
+    const { overview, groups } = walkthrough;
+    expect(summary({ overview, groups })).not.toContain("mermaid");
+    expect(summary(undefined)).not.toContain("### Walkthrough");
+  });
+});
+
 describe("inlineBody", () => {
   it("neutralizes commands in every part a model wrote", () => {
     const body = inlineBody(

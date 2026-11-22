@@ -33,6 +33,12 @@ const noteSchema = z.object({
   resolvable: z.boolean().optional(),
   resolved: z.boolean().optional(),
   resolved_by: user.nullable().optional(),
+  // On a line of the diff: the file and the new side's line, unset on a
+  // removed line.
+  position: z
+    .object({ new_path: z.string(), new_line: z.number().nullable().optional() })
+    .nullable()
+    .optional(),
 });
 export type Note = z.infer<typeof noteSchema>;
 
@@ -182,6 +188,14 @@ export class GitLabApi {
 
   async createDiscussion(iid: number, body: string, position: Position): Promise<void> {
     await this.request("POST", `/merge_requests/${iid}/discussions`, { body, position });
+  }
+
+  async replyToDiscussion(iid: number, discussionId: string, body: string): Promise<void> {
+    await this.request(
+      "POST",
+      `/merge_requests/${iid}/discussions/${encodeURIComponent(discussionId)}/notes`,
+      { body },
+    );
   }
 
   async resolveDiscussion(iid: number, discussionId: string): Promise<void> {

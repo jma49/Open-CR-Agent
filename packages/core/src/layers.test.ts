@@ -23,6 +23,8 @@ const LAYERS: readonly (readonly string[])[] = [
     "anchor/",
     "verify/",
     "judge/",
+    "walkthrough/",
+    "chat/",
     "sarif/",
     "matrix/",
   ],

@@ -123,6 +123,9 @@
     "showPreExisting": {
       "type": "boolean"
     },
+    "walkthrough": {
+      "type": "boolean"
+    },
     "maxCostUsd": {
       "type": "number",
       "exclusiveMinimum": 0
@@ -267,7 +270,8 @@
         "enum": [
           "verifier",
           "judge",
-          "helper"
+          "helper",
+          "writer"
         ]
       },
       "additionalProperties": {

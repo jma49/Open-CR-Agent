@@ -33,6 +33,18 @@ const commentSchema = z.object({
 });
 export type IssueComment = z.infer<typeof commentSchema>;
 
+const issueCommentSchema = commentSchema.extend({ issue_url: z.string() });
+
+// A comment on a line of the diff; a reply names its thread's first comment.
+const lineCommentSchema = commentSchema.extend({
+  pull_request_url: z.string(),
+  path: z.string(),
+  line: z.number().nullable().optional(),
+  original_line: z.number().nullable().optional(),
+  in_reply_to_id: z.number().optional(),
+});
+export type LineComment = z.infer<typeof lineCommentSchema>;
+
 export interface ReviewComment {
   path: string;
   line: number;
@@ -228,7 +240,7 @@ export class GitHubApi {
       })
       .parse(
         await this.graphql(
-          "query($id: ID!) { node(id: $id) { ... on IssueComment { editor { login } } } }",
+          "query($id: ID!) { node(id: $id) { ... on IssueComment { editor { login } } ... on PullRequestReviewComment { editor { login } } } }",
           { id: nodeId },
         ),
       );
@@ -249,6 +261,30 @@ export class GitHubApi {
       if (batch.length < 100) break;
     }
     return comments;
+  }
+
+  async getIssueComment(id: number): Promise<z.infer<typeof issueCommentSchema>> {
+    return issueCommentSchema.parse(await this.request("GET", `/issues/comments/${id}`));
+  }
+
+  async getLineComment(id: number): Promise<LineComment> {
+    return lineCommentSchema.parse(await this.request("GET", `/pulls/comments/${id}`));
+  }
+
+  async listLineComments(number: number): Promise<LineComment[]> {
+    const comments: LineComment[] = [];
+    for (let page = 1; page <= MAX_COMMENT_PAGES; page += 1) {
+      const batch = z
+        .array(lineCommentSchema)
+        .parse(await this.request("GET", `/pulls/${number}/comments?per_page=100&page=${page}`));
+      comments.push(...batch);
+      if (batch.length < 100) break;
+    }
+    return comments;
+  }
+
+  async replyToLineComment(number: number, id: number, body: string): Promise<void> {
+    await this.request("POST", `/pulls/${number}/comments/${id}/replies`, { body });
   }
 
   async createIssueComment(number: number, body: string): Promise<void> {

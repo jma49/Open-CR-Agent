@@ -12,7 +12,7 @@ export const accountSchema: z.ZodObject<{
 }, z.core.$strip>;
 
 // @public
-export const AGENT_ROLES: readonly ["verifier", "judge", "helper"];
+export const AGENT_ROLES: readonly ["verifier", "judge", "helper", "writer"];
 
 // @public (undocumented)
 export type AgentPrefs = z.output<typeof agentPrefsSchema>;
@@ -83,6 +83,7 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
         helper: "helper";
         judge: "judge";
         verifier: "verifier";
+        writer: "writer";
     }> & z.core.$partial, z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
         models: z.ZodOptional<z.ZodNullable<z.ZodPipe<z.ZodPipe<z.ZodUnion<readonly [z.ZodArray<z.ZodString>, z.ZodString]>, z.ZodTransform<string[], string | string[]>>, z.ZodArray<z.ZodString>>>>;
         effort: z.ZodPipe<z.ZodOptional<z.ZodUnion<readonly [z.ZodEnum<{
@@ -111,7 +112,11 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
             models?: string[];
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
         };
-    }, Partial<Record<"helper" | "judge" | "verifier", {
+        writer?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
+    }, Partial<Record<"helper" | "judge" | "verifier" | "writer", {
         models?: string[];
         effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
     }>> | null | undefined>>;
@@ -138,6 +143,10 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
         };
         verifier?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
+        writer?: {
             models?: string[];
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
         };
@@ -168,6 +177,10 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
             models?: string[];
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
         };
+        writer?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
     };
 }>>;
 
@@ -179,6 +192,7 @@ export const agentRoleSchema: z.ZodEnum<{
     helper: "helper";
     judge: "judge";
     verifier: "verifier";
+    writer: "writer";
 }>;
 
 // @public (undocumented)
@@ -501,6 +515,12 @@ export const MAX_REVIEWERS = 40;
 // @public
 export const MAX_TOTAL_BYTES = 262144;
 
+// @public (undocumented)
+export const MAX_WALKTHROUGH_FILES = 200;
+
+// @public
+export const MAX_WALKTHROUGH_GROUPS = 12;
+
 // @public
 export const memoryAnswerSchema: z.ZodObject<{
     entries: z.ZodArray<z.ZodUnknown>;
@@ -651,6 +671,7 @@ export const preferencesUpdateSchema: z.ZodObject<{
             helper: "helper";
             judge: "judge";
             verifier: "verifier";
+            writer: "writer";
         }> & z.core.$partial, z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
             models: z.ZodOptional<z.ZodNullable<z.ZodPipe<z.ZodPipe<z.ZodUnion<readonly [z.ZodArray<z.ZodString>, z.ZodString]>, z.ZodTransform<string[], string | string[]>>, z.ZodArray<z.ZodString>>>>;
             effort: z.ZodPipe<z.ZodOptional<z.ZodUnion<readonly [z.ZodEnum<{
@@ -679,7 +700,11 @@ export const preferencesUpdateSchema: z.ZodObject<{
                 models?: string[];
                 effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
             };
-        }, Partial<Record<"helper" | "judge" | "verifier", {
+            writer?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
+        }, Partial<Record<"helper" | "judge" | "verifier" | "writer", {
             models?: string[];
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
         }>> | null | undefined>>;
@@ -709,6 +734,10 @@ export const preferencesUpdateSchema: z.ZodObject<{
                 models?: string[];
                 effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
             };
+            writer?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
         };
     }, {
         effort: {
@@ -733,6 +762,10 @@ export const preferencesUpdateSchema: z.ZodObject<{
                 effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
             };
             verifier?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
+            writer?: {
                 models?: string[];
                 effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
             };
@@ -1219,9 +1252,25 @@ export const reviewUploadSchema: z.ZodObject<{
         body: z.ZodString;
         suggestion: z.ZodCatch<z.ZodNullable<z.ZodString>>;
         code: z.ZodCatch<z.ZodNullable<z.ZodString>>;
+        fix: z.ZodCatch<z.ZodOptional<z.ZodObject<{
+            startLine: z.ZodNumber;
+            endLine: z.ZodNumber;
+            replacement: z.ZodString;
+        }, z.core.$strip>>>;
         redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
         truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     }, z.core.$strip>>>>>>;
+    walkthrough: z.ZodCatch<z.ZodOptional<z.ZodObject<{
+        overview: z.ZodString;
+        groups: z.ZodArray<z.ZodObject<{
+            title: z.ZodString;
+            files: z.ZodArray<z.ZodString>;
+            note: z.ZodString;
+        }, z.core.$strip>>;
+        diagram: z.ZodCatch<z.ZodNullable<z.ZodString>>;
+        redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
+        truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
+    }, z.core.$strip>>>;
     pullRequest: z.ZodCatch<z.ZodOptional<z.ZodObject<{
         repository: z.ZodString;
         number: z.ZodNumber;
@@ -1304,6 +1353,37 @@ export const sharedFindingSchema: z.ZodObject<{
     body: z.ZodString;
     suggestion: z.ZodCatch<z.ZodNullable<z.ZodString>>;
     code: z.ZodCatch<z.ZodNullable<z.ZodString>>;
+    fix: z.ZodCatch<z.ZodOptional<z.ZodObject<{
+        startLine: z.ZodNumber;
+        endLine: z.ZodNumber;
+        replacement: z.ZodString;
+    }, z.core.$strip>>>;
+    redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
+    truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
+}, z.core.$strip>;
+
+// @public (undocumented)
+export type SharedFix = z.input<typeof sharedFixSchema>;
+
+// @public
+export const sharedFixSchema: z.ZodObject<{
+    startLine: z.ZodNumber;
+    endLine: z.ZodNumber;
+    replacement: z.ZodString;
+}, z.core.$strip>;
+
+// @public (undocumented)
+export type SharedWalkthrough = z.input<typeof sharedWalkthroughSchema>;
+
+// @public
+export const sharedWalkthroughSchema: z.ZodObject<{
+    overview: z.ZodString;
+    groups: z.ZodArray<z.ZodObject<{
+        title: z.ZodString;
+        files: z.ZodArray<z.ZodString>;
+        note: z.ZodString;
+    }, z.core.$strip>>;
+    diagram: z.ZodCatch<z.ZodNullable<z.ZodString>>;
     redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
 }, z.core.$strip>;

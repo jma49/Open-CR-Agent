@@ -16,11 +16,17 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Fi
 | **Triage** | Assign a risk tier (trivial, lite, full) from size and sensitive paths such as `auth/`, `PasswordHasher.cs` or CI workflows. |
 | **Bundle** | Group related files: one bundle for small change sets, otherwise a light model groups them by file index. Without it, up to 20 files are reviewed one per task, more by directory. |
 | **Matrix** | Pick which reviewer runs on which bundle from the risk tier and each reviewer's scope. Skipped pairs are listed in the report. |
-| **Execute** | Run each planned (bundle, reviewer) pair as an isolated agent task with read-only tools. |
+| **Execute** | Run each planned (bundle, reviewer) pair as an isolated agent task with read-only tools. On a pull or merge request, one standard-tier call beside them writes the [walkthrough](#walkthrough). |
 | **Anchor** | Resolve every finding's quoted code to exact lines. |
 | **Filter** | Drop findings the repository's memory accepts or a maintainer dismissed, and compare with the previous review of the same pull request, before spending a model call on them. |
 | **Verify** | A standard-tier model checks each file's findings against its diff and surrounding code, and against where the names in each finding's quoted code are defined and used elsewhere in the repository. A finding is dropped only when the code proves it wrong; doubt or a failed check keeps it. Drops are listed in the report with the reason. A finding the verifier traces to code the change did not bring in is marked *pre-existing* and never counts towards the verdict; [`showPreExisting: false`](./configuration) leaves such findings out of the report. |
 | **Judge** | One top-tier call sees every finding, with the code its reviewer quoted and whether Verify confirmed it: merges the same root cause across reviewers, drops speculation and nitpicks, recalibrates severity and writes a short summary, with a reason for each change in the report. |
+
+## Walkthrough
+
+On a pull or merge request the summary comment carries a walkthrough for the people about to review the change: a few sentences on what it does, the changed files grouped by what they do for it in the order to read them (folded), and, when the change adds or changes calls between three or more components, a Mermaid sequence diagram (folded). It is one call on the `writer` role (standard tier), made while the reviewers run, from the title, the description, every reviewed file's name and as much of the patches as fits in 24,000 characters, smallest first. It is written again on every review, so it describes the whole change, not only what an incremental review looked at.
+
+The model only groups and describes: which files there are comes from the diff (a path it invents is dropped, a file it leaves out is listed under *Other changes*), and a diagram is shown only when every line is a plain sequence-diagram statement, so no directive, link, click handler or markup reaches the page. A failed or invalid answer costs the walkthrough, with a warning, never the review. `walkthrough` in [`.ocra/config.json`](./configuration) turns it off, or on for local reviews, whose JSON report then carries it.
 
 ## Verdict
 

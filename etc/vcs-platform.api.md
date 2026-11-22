@@ -9,6 +9,8 @@ import type { CodeMatch } from '@open-cr-agent/core';
 import type { FileDiff } from '@open-cr-agent/core';
 import type { Finding } from '@open-cr-agent/core';
 import type { LineRange } from '@open-cr-agent/core';
+import type { Mention } from '@open-cr-agent/core';
+import type { MentionRef } from '@open-cr-agent/core';
 import type { PluginRegistry } from '@open-cr-agent/core';
 import type { PriorReview } from '@open-cr-agent/core';
 import type { ReviewReport } from '@open-cr-agent/core';
@@ -139,6 +141,31 @@ export interface PlatformComment {
 }
 
 // @public (undocumented)
+export interface PlatformDiscussion {
+    // (undocumented)
+    comment: PlatformComment & {
+        editor?: string;
+    };
+    // (undocumented)
+    earlier: {
+        author: string;
+        body: string;
+    }[];
+    // (undocumented)
+    later: {
+        author: string;
+        body: string;
+    }[];
+    // (undocumented)
+    on?: {
+        path: string;
+        line?: number;
+    };
+    // (undocumented)
+    replyTo?: string;
+}
+
+// @public (undocumented)
 export class PlatformReview implements VcsAdapter {
     constructor(options: PlatformReviewOptions);
     // (undocumented)
@@ -147,6 +174,8 @@ export class PlatformReview implements VcsAdapter {
     getDiff(): Promise<FileDiff[]>;
     // (undocumented)
     getPriorReview(): Promise<PriorReview | undefined>;
+    // (undocumented)
+    mention(ref: MentionRef): Promise<Mention>;
     // (undocumented)
     readonly name: string;
     // (undocumented)
@@ -289,9 +318,13 @@ export interface ReviewPlatform {
     // (undocumented)
     comments(): Promise<PlatformComment[]>;
     // (undocumented)
+    discussion(ref: MentionRef): Promise<PlatformDiscussion | undefined>;
+    // (undocumented)
     editor(comment: PlatformComment): Promise<string | undefined>;
     // (undocumented)
     publishFindings(report: ReviewReport, fresh: readonly InlineFinding[]): Promise<PublishedFindings>;
+    // (undocumented)
+    reply(discussion: PlatformDiscussion, body: string): Promise<void>;
     // (undocumented)
     resolveThread(id: string): Promise<void>;
     // (undocumented)

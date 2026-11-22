@@ -70,6 +70,24 @@ describe("sharedFindings", () => {
     expect(findings[1]).not.toHaveProperty("redacted");
   });
 
+  it("sends a fix as written, and leaves out one the redaction pass would change", () => {
+    const secret = `ghp_${"Ab3dE5gH7jK9mN1pQ2rS4tU6vW8xY0z".repeat(2).slice(0, 36)}`;
+    const fix = { startLine: 10, endLine: 12, replacement: "const q = db.query(sql, [id]);" };
+    const { findings } = sharedFindings({
+      findings: [
+        finding({ fix }),
+        finding({ fix: { ...fix, replacement: `const t = "${secret}";` } }),
+        finding({ fix: { ...fix, replacement: "x".repeat(MAX_FIELD + 1) } }),
+        finding(),
+      ],
+    });
+    expect(findings[0]?.fix).toEqual(fix);
+    expect(findings[1]).not.toHaveProperty("fix");
+    expect(findings[2]).not.toHaveProperty("fix");
+    expect(findings[3]).not.toHaveProperty("fix");
+    expect(JSON.stringify(findings)).not.toContain(secret);
+  });
+
   it("cuts a long field and marks the finding truncated", () => {
     const { findings } = sharedFindings({
       findings: [finding({ body: "x".repeat(MAX_FIELD + 10) }), finding()],

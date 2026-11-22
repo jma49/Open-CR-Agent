@@ -54,7 +54,7 @@ export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
 
 ## Models per agent
 
-`reviewers.<id>.models` gives one reviewer its own model or chain (review tasks and plan call); `roles.<role>.models` does the same for the `verifier`, the `judge` or the `helper` calls (grouping files, relocating quotes). Same forms as a tier. Without one, an agent uses its tier's chain; the verifier and judge never take a reviewer's, so checking stays independent.
+`reviewers.<id>.models` gives one reviewer its own model or chain (review tasks and plan call); `roles.<role>.models` does the same for the `verifier`, the `judge`, the `helper` calls (grouping files, relocating quotes) or the `writer` (the [walkthrough](./how-it-works#walkthrough)). Same forms as a tier. Without one, an agent uses its tier's chain; the verifier and judge never take a reviewer's, so checking stays independent.
 
 ```json
 {
@@ -68,7 +68,7 @@ Failback, rate-limit pauses and the circuit breaker work per model, so a model i
 
 ## Effort
 
-How much a model reasons before answering: `effort` sets it per tier, `reviewers.<id>.effort` per reviewer (review tasks and plan call), `roles.<role>.effort` for the `verifier`, `judge` or `helper` calls. Levels: `none`, `minimal`, `low`, `medium`, `high`. An agent takes its own effort, else its tier's (reviewers by their tier, verifier `standard`, judge `top`, helpers `light`); the verifier and judge never take a reviewer's. Unset sends nothing: the provider's default applies.
+How much a model reasons before answering: `effort` sets it per tier, `reviewers.<id>.effort` per reviewer (review tasks and plan call), `roles.<role>.effort` for the `verifier`, `judge`, `helper` or `writer` calls. Levels: `none`, `minimal`, `low`, `medium`, `high`. An agent takes its own effort, else its tier's (reviewers by their tier, verifier and writer `standard`, judge `top`, helpers `light`); the verifier and judge never take a reviewer's. Unset sends nothing: the provider's default applies.
 
 ```json
 {
@@ -105,6 +105,7 @@ For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Gro
 | `judge` | `true` | Merge, filter and recalibrate findings across reviewers (one top-tier call per run with findings) |
 | `showPreExisting` | `true` | Report findings Verify traced to code from before the change, marked *pre-existing*. They never count towards the verdict; `false` leaves them out, with a warning giving their number |
 | `verify` | `true` | Fact-check findings before reporting them (one standard-tier call per file with findings) |
+| `walkthrough` | on for `--pr` and `--mr` | Write the [walkthrough](./how-it-works#walkthrough) of the change into the summary comment and the report (one standard-tier call per run); `false` leaves it out, `true` writes it for local reviews too |
 | `sampling` | none | `{ "temperature": 0–2, "seed": n }` for every model call, each optional (unset: the provider's default); `--temperature` and `--seed` override it. `direct` sends both. `opencode` passes the temperature only to models its catalog says accept one ([declared models](./providers#your-own-endpoint) do) and reports a seed as not applied. `provenance.sampling` says what was applied. A seed makes runs repeatable only where the provider honors it |
 
 A task that fails or times out never fails the run; its files are reported as `failed`.
@@ -140,7 +141,7 @@ Repositories can extend an organization's common settings:
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `showPreExisting`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned) and `rules` (shaped like `.ocra/rules.json` entries). It cannot list plugins or choose a runtime, since it must not run code. The repository's values win; `include`, `exclude` and `rules` combine, and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` merge key by key.
+The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `showPreExisting`, `walkthrough`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned) and `rules` (shaped like `.ocra/rules.json` entries). It cannot list plugins or choose a runtime, since it must not run code. The repository's values win; `include`, `exclude` and `rules` combine, and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` merge key by key.
 
 Only `https` URLs, without redirects, up to 256 KB. `#sha256=` pins the exact content; a file declaring `providers` must be pinned, since a provider decides where your code goes ([Model providers](./providers#your-own-endpoint)). If the file cannot be loaded or is invalid, ocra warns and uses the repository's settings alone, so limits set only there (such as `maxCostUsd`) do not apply; set must-hold limits in the repository too.
 

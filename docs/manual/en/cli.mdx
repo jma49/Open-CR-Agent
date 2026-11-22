@@ -157,7 +157,7 @@ The format is a contract (`"version": 1`): later releases only add optional fiel
 - `promptHash`: of the system prompts this configuration sends (reviewers and helper stages; never the change);
 - `configHash`: of the effective configuration plus `--reviewers`, `--ultra` and `--max-cost-usd`; without sampling or secrets (keys are only named);
 - `sampling`: the `temperature` and `seed` applied, and in `notApplied` those that could not be;
-- `agents`: per enabled reviewer and the `verifier`, `judge` and `helper` roles, its `tier`, chain in `models` (its [own](./configuration#models-per-agent) or its tier's), [`effort`](./configuration#effort) when set, `applied` (absent when it made no call), and `notApplied` sampling settings;
+- `agents`: per enabled reviewer and the `verifier`, `judge`, `helper` and `writer` roles, its `tier`, chain in `models` (its [own](./configuration#models-per-agent) or its tier's), [`effort`](./configuration#effort) when set, `applied` (absent when it made no call), and `notApplied` sampling settings;
 - `rules`: each path rule's `path`, `rule` and `source` (`repository` for `.ocra/rules.json`, `shared`, `account` or `plugin`);
 - `accountSettings`: the [account settings](./configuration#account-settings) `version`, when signed in.
 
@@ -264,6 +264,20 @@ The pull request is set to merge once its checks pass (squash, else rebase, else
 
 On GitLab the merge request is set to merge when its pipeline succeeds, with the project's merge method, and deletes its branch when merged. GitLab merges at once a merge request with no running pipeline, so ocra first waits up to about 15 seconds for the pipeline the new branch starts; with none by then, nothing is required of it and it is merged at once. When the project allows no merge without a successful pipeline and has none, or GitLab refuses, ocra warns and leaves the merge request open. A commit made with `GITLAB_TOKEN` starts the project's pipelines as any push does.
 
+## ocra reply
+
+Answers a comment that mentions `@ocra` on a pull or merge request, in its thread:
+
+```bash
+ocra reply --pr 7 --comment 2154873301            # a conversation comment
+ocra reply --pr 7 --comment 1891230045 --inline   # a comment on a line of the diff
+ocra reply --mr 12 --comment 4811                 # a GitLab note
+```
+
+`--repo` and `--project` name the repository as for a review, with the same tokens, and `--config <file>` reads that file instead of the base's `.ocra/config.json` (for example to set `github.botLogin`). ocra answers only a comment that is on that change request, mentions `@ocra` outside code, asks something, comes from someone with write access (on GitLab the Developer role or higher), was not edited by anyone else and is not ocra's own; each comment is answered once (the answer carries `<!-- ocra:reply <id> -->`). For any other comment it prints `[ocra] Not answering: <reason>` on stderr, calls no model and exits `0`, so a workflow can run it on every comment. It exits `2` on an error, such as a missing token or a model call that failed.
+
+The answer is one call on the writer role, given the description, the last comments of the thread and, for a comment on a line, that file's patch and the lines around it; otherwise the files the question names, else the smallest patches. Files come from the review's selection and are read through the same access policy, so a question cannot reach a secret or an excluded file. The answer is at most about 250 words, rendered as findings are (mentions and commands neutralized). Configuration comes from the base, as for a review. `ocra reply` reviews nothing and writes no session; a deeper look at a section is an `ocra review`. New in v0.10.0.
+
 ## ocra metrics
 
 Counts over the finished reviews in `.ocra/sessions/`, from each session's `report.json`; no model is called:
@@ -344,7 +358,7 @@ ocra logout                                   # ends the session on the server a
 - The salt is random, in `upload-salt` next to the credentials, so each machine hashes differently. If your account shares findings, the salt is the account's, read at login and before each review and kept in `account-salt` (readable only by you), so all your machines agree. When a review needs this machine's salt but cannot read `upload-salt` (another user's, say, after `sudo ocra`), or cannot make it (the directory is read-only), it leaves the file as it is, warns, and sends nothing to ocra Cloud. When it cannot keep the account's salt in `account-salt`, it warns and uses the salt it was just sent.
 - `--no-upload` skips one upload, `OCRA_CLOUD=off` turns ocra Cloud off, and a failed upload is only a warning.
 
-**Sharing findings.** With "Send findings and the code they quote to ocra Cloud" on in your account's Settings (off by default), the upload also carries each finding's fingerprint, reviewer, severity, category, verification, file, line range, title, body, suggestion and quoted code, so the web can show the full review.
+**Sharing findings.** With "Send findings and the code they quote to ocra Cloud" on in your account's Settings (off by default), the upload also carries each finding's fingerprint, reviewer, severity, category, verification, file, line range, title, body, suggestion and quoted code, so the web can show the full review, and its fix (the lines it replaces and the replacement) when it has one. A fix is sent as written or not at all: one the redaction pass or the 4 KB cut would change is left out, since the web can commit it to the pull request.
 
 - Before sending, ocra replaces secret-looking tokens in the path, category, title, body, suggestion and code with `[redacted]` and marks the finding redacted: PEM and PGP private key blocks, AWS key ids (`AKIA…`, `ASIA…`), GitHub tokens (`ghp_`, `gho_`, `ghs_`, `ghu_`, `ghr_`, `github_pat_`), GitLab tokens (`glpat-`), `sk-` keys (`sk-ant-`, `sk-or-`, `sk-proj-` too), Slack tokens (`xoxb-` and the like), Google API keys (`AIza…`), npm tokens (`npm_…`), Slack and Discord webhook URLs, a URL's password (`postgres://user:…@`), the password of `curl -u user:…` or `--user user:…`, and of `mysql -p…`, the credential after `Bearer` or `Basic`, on the same line or the next (a plain word after them, as in prose, stays; written lowercase, as in an HTTP/2 header, they count only before a credential of 16 or more characters with a digit), and a value assigned to a name such as `password`, `passphrase`, `secret`, `secret_key`, `token` or `api_key`: quoted (`password = "…"`, also with its quotes escaped inside a JSON string), unquoted as `NAME=…` (`.env`, a flag, a query string) or at the end of a line (`password: …` in YAML), the lines of a YAML block scalar (`password: |`), or the argument after a flag such as `--password …` or `--api-key "…"` (not a path). An unquoted value of letters only (`changeme`, `string`), or one that reads as code (a call, a dotted name such as `process.env.TOKEN`, `${…}`, a line ending in `,` or `;`), is left alone; after `NAME=` or a flag, a trailing `;`, `,` (or `)` after a flag) ends a shell command instead, so the value before it is still replaced. Also hex runs of 32+ characters (after a prefix such as `dop_v1_` too), and random-looking base64 runs of 32+ characters containing a digit (paths are left alone). It catches patterns, not every secret; the server runs the same pass again.
 - At most 200 findings and 256 KB of text, each field cut at 4 KB before it is redacted (marked truncated; a token the cut falls in is redacted whole). The terminal prints `Sent this review's counts and N finding(s) to ocra Cloud`.

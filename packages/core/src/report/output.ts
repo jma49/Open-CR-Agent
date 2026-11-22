@@ -6,6 +6,7 @@ import type { LearningUse } from "../knowledge/learning.js";
 import type { SkippedCell } from "../matrix/matrix.js";
 import type { RememberedEntry } from "../memory/memory.js";
 import type { RefutedFinding } from "../verify/verify.js";
+import type { Walkthrough } from "../walkthrough/walkthrough.js";
 import { REPORT_VERSION, type reportOutputSchema } from "./output-schema.js";
 import type { AgentProvenance, RunProvenance } from "./provenance.js";
 import type { AnchoringSummary, CoverageEntry, ReviewReport, TaskOutcome } from "./report.js";
@@ -50,6 +51,7 @@ export function toReportOutput(report: ReviewReport): ReportOutput {
     }));
   }
   if (report.judgement) output.judgement = outputJudgement(report.judgement);
+  if (report.walkthrough) output.walkthrough = outputWalkthrough(report.walkthrough);
   if (report.anchoring) output.anchoring = outputAnchoring(report.anchoring);
   if (report.spendLimit) output.spendLimit = outputSpendLimit(report.spendLimit);
   if (report.provenance) output.provenance = outputProvenance(report.provenance);
@@ -64,6 +66,14 @@ export function toReportOutput(report: ReviewReport): ReportOutput {
     };
   }
   return output;
+}
+
+function outputWalkthrough(w: Walkthrough): Output<"walkthrough"> {
+  return {
+    overview: w.overview,
+    groups: w.groups.map((g) => ({ title: g.title, files: [...g.files], note: g.note })),
+    ...(w.diagram ? { diagram: w.diagram } : {}),
+  };
 }
 
 function outputLearning(l: LearningUse): Output<"learnings">[number] {

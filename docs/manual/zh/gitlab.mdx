@@ -36,16 +36,16 @@ ocra-review:
   allow_failure:
     exit_codes: [1]
   script:
-    - npm install -g --ignore-scripts @open-cr-agent/cli@0.9.0
+    - npm install -g --ignore-scripts @open-cr-agent/cli@0.10.0
     - ocra review --mr "$CI_MERGE_REQUEST_IID" --publish
 ```
 
-也可以用不需要安装步骤的[容器镜像](./installation#容器镜像)。按摘要固定它（`docker buildx imagetools inspect ghcr.io/jma49/ocra:0.9.0` 会打印），并校验构建来源证明（[稳定性](./stability#校验发布版本)）：
+也可以用不需要安装步骤的[容器镜像](./installation#容器镜像)。按摘要固定它（`docker buildx imagetools inspect ghcr.io/jma49/ocra:0.10.0` 会打印），并校验构建来源证明（[稳定性](./stability#校验发布版本)）：
 
 ```yaml
 ocra-review:
   image:
-    name: ghcr.io/jma49/ocra:0.9.0@sha256:<digest>
+    name: ghcr.io/jma49/ocra:0.10.0@sha256:<digest>
     # 任务的 script 在 shell 里运行，不经过镜像的 ocra 入口点。
     entrypoint: [""]
   # （rules、variables、interruptible 和 allow_failure 同上）
@@ -95,7 +95,7 @@ ocra-learn:
   variables:
     GIT_DEPTH: 0
   script:
-    - npm install -g --ignore-scripts @open-cr-agent/cli@0.9.0
+    - npm install -g --ignore-scripts @open-cr-agent/cli@0.10.0
     - ocra learn mine --propose
 
 ocra-remember:
@@ -107,11 +107,15 @@ ocra-remember:
   variables:
     GIT_DEPTH: 0
   script:
-    - npm install -g --ignore-scripts @open-cr-agent/cli@0.9.0
+    - npm install -g --ignore-scripts @open-cr-agent/cli@0.10.0
     - ocra learn remember --mr "$CI_MERGE_REQUEST_IID" --propose
 ```
 
 用 `GITLAB_TOKEN` 做的提交会触发项目的流水线，所以它开的 Merge Request 会在流水线成功后合并。合并到受保护的默认分支需要该分支允许合并的角色，默认是 Maintainer；只有 Developer 时，ocra 给出警告并把 Merge Request 留给人处理。
+
+### 向 ocra 提问
+
+Developer 及以上角色的人在评论或 diff 讨论里写 `@ocra <问题>`，会像 [GitHub](./github#向-ocra-提问) 上一样在同一个讨论里得到回答，用 [`ocra reply --mr <iid> --comment <note id>`](./cli#ocra-reply)。GitLab CI 不会因评论启动流水线，所以请在项目评论 webhook（Note Hook）的接收端运行它：webhook 里有 MR 的 iid 和 note 的 id。v0.10.0 新增。
 
 ## Merge Request 不能改变什么
 

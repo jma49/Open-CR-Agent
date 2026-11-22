@@ -57,7 +57,7 @@ export interface AgentProvenance {
 }
 
 // @public (undocumented)
-export type AgentRole = "verifier" | "judge" | "helper";
+export type AgentRole = "verifier" | "judge" | "helper" | "writer";
 
 // @public (undocumented)
 export interface AgentRuntime {
@@ -647,6 +647,33 @@ const memoryEntrySchema: z.ZodObject<{
 export type MemorySource = "repository" | "account";
 
 // @public (undocumented)
+export type Mention = {
+    asked: true;
+    by: string;
+    question: string;
+    thread: readonly {
+        author: string;
+        body: string;
+    }[];
+    on?: {
+        path: string;
+        line?: number;
+    };
+    answer(text: string): Promise<void>;
+} | {
+    asked: false;
+    reason: string;
+};
+
+// @public (undocumented)
+export interface MentionRef {
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    inline?: boolean;
+}
+
+// @public (undocumented)
 export const MODEL_TIERS: readonly ["top", "standard", "light"];
 
 // @public (undocumented)
@@ -1105,6 +1132,15 @@ export const reportOutputSchema: z.ZodObject<{
             }>;
             reason: z.ZodString;
         }, z.core.$strict>>;
+    }, z.core.$strict>>;
+    walkthrough: z.ZodExactOptional<z.ZodObject<{
+        overview: z.ZodString;
+        groups: z.ZodArray<z.ZodObject<{
+            title: z.ZodString;
+            files: z.ZodArray<z.ZodString>;
+            note: z.ZodString;
+        }, z.core.$strict>>;
+        diagram: z.ZodExactOptional<z.ZodString>;
     }, z.core.$strict>>;
     rereview: z.ZodExactOptional<z.ZodObject<{
         fixed: z.ZodArray<z.ZodObject<{
@@ -1622,6 +1658,8 @@ export interface ReviewReport {
     // (undocumented)
     verdict: Verdict;
     // (undocumented)
+    walkthrough?: Walkthrough;
+    // (undocumented)
     warnings: string[];
 }
 
@@ -1636,6 +1674,8 @@ export interface ReviewStages {
     showPreExisting?: boolean;
     // (undocumented)
     verify?: boolean;
+    // (undocumented)
+    walkthrough?: boolean;
 }
 
 // @public (undocumented)
@@ -2017,6 +2057,8 @@ export interface VcsAdapter {
     // (undocumented)
     getPriorReview(): Promise<PriorReview | undefined>;
     // (undocumented)
+    mention?(ref: MentionRef): Promise<Mention>;
+    // (undocumented)
     readonly name: string;
     // (undocumented)
     publish(report: ReviewReport): Promise<{
@@ -2051,6 +2093,20 @@ const verificationSchema: z.ZodEnum<{
     uncertain: "uncertain";
     unchecked: "unchecked";
 }>;
+
+// @public (undocumented)
+export interface Walkthrough {
+    // (undocumented)
+    diagram?: string;
+    // (undocumented)
+    groups: {
+        title: string;
+        files: string[];
+        note: string;
+    }[];
+    // (undocumented)
+    overview: string;
+}
 
 // @public (undocumented)
 export function withoutSecrets(text: string, secrets: readonly string[]): string;

@@ -39,6 +39,18 @@ export type ReviewerCounts = z.input<typeof reviewerCountsSchema>;
 /** A finding's stable id across runs. */
 export const FINGERPRINT = /^[\w:.-]{4,128}$/;
 const line = z.number().int().min(0).lt(10_000_000).nullable().catch(null);
+const fixLine = z.number().int().positive().lt(10_000_000);
+
+/**
+ * A finding's fix: the replacement of lines startLine to endLine of the
+ * reviewed head, which ocra Cloud may commit to the pull request. Sent only
+ * as the model wrote it, never redacted or cut, so a commit of it is the
+ * fix ocra reported.
+ */
+export const sharedFixSchema = z
+  .object({ startLine: fixLine, endLine: fixLine, replacement: z.string().max(MAX_FIELD) })
+  .refine((f) => f.endLine >= f.startLine);
+export type SharedFix = z.input<typeof sharedFixSchema>;
 
 /**
  * A finding as the CLI shares it when the account shares findings
@@ -59,11 +71,38 @@ export const sharedFindingSchema = z.object({
   body: z.string().max(MAX_FIELD),
   suggestion: z.string().max(MAX_FIELD).nullable().catch(null),
   code: z.string().max(MAX_FIELD).nullable().catch(null),
+  // Added with sharedFixSchema; optional so a server reading older uploads still can.
+  fix: sharedFixSchema.optional().catch(undefined),
   // Set when the CLI replaced a secret-looking string or cut a long field.
   redacted: z.literal(true).optional().catch(undefined),
   truncated: z.literal(true).optional().catch(undefined),
 });
 export type SharedFinding = z.input<typeof sharedFindingSchema>;
+
+/** At most this many file groups, and files in each, in a shared walkthrough. */
+export const MAX_WALKTHROUGH_GROUPS = 12;
+export const MAX_WALKTHROUGH_FILES = 200;
+
+/**
+ * The review's walkthrough of the change (ADR-0047), shared with the
+ * findings and redacted the same way; one that does not fit reads as absent.
+ */
+export const sharedWalkthroughSchema = z.object({
+  overview: z.string().max(MAX_FIELD),
+  groups: z
+    .array(
+      z.object({
+        title: z.string().max(MAX_FIELD),
+        files: z.array(z.string().min(1).max(1024)).max(MAX_WALKTHROUGH_FILES),
+        note: z.string().max(MAX_FIELD),
+      }),
+    )
+    .max(MAX_WALKTHROUGH_GROUPS),
+  diagram: z.string().max(MAX_FIELD).nullable().catch(null),
+  redacted: z.literal(true).optional().catch(undefined),
+  truncated: z.literal(true).optional().catch(undefined),
+});
+export type SharedWalkthrough = z.input<typeof sharedWalkthroughSchema>;
 
 /**
  * The review's counts, and the shared findings in `findingList`. A finding
@@ -104,6 +143,7 @@ export const reviewUploadSchema = z.object({
     .catch(undefined),
   outcomes: z.object({ fixed: count, dismissed: count }).optional().catch(undefined),
   findingList: z.array(sharedFindingSchema.nullable().catch(null)).optional().catch(undefined),
+  walkthrough: sharedWalkthroughSchema.optional().catch(undefined),
   // A pull or merge request's review: which one, so ocra Cloud can show the
   // verdict on it (ADR-0038).
   pullRequest: z

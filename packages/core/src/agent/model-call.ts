@@ -3,10 +3,10 @@ import { usageSpent } from "../errors.js";
 import { type AgentCallSettings, agentCall } from "./settings.js";
 
 // One plain completion outside the review tasks: grouping, relocation, a
-// plan phase, Verify, Judge.
+// plan phase, the walkthrough, Verify, Judge.
 interface OneShotRequest {
   tier: ModelTier;
-  // A reviewer id (its plan call), or the role "verifier", "judge" or "helper".
+  // A reviewer id (its plan call), or a role: "verifier", "judge", "helper", "writer".
   agent: string;
   call?: AgentCallSettings | undefined;
   system: string;

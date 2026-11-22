@@ -45,11 +45,12 @@ jobs:
 | 输入 | 默认值 | 含义 |
 |---|---|---|
 | `github-token` | `${{ github.token }}` | 用来读取 PR 和发布评审的 token |
-| `args` | | 额外的 `ocra review` 参数，例如 `--reviewers correctness,security`（用 `learn` 时是 `ocra learn` 的参数）；按空格和换行拆分（不支持引号） |
+| `args` | | 额外的 `ocra review` 参数，例如 `--reviewers correctness,security`（用 `learn` 时是 `ocra learn` 的参数，用 `reply` 时是 `ocra reply` 的参数）；按空格和换行拆分（不支持引号） |
 | `fail-on-concerns` | `false` | 结论为 `significant_concerns`（存在经核查确认的 critical 问题）时让 job 失败。审查不完整（退出码 `3`）时 job 总会失败 |
 | `opencode` | `true` | 安装默认运行时 OpenCode。配置里设了 `"runtime": "direct"` 时可设为 `false`，见[运行时](#运行时)。v0.3.0 新增 |
 | `symbol-cache` | `true` | 在 Actions 缓存中保留 ocra 解析出的符号（每个文件的定义和使用位置，按文件内容索引），这样一次审查只解析之前的运行没读过的文件。30 天内没有运行读取过的条目会被删除。v0.8.0 新增 |
 | `learn` | | `mine` 或 `remember`：不做审查，改为起草 learning 并开成 pull request，见[从历史和备注中学习](#从历史和备注中学习)。v0.8.0 新增 |
+| `reply` | `false` | 不做审查，改为回答触发 workflow 的那条提到 `@ocra` 的评论，见[向 ocra 提问](#向-ocra-提问)。v0.10.0 新增 |
 | `sarif` | `false` | 同时把审查结果写成 SARIF 2.1.0，用于[代码扫描](#代码扫描)，文件路径见输出 `sarif`。它会取代 `args` 里的 `--format` 和 `--output` |
 
 给这一步设置 `id`，就能读取它的输出。只要 ocra 运行过，输出就会设置，步骤失败时也一样；输出来自本次运行写下的会话：随 PR 一起提交的会话，或替代 `.ocra/sessions` 的链接，都不会被读取。
@@ -107,7 +108,7 @@ jobs:
 ## 会发布什么
 
 - **行内评论**：落在 diff 内的问题，标明已核实、未核实或未核查，放在同一个 `COMMENT` 评审里。ocra 从不批准 PR。设置 `github.requestChanges` 后，结论为 `significant_concerns` 时请求修改一次；之后的结论不再阻塞或这个 commit 被放行时撤回（dismiss）。
-- **一条摘要评论**，在原处更新：结论、总结、diff 之外的问题、已修复的问题、覆盖范围、花费和运行 id。它写明没审到的文件数、是否达到花费上限，并列出只审查了一部分的文件（审查员用完步数或停下）以及该怎么做。
+- **一条摘要评论**，在原处更新：结论、总结、[改动导读](./how-it-works#改动导读)、diff 之外的问题、已修复的问题、覆盖范围、花费和运行 id。它写明没审到的文件数、是否达到花费上限，并列出只审查了一部分的文件（审查员用完步数或停下）以及该怎么做。
 
 之后的 push **只审查有改动的部分**：自上次评审的提交以来改动过的文件，加上上次没审完的文件（任务失败、审查员用完步数、花费上限）。未改动文件里的问题原样沿用：保持打开、计入结论、不重复评论。以下情况会重新审查全部文件：上次的提交已不在分支上（force-push、rebase）、这次 push 让风险档位升高、摘要最后一次由 ocra 以外的人编辑（这时忽略它记录的状态，但 ocra 仍能认出自己没被编辑过的行内评论）、或者传了 `--full`。只改变运行哪些审查员（`reviewers`、`--reviewers`、`--ultra`）不会；请传一次 `--full`。摘要会写明本次属于哪种审查以及原因。
 
@@ -247,6 +248,51 @@ jobs:
 - **token 决定合并方式。** 用 workflow 自己的 token 开的 pull request 不会触发任何 workflow，必需的检查永远不会报告结果：使用 `github.token` 时，Action 会传 `--require-review`，把 pull request 留给人合并，并给出提示。把 GitHub App 的安装 token（contents 和 pull request 写权限）作为 `github-token` 传入，例如用 `actions/create-github-app-token` 生成，它就会在检查通过后合并。分支规则要求审批时，仍要等人审批。
 - **允许 Actions 开 pull request**（使用 workflow 自己的 token 时）：Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"。
 - 每份草稿是一次辅助模型调用，每次运行最多 `--max`（20）份；`args` 把 `--max 5`、`--max-cost-usd 1` 等参数传给 `ocra learn`。默认分支上、或尚未合并也未删除的提议分支上已有 learning 记录过的内容不会再起草。
+
+## 向 ocra 提问
+
+有写权限的人可以在评论里提问，对话区或 diff 的某一行上都可以：
+
+```
+@ocra 上限是负数时，这里为什么会一直重试？
+```
+
+ocra 会在同一个讨论里回答（[`ocra reply`](./cli#ocra-reply)）：一次模型调用，依据描述、讨论和被评论的文件，不做审查。没有写权限的人的评论、被他人编辑过的评论、ocra 自己的评论和已经回答过的评论都不会得到回答。把下面的 workflow 加在审查的旁边；它不检出 PR 里的任何内容。v0.10.0 新增。
+
+```yaml
+name: ocra reply
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  reply:
+    # 只处理有写权限的人的提及；ocra 会再检查一遍。
+    if: >-
+      (github.event_name == 'pull_request_review_comment' || github.event.issue.pull_request) &&
+      contains(github.event.comment.body, '@ocra') &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+    # 每条评论只跑一次：ocra 能找到已发出的回答，找不到正在进行中的。
+    concurrency:
+      group: ocra-reply-${{ github.event.comment.id }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jma49/Open-CR-Agent@809f22dec75b73430c9f74c0d085218aec9e8c5f # v0.9.0
+        with:
+          reply: true
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+```
 
 ## 请 ocra 重新审查
 

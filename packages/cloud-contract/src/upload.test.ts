@@ -6,6 +6,13 @@ import { reviewUploadSchema, sharedFindingSchema, uploadAnswerSchema } from "./u
 const { about: _, ...body } = upload;
 
 describe("the review upload", () => {
+  it("reads a walkthrough that does not fit as absent, and keeps the rest", () => {
+    const groups = Array.from({ length: 13 }, () => ({ title: "t", files: ["a.ts"], note: "" }));
+    const parsed = reviewUploadSchema.parse({ ...body, walkthrough: { overview: "o", groups } });
+    expect(parsed.walkthrough).toBeUndefined();
+    expect(parsed.runId).toBe(body.runId);
+  });
+
   it("keeps every field of the CLI's real upload", () => {
     expect(reviewUploadSchema.parse(body)).toEqual(body);
   });
@@ -116,6 +123,32 @@ describe("a shared finding", () => {
     expect(
       sharedFindingSchema.parse({ ...finding, category: long, suggestion: long, code: long }),
     ).toMatchObject({ category: null, suggestion: null, code: null });
+  });
+});
+
+describe("a shared finding's fix", () => {
+  const [finding] = body.findingList;
+  const fix = { startLine: 3, endLine: 4, replacement: "return a + b;" };
+
+  it("is kept as sent", () => {
+    expect(sharedFindingSchema.parse({ ...finding, fix }).fix).toEqual(fix);
+    expect(sharedFindingSchema.parse({ ...finding, fix: { ...fix, replacement: "" } }).fix).toEqual(
+      { ...fix, replacement: "" },
+    );
+  });
+
+  it("reads as absent when its lines are backwards, not lines, or its code is too long", () => {
+    for (const bad of [
+      { ...fix, endLine: 2 },
+      { ...fix, startLine: 0 },
+      { ...fix, startLine: 1.5 },
+      { ...fix, replacement: "x".repeat(MAX_FIELD + 1) },
+      { startLine: 3, endLine: 4 },
+      "return a + b;",
+    ]) {
+      const parsed = sharedFindingSchema.parse({ ...finding, fix: bad });
+      expect(parsed.fix, JSON.stringify(bad).slice(0, 60)).toBeUndefined();
+    }
   });
 });
 

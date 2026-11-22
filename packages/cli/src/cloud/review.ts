@@ -10,6 +10,7 @@ import { sharedFindings } from "./findings.js";
 import { accountHasMemory, fetchAccountMemory } from "./memory.js";
 import { hasSharingConsent, saveSharingConsent } from "./sharing-consent.js";
 import { repoHash, uploadOf, uploadReview } from "./upload.js";
+import { sharedWalkthrough } from "./walkthrough.js";
 
 // What a signed-in review takes from ocra Cloud before it runs (ADR-0028):
 // the repository's hash, whether to share findings, and the findings the
@@ -158,7 +159,10 @@ export async function sendToCloud(
 ): Promise<void> {
   const number = run.changeRequestNumber;
   const changeRequest = number === undefined ? undefined : { repository: cloud.repository, number };
-  const upload = uploadOf(report, run.source, cloud.repoHash, run.durationMs, changeRequest);
+  const counts = uploadOf(report, run.source, cloud.repoHash, run.durationMs, changeRequest);
+  const walkthrough =
+    cloud.shareFindings && report.walkthrough ? sharedWalkthrough(report.walkthrough) : undefined;
+  const upload = walkthrough ? { ...counts, walkthrough } : counts;
   const shared = cloud.shareFindings ? sharedFindings(report) : undefined;
   const sent = await uploadReview(upload, deps, run.warn, shared?.findings);
   if (!sent) return;

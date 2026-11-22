@@ -11,6 +11,7 @@ import type { ExecuteStage, StageContext } from "./execute-stage.js";
 import type { FilterStage } from "./filter-stage.js";
 import type { ReviewPlan } from "./plan.js";
 import { runProvenance } from "./provenance.js";
+import type { WalkthroughStage } from "./walkthrough-stage.js";
 
 export interface RunFacts {
   runId: string;
@@ -21,6 +22,7 @@ export interface Stages {
   executed: ExecuteStage;
   filtered: FilterStage;
   checked: CheckStage;
+  walkthrough: WalkthroughStage;
 }
 
 export function assembleReport(run: RunFacts, stages: Stages, context: StageContext): ReviewReport {
@@ -28,6 +30,7 @@ export function assembleReport(run: RunFacts, stages: Stages, context: StageCont
   const { options, plan, spendLimit } = context;
   const { executed, filtered, checked } = stages;
   if (checked.judged.decisions) report.judgement = checked.judged.decisions;
+  if (stages.walkthrough.walkthrough) report.walkthrough = stages.walkthrough.walkthrough;
   const limit = spendLimit.status();
   if (limit) report.spendLimit = limit;
   report.anchoring = summarizeAnchoring(report.findings, executed.relocations.length);
@@ -59,11 +62,11 @@ export function assembleReport(run: RunFacts, stages: Stages, context: StageCont
 
 function reportBody(
   run: RunFacts,
-  { executed, filtered, checked }: Stages,
+  { executed, filtered, checked, walkthrough }: Stages,
   { plan }: StageContext,
 ): ReviewReport {
   const { verification, judged } = checked;
-  const calls = [...plan.usage, ...executed.usage(), ...checked.usage];
+  const calls = [...plan.usage, ...executed.usage(), ...walkthrough.usage, ...checked.usage];
   return {
     runId: run.runId,
     changeRequest: plan.changeRequest,
@@ -88,6 +91,7 @@ function reportBody(
       ...plan.warnings,
       ...executed.warnings,
       ...filtered.warnings,
+      ...walkthrough.warnings,
       ...checked.warnings,
     ],
   };

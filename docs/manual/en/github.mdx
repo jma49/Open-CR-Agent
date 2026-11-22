@@ -45,11 +45,12 @@ Since v0.1.1 the Action installs `@open-cr-agent/cli` from npm at its own versio
 | Input | Default | Meaning |
 |---|---|---|
 | `github-token` | `${{ github.token }}` | Token for reading the pull request and posting the review |
-| `args` | | Extra `ocra review` options, such as `--reviewers correctness,security` (with `learn`, `ocra learn` ones), split on spaces and newlines (no quoting) |
+| `args` | | Extra `ocra review` options, such as `--reviewers correctness,security` (with `learn`, `ocra learn` ones; with `reply`, `ocra reply` ones), split on spaces and newlines (no quoting) |
 | `fail-on-concerns` | `false` | Fail the job when the verdict is `significant_concerns` (a critical finding the verifier confirmed). An incomplete review (exit code `3`) always fails the job |
 | `opencode` | `true` | Install OpenCode, the default runtime. Set `false` when the configuration sets `"runtime": "direct"`; see [The runtime](#the-runtime). New in v0.3.0 |
 | `symbol-cache` | `true` | Keep the symbols ocra parses (definitions and uses per file, keyed by its content) in the Actions cache between runs, so a review parses only files no earlier run read. Entries no run read for 30 days are dropped. New in v0.8.0 |
 | `learn` | | `mine` or `remember`: draft learnings and open them as a pull request instead of reviewing; see [Learning from history and notes](#learning-from-history-and-notes). New in v0.8.0 |
+| `reply` | `false` | Answer the comment that started the workflow when it mentions `@ocra`, instead of reviewing; see [Asking ocra about the change](#asking-ocra-about-the-change). New in v0.10.0 |
 | `sarif` | `false` | Also write the review as SARIF 2.1.0 for [code scanning](#code-scanning), to the file the `sarif` output names. It takes the place of `--format` and `--output` in `args` |
 
 Give the step an `id` to read its outputs. They are set whenever ocra ran, also when the step fails, and come from the session this run wrote: a session that came with the pull request, or a link in place of `.ocra/sessions`, is never read.
@@ -107,7 +108,7 @@ The install is not cached: each run uses a fresh npm cache, so every package, si
 ## What gets posted
 
 - **Inline comments** for findings anchored in the diff, marked verified, unverified or not verified, in one `COMMENT` review. ocra never approves. With `github.requestChanges`, a `significant_concerns` verdict requests changes once, withdrawn (dismissed) when a later verdict no longer blocks or the commit is overridden.
-- **One summary comment**, updated in place: verdict, summary, findings outside the diff, what was fixed, coverage, cost and the run id. It counts unreviewed files, says whether the spend limit was reached, and lists partly reviewed files (a reviewer out of steps or stopped) with what to do.
+- **One summary comment**, updated in place: verdict, summary, the [walkthrough](./how-it-works#walkthrough) of the change, findings outside the diff, what was fixed, coverage, cost and the run id. It counts unreviewed files, says whether the spend limit was reached, and lists partly reviewed files (a reviewer out of steps or stopped) with what to do.
 
 Later pushes review **only what changed**: files changed since the previous review's commit, plus files it did not finish (failed task, reviewer out of steps, spend limit). Findings in unchanged files carry over, open, counted, not commented again. Everything is reviewed again when the previous commit left the branch (force-push, rebase), the push raises the risk tier, the summary was last edited by someone other than ocra (its remembered state is then ignored, though ocra still recognizes its own unedited inline comments), or you pass `--full`. Changing which reviewers run (`reviewers`, `--reviewers`, `--ultra`) does not; pass `--full` once. The summary says which kind of review it was and why.
 
@@ -247,6 +248,51 @@ jobs:
 - **Which token decides how it merges.** A pull request opened with the workflow's own token starts no workflows, so required checks would never report on it: with `github.token` the Action passes `--require-review` and leaves the pull request for a person, with a notice saying so. Pass a GitHub App's installation token (contents and pull request write) as `github-token`, for example from `actions/create-github-app-token`, and it merges once its checks pass. A branch rule that requires an approving review still waits for one.
 - **Let Actions open pull requests** for the workflow's own token: Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests".
 - Each draft is one helper model call, at most `--max` (20) a run; `args` passes options such as `--max 5` or `--max-cost-usd 1` to `ocra learn`. What a learning on the default branch, or on a proposal branch not yet merged or deleted, already records is not drafted again.
+
+## Asking ocra about the change
+
+Anyone with write access can ask in a comment, in the conversation or on a line of the diff:
+
+```
+@ocra why does this retry forever when the limit is negative?
+```
+
+and ocra answers in that thread ([`ocra reply`](./cli#ocra-reply)): one model call, from the description, the thread and the commented file, never a review. Comments from people without write access, comments someone else edited, ocra's own and comments it already answered get no answer. Add this workflow next to the review's; it checks nothing out from the pull request. New in v0.10.0.
+
+```yaml
+name: ocra reply
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  reply:
+    # Only a mention by someone who can write; ocra checks both again.
+    if: >-
+      (github.event_name == 'pull_request_review_comment' || github.event.issue.pull_request) &&
+      contains(github.event.comment.body, '@ocra') &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+    # One run per comment: ocra finds its earlier answer, not one in flight.
+    concurrency:
+      group: ocra-reply-${{ github.event.comment.id }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jma49/Open-CR-Agent@809f22dec75b73430c9f74c0d085218aec9e8c5f # v0.9.0
+        with:
+          reply: true
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+```
 
 ## Asking for a review again
 

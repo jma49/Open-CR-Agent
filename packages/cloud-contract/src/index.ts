@@ -112,13 +112,19 @@ export { REDACTED, redact, redactField } from "./redact.js";
 export { normaliseRemote, REPOSITORY_URL } from "./repository.js";
 export {
   FINGERPRINT,
+  MAX_WALKTHROUGH_FILES,
+  MAX_WALKTHROUGH_GROUPS,
   type ReviewerCounts,
   type ReviewUpload,
   reviewerCountsSchema,
   reviewUploadSchema,
   type SharedFinding,
+  type SharedFix,
+  type SharedWalkthrough,
   severityCountsSchema,
   sharedFindingSchema,
+  sharedFixSchema,
+  sharedWalkthroughSchema,
   type UploadAnswer,
   uploadAnswerSchema,
 } from "./upload.js";
