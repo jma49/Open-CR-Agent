@@ -113,6 +113,44 @@ describe("planTasks", () => {
     );
   });
 
+  it("runs bundles on sensitive paths first and keeps their tasks past the limit", () => {
+    const mixed = [
+      bundle("ui", "src/ui/button.ts"),
+      bundle("auth", "src/auth/session.ts"),
+      bundle("ci", ".github/workflows/release.yml"),
+      bundle("api", "src/api.ts"),
+    ];
+    const planned = planTasks(mixed, [correctness, performance], "full");
+    expect(planned.cells.map((c) => c.taskId)).toEqual([
+      "correctness-2",
+      "performance-2",
+      "correctness-3",
+      "performance-3",
+      "correctness-1",
+      "performance-1",
+      "correctness-4",
+      "performance-4",
+    ]);
+
+    const limited = planTasks(mixed, [correctness, performance], "full", {}, { maxTasks: 5 });
+    expect(limited.cells.map((c) => c.taskId)).toEqual([
+      "correctness-2",
+      "performance-2",
+      "correctness-3",
+      "correctness-1",
+      "correctness-4",
+    ]);
+  });
+
+  it("keeps plan order when no bundle is on a sensitive path", () => {
+    expect(planTasks(many, [correctness], "full").cells.map((c) => c.taskId)).toEqual([
+      "correctness-1",
+      "correctness-2",
+      "correctness-3",
+      "correctness-4",
+    ]);
+  });
+
   it("changes nothing under the limit", () => {
     expect(planTasks(many, [correctness], "full").cells).toHaveLength(4);
   });
