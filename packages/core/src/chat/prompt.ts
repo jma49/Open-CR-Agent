@@ -1,4 +1,5 @@
 import type { ChangeRequest, FileDiff } from "../domain.js";
+import { changedFile, smallestPatchesFirst } from "../review/change-text.js";
 import { renderChangeRequest } from "../review/prompt.js";
 import {
   join,
@@ -8,7 +9,6 @@ import {
   section,
   truncated,
 } from "../review/prompt-text.js";
-import { changedFile, smallestPatchesFirst } from "../walkthrough/prompt.js";
 
 const MAX_DESCRIPTION_CHARS = 2_000;
 const MAX_QUESTION_CHARS = 2_000;
