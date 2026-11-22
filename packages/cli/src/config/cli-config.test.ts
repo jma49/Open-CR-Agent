@@ -1,9 +1,9 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { CONFIG_SCHEMA_ID, configJsonSchema } from "@open-cr-agent/cloud-contract";
 import { afterEach, describe, expect, it } from "vitest";
 import { ConfigError, loadConfig } from "./cli-config.js";
-import { CONFIG_SCHEMA_ID, configJsonSchema } from "./schema.js";
 
 const dirs: string[] = [];
 afterEach(() => {

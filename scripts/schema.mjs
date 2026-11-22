@@ -6,7 +6,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { configJsonSchema, planJsonSchema } from "@open-cr-agent/cli/internal";
+import { planJsonSchema } from "@open-cr-agent/cli/internal";
+import { configJsonSchema } from "@open-cr-agent/cloud-contract";
 import { REPORT_VERSION, reportJsonSchema } from "@open-cr-agent/core";
 import { PLAN_VERSION } from "@open-cr-agent/core/internal";
 

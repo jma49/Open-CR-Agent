@@ -13,6 +13,7 @@ import {
 } from "@open-cr-agent/core";
 import {
   AGENT_ROLES,
+  MAX_TIMER_MS,
   RISK_TIERS,
   severitySchema,
   verificationSchema,
@@ -51,6 +52,7 @@ describe("the contract's vocabulary", () => {
     expect(contract.MODEL_TIERS).toEqual(MODEL_TIERS);
     expect(contract.AGENT_ROLES).toEqual(AGENT_ROLES);
     expect(contract.STAGES).toEqual(REVIEW_STAGES);
+    expect(contract.MAX_TIMEOUT_MINUTES).toBe(Math.floor(MAX_TIMER_MS / 60_000));
   });
 });
 

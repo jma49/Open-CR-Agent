@@ -230,6 +230,153 @@ export const CODE_PLATFORMS: readonly ["github", "gitlab"];
 // @public (undocumented)
 export type CodePlatform = (typeof CODE_PLATFORMS)[number];
 
+// @public (undocumented)
+export const CONFIG_SCHEMA_ID = "https://ocra.majincheng.com/schema/config.v1.json";
+
+// @public (undocumented)
+export function configJsonSchema(): Record<string, unknown>;
+
+// @public (undocumented)
+export const configSchema: z.ZodObject<{
+    $schema: z.ZodOptional<z.ZodString>;
+    models: z.ZodDefault<z.ZodObject<{
+        top: z.ZodOptional<z.ZodPipe<z.ZodUnion<readonly [z.ZodString, z.ZodArray<z.ZodString>]>, z.ZodTransform<string[], string | string[]>>>;
+        standard: z.ZodOptional<z.ZodPipe<z.ZodUnion<readonly [z.ZodString, z.ZodArray<z.ZodString>]>, z.ZodTransform<string[], string | string[]>>>;
+        light: z.ZodOptional<z.ZodPipe<z.ZodUnion<readonly [z.ZodString, z.ZodArray<z.ZodString>]>, z.ZodTransform<string[], string | string[]>>>;
+    }, z.core.$strict>>;
+    effort: z.ZodDefault<z.ZodObject<{
+        top: z.ZodOptional<z.ZodEnum<{
+            high: "high";
+            low: "low";
+            medium: "medium";
+            minimal: "minimal";
+            none: "none";
+        }>>;
+        standard: z.ZodOptional<z.ZodEnum<{
+            high: "high";
+            low: "low";
+            medium: "medium";
+            minimal: "minimal";
+            none: "none";
+        }>>;
+        light: z.ZodOptional<z.ZodEnum<{
+            high: "high";
+            low: "low";
+            medium: "medium";
+            minimal: "minimal";
+            none: "none";
+        }>>;
+    }, z.core.$strict>>;
+    concurrency: z.ZodOptional<z.ZodNumber>;
+    taskTimeoutMinutes: z.ZodOptional<z.ZodNumber>;
+    runTimeoutMinutes: z.ZodOptional<z.ZodNumber>;
+    verify: z.ZodOptional<z.ZodBoolean>;
+    judge: z.ZodOptional<z.ZodBoolean>;
+    showPreExisting: z.ZodOptional<z.ZodBoolean>;
+    walkthrough: z.ZodOptional<z.ZodBoolean>;
+    fixes: z.ZodOptional<z.ZodBoolean>;
+    linkedTasks: z.ZodOptional<z.ZodBoolean>;
+    trackers: z.ZodDefault<z.ZodObject<{
+        jira: z.ZodOptional<z.ZodObject<{
+            projects: z.ZodArray<z.ZodString>;
+            server: z.ZodObject<{
+                url: z.ZodURL;
+                tokenEnv: z.ZodOptional<z.ZodString>;
+            }, z.core.$strict>;
+            tool: z.ZodString;
+            keyArgument: z.ZodString;
+            arguments: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+        }, z.core.$strict>>;
+        tapd: z.ZodOptional<z.ZodObject<{
+            workspace: z.ZodString;
+            server: z.ZodObject<{
+                url: z.ZodURL;
+                tokenEnv: z.ZodOptional<z.ZodString>;
+            }, z.core.$strict>;
+            tools: z.ZodObject<{
+                story: z.ZodOptional<z.ZodString>;
+                bug: z.ZodOptional<z.ZodString>;
+                task: z.ZodOptional<z.ZodString>;
+            }, z.core.$strict>;
+            keyArgument: z.ZodString;
+            arguments: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+        }, z.core.$strict>>;
+    }, z.core.$strict>>;
+    projectDocs: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    mergeChecks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        instruction: z.ZodString;
+    }, z.core.$strict>>>;
+    maxCostUsd: z.ZodOptional<z.ZodNumber>;
+    maxTasks: z.ZodOptional<z.ZodNumber>;
+    sampling: z.ZodOptional<z.ZodObject<{
+        temperature: z.ZodOptional<z.ZodNumber>;
+        seed: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strict>>;
+    github: z.ZodDefault<z.ZodObject<{
+        requestChanges: z.ZodOptional<z.ZodBoolean>;
+        botLogin: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    learnings: z.ZodDefault<z.ZodObject<{
+        requireReview: z.ZodOptional<z.ZodBoolean>;
+    }, z.core.$strict>>;
+    include: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    exclude: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    runtime: z.ZodOptional<z.ZodUnion<[z.ZodEnum<{
+        direct: "direct";
+        opencode: "opencode";
+    }>, z.ZodString]>>;
+    plugins: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    reviewers: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodObject<{
+        enabled: z.ZodOptional<z.ZodBoolean>;
+        minTier: z.ZodOptional<z.ZodEnum<{
+            full: "full";
+            lite: "lite";
+            trivial: "trivial";
+        }>>;
+        models: z.ZodOptional<z.ZodPipe<z.ZodUnion<readonly [z.ZodString, z.ZodArray<z.ZodString>]>, z.ZodTransform<string[], string | string[]>>>;
+        effort: z.ZodOptional<z.ZodEnum<{
+            high: "high";
+            low: "low";
+            medium: "medium";
+            minimal: "minimal";
+            none: "none";
+        }>>;
+    }, z.core.$strict>>>;
+    roles: z.ZodDefault<z.ZodRecord<z.ZodEnum<{
+        fixer: "fixer";
+        helper: "helper";
+        judge: "judge";
+        verifier: "verifier";
+        writer: "writer";
+    }> & z.core.$partial, z.ZodObject<{
+        models: z.ZodOptional<z.ZodPipe<z.ZodUnion<readonly [z.ZodString, z.ZodArray<z.ZodString>]>, z.ZodTransform<string[], string | string[]>>>;
+        effort: z.ZodOptional<z.ZodEnum<{
+            high: "high";
+            low: "low";
+            medium: "medium";
+            minimal: "minimal";
+            none: "none";
+        }>>;
+    }, z.core.$strict>>>;
+    pluginSettings: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    providers: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodObject<{
+        type: z.ZodLiteral<"openai-compatible">;
+        baseUrl: z.ZodURL;
+        apiKeyEnv: z.ZodOptional<z.ZodString>;
+        models: z.ZodRecord<z.ZodString, z.ZodObject<{
+            input: z.ZodNumber;
+            output: z.ZodNumber;
+            cachedInput: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strict>>;
+        effort: z.ZodOptional<z.ZodEnum<{
+            openai: "openai";
+            openrouter: "openrouter";
+        }>>;
+    }, z.core.$strict>>>;
+    extends: z.ZodOptional<z.ZodString>;
+}, z.core.$strict>;
+
 // @public
 export const DEVICE_ERRORS: readonly ["invalid_request", "invalid_grant", "expired_token", "authorization_pending", "slow_down", "access_denied"];
 
@@ -645,6 +792,9 @@ export const MAX_MERGE_CHECKS = 20;
 export const MAX_REVIEWERS = 40;
 
 // @public
+export const MAX_TIMEOUT_MINUTES = 35791;
+
+// @public
 export const MAX_TOTAL_BYTES = 262144;
 
 // @public (undocumented)
@@ -730,6 +880,12 @@ export const modelTierSchema: z.ZodEnum<{
 
 // @public
 export function normaliseRemote(url: string): string | undefined;
+
+// @public (undocumented)
+export type OcraConfig = z.output<typeof configSchema>;
+
+// @public
+export type OcraConfigInput = z.input<typeof configSchema>;
 
 // @public
 export const preferencesAnswerSchema: z.ZodRecord<z.ZodString, z.ZodUnknown>;
@@ -1670,6 +1826,37 @@ export const tokenAnswerSchema: z.ZodObject<{
     error: z.ZodOptional<z.ZodString>;
     interval: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>;
+
+// @public (undocumented)
+export type TrackersConfig = z.output<typeof trackersSchema>;
+
+// @public (undocumented)
+const trackersSchema: z.ZodObject<{
+    jira: z.ZodOptional<z.ZodObject<{
+        projects: z.ZodArray<z.ZodString>;
+        server: z.ZodObject<{
+            url: z.ZodURL;
+            tokenEnv: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>;
+        tool: z.ZodString;
+        keyArgument: z.ZodString;
+        arguments: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    }, z.core.$strict>>;
+    tapd: z.ZodOptional<z.ZodObject<{
+        workspace: z.ZodString;
+        server: z.ZodObject<{
+            url: z.ZodURL;
+            tokenEnv: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>;
+        tools: z.ZodObject<{
+            story: z.ZodOptional<z.ZodString>;
+            bug: z.ZodOptional<z.ZodString>;
+            task: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>;
+        keyArgument: z.ZodString;
+        arguments: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
 
 // @public (undocumented)
 export type UploadAnswer = z.input<typeof uploadAnswerSchema>;

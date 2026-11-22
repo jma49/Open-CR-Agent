@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { type configSchema, effortSchema as effort } from "@open-cr-agent/cloud-contract";
 import {
   type CustomProvider,
   EFFORT_LEVELS,
@@ -17,7 +18,6 @@ import {
 import { isNotFound } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 import { fetchRemoteConfig, type RemoteConfig } from "./remote.js";
-import { type configSchema, DEFAULT_RUNTIME, effort } from "./schema.js";
 import {
   type ListedSetting,
   layerSchema,
@@ -28,6 +28,7 @@ import {
 } from "./settings.js";
 
 const CONFIG_PATH = ".ocra/config.json";
+const DEFAULT_RUNTIME = "opencode";
 
 export type CliConfig = Omit<
   z.infer<typeof configSchema>,

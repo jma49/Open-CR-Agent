@@ -1,20 +1,17 @@
-import { MAX_MERGE_CHECKS, mergeCheckSchema } from "@open-cr-agent/cloud-contract";
-import { type AgentRole, EFFORT_LEVELS, type RiskTier } from "@open-cr-agent/core";
-import { AGENT_ROLES, MAX_TIMER_MS, RISK_TIERS } from "@open-cr-agent/core/internal";
 import { z } from "zod";
+import { MAX_MERGE_CHECKS, mergeCheckSchema } from "./merge-checks.js";
+import { AGENT_ROLES, effortSchema as effort, RISK_TIERS } from "./vocabulary.js";
 
-// What .ocra/config.json may say. Every layer of settings (settings.ts) is
-// checked against it.
+// What .ocra/config.json may say: the CLI checks every layer of settings
+// against it, and ocra Cloud a file before it commits one, so both refuse
+// the same files.
 
-// How much a model reasons before answering (ADR-0025); unset leaves the
-// provider's default.
-export const effort = z.enum(EFFORT_LEVELS);
-// The longest timeout a timer keeps, about 24.8 days; a longer one would fire at once.
-const timeoutMinutes = z
-  .number()
-  .positive()
-  .max(Math.floor(MAX_TIMER_MS / 60_000))
-  .optional();
+// As in repository.ts: the WHATWG URL of Node.js and Workers, without their types.
+declare const URL: new (url: string) => { protocol: string; hostname: string };
+
+/** The longest timeout a timer keeps (2^31 - 1 ms, about 24.8 days), in minutes. */
+export const MAX_TIMEOUT_MINUTES = 35_791;
+const timeoutMinutes = z.number().positive().max(MAX_TIMEOUT_MINUTES).optional();
 
 const modelChain = z
   .union([z.string().min(1), z.array(z.string().min(1)).min(1)])
@@ -80,7 +77,7 @@ const trackersSchema = z
   })
   .partial()
   .strict();
-export type TrackersConfig = z.infer<typeof trackersSchema>;
+export type TrackersConfig = z.output<typeof trackersSchema>;
 
 const MAX_PROJECT_DOC_ENTRIES = 20;
 // A path inside the repository, as git names it; validated again after
@@ -121,7 +118,6 @@ const providerSchema = z
 // The runtimes ocra ships; a plugin may register another name, so the
 // schema lists these for editors and still accepts any other string.
 const BUILTIN_RUNTIMES = ["opencode", "direct"] as const;
-export const DEFAULT_RUNTIME = "opencode";
 
 export const configSchema = z
   .object({
@@ -191,7 +187,7 @@ export const configSchema = z
         z
           .object({
             enabled: z.boolean(),
-            minTier: z.enum(RISK_TIERS as [RiskTier, ...RiskTier[]]),
+            minTier: z.enum(RISK_TIERS),
             // The reviewer's own chain, for its review tasks and plan call.
             models: modelChain,
             effort,
@@ -202,7 +198,7 @@ export const configSchema = z
       .default({}),
     roles: z
       .partialRecord(
-        z.enum(AGENT_ROLES as [AgentRole, ...AgentRole[]]),
+        z.enum(AGENT_ROLES),
         z.object({ models: modelChain, effort }).partial().strict(),
       )
       .default({}),
@@ -211,6 +207,10 @@ export const configSchema = z
     extends: z.string().min(1).optional(),
   })
   .strict();
+
+/** A configuration file as written, and as read with its defaults. */
+export type OcraConfigInput = z.input<typeof configSchema>;
+export type OcraConfig = z.output<typeof configSchema>;
 
 export const CONFIG_SCHEMA_ID = "https://ocra.majincheng.com/schema/config.v1.json";
 
