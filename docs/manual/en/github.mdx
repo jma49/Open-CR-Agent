@@ -278,6 +278,9 @@ jobs:
       (github.event_name == 'pull_request_review_comment' || github.event.issue.pull_request) &&
       contains(github.event.comment.body, '@ocra') &&
       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+    # One run per comment: ocra finds its earlier answer, not one in flight.
+    concurrency:
+      group: ocra-reply-${{ github.event.comment.id }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
