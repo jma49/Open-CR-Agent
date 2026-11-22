@@ -25,6 +25,22 @@ export type Mention =
   // access, an edited comment, or one already answered.
   | { asked: false; reason: string };
 
+// One commit ocra writes on the change request's own branch (ADR-0051).
+export interface ChangeCommit {
+  // The head the files were made from: the commit's only parent.
+  parent: string;
+  message: string;
+  // Each file's whole new content, a regular file; `created`: no file is at
+  // its path in the parent.
+  files: readonly { path: string; content: string; created: boolean; executable: boolean }[];
+}
+
+export type CommitResult =
+  | { committed: true; sha: string }
+  // Nothing was written, and why: the branch moved past the parent, or the
+  // token cannot write to it (a fork, a protected branch, a read-only token).
+  | { committed: false; outcome: "head_moved" | "not_writable"; reason: string };
+
 export interface VcsAdapter {
   readonly name: string;
   getChangeRequest(): Promise<ChangeRequest>;
@@ -38,4 +54,9 @@ export interface VcsAdapter {
   publish(report: ReviewReport): Promise<{ warnings: string[] }>;
   // Absent: the adapter takes no questions.
   mention?(ref: MentionRef): Promise<Mention>;
+  // The files directly in a directory of the reviewed revision, as readFile
+  // takes their paths. Absent: the adapter cannot list them.
+  listFiles?(dir: string): Promise<string[]>;
+  // Absent: the adapter cannot commit to the change request.
+  commit?(commit: ChangeCommit): Promise<CommitResult>;
 }

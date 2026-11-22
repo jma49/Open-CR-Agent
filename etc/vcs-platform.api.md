@@ -4,8 +4,10 @@
 
 ```ts
 
+import type { ChangeCommit } from '@open-cr-agent/core';
 import type { ChangeRequest } from '@open-cr-agent/core';
 import type { CodeMatch } from '@open-cr-agent/core';
+import type { CommitResult } from '@open-cr-agent/core';
 import type { FileDiff } from '@open-cr-agent/core';
 import type { Finding } from '@open-cr-agent/core';
 import type { LineRange } from '@open-cr-agent/core';
@@ -44,7 +46,7 @@ export const changeRequestSchema: z.ZodObject<{
 }, z.core.$strip>;
 
 // @public (undocumented)
-export type CodeSource = Pick<VcsAdapter, "getDiff" | "readFile" | "searchCode">;
+export type CodeSource = Pick<VcsAdapter, "getDiff" | "readFile" | "searchCode" | "listFiles">;
 
 // @public (undocumented)
 export const codeSourceSchema: z.ZodCustom<CodeSource, CodeSource>;
@@ -169,11 +171,15 @@ export interface PlatformDiscussion {
 export class PlatformReview implements VcsAdapter {
     constructor(options: PlatformReviewOptions);
     // (undocumented)
+    commit(commit: ChangeCommit): Promise<CommitResult>;
+    // (undocumented)
     getChangeRequest(): Promise<ChangeRequest>;
     // (undocumented)
     getDiff(): Promise<FileDiff[]>;
     // (undocumented)
     getPriorReview(): Promise<PriorReview | undefined>;
+    // (undocumented)
+    listFiles(dir: string): Promise<string[]>;
     // (undocumented)
     mention(ref: MentionRef): Promise<Mention>;
     // (undocumented)
@@ -317,6 +323,8 @@ export interface ReviewPlatform {
     changeRequest(): Promise<PlatformChangeRequest>;
     // (undocumented)
     comments(): Promise<PlatformComment[]>;
+    // (undocumented)
+    commit(commit: ChangeCommit): Promise<CommitResult>;
     // (undocumented)
     discussion(ref: MentionRef): Promise<PlatformDiscussion | undefined>;
     // (undocumented)

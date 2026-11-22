@@ -1,6 +1,8 @@
 import type {
+  ChangeCommit,
   ChangeRequest,
   CodeMatch,
+  CommitResult,
   FileDiff,
   Mention,
   MentionRef,
@@ -10,6 +12,7 @@ import type {
   VcsAdapter,
 } from "@open-cr-agent/core";
 import { errorMessage, isUnfinished } from "@open-cr-agent/core";
+import { commitToChangeRequest } from "./commit.js";
 import { mentionOf } from "./conversation.js";
 import type {
   Bot,
@@ -24,7 +27,7 @@ import { lostProgress, type ReviewState, readState, SUMMARY_MARKER } from "./sta
 
 // Where the code under review is read from: the CLI passes the local git
 // adapter on the change request's base..head range.
-export type CodeSource = Pick<VcsAdapter, "getDiff" | "readFile" | "searchCode">;
+export type CodeSource = Pick<VcsAdapter, "getDiff" | "readFile" | "searchCode" | "listFiles">;
 
 // The repository's history, to review only what changed since the previous
 // review. The CLI answers from the local clone.
@@ -184,6 +187,14 @@ export class PlatformReview implements VcsAdapter {
 
   searchCode(literal: string): Promise<CodeMatch[]> {
     return this.options.code.searchCode(literal);
+  }
+
+  async listFiles(dir: string): Promise<string[]> {
+    return (await this.options.code.listFiles?.(dir)) ?? [];
+  }
+
+  async commit(commit: ChangeCommit): Promise<CommitResult> {
+    return commitToChangeRequest(this.platform, await this.changeRequest(), commit);
   }
 
   async getPriorReview(): Promise<PriorReview | undefined> {

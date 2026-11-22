@@ -7,5 +7,7 @@ export const EXIT = {
   notSignedIn: 1,
   error: 2,
   incomplete: 3,
+  // ocra generate: edits made, but the branch moved or cannot be written to.
+  notCommitted: 3,
   interrupted: 130,
 } as const;

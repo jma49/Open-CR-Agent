@@ -1,4 +1,6 @@
 import {
+  type ChangeCommit,
+  type CommitResult,
   errorMessage,
   isBlocking,
   type MentionRef,
@@ -26,6 +28,7 @@ import {
   type PullRequest,
   type ReviewComment,
 } from "./client.js";
+import { githubCommit } from "./commit.js";
 import { githubDiscussion } from "./discussion.js";
 
 export interface GitHubPullRequest {
@@ -152,6 +155,10 @@ class GitHubPlatform implements ReviewPlatform {
     const { number } = this.options.pullRequest;
     if (discussion.replyTo === undefined) await this.options.api.createIssueComment(number, body);
     else await this.options.api.replyToLineComment(number, Number(discussion.replyTo), body);
+  }
+
+  commit(commit: ChangeCommit): Promise<CommitResult> {
+    return githubCommit(this.options.api, this.options.pullRequest, commit);
   }
 
   // With requestChanges on, ocra's "changes requested" follows the verdict:

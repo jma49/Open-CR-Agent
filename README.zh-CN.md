@@ -72,7 +72,7 @@ ocra review --mr 7 --publish                 # GitLab Merge Request
 
 ## 在 CI 里
 
-**GitHub Pull Request**，用 [`action.yml`](action.yml) 里的 Action：行内评论、一条原地更新的摘要评论（附改动导读：按阅读顺序分组的文件，流程复杂时附时序图），复审只看上次 push 以来的改动，评论 `/ocra review` 时完整重审；有写权限的人用 `@ocra` 提问时，在同一个讨论里回答（`ocra reply`，GitLab 也支持）。
+**GitHub Pull Request**，用 [`action.yml`](action.yml) 里的 Action：行内评论、一条原地更新的摘要评论（附改动导读：按阅读顺序分组的文件，流程复杂时附时序图），复审只看上次 push 以来的改动，评论 `/ocra review` 时完整重审；有写权限的人用 `@ocra` 提问时，在同一个讨论里回答（`ocra reply`，GitLab 也支持）。需要时，`ocra generate tests` 或 `ocra generate docstrings` 在分支上加一个提交（GitHub 和 GitLab 都支持）：在改动的源文件旁新建测试文件，或在改动的行里插入文档注释；从不修改已有的行，也从不运行仓库里的代码（[CLI](docs/manual/zh/cli.mdx#ocra-generate)）。
 
 ```yaml
 # .github/workflows/ocra.yml

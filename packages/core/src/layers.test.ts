@@ -25,6 +25,7 @@ const LAYERS: readonly (readonly string[])[] = [
     "judge/",
     "walkthrough/",
     "chat/",
+    "generate/",
     "sarif/",
     "matrix/",
   ],

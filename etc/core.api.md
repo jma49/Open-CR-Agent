@@ -222,6 +222,21 @@ export class ChainRunner {
 }
 
 // @public (undocumented)
+export interface ChangeCommit {
+    // (undocumented)
+    files: readonly {
+        path: string;
+        content: string;
+        created: boolean;
+        executable: boolean;
+    }[];
+    // (undocumented)
+    message: string;
+    // (undocumented)
+    parent: string;
+}
+
+// @public (undocumented)
 export interface ChangeRequest {
     // (undocumented)
     baseSha: string;
@@ -255,6 +270,16 @@ export interface CodeMatch {
     // (undocumented)
     text: string;
 }
+
+// @public (undocumented)
+export type CommitResult = {
+    committed: true;
+    sha: string;
+} | {
+    committed: false;
+    outcome: "head_moved" | "not_writable";
+    reason: string;
+};
 
 // @public (undocumented)
 export class CompletionError extends OcraError {
@@ -2051,11 +2076,15 @@ export interface Usage {
 // @public (undocumented)
 export interface VcsAdapter {
     // (undocumented)
+    commit?(commit: ChangeCommit): Promise<CommitResult>;
+    // (undocumented)
     getChangeRequest(): Promise<ChangeRequest>;
     // (undocumented)
     getDiff(): Promise<FileDiff[]>;
     // (undocumented)
     getPriorReview(): Promise<PriorReview | undefined>;
+    // (undocumented)
+    listFiles?(dir: string): Promise<string[]>;
     // (undocumented)
     mention?(ref: MentionRef): Promise<Mention>;
     // (undocumented)
