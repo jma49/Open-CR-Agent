@@ -22,6 +22,16 @@ describe("LocalGitAdapter.listFiles", () => {
     expect(await adapter.readFile("notes/a.md")).toBe("a\n");
   });
 
+  it("lists the files at the repository's root, in a commit and in the workspace", async () => {
+    const r = scratch.create();
+    const head = r.commit("first", { "a.ts": "a\n", "b.test.ts": "b\n", "src/c.ts": "c\n" });
+    const commit = new LocalGitAdapter({ cwd: r.dir, target: { mode: "commit", commit: head } });
+    expect(await commit.listFiles(".")).toEqual(["a.ts", "b.test.ts"]);
+    r.write("new.ts", "new\n");
+    const workspace = new LocalGitAdapter({ cwd: r.dir, target: { mode: "workspace" } });
+    expect(await workspace.listFiles(".")).toEqual(["a.ts", "b.test.ts", "new.ts"]);
+  });
+
   it("leaves out symbolic links in a commit", async () => {
     const r = scratch.create();
     r.write("notes/a.md", "a\n");
