@@ -1,0 +1,43 @@
+{
+  "id": "ocra-quota-burst",
+  "repo": "jma49/Open-CR-Agent",
+  "base": "a7dcec9385c4b8697359f9b6bfb7fdb93a3116d9",
+  "head": "0bb4726d30278b10c0f14f249bad4a98147ffeb7",
+  "language": "TypeScript",
+  "tier": "full",
+  "source": {
+    "kind": "ocra-history",
+    "ref": "0bb4726d3027 (fix(core): back off on a rate limit that states no wait), fixed by 6380a71 (count one quota wait per burst of rate limits)",
+    "licence": "Apache-2.0",
+    "date": "2026-10-08"
+  },
+  "rationale": "The change backs off on a rate limit that states no wait, doubling the pause per wait and giving up after a fixed number. Tasks running at once are refused together, and every refusal counts a wait of its own, so one burst at the default concurrency uses up the retries and drops the model for the run, the outcome the backoff set out to prevent. Upstream fixed it in the next days by letting a refusal that arrives during a pause join it. Required: in the change, a consequence for every concurrent run, fixed by the author.",
+  "raters": [
+    {
+      "by": "agent (claude), blind, rater A",
+      "date": "2026-11-22"
+    },
+    {
+      "by": "agent (claude), blind, rater B",
+      "date": "2026-11-22"
+    }
+  ],
+  "expect": [
+    {
+      "id": "burst-counts-waits",
+      "file": "packages/core/src/runtime/models.ts",
+      "lines": [
+        128,
+        137
+      ],
+      "category": "correctness",
+      "minSeverity": "warning",
+      "concern": "Every rate-limit refusal increments the wait count, so concurrent tasks refused by one burst exhaust the retries at once and the model is marked out of quota for the rest of the run.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": false
+    }
+  ],
+  "forbid": []
+}

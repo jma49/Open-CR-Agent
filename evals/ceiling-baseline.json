@@ -1,7 +1,7 @@
 {
-  "instances": 58,
-  "references": 52,
-  "reachable": 52,
+  "instances": 65,
+  "references": 57,
+  "reachable": 57,
   "reaches": {
     "aacr-appwrite-console-domain row-627": "reachable",
     "aacr-appwrite-console-domain row-628": "reachable",
@@ -47,13 +47,18 @@
     "aacr-vllm-untouch-lru-order untouch-lru-order": "reachable",
     "aacr-waveterm-swaptoken-env ssh-nowsh-ignored": "reachable",
     "aacr-waveterm-swaptoken-env wsl-jwt-dropped": "reachable",
+    "ocra-context-symlink symlink-bypass": "reachable",
     "ocra-coverage-gaps stray-plugin": "reachable",
     "ocra-judge-downgrade downgrade-allowed": "reachable",
     "ocra-loose-dismissal anyone-dismisses": "reachable",
     "ocra-loose-dismissal decline-words": "reachable",
+    "ocra-output-special-file rename-replaces-special-file": "reachable",
     "ocra-override-trust association-access": "reachable",
     "ocra-override-trust edited-comment": "reachable",
     "ocra-override-trust short-prefix": "reachable",
-    "ocra-sessions-gitignore gitignore-unwritten": "reachable"
+    "ocra-quota-burst burst-counts-waits": "reachable",
+    "ocra-redact-flag-punctuation flag-value-punctuation": "reachable",
+    "ocra-sessions-gitignore gitignore-unwritten": "reachable",
+    "ocra-sharing-consent-fail-open consent-kept-on-failure": "reachable"
   }
 }

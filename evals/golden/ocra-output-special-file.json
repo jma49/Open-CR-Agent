@@ -1,0 +1,58 @@
+{
+  "id": "ocra-output-special-file",
+  "repo": "jma49/Open-CR-Agent",
+  "base": "1e86c5301889c5fc23a6e3e90c26bc54f7d24041",
+  "head": "1095650c3cad9cc6cffb2011c86dc5851fa51ef5",
+  "language": "TypeScript",
+  "tier": "full",
+  "source": {
+    "kind": "ocra-history",
+    "ref": "1095650c3cad (fix(cli): refuse to write --output through a symbolic link), fixed by 35c5006 (refuse an --output that is no regular file, and clean up on exit)",
+    "licence": "Apache-2.0",
+    "date": "2026-10-09"
+  },
+  "rationale": "The change writes --output through a temporary file and a rename, so a link planted at the path is replaced rather than followed. A rename replaces whatever the path names, so --output /dev/stdout, a named pipe or a process substitution no longer receives the report: the rename fails or replaces the special file, after the review has run and been paid for. Upstream refused such paths before any model call. The exit between write and rename leaving the temporary file behind, fixed in the same commit, is optional: it needs a second interrupt at the wrong moment.",
+  "raters": [
+    {
+      "by": "agent (claude), blind, rater A",
+      "date": "2026-11-22"
+    },
+    {
+      "by": "agent (claude), blind, rater B",
+      "date": "2026-11-22"
+    }
+  ],
+  "expect": [
+    {
+      "id": "rename-replaces-special-file",
+      "file": "packages/cli/src/io/output-file.ts",
+      "lines": [
+        40,
+        50
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "Replacing the output path with a rename breaks an --output that names /dev/stdout, a pipe or a device: the report is not written there and the failure comes only after the review has run.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": false
+    },
+    {
+      "id": "temp-left-on-exit",
+      "file": "packages/cli/src/io/output-file.ts",
+      "lines": [
+        42,
+        49
+      ],
+      "category": "correctness",
+      "minSeverity": "suggestion",
+      "concern": "A process that exits between writing the temporary file and renaming it leaves the temporary file next to the output for good.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": true
+    }
+  ],
+  "forbid": []
+}
