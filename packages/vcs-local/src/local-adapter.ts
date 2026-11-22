@@ -127,7 +127,8 @@ export class LocalGitAdapter implements VcsAdapter {
   async listFiles(dir: string): Promise<string[]> {
     const { root, head } = await this.target();
     const absolute = resolve(root, dir);
-    const inside = absolute === root ? "" : relativeInside(root, absolute);
+    // relative(), not ===: git names the root with forward slashes on Windows.
+    const inside = relative(root, absolute) === "" ? "" : relativeInside(root, absolute);
     if (inside === undefined) return [];
     const prefix = inside === "" ? "" : `${inside.split(sep).join("/")}/`;
     const pathspec = prefix || ".";
