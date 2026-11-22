@@ -24,6 +24,7 @@ const remoteConfigSchema = z
     walkthrough: z.unknown().optional(),
     linkedTasks: z.unknown().optional(),
     trackers: z.record(z.string(), z.unknown()).optional(),
+    projectDocs: z.array(z.string()).optional(),
     maxCostUsd: z.unknown().optional(),
     maxTasks: z.unknown().optional(),
     include: z.array(z.string()).optional(),

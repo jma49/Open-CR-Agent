@@ -145,6 +145,7 @@ ocra review [options]
 - 问题列表，以及 `rereview`：已修复、未再报告、未重新检查、未改动或已驳回的旧问题，记录了报告者时各带 `reviewer`；
 - `remembered`：被 memory 接受的问题，带来源 `source`（`repository` 表示 `.ocra/memory.json`，`account` 表示你的 [ocra Cloud memory](#ocra-cloud-账户里的-memory)）；维护者的放行在 `changeRequest.override`；
 - `learnings`：任务拿到的每条 [learning](./rules#ocralearnings)，带 `title`、`critical`、`source` 和它去过的分组 `bundles`；
+- `projectDocs`：交给任务的每个[项目文档段落](./how-it-works#项目文档)，带 `path`、`heading` 以及交给的分组 `bundles`；没有时不出现；
 - `linkedTasks`：交给任务的每个[关联 issue](./how-it-works#关联的任务)，带 `tracker`、`key`、`url`、`title`、`state`、`labels`，以及文字是否被裁剪（`cut`）；没有关联时为空，本地审查或关闭开关时不出现；
 - `analyzerEvidence`：用 [`--sarif-evidence`](#sarif-作为证据) 交给任务的每个工具，带 `version`、结果条数 `results` 和它们去过的分组 `bundles`；
 - token 用量与花费；设置了花费上限时的 `spendLimit`（`reached` 为 `review` 表示审查任务因此停止，`total` 表示整个上限用完）；警告信息。

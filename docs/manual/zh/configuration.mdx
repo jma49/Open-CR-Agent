@@ -168,6 +168,16 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 
 返回结果按常见字段读取（`summary`、`title` 或 `name`，`description`，`status`，`labels`，可以在 `fields` 下或一层包装对象里），否则作为纯文本，最多 64,000 个字符。每个任务一次连接，每个请求最多 20 秒。读取需要 MCP SDK，它随 ocra 的可选依赖安装。共享配置可以设置 `trackers`，账户设置不行。
 
+## 项目文档
+
+`projectDocs` 列出审查员应当对照的设计文档：Markdown 文件（`.md`、`.mdx`），或目录（读取其中直接包含的 Markdown 文件），写仓库内的路径（[项目文档](./how-it-works#项目文档)）：
+
+```json
+{ "projectDocs": ["docs/architecture.md", "docs/design/"] }
+```
+
+它们和 `AGENTS.md` 一样从可信版本读取：最多 50 个文档，每个最多 200,000 字节；路径不存在、过大或在仓库之外时只产生一条警告。共享配置可以设置 `projectDocs`，账户设置不能。
+
 ## 共享配置
 
 仓库可以继承组织的通用设置：
@@ -176,7 +186,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`showPreExisting`、`walkthrough`、`linkedTasks`、`trackers`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`effort`、`reviewers`、`roles`、`github`、`providers`（仅在固定内容时）和 `rules`（格式同 `.ocra/rules.json` 的条目）。它不能列出插件或选择运行时，因为它不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 合并，`models`、`effort`、`reviewers`、`roles`、`github` 和 `providers` 按键合并。
+共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`showPreExisting`、`walkthrough`、`linkedTasks`、`trackers`、`projectDocs`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`effort`、`reviewers`、`roles`、`github`、`providers`（仅在固定内容时）和 `rules`（格式同 `.ocra/rules.json` 的条目）。它不能列出插件或选择运行时，因为它不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 合并，`models`、`effort`、`reviewers`、`roles`、`github` 和 `providers` 按键合并。
 
 只接受 `https` 地址，不跟随重定向，最大 256 KB。`#sha256=` 固定文件内容；声明了 `providers` 的文件必须固定，因为供应商决定了你的代码发往哪里（见[模型供应商](./providers#你自己的端点)）。文件无法加载或无效时，ocra 警告后只用仓库自己的设置，只写在共享文件里的限制（例如 `maxCostUsd`）就不生效；必须始终生效的限制请在仓库里也写一份。
 

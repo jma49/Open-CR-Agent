@@ -145,6 +145,7 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...`.
 - findings, and `rereview`: earlier findings fixed, not reproduced, not re-checked, unchanged or dismissed, each with its `reviewer` when recorded;
 - `remembered`: findings a memory accepted, with `source` (`repository` for `.ocra/memory.json`, `account` for your [ocra Cloud memory](#memory-in-your-ocra-cloud-account)); a maintainer's override in `changeRequest.override`;
 - `learnings`: each [learning](./rules#ocralearnings) a task was given, with its `title`, `critical`, `source` and the `bundles` it went to;
+- `projectDocs`: each [project document section](./how-it-works#project-documents) the tasks were given, with its `path`, `heading` and the `bundles` it went to; absent when none was;
 - `linkedTasks`: each [linked issue](./how-it-works#linked-tasks) the tasks were given, with its `tracker`, `key`, `url`, `title`, `state`, `labels` and whether its text was `cut`; empty when none is linked, absent for a local review or with the switch off;
 - `analyzerEvidence`: each tool whose results tasks were given with [`--sarif-evidence`](#sarif-as-evidence), with its `version`, the number of `results` and the `bundles` they went to;
 - token usage and cost; `spendLimit` with a spend limit (`reached`: `review` when review tasks stopped, `total` when it all ran out); warnings.
