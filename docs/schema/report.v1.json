@@ -462,6 +462,32 @@
         "additionalProperties": false
       }
     },
+    "projectDocs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "heading": {
+            "type": "string"
+          },
+          "bundles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "path",
+          "heading",
+          "bundles"
+        ],
+        "additionalProperties": false
+      }
+    },
     "linkedTasks": {
       "type": "array",
       "items": {
@@ -471,7 +497,9 @@
             "type": "string",
             "enum": [
               "github",
-              "gitlab"
+              "gitlab",
+              "jira",
+              "tapd"
             ]
           },
           "key": {

@@ -2,6 +2,7 @@ import { roleCall } from "../agent/settings.js";
 import { type Bundle, bundleFiles, defaultBundlePolicy } from "../bundle/bundle.js";
 import { runtimeGrouper } from "../bundle/runtime-grouper.js";
 import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
+import { type DocSection, docSections } from "../docs/project-docs.js";
 import type { ChangeRequest, FileDiff, PriorReview, RiskTier } from "../domain.js";
 import { errorMessage } from "../errors.js";
 import type { SelectLearnings } from "../knowledge/select.js";
@@ -54,6 +55,8 @@ export interface ReviewPlan {
   learnings: SelectLearnings;
   // Absent when none were looked up (ADR-0052).
   linkedTasks?: BoundLinkedTasks;
+  // The project documents' sections, which taskPrompt picks from per bundle.
+  docSections: DocSection[];
   evidence: AnalyzerEvidence;
   usage: Usage[];
   warnings: string[];
@@ -68,6 +71,8 @@ export type PlanOptions = Pick<
   | "accountMemory"
   | "learnings"
   | "linkedTasks"
+  | "taskSources"
+  | "projectDocs"
   | "symbols"
   | "sarifEvidence"
   | "selection"
@@ -114,7 +119,10 @@ export async function planReview(
     readTrusted(GUIDELINES_PATH),
     loadRepoRules(readTrusted),
     readTrusted(MEMORY_PATH),
-    loadLinkedTasks(vcs, options.linkedTasks !== false),
+    loadLinkedTasks(vcs, changeRequest, options.taskSources ?? [], {
+      enabled: options.linkedTasks !== false,
+      signal,
+    }),
   ]);
   const usage: Usage[] = [];
   const grouper =
@@ -186,11 +194,12 @@ export async function planReview(
     ),
     learnings,
     ...(linked.tasks ? { linkedTasks: linked.tasks } : {}),
+    docSections: docSections(options.projectDocs ?? []),
     evidence,
     usage,
     warnings: [
       ...(binaryText ? [binaryText] : []),
-      ...(linked.warning ? [linked.warning] : []),
+      ...linked.warnings,
       ...bundled.warnings,
       ...evidence.warnings,
     ],

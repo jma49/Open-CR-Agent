@@ -134,6 +134,50 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 
 `learnings.requireReview`（默认 `false`）：`ocra learn mine --propose` 开的 pull request 或 Merge Request 留给人来合并，而不是检查通过后自动合并（[CLI](./cli#通过-pull-request-写回)）。共享配置也可以设置它。
 
+## 任务跟踪系统
+
+`trackers` 通过你的跟踪系统的 MCP 服务器，从 Jira 或 TAPD 读取改动所提到的任务，与平台关联的 issue 一起交给审查员（[关联的任务](./how-it-works#关联的任务)）：
+
+```json
+{
+  "trackers": {
+    "jira": {
+      "projects": ["PAY", "AUTH"],
+      "server": { "url": "https://mcp.example.com/jira", "tokenEnv": "JIRA_MCP_TOKEN" },
+      "tool": "jira_get_issue",
+      "keyArgument": "issue_key"
+    },
+    "tapd": {
+      "workspace": "20001234",
+      "server": { "url": "https://mcp.example.com/tapd", "tokenEnv": "TAPD_MCP_TOKEN" },
+      "tools": { "story": "get_story", "bug": "get_bug", "task": "get_task" },
+      "keyArgument": "id"
+    }
+  }
+}
+```
+
+| 键 | 含义 |
+|---|---|
+| `jira.projects` | 你的 Jira 项目 key：标题、描述或分支名中的 `PAY-12`（包括 `feature/pay-12-retry`）指向一个任务；其他项目的 key 会被忽略 |
+| `tapd.workspace` | 你的 TAPD 项目 id：`--story=1001234`、`--bug=…`、`--task=…`，以及指向该项目需求、缺陷和任务的链接，都指向一个任务 |
+| `server.url` | MCP 服务器（Streamable HTTP），使用 https，或本机上的 http。ocra 从不启动服务器进程 |
+| `server.tokenEnv` | 环境变量名，其值作为 `Authorization: Bearer …` 发送；不能是 `GITHUB_`、`GITLAB_`、`AWS_` 等平台变量 |
+| `tool`、`tools` | 读取一个任务的工具；TAPD 按类型各配一个（没有配置的类型会跳过） |
+| `keyArgument`、`arguments` | 放 key（TAPD 为数字 id）的参数，以及随之发送的固定字符串参数；TAPD 还会收到 `workspace_id` |
+
+返回结果按常见字段读取（`summary`、`title` 或 `name`，`description`，`status`，`labels`，可以在 `fields` 下或一层包装对象里），否则作为纯文本，最多 64,000 个字符。每个任务一次连接，每个请求最多 20 秒。读取需要 MCP SDK，它随 ocra 的可选依赖安装。共享配置可以设置 `trackers`，账户设置不行。
+
+## 项目文档
+
+`projectDocs` 列出审查员应当对照的设计文档：Markdown 文件（`.md`、`.mdx`），或目录（读取其中直接包含的 Markdown 文件），写仓库内的路径（[项目文档](./how-it-works#项目文档)）：
+
+```json
+{ "projectDocs": ["docs/architecture.md", "docs/design/"] }
+```
+
+它们和 `AGENTS.md` 一样从可信版本读取：最多 50 个文档，每个最多 200,000 字节；路径不存在、过大或在仓库之外时只产生一条警告。共享配置可以设置 `projectDocs`，账户设置不能。
+
 ## 共享配置
 
 仓库可以继承组织的通用设置：
@@ -142,7 +186,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`showPreExisting`、`walkthrough`、`linkedTasks`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`effort`、`reviewers`、`roles`、`github`、`providers`（仅在固定内容时）和 `rules`（格式同 `.ocra/rules.json` 的条目）。它不能列出插件或选择运行时，因为它不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 合并，`models`、`effort`、`reviewers`、`roles`、`github` 和 `providers` 按键合并。
+共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`showPreExisting`、`walkthrough`、`linkedTasks`、`trackers`、`projectDocs`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`effort`、`reviewers`、`roles`、`github`、`providers`（仅在固定内容时）和 `rules`（格式同 `.ocra/rules.json` 的条目）。它不能列出插件或选择运行时，因为它不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 合并，`models`、`effort`、`reviewers`、`roles`、`github` 和 `providers` 按键合并。
 
 只接受 `https` 地址，不跟随重定向，最大 256 KB。`#sha256=` 固定文件内容；声明了 `providers` 的文件必须固定，因为供应商决定了你的代码发往哪里（见[模型供应商](./providers#你自己的端点)）。文件无法加载或无效时，ocra 警告后只用仓库自己的设置，只写在共享文件里的限制（例如 `maxCostUsd`）就不生效；必须始终生效的限制请在仓库里也写一份。
 

@@ -89,6 +89,8 @@ const MERGE: {
   showPreExisting: { merge: "replace", from: ["shared", "file"], plan: ALWAYS },
   walkthrough: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   linkedTasks: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
+  trackers: { merge: "entries", from: ["shared", "file"], plan: { list: "set" } },
+  projectDocs: { merge: "replace", from: ["shared", "file"], plan: { list: "set" } },
   sampling: { merge: "replace", from: ["file", "account"], plan: ALWAYS },
   include: { merge: "concat", from: NOT_ENV, plan: ALWAYS },
   exclude: { merge: "concat-unless-set", from: NOT_ENV, plan: ALWAYS },

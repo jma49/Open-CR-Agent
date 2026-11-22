@@ -121,6 +121,9 @@ export interface ChangeRequest {
   description: string;
   baseSha: string;
   headSha: string;
+  // The head branch, where the platform names one: trackers' task keys are
+  // often in it (ADR-0052).
+  branch?: string;
   // Someone entitled to overrule the verdict did so for this head commit:
   // a blocking verdict then no longer fails the run. The verdict is kept.
   override?: { by: string; reason: string };

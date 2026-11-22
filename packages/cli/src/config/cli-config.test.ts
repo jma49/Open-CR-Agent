@@ -36,6 +36,7 @@ describe("loadConfig", () => {
       rules: [],
       pluginSettings: {},
       providers: {},
+      trackers: {},
     });
   });
 

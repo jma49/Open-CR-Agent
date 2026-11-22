@@ -3,12 +3,14 @@ import {
   type Learning,
   type OcraPlugin,
   type PluginRegistry,
+  type ProjectDoc,
   type ReviewerOverride,
   type ReviewerOverrides,
   type SarifLog,
   type SourcedRule,
   sessionJsonlPlugin,
   startPlugins,
+  type TaskSource,
   type VcsAdapter,
 } from "@open-cr-agent/core";
 import { newRunId } from "@open-cr-agent/core/internal";
@@ -29,9 +31,11 @@ import { forTerminal } from "../../io/terminal.js";
 import { type AccountPlugins, loadAccountPlugins } from "../../plugins/account.js";
 import { pluginsDir } from "../../plugins/store.js";
 import { sessionsDir } from "../../session/store.js";
+import { trackerSources } from "../../trackers/sources.js";
 import type { ReviewArgs } from "./args.js";
 import type { ReviewDeps } from "./deps.js";
 import { loadLearnings } from "./learnings.js";
+import { loadProjectDocs } from "./project-docs.js";
 import type { RuntimeLoaders } from "./runtimes.js";
 import { loadSarifLogs } from "./sarif-input.js";
 import { type AccountVersion, filledByAccount } from "./settings-sources.js";
@@ -59,6 +63,8 @@ export interface ResolvedRun extends ResolvedConfig {
   vcs: VcsAdapter;
   rules: SourcedRule[];
   learnings: Learning[];
+  projectDocs: ProjectDoc[];
+  taskSources: TaskSource[];
   sarifEvidence: SarifLog[];
   overrides: ReviewerOverrides;
 }
@@ -130,6 +136,8 @@ export async function resolveRun(
       ...resolved.config.rules,
     ],
     learnings: await loadLearnings(target.trusted, warn),
+    projectDocs: await loadProjectDocs(resolved.config.projectDocs ?? [], target.trusted, warn),
+    taskSources: trackerSources(resolved.config.trackers, deps.env, deps.fetch),
     sarifEvidence: await loadSarifLogs(args.sarifEvidence ?? [], deps.cwd, "--sarif-evidence"),
     overrides: reviewerOverrides(
       resolved.config,

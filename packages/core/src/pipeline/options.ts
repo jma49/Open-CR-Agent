@@ -4,6 +4,7 @@ import type { AnchorContext } from "../anchor/anchor.js";
 import type { BundlePolicy } from "../bundle/bundle.js";
 import type { FileGrouper } from "../bundle/grouping.js";
 import type { AgentRuntime, ModelChains, ReferenceIndex, SymbolExtractor } from "../contracts.js";
+import type { ProjectDoc } from "../docs/project-docs.js";
 import { OcraError } from "../errors.js";
 import type { Learning } from "../knowledge/learning.js";
 import type { MemoryEntry } from "../memory/memory.js";
@@ -12,6 +13,7 @@ import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { SourcedRule } from "../rules/repo-rules.js";
 import type { SarifLog } from "../sarif/schema.js";
 import type { SelectionPolicy } from "../select/select.js";
+import type { TaskSource } from "../task/linked-task.js";
 import type { VcsAdapter } from "../vcs.js";
 import type { ProvenanceInput } from "./provenance.js";
 import type { ResumedRun } from "./resume.js";
@@ -44,6 +46,12 @@ export interface ReviewOptions {
   // Give the review tasks the tasks the platform links to the change
   // (ADR-0052); on unless false.
   linkedTasks?: boolean;
+  // Trackers the platform does not link (Jira, TAPD), whose tasks the
+  // change request names by key.
+  taskSources?: readonly TaskSource[];
+  // The team's design documents, read from the trusted revision; each task
+  // is given the sections that name its files (ADR-0052).
+  projectDocs?: readonly ProjectDoc[];
   // Which files are reviewed; what is left out is defaultSelectionPolicy's.
   selection?: Partial<SelectionPolicy>;
   limits?: ReviewLimits;

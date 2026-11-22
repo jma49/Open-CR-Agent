@@ -97,6 +97,7 @@ export class PlatformReview implements VcsAdapter {
       description: cr.description,
       baseSha: cr.baseSha,
       headSha: cr.headSha,
+      ...(cr.branch ? { branch: cr.branch } : {}),
       ...(override ? { override } : {}),
       ...(remember.length > 0 ? { remember } : {}),
     };

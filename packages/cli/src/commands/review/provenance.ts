@@ -21,7 +21,8 @@ export function requestedSampling(config: CliConfig, args: ReviewArgs): Sampling
 // unset it adds nothing, so configurations that set none keep their hash.
 // The ocra Cloud account settings (ADR-0027) add their version and rules
 // only when they were layered in, so a signed-out run keeps its hash.
-// `learnings` sets up `ocra learn`, not how anything is reviewed.
+// `learnings` sets up `ocra learn`, not how anything is reviewed. Trackers,
+// like effort, add nothing when none is set.
 export function configHash(
   config: CliConfig,
   args: ReviewArgs,
@@ -35,6 +36,7 @@ export function configHash(
     effort,
     roles,
     rules,
+    trackers,
     ...rest
   } = config;
   const bare = (account: boolean) =>
@@ -49,6 +51,7 @@ export function configHash(
       : {}),
     ...(Object.keys(effort).length > 0 ? { effort } : {}),
     ...(Object.keys(roles).length > 0 ? { roles } : {}),
+    ...(Object.keys(trackers).length > 0 ? { trackers: trackersWithoutCredentials(trackers) } : {}),
     ...(shared === undefined ? {} : { extends: withoutCredentials(shared) }),
     providers: Object.fromEntries(
       Object.entries(providers).map(([id, p]) => [
@@ -56,8 +59,22 @@ export function configHash(
         { ...p, baseUrl: withoutCredentials(p.baseUrl) },
       ]),
     ),
-    flags: { reviewers: args.reviewers, ultra: args.ultra, maxCostUsd: args.maxCostUsd },
+    flags: {
+      reviewers: args.reviewers,
+      ultra: args.ultra,
+      maxCostUsd: args.maxCostUsd,
+      noLinkedTasks: args.noLinkedTasks,
+    },
   });
+}
+
+function trackersWithoutCredentials(trackers: CliConfig["trackers"]): CliConfig["trackers"] {
+  const { jira, tapd } = trackers;
+  const clean = <T extends { server: { url: string } }>(t: T): T => ({
+    ...t,
+    server: { ...t.server, url: withoutCredentials(t.server.url) },
+  });
+  return { ...(jira ? { jira: clean(jira) } : {}), ...(tapd ? { tapd: clean(tapd) } : {}) };
 }
 
 function withoutCredentials(value: string): string {

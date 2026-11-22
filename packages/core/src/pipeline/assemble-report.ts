@@ -1,6 +1,7 @@
 import { effortWarnings, resolveAgents } from "../agent/settings.js";
 import { addUsage, emptyUsage, unpricedCalls } from "../agent/usage.js";
 import type { Usage } from "../contracts.js";
+import { projectDocUses } from "../docs/project-docs.js";
 import type { Finding, Severity } from "../domain.js";
 import type { LearningUse } from "../knowledge/learning.js";
 import { type ReviewReport, summarizeAnchoring } from "../report/report.js";
@@ -54,6 +55,11 @@ export function assembleReport(run: RunFacts, stages: Stages, context: StageCont
   const learnings = learningUses(plan);
   if (learnings.length > 0) report.learnings = learnings;
   if (plan.linkedTasks) report.linkedTasks = plan.linkedTasks.uses;
+  const docs = projectDocUses(
+    plan.docSections,
+    plan.bundles.map((b) => ({ label: b.label, files: b.files.map((f) => f.newPath) })),
+  );
+  if (docs.length > 0) report.projectDocs = docs;
   const evidence = evidenceUses(plan.evidence, plan.bundles);
   if (evidence.length > 0) report.analyzerEvidence = evidence;
   if (plan.scope) report.scope = plan.scope;

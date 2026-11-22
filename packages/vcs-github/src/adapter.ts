@@ -270,6 +270,7 @@ export function pullRequestOf(
     description: pr.body ?? "",
     baseSha: pr.base.sha,
     headSha: pr.head.sha,
+    branch: pr.head.ref,
     ...(pr.user ? { author: pr.user.login } : {}),
   };
 }

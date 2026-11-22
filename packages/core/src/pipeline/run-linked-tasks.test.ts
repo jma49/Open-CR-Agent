@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LINKED_TASK_LIMITS, type LinkedTask } from "../task/linked-task.js";
+import { LINKED_TASK_LIMITS, type LinkedTask, type TaskSource } from "../task/linked-task.js";
 import type { VcsAdapter } from "../vcs.js";
 import { patch, runtime, vcs } from "./run.fakes.js";
 import { review } from "./run.js";
@@ -21,7 +21,7 @@ const withTasks = (linkedTasks: VcsAdapter["linkedTasks"]): VcsAdapter => ({
   ...(linkedTasks ? { linkedTasks } : {}),
 });
 
-async function run(adapter: VcsAdapter, linkedTasks?: boolean) {
+async function run(adapter: VcsAdapter, linkedTasks?: boolean, taskSources?: TaskSource[]) {
   const agent = runtime(async function* (spec) {
     yield { type: "done", taskId: spec.taskId };
   });
@@ -30,6 +30,7 @@ async function run(adapter: VcsAdapter, linkedTasks?: boolean) {
     runtime: agent,
     stages: { verify: false, judge: false },
     ...(linkedTasks === undefined ? {} : { linkedTasks }),
+    ...(taskSources ? { taskSources } : {}),
   });
   return { report, prompts: agent.specs.map((s) => s.userPrompt) };
 }
@@ -109,5 +110,40 @@ describe("the tasks linked to the change (ADR-0052)", () => {
     expect(report.warnings).toContain(
       "the linked tasks could not be read: Resource not accessible by integration",
     );
+  });
+
+  it("add the tasks other trackers' keys name, after the platform's, up to the limit", async () => {
+    const fetched: string[] = [];
+    const jira: TaskSource = {
+      tracker: "jira",
+      keysIn: (text) => [...text.matchAll(/PAY-\d+/g)].map((m) => m[0]),
+      fetch: async (key) => {
+        fetched.push(key);
+        if (key === "PAY-9") throw new Error("server down");
+        if (key === "PAY-8") return undefined;
+        const { url: _, ...jiraTask } = task({ tracker: "jira", key, title: `Jira ${key}` });
+        return jiraTask;
+      },
+    };
+    const adapter: VcsAdapter = {
+      ...withTasks(async () => [task()]),
+      getChangeRequest: async () => ({
+        id: "7",
+        title: "PAY-1 retry",
+        description: "Also PAY-9, PAY-8 and PAY-1 again.",
+        baseSha: "a",
+        headSha: "b",
+        branch: "feature/PAY-2-retry",
+      }),
+    };
+    const { report } = await run(adapter, undefined, [jira]);
+    expect(fetched).toEqual(["PAY-1", "PAY-9", "PAY-8", "PAY-2"]);
+    expect(report.linkedTasks?.map((t) => t.key)).toEqual(["#12", "PAY-1", "PAY-2"]);
+    expect(report.warnings).toContain("jira task PAY-9 could not be read: server down");
+  });
+
+  it("are looked up from other trackers when the adapter cannot link any", async () => {
+    const jira: TaskSource = { tracker: "jira", keysIn: () => [], fetch: async () => undefined };
+    expect((await run(withTasks(undefined), undefined, [jira])).report.linkedTasks).toEqual([]);
   });
 });

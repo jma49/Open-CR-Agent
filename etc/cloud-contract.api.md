@@ -498,7 +498,7 @@ export const LEARNINGS_DIR = ".ocra/learnings";
 export type LearningSourceKind = (typeof LEARNING_SOURCES)[number];
 
 // @public (undocumented)
-export const LINKED_TASK_TRACKERS: readonly ["github", "gitlab"];
+export const LINKED_TASK_TRACKERS: readonly ["github", "gitlab", "jira", "tapd"];
 
 // @public (undocumented)
 export type LiveFinding = z.infer<typeof liveFindingSchema>;
@@ -1325,6 +1325,8 @@ export const reviewUploadSchema: z.ZodObject<{
         tracker: z.ZodEnum<{
             github: "github";
             gitlab: "gitlab";
+            jira: "jira";
+            tapd: "tapd";
         }>;
         key: z.ZodString;
         url: z.ZodCatch<z.ZodOptional<z.ZodURL>>;
@@ -1444,6 +1446,8 @@ export const sharedLinkedTaskSchema: z.ZodObject<{
     tracker: z.ZodEnum<{
         github: "github";
         gitlab: "gitlab";
+        jira: "jira";
+        tapd: "tapd";
     }>;
     key: z.ZodString;
     url: z.ZodCatch<z.ZodOptional<z.ZodURL>>;

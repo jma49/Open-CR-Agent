@@ -34,6 +34,7 @@ describe("GitLabAdapter", () => {
       description: "",
       baseSha: START,
       headSha: HEAD,
+      branch: "feature",
     });
   });
 

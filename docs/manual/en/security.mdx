@@ -31,7 +31,7 @@ Nothing else is added: your global OpenCode configuration, installed skills and 
 
 ## Untrusted input
 
-Pull request text, linked issues, diffs, repository files, rules, guidelines, tool results, SARIF logs passed with `--import-sarif` or `--sarif-evidence`, replies to findings, and everything models write about them (findings, plans, relocated quotes) are data; instructions inside them are never followed.
+Pull request text, linked issues and tracker tasks, diffs, repository files, rules, guidelines, tool results, SARIF logs passed with `--import-sarif` or `--sarif-evidence`, replies to findings, and everything models write about them (findings, plans, relocated quotes) are data; instructions inside them are never followed.
 
 - ocra's own sections are tagged `<ocra_…>`. Text in the data that could form such a tag (look-alike brackets and letters, fullwidth and other compatibility forms, spacing, case and invisible characters included) is rewritten to `‹ocra_…`, and a `<` that ends a field becomes `‹`, so two fields cannot form a tag where they meet: data can neither leave its section nor pose as another finding. Ordinary HTML and XML in reviewed code pass unchanged.
 - Pull request titles and descriptions are capped in length; a reviewer reports at most 50 findings per task, with bounded text.
