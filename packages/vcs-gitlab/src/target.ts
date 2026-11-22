@@ -57,8 +57,8 @@ export async function gitlabApi(options: ApiOptions, named: string | undefined, 
     );
   }
   const origin = await options.origin();
-  const project = named ?? env.CI_PROJECT_ID ?? gitlabProject(origin);
   const apiUrl = gitlabApiUrl(env.CI_API_V4_URL, remoteHost(origin), options.warn);
+  const project = named ?? env.CI_PROJECT_ID ?? gitlabProject(origin, apiUrl);
   const api = new GitLabApi(project, {
     token,
     baseUrl: apiUrl,
@@ -114,13 +114,17 @@ function remoteHost(url: string | undefined): string | undefined {
 }
 
 // The project behind the origin remote: any host, since GitLab runs on many.
-function gitlabProject(url: string | undefined): string {
+// An HTTPS remote of an instance installed under a relative URL root
+// (https://example.com/gitlab/group/project) has the API's root before it.
+function gitlabProject(url: string | undefined, apiUrl: string): string {
   const match = url && /^(?:[\w+.-]+:\/\/[^/]+\/|[^@\s]+@[^:]+:)(.+?)(?:\.git)?\/?$/.exec(url);
-  if (!match?.[1]) {
+  if (!url || !match?.[1]) {
     throw new OcraError(
       "CONFIG_INVALID",
       "Cannot tell which GitLab project this is; pass --project <id|path>",
     );
   }
-  return match[1];
+  const root = new URL(apiUrl).pathname.replace(/\/api\/v4\/?$/, "").replace(/^\/+/, "");
+  const underRoot = root && /^[\w+.-]+:\/\//.test(url) && match[1].startsWith(`${root}/`);
+  return underRoot ? match[1].slice(root.length + 1) : match[1];
 }
