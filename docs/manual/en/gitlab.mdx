@@ -138,6 +138,7 @@ An untried design that keeps the token and key from developers altogether, with 
 ## Self-managed GitLab
 
 - In GitLab CI, `CI_API_V4_URL` and `CI_PROJECT_ID` are set for you. Elsewhere, set `CI_API_V4_URL` (for example `https://gitlab.example.com/api/v4`) and pass `--project <id|path>` or let ocra read it from the `origin` remote. Without `CI_API_V4_URL` ocra uses GitLab.com, and stops when `origin` is on another host, so your instance's token never goes to GitLab.com. It warns when `CI_API_V4_URL` and `origin` are on different hosts.
+- For an instance installed under a relative URL root, `CI_API_V4_URL` includes it (`https://example.com/gitlab/api/v4`), and ocra reads the project from an HTTPS `origin` below that root.
 - For a private certificate authority, point `NODE_EXTRA_CA_CERTS` at its certificate.
 - The token needs the `api` scope: `read_api` cannot post comments.
 

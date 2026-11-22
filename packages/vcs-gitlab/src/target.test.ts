@@ -65,6 +65,21 @@ describe("resolveGitLabTarget", () => {
     });
   });
 
+  it("finds the project under the relative root of an instance installed under a path", async () => {
+    const env = { GITLAB_TOKEN: "t", CI_API_V4_URL: "https://example.com/gitlab/api/v4" };
+    const https = options(env, "https://example.com/gitlab/g/p.git");
+    await resolveGitLabTarget(https.options);
+    expect(https.api.urls).toEqual([
+      "https://example.com/gitlab/api/v4/projects/g%2Fp/merge_requests/7",
+    ]);
+    // An SSH remote names the project without the root.
+    const ssh = options(env, "git@example.com:g/p.git");
+    await resolveGitLabTarget(ssh.options);
+    expect(ssh.api.urls).toEqual([
+      "https://example.com/gitlab/api/v4/projects/g%2Fp/merge_requests/7",
+    ]);
+  });
+
   it("gives the adapter the merge request as ocra reads it", async () => {
     const { options: o } = options({ GITLAB_TOKEN: "t", CI_PROJECT_ID: "42" }, undefined);
     const signal = new AbortController().signal;
