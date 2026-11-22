@@ -12,7 +12,7 @@ export interface GitHubSettings {
 
 // A pull request on GitHub. GITHUB_TOKEN (or GH_TOKEN) is the credential,
 // GITHUB_API_URL the API of GitHub Enterprise Server; the repository is
-// --repo, else GITHUB_REPOSITORY, else origin's.
+// --repo, else GITHUB_REPOSITORY, else origin's on github.com or that server.
 export async function resolveGitHubTarget(
   options: ResolveTargetOptions,
 ): Promise<PlatformTarget<GitHubSettings>> {
@@ -75,12 +75,32 @@ export async function githubApi(options: ApiOptions, repository: string | undefi
 async function repositoryName(options: Pick<ApiOptions, "env" | "origin">): Promise<string> {
   if (options.env.GITHUB_REPOSITORY) return options.env.GITHUB_REPOSITORY;
   const url = await options.origin();
-  const match = url && /github\.com[:/]([\w.-]+\/[\w.-]+?)(?:\.git)?$/.exec(url);
-  if (!match?.[1]) {
+  const name = url
+    ? githubHosts(options.env.GITHUB_API_URL)
+        .map((host) => repositoryOn(host, url))
+        .find(Boolean)
+    : undefined;
+  if (!name) {
     throw new OcraError(
       "CONFIG_INVALID",
       "Cannot tell which GitHub repository this is; pass --repo owner/name",
     );
   }
-  return match[1];
+  return name;
+}
+
+// github.com, and the GitHub Enterprise Server whose API GITHUB_API_URL is.
+function githubHosts(apiUrl: string | undefined): string[] {
+  const server = apiUrl && URL.canParse(apiUrl) ? new URL(apiUrl).hostname : undefined;
+  return server && server !== "api.github.com" ? ["github.com", server] : ["github.com"];
+}
+
+// `owner/name` of an HTTPS or SSH remote on `host`, any port.
+function repositoryOn(host: string, url: string): string | undefined {
+  const escaped = host.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(
+    `(?:^|[@/.])${escaped}(?::\\d+)?[:/]([\\w.-]+/[\\w.-]+?)(?:\\.git)?/?$`,
+    "i",
+  );
+  return pattern.exec(url)?.[1];
 }

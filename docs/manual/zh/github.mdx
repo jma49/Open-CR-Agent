@@ -491,4 +491,4 @@ ocra review --pr 42               # 审查并打印，和本地审查一样
 ocra review --pr 42 --publish     # 同时发布评审
 ```
 
-token 来自 `GITHUB_TOKEN` 或 `GH_TOKEN`；GitHub Enterprise 请设置 `GITHUB_API_URL`（例如 `https://github.example.com/api/v3`）并传 `--repo`。仓库来自 `--repo owner/name`、`GITHUB_REPOSITORY` 或指向 github.com 的 `origin` 远端。缺少的 PR commit 由 ocra 自动拉取。
+token 来自 `GITHUB_TOKEN` 或 `GH_TOKEN`；GitHub Enterprise Server 请设置 `GITHUB_API_URL`（例如 `https://github.example.com/api/v3`）。仓库来自 `--repo owner/name`、`GITHUB_REPOSITORY`，或指向 github.com、或指向 `GITHUB_API_URL` 所在服务器的 `origin` 远端。缺少的 PR commit 由 ocra 自动拉取。

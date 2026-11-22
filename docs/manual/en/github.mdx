@@ -492,4 +492,4 @@ ocra review --pr 42               # review and print, like a local review
 ocra review --pr 42 --publish     # also post the review
 ```
 
-The token comes from `GITHUB_TOKEN` or `GH_TOKEN`; for GitHub Enterprise set `GITHUB_API_URL` (for example `https://github.example.com/api/v3`) and pass `--repo`. The repository comes from `--repo owner/name`, `GITHUB_REPOSITORY`, or an `origin` remote on github.com. ocra fetches missing pull request commits.
+The token comes from `GITHUB_TOKEN` or `GH_TOKEN`; for GitHub Enterprise Server set `GITHUB_API_URL` (for example `https://github.example.com/api/v3`). The repository comes from `--repo owner/name`, `GITHUB_REPOSITORY`, or an `origin` remote on github.com or on the server `GITHUB_API_URL` names. ocra fetches missing pull request commits.
