@@ -55,6 +55,7 @@
     "zod": "^4.6.6"
   },
   "optionalDependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@open-cr-agent/runtime-opencode": "0.10.0"
   },
   "publishConfig": {

@@ -4,8 +4,9 @@ import type { ReviewEvent as WireEvent } from "@open-cr-agent/cloud-contract";
 import type { ReviewEvent } from "@open-cr-agent/core";
 import { reviewReport } from "@open-cr-agent/test-support";
 import { afterEach, describe, expect, it } from "vitest";
+import type { RunRequest } from "../commands/review/request.js";
 import { type ReviewStarter, Runs } from "./runs.js";
-import { type RunRequest, serveServer } from "./server.js";
+import { serveServer } from "./server.js";
 
 const token = "t".repeat(64);
 const open: Array<() => Promise<void>> = [];
