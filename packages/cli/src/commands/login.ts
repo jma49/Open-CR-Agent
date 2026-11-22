@@ -20,8 +20,8 @@ export const LOGIN_USAGE = `Usage: ocra login [--no-browser]
        ocra logout
        ocra whoami
 
-Sign in to ocra Cloud with GitHub, so reviews can use the model keys stored
-there. ocra login shows a code, opens the browser to confirm it, and saves the
+Sign in to ocra Cloud, so reviews can use the models and keys it holds for
+you. ocra login shows a code, opens the browser to confirm it, and saves the
 session to ${credentialsHint()} (readable only by you).
 
 Environment:

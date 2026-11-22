@@ -392,7 +392,7 @@ When you are [signed in](#ocra-login-ocra-logout-ocra-whoami), you can also reme
 
 ## ocra login, ocra logout, ocra whoami
 
-**In development.** ocra Cloud ([ADR-0024](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0024-ocra-cloud.md)) lives at https://app.ocracloud.com; `OCRA_CLOUD_URL` names another server. Reviews work without a login, and with `OCRA_CLOUD=off` these commands refuse to run.
+**In development.** ocra Cloud ([ADR-0024](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0024-ocra-cloud.md)) lives at https://app.ocracloud.com; `OCRA_CLOUD_URL` names another server, such as a company's self-hosted one; when its certificate comes from the company's own authority, give that authority to Node with `NODE_EXTRA_CA_CERTS`, or every call fails naming the certificate error. Reviews work without a login, and with `OCRA_CLOUD=off` these commands refuse to run.
 
 ```bash
 ocra login                                    # shows a code and opens the browser to confirm it
@@ -400,7 +400,7 @@ ocra whoami                                   # the signed-in GitHub account, an
 ocra logout                                   # ends the session on the server and deletes it here
 ```
 
-`ocra login` uses the OAuth device flow (RFC 8628): it prints a code such as `BCDF-GHJK`, opens the server's confirmation page (`--no-browser` only prints the link; a page off the server in use, or not https or local http, is only printed), and waits for you to approve it in a browser signed in with GitHub. Approve only a code you just asked for. The session can call models with the server's stored keys and upload results, but cannot read those keys or change the account; revoke it on the server's sessions page.
+`ocra login` uses the OAuth device flow (RFC 8628): it prints a code such as `BCDF-GHJK`, opens the server's confirmation page (`--no-browser` only prints the link; a page off the server in use, or not https or local http, is only printed), and waits for you to approve it in a browser signed in to the server. Approve only a code you just asked for. The session can call models with the server's stored keys and upload results, but cannot read those keys or change the account; revoke it on the server's sessions page.
 
 **The session** is saved in `~/.config/ocra/credentials.json` (`$XDG_CONFIG_HOME/ocra/`, or `%APPDATA%\ocra\` on Windows), readable only by you.
 

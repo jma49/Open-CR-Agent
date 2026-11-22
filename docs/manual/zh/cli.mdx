@@ -392,7 +392,7 @@ ocra memory list
 
 ## ocra login、ocra logout、ocra whoami
 
-**开发中。** ocra Cloud（[ADR-0024](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0024-ocra-cloud.md)）的地址是 https://app.ocracloud.com；`OCRA_CLOUD_URL` 可以指定其他服务器。不登录也能审查；设置 `OCRA_CLOUD=off` 后这几个命令拒绝运行。
+**开发中。** ocra Cloud（[ADR-0024](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0024-ocra-cloud.md)）的地址是 https://app.ocracloud.com；`OCRA_CLOUD_URL` 可以指定其他服务器，例如公司自己部署的服务器；它的证书由公司自己的证书颁发机构签发时，用 `NODE_EXTRA_CA_CERTS` 把该机构交给 Node，否则每次调用都会失败并给出证书错误。不登录也能审查；设置 `OCRA_CLOUD=off` 后这几个命令拒绝运行。
 
 ```bash
 ocra login                                    # 显示一个验证码，并打开浏览器确认
@@ -400,7 +400,7 @@ ocra whoami                                   # 当前登录的 GitHub 账号，
 ocra logout                                   # 在服务器上结束会话，并删除本地保存的会话
 ```
 
-`ocra login` 使用 OAuth 设备授权流程（RFC 8628）：打印一个验证码（如 `BCDF-GHJK`），打开服务器上的确认页（加 `--no-browser` 只打印链接；不在当前服务器上、或不是 https 或本机 http 的页面只打印），然后等待你在已用 GitHub 登录的浏览器里批准。只批准你自己刚刚发起的验证码。这个会话可以用服务器上保存的 key 调用模型、上传结果，但不能读取这些 key，也不能修改账号；可在服务器的会话页面撤销。
+`ocra login` 使用 OAuth 设备授权流程（RFC 8628）：打印一个验证码（如 `BCDF-GHJK`），打开服务器上的确认页（加 `--no-browser` 只打印链接；不在当前服务器上、或不是 https 或本机 http 的页面只打印），然后等待你在已登录该服务器的浏览器里批准。只批准你自己刚刚发起的验证码。这个会话可以用服务器上保存的 key 调用模型、上传结果，但不能读取这些 key，也不能修改账号；可在服务器的会话页面撤销。
 
 **会话**保存在 `~/.config/ocra/credentials.json`（`$XDG_CONFIG_HOME/ocra/`，Windows 上为 `%APPDATA%\ocra\`），只有你本人可读。
 

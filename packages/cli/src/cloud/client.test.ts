@@ -213,6 +213,26 @@ describe("an answer that is not one", () => {
     expect(isOcraError(error, "CLOUD_API_FAILED")).toBe(true);
     expect(errorMessage(error)).toBe("fetch failed");
   });
+
+  it("names why it could not be sent, and how to trust a server's own certificate authority", async () => {
+    const failing = (code: string, message: string) => () => {
+      throw new TypeError("fetch failed", { cause: Object.assign(new Error(message), { code }) });
+    };
+    const reason = async (fail: () => never) => {
+      const m = machine({ "/api/preferences": fail }, {});
+      return errorMessage(await new CloudClient(m.deps).preferences().catch((e: unknown) => e));
+    };
+    expect(await reason(failing("ENOTFOUND", "getaddrinfo ENOTFOUND ocra.test"))).toBe(
+      "fetch failed: getaddrinfo ENOTFOUND ocra.test",
+    );
+    expect(
+      await reason(
+        failing("UNABLE_TO_VERIFY_LEAF_SIGNATURE", "unable to verify the first certificate"),
+      ),
+    ).toBe(
+      "fetch failed: unable to verify the first certificate (trust the server's certificate authority with NODE_EXTRA_CA_CERTS)",
+    );
+  });
 });
 
 describe("an answer longer than any ocra Cloud gives", () => {
