@@ -1,4 +1,5 @@
 import type { Bundle } from "../bundle/bundle.js";
+import { type GuidelineScope, guidelinesForTask, type TaskGuidelines } from "../docs/guidelines.js";
 import { sectionsFor } from "../docs/project-docs.js";
 import type { MatrixCell } from "../matrix/matrix.js";
 import { memoryFor } from "../memory/memory.js";
@@ -34,6 +35,8 @@ export interface TaskSettings {
   ultra: boolean;
   // Sources an ablation run leaves out of every prompt (ADR-0057).
   without?: ReadonlySet<OptionalContext>;
+  // Which guideline sections each task is given (ADR-0058); "all" unless set.
+  guidelineScope?: GuidelineScope;
   // The files a security reviewer reviews in the run (securityReviewed).
   securityFiles: ReadonlySet<string>;
 }
@@ -43,7 +46,7 @@ export interface TaskSettings {
 export function taskPrompt(
   cell: MatrixCell,
   plan: ReviewPlan,
-  { ultra, securityFiles, without }: TaskSettings,
+  { ultra, securityFiles, without, guidelineScope = "all" }: TaskSettings,
 ): TaskPrompt {
   const files = cell.bundle.files.map((f) => f.newPath);
   const learnings = plan.learnings(cell.bundle.files);
@@ -60,7 +63,14 @@ export function taskPrompt(
     bundle: cell.bundle.files,
     rules: resolveRules(files, [], cell.reviewer.rules),
     repoRules: resolveRules(files, plan.repoRules),
-    guidelines: plan.guidelines,
+    ...guidelinesInput(
+      guidelinesForTask(
+        plan.guidelineSections,
+        guidelineScope,
+        files,
+        cell.reviewer.scope?.requiresGuidelines === true,
+      ),
+    ),
     ...(plan.linkedTasks && plan.linkedTasks.given.length > 0
       ? { linkedTasks: plan.linkedTasks.given }
       : {}),
@@ -82,6 +92,16 @@ export function taskPrompt(
       key: `${cell.reviewer.id}\0${cell.bundle.label}`,
       prompt: () => buildReviewPrompt({ ...input, forPlanning: true }),
     },
+  };
+}
+
+function guidelinesInput(
+  guidelines: TaskGuidelines | undefined,
+): Pick<ReviewPromptInput, "guidelines" | "moreGuidelines"> {
+  if (!guidelines) return {};
+  return {
+    guidelines: guidelines.text,
+    ...(guidelines.left.length > 0 ? { moreGuidelines: guidelines.left } : {}),
   };
 }
 

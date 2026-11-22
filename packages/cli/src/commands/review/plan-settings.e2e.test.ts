@@ -104,7 +104,7 @@ describe("--plan's settings and sources (golden)", () => {
         exclude             ["vendor/**"]  (shared)
         rules               [{"path":"**","source":"shared"},{"path":"**/*.ts","source":"account"}]  (shared+account)
         ultra               true  (account)
-        default: taskTimeoutMinutes, runTimeoutMinutes, verify, judge, showPreExisting, walkthrough, fixes, linkedTasks, sampling
+        default: taskTimeoutMinutes, runTimeoutMinutes, verify, judge, showPreExisting, walkthrough, fixes, linkedTasks, guidelineScope, sampling
       "
     `);
 
@@ -139,6 +139,7 @@ describe("--plan's settings and sources (golden)", () => {
           "{"key":"walkthrough","source":"default"}",
           "{"key":"fixes","source":"default"}",
           "{"key":"linkedTasks","source":"default"}",
+          "{"key":"guidelineScope","source":"default"}",
           "{"key":"sampling","source":"default"}",
           "{"key":"include","value":["**/*.ts"],"source":"file"}",
           "{"key":"exclude","value":["vendor/**"],"source":"shared"}",
@@ -163,7 +164,7 @@ describe("--plan's settings and sources (golden)", () => {
     expect(settingsOf(text.out)).toMatchInlineSnapshot(`
       "
       Settings:
-        default: runtime, models.top, models.standard, models.light, effort.top, effort.standard, effort.light, concurrency, taskTimeoutMinutes, runTimeoutMinutes, maxCostUsd, maxTasks, verify, judge, showPreExisting, walkthrough, fixes, linkedTasks, sampling, include, exclude, rules
+        default: runtime, models.top, models.standard, models.light, effort.top, effort.standard, effort.light, concurrency, taskTimeoutMinutes, runTimeoutMinutes, maxCostUsd, maxTasks, verify, judge, showPreExisting, walkthrough, fixes, linkedTasks, guidelineScope, sampling, include, exclude, rules
       "
     `);
     const json = JSON.parse((await plan(["--format", "json"], {}, cwd)).out);
@@ -191,6 +192,7 @@ describe("--plan's settings and sources (golden)", () => {
           "{"key":"walkthrough","source":"default"}",
           "{"key":"fixes","source":"default"}",
           "{"key":"linkedTasks","source":"default"}",
+          "{"key":"guidelineScope","source":"default"}",
           "{"key":"sampling","source":"default"}",
           "{"key":"include","source":"default"}",
           "{"key":"exclude","source":"default"}",

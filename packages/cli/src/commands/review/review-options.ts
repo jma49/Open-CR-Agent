@@ -1,4 +1,4 @@
-import type { ReviewLimits, ReviewOptions } from "@open-cr-agent/core";
+import type { GuidelineScope, ReviewLimits, ReviewOptions } from "@open-cr-agent/core";
 import type { ReviewArgs } from "./args.js";
 import type { ResolvedRun } from "./resolve-run.js";
 
@@ -35,6 +35,7 @@ export function configuredOptions(run: ResolvedRun, args: ReviewArgs): Configure
     readTrusted: (path) => run.target.trusted.readFile(path),
     learnings: run.learnings,
     ...(args.noLinkedTasks || config.linkedTasks === false ? { linkedTasks: false } : {}),
+    ...scopeOf(args.guidelineScope ?? config.guidelineScope),
     ...(run.taskSources.length > 0 ? { taskSources: run.taskSources } : {}),
     ...(run.projectDocs.length > 0 ? { projectDocs: run.projectDocs } : {}),
     ...(config.mergeChecks?.length ? { mergeChecks: config.mergeChecks } : {}),
@@ -54,4 +55,8 @@ export function configuredOptions(run: ResolvedRun, args: ReviewArgs): Configure
       ...(args.without ? { without: args.without } : {}),
     },
   };
+}
+
+function scopeOf(scope: GuidelineScope | undefined): { guidelineScope?: GuidelineScope } {
+  return scope ? { guidelineScope: scope } : {};
 }

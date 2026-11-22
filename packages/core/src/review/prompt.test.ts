@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { parseUnifiedDiff } from "../diff/parse.js";
+import { MAX_GUIDELINES_CHARS } from "../docs/guidelines.js";
 import type { ChangeRequest } from "../domain.js";
-import { buildReviewPrompt, MAX_GUIDELINES_CHARS, type ReviewPromptInput } from "./prompt.js";
+import { buildReviewPrompt, type ReviewPromptInput } from "./prompt.js";
 import { correctnessReviewer } from "./reviewers/correctness.js";
 
 const diffs = parseUnifiedDiff(

@@ -1,6 +1,8 @@
 import { parseArgs } from "node:util";
 import {
   errorMessage,
+  GUIDELINE_SCOPES,
+  type GuidelineScope,
   isOptionalContext,
   OPTIONAL_CONTEXT,
   type OptionalContext,
@@ -50,6 +52,8 @@ export interface ReviewArgs {
   noLinkedTasks?: true;
   // Context left out of every review prompt, for an ablation run (ADR-0057).
   without?: OptionalContext[];
+  // Which sections of AGENTS.md each task is given; overrides guidelineScope.
+  guidelineScope?: GuidelineScope;
   // Override the configuration's sampling.
   temperature?: number;
   seed?: number;
@@ -100,6 +104,9 @@ Options:
                      only the rest run and are paid for; not with --plan
   --no-linked-tasks  With --pr or --mr: do not give reviewers the issues the
                      change closes (linkedTasks in config)
+  --guidelines <scope>  Which sections of AGENTS.md each review task is given:
+                     all (default), matched (those about its files) or
+                     reviewer (only the guidelines reviewer); guidelineScope
   --without <sources>  Leave these context sources out of every review prompt
                      (comma-separated), to measure what each is worth:
                      ${OPTIONAL_CONTEXT.join(", ")}
@@ -199,6 +206,13 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
     args.resume = values.resume;
   }
   if (values.without !== undefined) args.without = parseWithout(values.without);
+  if (values.guidelines !== undefined) {
+    const scope = values.guidelines;
+    if (!(GUIDELINE_SCOPES as readonly string[]).includes(scope)) {
+      throw new UsageError(`--guidelines must be ${GUIDELINE_SCOPES.join(", ")}, got ${scope}`);
+    }
+    args.guidelineScope = scope as GuidelineScope;
+  }
   if (values.reviewers !== undefined) {
     const ids = values.reviewers
       .split(",")
@@ -242,6 +256,7 @@ function parse(argv: string[]) {
       config: { type: "string" },
       reviewers: { type: "string" },
       without: { type: "string" },
+      guidelines: { type: "string" },
       "max-cost-usd": { type: "string" },
       "import-sarif": { type: "string", multiple: true },
       "sarif-evidence": { type: "string", multiple: true },

@@ -132,6 +132,14 @@
     "linkedTasks": {
       "type": "boolean"
     },
+    "guidelineScope": {
+      "type": "string",
+      "enum": [
+        "all",
+        "matched",
+        "reviewer"
+      ]
+    },
     "trackers": {
       "default": {},
       "type": "object",

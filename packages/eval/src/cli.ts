@@ -17,7 +17,7 @@ const USAGE = `Usage: ocra-eval <command> [options]
 Commands:
   list                 Show the PRs a selection would review (free)
   ceiling              Recall ceiling of the deterministic stages (free, no model)
-  context [--without <sources>]
+  context [--without <sources>] [--guidelines <scope>]
                        Each review task's first prompt by context source: tokens,
                        cuts and duplicated lines (free, no model)
   run                  Review the selected PRs with ocra, then score them
@@ -88,6 +88,7 @@ Run:
                            on a rate limit for example
   --reviewers <ids>        Passed to ocra review --reviewers
   --ultra                  Passed to ocra review --ultra (recall mode; about twice the cost)
+  --guidelines <scope>     Passed to ocra review --guidelines: all, matched or reviewer
   --without <sources>      Passed to ocra review --without: leave these context
                            sources out of every prompt, for an ablation run
   --fixes                  Passed to ocra review --fixes: propose checked fixes, which

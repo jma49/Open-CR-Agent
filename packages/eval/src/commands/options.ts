@@ -1,7 +1,13 @@
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { isOptionalContext, OPTIONAL_CONTEXT, proxiedFetch } from "@open-cr-agent/core";
+import {
+  GUIDELINE_SCOPES,
+  type GuidelineScope,
+  isOptionalContext,
+  OPTIONAL_CONTEXT,
+  proxiedFetch,
+} from "@open-cr-agent/core";
 import { loadDataset } from "../dataset.js";
 import { loadGolden } from "../golden.js";
 import type { Dataset, Instance } from "../instance.js";
@@ -49,6 +55,7 @@ const OPTIONS = {
   register: { type: "string" },
   "dry-run": { type: "boolean" },
   without: { type: "string" },
+  guidelines: { type: "string" },
 } as const;
 
 export function parse(argv: string[]) {
@@ -73,8 +80,44 @@ export function selection(values: ReturnType<typeof parse>["values"]): Selection
   return options;
 }
 
-// The context sources an ablation run leaves out (ocra review --without).
-export function without(values: { without?: string | undefined }): string[] {
+// What an ablation run changes in every review prompt (ADR-0057, ADR-0058):
+// the sources it leaves out and the guidelines it gives.
+export interface ContextChoice {
+  without: string[];
+  guidelines?: GuidelineScope;
+}
+
+export function contextChoice(values: {
+  without?: string | undefined;
+  guidelines?: string | undefined;
+}): ContextChoice {
+  const scope = values.guidelines;
+  if (scope !== undefined && !(GUIDELINE_SCOPES as readonly string[]).includes(scope)) {
+    throw new Error(`--guidelines must be ${GUIDELINE_SCOPES.join(", ")}`);
+  }
+  return {
+    without: without(values),
+    ...(scope === undefined ? {} : { guidelines: scope as GuidelineScope }),
+  };
+}
+
+// As ocra review takes them.
+export function contextArgs(choice: ContextChoice): string[] {
+  return [
+    ...(choice.without.length > 0 ? ["--without", choice.without.join(",")] : []),
+    ...(choice.guidelines ? ["--guidelines", choice.guidelines] : []),
+  ];
+}
+
+export function describeContext(choice: ContextChoice): string | undefined {
+  const parts = [
+    ...(choice.without.length > 0 ? [`left out: ${choice.without.join(", ")}`] : []),
+    ...(choice.guidelines ? [`guidelines: ${choice.guidelines}`] : []),
+  ];
+  return parts.length > 0 ? parts.join("; ") : undefined;
+}
+
+function without(values: { without?: string | undefined }): string[] {
   if (values.without === undefined) return [];
   const names = values.without
     .split(",")

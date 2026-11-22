@@ -100,6 +100,7 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
       ultra: settings.ultra,
       securityFiles,
       without: settings.without,
+      guidelineScope: settings.guidelineScope,
     });
     const task: PreviewTask = {
       taskId: cell.taskId,

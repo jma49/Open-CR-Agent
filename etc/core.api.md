@@ -558,6 +558,12 @@ export interface FixSummary {
 }
 
 // @public (undocumented)
+export const GUIDELINE_SCOPES: readonly ["all", "matched", "reviewer"];
+
+// @public (undocumented)
+export type GuidelineScope = (typeof GUIDELINE_SCOPES)[number];
+
+// @public (undocumented)
 export interface Hunk {
     // (undocumented)
     header: string;
@@ -1761,6 +1767,8 @@ export interface ReviewOptions {
     accountMemory?: readonly MemoryEntry[];
     // (undocumented)
     effort?: TierEfforts;
+    // (undocumented)
+    guidelineScope?: GuidelineScope;
     // (undocumented)
     identity?: RunIdentity;
     // (undocumented)

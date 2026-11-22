@@ -5,6 +5,7 @@ import {
   EFFORT_LEVELS,
   type Effort,
   type Finding,
+  GUIDELINE_SCOPES,
   MODEL_TIERS,
   REVIEW_STAGES,
   type RiskTier,
@@ -52,6 +53,7 @@ describe("the contract's vocabulary", () => {
     expect(contract.MODEL_TIERS).toEqual(MODEL_TIERS);
     expect(contract.AGENT_ROLES).toEqual(AGENT_ROLES);
     expect(contract.STAGES).toEqual(REVIEW_STAGES);
+    expect(contract.GUIDELINE_SCOPES).toEqual(GUIDELINE_SCOPES);
     expect(contract.MAX_TIMEOUT_MINUTES).toBe(Math.floor(MAX_TIMER_MS / 60_000));
   });
 });
