@@ -53,6 +53,14 @@ describe("checkBudgets", () => {
     expect(row?.over).toEqual(["setup 16 s > 15 s"]);
   });
 
+  it("counts a plain npm ci step as setup", () => {
+    const plain = job("verify", { end: 22, setup: 16 });
+    plain.steps[1] = { ...plain.steps[1], name: "Run npm ci" };
+    const [row] = checkBudgets([plain], BUDGETS);
+    expect(row?.setup).toBe(16);
+    expect(row?.over).toEqual(["setup 16 s > 15 s"]);
+  });
+
   it("judges failed jobs too, and leaves out skipped, cancelled and unfinished ones", () => {
     const rows = checkBudgets(
       [

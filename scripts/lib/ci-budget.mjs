@@ -30,9 +30,9 @@
  */
 
 // The steps that make the machine ready: the runner's own, the checkout and
-// Node with the dependencies.
+// Node with the dependencies, through the setup action or `npm ci`.
 const SETUP_STEP =
-  /^(Set up job|Initialize containers|Run actions\/checkout|Run actions\/setup-node|Run \.\/\.github\/actions\/setup)/;
+  /^(Set up job|Initialize containers|Run actions\/checkout|Run actions\/setup-node|Run \.\/\.github\/actions\/setup|Run npm ci\b)/;
 const FINISHED = new Set(["success", "failure"]);
 
 /** @param {string | null} from @param {string | null} to */
