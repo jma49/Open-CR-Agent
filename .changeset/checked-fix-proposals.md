@@ -3,7 +3,6 @@
 "@open-cr-agent/core": minor
 "@open-cr-agent/code-graph": minor
 "@open-cr-agent/cloud-contract": minor
-"@open-cr-agent/eval": minor
 ---
 
 ### Added
