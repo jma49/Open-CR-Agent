@@ -141,7 +141,7 @@ export const configSchema = z
     walkthrough: z.boolean().optional(),
     fixes: z.boolean().optional(),
     linkedTasks: z.boolean().optional(),
-    // Which sections of AGENTS.md each review task is given (ADR-0058).
+    // Which sections of AGENTS.md each review task is given (ADR-0059).
     guidelineScope: z.enum(GUIDELINE_SCOPES).optional(),
     trackers: trackersSchema.default({}),
     // Markdown files, or directories of them, in the repository (ADR-0052).

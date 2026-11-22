@@ -7,7 +7,7 @@ export interface RunPlan {
   tier?: string;
   ids: readonly string[];
   repeat: number;
-  // What every review changes in its prompts (ADR-0057, ADR-0058).
+  // What every review changes in its prompts (ADR-0057, ADR-0059).
   context?: string;
   prMaxCostUsd?: number;
   maxCostUsd?: number;

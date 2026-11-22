@@ -56,7 +56,7 @@ export interface ReviewOptions {
   // The team's learnings, which the caller reads from the same trusted
   // revision as the rules (ADR-0037); each task is given those that apply.
   learnings?: readonly Learning[];
-  // Which sections of AGENTS.md each review task is given (ADR-0058):
+  // Which sections of AGENTS.md each review task is given (ADR-0059):
   // "all" (the default), "matched" (those that apply to its files) or
   // "reviewer" (only the reviewers that check the guidelines).
   guidelineScope?: GuidelineScope;

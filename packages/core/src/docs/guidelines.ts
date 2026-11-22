@@ -1,5 +1,5 @@
 // The repository's guidelines (AGENTS.md) as whole sections, and which of
-// them a review task is given (ADR-0058). A section is never cut: one that
+// them a review task is given (ADR-0059). A section is never cut: one that
 // does not fit the budget is left out and listed by its heading.
 
 export const GUIDELINE_SCOPES = ["all", "matched", "reviewer"] as const;
