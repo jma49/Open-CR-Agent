@@ -8,7 +8,7 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [0.12.0] - 2026-11-22
 
-`ocra review --fixes` proposes fixes that are checked against the reviewed head, `--without` measures what each context source is worth, and every context source has a bound. The Action's new tag is `jma49/Open-CR-Agent@v0.12.0`.
+`ocra review --fixes` proposes fixes, each checked against the reviewed head, `--without` measures what each context source is worth, and every context source has a bound. The Action's new tag is `jma49/Open-CR-Agent@v0.12.0`.
 
 ### Added
 
