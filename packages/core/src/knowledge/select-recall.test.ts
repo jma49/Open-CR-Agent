@@ -56,7 +56,7 @@ function tokensOf(given: readonly Learning[], listed: readonly Learning[]): numb
 function replay(learnings: readonly Learning[]): Outcome[] {
   const select = learningSelector(learnings);
   return CASES.map((c) => {
-    const { selected, left } = select(filesOf(c));
+    const { selected, left } = select(filesOf(c), c.around);
     const listedLearnings = left.slice(0, MAX_LISTED_LEARNINGS);
     const given = new Set(selected.map((l) => l.id));
     const shown = new Set([...given, ...listedLearnings.map((l) => l.id)]);
@@ -153,15 +153,21 @@ describe.each([
 });
 
 // With many lessons on the same paths, a needed learning with no symbol or
-// keyword in the change ties with its neighbours and may fall to the
-// listing; one the change gives evidence for must still be given.
+// keyword in the change or the code around it ties with its neighbours and
+// may fall to the listing; one the change gives evidence for must still be
+// given.
 describe("learning selection replayed among other lessons on the same paths", () => {
   const outcomes = replay(DENSE);
   const byId = new Map(CORPUS.map((l) => [l.id, l]));
+  // Evidence is what ranks a learning above a copy of it with no symbols or
+  // keywords: in the patch, or around it on the learning's paths.
   const evidenced = (id: string, c: RecallCase) => {
     const l = byId.get(id);
     if (l === undefined) return false;
-    return learningSelector([{ ...l, paths: ["/nowhere"] }])(filesOf(c)).selected.length === 1;
+    const bare = { ...l, id: "0", symbols: [], keywords: [], critical: false };
+    const limits = { ...DEFAULT_SELECTION_LIMITS, maxSelected: 1 };
+    const { selected } = learningSelector([l, bare], limits)(filesOf(c), c.around);
+    return selected[0]?.id === id;
   };
 
   it("gives every needed learning the change has a symbol or keyword of", () => {

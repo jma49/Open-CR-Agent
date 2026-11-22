@@ -10,6 +10,8 @@ export interface RecallCase {
   // The first file's patch is `text`; the others change nothing readable.
   paths: (string | { from: string; to: string })[];
   text: string;
+  // The code of the definitions the change touches, beyond the patch.
+  around?: string;
   expected: string[];
   listed?: string[];
   unrelated?: string[];
@@ -315,5 +317,29 @@ export const CASES: RecallCase[] = [
       "consumer-no-redelivery",
       "auth-session-rotate",
     ],
+  },
+  {
+    name: "a query edited inside a function that takes and releases a client",
+    paths: ["services/orders/src/db/report.ts"],
+    text: "-  const rows = await client.query(sql, from, to);\n+  const rows = await client.query(sql, [from, to]);",
+    around:
+      "export async function report(from, to) {\n  const client = await pool.connect();\n  const rows = await client.query(sql, [from, to]);\n  client.release();\n  return rows;\n}",
+    expected: ["db-pool-release", "db-pool-release-finally"],
+  },
+  {
+    name: "a callback edited inside a view method that hops to the main actor",
+    paths: ["apps/ios/Sources/Feed/FeedView.swift"],
+    text: "+                self.rows = items.filter { $0.visible }",
+    around:
+      "    func reload() {\n        api.fetch { items in\n            DispatchQueue.main.async {\n                self.rows = items.filter { $0.visible }\n            }\n        }\n    }",
+    expected: ["mobile-main-thread"],
+  },
+  {
+    name: "a tick edited inside an effect that starts an interval",
+    paths: ["apps/web/src/components/Clock.tsx"],
+    text: "+    const tick = () => setNow(Date.now());",
+    around:
+      "  useEffect(() => {\n    const tick = () => setNow(Date.now());\n    const id = setInterval(tick, 1000);\n  }, []);",
+    expected: ["react-effect-cleanup"],
   },
 ];

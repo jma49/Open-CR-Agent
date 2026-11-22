@@ -1,5 +1,5 @@
-import { join, resolve } from "node:path";
-import { directoryCache, scipReferences, treeSitterSymbols } from "@open-cr-agent/code-graph";
+import { resolve } from "node:path";
+import { scipReferences } from "@open-cr-agent/code-graph";
 import {
   type AgentRuntime,
   OcraError,
@@ -14,7 +14,6 @@ import { REVIEW_DEFAULTS, readResumedRun } from "@open-cr-agent/core/internal";
 import { withCloudProviders } from "../../cloud/providers.js";
 import { type CloudReview, prepareCloudReview } from "../../cloud/review.js";
 import { agentChains } from "../../config/cli-config.js";
-import { ocraCacheDir } from "../../config/user-dir.js";
 import { firstReferences, graphFileReferences } from "../../graph/references.js";
 import { VERSION } from "../../version.js";
 import type { ReviewArgs } from "./args.js";
@@ -25,6 +24,7 @@ import type { ResolvedRun, ReviewIo } from "./resolve-run.js";
 import { configuredOptions } from "./review-options.js";
 import { loadSarifLogs } from "./sarif-input.js";
 import { accountOf } from "./settings-sources.js";
+import { reviewSymbols } from "./symbols.js";
 
 export interface ExecutedRun {
   report: ReviewReport;
@@ -68,9 +68,7 @@ export async function executeRun(
       signal: interrupt.signal,
       vcs: run.vcs,
       runtime,
-      symbols: treeSitterSymbols({
-        cache: directoryCache(join(ocraCacheDir(deps.env), "symbols")),
-      }),
+      symbols: reviewSymbols(deps.env),
       ...referencesOf(args, deps.cwd, run.warn),
       onEvent: (event) => {
         run.registry.emit(event);

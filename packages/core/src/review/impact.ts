@@ -95,6 +95,41 @@ export async function changedSymbols(
     .slice(0, MAX_SYMBOLS);
 }
 
+// The text of the definitions a change touches, from the new revision, for
+// learning selection: a symbol the changed function calls on a line the
+// patch does not show. Bounded, since a touched class can be a whole file.
+export async function changedCode(
+  files: readonly FileDiff[],
+  context: ImpactContext,
+  extractor: SymbolExtractor,
+  maxChars: number,
+): Promise<string> {
+  const parts: string[] = [];
+  let chars = 0;
+  for (const file of files) {
+    if (file.kind === "deleted" || file.isBinary || chars >= maxChars) continue;
+    const content = await context.readFile(file.newPath).catch(() => undefined);
+    if (content === undefined) continue;
+    const symbols = await extractor.symbols(file.newPath, content).catch(() => undefined);
+    if (!symbols) continue;
+    const lines = content.split("\n");
+    const touched = new Set<SymbolDefinition>();
+    for (const line of touchedLines(file)) {
+      const definition = innermost(symbols.definitions, line);
+      if (definition) touched.add(definition);
+    }
+    for (const d of touched) {
+      const text = lines
+        .slice(d.startLine - 1, d.endLine)
+        .join("\n")
+        .slice(0, maxChars - chars);
+      parts.push(text);
+      chars += text.length;
+    }
+  }
+  return parts.join("\n");
+}
+
 export interface CallerSources {
   symbols?: SymbolExtractor | undefined;
   references?: ReferenceIndex | undefined;

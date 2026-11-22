@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CodeMatch, FileSymbols, SymbolExtractor } from "../contracts.js";
 import type { FileDiff, Hunk } from "../domain.js";
-import { changedSymbols, findCallers } from "./impact.js";
+import { changedCode, changedSymbols, findCallers } from "./impact.js";
 
 function diff(path: string, added: string[], context: string[] = []): FileDiff {
   return {
@@ -229,5 +229,34 @@ describe("findCallers with a reference index", () => {
     const usesOf = async () => undefined;
     const callers = await findCallers(files, context, { references: { usesOf } });
     expect(callers[0]?.uses.map((u) => u.path)).toEqual(["src/api.ts", "src/legacy.ts"]);
+  });
+});
+
+describe("changedCode", () => {
+  const content = Array.from({ length: 14 }, (_, i) => `line ${i + 1}`).join("\n");
+  const symbols: FileSymbols = {
+    definitions: [
+      { name: "untouched", kind: "function", startLine: 1, endLine: 3 },
+      { name: "outer", kind: "class", startLine: 5, endLine: 14 },
+      { name: "touched", kind: "method", startLine: 8, endLine: 12 },
+    ],
+    uses: new Map(),
+  };
+  const context = repository({ "src/a.ts": content });
+  const parse = extractor({ "src/a.ts": symbols });
+
+  it("is the text of the innermost definitions the change touches", async () => {
+    const code = await changedCode([diff("src/a.ts", ["x"])], context, parse, 10_000);
+    expect(code).toBe("line 8\nline 9\nline 10\nline 11\nline 12");
+  });
+
+  it("stops at its bound", async () => {
+    expect(await changedCode([diff("src/a.ts", ["x"])], context, parse, 10)).toHaveLength(10);
+  });
+
+  it("reads nothing of a deleted file or one the extractor cannot parse", async () => {
+    const deleted = { ...diff("src/a.ts", ["x"]), kind: "deleted" as const };
+    expect(await changedCode([deleted], context, parse, 10_000)).toBe("");
+    expect(await changedCode([diff("src/a.ts", ["x"])], context, extractor({}), 10_000)).toBe("");
   });
 });
