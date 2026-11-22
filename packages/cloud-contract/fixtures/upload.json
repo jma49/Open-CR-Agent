@@ -79,7 +79,12 @@
       "title": "SQL built from input",
       "body": "The id reaches the query unescaped.",
       "suggestion": null,
-      "code": "const q = 'SELECT * FROM t WHERE id = ' + id;"
+      "code": "const q = 'SELECT * FROM t WHERE id = ' + id;",
+      "fix": {
+        "startLine": 10,
+        "endLine": 12,
+        "replacement": "const q = db.query(sql, [id]);"
+      }
     },
     {
       "fingerprint": "fedcba9876543210",
