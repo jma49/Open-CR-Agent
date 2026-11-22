@@ -39,6 +39,18 @@ export type ReviewerCounts = z.input<typeof reviewerCountsSchema>;
 /** A finding's stable id across runs. */
 export const FINGERPRINT = /^[\w:.-]{4,128}$/;
 const line = z.number().int().min(0).lt(10_000_000).nullable().catch(null);
+const fixLine = z.number().int().positive().lt(10_000_000);
+
+/**
+ * A finding's fix: the replacement of lines startLine to endLine of the
+ * reviewed head, which ocra Cloud may commit to the pull request. Sent only
+ * as the model wrote it, never redacted or cut, so a commit of it is the
+ * fix ocra reported.
+ */
+export const sharedFixSchema = z
+  .object({ startLine: fixLine, endLine: fixLine, replacement: z.string().max(MAX_FIELD) })
+  .refine((f) => f.endLine >= f.startLine);
+export type SharedFix = z.input<typeof sharedFixSchema>;
 
 /**
  * A finding as the CLI shares it when the account shares findings
@@ -59,6 +71,8 @@ export const sharedFindingSchema = z.object({
   body: z.string().max(MAX_FIELD),
   suggestion: z.string().max(MAX_FIELD).nullable().catch(null),
   code: z.string().max(MAX_FIELD).nullable().catch(null),
+  // Added with sharedFixSchema; optional so a server reading older uploads still can.
+  fix: sharedFixSchema.optional().catch(undefined),
   // Set when the CLI replaced a secret-looking string or cut a long field.
   redacted: z.literal(true).optional().catch(undefined),
   truncated: z.literal(true).optional().catch(undefined),

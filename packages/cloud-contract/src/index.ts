@@ -117,8 +117,10 @@ export {
   reviewerCountsSchema,
   reviewUploadSchema,
   type SharedFinding,
+  type SharedFix,
   severityCountsSchema,
   sharedFindingSchema,
+  sharedFixSchema,
   type UploadAnswer,
   uploadAnswerSchema,
 } from "./upload.js";

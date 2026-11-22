@@ -119,6 +119,32 @@ describe("a shared finding", () => {
   });
 });
 
+describe("a shared finding's fix", () => {
+  const [finding] = body.findingList;
+  const fix = { startLine: 3, endLine: 4, replacement: "return a + b;" };
+
+  it("is kept as sent", () => {
+    expect(sharedFindingSchema.parse({ ...finding, fix }).fix).toEqual(fix);
+    expect(sharedFindingSchema.parse({ ...finding, fix: { ...fix, replacement: "" } }).fix).toEqual(
+      { ...fix, replacement: "" },
+    );
+  });
+
+  it("reads as absent when its lines are backwards, not lines, or its code is too long", () => {
+    for (const bad of [
+      { ...fix, endLine: 2 },
+      { ...fix, startLine: 0 },
+      { ...fix, startLine: 1.5 },
+      { ...fix, replacement: "x".repeat(MAX_FIELD + 1) },
+      { startLine: 3, endLine: 4 },
+      "return a + b;",
+    ]) {
+      const parsed = sharedFindingSchema.parse({ ...finding, fix: bad });
+      expect(parsed.fix, JSON.stringify(bad).slice(0, 60)).toBeUndefined();
+    }
+  });
+});
+
 describe("the upload's answer", () => {
   it("is read leniently: a count it cannot use is none", () => {
     expect(uploadAnswerSchema.parse({ id: "r", findings: 3 })).toEqual({ id: "r", findings: 3 });
