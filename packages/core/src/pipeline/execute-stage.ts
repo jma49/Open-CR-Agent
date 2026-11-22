@@ -15,7 +15,12 @@ import type { ReviewEvent, TaskOutcome } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { securityReviewed } from "../sarif/evidence.js";
 import { type ExecuteOptions, type JobResult, prepareJob, reuseJob, runJob } from "./execute.js";
-import type { ReviewHooks, ReviewOptions, RunSettings } from "./options.js";
+import {
+  guidelinesShown,
+  type ReviewHooks,
+  type ReviewOptions,
+  type RunSettings,
+} from "./options.js";
 import type { ReviewPlan } from "./plan.js";
 import { reusePool } from "./resume.js";
 
@@ -51,7 +56,7 @@ export async function executeStage(
   const matrix = planTasks(plan.bundles, reviewers, plan.tier, options.reviewerOverrides, {
     ultra: settings.ultra,
     ...(settings.maxTasks !== undefined ? { maxTasks: settings.maxTasks } : {}),
-    hasGuidelines: Boolean(plan.guidelines?.trim()),
+    hasGuidelines: guidelinesShown(plan.guidelines, settings),
   });
   const warnings: string[] = [];
   const limited = matrix.skipped.filter((s) => s.reason === "task_limit").length;
@@ -121,6 +126,7 @@ function executeOptions(
       (async (request: RelocationRequest) =>
         spendLimit.mayCall() ? relocator(request) : undefined),
     ultra: settings.ultra,
+    without: settings.without,
     symbols: options.symbols,
     references: options.references,
     plans: new Map(),

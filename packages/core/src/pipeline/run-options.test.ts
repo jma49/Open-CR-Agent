@@ -37,6 +37,28 @@ describe("review() options", () => {
     expect(defaults.tasks.map((t) => t.status)).toEqual(["completed"]);
   });
 
+  it("refuses to leave out context it does not know", async () => {
+    await expect(
+      review({ vcs: vcs({}, twoFiles), runtime: done, mode: { without: ["diff" as never] } }),
+    ).rejects.toThrow(/unknown context: diff/);
+  });
+
+  it("previews each prompt by source, without what the run leaves out", async () => {
+    const sources = async (without: ("changed_files" | "description")[]) =>
+      (await previewReview({ vcs: vcs({}, twoFiles), mode: { without } })).tasks[0]?.context.map(
+        (c) => c.source,
+      );
+    expect(await sources([])).toEqual([
+      "system",
+      "change_request",
+      "changed_files",
+      "rules",
+      "diff",
+      "instructions",
+    ]);
+    expect(await sources(["changed_files"])).not.toContain("changed_files");
+  });
+
   it("checks the preview's options the same way", async () => {
     await expect(
       previewReview({ vcs: vcs({}, twoFiles), limits: { maxTasks: -1 } }),

@@ -10,6 +10,11 @@ import type { Learning } from "../knowledge/learning.js";
 import type { MemoryEntry } from "../memory/memory.js";
 import type { MergeCheck } from "../merge-checks/merge-check.js";
 import type { ReviewEvent } from "../report/report.js";
+import {
+  isOptionalContext,
+  OPTIONAL_CONTEXT,
+  type OptionalContext,
+} from "../review/context-sources.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { SourcedRule } from "../rules/repo-rules.js";
 import type { SarifLog } from "../sarif/schema.js";
@@ -116,6 +121,9 @@ export interface ReviewMode {
   // Recall over cost: every reviewer at every tier, two samples per cell, and
   // findings the judge would drop kept as low confidence.
   ultra?: boolean;
+  // Context left out of every review prompt, to measure what each source is
+  // worth against a run with it (ADR-0057).
+  without?: readonly OptionalContext[];
 }
 
 // How the run is named and what it records it was made with.
@@ -182,6 +190,7 @@ export interface RunSettings {
   judge: boolean;
   showPreExisting: boolean;
   walkthrough: boolean;
+  without: ReadonlySet<OptionalContext>;
 }
 
 export function runSettings(
@@ -207,5 +216,25 @@ export function runSettings(
     judge: options.stages?.judge !== false,
     showPreExisting: options.stages?.showPreExisting !== false,
     walkthrough: options.stages?.walkthrough === true,
+    without: withoutContext(options.mode?.without ?? []),
   };
+}
+
+function withoutContext(names: readonly string[]): ReadonlySet<OptionalContext> {
+  const unknown = names.filter((n) => !isOptionalContext(n));
+  if (unknown.length > 0) {
+    throw new OcraError(
+      "CONFIG_INVALID",
+      `ReviewOptions.mode.without names unknown context: ${unknown.join(", ")} (known: ${OPTIONAL_CONTEXT.join(", ")})`,
+    );
+  }
+  return new Set(names as OptionalContext[]);
+}
+
+// A reviewer that needs the guidelines does not run when they are left out.
+export function guidelinesShown(
+  guidelines: string | undefined,
+  settings: Pick<RunSettings, "without">,
+): boolean {
+  return Boolean(guidelines?.trim()) && !settings.without.has("guidelines");
 }

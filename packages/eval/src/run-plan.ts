@@ -7,6 +7,8 @@ export interface RunPlan {
   tier?: string;
   ids: readonly string[];
   repeat: number;
+  // Context sources every review leaves out (ADR-0057).
+  without?: readonly string[];
   prMaxCostUsd?: number;
   maxCostUsd?: number;
   models: { top?: string; standard?: string; light?: string };
@@ -32,6 +34,7 @@ export function renderPlan(plan: RunPlan): string {
       : `Spend bound: $${bound.toFixed(2)}.`,
     `Models: top ${model(plan.models.top)}, standard ${model(plan.models.standard)}, light ${model(plan.models.light)}.`,
     `Judge: ${plan.judge ?? "unset"}.`,
+    ...(plan.without?.length ? [`Left out of every prompt: ${plan.without.join(", ")}.`] : []),
     "",
     ...plan.ids.map((id) => `- ${id}`),
   ].join("\n")}\n`;

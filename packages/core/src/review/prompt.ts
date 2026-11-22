@@ -4,6 +4,7 @@ import type { Learning } from "../knowledge/learning.js";
 import type { MemoryEntry } from "../memory/memory.js";
 import type { AnalyzerResult } from "../sarif/evidence.js";
 import { LINKED_TASK_LIMITS, type LinkedTask } from "../task/linked-task.js";
+import type { ContextSource, OptionalContext } from "./context-sources.js";
 import type { SymbolUse } from "./impact.js";
 import {
   data,
@@ -30,7 +31,10 @@ export interface ReviewPromptInput {
   changeRequest: ChangeRequest;
   changedFiles: readonly FileDiff[];
   bundle: readonly FileDiff[];
+  // The reviewer's own rules for the bundle's languages.
   rules: string;
+  // The repository's rules that match the bundle's files.
+  repoRules?: string;
   guidelines?: string | undefined;
   // The tasks the change was written for (ADR-0052), already held to the limits.
   linkedTasks?: readonly LinkedTask[];
@@ -49,6 +53,8 @@ export interface ReviewPromptInput {
   // For the plan phase itself: the same sections without the instruction to
   // report findings, which the planner must not do.
   forPlanning?: boolean;
+  // Sources an ablation run leaves out (ADR-0057).
+  without?: ReadonlySet<OptionalContext>;
 }
 
 export interface ReviewPrompt {
@@ -56,66 +62,109 @@ export interface ReviewPrompt {
   user: string;
 }
 
-// Sections shared by every bundle of a run come first so providers can reuse
-// the cached prefix; bundle-specific sections follow.
+export interface PromptPart {
+  source: ContextSource;
+  text: PromptText;
+}
+
 export function buildReviewPrompt(input: ReviewPromptInput): ReviewPrompt {
-  const sections = [
-    renderChangeRequest(input.changeRequest),
-    renderChangedFiles(input.changedFiles),
-  ];
-  if (input.linkedTasks && input.linkedTasks.length > 0) {
-    sections.push(renderLinkedTasks(input.linkedTasks));
+  const [system, ...user] = reviewPromptParts(input);
+  return {
+    system: system?.text ?? "",
+    user: join(
+      user.map((p) => p.text),
+      "\n\n",
+    ),
+  };
+}
+
+// The system prompt first, then the user prompt's parts in order. Parts
+// shared by every bundle of a run come first so providers can reuse the
+// cached prefix; bundle-specific parts follow.
+export function reviewPromptParts(input: ReviewPromptInput): PromptPart[] {
+  const without = input.without ?? new Set<OptionalContext>();
+  const parts: PromptPart[] = [];
+  const add = (source: ContextSource, text: PromptText) => parts.push({ source, text });
+  add("system", ocraText(`${input.reviewer.systemPrompt}\n\n${TURN_BUDGET}`));
+  add(
+    "change_request",
+    renderChangeRequest(input.changeRequest, MAX_DESCRIPTION_CHARS, !without.has("description")),
+  );
+  if (!without.has("changed_files")) add("changed_files", renderChangedFiles(input.changedFiles));
+  if (input.linkedTasks && input.linkedTasks.length > 0 && !without.has("linked_tasks")) {
+    add("linked_tasks", renderLinkedTasks(input.linkedTasks));
   }
-  if (input.guidelines?.trim()) {
-    sections.push(
+  if (input.guidelines?.trim() && !without.has("guidelines")) {
+    add(
+      "guidelines",
       section("repository_guidelines", truncated(input.guidelines, MAX_GUIDELINES_CHARS)),
     );
   }
-  if (input.rules.trim()) sections.push(section("review_rules", data(input.rules)));
-  if (input.accepted && input.accepted.length > 0) sections.push(renderAccepted(input.accepted));
+  const rules = renderRules(input.rules, without.has("rules") ? "" : (input.repoRules ?? ""));
+  if (rules) add("rules", rules);
+  if (input.accepted && input.accepted.length > 0 && !without.has("accepted")) {
+    add("accepted", renderAccepted(input.accepted));
+  }
   const given = input.learnings ?? [];
   const more = input.moreLearnings ?? [];
-  if (given.length > 0 || more.length > 0) sections.push(renderLearnings(given, more));
-  if (input.projectDocs) sections.push(renderProjectDocs(input.projectDocs));
-  sections.push(
-    section("review_files", input.bundle.map(renderFile)),
-    ...(input.callers && input.callers.length > 0 ? [renderCallers(input.callers)] : []),
-    ...(input.analyzerResults && input.analyzerResults.length > 0
-      ? [renderAnalyzerResults(input.analyzerResults)]
-      : []),
-    ...(input.plan
-      ? [
-          section("review_plan", [
-            ocraText(
-              "A planning pass suggests checking these first; it may be wrong, so verify before you report.",
-            ),
-            data(input.plan),
-          ]),
-        ]
-      : []),
-  );
+  if ((given.length > 0 || more.length > 0) && !without.has("learnings")) {
+    add("learnings", renderLearnings(given, more));
+  }
+  if (input.projectDocs && !without.has("project_docs")) {
+    add("project_docs", renderProjectDocs(input.projectDocs));
+  }
+  add("diff", section("review_files", input.bundle.map(renderFile)));
+  if (input.callers && input.callers.length > 0 && !without.has("callers")) {
+    add("callers", renderCallers(input.callers));
+  }
+  if (input.analyzerResults && input.analyzerResults.length > 0 && !without.has("analyzer")) {
+    add("analyzer", renderAnalyzerResults(input.analyzerResults));
+  }
+  if (input.plan) {
+    add(
+      "plan",
+      section("review_plan", [
+        ocraText(
+          "A planning pass suggests checking these first; it may be wrong, so verify before you report.",
+        ),
+        data(input.plan),
+      ]),
+    );
+  }
   if (!input.forPlanning) {
-    sections.push(
+    add(
+      "instructions",
       ocraText(
         `Review every file in <ocra_review_files>. Report each issue with ${REVIEW_TOOLS.reportFinding} as soon as you confirm it, then call ${REVIEW_TOOLS.taskDone}. Where a file shows "‹ocra_", the file itself has "<ocra_"; quote it that way.`,
       ),
     );
   }
-  return {
-    system: `${input.reviewer.systemPrompt}\n\n${TURN_BUDGET}`,
-    user: join(sections, "\n\n"),
-  };
+  return parts;
 }
 
 const MAX_TITLE_CHARS = 300;
 const MAX_DESCRIPTION_CHARS = 8_000;
+const MAX_REPO_RULES_CHARS = 12_000;
 
 // Also used by the judge, which sees the same change request.
-export function renderChangeRequest(cr: ChangeRequest, maxDescription = MAX_DESCRIPTION_CHARS) {
+export function renderChangeRequest(
+  cr: ChangeRequest,
+  maxDescription = MAX_DESCRIPTION_CHARS,
+  withDescription = true,
+) {
   return section("change_request", [
     section("title", truncated(cr.title, MAX_TITLE_CHARS)),
-    section("description", truncated(cr.description, maxDescription)),
+    ...(withDescription ? [section("description", truncated(cr.description, maxDescription))] : []),
   ]);
+}
+
+// The reviewer's rules are ocra's and short; the repository's are held to a
+// limit, as the guidelines are.
+function renderRules(builtin: string, repo: string): PromptText | undefined {
+  const parts: PromptText[] = [];
+  if (builtin.trim()) parts.push(data(builtin));
+  if (repo.trim()) parts.push(truncated(repo, MAX_REPO_RULES_CHARS));
+  return parts.length > 0 ? section("review_rules", join(parts, "\n\n")) : undefined;
 }
 
 // Every task of a run shares the list: rendered once per run.
@@ -130,15 +179,24 @@ function renderChangedFiles(files: readonly FileDiff[]): PromptText {
   return text;
 }
 
+// Every task carries the list, so a change of thousands of files would
+// repeat it in each; the bundle's own files are in its review_files anyway.
+const MAX_LISTED_CHANGED_FILES = 150;
+
 function renderChangedFilesOnce(files: readonly FileDiff[]): PromptText {
-  const lines = files.map((f) => {
+  const listed = files.slice(0, MAX_LISTED_CHANGED_FILES);
+  const lines = listed.map((f) => {
     const path = f.kind === "renamed" ? `${f.oldPath} -> ${f.newPath}` : f.newPath;
     return join(
       [ocraText(`${f.kind} `), data(oneLine(path)), ocraText(` (+${f.additions} -${f.deletions})`)],
       "",
     );
   });
-  return section("changed_files", lines);
+  const unlisted = files.length - listed.length;
+  return section("changed_files", [
+    ...lines,
+    ...(unlisted > 0 ? [ocraText(`and ${unlisted} more changed files.`)] : []),
+  ]);
 }
 
 // Every task of a run shares the tasks: rendered once per run.
@@ -160,7 +218,7 @@ function renderLinkedTasks(tasks: readonly LinkedTask[]): PromptText {
 
 function renderLinkedTask(task: LinkedTask): PromptText {
   const parts = [
-    section("title", data(oneLine(task.title))),
+    section("title", data(oneLine(clip(task.title, LINKED_TASK_LIMITS.title)))),
     section("body", truncated(task.body, LINKED_TASK_LIMITS.body)),
   ];
   if (task.parent) {
@@ -168,7 +226,7 @@ function renderLinkedTask(task: LinkedTask): PromptText {
       section(
         "parent",
         [
-          data(oneLine(task.parent.title)),
+          data(oneLine(clip(task.parent.title, LINKED_TASK_LIMITS.title))),
           truncated(task.parent.body, LINKED_TASK_LIMITS.parentBody),
         ],
         { key: task.parent.key },
@@ -180,7 +238,11 @@ function renderLinkedTask(task: LinkedTask): PromptText {
       section(
         "subtasks",
         task.subtasks.map((t) =>
-          data(oneLine(`- ${t.key} ${t.title}${t.state ? ` (${t.state})` : ""}`)),
+          data(
+            oneLine(
+              `- ${t.key} ${clip(t.title, LINKED_TASK_LIMITS.subtaskTitle)}${t.state ? ` (${t.state})` : ""}`,
+            ),
+          ),
         ),
       ),
     );
@@ -193,13 +255,25 @@ function renderLinkedTask(task: LinkedTask): PromptText {
   });
 }
 
+// Memory only grows, and every entry on a bundle's files would otherwise
+// reach its prompt: the last listed are shown, each on one short line.
+// applyMemory still drops every remembered finding by its fingerprint.
+const ACCEPTED_LIMITS = { entries: 20, title: 160, reason: 240 } as const;
+
 function renderAccepted(entries: readonly MemoryEntry[]): PromptText {
-  const lines = entries.map((e) =>
-    data(oneLine(`- ${e.file}: ${e.title} (accepted: ${e.reason})`)),
+  const kept = entries.slice(-ACCEPTED_LIMITS.entries);
+  const lines = kept.map((e) =>
+    data(
+      oneLine(
+        `- ${e.file}: ${clip(e.title, ACCEPTED_LIMITS.title)} (accepted: ${clip(e.reason, ACCEPTED_LIMITS.reason)})`,
+      ),
+    ),
   );
+  const earlier = entries.length - kept.length;
   return section("accepted_findings", [
     ocraText("The team has accepted these; do not report them again."),
     ...lines,
+    ...(earlier > 0 ? [ocraText(`and ${earlier} more accepted earlier.`)] : []),
   ]);
 }
 
@@ -211,7 +285,7 @@ function renderLearnings(given: readonly Learning[], more: readonly Learning[]):
       "What the team learned from earlier changes to this code. Check whether this change repeats a mistake one describes; report only what the change itself gets wrong, never a learning alone.",
     ),
     ...given.map((l) =>
-      section("learning", [data(oneLine(l.title)), data(l.body)], {
+      section("learning", [data(oneLine(clip(l.title, MAX_TITLE_CHARS))), data(l.body)], {
         id: l.id,
         paths: l.paths.join(", "),
         ...(l.critical ? { critical: "true" } : {}),
@@ -230,7 +304,7 @@ function renderLearningIndex(more: readonly Learning[]): PromptText {
     ocraText(
       `More learnings that match this change, by id and title; read one that may apply with ${REVIEW_TOOLS.readLearning}:`,
     ),
-    ...listed.map((l) => data(`- ${l.id}: ${oneLine(l.title)}`)),
+    ...listed.map((l) => data(`- ${l.id}: ${oneLine(clip(l.title, MAX_TITLE_CHARS))}`)),
     ...(unlisted > 0 ? [ocraText(`and ${unlisted} more.`)] : []),
   ]);
 }
@@ -314,4 +388,8 @@ function renderHunk(hunk: Hunk): string {
     return `${marker}${l.content}`;
   });
   return [hunk.header, ...lines].join("\n");
+}
+
+function clip(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max)}…` : text;
 }

@@ -1,5 +1,10 @@
 import { parseArgs } from "node:util";
-import { errorMessage } from "@open-cr-agent/core";
+import {
+  errorMessage,
+  isOptionalContext,
+  OPTIONAL_CONTEXT,
+  type OptionalContext,
+} from "@open-cr-agent/core";
 import type { LocalTarget } from "@open-cr-agent/vcs-local";
 import { UsageError } from "../../io/usage-error.js";
 
@@ -41,6 +46,8 @@ export interface ReviewArgs {
   noUpload?: true;
   // Do not give the reviewers the tasks linked to the change.
   noLinkedTasks?: true;
+  // Context left out of every review prompt, for an ablation run (ADR-0057).
+  without?: OptionalContext[];
   // Override the configuration's sampling.
   temperature?: number;
   seed?: number;
@@ -89,6 +96,9 @@ Options:
                      only the rest run and are paid for; not with --plan
   --no-linked-tasks  With --pr or --mr: do not give reviewers the issues the
                      change closes (linkedTasks in config)
+  --without <sources>  Leave these context sources out of every review prompt
+                     (comma-separated), to measure what each is worth:
+                     ${OPTIONAL_CONTEXT.join(", ")}
   --no-upload        When signed in to ocra Cloud, send nothing about this
                      review: no counts, per-reviewer counts or findings
   -h, --help         Show help
@@ -183,6 +193,7 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
     if (values.plan) throw new UsageError("--resume is not used by --plan");
     args.resume = values.resume;
   }
+  if (values.without !== undefined) args.without = parseWithout(values.without);
   if (values.reviewers !== undefined) {
     const ids = values.reviewers
       .split(",")
@@ -192,6 +203,21 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
     args.reviewers = ids;
   }
   return args;
+}
+
+function parseWithout(value: string): OptionalContext[] {
+  const names = value
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name !== "");
+  if (names.length === 0) throw new UsageError("--without needs at least one context source");
+  const unknown = names.filter((name) => !isOptionalContext(name));
+  if (unknown.length > 0) {
+    throw new UsageError(
+      `--without: unknown context ${unknown.join(", ")}; known: ${OPTIONAL_CONTEXT.join(", ")}`,
+    );
+  }
+  return [...new Set(names as OptionalContext[])];
 }
 
 function parse(argv: string[]) {
@@ -210,6 +236,7 @@ function parse(argv: string[]) {
       "no-linked-tasks": { type: "boolean" },
       config: { type: "string" },
       reviewers: { type: "string" },
+      without: { type: "string" },
       "max-cost-usd": { type: "string" },
       "import-sarif": { type: "string", multiple: true },
       "sarif-evidence": { type: "string", multiple: true },

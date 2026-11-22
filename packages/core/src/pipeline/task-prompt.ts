@@ -2,6 +2,7 @@ import type { Bundle } from "../bundle/bundle.js";
 import { sectionsFor } from "../docs/project-docs.js";
 import type { MatrixCell } from "../matrix/matrix.js";
 import { memoryFor } from "../memory/memory.js";
+import type { OptionalContext } from "../review/context-sources.js";
 import { buildReviewPrompt, type ReviewPrompt, type ReviewPromptInput } from "../review/prompt.js";
 import { resolveRules } from "../rules/resolve.js";
 import { evidenceForReviewer } from "../sarif/evidence.js";
@@ -31,6 +32,8 @@ export interface TaskPrompt {
 
 export interface TaskSettings {
   ultra: boolean;
+  // Sources an ablation run leaves out of every prompt (ADR-0057).
+  without?: ReadonlySet<OptionalContext>;
   // The files a security reviewer reviews in the run (securityReviewed).
   securityFiles: ReadonlySet<string>;
 }
@@ -40,7 +43,7 @@ export interface TaskSettings {
 export function taskPrompt(
   cell: MatrixCell,
   plan: ReviewPlan,
-  { ultra, securityFiles }: TaskSettings,
+  { ultra, securityFiles, without }: TaskSettings,
 ): TaskPrompt {
   const files = cell.bundle.files.map((f) => f.newPath);
   const learnings = plan.learnings(cell.bundle.files);
@@ -55,7 +58,8 @@ export function taskPrompt(
     changeRequest: plan.changeRequest,
     changedFiles: plan.selected,
     bundle: cell.bundle.files,
-    rules: resolveRules(files, plan.repoRules, cell.reviewer.rules),
+    rules: resolveRules(files, [], cell.reviewer.rules),
+    repoRules: resolveRules(files, plan.repoRules),
     guidelines: plan.guidelines,
     ...(plan.linkedTasks && plan.linkedTasks.given.length > 0
       ? { linkedTasks: plan.linkedTasks.given }
@@ -65,9 +69,10 @@ export function taskPrompt(
     moreLearnings: learnings.left,
     ...(docs.given.length > 0 ? { projectDocs: docs } : {}),
     ...(analyzerResults.length > 0 ? { analyzerResults } : {}),
+    ...(without && without.size > 0 ? { without } : {}),
   };
   const prompt = buildReviewPrompt(input);
-  const callers = ultra || plan.tier === "full";
+  const callers = (ultra || plan.tier === "full") && !without?.has("callers");
   if (!ultra && !isLargeBundle(cell.bundle)) return { input, prompt, callers };
   return {
     input,

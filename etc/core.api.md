@@ -576,6 +576,9 @@ export function isIncompleteReview(run: {
 export function isOcraError(error: unknown, code?: OcraErrorCode): error is OcraError;
 
 // @public (undocumented)
+export function isOptionalContext(value: string): value is OptionalContext;
+
+// @public (undocumented)
 export function isUnfinished(entry: CoverageEntry): boolean;
 
 // @public (undocumented)
@@ -658,6 +661,8 @@ const lineRangeSchema: z.ZodObject<{
 // @public (undocumented)
 export const LINKED_TASK_LIMITS: {
     readonly tasks: 3;
+    readonly title: 300;
+    readonly subtaskTitle: 120;
     readonly body: 4000;
     readonly parentBody: 1500;
     readonly subtasks: 10;
@@ -848,6 +853,12 @@ export interface OcraPlugin<Settings = unknown> {
     // (undocumented)
     settingsSchema?: z.ZodType<Settings>;
 }
+
+// @public (undocumented)
+export const OPTIONAL_CONTEXT: readonly ["description", "changed_files", "linked_tasks", "guidelines", "rules", "accepted", "learnings", "project_docs", "callers", "analyzer"];
+
+// @public (undocumented)
+export type OptionalContext = (typeof OPTIONAL_CONTEXT)[number];
 
 // @public (undocumented)
 export type OutputFinding = ReportOutput["findings"][number];
@@ -1704,6 +1715,8 @@ export interface ReviewMode {
     full?: boolean;
     // (undocumented)
     ultra?: boolean;
+    // (undocumented)
+    without?: readonly OptionalContext[];
 }
 
 // @public (undocumented)

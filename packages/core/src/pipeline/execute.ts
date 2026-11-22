@@ -10,6 +10,7 @@ import type { AgentRuntime, ReferenceIndex, SymbolExtractor, Usage } from "../co
 import type { Finding, TaskFinding } from "../domain.js";
 import type { MatrixCell } from "../matrix/matrix.js";
 import type { ReviewEvent, TaskOutcome } from "../report/report.js";
+import type { OptionalContext } from "../review/context-sources.js";
 import { findCallers } from "../review/impact.js";
 import { planBundle } from "../review/plan-phase.js";
 import { buildReviewPrompt, type ReviewPrompt } from "../review/prompt.js";
@@ -31,6 +32,8 @@ export interface ExecuteOptions {
   runtime: AgentRuntime;
   // --ultra: a plan phase and the callers of changed symbols for every task.
   ultra?: boolean;
+  // Sources left out of every prompt (ADR-0057).
+  without?: ReadonlySet<OptionalContext>;
   // The files a security reviewer reviews in the matrix (securityReviewed).
   securityFiles?: ReadonlySet<string>;
   taskTimeoutMs: number;
@@ -72,7 +75,11 @@ export function prepareJob(
 }
 
 function settingsOf(options: ExecuteOptions): TaskSettings {
-  return { ultra: options.ultra === true, securityFiles: options.securityFiles ?? new Set() };
+  return {
+    ultra: options.ultra === true,
+    securityFiles: options.securityFiles ?? new Set(),
+    ...(options.without ? { without: options.without } : {}),
+  };
 }
 
 // Runs one (bundle, reviewer) cell and anchors what it reports.

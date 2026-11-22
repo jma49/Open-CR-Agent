@@ -204,6 +204,53 @@
             "minimum": 0,
             "maximum": 9007199254740991
           },
+          "context": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "system",
+                    "change_request",
+                    "changed_files",
+                    "linked_tasks",
+                    "guidelines",
+                    "rules",
+                    "accepted",
+                    "learnings",
+                    "project_docs",
+                    "diff",
+                    "callers",
+                    "analyzer",
+                    "plan",
+                    "instructions"
+                  ]
+                },
+                "tokens": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "cut": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "duplicateTokens": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "source",
+                "tokens"
+              ],
+              "additionalProperties": false
+            }
+          },
           "inputCost": {
             "oneOf": [
               {

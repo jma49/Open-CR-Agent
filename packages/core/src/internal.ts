@@ -39,6 +39,7 @@ export { readReport } from "./report/read.js";
 export { unconfirmedCriticals } from "./report/report.js";
 export { isUnsafeCodePoint, serializeOutput } from "./report/serialize.js";
 export { reconcile } from "./rereview/reconcile.js";
+export { CONTEXT_SOURCES, type ContextSource } from "./review/context-sources.js";
 export { repoRuleSchema } from "./rules/repo-rules.js";
 export { EVENTS_FILE, REPORT_FILE } from "./session/jsonl.js";
 export { readResumedRun } from "./session/resume-read.js";

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { EFFORT_LEVELS } from "../agent/settings.js";
 import { riskTierSchema } from "../domain.js";
 import { changeRequestSchema, scopeSchema, skippedCellSchema } from "../report/output-schema.js";
+import { CONTEXT_SOURCES } from "../review/context-sources.js";
 import { exclusionReasonSchema } from "../select/select.js";
 import type { PreviewTask, ReviewPreview } from "./preview.js";
 
@@ -26,6 +27,17 @@ const planTaskSchema = z.strictObject({
   effort: z.enum(EFFORT_LEVELS).exactOptional(),
   models: z.array(z.string()).exactOptional(),
   planPromptTokens: z.int().nonnegative().exactOptional(),
+  // Added in version 1 without a bump: the first prompt by source (ADR-0057).
+  context: z
+    .array(
+      z.strictObject({
+        source: z.enum(CONTEXT_SOURCES),
+        tokens: z.int().nonnegative(),
+        cut: z.int().positive().exactOptional(),
+        duplicateTokens: z.int().positive().exactOptional(),
+      }),
+    )
+    .exactOptional(),
   inputCost: inputCostSchema.exactOptional(),
 });
 
@@ -107,6 +119,7 @@ function planTask(t: PreviewTask): PlanTask {
     bundle: t.bundle,
     files: [...t.files],
     promptTokens: t.promptTokens,
+    context: t.context.map((c) => ({ ...c })),
     ...(t.effort === undefined ? {} : { effort: t.effort }),
     ...(t.models ? { models: [...t.models] } : {}),
     ...(t.planPromptTokens === undefined ? {} : { planPromptTokens: t.planPromptTokens }),
