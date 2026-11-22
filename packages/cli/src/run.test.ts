@@ -22,4 +22,13 @@ describe("ocra", () => {
     expect(err.text()).toContain("Unknown command: nope");
     expect(await run(["--nope"], capture(), capture())).toBe(2);
   });
+
+  it("prints ocra mcp's usage and refuses arguments, without starting a server", async () => {
+    const help = capture();
+    expect(await run(["mcp", "--help"], help, capture())).toBe(0);
+    expect(help.text()).toContain("Usage: ocra mcp");
+    const err = capture();
+    expect(await run(["mcp", "--port", "1"], capture(), err)).toBe(2);
+    expect(err.text()).toContain("ocra mcp takes no arguments");
+  });
 });
