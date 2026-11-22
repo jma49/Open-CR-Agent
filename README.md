@@ -74,7 +74,7 @@ The `direct` runtime installs without OpenCode, the optional default: 11 MB inst
 
 ## In CI
 
-**GitHub pull requests**, with the Action in [`action.yml`](action.yml): inline comments, one summary comment updated in place with a walkthrough of the change (files grouped in reading order, a sequence diagram when the flow needs one), the issues the pull request closes given to the reviewers as the task it was written for (also on GitLab), re-reviews of only what changed since the last push, a full one on a `/ocra review` comment, and an answer in the thread to an `@ocra` question from someone with write access (`ocra reply`, also on GitLab).
+**GitHub pull requests**, with the Action in [`action.yml`](action.yml): inline comments, one summary comment updated in place with a walkthrough of the change (files grouped in reading order, a sequence diagram when the flow needs one), the issues the pull request closes given to the reviewers as the task it was written for (also on GitLab), re-reviews of only what changed since the last push, a full one on a `/ocra review` comment, and an answer in the thread to an `@ocra` question from someone with write access (`ocra reply`, also on GitLab). On request, `ocra generate tests` or `ocra generate docstrings` adds one commit to the branch, on GitHub or GitLab: new test files beside the changed sources, or doc comments inserted in the changed lines, never changing an existing line and never running the repository's code ([CLI](docs/manual/en/cli.mdx#ocra-generate)).
 
 ```yaml
 # .github/workflows/ocra.yml
