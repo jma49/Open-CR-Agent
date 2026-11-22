@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { cacheTrustedRoot, npmCommand, npmDir, opencodeFlags } from "./action-install.mjs";
 
@@ -42,11 +42,30 @@ describe("npmDir", () => {
     );
   });
 
-  it("is under the Node directory on Windows and its lib elsewhere", () => {
+  it("is under the Node directory on Windows", () => {
     expect(npmDir("win32", "C:\\Program Files\\nodejs\\node.exe")).toBe(
       "C:\\Program Files\\nodejs\\node_modules\\npm",
     );
-    expect(npmDir("linux", "/opt/node/bin/node")).toBe("/opt/node/lib/node_modules/npm");
+  });
+
+  it("follows the first npm on PATH elsewhere, wherever Node is", () => {
+    const links = /** @type {Record<string, string>} */ ({
+      "/opt/homebrew/bin/npm": "/opt/homebrew/lib/node_modules/npm/bin/npm-cli.js",
+      "/usr/bin/npm": "/usr/lib/node_modules/npm/bin/npm-cli.js",
+    });
+    /** @param {string} file */
+    const realpath = (file) => {
+      const target = links[file];
+      if (!target) throw new Error(`ENOENT ${file}`);
+      return target;
+    };
+    const path = ["/nowhere", "/opt/homebrew/bin", "/usr/bin"].join(delimiter);
+    expect(npmDir("darwin", "/opt/homebrew/Cellar/node/26.0.0/bin/node", path, realpath)).toBe(
+      "/opt/homebrew/lib/node_modules/npm",
+    );
+    expect(npmDir("linux", "/opt/node/bin/node", "/nowhere", realpath)).toBe(
+      "/opt/node/lib/node_modules/npm",
+    );
   });
 });
 

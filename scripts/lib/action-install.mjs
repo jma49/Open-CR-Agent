@@ -1,4 +1,5 @@
-import { join, posix, win32 } from "node:path";
+import { realpathSync } from "node:fs";
+import { delimiter, join, posix, win32 } from "node:path";
 
 // The npm ci flags that say whether OpenCode is installed, from the Action's
 // opencode input.
@@ -25,12 +26,31 @@ export function npmCommand(args, platform = process.platform, execPath = process
 }
 
 /**
- * The directory of the npm `npmCommand` starts: the one beside this Node.
+ * The directory of the npm `npmCommand` starts. Elsewhere than Windows that
+ * is the first `npm` on PATH, a link to its `bin/npm-cli.js`; Homebrew, for
+ * one, keeps it away from the Node binary.
  * @param {NodeJS.Platform} platform
  * @param {string} execPath
+ * @param {string | undefined} path
+ * @param {(file: string) => string} realpath
  */
-export function npmDir(platform = process.platform, execPath = process.execPath) {
+export function npmDir(
+  platform = process.platform,
+  execPath = process.execPath,
+  path = process.env.PATH,
+  realpath = realpathSync,
+) {
   if (platform === "win32") return win32.join(win32.dirname(execPath), "node_modules", "npm");
+  for (const dir of (path ?? "").split(delimiter)) {
+    if (!dir) continue;
+    let cli;
+    try {
+      cli = realpath(posix.join(dir, "npm"));
+    } catch {
+      continue;
+    }
+    if (posix.basename(cli) === "npm-cli.js") return posix.dirname(posix.dirname(cli));
+  }
   return posix.join(posix.dirname(execPath), "..", "lib", "node_modules", "npm");
 }
 
