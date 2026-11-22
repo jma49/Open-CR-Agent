@@ -916,6 +916,7 @@ export const preferencesUpdateSchema: z.ZodObject<{
         maxTasks: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
         verify: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
         judge: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+        linkedTasks: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
         sampling: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
             temperature: z.ZodOptional<z.ZodNumber>;
             seed: z.ZodOptional<z.ZodNumber>;
@@ -943,6 +944,7 @@ export const preferencesUpdateSchema: z.ZodObject<{
         maxTasks?: number;
         verify?: NonNullable<boolean | null | undefined>;
         judge?: NonNullable<boolean | null | undefined>;
+        linkedTasks?: NonNullable<boolean | null | undefined>;
         sampling?: {
             temperature?: number;
             seed?: number;
@@ -964,6 +966,7 @@ export const preferencesUpdateSchema: z.ZodObject<{
         maxTasks?: number | null | undefined;
         verify?: boolean | null | undefined;
         judge?: boolean | null | undefined;
+        linkedTasks?: boolean | null | undefined;
         sampling: {
             temperature?: number;
             seed?: number;
@@ -1230,6 +1233,7 @@ export const reviewSettingsSchema: z.ZodPipe<z.ZodObject<{
     maxTasks: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     verify: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     judge: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+    linkedTasks: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     sampling: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
         temperature: z.ZodOptional<z.ZodNumber>;
         seed: z.ZodOptional<z.ZodNumber>;
@@ -1257,6 +1261,7 @@ export const reviewSettingsSchema: z.ZodPipe<z.ZodObject<{
     maxTasks?: number;
     verify?: NonNullable<boolean | null | undefined>;
     judge?: NonNullable<boolean | null | undefined>;
+    linkedTasks?: NonNullable<boolean | null | undefined>;
     sampling?: {
         temperature?: number;
         seed?: number;
@@ -1278,6 +1283,7 @@ export const reviewSettingsSchema: z.ZodPipe<z.ZodObject<{
     maxTasks?: number | null | undefined;
     verify?: boolean | null | undefined;
     judge?: boolean | null | undefined;
+    linkedTasks?: boolean | null | undefined;
     sampling: {
         temperature?: number;
         seed?: number;

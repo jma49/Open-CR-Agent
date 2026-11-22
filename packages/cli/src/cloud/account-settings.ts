@@ -32,6 +32,7 @@ const SETTINGS = {
   maxTasks: shape.maxTasks,
   verify: shape.verify,
   judge: shape.judge,
+  linkedTasks: shape.linkedTasks,
   sampling: shape.sampling,
   include: shape.include,
   exclude: shape.exclude,

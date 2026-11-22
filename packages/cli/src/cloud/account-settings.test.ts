@@ -114,6 +114,13 @@ describe("parseAccountSettings", () => {
     ]);
   });
 
+  it("takes the account's switch for linked tasks", () => {
+    expect(parseAccountSettings({ settings: { linkedTasks: false } }).settings).toEqual({
+      version: null,
+      linkedTasks: false,
+    });
+  });
+
   it("leaves out a runtime that is not built in", () => {
     const { settings, warnings } = parseAccountSettings({ runtime: "./evil.js" });
     expect(settings.runtime).toBeUndefined();
