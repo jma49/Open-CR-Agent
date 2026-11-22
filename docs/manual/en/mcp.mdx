@@ -3,7 +3,7 @@ title: ocra mcp
 description: "Let a coding agent such as Claude Code, Cursor or Codex ask ocra for a review, over the Model Context Protocol."
 ---
 
-`ocra mcp` runs ocra as a [Model Context Protocol](https://modelcontextprotocol.io) server on standard input and output, so the coding agent you work with can review its own changes before you commit them. It has one tool, `review`. A review run this way is the same as `ocra review`: ocra's read-only agents, Verify and the judge, on the models in your configuration, with the same trust rules, spend limit, session and ocra Cloud upload. Reviews are paid with your configured key, not the agent's model.
+`ocra mcp` runs ocra as a [Model Context Protocol](https://modelcontextprotocol.io) server on standard input and output, so the coding agent you work with can review its own changes before you commit them. It has one tool, `review`. A review run this way is the same as `ocra review`: ocra's read-only agents, Verify and the judge, on the models in your configuration, with the same trust rules, spend limit, session and ocra Cloud upload. Reviews are paid with your configured key, not the agent's model. New in v0.11.0.
 
 Start it in the repository to review; coding agents start a project's servers in its folder.
 

@@ -30,13 +30,13 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Fi
 
 ## 关联的任务
 
-审查 Pull Request 或 Merge Request 时，每个审查任务还会拿到这次改动所针对的 issue，审查员可以据此检查改动是否做了要求的事：漏掉的验收条件、没做完的子任务、修错了场景。这些是平台关联到改动上的 issue：GitHub 上是 Pull Request 要关闭的 issue（`Closes #12` 这样的关闭关键字，或在侧栏关联的 issue），GitLab 上是 Merge Request 要关闭的 issue；都没有时，取分支名所对应的 issue（`12-fix-login`，两个平台从 issue 创建分支时都这样命名）。只算被审查仓库自己的 issue，因此来自 fork 的 Pull Request 无法把其他仓库的 issue 带进审查。设置了 [`trackers`](./configuration#任务跟踪系统) 时，标题、描述或分支名中按 key 提到的 Jira 或 TAPD 任务排在其后，通过你的跟踪系统的 MCP 服务器读取。
+审查 Pull Request 或 Merge Request 时，每个审查任务还会拿到这次改动所针对的 issue，审查员可以据此检查改动是否做了要求的事：漏掉的验收条件、没做完的子任务、修错了场景。这些是平台关联到改动上的 issue：GitHub 上是 Pull Request 要关闭的 issue（`Closes #12` 这样的关闭关键字，或在侧栏关联的 issue），GitLab 上是 Merge Request 要关闭的 issue；都没有时，取分支名所对应的 issue（`12-fix-login`，两个平台从 issue 创建分支时都这样命名）。只算被审查仓库自己的 issue，因此来自 fork 的 Pull Request 无法把其他仓库的 issue 带进审查。设置了 [`trackers`](./configuration#任务跟踪系统) 时，标题、描述或分支名中按 key 提到的 Jira 或 TAPD 任务排在其后，通过你的跟踪系统的 MCP 服务器读取。v0.11.0 新增。
 
 最多 3 个 issue，每个带标题、状态、标签、正文的前 4,000 个字符、父任务的标题和前 1,500 个字符（GitHub 的父 issue，GitLab 的 epic），以及最多 10 个子 issue 的标题；不做搜索，也不由模型挑选。这些文字放在所有任务共享的提示词部分，每次运行只缓存一次。查询失败（令牌无权读取 issue）只产生一条警告，审查照常进行。报告的 `linkedTasks` 列出交出去的内容。在 [`.ocra/config.json`](./configuration) 中设置 `linkedTasks: false` 或使用 `--no-linked-tasks` 可以关闭。
 
 ## 项目文档
 
-设置了 [`projectDocs`](./configuration#项目文档) 时，每个审查任务还会拿到团队设计文档中提到其文件的段落，审查员可以据此对照预期设计检查改动。文档按标题（1 到 3 级，代码块之外）切分成段落；段落提到文件的路径、文件名或所在目录（只有 `src` 这类通用目录不算）即算提到该文件，提到完整路径的权重最高。每个任务最多拿到 3 个段落，每段取前 3,000 个字符，另外列出最多 10 个可自行读取的段落标题；不做搜索，也不由模型挑选。没有提到任务中任何文件的段落不会进入其提示词。报告的 `projectDocs` 列出交出的每个段落以及它交给了哪些分组。
+设置了 [`projectDocs`](./configuration#项目文档) 时，每个审查任务还会拿到团队设计文档中提到其文件的段落，审查员可以据此对照预期设计检查改动。文档按标题（1 到 3 级，代码块之外）切分成段落；段落提到文件的路径、文件名或所在目录（只有 `src` 这类通用目录不算）即算提到该文件，提到完整路径的权重最高。每个任务最多拿到 3 个段落，每段取前 3,000 个字符，另外列出最多 10 个可自行读取的段落标题；不做搜索，也不由模型挑选。没有提到任务中任何文件的段落不会进入其提示词。报告的 `projectDocs` 列出交出的每个段落以及它交给了哪些分组。v0.11.0 新增。
 
 ## 结论（verdict）
 

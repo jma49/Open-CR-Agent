@@ -166,7 +166,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 | `tool`、`tools` | 读取一个任务的工具；TAPD 按类型各配一个（没有配置的类型会跳过） |
 | `keyArgument`、`arguments` | 放 key（TAPD 为数字 id）的参数，以及随之发送的固定字符串参数；TAPD 还会收到 `workspace_id` |
 
-返回结果按常见字段读取（`summary`、`title` 或 `name`，`description`，`status`，`labels`，可以在 `fields` 下或一层包装对象里），否则作为纯文本，最多 64,000 个字符。每个任务一次连接，每个请求最多 20 秒。读取需要 MCP SDK，它随 ocra 的可选依赖安装。共享配置可以设置 `trackers`，账户设置不行。
+返回结果按常见字段读取（`summary`、`title` 或 `name`，`description`，`status`，`labels`，可以在 `fields` 下或一层包装对象里），否则作为纯文本，最多 64,000 个字符。每个任务一次连接，每个请求最多 20 秒。读取需要 MCP SDK，它随 ocra 的可选依赖安装。共享配置可以设置 `trackers`，账户设置不行。v0.11.0 新增。
 
 ## 项目文档
 
@@ -176,7 +176,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 { "projectDocs": ["docs/architecture.md", "docs/design/"] }
 ```
 
-它们和 `AGENTS.md` 一样从可信版本读取：最多 50 个文档，每个最多 200,000 字节；路径不存在、过大或在仓库之外时只产生一条警告。共享配置可以设置 `projectDocs`，账户设置不能。
+它们和 `AGENTS.md` 一样从可信版本读取：最多 50 个文档，每个最多 200,000 字节；路径不存在、过大或在仓库之外时只产生一条警告。共享配置可以设置 `projectDocs`，账户设置不能。v0.11.0 新增。
 
 ## 共享配置
 
