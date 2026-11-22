@@ -80,7 +80,7 @@ export function selection(values: ReturnType<typeof parse>["values"]): Selection
   return options;
 }
 
-// What an ablation run changes in every review prompt (ADR-0057, ADR-0058):
+// What an ablation run changes in every review prompt (ADR-0057, ADR-0059):
 // the sources it leaves out and the guidelines it gives.
 export interface ContextChoice {
   without: string[];

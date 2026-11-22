@@ -1,5 +1,5 @@
 // A monorepo's AGENTS.md and the changes whose reviews need its sections:
-// the recall corpus for guideline selection (ADR-0058).
+// the recall corpus for guideline selection (ADR-0059).
 export const MONOREPO_GUIDELINES = `# AGENTS.md
 
 Rules for everyone working here. Run \`npm run verify\` before every push.

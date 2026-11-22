@@ -1,4 +1,4 @@
-# ADR-0058: Guidelines as whole sections, and which reviewers get them
+# ADR-0059: Guidelines as whole sections, and which reviewers get them
 
 - Status: accepted; amends [ADR-0057](0057-review-context-budgets.md)
 - Date: 2026-11-22

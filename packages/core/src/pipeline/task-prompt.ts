@@ -35,7 +35,7 @@ export interface TaskSettings {
   ultra: boolean;
   // Sources an ablation run leaves out of every prompt (ADR-0057).
   without?: ReadonlySet<OptionalContext>;
-  // Which guideline sections each task is given (ADR-0058); "all" unless set.
+  // Which guideline sections each task is given (ADR-0059); "all" unless set.
   guidelineScope?: GuidelineScope;
   // The files a security reviewer reviews in the run (securityReviewed).
   securityFiles: ReadonlySet<string>;
