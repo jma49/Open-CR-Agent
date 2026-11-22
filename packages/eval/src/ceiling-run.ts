@@ -73,7 +73,7 @@ export async function classifyChange(
   options: Pick<CeilingOptions, "reposDir" | "command" | "prepare">,
 ): Promise<ClassifiedChange> {
   const dir = await (options.prepare ?? prepareRepository)(options.reposDir, instance);
-  const preview = await plan(dir, instance, options.command);
+  const preview = await planChange(dir, instance, options.command);
   const diff = await exec(
     "git",
     [
@@ -101,10 +101,13 @@ export async function classifyChange(
   return { dir, reaches: classifyReferences(instance, preview, files), tier: preview.tier };
 }
 
-async function plan(
+// What `ocra review --plan` decides for the instance's change, as the eval
+// runs review it: without the repository's configuration.
+export async function planChange(
   dir: string,
   instance: Instance,
   command: readonly string[],
+  extraArgs: readonly string[] = [],
 ): Promise<CliPlanOutput> {
   const [bin, ...prefix] = command;
   if (!bin) throw new Error("ocra command is empty");
@@ -121,6 +124,7 @@ async function plan(
       instance.baseCommit,
       "--to",
       instance.headCommit,
+      ...extraArgs,
     ],
     { cwd: dir, timeoutMs: 5 * 60_000, env: benchmarkEnv() },
   );

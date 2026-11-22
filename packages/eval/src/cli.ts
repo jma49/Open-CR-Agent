@@ -2,6 +2,7 @@ import { errorMessage } from "@open-cr-agent/core";
 import { adjudicate } from "./commands/adjudicate.js";
 import { ceiling } from "./commands/ceiling.js";
 import { compare } from "./commands/compare.js";
+import { context } from "./commands/context.js";
 import { goldenImport } from "./commands/golden-import.js";
 import { list } from "./commands/list.js";
 import { noise } from "./commands/noise.js";
@@ -16,6 +17,9 @@ const USAGE = `Usage: ocra-eval <command> [options]
 Commands:
   list                 Show the PRs a selection would review (free)
   ceiling              Recall ceiling of the deterministic stages (free, no model)
+  context [--without <sources>]
+                       Each review task's first prompt by context source: tokens,
+                       cuts and duplicated lines (free, no model)
   run                  Review the selected PRs with ocra, then score them
   score <run-dir>      Re-score an existing run
   adjudicate <run-dir> Record the labels typed into a golden run's adjudication.json in its cases
@@ -84,6 +88,8 @@ Run:
                            on a rate limit for example
   --reviewers <ids>        Passed to ocra review --reviewers
   --ultra                  Passed to ocra review --ultra (recall mode; about twice the cost)
+  --without <sources>      Passed to ocra review --without: leave these context
+                           sources out of every prompt, for an ablation run
   --config <file>          Passed to ocra review --config: your own configuration
                            (declared providers, limits) for reviews that run with
                            --no-repo-config
@@ -115,6 +121,7 @@ export async function main(
   try {
     if (command === "list") return await list(rest, out);
     if (command === "ceiling") return await ceiling(rest, out, err);
+    if (command === "context") return await context(rest, out, err);
     if (command === "run") return await run(rest, out, err, env);
     if (command === "score") return await rescore(rest, out, err, env);
     if (command === "adjudicate") return await adjudicate(rest, out);

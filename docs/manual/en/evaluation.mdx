@@ -29,6 +29,7 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--retry-failed` | Review again PRs that failed in an earlier attempt, on a rate limit for example; when that attempt's session is still in the clone, with `ocra review --resume`, so only its unfinished tasks run. The PR's `usage` is then both attempts' |
 | `--reviewers` | Passed to `ocra review --reviewers`, for comparing reviewer sets |
 | `--ultra` | Passed to `ocra review --ultra` (recall mode, about twice the cost); recorded in the run |
+| `--without <sources>` | Passed to `ocra review --without`: leave these context sources out of every prompt, for a per-source ablation (see [Context by source](#context-by-source-free)) |
 | `--config` | Passed to `ocra review --config`: your configuration file (declared providers, limits) |
 | `--setup single-agent` | Review with one top-tier reviewer that covers every concern, with no verifier and no judge: the baseline a change to the specialists is compared with (`compare` or `verdict` with `--allow-mixed`). The `--config` file's settings are kept (one that names plugins is refused); the setup's own configuration is written to the run directory as `setup-single-agent.config.json` and recorded like a `--config` file. Not with `--reviewers` |
 | `--pr-max-cost-usd` | Spend limit per PR (`ocra review --max-cost-usd`); use with `--max-cost-usd` to bound a run |
@@ -238,6 +239,17 @@ node packages/eval/dist/main.js ceiling --limit 20 --max-change-lines 300
 ```
 
 Classifies every annotated issue by what ocra's deterministic stages decide, with no model call: file excluded by selection, not in the change, no reviewer covers it, out of scope by design (maintainability and readability), a security or performance issue without that reviewer, outside the changed lines, or reachable. The reachable share bounds recall; only selection, the matrix or the scope can raise it, not a model.
+
+## Context by source (free)
+
+```bash
+node packages/eval/dist/main.js context --dataset golden --tier full
+node packages/eval/dist/main.js context --dataset golden --tier full --without learnings --label context-without-learnings
+```
+
+Plans every case as `run` reviews it (`ocra review --plan`, no model call) and reports, for each context source of the review prompts (the system prompt, change request, changed files, linked tasks, guidelines, rules, accepted findings, learnings, project documents, the diff, callers, analyzer results, the closing instructions): how many tasks have it, its tokens and share of all first prompts, the mean and largest per task, how often it was cut to its limit, and how many of its tokens repeat lines an earlier source of the same prompt holds. Written to `context.md` and `context.json` under `--out`/`--label` (default `context`); attack cases are skipped.
+
+To measure what a source is worth, review with and without it, then compare: `run --label baseline` and `run --label without-learnings --without learnings` on the same cases, then `verdict baseline without-learnings` (both are paid).
 
 ## Scoring
 

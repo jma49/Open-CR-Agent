@@ -29,6 +29,7 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--retry-failed` | 重新审查之前失败的 PR（比如因限流失败的）；那次尝试的会话还在克隆里时，用 `ocra review --resume` 接着跑，只运行没完成的任务。这时该 PR 的 `usage` 是两次尝试之和 |
 | `--reviewers` | 透传给 `ocra review --reviewers`，用来比较不同的审查员组合 |
 | `--ultra` | 透传给 `ocra review --ultra`（召回模式，花费约两倍）；运行记录会注明 |
+| `--without <来源>` | 透传给 `ocra review --without`：从每个提示词里去掉这些上下文来源，用于逐个来源的消融对比（见[按来源统计上下文](#按来源统计上下文免费)） |
 | `--config` | 透传给 `ocra review --config`：你的配置文件（声明的供应商、各种上限） |
 | `--setup single-agent` | 只用一个顶级档位的审查员覆盖所有方面，不做验证也不做裁判：这是专项审查员的改动要对比的基线（用 `compare` 或 `verdict` 加 `--allow-mixed`）。`--config` 文件里的设置保留（列了插件的文件会被拒绝）；这个设置自己的配置写到运行目录下的 `setup-single-agent.config.json`，像 `--config` 文件一样被记录。不能和 `--reviewers` 一起用 |
 | `--pr-max-cost-usd` | 每个 PR 的花费上限（`ocra review --max-cost-usd`）；与 `--max-cost-usd` 一起用才能限定一次运行 |
@@ -238,6 +239,17 @@ node packages/eval/dist/main.js ceiling --limit 20 --max-change-lines 300
 ```
 
 不调用模型，按 ocra 各确定性阶段的决定给每条标注问题归类：文件被选择阶段排除、不在改动里、没有审查员覆盖、按设计不在范围内（可维护性和可读性）、安全或性能问题但没有对应审查员、在改动行之外，或者可达。可达比例是召回率的上限；只有调整文件选择、审查矩阵或范围才能提高它，换模型不行。
+
+## 按来源统计上下文（免费）
+
+```bash
+node packages/eval/dist/main.js context --dataset golden --tier full
+node packages/eval/dist/main.js context --dataset golden --tier full --without learnings --label context-without-learnings
+```
+
+按 `run` 的审查方式规划每个用例（`ocra review --plan`，不调用模型），对审查提示词里的每个上下文来源（系统提示词、变更请求、改动文件列表、关联任务、仓库指南、规则、已接受的问题、经验、项目文档、diff、调用方、分析工具结果、结尾的指令）给出：有多少任务包含它、它的 token 数及占全部首轮提示词的比例、每个任务的平均值和最大值、被截到上限的次数，以及其中有多少 token 与同一提示词里前面的来源重复。结果写入 `--out`/`--label`（默认 `context`）下的 `context.md` 和 `context.json`；攻击用例会跳过。
+
+要衡量某个来源的价值，就分别带着它和去掉它审查，再做对比：在同一批用例上运行 `run --label baseline` 和 `run --label without-learnings --without learnings`，然后 `verdict baseline without-learnings`（两者都要付费）。
 
 ## 评分方式
 

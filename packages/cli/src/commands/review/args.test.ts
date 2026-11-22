@@ -88,6 +88,14 @@ describe("parseReviewArgs", () => {
     expect(() => parseReviewArgs(["--reviewers", " , "])).toThrow(UsageError);
   });
 
+  it("takes the context sources an ablation run leaves out", () => {
+    expect(parseReviewArgs(["--without", "learnings, callers,learnings"])).toMatchObject({
+      without: ["learnings", "callers"],
+    });
+    expect(() => parseReviewArgs(["--without", "diff"])).toThrow(/unknown context diff/);
+    expect(() => parseReviewArgs(["--without", ","])).toThrow(UsageError);
+  });
+
   it.each([
     [["--commit", "a", "--from", "b"], "--commit cannot be combined with --from or --to"],
     [["--to", "b"], "--to requires --from"],

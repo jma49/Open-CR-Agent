@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { proxiedFetch } from "@open-cr-agent/core";
+import { isOptionalContext, OPTIONAL_CONTEXT, proxiedFetch } from "@open-cr-agent/core";
 import { loadDataset } from "../dataset.js";
 import { loadGolden } from "../golden.js";
 import type { Dataset, Instance } from "../instance.js";
@@ -47,6 +47,7 @@ const OPTIONS = {
   from: { type: "string" },
   register: { type: "string" },
   "dry-run": { type: "boolean" },
+  without: { type: "string" },
 } as const;
 
 export function parse(argv: string[]) {
@@ -69,6 +70,20 @@ export function selection(values: ReturnType<typeof parse>["values"]): Selection
     options.tier = values.tier;
   }
   return options;
+}
+
+// The context sources an ablation run leaves out (ocra review --without).
+export function without(values: { without?: string | undefined }): string[] {
+  if (values.without === undefined) return [];
+  const names = values.without
+    .split(",")
+    .map((n) => n.trim())
+    .filter((n) => n !== "");
+  const unknown = names.filter((n) => !isOptionalContext(n));
+  if (names.length === 0 || unknown.length > 0) {
+    throw new Error(`--without takes a comma-separated list of ${OPTIONAL_CONTEXT.join(", ")}`);
+  }
+  return names;
 }
 
 export function dataset(values: { dataset?: string | undefined }): Dataset {

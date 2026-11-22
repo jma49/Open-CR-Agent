@@ -142,6 +142,11 @@ export {
   type TaskOutcome,
   type TaskStatus,
 } from "./report/report.js";
+export {
+  isOptionalContext,
+  OPTIONAL_CONTEXT,
+  type OptionalContext,
+} from "./review/context-sources.js";
 export type { ReviewerDefinition, ReviewerScope } from "./review/reviewer.js";
 export { REVIEW_TOOLS, type ReviewToolName } from "./review/tools.js";
 export type { Language } from "./rules/languages.js";

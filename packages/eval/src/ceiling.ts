@@ -52,7 +52,9 @@ export interface ReferenceReach {
 
 export function classifyReferences(
   instance: Instance,
-  preview: ReviewPreview,
+  preview: Pick<ReviewPreview, "excluded" | "selected"> & {
+    tasks: readonly Pick<ReviewPreview["tasks"][number], "files" | "reviewer">[];
+  },
   diffs: readonly FileDiff[],
 ): ReferenceReach[] {
   const excluded = new Map(preview.excluded.map((e) => [e.path, e.reason]));

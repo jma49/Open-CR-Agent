@@ -49,4 +49,13 @@ describe("ocra-eval run --dry-run", () => {
     expect(text).toContain("Judge: unset.");
     expect(text).not.toContain("Spend bound: none");
   });
+
+  it("names the context an ablation run leaves out, and refuses one it does not know", async () => {
+    let text = "";
+    const out = { write: (chunk: string) => (text += chunk) };
+    const args = ["run", "--dataset", "golden", "--tier", "smoke", "--dry-run", "--without"];
+    expect(await main([...args, "learnings,callers"], out, out, {})).toBe(0);
+    expect(text).toContain("Left out of every prompt: learnings, callers.");
+    expect(await main([...args, "diff"], out, out, {})).not.toBe(0);
+  });
 });

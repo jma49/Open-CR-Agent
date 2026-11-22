@@ -42,6 +42,8 @@ export interface LinkedTaskUse {
 
 export const LINKED_TASK_LIMITS = {
   tasks: 3,
+  title: 300,
+  subtaskTitle: 120,
   body: 4_000,
   parentBody: 1_500,
   subtasks: 10,

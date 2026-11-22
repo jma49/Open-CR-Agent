@@ -3,10 +3,12 @@ import { defaultBundlePolicy } from "../bundle/bundle.js";
 import type { Effort } from "../contracts.js";
 import type { ChangeRequest, RiskTier } from "../domain.js";
 import { planTasks, type SkippedCell } from "../matrix/matrix.js";
+import { reviewPromptParts } from "../review/prompt.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import { securityReviewed } from "../sarif/evidence.js";
 import type { FileDecision } from "../select/select.js";
-import { type ReviewOptions, runSettings } from "./options.js";
+import { contextFootprint, estimateTokens, type SourceFootprint } from "./context-footprint.js";
+import { guidelinesShown, type ReviewOptions, runSettings } from "./options.js";
 import { type PlanOptions, planReview, type ReviewPlan } from "./plan.js";
 import { taskPrompt } from "./task-prompt.js";
 
@@ -17,6 +19,8 @@ export interface PreviewTask {
   files: string[];
   // The first request's prompt, estimated at four characters per token.
   promptTokens: number;
+  // That prompt by source, in prompt order (ADR-0057).
+  context: SourceFootprint[];
   // The plan phase's one call before the review (--ultra, or a large bundle),
   // on the reviewer's tier; shared by --ultra's two samples.
   planPromptTokens?: number;
@@ -85,20 +89,25 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
   const planned = planTasks(plan.bundles, reviewers, plan.tier, options.reviewerOverrides, {
     ultra: settings.ultra,
     ...(settings.maxTasks !== undefined ? { maxTasks: settings.maxTasks } : {}),
-    hasGuidelines: Boolean(plan.guidelines?.trim()),
+    hasGuidelines: guidelinesShown(plan.guidelines, settings),
   });
   const { cells } = planned;
 
   const plannedBundles = new Set<string>();
   const securityFiles = securityReviewed(cells);
   const tasks = cells.map((cell): PreviewTask => {
-    const prepared = taskPrompt(cell, plan, { ultra: settings.ultra, securityFiles });
+    const prepared = taskPrompt(cell, plan, {
+      ultra: settings.ultra,
+      securityFiles,
+      without: settings.without,
+    });
     const task: PreviewTask = {
       taskId: cell.taskId,
       reviewer: cell.reviewer.id,
       bundle: cell.bundle.label,
       files: cell.bundle.files.map((f) => f.newPath),
       promptTokens: tokens(prepared.prompt),
+      context: contextFootprint(reviewPromptParts(prepared.input)),
     };
     const call = reviewerCall(cell.reviewer, options);
     if (call.effort !== undefined) task.effort = call.effort;
@@ -166,5 +175,5 @@ function totalInputCost(tasks: readonly PreviewTask[]): NonNullable<ReviewPrevie
 
 // Four characters per token: an estimate, not a tokenizer.
 function tokens(prompt: { system: string; user: string }): number {
-  return Math.ceil((prompt.system.length + prompt.user.length) / 4);
+  return estimateTokens(prompt.system.length + prompt.user.length);
 }

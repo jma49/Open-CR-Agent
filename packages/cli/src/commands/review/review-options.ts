@@ -47,6 +47,10 @@ export function configuredOptions(run: ResolvedRun, args: ReviewArgs): Configure
       walkthrough:
         config.walkthrough ?? (args.pullRequest !== undefined || args.mergeRequest !== undefined),
     },
-    mode: { ...(run.ultra ? { ultra: true } : {}), ...(args.full ? { full: true } : {}) },
+    mode: {
+      ...(run.ultra ? { ultra: true } : {}),
+      ...(args.full ? { full: true } : {}),
+      ...(args.without ? { without: args.without } : {}),
+    },
   };
 }
