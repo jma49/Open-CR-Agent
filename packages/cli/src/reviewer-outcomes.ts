@@ -39,6 +39,9 @@ export interface ReviewOutcomes {
   // Earlier findings gone from the code or dismissed, each fingerprint once.
   fixed: number;
   dismissed: number;
+  // Their fingerprints, in the order the reports name them.
+  fixedFingerprints: string[];
+  dismissedFingerprints: string[];
 }
 
 // The per-reviewer counts of one report (the upload) or of many (`ocra
@@ -108,5 +111,7 @@ export function reviewerOutcomes(reports: readonly CountedReport[]): ReviewOutco
     verification,
     fixed: fixed.size,
     dismissed: dismissed.size,
+    fixedFingerprints: [...fixed],
+    dismissedFingerprints: [...dismissed],
   };
 }

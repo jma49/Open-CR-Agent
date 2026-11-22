@@ -1,4 +1,4 @@
-import { reviewReport } from "@open-cr-agent/test-support";
+import { priorFinding, reviewReport } from "@open-cr-agent/test-support";
 import { describe, expect, it } from "vitest";
 import { cloudUpload } from "./review.js";
 
@@ -50,5 +50,28 @@ describe("cloudUpload", () => {
     const upload = cloudUpload(reviewReport({}), cloud(false), pull).upload;
     expect(upload.learnings).toEqual([]);
     expect(upload).not.toHaveProperty("mergeChecks");
+  });
+
+  it("names the earlier findings it saw fixed or dismissed only with the findings", () => {
+    const prior = (fingerprint: string) => priorFinding({ fingerprint, title: "t", file: "a.ts" });
+    const rereviewed = reviewReport({
+      rereview: {
+        fixed: [prior("aaaabbbbccccdddd"), prior("1111222233334444")],
+        dismissed: [prior("1111222233334444"), prior("eeeeffff00001111")],
+        notReproduced: [],
+        notRechecked: [],
+        unchanged: [],
+      },
+    });
+    expect(cloudUpload(rereviewed, cloud(false), pull).upload.outcomes).toEqual({
+      fixed: 1,
+      dismissed: 2,
+    });
+    expect(cloudUpload(rereviewed, cloud(true), pull).upload.outcomes).toEqual({
+      fixed: 1,
+      dismissed: 2,
+      fixedFingerprints: ["aaaabbbbccccdddd"],
+      dismissedFingerprints: ["1111222233334444", "eeeeffff00001111"],
+    });
   });
 });

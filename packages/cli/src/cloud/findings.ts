@@ -1,4 +1,5 @@
 import {
+  FINGERPRINT,
   MAX_FINDINGS,
   MAX_TOTAL_BYTES,
   redactField,
@@ -6,6 +7,7 @@ import {
   type SharedFix,
 } from "@open-cr-agent/cloud-contract";
 import type { Finding, ReviewReport } from "@open-cr-agent/core";
+import { reviewerOutcomes } from "../reviewer-outcomes.js";
 
 // The findings a review sends ocra Cloud when the account shares them
 // (ADR-0028, 2): what the web needs to show the review, after the contract's
@@ -27,6 +29,24 @@ export function sharedFindings(report: Pick<ReviewReport, "findings">): SharedFi
     findings.push(shared);
   }
   return { findings, left: report.findings.length - findings.length };
+}
+
+/**
+ * The fingerprints of the earlier findings this review saw fixed or
+ * dismissed, counted as the upload's outcomes count them, so ocra Cloud can
+ * mark the findings it holds under them.
+ */
+export function sharedOutcomes(report: ReviewReport): {
+  fixedFingerprints: string[];
+  dismissedFingerprints: string[];
+} {
+  const { fixedFingerprints, dismissedFingerprints } = reviewerOutcomes([report]);
+  const bounded = (fps: string[]) =>
+    fps.filter((fp) => FINGERPRINT.test(fp)).slice(0, MAX_FINDINGS);
+  return {
+    fixedFingerprints: bounded(fixedFingerprints),
+    dismissedFingerprints: bounded(dismissedFingerprints),
+  };
 }
 
 function share(f: Finding): SharedFinding {
