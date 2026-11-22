@@ -1,6 +1,6 @@
-import { normalizeSnippet } from "../anchor/match.js";
 import type { LineRange, QuoteSignature } from "../domain.js";
 import { shortHash } from "../hash.js";
+import { normalizeSnippet } from "./match.js";
 
 // The signature covers the anchored lines of the file, not the model's quote:
 // models often quote part of a line, and a partial quote would never match a

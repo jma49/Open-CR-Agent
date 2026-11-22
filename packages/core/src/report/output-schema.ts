@@ -8,6 +8,7 @@ import {
   verdictSchema,
   verificationSchema,
 } from "../domain.js";
+import { FIX_REJECTIONS } from "../fix/check.js";
 import { skipReasonSchema } from "../matrix/matrix.js";
 import { memoryEntrySchema } from "../memory/memory.js";
 import { MERGE_CHECK_OUTCOMES } from "../merge-checks/merge-check.js";
@@ -254,6 +255,15 @@ export const reportOutputSchema = z.strictObject({
     )
     .exactOptional(),
   judgement: judgeDecisionsSchema.exactOptional(),
+  fixes: z
+    .strictObject({
+      asked: z.int().nonnegative(),
+      proposed: z.int().nonnegative(),
+      rejected: z.array(
+        z.strictObject({ fingerprint: z.string(), reason: z.enum(FIX_REJECTIONS) }),
+      ),
+    })
+    .exactOptional(),
   walkthrough: z
     .strictObject({
       overview: z.string(),

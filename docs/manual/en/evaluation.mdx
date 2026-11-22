@@ -30,6 +30,7 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--reviewers` | Passed to `ocra review --reviewers`, for comparing reviewer sets |
 | `--ultra` | Passed to `ocra review --ultra` (recall mode, about twice the cost); recorded in the run |
 | `--without <sources>` | Passed to `ocra review --without`: leave these context sources out of every prompt, for a per-source ablation (see [Context by source](#context-by-source-free)) |
+| `--fixes` | Passed to `ocra review --fixes`; a golden run's `summary.md` and `summary.json` (`golden.fixes`) count the findings that carried a fix, and how many of those findings were right or wrong. Whether each fix is right is not scored yet |
 | `--config` | Passed to `ocra review --config`: your configuration file (declared providers, limits) |
 | `--setup single-agent` | Review with one top-tier reviewer that covers every concern, with no verifier and no judge: the baseline a change to the specialists is compared with (`compare` or `verdict` with `--allow-mixed`). The `--config` file's settings are kept (one that names plugins is refused); the setup's own configuration is written to the run directory as `setup-single-agent.config.json` and recorded like a `--config` file. Not with `--reviewers` |
 | `--pr-max-cost-usd` | Spend limit per PR (`ocra review --max-cost-usd`); use with `--max-cost-usd` to bound a run |

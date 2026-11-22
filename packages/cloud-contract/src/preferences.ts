@@ -125,6 +125,8 @@ export const reviewSettingsSchema = z
     judge: z.boolean().nullish(),
     // Whether reviews are given the tasks the change is linked to (ADR-0052).
     linkedTasks: z.boolean().nullish(),
+    // Whether reviews propose checked fixes for their findings (ADR-0058).
+    fixes: z.boolean().nullish(),
     sampling: z
       .strictObject({
         temperature: z.number().min(0).max(2).optional(),

@@ -6,7 +6,7 @@ import { type AgentCallSettings, agentCall } from "./settings.js";
 // plan phase, the walkthrough, Verify, Judge.
 interface OneShotRequest {
   tier: ModelTier;
-  // A reviewer id (its plan call), or a role: "verifier", "judge", "helper", "writer".
+  // A reviewer id (its plan call), or a role (AGENT_ROLES).
   agent: string;
   call?: AgentCallSettings | undefined;
   system: string;

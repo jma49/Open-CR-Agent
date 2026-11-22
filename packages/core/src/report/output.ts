@@ -57,6 +57,14 @@ export function toReportOutput(report: ReviewReport): ReportOutput {
     }));
   }
   if (report.judgement) output.judgement = outputJudgement(report.judgement);
+  if (report.fixes) {
+    const { asked, proposed, rejected } = report.fixes;
+    output.fixes = {
+      asked,
+      proposed,
+      rejected: rejected.map(({ fingerprint, reason }) => ({ fingerprint, reason })),
+    };
+  }
   if (report.walkthrough) output.walkthrough = outputWalkthrough(report.walkthrough);
   if (report.mergeChecks) {
     output.mergeChecks = report.mergeChecks.map(({ id, instruction, outcome, reason }) => ({

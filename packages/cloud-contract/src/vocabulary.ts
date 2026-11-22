@@ -37,7 +37,7 @@ export const modelTierSchema = z.enum(MODEL_TIERS);
 export type ModelTier = z.infer<typeof modelTierSchema>;
 
 /** The agents that are not reviewers (ADR-0025). */
-export const AGENT_ROLES = ["verifier", "judge", "helper", "writer"] as const;
+export const AGENT_ROLES = ["verifier", "judge", "helper", "writer", "fixer"] as const;
 export const agentRoleSchema = z.enum(AGENT_ROLES);
 export type AgentRole = z.infer<typeof agentRoleSchema>;
 

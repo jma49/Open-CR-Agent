@@ -131,6 +131,9 @@
       },
       "writer": {
         "tier": "standard"
+      },
+      "fixer": {
+        "tier": "standard"
       }
     }
   },

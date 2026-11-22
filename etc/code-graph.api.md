@@ -7,6 +7,7 @@
 import type { FileSymbols } from '@open-cr-agent/core';
 import { ReferenceIndex } from '@open-cr-agent/core';
 import type { SymbolExtractor } from '@open-cr-agent/core';
+import type { SyntaxChecker } from '@open-cr-agent/core';
 
 // @public (undocumented)
 export interface CodeGraph {
@@ -91,6 +92,9 @@ export interface TreeSitterOptions {
 
 // @public (undocumented)
 export function treeSitterSymbols(options?: TreeSitterOptions): SymbolExtractor;
+
+// @public (undocumented)
+export function treeSitterSyntax(): SyntaxChecker;
 
 // @public (undocumented)
 export function updateGraph(previous: CodeGraph | undefined, tree: readonly TreeEntry[], readBlob: ReadBlob, options?: UpdateOptions): Promise<GraphUpdate>;

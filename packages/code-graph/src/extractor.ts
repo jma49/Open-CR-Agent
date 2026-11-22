@@ -6,7 +6,7 @@ import { parseSymbols } from "./parse.js";
 import { VERSION } from "./version.js";
 
 // Larger files are generated or data more often than code a change calls.
-const MAX_FILE_CHARS = 1_000_000;
+export const MAX_FILE_CHARS = 1_000_000;
 
 export interface TreeSitterOptions {
   // Shared across runs; absent: symbols are kept for this extractor's life.

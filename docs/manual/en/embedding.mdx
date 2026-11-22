@@ -75,7 +75,7 @@ These `ReviewOptions` fields are a contract under the [0.x rule](./stability): a
 | `runtime` | The `AgentRuntime` that runs one isolated review task at a time |
 | `reviewers` | The reviewers to run (default: `correctness` alone); the registry's, or your own `ReviewerDefinition`s |
 | `reviewerOverrides` | Per reviewer: `enabled`, `minTier`, and its own `effort` and `models` chain ([Models per agent](./configuration#models-per-agent)) |
-| `roles` | Per role (`verifier`, `judge`, `helper`, `writer`): its own `effort` and `models` chain |
+| `roles` | Per role (`verifier`, `judge`, `helper`, `writer`, `fixer`): its own `effort` and `models` chain |
 | `effort` | Reasoning effort per model tier ([Effort](./configuration#effort)) |
 | `models` | The tier chains the runtime was given (it takes them in `RuntimeOptions.models`), so `provenance.agents` can record each agent's chain |
 | `rules` | Path-scoped rules, the registry's plus yours (`SourcedRule[]`: a `RepoRule` with an optional `source`: `repository`, `shared`, `account` or `plugin`); `provenance.rules` lists them, `.ocra/rules.json`'s as `repository` |
@@ -86,6 +86,7 @@ These `ReviewOptions` fields are a contract under the [0.x rule](./stability): a
 | `stages.verify`, `stages.judge` | Fact-check findings against the diff, and merge, filter and recalibrate them across reviewers (both default on) |
 | `mergeChecks` | The team's [pre-merge checks](./how-it-works#pre-merge-checks) (`{ id, instruction }[]`), judged in one `judge` call beside the review tasks; the report's `mergeChecks` gives each outcome |
 | `stages.walkthrough` | Write the [walkthrough](./how-it-works#walkthrough) into `report.walkthrough` (default off; the CLI turns it on for pull and merge requests) |
+| `stages.fixes`, `syntax` | Propose a checked [fix](./how-it-works) for findings (default off); `syntax` is the `SyntaxChecker` that checks the patched file parses (`treeSitterSyntax()` from `@open-cr-agent/code-graph`), and without it no fix is proposed. The report's `fixes` says which findings were asked and why a fix was not kept |
 | `limits.maxCostUsd`, `limits.maxTasks` | The spend limit ([`--max-cost-usd`](./cli)) and the task cap; a negative or `NaN` limit, or a task cap that is not a whole number, is refused with `CONFIG_INVALID` |
 | `mode.full` | Review every file although the platform reports what changed since the previous review |
 | `mode.ultra` | Recall over cost ([Modes](./how-it-works#modes)) |

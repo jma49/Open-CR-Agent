@@ -104,6 +104,12 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
       `Judge merged ${judged.merged.length} duplicate group(s) and dropped ${judged.dropped.length} finding(s) (see the JSON report).`,
     );
   }
+  const fixes = report.fixes;
+  if (fixes && fixes.asked > 0) {
+    lines.push(
+      `Proposed ${fixes.proposed} checked fix(es) for the ${fixes.asked} finding(s) a fix was asked for (see the JSON report).`,
+    );
+  }
   if (incomplete.length > 0) {
     lines.push(
       `Incomplete: ${incomplete.length} of ${report.tasks.length} review task(s) did not finish.`,
@@ -165,6 +171,14 @@ function renderFinding(finding: Finding): string[] {
   ];
   lines.push(...indented(finding.body, indent));
   if (finding.suggestion) lines.push(...indented(`Suggestion: ${finding.suggestion}`, indent));
+  if (finding.fix) {
+    const { startLine, endLine, replacement } = finding.fix;
+    const span = startLine === endLine ? `L${startLine}` : `L${startLine}-${endLine}`;
+    lines.push(`${indent}Fix (replaces ${span}):`);
+    lines.push(
+      ...indented(replacement === "" ? "(deletes the lines)" : replacement, `${indent}  `),
+    );
+  }
   return lines;
 }
 

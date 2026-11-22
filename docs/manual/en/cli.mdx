@@ -98,6 +98,7 @@ ocra review [options]
 | `--graph <file>` | Find the callers of changed symbols in this [code graph](#ocra-graph), after `--scip` and before searching. Not with `--plan` |
 | `--scip <file>` | Find the callers of changed symbols in this [SCIP](https://github.com/scip-code/scip) index first (see [Modes](./how-it-works#modes)). Not with `--plan` |
 | `--ultra` | Favor recall over cost; see [Modes](./how-it-works#modes) |
+| `--fixes` | Propose checked fixes for findings, as [`fixes: true`](./configuration) does |
 | `--reviewers <ids>` | Run only these reviewers, comma-separated (for example `security`) |
 | `--temperature <n>` | Sampling temperature, 0 to 2; overrides `sampling.temperature` ([Configuration](./configuration#execution)) |
 | `--seed <n>` | Sampling seed where runtime and provider support one (not `opencode`); overrides `sampling.seed` |
@@ -142,7 +143,7 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...`.
 - change request, risk tier, verdict, summary;
 - coverage per changed file: reviewed, failed, unreviewed (no task started), incomplete (task ended without the done tool; `ended`: `step_cap` or `stopped_early`), unchanged since the previous review, or excluded with a reason; for pull requests, incremental or full and why (`scope`);
 - bundles, task outcomes, reviewer/bundle pairs the matrix skipped;
-- `refuted` (findings verification dropped, with the reason), `unverifiedCriticals` (critical findings it failed to check), `judgement` (what the judge merged, dropped or recalibrated);
+- `refuted` (findings verification dropped, with the reason), `unverifiedCriticals` (critical findings it failed to check), `judgement` (what the judge merged, dropped or recalibrated), `fixes` when fixes were on (`asked`, `proposed`, and each `rejected` finding's `fingerprint` and `reason`: `declined`, `failed`, `stale`, `unchanged`, `unsafe`, `too_large`, `no_parser` or `syntax`);
 - findings, and `rereview`: earlier findings fixed, not reproduced, not re-checked, unchanged or dismissed, each with its `reviewer` when recorded;
 - `remembered`: findings a memory accepted, with `source` (`repository` for `.ocra/memory.json`, `account` for your [ocra Cloud memory](#memory-in-your-ocra-cloud-account)); a maintainer's override in `changeRequest.override`;
 - `learnings`: each [learning](./rules#ocralearnings) a task was given, with its `title`, `critical`, `source` and the `bundles` it went to;
@@ -154,7 +155,7 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...`.
 
 The format is a contract (`"version": 1`): later releases only add optional fields and new values of a listed set, or change the version. Treat an unknown coverage status as not reviewed.
 
-**Each finding** has `fingerprint` (stable across runs; `ocra memory add` takes a prefix), `reviewer`, `category`, `severity`, `verification` (`confirmed`, `uncertain` or `unchecked`), `file`, `lines` (`{ start, end }`, absent when not tied to lines), `inDiff`, `status` (`new`, or `unfixed` when reported before), `title`, `body`, optional `suggestion`, optional `fix` (`{ startLine, endLine, replacement }`, offered as a [committable suggestion](./github#committable-suggestions); no reviewer produces one yet), `evidence`, `code` (the quote), `lowConfidence` under `--ultra`, `preExisting` when Verify found the problem already in the code the change touches, and `provenance` (its `task`, and `model` when known). Each task in `tasks` has its `usage` (tokens and cost; a finding costs what its task did) and, if it ended without the done tool, `ended`: its files count as partly reviewed. A task whose reviewer was then given the [wrap-up turn](./how-it-works) also has `wrapUp` (`{ findings }`, how many it reported there); its files still count as partly reviewed.
+**Each finding** has `fingerprint` (stable across runs; `ocra memory add` takes a prefix), `reviewer`, `category`, `severity`, `verification` (`confirmed`, `uncertain` or `unchecked`), `file`, `lines` (`{ start, end }`, absent when not tied to lines), `inDiff`, `status` (`new`, or `unfixed` when reported before), `title`, `body`, optional `suggestion`, optional `fix` (`{ startLine, endLine, replacement }`, set by the [Fix stage](./how-it-works) when it is on, and offered as a [committable suggestion](./github#committable-suggestions)), `evidence`, `code` (the quote), `lowConfidence` under `--ultra`, `preExisting` when Verify found the problem already in the code the change touches, and `provenance` (its `task`, and `model` when known). Each task in `tasks` has its `usage` (tokens and cost; a finding costs what its task did) and, if it ended without the done tool, `ended`: its files count as partly reviewed. A task whose reviewer was then given the [wrap-up turn](./how-it-works) also has `wrapUp` (`{ findings }`, how many it reported there); its files still count as partly reviewed.
 
 **The report's `provenance`** records:
 

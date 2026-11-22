@@ -1,6 +1,6 @@
 import { mapWithConcurrency } from "../agent/pool.js";
+import { containsQuote } from "../anchor/quote.js";
 import type { PriorReview } from "../domain.js";
-import { containsQuote } from "./quote.js";
 
 const READ_CONCURRENCY = 8;
 

@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type { Anchor } from "../anchor/anchor.js";
 import { normalizeSnippet } from "../anchor/match.js";
+import { quoteSignature } from "../anchor/quote.js";
 import type { Finding, FindingProvenance, ReportedFinding, Severity } from "../domain.js";
 import { shortHash } from "../hash.js";
-import { quoteSignature } from "../rereview/quote.js";
 
 const SEVERITY_RANK: Record<Severity, number> = { suggestion: 0, warning: 1, critical: 2 };
 

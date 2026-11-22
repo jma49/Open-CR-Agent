@@ -191,6 +191,12 @@ function goldenSection(golden: GoldenSummary): string[] {
               `- ${f.case}: ${f.file}${f.lines ? `:${f.lines.start}` : ""} "${f.title}" (${f.reason})`,
           ),
         ]),
+    ...(golden.fixes
+      ? [
+          "",
+          `Fixes: ${golden.fixes.offered} finding(s) carried one; ${golden.fixes.onRight} on right findings, ${golden.fixes.onWrong} on wrong ones, the rest unlabeled. Whether a fix is itself right is not scored yet.`,
+        ]
+      : []),
     ...(golden.relabeled.length === 0
       ? []
       : [

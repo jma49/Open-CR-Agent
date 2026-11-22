@@ -121,6 +121,13 @@ describe("parseAccountSettings", () => {
     });
   });
 
+  it("takes the account's switch for fixes", () => {
+    expect(parseAccountSettings({ settings: { fixes: true } }).settings).toEqual({
+      version: null,
+      fixes: true,
+    });
+  });
+
   it("leaves out a runtime that is not built in", () => {
     const { settings, warnings } = parseAccountSettings({ runtime: "./evil.js" });
     expect(settings.runtime).toBeUndefined();

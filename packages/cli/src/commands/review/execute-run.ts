@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { REPOSITORY_URL } from "@open-cr-agent/cloud-contract";
-import { scipReferences } from "@open-cr-agent/code-graph";
+import { scipReferences, treeSitterSyntax } from "@open-cr-agent/code-graph";
 import {
   type AgentRuntime,
   errorMessage,
@@ -76,6 +76,7 @@ export async function executeRun(
       vcs: run.vcs,
       runtime,
       symbols: reviewSymbols(deps.env),
+      syntax: treeSitterSyntax(),
       ...referencesOf(args, deps.cwd, run.warn),
       onEvent: (event) => {
         run.registry.emit(event);

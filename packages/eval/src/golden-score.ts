@@ -54,6 +54,10 @@ export interface GoldenSummary {
   // The recall funnel over every required claim (funnel.ts). Absent in
   // summaries written before it.
   funnel?: Funnel;
+  // Findings that carried a fix (ADR-0058), by whether the finding was
+  // right (matched or labeled valid), wrong (labeled invalid or in a
+  // forbidden range) or not yet labeled. Absent when no finding had one.
+  fixes?: { offered: number; onRight: number; onWrong: number };
 }
 
 export interface GoldenCaseScore {
@@ -116,6 +120,7 @@ export async function scoreGolden(
     casesHash: casesHash(instances),
   };
   const cases: Record<string, GoldenCaseScore> = {};
+  const fixes = { offered: 0, onRight: 0, onWrong: 0 };
   const { counts } = summary;
   for (const instance of instances) {
     const result = byId.get(instance.id);
@@ -151,7 +156,11 @@ export async function scoreGolden(
     };
     cases[instance.id] = caseScore;
     for (const [index, finding] of findings.entries()) {
-      if (matched.has(index)) continue;
+      if (finding.fix) fixes.offered += 1;
+      if (matched.has(index)) {
+        if (finding.fix) fixes.onRight += 1;
+        continue;
+      }
       const golden = toGoldenFinding(instance.id, finding);
       const forbidden = instance.golden.forbid.find((f) => inRange(finding, f));
       const adjudicated = await labelFor(finding, instance.golden.adjudicated, judge);
@@ -176,9 +185,12 @@ export async function scoreGolden(
       } else if (label === "invalid") counts.invalid += 1;
       else if (forbidden) counts.forbidden += 1;
       else summary.unadjudicated.push(golden);
+      if (finding.fix && label === "valid") fixes.onRight += 1;
+      else if (finding.fix && (label === "invalid" || forbidden)) fixes.onWrong += 1;
     }
   }
   summary.cases = cases;
+  if (fixes.offered > 0) summary.fixes = fixes;
   summary.funnel = countFunnel(
     Object.values(cases).flatMap((c) => c.claims.filter((claim) => !claim.optional)),
   );

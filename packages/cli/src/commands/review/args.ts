@@ -33,6 +33,8 @@ export interface ReviewArgs {
   reviewers?: string[];
   maxCostUsd?: number;
   ultra?: true;
+  // Propose checked fixes for findings, whatever the configuration says.
+  fixes?: true;
   full?: true;
   plan?: true;
   importSarif?: string[];
@@ -85,6 +87,8 @@ Options:
                      after --scip and before searching; not with --plan
   --plan             Show files, bundles, review tasks and prompt sizes; call no model
   --ultra            Favor recall: all reviewers at every tier, two samples each (about 2x cost)
+  --fixes            Propose a checked fix for findings a local edit fixes
+                     (fixes in config)
   --temperature <n>  Sampling temperature, 0 to 2 (default: the provider's, or sampling in config)
   --seed <n>         Sampling seed, where the runtime and provider support one
   --config <file>    Read this configuration file instead of the repository's
@@ -134,6 +138,7 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
   if (values["no-upload"]) args.noUpload = true;
   if (values["no-linked-tasks"]) args.noLinkedTasks = true;
   if (values.ultra) args.ultra = true;
+  if (values.fixes) args.fixes = true;
   if (values.full) {
     if (!pullRequest && !mergeRequest) throw new UsageError("--full needs --pr or --mr");
     args.full = true;
@@ -243,6 +248,7 @@ function parse(argv: string[]) {
       scip: { type: "string" },
       graph: { type: "string" },
       ultra: { type: "boolean" },
+      fixes: { type: "boolean" },
       temperature: { type: "string" },
       seed: { type: "string" },
       resume: { type: "string" },

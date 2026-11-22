@@ -3,7 +3,13 @@ import type { ReviewerOverrides, RoleSettings, TierEfforts } from "../agent/sett
 import type { AnchorContext } from "../anchor/anchor.js";
 import type { BundlePolicy } from "../bundle/bundle.js";
 import type { FileGrouper } from "../bundle/grouping.js";
-import type { AgentRuntime, ModelChains, ReferenceIndex, SymbolExtractor } from "../contracts.js";
+import type {
+  AgentRuntime,
+  ModelChains,
+  ReferenceIndex,
+  SymbolExtractor,
+  SyntaxChecker,
+} from "../contracts.js";
 import type { ProjectDoc } from "../docs/project-docs.js";
 import { OcraError } from "../errors.js";
 import type { Learning } from "../knowledge/learning.js";
@@ -76,6 +82,9 @@ export interface ReviewOptions {
   // Resolves callers precisely where it knows the changed symbol, ahead of
   // the extractor's name matching.
   references?: ReferenceIndex;
+  // Checks that a proposed fix leaves its file parsing; without it no fix
+  // is proposed (ADR-0058).
+  syntax?: SyntaxChecker;
   // SARIF logs of external analyzers; their results on the change join the
   // findings (pipeline/imports.ts).
   sarif?: readonly SarifLog[];
@@ -100,7 +109,7 @@ export interface ReviewLimits {
   maxTasks?: number;
 }
 
-// The checking stages after the review tasks, both on by default.
+// The stages after the review tasks: checking is on by default, the rest off.
 export interface ReviewStages {
   // Fact-check findings before reporting them.
   verify?: boolean;
@@ -112,6 +121,9 @@ export interface ReviewStages {
   // Write the walkthrough of the change for its reviewers (ADR-0047). Off
   // unless asked: the CLI asks for it on pull and merge requests.
   walkthrough?: boolean;
+  // Propose a fix for findings where a local edit of their lines is one,
+  // each checked before it is kept (ADR-0058). Off unless asked.
+  fixes?: boolean;
 }
 
 export interface ReviewMode {
@@ -191,6 +203,7 @@ export interface RunSettings {
   showPreExisting: boolean;
   walkthrough: boolean;
   without: ReadonlySet<OptionalContext>;
+  fixes: boolean;
 }
 
 export function runSettings(
@@ -217,6 +230,7 @@ export function runSettings(
     showPreExisting: options.stages?.showPreExisting !== false,
     walkthrough: options.stages?.walkthrough === true,
     without: withoutContext(options.mode?.without ?? []),
+    fixes: options.stages?.fixes === true,
   };
 }
 

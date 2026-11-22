@@ -88,6 +88,7 @@ const MERGE: {
   judge: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   showPreExisting: { merge: "replace", from: ["shared", "file"], plan: ALWAYS },
   walkthrough: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
+  fixes: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   linkedTasks: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   trackers: { merge: "entries", from: ["shared", "file"], plan: { list: "set" } },
   projectDocs: { merge: "replace", from: ["shared", "file"], plan: { list: "set" } },
