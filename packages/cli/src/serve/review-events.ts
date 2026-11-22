@@ -14,6 +14,14 @@ import {
   type ReviewReport,
   type Usage,
 } from "@open-cr-agent/core";
+import type { LocalTarget } from "@open-cr-agent/vcs-local";
+
+/** How the started event names a local review's target. */
+export function targetLabel(target: LocalTarget): string {
+  if (target.mode === "range") return `${target.from}..${target.to}`;
+  if (target.mode === "commit") return `commit ${target.commit}`;
+  return "workspace";
+}
 
 type Kinded = Omit<WireEvent, "version" | "runId" | "seq" | "at">;
 type FailureReason = Extract<WireEvent, { kind: "failed" }>["data"]["reason"];

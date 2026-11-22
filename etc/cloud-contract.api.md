@@ -501,6 +501,39 @@ export type LearningSourceKind = (typeof LEARNING_SOURCES)[number];
 export const LINKED_TASK_TRACKERS: readonly ["github", "gitlab", "jira", "tapd"];
 
 // @public (undocumented)
+export const LIVE_EVENTS_PATH = "/api/live";
+
+// @public
+export const liveAnswerSchema: z.ZodObject<{
+    watch: z.ZodCatch<z.ZodOptional<z.ZodURL>>;
+}, z.core.$strip>;
+
+// @public (undocumented)
+export type LiveBatch = z.input<typeof liveBatchSchema>;
+
+// @public (undocumented)
+export const liveBatchSchema: z.ZodObject<{
+    run: z.ZodObject<{
+        repoHash: z.ZodString;
+        source: z.ZodEnum<{
+            github: "github";
+            gitlab: "gitlab";
+            local: "local";
+        }>;
+        pullRequest: z.ZodOptional<z.ZodObject<{
+            repository: z.ZodString;
+            number: z.ZodNumber;
+        }, z.core.$strip>>;
+    }, z.core.$strip>;
+    events: z.ZodArray<z.ZodObject<{
+        version: z.ZodLiteral<1>;
+        runId: z.ZodString;
+        seq: z.ZodNumber;
+        at: z.ZodISODateTime;
+    }, z.core.$loose>>;
+}, z.core.$strip>;
+
+// @public (undocumented)
 export type LiveFinding = z.infer<typeof liveFindingSchema>;
 
 // @public (undocumented)
@@ -529,6 +562,23 @@ export const liveFindingSchema: z.ZodObject<{
     dropped: z.ZodOptional<z.ZodLiteral<true>>;
 }, z.core.$strip>;
 
+// @public (undocumented)
+export type LiveRun = z.infer<typeof liveRunSchema>;
+
+// @public (undocumented)
+export const liveRunSchema: z.ZodObject<{
+    repoHash: z.ZodString;
+    source: z.ZodEnum<{
+        github: "github";
+        gitlab: "gitlab";
+        local: "local";
+    }>;
+    pullRequest: z.ZodOptional<z.ZodObject<{
+        repository: z.ZodString;
+        number: z.ZodNumber;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+
 // @public
 export const MAX_CHAIN = 4;
 
@@ -555,6 +605,15 @@ export const MAX_LEARNINGS = 500;
 
 // @public
 export const MAX_LINKED_TASKS = 3;
+
+// @public
+export const MAX_LIVE_BATCH = 100;
+
+// @public
+export const MAX_LIVE_BATCH_BYTES = 524288;
+
+// @public
+export const MAX_LIVE_EVENTS = 5000;
 
 // @public
 export const MAX_MEMORY_PER_REPO = 500;

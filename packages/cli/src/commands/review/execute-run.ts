@@ -1,7 +1,10 @@
 import { resolve } from "node:path";
+import { REPOSITORY_URL } from "@open-cr-agent/cloud-contract";
 import { scipReferences } from "@open-cr-agent/code-graph";
 import {
   type AgentRuntime,
+  errorMessage,
+  isOcraError,
   OcraError,
   type ReferenceIndex,
   type ResumedRun,
@@ -11,10 +14,12 @@ import {
   type SarifLog,
 } from "@open-cr-agent/core";
 import { REVIEW_DEFAULTS, readResumedRun } from "@open-cr-agent/core/internal";
+import { LiveRelay } from "../../cloud/live.js";
 import { withCloudProviders } from "../../cloud/providers.js";
 import { type CloudReview, prepareCloudReview } from "../../cloud/review.js";
 import { agentChains } from "../../config/cli-config.js";
 import { firstReferences, graphFileReferences } from "../../graph/references.js";
+import { targetLabel } from "../../serve/review-events.js";
 import { VERSION } from "../../version.js";
 import type { ReviewArgs } from "./args.js";
 import type { ReviewDeps } from "./deps.js";
@@ -25,6 +30,7 @@ import { configuredOptions } from "./review-options.js";
 import { loadSarifLogs } from "./sarif-input.js";
 import { accountOf } from "./settings-sources.js";
 import { reviewSymbols } from "./symbols.js";
+import { CHANGE_REQUEST } from "./target.js";
 
 export interface ExecutedRun {
   report: ReviewReport;
@@ -51,6 +57,7 @@ export async function executeRun(
     ? await prepareCloudReview(run.root, run.signedInCloud, run.warn, run.target.repository)
     : undefined;
   const sampling = requestedSampling(run.config, args);
+  const live = liveRelay(run, args, cloudReview, io);
   const { runtime, stopCloud } = await startRuntime(run, deps, sampling);
   const progress = new ProgressPrinter(io.err, { heartbeatMs: deps.heartbeatMs, now: deps.now });
   const { interrupt } = run;
@@ -73,6 +80,7 @@ export async function executeRun(
       onEvent: (event) => {
         run.registry.emit(event);
         progress.onEvent(event);
+        live?.onEvent(event, interrupt.signal.aborted);
         deps.onEvent?.(event);
       },
     });
@@ -82,13 +90,50 @@ export async function executeRun(
       ...(cloudReview ? { cloudReview } : {}),
       started,
     };
+  } catch (error) {
+    live?.failed(isBudget(error) ? "budget" : "error", errorMessage(error));
+    throw error;
   } finally {
+    await live?.close();
     stopListening?.();
     progress.stop();
     stopCloud();
     await runtime.dispose?.();
   }
 }
+
+// Only an account that shares findings relays the run (ADR-0056), and only
+// while the review uploads.
+function liveRelay(
+  run: ResolvedRun,
+  args: ReviewArgs,
+  cloudReview: CloudReview | undefined,
+  io: ReviewIo,
+): LiveRelay | undefined {
+  if (!cloudReview?.shareFindings || !run.signedInCloud || args.noUpload) return undefined;
+  const { target } = run;
+  const number = target.changeRequestNumber;
+  const pullRequest =
+    number !== undefined && target.repository && REPOSITORY_URL.test(target.repository)
+      ? { repository: target.repository, number }
+      : undefined;
+  const label =
+    number === undefined || target.platform === "local"
+      ? targetLabel(args.target)
+      : `${CHANGE_REQUEST[target.platform]} ${target.platform === "gitlab" ? "!" : "#"}${number}`;
+  return new LiveRelay(
+    run.signedInCloud,
+    {
+      repoHash: cloudReview.repoHash,
+      source: target.platform,
+      ...(pullRequest ? { pullRequest } : {}),
+    },
+    label,
+    { notice: (message) => io.err.write(`${message}\n`), warn: run.warn },
+  );
+}
+
+const isBudget = (error: unknown) => isOcraError(error) && error.code === "BUDGET_EXHAUSTED";
 
 // The earlier run --resume names, from what ocra sealed on this machine.
 function resumedRun(run: ResolvedRun, runId: string): Promise<ResumedRun> {

@@ -6,6 +6,9 @@ import {
   deviceCodeSchema,
   GRAPH_COMMIT_HEADER,
   graphReposAnswerSchema,
+  LIVE_EVENTS_PATH,
+  type LiveBatch,
+  liveAnswerSchema,
   memoryAnswerSchema,
   type ProviderEntry,
   preferencesAnswerSchema,
@@ -267,6 +270,11 @@ export class CloudClient {
     return answer.kind === "ok"
       ? { kind: "ok", value: { findings: answer.value.findings ?? 0 } }
       : answer;
+  }
+
+  /** Sends a running review's next events (ADR-0056); answers where it can be watched. */
+  liveEvents(batch: LiveBatch): Promise<CloudResult<z.infer<typeof liveAnswerSchema>>> {
+    return this.call(LIVE_EVENTS_PATH, liveAnswerSchema, { method: "POST", body: batch });
   }
 
   /**

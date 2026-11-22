@@ -435,6 +435,12 @@ ocra logout                                   # 在服务器上结束会话，�
 - 只有服务器返回账户的盐（它只在开关打开时返回）、并且本机同意时才发送问题：`ocra login` 发现开关打开时会说明这一点，并在凭据旁的 `share-findings`（只有你可读）中记下本机的同意；审查发现开关关闭时会删除它。打开开关后，或关闭再打开后，请在每台机器上重新运行 `ocra login`；在此之前，这台机器的审查会给出警告，只发送统计。因此 ocra Cloud 不能自己开启共享。审查前连不上 ocra Cloud 时，审查会警告，用 `account-salt` 里的盐（没有时用本机的）计算哈希，不发送问题，也不应用账户的 memory。
 - `--no-upload` 和 `OCRA_CLOUD=off` 仍然什么都不发送。
 
+**实时观看审查。** 账户开启共享问题时，已登录的审查还会在运行中把进度实时转发给 ocra Cloud：即 `ocra serve` 流式输出的事件（见 [ocra serve](./serve)），包括问题，按同样方式脱敏，大约每秒发送一次（`POST /api/live`）。终端会打印一次 `[ocra] Watch this review live: <地址>`；在这个页面上可以把这次运行按人或按链接分享给别人，让他们实时观看并评论其中的问题。v0.11.0 新增。
+
+- 转发从不拖慢审查：ocra Cloud 没有接收的一批事件会在一秒后重发；连续失败三次后 ocra 警告一次（`stopped relaying this review to ocra Cloud live`）并继续审查。结束时最多再等五秒发送剩下的事件。
+- 服务器还不支持实时转发（404），或已不再接收这次运行的事件（ocra Cloud 每次运行最多保留 5,000 个），转发会结束，不给警告。
+- `--no-upload` 和 `OCRA_CLOUD=off` 不转发任何内容，未开启共享问题的账户也不转发。
+
 ## ocra plugins
 
 在这台机器上允许你的 ocra Cloud 设置所列出的插件（见[来自 ocra Cloud 账户的插件](./plugins#来自-ocra-cloud-账户的插件)）。这些命令不连接 ocra Cloud；`allow` 和 `deny` 会运行 npm。

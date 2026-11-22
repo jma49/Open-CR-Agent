@@ -2,9 +2,9 @@ import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { ReviewEvent as WireEvent } from "@open-cr-agent/cloud-contract";
 import { errorMessage, toReportOutput } from "@open-cr-agent/core";
-import type { LocalTarget } from "@open-cr-agent/vcs-local";
 import { z } from "zod";
 import { type RunRequest, runRequestSchema } from "../commands/review/request.js";
+import { targetLabel } from "./review-events.js";
 import { type ReviewStarter, type Run, type Runs, RunsBusy } from "./runs.js";
 
 const MAX_BODY_BYTES = 16_384;
@@ -124,12 +124,6 @@ function snapshot(run: Run) {
     events: run.events.length,
     ...(run.report ? { report: toReportOutput(run.report) } : {}),
   };
-}
-
-function targetLabel(target: LocalTarget): string {
-  if (target.mode === "range") return `${target.from}..${target.to}`;
-  if (target.mode === "commit") return `commit ${target.commit}`;
-  return "workspace";
 }
 
 function localHost(host: string | undefined, server: Server): boolean {
