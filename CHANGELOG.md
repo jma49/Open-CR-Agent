@@ -6,6 +6,40 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-22
+
+A walkthrough of the change in the summary, `@ocra` questions answered in their thread, and `/ocra review` to review a pull request again. The Action's new tag is `jma49/Open-CR-Agent@v0.10.0`.
+
+### Added
+
+- The Action reviews the pull request a comment is on when run on `issue_comment`, in full; the manual's workflow runs it on `/ocra review` from someone with write access.
+- A walkthrough of the change in the summary comment of pull and merge request reviews: an overview, the files grouped in reading order and a sequence diagram when the flow crosses three or more components; the `walkthrough` setting turns it off, or on for local reviews, and the JSON report carries it.
+- A review shared with ocra Cloud carries its walkthrough, redacted like the findings, when the account shares findings (`walkthrough` in the upload contract).
+- The `writer` role, which writes the walkthrough on the standard tier; `roles.writer` sets its models and effort.
+- `ocra graph --cloud` starts from the code graph a self-hosted ocra Cloud server keeps of the repository, and parses only the files changed since; without one it builds the graph locally.
+- `@open-cr-agent/cloud-contract` describes the server's code graph listing: `graphRepoSchema`, `graphReposAnswerSchema`, `CODE_PLATFORMS`, `GRAPH_BUILD_STATES`, `GRAPH_COMMIT_HEADER` and `MAX_GRAPH_REPOS`.
+- `ocra reply` answers a comment that mentions `@ocra` on a pull or merge request, in its thread, for people with write access, once per comment.
+- The Action's `reply` input runs it on `issue_comment` and `pull_request_review_comment`.
+- `VcsAdapter.mention`, and the `Mention` and `MentionRef` types.
+- A shared finding carries its fix (`fix`: the lines it replaces and the replacement) when the account shares findings, sent only as written, so ocra Cloud can commit it to the pull request.
+
+### Changed
+
+- `ocra init` pins the Action to v0.9.0.
+- When more learnings apply to a bundle than fit, those whose symbol or keyword is in the function or class the change touches rank first; `--plan` shows the same learnings as the run.
+- With `--sarif-evidence`, a result tagged `security` goes only to the security reviewer of its file, or to every reviewer when none reviews it.
+
+### Fixed
+
+- Learning paths read like `.gitignore`: `*.sql` and `Dockerfile` match at any depth, `dir/` matches what is under it, a leading `/` anchors to the root, and case is ignored.
+- A learning's compound symbol matches in any naming convention (`createCharge`, `create_charge`) and member access written `?.`, `->` or `::`; keywords match plurals and Chinese or Japanese text without spaces.
+- A learning whose symbol the change uses is no longer crowded out by learnings that only share its path.
+- `ocra learn` gives a learning drafted from a fix that moved a file both the old and the new directory.
+
+### Security
+
+- Require `undici` 8.12.4 and `@modelcontextprotocol/sdk` 1.32.2.
+
 ## [0.9.0] - 2026-11-21
 
 The first release on npm since 0.7.0: 0.8.0 was never published, so this release also carries its changes below. The Action's new tag is `jma49/Open-CR-Agent@v0.9.0`.
@@ -471,7 +505,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.6.0...v0.7.0
