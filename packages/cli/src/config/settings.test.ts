@@ -126,6 +126,7 @@ describe("listSettings", () => {
       "judge",
       "showPreExisting",
       "walkthrough",
+      "fixes",
       "linkedTasks",
       "sampling",
       "include",

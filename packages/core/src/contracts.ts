@@ -37,6 +37,12 @@ export interface SymbolExtractor {
   symbols(path: string, content: string): Promise<FileSymbols | undefined>;
 }
 
+// Counts the syntax errors a parser finds in one file; undefined when it does
+// not know the file's language or gives up on it.
+export interface SyntaxChecker {
+  errors(path: string, content: string): Promise<number | undefined>;
+}
+
 export interface SymbolReference {
   path: string;
   line: number;
@@ -126,8 +132,8 @@ export interface Usage {
 
 export interface CompletionRequest {
   tier: ModelTier;
-  // The agent the call is made for: a reviewer id (its plan call), or the
-  // role "verifier", "judge", "helper" or "writer".
+  // The agent the call is made for: a reviewer id (its plan call), or a
+  // role (AGENT_ROLES).
   agent?: string;
   effort?: Effort;
   // The agent's own failback chain; absent: the tier's.

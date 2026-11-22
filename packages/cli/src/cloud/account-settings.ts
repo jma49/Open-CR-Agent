@@ -33,6 +33,7 @@ const SETTINGS = {
   verify: shape.verify,
   judge: shape.judge,
   linkedTasks: shape.linkedTasks,
+  fixes: shape.fixes,
   sampling: shape.sampling,
   include: shape.include,
   exclude: shape.exclude,

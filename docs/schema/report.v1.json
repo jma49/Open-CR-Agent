@@ -666,6 +666,56 @@
       ],
       "additionalProperties": false
     },
+    "fixes": {
+      "type": "object",
+      "properties": {
+        "asked": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "proposed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "rejected": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "fingerprint": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "declined",
+                  "failed",
+                  "stale",
+                  "unchanged",
+                  "unsafe",
+                  "too_large",
+                  "no_parser",
+                  "syntax"
+                ]
+              }
+            },
+            "required": [
+              "fingerprint",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "asked",
+        "proposed",
+        "rejected"
+      ],
+      "additionalProperties": false
+    },
     "walkthrough": {
       "type": "object",
       "properties": {

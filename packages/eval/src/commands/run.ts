@@ -94,6 +94,7 @@ export async function run(
     ...setupArgs,
     ...(values.ultra ? ["--ultra"] : []),
     ...(ablated.length > 0 ? ["--without", ablated.join(",")] : []),
+    ...(values.fixes ? ["--fixes"] : []),
     // The run limit only stops the next PR; this caps each PR's own review.
     ...(prMaxCost !== undefined ? ["--max-cost-usd", String(prMaxCost)] : []),
     ...(configFile ? ["--config", configFile] : []),

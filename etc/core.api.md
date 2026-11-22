@@ -57,7 +57,7 @@ export interface AgentProvenance {
 }
 
 // @public (undocumented)
-export type AgentRole = "verifier" | "judge" | "helper" | "writer";
+export type AgentRole = "verifier" | "judge" | "helper" | "writer" | "fixer";
 
 // @public (undocumented)
 export interface AgentRuntime {
@@ -537,6 +537,25 @@ const findingStatusSchema: z.ZodEnum<{
     new: "new";
     unfixed: "unfixed";
 }>;
+
+// @public (undocumented)
+export const FIX_REJECTIONS: readonly ["declined", "failed", "stale", "unchanged", "unsafe", "too_large", "no_parser", "syntax"];
+
+// @public (undocumented)
+export type FixRejection = (typeof FIX_REJECTIONS)[number];
+
+// @public (undocumented)
+export interface FixSummary {
+    // (undocumented)
+    asked: number;
+    // (undocumented)
+    proposed: number;
+    // (undocumented)
+    rejected: {
+        fingerprint: string;
+        reason: FixRejection;
+    }[];
+}
 
 // @public (undocumented)
 export interface Hunk {
@@ -1297,6 +1316,23 @@ export const reportOutputSchema: z.ZodObject<{
             reason: z.ZodString;
         }, z.core.$strict>>;
     }, z.core.$strict>>;
+    fixes: z.ZodExactOptional<z.ZodObject<{
+        asked: z.ZodInt;
+        proposed: z.ZodInt;
+        rejected: z.ZodArray<z.ZodObject<{
+            fingerprint: z.ZodString;
+            reason: z.ZodEnum<{
+                declined: "declined";
+                failed: "failed";
+                no_parser: "no_parser";
+                stale: "stale";
+                syntax: "syntax";
+                too_large: "too_large";
+                unchanged: "unchanged";
+                unsafe: "unsafe";
+            }>;
+        }, z.core.$strict>>;
+    }, z.core.$strict>>;
     walkthrough: z.ZodExactOptional<z.ZodObject<{
         overview: z.ZodString;
         groups: z.ZodArray<z.ZodObject<{
@@ -1556,7 +1592,7 @@ export interface ResumedTask {
 export function review(options: ReviewOptions): Promise<ReviewReport>;
 
 // @public (undocumented)
-export const REVIEW_STAGES: readonly ["select", "bundle", "plan", "review", "filter", "verify", "judge"];
+export const REVIEW_STAGES: readonly ["select", "bundle", "plan", "review", "filter", "verify", "judge", "fix"];
 
 // @public (undocumented)
 export const REVIEW_TOOLS: {
@@ -1772,6 +1808,8 @@ export interface ReviewOptions {
     // (undocumented)
     symbols?: SymbolExtractor;
     // (undocumented)
+    syntax?: SyntaxChecker;
+    // (undocumented)
     taskSources?: readonly TaskSource[];
     // (undocumented)
     vcs: VcsAdapter;
@@ -1794,6 +1832,8 @@ export interface ReviewReport {
     coverage: CoverageEntry[];
     // (undocumented)
     findings: Finding[];
+    // (undocumented)
+    fixes?: FixSummary;
     // (undocumented)
     judgement?: JudgeDecisions;
     // (undocumented)
@@ -1858,6 +1898,8 @@ export type ReviewStage = (typeof REVIEW_STAGES)[number];
 
 // @public (undocumented)
 export interface ReviewStages {
+    // (undocumented)
+    fixes?: boolean;
     // (undocumented)
     judge?: boolean;
     // (undocumented)
@@ -2136,6 +2178,12 @@ export interface SymbolReference {
     line: number;
     // (undocumented)
     path: string;
+}
+
+// @public (undocumented)
+export interface SyntaxChecker {
+    // (undocumented)
+    errors(path: string, content: string): Promise<number | undefined>;
 }
 
 // @public (undocumented)

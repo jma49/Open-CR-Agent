@@ -192,6 +192,15 @@ export const walkthroughRuntime: OcraPlugin = fakeRuntime(async (request) => {
   return { text: JSON.stringify(answers[request.agent ?? ""] ?? {}), usage: NO_USAGE };
 });
 
+// The same, with a fixer that proposes a fix for the finding's line.
+export const fixerRuntime: OcraPlugin = fakeRuntime(async (request) => {
+  const answers: Record<string, unknown> = {
+    verifier: [{ index: 0, verdict: "confirmed", reason: "retries is negative" }],
+    fixer: [{ index: 0, replacement: "export const retries = 3;" }],
+  };
+  return { text: JSON.stringify(answers[request.agent ?? ""] ?? {}), usage: NO_USAGE };
+});
+
 // A runtime that judges the base's pre-merge checks: one met, one not.
 export const mergeChecksRuntime: OcraPlugin = fakeRuntime(async (request) => {
   const checks = request.system.includes("pre-merge checks")

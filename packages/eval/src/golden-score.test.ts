@@ -65,6 +65,35 @@ describe("scoreGolden", () => {
     });
   });
 
+  it("counts the findings that carried a fix by whether they were right", async () => {
+    const instance = toInstance(
+      parseCase(
+        {
+          ...base,
+          id: "login",
+          expect: [expectLogin],
+          adjudicated: [
+            { fingerprint: "0000000000000002", label: "valid", reason: "real", title: "t" },
+            { fingerprint: "0000000000000003", label: "invalid", reason: "wrong", title: "t" },
+          ],
+        },
+        "login.json",
+      ),
+    );
+    const fix = { startLine: 11, endLine: 11, replacement: "x" };
+    const score = (findings: OutputFinding[]) =>
+      scoreGolden([instance], [reviewed("login", findings)], judge);
+    const summary = await score([
+      finding("0000000000000001", { lines: { start: 11, end: 11 }, fix }),
+      finding("0000000000000002", { fix }),
+      finding("0000000000000003", { fix }),
+      finding("0000000000000004", { fix }),
+      finding("0000000000000005"),
+    ]);
+    expect(summary.fixes).toEqual({ offered: 4, onRight: 2, onWrong: 1 });
+    expect(await score([finding("0000000000000005")])).not.toHaveProperty("fixes");
+  });
+
   it("fails a critical finding in a forbidden range or on a clean case", async () => {
     const forbidding = toInstance(
       parseCase(

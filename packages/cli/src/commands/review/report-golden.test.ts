@@ -8,6 +8,7 @@ import {
   changeRequestFixture,
   fakeGitHub,
   fakeGitLab,
+  fixerRuntime,
   mergeChecksRuntime,
   removeFixtures,
   walkthroughRuntime,
@@ -135,6 +136,27 @@ describe("the reports of the end-to-end fixtures", () => {
       (c) => c.method === "POST" && c.path === "/issues/7/comments",
     );
     await record("pull-request-walkthrough", json, heads(head), bodyOf(summary));
+  });
+
+  it("a published pull request review with a checked fix", async () => {
+    const { clone, base, head } = changeRequestFixture();
+    const github = fakeGitHub(base, head);
+    const { code, json } = await review(
+      ["review", "--pr", "7", "--repo", "o/r", "--publish", "--fixes"],
+      {
+        ...platformDeps(clone, github.fetchImpl, { GITHUB_TOKEN: "t" }),
+        runtimes: { opencode: async () => fixerRuntime },
+      },
+    );
+    expect(code).toBe(0);
+    const inline = github.calls.find((c) => c.method === "POST" && c.path === "/pulls/7/reviews");
+    const comments = (inline?.body as { comments?: { body: string }[] } | undefined)?.comments;
+    await record(
+      "pull-request-fix",
+      json,
+      heads(head),
+      comments?.map((c) => c.body).join("\n---\n"),
+    );
   });
 
   it("a published pull request review with the base's pre-merge checks", async () => {

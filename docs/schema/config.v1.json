@@ -126,6 +126,9 @@
     "walkthrough": {
       "type": "boolean"
     },
+    "fixes": {
+      "type": "boolean"
+    },
     "linkedTasks": {
       "type": "boolean"
     },
@@ -433,7 +436,8 @@
           "verifier",
           "judge",
           "helper",
-          "writer"
+          "writer",
+          "fixer"
         ]
       },
       "additionalProperties": {

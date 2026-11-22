@@ -10,6 +10,7 @@ import type {
   TaskFinding,
   Verdict,
 } from "../domain.js";
+import type { FixSummary } from "../fix/propose.js";
 import type { JudgeDecisions } from "../judge/judge.js";
 import type { LearningUse } from "../knowledge/learning.js";
 import type { SkippedCell } from "../matrix/matrix.js";
@@ -153,6 +154,9 @@ export interface ReviewReport {
   analyzerEvidence?: AnalyzerEvidenceUse[];
   // What the judge merged, dropped or recalibrated; absent when it did not run.
   judgement?: JudgeDecisions;
+  // Which findings a fix was asked for, and why one was not kept; absent
+  // when fixes were off (ADR-0058).
+  fixes?: FixSummary;
   // What the change does, for its reviewers; absent when it was off or failed.
   walkthrough?: Walkthrough;
   // Each pre-merge check's outcome, in the order given; absent when none was given.
@@ -187,6 +191,7 @@ export const REVIEW_STAGES = [
   "filter",
   "verify",
   "judge",
+  "fix",
 ] as const;
 export type ReviewStage = (typeof REVIEW_STAGES)[number];
 

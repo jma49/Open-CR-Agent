@@ -98,6 +98,7 @@ ocra review [options]
 | `--graph <文件>` | 在这个[代码图](#ocra-graph)里查找改动符号的调用方，在 `--scip` 之后、搜索之前。不能和 `--plan` 一起用 |
 | `--scip <文件>` | 先在这个 [SCIP](https://github.com/scip-code/scip) 索引里查找改动符号的调用方（见[模式](./how-it-works#模式)）。不能和 `--plan` 一起用 |
 | `--ultra` | 以成本换召回率，见[模式](./how-it-works#模式) |
+| `--fixes` | 为问题给出经过检查的修复，效果同 [`fixes: true`](./configuration) |
 | `--reviewers <ids>` | 只运行这些审查员，用逗号分隔（例如 `security`） |
 | `--temperature <n>` | 采样温度，0 到 2；覆盖 `sampling.temperature`（[配置](./configuration#执行参数)） |
 | `--seed <n>` | 采样种子，运行时和供应商支持时才生效（`opencode` 不支持）；覆盖 `sampling.seed` |
@@ -142,7 +143,7 @@ ocra review [options]
 - 变更信息、风险档位、结论、总结；
 - 每个改动文件的覆盖情况：已审查、失败、未审查（没有启动任务）、不完整（任务没有调用完成工具就结束；`ended` 为 `step_cap` 或 `stopped_early`）、自上次评审后未改动，或被排除及原因；审查 PR 时，本次是增量还是全量及原因（`scope`）；
 - 分组、各任务结果、被 Matrix 跳过的（审查员，分组）组合；
-- `refuted`（被核查丢弃的问题及原因）、`unverifiedCriticals`（核查没能检查的 critical 数量）、`judgement`（Judge 合并、丢弃或重新定级的记录）；
+- `refuted`（被核查丢弃的问题及原因）、`unverifiedCriticals`（核查没能检查的 critical 数量）、`judgement`（Judge 合并、丢弃或重新定级的记录）、开启修复时的 `fixes`（`asked`、`proposed`，以及每条被拒绝问题的 `fingerprint` 和 `reason`：`declined`、`failed`、`stale`、`unchanged`、`unsafe`、`too_large`、`no_parser` 或 `syntax`）；
 - 问题列表，以及 `rereview`：已修复、未再报告、未重新检查、未改动或已驳回的旧问题，记录了报告者时各带 `reviewer`；
 - `remembered`：被 memory 接受的问题，带来源 `source`（`repository` 表示 `.ocra/memory.json`，`account` 表示你的 [ocra Cloud memory](#ocra-cloud-账户里的-memory)）；维护者的放行在 `changeRequest.override`；
 - `learnings`：任务拿到的每条 [learning](./rules#ocralearnings)，带 `title`、`critical`、`source` 和它去过的分组 `bundles`；
@@ -154,7 +155,7 @@ ocra review [options]
 
 这个格式是一份约定（`"version": 1`）：后续版本只会新增可选字段和取值集合里的新值，否则就会改版本号。遇到不认识的覆盖状态时，当作没有审查。
 
-**每条问题**包含 `fingerprint`（多次运行间保持稳定；`ocra memory add` 接受它的前缀）、`reviewer`、`category`、`severity`、`verification`（`confirmed`、`uncertain` 或 `unchecked`）、`file`、`lines`（`{ start, end }`，没能对应到行时不存在）、`inDiff`、`status`（`new`，或之前报过时为 `unfixed`）、`title`、`body`、可选的 `suggestion`、可选的 `fix`（`{ startLine, endLine, replacement }`，作为[可提交的建议](./github#可提交的建议)给出；目前还没有审查员会产生它）、`evidence`、`code`（引用的代码）、`--ultra` 下的 `lowConfidence`、Verify 判断问题在这次改动之前就已存在时的 `preExisting`，以及 `provenance`（它的 `task`，已知时还有 `model`）。`tasks` 里的每个任务带有 `usage`（token 和花费；一条问题的花费就是其任务的花费）；没有调用完成工具就结束的任务还带有 `ended`：它的文件只算审查了一部分。审查员随后得到了[收尾的一轮](./how-it-works)的任务还带有 `wrapUp`（`{ findings }`，它在那一轮报告的问题数），它的文件仍然只算审查了一部分。
+**每条问题**包含 `fingerprint`（多次运行间保持稳定；`ocra memory add` 接受它的前缀）、`reviewer`、`category`、`severity`、`verification`（`confirmed`、`uncertain` 或 `unchecked`）、`file`、`lines`（`{ start, end }`，没能对应到行时不存在）、`inDiff`、`status`（`new`，或之前报过时为 `unfixed`）、`title`、`body`、可选的 `suggestion`、可选的 `fix`（`{ startLine, endLine, replacement }`，开启时由 [Fix 阶段](./how-it-works)设置，作为[可提交的建议](./github#可提交的建议)给出）、`evidence`、`code`（引用的代码）、`--ultra` 下的 `lowConfidence`、Verify 判断问题在这次改动之前就已存在时的 `preExisting`，以及 `provenance`（它的 `task`，已知时还有 `model`）。`tasks` 里的每个任务带有 `usage`（token 和花费；一条问题的花费就是其任务的花费）；没有调用完成工具就结束的任务还带有 `ended`：它的文件只算审查了一部分。审查员随后得到了[收尾的一轮](./how-it-works)的任务还带有 `wrapUp`（`{ findings }`，它在那一轮报告的问题数），它的文件仍然只算审查了一部分。
 
 **报告的 `provenance`** 记录：
 

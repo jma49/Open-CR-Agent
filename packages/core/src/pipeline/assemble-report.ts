@@ -10,6 +10,7 @@ import { evidenceUses } from "../sarif/evidence.js";
 import type { CheckStage } from "./check-stage.js";
 import type { ExecuteStage, StageContext } from "./execute-stage.js";
 import type { FilterStage } from "./filter-stage.js";
+import type { FixStage } from "./fix-stage.js";
 import type { MergeChecksStage } from "./merge-checks-stage.js";
 import type { ReviewPlan } from "./plan.js";
 import { runProvenance } from "./provenance.js";
@@ -24,6 +25,7 @@ export interface Stages {
   executed: ExecuteStage;
   filtered: FilterStage;
   checked: CheckStage;
+  fixed: FixStage;
   walkthrough: WalkthroughStage;
   mergeChecks: MergeChecksStage;
 }
@@ -33,6 +35,7 @@ export function assembleReport(run: RunFacts, stages: Stages, context: StageCont
   const { options, plan, spendLimit } = context;
   const { executed, filtered, checked } = stages;
   if (checked.judged.decisions) report.judgement = checked.judged.decisions;
+  if (stages.fixed.summary) report.fixes = stages.fixed.summary;
   if (stages.walkthrough.walkthrough) report.walkthrough = stages.walkthrough.walkthrough;
   if (options.mergeChecks?.length) report.mergeChecks = stages.mergeChecks.results;
   const limit = spendLimit.status();
@@ -72,7 +75,7 @@ export function assembleReport(run: RunFacts, stages: Stages, context: StageCont
 
 function reportBody(
   run: RunFacts,
-  { executed, filtered, checked, walkthrough, mergeChecks }: Stages,
+  { executed, filtered, checked, fixed, walkthrough, mergeChecks }: Stages,
   { plan }: StageContext,
 ): ReviewReport {
   const { verification, judged } = checked;
@@ -82,6 +85,7 @@ function reportBody(
     ...walkthrough.usage,
     ...mergeChecks.usage,
     ...checked.usage,
+    ...fixed.usage,
   ];
   return {
     runId: run.runId,
@@ -95,7 +99,7 @@ function reportBody(
     bundles: plan.bundles.map((b) => ({ label: b.label, files: b.files.map((f) => f.newPath) })),
     tasks: [...executed.results.map((r) => r.outcome), ...filtered.imported.outcomes],
     skipped: executed.matrix.skipped,
-    findings: sortFindings(judged.findings),
+    findings: sortFindings(fixed.findings),
     // Counted before the judge: dropping or downgrading a critical nobody
     // could check must not turn an incomplete run into a clean one.
     unverifiedCriticals: countMissedCriticals(verification.kept, verification.missed),
@@ -110,6 +114,7 @@ function reportBody(
       ...walkthrough.warnings,
       ...mergeChecks.warnings,
       ...checked.warnings,
+      ...fixed.warnings,
     ],
   };
 }

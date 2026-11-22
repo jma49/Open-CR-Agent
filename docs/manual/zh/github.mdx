@@ -127,7 +127,7 @@ jobs:
 
 一条问题可以带一个修复（fix）：替换它所指那几行的代码。这时它的行内评论末尾有一个建议块，有写权限的人可以一键提交（**Commit suggestion**，或批量提交）。只有评论正好落在被替换的行上时才给出，摘要里从不给；代码要么原样发布，要么不发：含有 HTML 注释开头、`/ocra`、回车符、控制字符或双向文本字符，或者超过 20,000 个字符时，不附建议块，问题照常发布。建议是模型的提议，提交前请先读一遍。
 
-**计划中：**目前还没有审查员会产生修复，这要等一次经过评估的提示词修改（[ADR-0029](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0029-committable-suggestions.md)）。在那之前，评论以文字形式给出建议。
+修复来自 [Fix 阶段](./how-it-works)，它默认关闭，由 [`fixes`](./configuration) 或 `--fixes` 开启（[ADR-0058](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0058-checked-fix-proposals.md)）；不开启时，评论以文字形式给出建议。
 
 ## 代码扫描
 

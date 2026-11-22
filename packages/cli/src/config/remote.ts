@@ -22,6 +22,7 @@ const remoteConfigSchema = z
     judge: z.unknown().optional(),
     showPreExisting: z.unknown().optional(),
     walkthrough: z.unknown().optional(),
+    fixes: z.unknown().optional(),
     linkedTasks: z.unknown().optional(),
     trackers: z.record(z.string(), z.unknown()).optional(),
     projectDocs: z.array(z.string()).optional(),

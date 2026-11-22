@@ -51,6 +51,31 @@ describe("renderText", () => {
     );
   });
 
+  it("shows a finding's checked fix under it, and how many were proposed", () => {
+    const report: ReviewReport = {
+      ...base,
+      findings: [
+        finding({
+          lineRange: { start: 3, end: 4 },
+          fix: { startLine: 3, endLine: 4, replacement: "if (!a) return;\nreturn a.b;" },
+        }),
+        finding({
+          lineRange: { start: 9, end: 9 },
+          fix: { startLine: 9, endLine: 9, replacement: "" },
+        }),
+      ],
+      fixes: { asked: 3, proposed: 2, rejected: [{ fingerprint: "f", reason: "syntax" }] },
+    };
+    const text = renderText(report, ".ocra/sessions/s1");
+    expect(text).toContain(
+      ["    Fix (replaces L3-4):", "      if (!a) return;", "      return a.b;"].join("\n"),
+    );
+    expect(text).toContain(["    Fix (replaces L9):", "      (deletes the lines)"].join("\n"));
+    expect(text).toContain(
+      "Proposed 2 checked fix(es) for the 3 finding(s) a fix was asked for (see the JSON report).",
+    );
+  });
+
   it("says when nothing was found and flags incomplete runs", () => {
     const report: ReviewReport = {
       ...base,

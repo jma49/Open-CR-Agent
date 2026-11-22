@@ -54,7 +54,7 @@ export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
 
 ## Models per agent
 
-`reviewers.<id>.models` gives one reviewer its own model or chain (review tasks and plan call); `roles.<role>.models` does the same for the `verifier`, the `judge`, the `helper` calls (grouping files, relocating quotes) or the `writer` (the [walkthrough](./how-it-works#walkthrough)); the `judge`'s also judge the [pre-merge checks](./how-it-works#pre-merge-checks). Same forms as a tier. Without one, an agent uses its tier's chain; the verifier and judge never take a reviewer's, so checking stays independent.
+`reviewers.<id>.models` gives one reviewer its own model or chain (review tasks and plan call); `roles.<role>.models` does the same for the `verifier`, the `judge`, the `helper` calls (grouping files, relocating quotes) or the `writer` (the [walkthrough](./how-it-works#walkthrough)), or the `fixer` ([fixes](./how-it-works)); the `judge`'s also judge the [pre-merge checks](./how-it-works#pre-merge-checks). Same forms as a tier. Without one, an agent uses its tier's chain; the verifier and judge never take a reviewer's, so checking stays independent.
 
 ```json
 {
@@ -107,6 +107,7 @@ For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Gro
 | `verify` | `true` | Fact-check findings before reporting them (one standard-tier call per file with findings) |
 | `walkthrough` | on for `--pr` and `--mr` | Write the [walkthrough](./how-it-works#walkthrough) of the change into the summary comment and the report (one standard-tier call per run); `false` leaves it out, `true` writes it for local reviews too |
 | `mergeChecks` | none | [Pre-merge checks](./how-it-works#pre-merge-checks) in plain words, `[{ "id": …, "instruction": … }]`, each judged against the change (one top-tier call per run); at most 20, ids unique |
+| `fixes` | `false` | Propose a checked [fix](./how-it-works) for findings a local edit of their lines fixes (at most one standard-tier call per file with candidates); `--fixes` turns it on for one run |
 | `linkedTasks` | `true` | Give the reviewers the [issues the pull or merge request is linked to](./how-it-works#linked-tasks), each cut to fixed sizes; `false` (or `--no-linked-tasks`) leaves the prompts as they were |
 | `sampling` | none | `{ "temperature": 0–2, "seed": n }` for every model call, each optional (unset: the provider's default); `--temperature` and `--seed` override it. `direct` sends both. `opencode` passes the temperature only to models its catalog says accept one ([declared models](./providers#your-own-endpoint) do) and reports a seed as not applied. `provenance.sampling` says what was applied. A seed makes runs repeatable only where the provider honors it |
 
@@ -187,7 +188,7 @@ Repositories can extend an organization's common settings:
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `showPreExisting`, `walkthrough`, `mergeChecks`, `linkedTasks`, `trackers`, `projectDocs`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned) and `rules` (shaped like `.ocra/rules.json` entries). It cannot list plugins or choose a runtime, since it must not run code. The repository's values win; `include`, `exclude` and `rules` combine, and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` merge key by key.
+The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `showPreExisting`, `walkthrough`, `fixes`, `mergeChecks`, `linkedTasks`, `trackers`, `projectDocs`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned) and `rules` (shaped like `.ocra/rules.json` entries). It cannot list plugins or choose a runtime, since it must not run code. The repository's values win; `include`, `exclude` and `rules` combine, and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` merge key by key.
 
 Only `https` URLs, without redirects, up to 256 KB. `#sha256=` pins the exact content; a file declaring `providers` must be pinned, since a provider decides where your code goes ([Model providers](./providers#your-own-endpoint)). If the file cannot be loaded or is invalid, ocra warns and uses the repository's settings alone, so limits set only there (such as `maxCostUsd`) do not apply; set must-hold limits in the repository too.
 
@@ -198,7 +199,7 @@ Signed in to [ocra Cloud](./cli#ocra-login-ocra-logout-ocra-whoami), `ocra revie
 | Account key | How it applies |
 |---|---|
 | `runtime` (`opencode` or `direct`), `models.<tier>`, `effort.<tier>`, `reviewers.<id>`, `roles.<role>` | Only where the configuration leaves it out; a reviewer's or role's entry in the configuration wins whole |
-| `concurrency`, `taskTimeoutMinutes`, `runTimeoutMinutes`, `maxCostUsd`, `maxTasks`, `verify`, `judge`, `linkedTasks`, `sampling` | Only when the configuration does not set it (`sampling` as one setting): the account can bound an unbounded run, never loosen a limit |
+| `concurrency`, `taskTimeoutMinutes`, `runTimeoutMinutes`, `maxCostUsd`, `maxTasks`, `verify`, `judge`, `fixes`, `linkedTasks`, `sampling` | Only when the configuration does not set it (`sampling` as one setting): the account can bound an unbounded run, never loosen a limit |
 | `include` | Combined: the configuration's patterns, then the account's |
 | `exclude` | Only when the configuration sets none: a file the account excludes is neither reviewed nor counted as unreviewed, so an `exclude` in the configuration, even `[]`, keeps the account's out |
 | `rules` | Added after the repository's and the shared ones: at most 50, each like an [`.ocra/rules.json`](./rules) entry with a rule of at most 2,000 characters, embedded in the prompt the same way |

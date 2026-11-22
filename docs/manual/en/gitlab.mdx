@@ -63,7 +63,7 @@ ocra-review:
 - **A thread on each finding** on an added line, or an unchanged line next to the change. A finding GitLab will not place stays in the summary.
 - **One summary note**, updated in place, with the same content as [on GitHub](./github#what-gets-posted).
 - **Resolved threads** when the code a finding quoted is gone.
-- **Suggestions you can apply** (planned: no reviewer produces fixes yet, [ADR-0029](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0029-committable-suggestions.md)): a finding's fix ends its thread with a `suggestion:-N+0` block from the thread's line back to the first fixed line (**Apply suggestion**), only when the thread covers exactly the fixed lines, at most 100 lines above it, and with the code exactly as written or not at all, as on [GitHub](./github#committable-suggestions).
+- **Suggestions you can apply** (with [`fixes`](./configuration) or `--fixes` on, [ADR-0058](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0058-checked-fix-proposals.md)): a finding's fix ends its thread with a `suggestion:-N+0` block from the thread's line back to the first fixed line (**Apply suggestion**), only when the thread covers exactly the fixed lines, at most 100 lines above it, and with the code exactly as written or not at all, as on [GitHub](./github#committable-suggestions).
 
 Maintainers stay in charge. A maintainer here is anyone with the Developer role or higher other than the author, not only GitLab's Maintainer role; they dismiss a finding by resolving its thread or answering with `/ocra dismiss` or a reply opening with "won't fix", "by design" or "false positive". Their other replies reach the judge when the finding comes back. A comment someone else edited counts for nothing.
 

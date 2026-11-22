@@ -143,6 +143,7 @@ export const configSchema = z
     judge: z.boolean().optional(),
     showPreExisting: z.boolean().optional(),
     walkthrough: z.boolean().optional(),
+    fixes: z.boolean().optional(),
     linkedTasks: z.boolean().optional(),
     trackers: trackersSchema.default({}),
     // Markdown files, or directories of them, in the repository (ADR-0052).

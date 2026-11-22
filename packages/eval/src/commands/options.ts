@@ -33,6 +33,7 @@ const OPTIONS = {
   "retry-failed": { type: "boolean" },
   reviewers: { type: "string" },
   ultra: { type: "boolean" },
+  fixes: { type: "boolean" },
   config: { type: "string" },
   setup: { type: "string" },
   "spread-of": { type: "string" },

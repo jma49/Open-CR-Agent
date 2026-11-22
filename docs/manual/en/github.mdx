@@ -127,7 +127,7 @@ Maintainers stay in charge. A maintainer, someone with write access (admin, main
 
 A finding can carry a fix: code that replaces the lines it is about. Its inline comment then ends with a suggestion block that anyone with write access can commit (**Commit suggestion**, or in a batch). ocra offers one only when the comment sits on exactly the replaced lines, never in the summary, and posts the code exactly or not at all: a fix holding an HTML comment opener, `/ocra`, a carriage return or a control or bidirectional character, or longer than 20,000 characters, gets no block; the finding is still posted. A suggestion is a model's proposal: read it before committing.
 
-**Planned:** no reviewer produces fixes yet; that waits for an evaluated prompt change ([ADR-0029](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0029-committable-suggestions.md)). Until then comments give suggestions as text.
+Fixes come from the [Fix stage](./how-it-works), which is off unless [`fixes`](./configuration) or `--fixes` turns it on ([ADR-0058](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0058-checked-fix-proposals.md)); without it, comments give suggestions as text.
 
 ## Code scanning
 

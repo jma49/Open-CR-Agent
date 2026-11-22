@@ -46,6 +46,7 @@ export function configuredOptions(run: ResolvedRun, args: ReviewArgs): Configure
       ...(config.showPreExisting !== undefined ? { showPreExisting: config.showPreExisting } : {}),
       walkthrough:
         config.walkthrough ?? (args.pullRequest !== undefined || args.mergeRequest !== undefined),
+      ...(args.fixes || config.fixes ? { fixes: true } : {}),
     },
     mode: {
       ...(run.ultra ? { ultra: true } : {}),

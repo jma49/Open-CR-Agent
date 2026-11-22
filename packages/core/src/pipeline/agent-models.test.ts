@@ -48,6 +48,7 @@ describe("model chain resolution", () => {
       { id: "judge", tier: "top", models: ["a/judge"] },
       { id: "helper", tier: "light" },
       { id: "writer", tier: "standard", models: ["t/std"] },
+      { id: "fixer", tier: "standard", models: ["t/std"] },
     ]);
     expect(agentProvenance(agents, {}).security).toEqual({ tier: "standard", models: ["a/sec"] });
     expect(agentProvenance(agents, {}).helper).toEqual({ tier: "light" });

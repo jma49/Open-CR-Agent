@@ -14,7 +14,16 @@ import {
 
 export const REVIEW_EVENT_VERSION = 1;
 
-export const STAGES = ["select", "bundle", "plan", "review", "filter", "verify", "judge"] as const;
+export const STAGES = [
+  "select",
+  "bundle",
+  "plan",
+  "review",
+  "filter",
+  "verify",
+  "judge",
+  "fix",
+] as const;
 export const stageSchema = z.enum(STAGES);
 export type Stage = z.infer<typeof stageSchema>;
 

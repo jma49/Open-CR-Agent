@@ -23,6 +23,10 @@ We measured whether a deterministic rule could tell. Across the reports saved by
 
 Point 4's checks (exactly the anchored lines, posted as written) held only for ocra's own block: a model could write a `suggestion` fence in a finding's body or suggestion text, and both platforms offered it as a committable change. `safeMarkdown` now breaks the info string of every fence in model text that names a suggestion, with a zero-width space, in code and in text alike (#509). ocra's own block is added after model text is neutralized, so it is unaffected.
 
+## Note (2026-11-22): fixes come from a stage of their own
+
+ADR-0058 amends point 2: the reviewers' prompts stay as they are, and a fix stage after the judge proposes fixes, each checked by code before a finding carries it. Off unless asked.
+
 ## Consequences
 
 - Until the prompt change, no finding has a fix and nothing a user sees changes; the report schema and the rendering are ready and tested.

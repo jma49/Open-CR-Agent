@@ -12,3 +12,4 @@ export {
   updateGraph,
 } from "./graph.js";
 export { type ScipOptions, scipReferences } from "./scip.js";
+export { treeSitterSyntax } from "./syntax.js";

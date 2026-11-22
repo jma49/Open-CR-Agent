@@ -65,12 +65,9 @@ function load(spec: LanguageSpec): Promise<Loaded> {
   return loaded;
 }
 
-export async function parseSymbols(
-  spec: LanguageSpec,
-  content: string,
-  budgetMs = PARSE_BUDGET_MS,
-): Promise<FileSymbols | undefined> {
-  const { parser, definitions, uses } = await load(spec);
+// A parse cancelled by its budget leaves the parser holding it, and the next
+// parse would resume it on another file's text: reset it.
+function parseWithin(parser: TreeSitter.Parser, content: string, budgetMs: number) {
   const deadline = performance.now() + budgetMs;
   let late = false;
   const progressCallback = () => {
@@ -78,11 +75,22 @@ export async function parseSymbols(
     return late;
   };
   const tree = parser.parse(content, null, { progressCallback });
+  if (!tree) parser.reset();
+  return { tree, progressCallback, late: () => late };
+}
+
+export async function parseSymbols(
+  spec: LanguageSpec,
+  content: string,
+  budgetMs = PARSE_BUDGET_MS,
+): Promise<FileSymbols | undefined> {
+  const { parser, definitions, uses } = await load(spec);
+  const { tree, progressCallback, late } = parseWithin(parser, content, budgetMs);
   if (!tree) return undefined;
   try {
     const matches = definitions.matches(tree.rootNode, { progressCallback });
     const captures = uses.captures(tree.rootNode, { progressCallback });
-    if (late) return undefined;
+    if (late()) return undefined;
     const found = collectDefinitions(matches);
     const nameStarts = new Set(found.map((d) => d.nameStart));
     const lines = new Map<string, Set<number>>();
@@ -96,6 +104,30 @@ export async function parseSymbols(
       definitions: asMethods(found.map(({ nameStart: _, ...definition }) => definition)),
       uses: new Map([...lines].map(([name, rows]) => [name, [...rows].sort((a, b) => a - b)])),
     };
+  } finally {
+    tree.delete();
+  }
+}
+
+// How many error and missing nodes the parser had to insert; undefined when
+// the parse ran out of time.
+export async function parseErrors(
+  spec: LanguageSpec,
+  content: string,
+  budgetMs = PARSE_BUDGET_MS,
+): Promise<number | undefined> {
+  const { parser } = await load(spec);
+  const { tree } = parseWithin(parser, content, budgetMs);
+  if (!tree) return undefined;
+  try {
+    let errors = 0;
+    const pending: TreeSitter.Node[] = [tree.rootNode];
+    for (let node = pending.pop(); node; node = pending.pop()) {
+      if (node.isError || node.isMissing) errors += 1;
+      for (const child of node.children)
+        if (child?.hasError || child?.isMissing) pending.push(child);
+    }
+    return errors;
   } finally {
     tree.delete();
   }

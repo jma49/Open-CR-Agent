@@ -36,6 +36,7 @@ export type {
   SymbolExtractor,
   SymbolKind,
   SymbolReference,
+  SyntaxChecker,
   Usage,
 } from "./contracts.js";
 export { MODEL_TIERS, SYMBOL_KINDS } from "./contracts.js";
@@ -74,6 +75,8 @@ export {
   OcraError,
   type OcraErrorCode,
 } from "./errors.js";
+export { FIX_REJECTIONS, type FixRejection } from "./fix/check.js";
+export type { FixSummary } from "./fix/propose.js";
 export type { JudgeDecisions } from "./judge/judge.js";
 export type { Learning, LearningSource, LearningUse } from "./knowledge/learning.js";
 export type { SkippedCell, SkipReason } from "./matrix/matrix.js";

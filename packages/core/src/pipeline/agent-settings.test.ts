@@ -45,6 +45,7 @@ describe("effort resolution", () => {
       { id: "judge", tier: "top" },
       { id: "helper", tier: "light", effort: "none" },
       { id: "writer", tier: "standard" },
+      { id: "fixer", tier: "standard" },
     ]);
   });
 });
@@ -208,7 +209,7 @@ describe("review with effort", () => {
       identity: { provenance: { ocraVersion: "1", configHash: "c" } },
     });
     expect(report.warnings.filter((w) => w.includes("reasoning effort"))).toEqual([
-      "the fake runtime does not apply reasoning effort; the effort configured for correctness, verifier, writer was not sent",
+      "the fake runtime does not apply reasoning effort; the effort configured for correctness, verifier, writer, fixer was not sent",
     ]);
     expect(report.provenance?.agents?.correctness).toEqual({
       tier: "standard",

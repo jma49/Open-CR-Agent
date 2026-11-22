@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 // from its own layer or a lower one, type imports included. A top-level
 // file is named without its extension, a directory with a trailing slash.
 const LAYERS: readonly (readonly string[])[] = [
-  ["contracts", "domain", "errors", "at", "hash", "bounded-file", "diff/", "net/"],
+  ["contracts", "domain", "errors", "at", "hash", "bounded-file", "unsafe-text", "diff/", "net/"],
   // What every model call shares.
   ["agent/"],
   // The stages.
@@ -25,6 +25,7 @@ const LAYERS: readonly (readonly string[])[] = [
     "anchor/",
     "verify/",
     "judge/",
+    "fix/",
     "walkthrough/",
     "merge-checks/",
     "chat/",

@@ -90,6 +90,8 @@ Run:
   --ultra                  Passed to ocra review --ultra (recall mode; about twice the cost)
   --without <sources>      Passed to ocra review --without: leave these context
                            sources out of every prompt, for an ablation run
+  --fixes                  Passed to ocra review --fixes: propose checked fixes, which
+                           the golden summary counts on right and wrong findings
   --config <file>          Passed to ocra review --config: your own configuration
                            (declared providers, limits) for reviews that run with
                            --no-repo-config

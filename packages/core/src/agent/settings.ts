@@ -11,15 +11,17 @@ export const EFFORT_LEVELS = [
 
 // The agents that are not reviewers (ADR-0025). Helpers group files and
 // relocate quotes, nothing else; the writer writes what people read besides
-// findings (ADR-0047); the verifier and the judge never inherit a
-// reviewer's settings, so checking stays independent of what was checked.
-export type AgentRole = "verifier" | "judge" | "helper" | "writer";
-export const AGENT_ROLES: readonly AgentRole[] = ["verifier", "judge", "helper", "writer"];
+// findings (ADR-0047); the fixer proposes a finding's fix (ADR-0058); the
+// verifier and the judge never inherit a reviewer's settings, so checking
+// stays independent of what was checked.
+export type AgentRole = "verifier" | "judge" | "helper" | "writer" | "fixer";
+export const AGENT_ROLES: readonly AgentRole[] = ["verifier", "judge", "helper", "writer", "fixer"];
 const ROLE_TIERS: Readonly<Record<AgentRole, ModelTier>> = {
   verifier: "standard",
   judge: "top",
   helper: "light",
   writer: "standard",
+  fixer: "standard",
 };
 
 export interface ReviewerOverride {

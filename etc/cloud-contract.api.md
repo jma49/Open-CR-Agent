@@ -12,7 +12,7 @@ export const accountSchema: z.ZodObject<{
 }, z.core.$strip>;
 
 // @public
-export const AGENT_ROLES: readonly ["verifier", "judge", "helper", "writer"];
+export const AGENT_ROLES: readonly ["verifier", "judge", "helper", "writer", "fixer"];
 
 // @public (undocumented)
 export type AgentPrefs = z.output<typeof agentPrefsSchema>;
@@ -80,6 +80,7 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
         effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
     }> | null | undefined>>;
     roles: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodEnum<{
+        fixer: "fixer";
         helper: "helper";
         judge: "judge";
         verifier: "verifier";
@@ -100,6 +101,10 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
         models?: string[] | null | undefined;
         effort: "high" | "low" | "medium" | "minimal" | "none" | undefined;
     } | null | undefined>>>>>, z.ZodTransform<{
+        fixer?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
         helper?: {
             models?: string[];
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
@@ -116,7 +121,7 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
             models?: string[];
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
         };
-    }, Partial<Record<"helper" | "judge" | "verifier" | "writer", {
+    }, Partial<Record<"fixer" | "helper" | "judge" | "verifier" | "writer", {
         models?: string[];
         effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
     }>> | null | undefined>>;
@@ -134,6 +139,10 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
         } | undefined;
     };
     roles?: {
+        fixer?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
         helper?: {
             models?: string[];
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
@@ -165,6 +174,10 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
         } | undefined;
     };
     roles: {
+        fixer?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
         helper?: {
             models?: string[];
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
@@ -189,6 +202,7 @@ export type AgentRole = z.infer<typeof agentRoleSchema>;
 
 // @public (undocumented)
 export const agentRoleSchema: z.ZodEnum<{
+    fixer: "fixer";
     helper: "helper";
     judge: "judge";
     verifier: "verifier";
@@ -804,6 +818,7 @@ export const preferencesUpdateSchema: z.ZodObject<{
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
         }> | null | undefined>>;
         roles: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodEnum<{
+            fixer: "fixer";
             helper: "helper";
             judge: "judge";
             verifier: "verifier";
@@ -824,6 +839,10 @@ export const preferencesUpdateSchema: z.ZodObject<{
             models?: string[] | null | undefined;
             effort: "high" | "low" | "medium" | "minimal" | "none" | undefined;
         } | null | undefined>>>>>, z.ZodTransform<{
+            fixer?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
             helper?: {
                 models?: string[];
                 effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
@@ -840,7 +859,7 @@ export const preferencesUpdateSchema: z.ZodObject<{
                 models?: string[];
                 effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
             };
-        }, Partial<Record<"helper" | "judge" | "verifier" | "writer", {
+        }, Partial<Record<"fixer" | "helper" | "judge" | "verifier" | "writer", {
             models?: string[];
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
         }>> | null | undefined>>;
@@ -858,6 +877,10 @@ export const preferencesUpdateSchema: z.ZodObject<{
             } | undefined;
         };
         roles?: {
+            fixer?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
             helper?: {
                 models?: string[];
                 effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
@@ -889,6 +912,10 @@ export const preferencesUpdateSchema: z.ZodObject<{
             } | undefined;
         };
         roles: {
+            fixer?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
             helper?: {
                 models?: string[];
                 effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
@@ -917,6 +944,7 @@ export const preferencesUpdateSchema: z.ZodObject<{
         verify: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
         judge: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
         linkedTasks: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+        fixes: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
         sampling: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
             temperature: z.ZodOptional<z.ZodNumber>;
             seed: z.ZodOptional<z.ZodNumber>;
@@ -945,6 +973,7 @@ export const preferencesUpdateSchema: z.ZodObject<{
         verify?: NonNullable<boolean | null | undefined>;
         judge?: NonNullable<boolean | null | undefined>;
         linkedTasks?: NonNullable<boolean | null | undefined>;
+        fixes?: NonNullable<boolean | null | undefined>;
         sampling?: {
             temperature?: number;
             seed?: number;
@@ -967,6 +996,7 @@ export const preferencesUpdateSchema: z.ZodObject<{
         verify?: boolean | null | undefined;
         judge?: boolean | null | undefined;
         linkedTasks?: boolean | null | undefined;
+        fixes?: boolean | null | undefined;
         sampling: {
             temperature?: number;
             seed?: number;
@@ -1108,6 +1138,7 @@ export const reviewEventSchema: z.ZodIntersection<z.ZodObject<{
         stage: z.ZodEnum<{
             bundle: "bundle";
             filter: "filter";
+            fix: "fix";
             judge: "judge";
             plan: "plan";
             review: "review";
@@ -1234,6 +1265,7 @@ export const reviewSettingsSchema: z.ZodPipe<z.ZodObject<{
     verify: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     judge: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     linkedTasks: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+    fixes: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     sampling: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
         temperature: z.ZodOptional<z.ZodNumber>;
         seed: z.ZodOptional<z.ZodNumber>;
@@ -1262,6 +1294,7 @@ export const reviewSettingsSchema: z.ZodPipe<z.ZodObject<{
     verify?: NonNullable<boolean | null | undefined>;
     judge?: NonNullable<boolean | null | undefined>;
     linkedTasks?: NonNullable<boolean | null | undefined>;
+    fixes?: NonNullable<boolean | null | undefined>;
     sampling?: {
         temperature?: number;
         seed?: number;
@@ -1284,6 +1317,7 @@ export const reviewSettingsSchema: z.ZodPipe<z.ZodObject<{
     verify?: boolean | null | undefined;
     judge?: boolean | null | undefined;
     linkedTasks?: boolean | null | undefined;
+    fixes?: boolean | null | undefined;
     sampling: {
         temperature?: number;
         seed?: number;
@@ -1605,12 +1639,13 @@ export function splitLearning(text: string): {
 export type Stage = z.infer<typeof stageSchema>;
 
 // @public (undocumented)
-export const STAGES: readonly ["select", "bundle", "plan", "review", "filter", "verify", "judge"];
+export const STAGES: readonly ["select", "bundle", "plan", "review", "filter", "verify", "judge", "fix"];
 
 // @public (undocumented)
 export const stageSchema: z.ZodEnum<{
     bundle: "bundle";
     filter: "filter";
+    fix: "fix";
     judge: "judge";
     plan: "plan";
     review: "review";
