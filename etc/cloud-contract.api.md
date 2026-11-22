@@ -1219,6 +1219,11 @@ export const reviewUploadSchema: z.ZodObject<{
         body: z.ZodString;
         suggestion: z.ZodCatch<z.ZodNullable<z.ZodString>>;
         code: z.ZodCatch<z.ZodNullable<z.ZodString>>;
+        fix: z.ZodCatch<z.ZodOptional<z.ZodObject<{
+            startLine: z.ZodNumber;
+            endLine: z.ZodNumber;
+            replacement: z.ZodString;
+        }, z.core.$strip>>>;
         redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
         truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     }, z.core.$strip>>>>>>;
@@ -1304,8 +1309,23 @@ export const sharedFindingSchema: z.ZodObject<{
     body: z.ZodString;
     suggestion: z.ZodCatch<z.ZodNullable<z.ZodString>>;
     code: z.ZodCatch<z.ZodNullable<z.ZodString>>;
+    fix: z.ZodCatch<z.ZodOptional<z.ZodObject<{
+        startLine: z.ZodNumber;
+        endLine: z.ZodNumber;
+        replacement: z.ZodString;
+    }, z.core.$strip>>>;
     redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
+}, z.core.$strip>;
+
+// @public (undocumented)
+export type SharedFix = z.input<typeof sharedFixSchema>;
+
+// @public
+export const sharedFixSchema: z.ZodObject<{
+    startLine: z.ZodNumber;
+    endLine: z.ZodNumber;
+    replacement: z.ZodString;
 }, z.core.$strip>;
 
 // @public

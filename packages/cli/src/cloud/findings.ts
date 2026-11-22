@@ -3,6 +3,7 @@ import {
   MAX_TOTAL_BYTES,
   redactField,
   type SharedFinding,
+  type SharedFix,
 } from "@open-cr-agent/cloud-contract";
 import type { Finding, ReviewReport } from "@open-cr-agent/core";
 
@@ -52,14 +53,25 @@ function share(f: Finding): SharedFinding {
     suggestion: f.suggestion === undefined ? null : text(f.suggestion),
     code: text(f.existingCode),
   };
+  const fix = shareableFix(f);
+  if (fix) shared.fix = fix;
   if (redacted) shared.redacted = true;
   if (truncated) shared.truncated = true;
   return shared;
 }
 
+// A fix is code a click may commit, so one the redaction pass would change
+// is left out rather than sent changed.
+function shareableFix({ fix }: Finding): SharedFix | undefined {
+  if (!fix) return undefined;
+  const r = redactField(fix.replacement);
+  if (r.redacted || r.truncated) return undefined;
+  return { startLine: fix.startLine, endLine: fix.endLine, replacement: fix.replacement };
+}
+
 // Bytes as sent, escapes included, so the body stays under the server's limit.
 function textBytes(f: SharedFinding): number {
-  return [f.title, f.body, f.suggestion ?? "", f.code ?? ""].reduce(
+  return [f.title, f.body, f.suggestion ?? "", f.code ?? "", f.fix?.replacement ?? ""].reduce(
     (sum, s) => sum + Buffer.byteLength(JSON.stringify(s)),
     0,
   );
