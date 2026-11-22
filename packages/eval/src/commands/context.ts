@@ -4,12 +4,12 @@ import { defaultOcraCommand } from "../reviewer.js";
 import { selectInstances } from "../select.js";
 import {
   CACHE_DIR,
+  contextChoice,
   dataset,
   loadInstances,
   type Output,
   parse,
   selection,
-  without,
 } from "./options.js";
 
 export async function context(argv: string[], out: Output, err: Output): Promise<number> {
@@ -23,7 +23,7 @@ export async function context(argv: string[], out: Output, err: Output): Promise
     outDir,
     reposDir: values["repos-dir"] ?? join(CACHE_DIR, "repos"),
     command: defaultOcraCommand(),
-    without: without(values),
+    choice: contextChoice(values),
     log: (message) => err.write(`[ocra-eval] ${message}\n`),
   });
   out.write(`${markdown}\nWritten to ${outDir}\n`);

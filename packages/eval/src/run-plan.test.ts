@@ -55,7 +55,7 @@ describe("ocra-eval run --dry-run", () => {
     const out = { write: (chunk: string) => (text += chunk) };
     const args = ["run", "--dataset", "golden", "--tier", "smoke", "--dry-run", "--without"];
     expect(await main([...args, "learnings,callers"], out, out, {})).toBe(0);
-    expect(text).toContain("Left out of every prompt: learnings, callers.");
+    expect(text).toContain("Context: left out: learnings, callers.");
     expect(await main([...args, "diff"], out, out, {})).not.toBe(0);
   });
 });

@@ -1,3 +1,4 @@
+import { MAX_GUIDELINES_CHARS } from "../docs/guidelines.js";
 import { type BundleSections, PROJECT_DOC_LIMITS } from "../docs/project-docs.js";
 import type { ChangeRequest, FileDiff, Hunk } from "../domain.js";
 import type { Learning } from "../knowledge/learning.js";
@@ -18,8 +19,6 @@ import {
 import type { ReviewerDefinition } from "./reviewer.js";
 import { REVIEW_TOOLS } from "./tools.js";
 
-export const MAX_GUIDELINES_CHARS = 20_000;
-
 // Runtimes cap an agent's turns, and on OpenCode the last turn has no tools:
 // a reviewer that kept its findings for the end lost them. A quarter of the
 // review tasks on Vertex ended at the cap (2026-09-28).
@@ -36,6 +35,8 @@ export interface ReviewPromptInput {
   // The repository's rules that match the bundle's files.
   repoRules?: string;
   guidelines?: string | undefined;
+  // Headings of the guidelines' sections the task is not given.
+  moreGuidelines?: readonly string[];
   // The tasks the change was written for (ADR-0052), already held to the limits.
   linkedTasks?: readonly LinkedTask[];
   accepted?: readonly MemoryEntry[];
@@ -95,10 +96,7 @@ export function reviewPromptParts(input: ReviewPromptInput): PromptPart[] {
     add("linked_tasks", renderLinkedTasks(input.linkedTasks));
   }
   if (input.guidelines?.trim() && !without.has("guidelines")) {
-    add(
-      "guidelines",
-      section("repository_guidelines", truncated(input.guidelines, MAX_GUIDELINES_CHARS)),
-    );
+    add("guidelines", renderGuidelines(input.guidelines, input.moreGuidelines ?? []));
   }
   const rules = renderRules(input.rules, without.has("rules") ? "" : (input.repoRules ?? ""));
   if (rules) add("rules", rules);
@@ -155,6 +153,28 @@ export function renderChangeRequest(
   return section("change_request", [
     section("title", truncated(cr.title, MAX_TITLE_CHARS)),
     ...(withDescription ? [section("description", truncated(cr.description, maxDescription))] : []),
+  ]);
+}
+
+const MAX_LISTED_GUIDELINES = 30;
+
+// Sections are chosen whole (docs/guidelines.ts); the cut here only bounds
+// a document whose first section alone is over the limit.
+function renderGuidelines(text: string, left: readonly string[]): PromptText {
+  const listed = left.slice(0, MAX_LISTED_GUIDELINES);
+  return section("repository_guidelines", [
+    truncated(text, MAX_GUIDELINES_CHARS),
+    ...(listed.length > 0
+      ? [
+          ocraText(
+            `More sections of AGENTS.md, by heading; read it with ${REVIEW_TOOLS.readFile} if one may apply:`,
+          ),
+          ...listed.map((h) => data(`- ${oneLine(clip(h, MAX_TITLE_CHARS))}`)),
+          ...(left.length > listed.length
+            ? [ocraText(`and ${left.length - listed.length} more.`)]
+            : []),
+        ]
+      : []),
   ]);
 }
 

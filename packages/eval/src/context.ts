@@ -64,13 +64,13 @@ export function summarizeContext(cases: readonly CaseContext[]): ContextSummary 
   return { cases: cases.length, tasks, promptTokens, sources };
 }
 
-export function renderContext(summary: ContextSummary, without: readonly string[] = []): string {
+export function renderContext(summary: ContextSummary, changed?: string): string {
   const share = (n: number) =>
     summary.promptTokens === 0 ? "0.0" : ((100 * n) / summary.promptTokens).toFixed(1);
   const lines = [
     "# Review context by source",
     "",
-    `${summary.cases} case(s), ${summary.tasks} review task(s), ${summary.promptTokens} first-prompt tokens (four characters per token; no model calls).${without.length > 0 ? ` Left out: ${without.join(", ")}.` : ""} "Cut" counts texts held to a limit and lists cut short; "duplicate" counts lines an earlier part of the same prompt already holds.`,
+    `${summary.cases} case(s), ${summary.tasks} review task(s), ${summary.promptTokens} first-prompt tokens (four characters per token; no model calls).${changed ? ` Context: ${changed}.` : ""} "Cut" counts texts held to a limit and lists cut short; "duplicate" counts lines an earlier part of the same prompt already holds.`,
     "",
     "| Source | Tasks | Tokens | Share | Mean per task | Max per task | Cut | Duplicate |",
     "|---|---|---|---|---|---|---|---|",

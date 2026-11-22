@@ -35,8 +35,8 @@ describe("summarizeContext", () => {
   });
 
   it("renders one row per source with its share of the prompts", () => {
-    const text = renderContext(summary, ["learnings"]);
+    const text = renderContext(summary, "left out: learnings");
     expect(text).toContain("| diff | 2 | 300 | 75.0% | 150 | 200 | 0 | 0 |");
-    expect(text).toContain("Left out: learnings.");
+    expect(text).toContain("Context: left out: learnings.");
   });
 });

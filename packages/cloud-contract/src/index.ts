@@ -180,6 +180,7 @@ export {
   EFFORTS,
   type Effort,
   effortSchema,
+  GUIDELINE_SCOPES,
   MODEL_TIERS,
   type ModelTier,
   modelTierSchema,

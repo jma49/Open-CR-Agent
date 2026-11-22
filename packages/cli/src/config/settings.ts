@@ -90,6 +90,7 @@ const MERGE: {
   walkthrough: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   fixes: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   linkedTasks: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
+  guidelineScope: { merge: "replace", from: ["shared", "file"], plan: ALWAYS },
   trackers: { merge: "entries", from: ["shared", "file"], plan: { list: "set" } },
   projectDocs: { merge: "replace", from: ["shared", "file"], plan: { list: "set" } },
   mergeChecks: { merge: "replace", from: ["shared", "file"], plan: { list: "set" } },

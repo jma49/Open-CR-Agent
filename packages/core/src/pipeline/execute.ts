@@ -7,6 +7,7 @@ import {
 import { addUsage, emptyUsage } from "../agent/usage.js";
 import { type AnchorContext, anchorFinding } from "../anchor/anchor.js";
 import type { AgentRuntime, ReferenceIndex, SymbolExtractor, Usage } from "../contracts.js";
+import type { GuidelineScope } from "../docs/guidelines.js";
 import type { Finding, TaskFinding } from "../domain.js";
 import type { MatrixCell } from "../matrix/matrix.js";
 import type { ReviewEvent, TaskOutcome } from "../report/report.js";
@@ -34,6 +35,7 @@ export interface ExecuteOptions {
   ultra?: boolean;
   // Sources left out of every prompt (ADR-0057).
   without?: ReadonlySet<OptionalContext>;
+  guidelineScope?: GuidelineScope;
   // The files a security reviewer reviews in the matrix (securityReviewed).
   securityFiles?: ReadonlySet<string>;
   taskTimeoutMs: number;
@@ -79,6 +81,7 @@ function settingsOf(options: ExecuteOptions): TaskSettings {
     ultra: options.ultra === true,
     securityFiles: options.securityFiles ?? new Set(),
     ...(options.without ? { without: options.without } : {}),
+    ...(options.guidelineScope ? { guidelineScope: options.guidelineScope } : {}),
   };
 }
 

@@ -46,6 +46,9 @@ export const EFFORTS = ["none", "minimal", "low", "medium", "high"] as const;
 export const effortSchema = z.enum(EFFORTS);
 export type Effort = z.infer<typeof effortSchema>;
 
+/** Which sections of AGENTS.md each review task is given (ADR-0059). */
+export const GUIDELINE_SCOPES = ["all", "matched", "reviewer"] as const;
+
 /** The built-in runtimes an account may name; a plugin runtime would load code. */
 export const RUNTIMES = ["direct", "opencode"] as const;
 export const runtimeSchema = z.enum(RUNTIMES);

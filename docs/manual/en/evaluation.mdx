@@ -29,6 +29,7 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--retry-failed` | Review again PRs that failed in an earlier attempt, on a rate limit for example; when that attempt's session is still in the clone, with `ocra review --resume`, so only its unfinished tasks run. The PR's `usage` is then both attempts' |
 | `--reviewers` | Passed to `ocra review --reviewers`, for comparing reviewer sets |
 | `--ultra` | Passed to `ocra review --ultra` (recall mode, about twice the cost); recorded in the run |
+| `--guidelines <scope>` | Passed to `ocra review --guidelines` (`all`, `matched`, `reviewer`), to compare what the guidelines are worth to each reviewer |
 | `--without <sources>` | Passed to `ocra review --without`: leave these context sources out of every prompt, for a per-source ablation (see [Context by source](#context-by-source-free)) |
 | `--fixes` | Passed to `ocra review --fixes`; a golden run's `summary.md` and `summary.json` (`golden.fixes`) count the findings that carried a fix, and how many of those findings were right or wrong. Whether each fix is right is not scored yet |
 | `--config` | Passed to `ocra review --config`: your configuration file (declared providers, limits) |
@@ -248,9 +249,9 @@ node packages/eval/dist/main.js context --dataset golden --tier full
 node packages/eval/dist/main.js context --dataset golden --tier full --without learnings --label context-without-learnings
 ```
 
-Plans every case as `run` reviews it (`ocra review --plan`, no model call) and reports, for each context source of the review prompts (the system prompt, change request, changed files, linked tasks, guidelines, rules, accepted findings, learnings, project documents, the diff, callers, analyzer results, the closing instructions): how many tasks have it, its tokens and share of all first prompts, the mean and largest per task, how often it was cut to its limit, and how many of its tokens repeat lines an earlier source of the same prompt holds. Written to `context.md` and `context.json` under `--out`/`--label` (default `context`); attack cases are skipped.
+Plans every case as `run` reviews it (`ocra review --plan`, no model call) and reports, for each context source of the review prompts (the system prompt, change request, changed files, linked tasks, guidelines, rules, accepted findings, learnings, project documents, the diff, callers, analyzer results, the closing instructions): how many tasks have it, its tokens and share of all first prompts, the mean and largest per task, how often it was cut to its limit, and how many of its tokens repeat lines an earlier source of the same prompt holds. Written to `context.md` and `context.json` under `--out`/`--label` (default `context`); attack cases are skipped. `--without` and `--guidelines` plan the prompts as `run` would with them.
 
-To measure what a source is worth, review with and without it, then compare: `run --label baseline` and `run --label without-learnings --without learnings` on the same cases, then `verdict baseline without-learnings` (both are paid).
+To measure what a source is worth, review with and without it, then compare: `run --label baseline` and `run --label without-learnings --without learnings` on the same cases, then `verdict baseline without-learnings` (both are paid). For the guidelines, the three runs are `--guidelines all` (the default), `--guidelines matched` and `--guidelines reviewer`.
 
 ## Scoring
 

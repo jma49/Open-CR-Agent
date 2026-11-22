@@ -127,6 +127,7 @@ function executeOptions(
         spendLimit.mayCall() ? relocator(request) : undefined),
     ultra: settings.ultra,
     without: settings.without,
+    guidelineScope: settings.guidelineScope,
     symbols: options.symbols,
     references: options.references,
     plans: new Map(),

@@ -14,13 +14,15 @@ import { selectInstances } from "../select.js";
 import { prepareSetup, setupName } from "../setups/setup-config.js";
 import {
   CACHE_DIR,
+  contextArgs,
+  contextChoice,
   dataset,
+  describeContext,
   loadInstances,
   number,
   type Output,
   parse,
   selection,
-  without,
 } from "./options.js";
 import { writeRepeats, writeSummary } from "./summary.js";
 
@@ -52,7 +54,8 @@ export async function run(
   };
   const prMaxCost = number(values["pr-max-cost-usd"], "--pr-max-cost-usd");
   const maxCost = number(values["max-cost-usd"], "--max-cost-usd");
-  const ablated = without(values);
+  const choice = contextChoice(values);
+  const changed = describeContext(choice);
   if (values["dry-run"]) {
     const plan: RunPlan = {
       label: runId,
@@ -60,7 +63,7 @@ export async function run(
       ...(values.tier ? { tier: values.tier } : {}),
       ids: instances.map((i) => i.id),
       repeat,
-      ...(ablated.length > 0 ? { without: ablated } : {}),
+      ...(changed ? { context: changed } : {}),
       ...(prMaxCost === undefined ? {} : { prMaxCostUsd: prMaxCost }),
       ...(maxCost === undefined ? {} : { maxCostUsd: maxCost }),
       models: {
@@ -93,7 +96,7 @@ export async function run(
     ...(values.reviewers ? ["--reviewers", values.reviewers] : []),
     ...setupArgs,
     ...(values.ultra ? ["--ultra"] : []),
-    ...(ablated.length > 0 ? ["--without", ablated.join(",")] : []),
+    ...contextArgs(choice),
     ...(values.fixes ? ["--fixes"] : []),
     // The run limit only stops the next PR; this caps each PR's own review.
     ...(prMaxCost !== undefined ? ["--max-cost-usd", String(prMaxCost)] : []),

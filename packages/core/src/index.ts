@@ -40,6 +40,7 @@ export type {
   Usage,
 } from "./contracts.js";
 export { MODEL_TIERS, SYMBOL_KINDS } from "./contracts.js";
+export { GUIDELINE_SCOPES, type GuidelineScope } from "./docs/guidelines.js";
 export {
   PROJECT_DOC_LIMITS,
   type ProjectDoc,

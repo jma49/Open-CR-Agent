@@ -128,6 +128,7 @@ describe("listSettings", () => {
       "walkthrough",
       "fixes",
       "linkedTasks",
+      "guidelineScope",
       "sampling",
       "include",
       "exclude",

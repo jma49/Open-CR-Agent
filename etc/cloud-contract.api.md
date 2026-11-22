@@ -276,6 +276,11 @@ export const configSchema: z.ZodObject<{
     walkthrough: z.ZodOptional<z.ZodBoolean>;
     fixes: z.ZodOptional<z.ZodBoolean>;
     linkedTasks: z.ZodOptional<z.ZodBoolean>;
+    guidelineScope: z.ZodOptional<z.ZodEnum<{
+        all: "all";
+        matched: "matched";
+        reviewer: "reviewer";
+    }>>;
     trackers: z.ZodDefault<z.ZodObject<{
         jira: z.ZodOptional<z.ZodObject<{
             projects: z.ZodArray<z.ZodString>;
@@ -615,6 +620,9 @@ export const graphRepoSchema: z.ZodObject<{
         finishedAt: z.ZodNullable<z.ZodString>;
     }, z.core.$strip>>;
 }, z.core.$strip>;
+
+// @public
+export const GUIDELINE_SCOPES: readonly ["all", "matched", "reviewer"];
 
 // @public
 export function isCloudModel(model: string): boolean;

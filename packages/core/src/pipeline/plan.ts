@@ -2,6 +2,7 @@ import { roleCall } from "../agent/settings.js";
 import { type Bundle, bundleFiles, defaultBundlePolicy } from "../bundle/bundle.js";
 import { runtimeGrouper } from "../bundle/runtime-grouper.js";
 import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
+import { type GuidelineSection, guidelineSections } from "../docs/guidelines.js";
 import { type DocSection, docSections } from "../docs/project-docs.js";
 import type { ChangeRequest, FileDiff, PriorReview, RiskTier } from "../domain.js";
 import { errorMessage } from "../errors.js";
@@ -50,6 +51,8 @@ export interface ReviewPlan {
   scope?: ReviewScope;
   context: ReviewContext;
   guidelines: string | undefined;
+  // The guidelines' sections, which taskPrompt picks from per task.
+  guidelineSections: GuidelineSection[];
   repoRules: SourcedRule[];
   memory: RememberedEntry[];
   learnings: SelectLearnings;
@@ -184,6 +187,7 @@ export async function planReview(
         : {}),
     context,
     guidelines,
+    guidelineSections: guidelines === undefined ? [] : guidelineSections(guidelines),
     repoRules: [
       ...(options.rules ?? []),
       ...fileRules.map((rule): SourcedRule => ({ ...rule, source: "repository" })),

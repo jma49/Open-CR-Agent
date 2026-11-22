@@ -65,6 +65,7 @@ export function configHash(
       maxCostUsd: args.maxCostUsd,
       noLinkedTasks: args.noLinkedTasks,
       without: args.without,
+      guidelineScope: args.guidelineScope,
     },
   });
 }

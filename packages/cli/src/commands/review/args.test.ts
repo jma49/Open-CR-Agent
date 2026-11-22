@@ -96,6 +96,13 @@ describe("parseReviewArgs", () => {
     expect(() => parseReviewArgs(["--without", ","])).toThrow(UsageError);
   });
 
+  it("takes which guidelines each task is given", () => {
+    expect(parseReviewArgs(["--guidelines", "matched"])).toMatchObject({
+      guidelineScope: "matched",
+    });
+    expect(() => parseReviewArgs(["--guidelines", "some"])).toThrow(UsageError);
+  });
+
   it.each([
     [["--commit", "a", "--from", "b"], "--commit cannot be combined with --from or --to"],
     [["--to", "b"], "--to requires --from"],

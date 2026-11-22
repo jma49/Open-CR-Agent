@@ -10,6 +10,7 @@ import type {
   SymbolExtractor,
   SyntaxChecker,
 } from "../contracts.js";
+import { GUIDELINE_SCOPES, type GuidelineScope } from "../docs/guidelines.js";
 import type { ProjectDoc } from "../docs/project-docs.js";
 import { OcraError } from "../errors.js";
 import type { Learning } from "../knowledge/learning.js";
@@ -55,6 +56,10 @@ export interface ReviewOptions {
   // The team's learnings, which the caller reads from the same trusted
   // revision as the rules (ADR-0037); each task is given those that apply.
   learnings?: readonly Learning[];
+  // Which sections of AGENTS.md each review task is given (ADR-0058):
+  // "all" (the default), "matched" (those that apply to its files) or
+  // "reviewer" (only the reviewers that check the guidelines).
+  guidelineScope?: GuidelineScope;
   // Give the review tasks the tasks the platform links to the change
   // (ADR-0052); on unless false.
   linkedTasks?: boolean;
@@ -204,11 +209,19 @@ export interface RunSettings {
   walkthrough: boolean;
   without: ReadonlySet<OptionalContext>;
   fixes: boolean;
+  guidelineScope: GuidelineScope;
 }
 
 export function runSettings(
-  options: Pick<ReviewOptions, "limits" | "mode" | "stages">,
+  options: Pick<ReviewOptions, "limits" | "mode" | "stages" | "guidelineScope">,
 ): RunSettings {
+  const guidelineScope = options.guidelineScope ?? "all";
+  if (!(GUIDELINE_SCOPES as readonly string[]).includes(guidelineScope)) {
+    throw new OcraError(
+      "CONFIG_INVALID",
+      `ReviewOptions.guidelineScope must be one of ${GUIDELINE_SCOPES.join(", ")}`,
+    );
+  }
   const parsed = limitsSchema.safeParse(options.limits ?? {});
   if (!parsed.success) {
     throw new OcraError(
@@ -231,6 +244,7 @@ export function runSettings(
     walkthrough: options.stages?.walkthrough === true,
     without: withoutContext(options.mode?.without ?? []),
     fixes: options.stages?.fixes === true,
+    guidelineScope,
   };
 }
 

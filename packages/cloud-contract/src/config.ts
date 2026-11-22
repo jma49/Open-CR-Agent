@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { MAX_MERGE_CHECKS, mergeCheckSchema } from "./merge-checks.js";
-import { AGENT_ROLES, effortSchema as effort, RISK_TIERS } from "./vocabulary.js";
+import { AGENT_ROLES, effortSchema as effort, GUIDELINE_SCOPES, RISK_TIERS } from "./vocabulary.js";
 
 // What .ocra/config.json may say: the CLI checks every layer of settings
 // against it, and ocra Cloud a file before it commits one, so both refuse
@@ -141,6 +141,8 @@ export const configSchema = z
     walkthrough: z.boolean().optional(),
     fixes: z.boolean().optional(),
     linkedTasks: z.boolean().optional(),
+    // Which sections of AGENTS.md each review task is given (ADR-0058).
+    guidelineScope: z.enum(GUIDELINE_SCOPES).optional(),
     trackers: trackersSchema.default({}),
     // Markdown files, or directories of them, in the repository (ADR-0052).
     projectDocs: z.array(docPath).max(MAX_PROJECT_DOC_ENTRIES).optional(),

@@ -37,6 +37,12 @@ describe("review() options", () => {
     expect(defaults.tasks.map((t) => t.status)).toEqual(["completed"]);
   });
 
+  it("refuses a guideline scope it does not know", async () => {
+    await expect(
+      review({ vcs: vcs({}, twoFiles), runtime: done, guidelineScope: "some" as never }),
+    ).rejects.toThrow(/guidelineScope/);
+  });
+
   it("refuses to leave out context it does not know", async () => {
     await expect(
       review({ vcs: vcs({}, twoFiles), runtime: done, mode: { without: ["diff" as never] } }),
