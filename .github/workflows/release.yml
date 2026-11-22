@@ -142,6 +142,9 @@ jobs:
           tags="ghcr.io/jma49/ocra:$version"
           case "$version" in *-*) ;; *) tags="$tags,ghcr.io/jma49/ocra:latest" ;; esac
           echo "tags=$tags" >> "$GITHUB_OUTPUT"
+      - name: Wait for every package and its attestations on npm
+        run: |
+          version=$(node -p 'require("./packages/cli/package.json").version')
           # The registry can take minutes to serve a version it just accepted,
           # longer for some packages than others (0.2.0 waited on three while
           # cli was served), and the image installs every one of them and
