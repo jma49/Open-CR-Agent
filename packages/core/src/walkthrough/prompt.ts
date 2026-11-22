@@ -46,12 +46,12 @@ export function buildWalkthroughPrompt(
   const user = join([
     renderChangeRequest(changeRequest, MAX_DESCRIPTION_CHARS),
     section("changed_files", files.map(changedFile)),
-    ...patches(files),
+    ...smallestPatchesFirst(files, MAX_PATCH_CHARS),
   ]);
   return { system: WALKTHROUGH_SYSTEM_PROMPT, user };
 }
 
-function changedFile(f: FileDiff): PromptText {
+export function changedFile(f: FileDiff): PromptText {
   const path = f.kind === "renamed" ? `${f.oldPath} -> ${f.newPath}` : f.newPath;
   return join(
     [ocraText(`${f.kind} `), data(oneLine(path)), ocraText(` (+${f.additions} -${f.deletions})`)],
@@ -59,8 +59,8 @@ function changedFile(f: FileDiff): PromptText {
   );
 }
 
-function patches(files: readonly FileDiff[]): PromptText[] {
-  let room = MAX_PATCH_CHARS;
+export function smallestPatchesFirst(files: readonly FileDiff[], maxChars: number): PromptText[] {
+  let room = maxChars;
   const shown: PromptText[] = [];
   const bySize = [...files]
     .filter((f) => !f.isBinary && f.patch !== "")

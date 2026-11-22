@@ -14,6 +14,7 @@ export type {
   InlineFinding,
   PlatformChangeRequest,
   PlatformComment,
+  PlatformDiscussion,
   PlatformThread,
   PublishedFindings,
   ReviewPlatform,

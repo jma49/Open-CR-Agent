@@ -41,6 +41,7 @@ function onGitHub(scenario: Scenario) {
     },
   }));
   const inline: string[] = [];
+  const replies: string[] = [];
   let summary = "";
   const json = (value: unknown, status = 200) =>
     new Response(JSON.stringify(value), {
@@ -86,6 +87,13 @@ function onGitHub(scenario: Scenario) {
     if (path.startsWith("/issues/7/comments") && method === "GET") {
       return json(comments.map(({ editedBy: _, ...c }) => c));
     }
+    const one = /^\/issues\/comments\/(\d+)$/.exec(path);
+    if (one && method === "GET") {
+      const comment = comments.find((c) => c.id === Number(one[1]));
+      if (!comment) return json({ message: "Not Found" }, 404);
+      const { editedBy: _, ...c } = comment;
+      return json({ ...c, issue_url: "https://api.github.com/repos/o/r/issues/7" });
+    }
     const permission = /^\/collaborators\/([^/]+)\/permission$/.exec(path);
     if (permission) {
       const login = decodeURIComponent(permission[1] ?? "");
@@ -95,6 +103,10 @@ function onGitHub(scenario: Scenario) {
     if (path === "/pulls/7/reviews" && method === "POST") {
       inline.push(...body.comments.map((c: { body: string }) => c.body));
       return json({});
+    }
+    if (path === "/issues/7/comments" && body.body.startsWith("<!-- ocra:reply")) {
+      replies.push(body.body);
+      return json({}, 201);
     }
     if (path === "/issues/7/comments" || path.startsWith("/issues/comments/")) {
       summary = body.body;
@@ -111,7 +123,7 @@ function onGitHub(scenario: Scenario) {
     code,
     botLogin: REST_BOT,
   });
-  return { review, inline: () => inline, summary: () => summary };
+  return { review, inline: () => inline, summary: () => summary, replies: () => replies };
 }
 
-conformance("GitHub", { conversation: onGitHub });
+conformance("GitHub", { conversation: onGitHub, commentId: (i) => String(i + 1) });

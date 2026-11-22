@@ -1,4 +1,4 @@
-import type { Finding, ReviewReport } from "@open-cr-agent/core";
+import type { Finding, MentionRef, ReviewReport } from "@open-cr-agent/core";
 import type { PlatformText } from "./render.js";
 import type { SuggestionFence } from "./suggestion.js";
 
@@ -31,6 +31,24 @@ export interface ReviewPlatform {
   ): Promise<PublishedFindings>;
   writeSummary(existing: PlatformComment | undefined, body: string): Promise<void>;
   resolveThread(id: string): Promise<void>;
+  // The comment and the conversation it is in; undefined when it is not on
+  // this change request. Throws when who edited it cannot be told.
+  discussion(ref: MentionRef): Promise<PlatformDiscussion | undefined>;
+  // Answers in the comment's thread, or after it on the change request when
+  // the platform keeps no thread for it.
+  reply(discussion: PlatformDiscussion, body: string): Promise<void>;
+}
+
+export interface PlatformDiscussion {
+  // `editor`: who edited it after posting, when someone did.
+  comment: PlatformComment & { editor?: string };
+  // Its thread's comments before and after it, oldest first; for a comment
+  // on the change request as a whole, the change request's.
+  earlier: { author: string; body: string }[];
+  later: { author: string; body: string }[];
+  on?: { path: string; line?: number };
+  // Where a reply goes, in the platform's terms.
+  replyTo?: string;
 }
 
 export interface Bot {

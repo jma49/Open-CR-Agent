@@ -95,7 +95,7 @@ function codeSpan(text: string): string {
 // that line. A line break would continue a list item, which safeMarkdown's
 // parse does not see, and a table delimiter row there would split the code
 // spans it found on the line above.
-function safeLine(text: string): string {
+export function safeLine(text: string): string {
   return safeMarkdown(text.replace(/\r\n?|\n/g, " "));
 }
 

@@ -31,6 +31,7 @@ function inMemory(scenario: Scenario) {
   }));
   const inline: string[] = [];
   const resolved: string[] = [];
+  const replies: string[] = [];
   let summary = "";
   const platform: ReviewPlatform = {
     text: { changeRequest: "change request", authority: "write access" },
@@ -68,16 +69,36 @@ function inMemory(scenario: Scenario) {
     resolveThread: async (id) => {
       resolved.push(id);
     },
+    discussion: async ({ id }) => {
+      const at = comments.findIndex((c) => c.id === id);
+      const comment = comments[at];
+      if (!comment) return undefined;
+      const said = ({ author, body }: (typeof comments)[number]) => ({ author, body });
+      return {
+        comment: {
+          id,
+          author: comment.author,
+          body: comment.body,
+          ...(comment.editedBy ? { editor: comment.editedBy } : {}),
+        },
+        earlier: comments.slice(0, at).map(said),
+        later: comments.slice(at + 1).map(said),
+      };
+    },
+    reply: async (_, body) => {
+      replies.push(body);
+    },
   };
   return {
     review: new PlatformReview({ name: "memory", platform, code }),
     inline: () => inline,
     summary: () => summary,
+    replies: () => replies,
     resolved: () => resolved,
   };
 }
 
-conformance("in memory", { conversation: inMemory });
+conformance("in memory", { conversation: inMemory, commentId: String });
 
 describe("resolving the threads of fixed findings", () => {
   it("resolves only ocra's threads whose marker nobody else edited", async () => {

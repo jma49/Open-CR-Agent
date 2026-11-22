@@ -22,6 +22,7 @@ export {
   parseMemory,
   serializeMemory,
 } from "./memory/memory.js";
+export { answerMention } from "./pipeline/answer.js";
 export { reviewContext } from "./pipeline/context.js";
 export { MAX_TIMER_MS, REVIEW_DEFAULTS } from "./pipeline/options.js";
 export {

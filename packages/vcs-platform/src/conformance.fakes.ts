@@ -36,12 +36,16 @@ interface Conversation {
   inline(): string[];
   // The summary the adapter posted or updated.
   summary(): string;
+  // Bodies of the answers the adapter posted to mentions.
+  replies(): string[];
 }
 
 export interface ConformanceFixture {
   // A review over a fake API holding the scenario. The change request is by
   // AUTHOR at HEAD on BASE.
   conversation(scenario: Scenario): Conversation;
+  // The platform's id of the scenario's comment at this index.
+  commentId(index: number): string;
 }
 
 const A = "a".repeat(16);
@@ -296,6 +300,70 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
       await conversation.review.publish(report([finding(A), finding(B)]));
       // B's marker was edited, so it proves nothing: B is commented again.
       expect(conversation.inline()).toEqual([expect.stringContaining(`ocra:finding ${B}`)]);
+    });
+  });
+
+  describe(`${name}: answering mentions`, () => {
+    const ask = (body: string, extra: Partial<ScenarioComment> = {}) => ({
+      author: MAINTAINER,
+      body,
+      ...extra,
+    });
+    const mention = (scenario: Scenario, index: number) => {
+      const conversation = fixture.conversation(scenario);
+      const asked = conversation.review.mention?.({ id: fixture.commentId(index) });
+      if (!asked) throw new Error("the adapter takes no questions");
+      return { conversation, asked };
+    };
+
+    it("answers someone with write access, neutralized and marked as answered", async () => {
+      const { conversation, asked } = mention(
+        { comments: [ask("Looks fine."), ask("@ocra why retry twice here?")] },
+        1,
+      );
+      const question = await asked;
+      if (!question.asked) throw new Error(question.reason);
+      expect(question).toMatchObject({
+        by: MAINTAINER,
+        question: "why retry twice here?",
+        thread: [{ author: MAINTAINER, body: "Looks fine." }],
+      });
+      await question.answer("Because the first call can time out.\n/approve @all");
+      const [reply, ...more] = conversation.replies();
+      expect(more).toEqual([]);
+      expect(reply).toContain(`<!-- ocra:reply ${fixture.commentId(1)} -->`);
+      expect(reply).toContain("Because the first call can time out.");
+      expect(reply).not.toMatch(/^[ \t]*\//m);
+      expect(reply).not.toContain("@all");
+    });
+
+    it.each([
+      ["someone without write access", [ask("@ocra explain", { author: OUTSIDER })]],
+      ["a comment someone else edited", [ask("@ocra explain", { editedBy: AUTHOR })]],
+      ["ocra's own comment", [{ author: OCRA, body: "@ocra explain" }]],
+      ["a mention in code", [ask("Run `@ocra explain` to ask.")]],
+      ["an address", [ask("Mail me@ocra.dev about it.")]],
+      ["a longer name", [ask("@ocra-bot explain")]],
+      ["a mention that asks nothing", [ask("@ocra")]],
+    ])("does not answer %s", async (_, comments) => {
+      const { conversation, asked } = mention({ comments }, 0);
+      expect((await asked).asked).toBe(false);
+      expect(conversation.replies()).toEqual([]);
+    });
+
+    it("does not answer a comment ocra already answered", async () => {
+      const answered = `<!-- ocra:reply ${fixture.commentId(0)} -->\nIt retries on timeouts.`;
+      const { asked } = mention(
+        { comments: [ask("@ocra why retry?"), { author: OCRA, body: answered }] },
+        0,
+      );
+      expect(await asked).toEqual({ asked: false, reason: "ocra already answered the comment" });
+    });
+
+    it("does not answer a comment it cannot find", async () => {
+      const conversation = fixture.conversation({ comments: [ask("@ocra why?")] });
+      const asked = await conversation.review.mention?.({ id: "999" });
+      expect(asked?.asked).toBe(false);
     });
   });
 }

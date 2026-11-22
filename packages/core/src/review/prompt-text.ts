@@ -39,6 +39,8 @@ const SECTIONS = [
   "analyzer_results",
   "review_plan",
   "reply",
+  "thread",
+  "question",
 ] as const;
 export type SectionName = (typeof SECTIONS)[number];
 
