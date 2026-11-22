@@ -4,6 +4,7 @@ import { ceiling } from "./commands/ceiling.js";
 import { compare } from "./commands/compare.js";
 import { goldenImport } from "./commands/golden-import.js";
 import { list } from "./commands/list.js";
+import { noise } from "./commands/noise.js";
 import type { Output } from "./commands/options.js";
 import { run } from "./commands/run.js";
 import { rescore } from "./commands/score.js";
@@ -29,6 +30,13 @@ Commands:
                        bounds against --margin (default 0.1, 10 points), a
                        sign-test veto over cases, the cost ratio. Exit 0
                        pass, 1 worse, 3 inconclusive, 2 no verdict
+  noise <repeated-run> [--margin <share>] [--register <file>]
+                       Noise baseline of one setup: its 4 to 10 repeats split
+                       into two halves every way, each split judged by verdict
+                       (A/A); the false alarms, the recall spread and the
+                       smallest margin every split passes at. --register adds
+                       the baseline to a registry file. Exit 0 the A/A check
+                       passed, 1 it failed, 2 no baseline
   trend <runs-dir> [--series <a,b>]
                        Golden runs over time, per series (label without its
                        trailing -<n>): recall, precision and wrap-up turns per
@@ -89,6 +97,8 @@ Run:
                            directory) and report each metric's mean and 95%
                            confidence interval
   --mock-judge             Offline approximate judge (numbers not comparable)
+  --dry-run                Print what the run would review and its spend bound,
+                           then stop: no review, no judge, nothing written
 
 Models come from OCRA_MODEL_TOP / OCRA_MODEL_STANDARD / OCRA_MODEL_LIGHT.
 The judge uses JUDGE_BASE_URL / JUDGE_API_KEY / JUDGE_MODEL, or GEMINI_API_KEY
@@ -111,6 +121,7 @@ export async function main(
     if (command === "compare") return await compare(rest, out);
     if (command === "trend") return await trend(rest, out, err);
     if (command === "verdict") return await verdict(rest, out);
+    if (command === "noise") return await noise(rest, out);
     if (command === "golden-import") return await goldenImport(rest, out, err);
     out.write(USAGE);
     return command === undefined || command === "--help" || command === "-h" ? 0 : 2;

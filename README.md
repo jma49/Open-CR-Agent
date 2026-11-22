@@ -195,7 +195,7 @@ Assume the reviewed code is hostile; ocra does.
 
 Only measured numbers are published, with their limits. Today: one run on 8 golden cases (16 expected issues) on Gemini and two runs of the 10-case smoke tier on a free OpenRouter model, recall the weak point in all. Two identical runs on ten benchmark pull requests differ by 20 points of precision, so prompts stay frozen until the sample can decide changes. [Measured quality](docs/manual/en/quality.mdx).
 
-`ocra-eval` replays [AACR-Bench](https://github.com/alibaba/aacr-bench) (200 real pull requests, 1,505 expert-verified comments) and ocra's golden set, reporting precision, recall, F1, cost and latency; `--repeat k` adds 95% confidence intervals, and `compare` calls a change better only when they separate. [Evaluation guide](docs/manual/en/evaluation.mdx).
+`ocra-eval` replays [AACR-Bench](https://github.com/alibaba/aacr-bench) (200 real pull requests, 1,505 expert-verified comments) and ocra's golden set, reporting precision, recall, F1, cost and latency; `--repeat k` adds 95% confidence intervals, `compare` calls a change better only when they separate, and `noise` measures a setup's run-to-run noise (an A/A check) and the smallest margin the merge verdict can use on it. [Evaluation guide](docs/manual/en/evaluation.mdx).
 
 ## Where it is going
 

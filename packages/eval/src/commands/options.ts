@@ -45,6 +45,8 @@ const OPTIONS = {
   "model-seed": { type: "string" },
   repeat: { type: "string" },
   from: { type: "string" },
+  register: { type: "string" },
+  "dry-run": { type: "boolean" },
 } as const;
 
 export function parse(argv: string[]) {
