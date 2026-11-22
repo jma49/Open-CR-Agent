@@ -1,4 +1,5 @@
 import { globSync, readFileSync } from "node:fs";
+import { sep } from "node:path";
 import { defineConfig, type TestProjectInlineConfiguration } from "vitest/config";
 
 // Workspace packages export their TypeScript source under this condition, so
@@ -50,7 +51,9 @@ function split(
   const ignored = [...exclude, "**/node_modules/**"];
   const mocking = include
     .flatMap((pattern) => globSync(pattern, { exclude: ignored }))
-    .filter((file) => MOCKS_A_MODULE.test(readFileSync(file, "utf8")));
+    .filter((file) => MOCKS_A_MODULE.test(readFileSync(file, "utf8")))
+    // Vitest's include and exclude patterns use / on every platform.
+    .map((file) => file.split(sep).join("/"));
   return [
     { extends: true, test: { name, include, exclude: [...ignored, ...mocking], isolate: false } },
     { extends: true, test: { name: `${name}-isolated`, include: mocking } },
