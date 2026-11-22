@@ -6,6 +6,7 @@ import { GRAPH_USAGE, graphCommand } from "./commands/graph.js";
 import { INIT_USAGE, initCommand } from "./commands/init.js";
 import { LEARN_USAGE, learnCommand } from "./commands/learn.js";
 import { LOGIN_USAGE, loginCommand } from "./commands/login.js";
+import { MCP_USAGE, mcpCommand } from "./commands/mcp.js";
 import { memoryCommand } from "./commands/memory.js";
 import { metricsCommand } from "./commands/metrics.js";
 import { PLUGINS_USAGE, pluginsCommand } from "./commands/plugins.js";
@@ -30,6 +31,7 @@ Commands:
   init        Set up ocra for this repository, and its GitHub workflow with --github
   review      Review code changes (run "ocra review --help" for options)
   serve       Run a local review service that streams each review's events (run "ocra serve --help")
+  mcp         Serve reviews to a coding agent over the Model Context Protocol (run "ocra mcp --help")
   graph       Write or update the code graph of a commit, for review --graph
   memory      Remember findings the team accepts (run "ocra memory --help")
   learn       Draft the team's learnings from its fix commits (run "ocra learn --help")
@@ -82,6 +84,7 @@ export async function run(
   const [command, ...rest] = argv;
   if (command === "review") return review(rest, out, err, deps);
   if (command === "serve") return serve(rest, out, err, deps);
+  if (command === "mcp") return mcp(rest, out, err, deps);
   if (command === "init") {
     try {
       return await initCommand(rest, out, { cwd: deps.cwd, env: deps.env });
@@ -213,6 +216,23 @@ async function serve(argv: string[], out: Output, err: Output, deps: ReviewDeps)
   } catch (error) {
     if (error instanceof UsageError) err.write(`${error.message}\n\n${SERVE_USAGE}`);
     else err.write(failure(error));
+    return EXIT.error;
+  }
+}
+
+async function mcp(argv: string[], out: Output, err: Output, deps: ReviewDeps): Promise<number> {
+  if (argv.length === 1 && (argv[0] === "--help" || argv[0] === "-h")) {
+    out.write(MCP_USAGE);
+    return EXIT.ok;
+  }
+  if (argv.length > 0) {
+    err.write(`ocra mcp takes no arguments\n\n${MCP_USAGE}`);
+    return EXIT.error;
+  }
+  try {
+    return await mcpCommand(err, deps);
+  } catch (error) {
+    err.write(failure(error));
     return EXIT.error;
   }
 }

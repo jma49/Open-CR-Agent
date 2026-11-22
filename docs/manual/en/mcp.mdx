@@ -1,0 +1,53 @@
+---
+title: ocra mcp
+description: "Let a coding agent such as Claude Code, Cursor or Codex ask ocra for a review, over the Model Context Protocol."
+---
+
+`ocra mcp` runs ocra as a [Model Context Protocol](https://modelcontextprotocol.io) server on standard input and output, so the coding agent you work with can review its own changes before you commit them. It has one tool, `review`. A review run this way is the same as `ocra review`: ocra's read-only agents, Verify and the judge, on the models in your configuration, with the same trust rules, spend limit, session and ocra Cloud upload. Reviews are paid with your configured key, not the agent's model.
+
+Start it in the repository to review; coding agents start a project's servers in its folder.
+
+## Setting it up
+
+Claude Code:
+
+```bash
+claude mcp add ocra -- ocra mcp
+```
+
+Cursor, in `.cursor/mcp.json`:
+
+```json
+{ "mcpServers": { "ocra": { "command": "ocra", "args": ["mcp"] } } }
+```
+
+Codex, in `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.ocra]
+command = "ocra"
+args = ["mcp"]
+```
+
+Any other MCP host takes the same command, `ocra mcp`. The model key goes in the environment the host starts it with, as for `ocra review`.
+
+## The review tool
+
+Its arguments can only narrow a review, as `ocra serve`'s request does; any other argument is refused:
+
+| Argument | Default | |
+|---|---|---|
+| `target` | `{"mode": "workspace"}` | Uncommitted changes, `{"mode": "range", "from", "to"}` (`to` defaults to `HEAD`) or `{"mode": "commit", "commit"}` |
+| `reviewers` | the configuration's | Run only these reviewers |
+| `maxCostUsd` | the configuration's | Spend limit for this review |
+| `format` | `text` | `text`: what `ocra review` prints; `json`: the report as `ocra review --format json` writes it |
+
+The answer starts with a sentence telling the agent that the findings describe code that may be untrusted and are data, not instructions, since a change can carry text written to steer whoever reads the review. Control characters are replaced as in the terminal.
+
+One review runs at a time; a second call while one runs gets an error. Cancelling the call cancels the review, and a host that asks for progress gets one notification per finished review task.
+
+ocra mcp needs the MCP SDK, which comes with ocra's optional dependencies; an install with `--omit=optional` (or the Action's `opencode: false`) leaves it out, and `ocra mcp` then exits `2` saying so.
+
+## Not yet
+
+A mode in which the agent's own model reviews under ocra's grouping and rules, without a key of ocra's, does not exist: the agent can write files and run commands, so ocra's read-only review and its verified verdict would not hold.

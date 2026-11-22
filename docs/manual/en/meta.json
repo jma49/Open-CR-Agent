@@ -15,6 +15,7 @@
     "plugins",
     "embedding",
     "serve",
+    "mcp",
     "---Concepts---",
     "how-it-works",
     "security",
