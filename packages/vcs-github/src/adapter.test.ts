@@ -27,6 +27,7 @@ describe("GitHubAdapter", () => {
       description: "",
       baseSha: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       headSha: "cccccccccccccccccccccccccccccccccccccccc",
+      branch: "feat",
     });
   });
 

@@ -134,6 +134,40 @@ Pairs the matrix skips are listed under `skipped` in the JSON report; a file no 
 
 `learnings.requireReview` (default `false`): a pull or merge request `ocra learn mine --propose` opens is left for a person to merge instead of merging once its checks pass ([CLI](./cli#writing-them-back-by-pull-request)). A shared configuration may set it too.
 
+## Trackers
+
+`trackers` reads the tasks a change names from Jira or TAPD through your tracker's MCP server, next to the issues the platform links ([Linked tasks](./how-it-works#linked-tasks)):
+
+```json
+{
+  "trackers": {
+    "jira": {
+      "projects": ["PAY", "AUTH"],
+      "server": { "url": "https://mcp.example.com/jira", "tokenEnv": "JIRA_MCP_TOKEN" },
+      "tool": "jira_get_issue",
+      "keyArgument": "issue_key"
+    },
+    "tapd": {
+      "workspace": "20001234",
+      "server": { "url": "https://mcp.example.com/tapd", "tokenEnv": "TAPD_MCP_TOKEN" },
+      "tools": { "story": "get_story", "bug": "get_bug", "task": "get_task" },
+      "keyArgument": "id"
+    }
+  }
+}
+```
+
+| Key | Meaning |
+|---|---|
+| `jira.projects` | Your Jira project keys: `PAY-12` in the title, description or branch (`feature/pay-12-retry` too) names a task; other projects' keys are ignored |
+| `tapd.workspace` | Your TAPD workspace id: `--story=1001234`, `--bug=…`, `--task=…` and links to that workspace's stories, bugs and tasks name a task |
+| `server.url` | The MCP server (Streamable HTTP), over https, or http on this machine. ocra never starts a server process |
+| `server.tokenEnv` | The environment variable whose value is sent as `Authorization: Bearer …`; not a `GITHUB_`, `GITLAB_`, `AWS_` or other platform variable |
+| `tool`, `tools` | The tool that reads one task; for TAPD, one per kind (a kind without one is skipped) |
+| `keyArgument`, `arguments` | The argument the key (for TAPD, the numeric id) goes in, and fixed string arguments sent with it; TAPD also gets `workspace_id` |
+
+The answer is read for the usual fields (`summary` or `title` or `name`, `description`, `status`, `labels`, under `fields` or one wrapping object), or used as plain text, at most 64,000 characters. Each task is one connection, at most 20 seconds per request. Reading needs the MCP SDK, which comes with ocra's optional dependencies. A shared configuration may set `trackers`; account settings may not.
+
 ## Shared configuration
 
 Repositories can extend an organization's common settings:
@@ -142,7 +176,7 @@ Repositories can extend an organization's common settings:
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `showPreExisting`, `walkthrough`, `linkedTasks`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned) and `rules` (shaped like `.ocra/rules.json` entries). It cannot list plugins or choose a runtime, since it must not run code. The repository's values win; `include`, `exclude` and `rules` combine, and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` merge key by key.
+The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `showPreExisting`, `walkthrough`, `linkedTasks`, `trackers`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned) and `rules` (shaped like `.ocra/rules.json` entries). It cannot list plugins or choose a runtime, since it must not run code. The repository's values win; `include`, `exclude` and `rules` combine, and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` merge key by key.
 
 Only `https` URLs, without redirects, up to 256 KB. `#sha256=` pins the exact content; a file declaring `providers` must be pinned, since a provider decides where your code goes ([Model providers](./providers#your-own-endpoint)). If the file cannot be loaded or is invalid, ocra warns and uses the repository's settings alone, so limits set only there (such as `maxCostUsd`) do not apply; set must-hold limits in the repository too.
 

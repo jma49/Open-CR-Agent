@@ -168,6 +168,7 @@ export {
   type LinkedTask,
   type LinkedTaskUse,
   TASK_TRACKERS,
+  type TaskSource,
   type TaskState,
   type TaskTracker,
 } from "./task/linked-task.js";

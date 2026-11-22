@@ -129,6 +129,133 @@
     "linkedTasks": {
       "type": "boolean"
     },
+    "trackers": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "jira": {
+          "type": "object",
+          "properties": {
+            "projects": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,9}$"
+              }
+            },
+            "server": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "tokenEnv": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "additionalProperties": false
+            },
+            "tool": {
+              "type": "string",
+              "minLength": 1
+            },
+            "keyArgument": {
+              "type": "string",
+              "minLength": 1
+            },
+            "arguments": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1
+              },
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "projects",
+            "server",
+            "tool",
+            "keyArgument"
+          ],
+          "additionalProperties": false
+        },
+        "tapd": {
+          "type": "object",
+          "properties": {
+            "workspace": {
+              "type": "string",
+              "pattern": "^\\d{1,20}$"
+            },
+            "server": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "tokenEnv": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "additionalProperties": false
+            },
+            "tools": {
+              "type": "object",
+              "properties": {
+                "story": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "bug": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "task": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false
+            },
+            "keyArgument": {
+              "type": "string",
+              "minLength": 1
+            },
+            "arguments": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1
+              },
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "workspace",
+            "server",
+            "tools",
+            "keyArgument"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "maxCostUsd": {
       "type": "number",
       "exclusiveMinimum": 0

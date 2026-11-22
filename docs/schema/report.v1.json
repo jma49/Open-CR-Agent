@@ -471,7 +471,9 @@
             "type": "string",
             "enum": [
               "github",
-              "gitlab"
+              "gitlab",
+              "jira",
+              "tapd"
             ]
           },
           "key": {

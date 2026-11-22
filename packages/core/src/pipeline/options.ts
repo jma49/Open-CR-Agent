@@ -12,6 +12,7 @@ import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { SourcedRule } from "../rules/repo-rules.js";
 import type { SarifLog } from "../sarif/schema.js";
 import type { SelectionPolicy } from "../select/select.js";
+import type { TaskSource } from "../task/linked-task.js";
 import type { VcsAdapter } from "../vcs.js";
 import type { ProvenanceInput } from "./provenance.js";
 import type { ResumedRun } from "./resume.js";
@@ -44,6 +45,9 @@ export interface ReviewOptions {
   // Give the review tasks the tasks the platform links to the change
   // (ADR-0052); on unless false.
   linkedTasks?: boolean;
+  // Trackers the platform does not link (Jira, TAPD), whose tasks the
+  // change request names by key.
+  taskSources?: readonly TaskSource[];
   // Which files are reviewed; what is left out is defaultSelectionPolicy's.
   selection?: Partial<SelectionPolicy>;
   limits?: ReviewLimits;

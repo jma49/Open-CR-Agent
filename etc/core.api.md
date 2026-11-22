@@ -226,6 +226,8 @@ export interface ChangeRequest {
     // (undocumented)
     baseSha: string;
     // (undocumented)
+    branch?: string;
+    // (undocumented)
     description: string;
     // (undocumented)
     headSha: string;
@@ -1162,6 +1164,8 @@ export const reportOutputSchema: z.ZodObject<{
         tracker: z.ZodEnum<{
             github: "github";
             gitlab: "gitlab";
+            jira: "jira";
+            tapd: "tapd";
         }>;
         key: z.ZodString;
         url: z.ZodExactOptional<z.ZodString>;
@@ -1664,6 +1668,8 @@ export interface ReviewOptions {
     // (undocumented)
     symbols?: SymbolExtractor;
     // (undocumented)
+    taskSources?: readonly TaskSource[];
+    // (undocumented)
     vcs: VcsAdapter;
 }
 
@@ -2025,7 +2031,7 @@ export interface SymbolReference {
 }
 
 // @public (undocumented)
-export const TASK_TRACKERS: readonly ["github", "gitlab"];
+export const TASK_TRACKERS: readonly ["github", "gitlab", "jira", "tapd"];
 
 // @public (undocumented)
 export interface TaskAttempt extends AttemptOutcome {
@@ -2069,6 +2075,16 @@ export interface TaskOutcome {
     wrapUp?: {
         findings: number;
     };
+}
+
+// @public (undocumented)
+export interface TaskSource {
+    // (undocumented)
+    fetch(key: string, signal: AbortSignal): Promise<LinkedTask | undefined>;
+    // (undocumented)
+    keysIn(text: string): string[];
+    // (undocumented)
+    readonly tracker: TaskTracker;
 }
 
 // @public (undocumented)

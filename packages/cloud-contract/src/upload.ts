@@ -106,7 +106,7 @@ export type SharedWalkthrough = z.input<typeof sharedWalkthroughSchema>;
 
 /** At most this many linked tasks in an upload, as the engine gives reviewers. */
 export const MAX_LINKED_TASKS = 3;
-export const LINKED_TASK_TRACKERS = ["github", "gitlab"] as const;
+export const LINKED_TASK_TRACKERS = ["github", "gitlab", "jira", "tapd"] as const;
 
 /**
  * A task the change is linked to (ADR-0052): which one and its state with

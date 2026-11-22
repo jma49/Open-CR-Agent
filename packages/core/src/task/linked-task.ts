@@ -2,7 +2,8 @@
 // as a platform adapter converted it from its tracker's API.
 export interface LinkedTask {
   tracker: TaskTracker;
-  // As the tracker writes it: "#12" on GitHub and GitLab.
+  // As the tracker writes it: "#12" on GitHub and GitLab, "PAY-12" on Jira,
+  // "story-1001234" on TAPD.
   key: string;
   url?: string;
   title: string;
@@ -13,9 +14,19 @@ export interface LinkedTask {
   subtasks: readonly { key: string; title: string; state?: TaskState }[];
 }
 
-export const TASK_TRACKERS = ["github", "gitlab"] as const;
+export const TASK_TRACKERS = ["github", "gitlab", "jira", "tapd"] as const;
 export type TaskTracker = (typeof TASK_TRACKERS)[number];
 export type TaskState = "open" | "closed";
+
+// A tracker the platform does not link: its keys are found in the change
+// request's title, description and branch, and its tasks fetched by key.
+export interface TaskSource {
+  readonly tracker: TaskTracker;
+  // The keys of this tracker's tasks the text names, in order, normalized.
+  keysIn(text: string): string[];
+  // Undefined when the tracker has no such task.
+  fetch(key: string, signal: AbortSignal): Promise<LinkedTask | undefined>;
+}
 
 // A linked task the review tasks were given, for the report.
 export interface LinkedTaskUse {

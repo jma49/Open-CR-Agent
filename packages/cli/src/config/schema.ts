@@ -39,6 +39,48 @@ const endpoint = z
 // The platforms' and clouds' credentials never go to a model endpoint; the
 // same prefixes are never passed to the runtime by prefix (server-env.ts).
 const PLATFORM_TOKENS = /^(GITHUB_|GH_|GITLAB_|CI_|ACTIONS_|RUNNER_|AWS_|AZURE_|NPM_|SSH_|OCRA_)/;
+// The MCP server a tracker's tasks are read from (ADR-0052): reached over
+// the network only, so configuration never starts a process for it.
+const trackerServer = z
+  .object({
+    url: endpoint,
+    tokenEnv: z
+      .string()
+      .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "must be an environment variable name")
+      .refine((name) => !PLATFORM_TOKENS.test(name), "must not name a platform or cloud credential")
+      .optional(),
+  })
+  .strict();
+const toolArguments = z.record(z.string().min(1), z.string()).optional();
+
+const trackersSchema = z
+  .object({
+    jira: z
+      .object({
+        projects: z.array(z.string().regex(/^[A-Z][A-Z0-9_]{0,9}$/, "a Jira project key")).min(1),
+        server: trackerServer,
+        tool: z.string().min(1),
+        keyArgument: z.string().min(1),
+        arguments: toolArguments,
+      })
+      .strict(),
+    tapd: z
+      .object({
+        workspace: z.string().regex(/^\d{1,20}$/, "a TAPD workspace id"),
+        server: trackerServer,
+        tools: z
+          .object({ story: z.string().min(1), bug: z.string().min(1), task: z.string().min(1) })
+          .partial()
+          .strict(),
+        keyArgument: z.string().min(1),
+        arguments: toolArguments,
+      })
+      .strict(),
+  })
+  .partial()
+  .strict();
+export type TrackersConfig = z.infer<typeof trackersSchema>;
+
 const price = z.number().min(0).max(10_000);
 
 const providerSchema = z
@@ -89,6 +131,7 @@ export const configSchema = z
     showPreExisting: z.boolean().optional(),
     walkthrough: z.boolean().optional(),
     linkedTasks: z.boolean().optional(),
+    trackers: trackersSchema.default({}),
     maxCostUsd: z.number().positive().optional(),
     maxTasks: z.number().int().min(1).max(1_000).optional(),
     // Unset: each provider's default. A seed makes sampling repeatable only
