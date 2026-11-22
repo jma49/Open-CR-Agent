@@ -74,7 +74,7 @@ The `direct` runtime installs without OpenCode, the optional default: 11 MB inst
 
 ## In CI
 
-**GitHub pull requests**, with the Action in [`action.yml`](action.yml): inline comments, one summary comment updated in place, and re-reviews of only what changed since the last push.
+**GitHub pull requests**, with the Action in [`action.yml`](action.yml): inline comments, one summary comment updated in place, re-reviews of only what changed since the last push, and a full one on a `/ocra review` comment.
 
 ```yaml
 # .github/workflows/ocra.yml

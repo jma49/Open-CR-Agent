@@ -248,6 +248,61 @@ jobs:
 - **允许 Actions 开 pull request**（使用 workflow 自己的 token 时）：Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"。
 - 每份草稿是一次辅助模型调用，每次运行最多 `--max`（20）份；`args` 把 `--max 5`、`--max-cost-usd 1` 等参数传给 `ocra learn`。默认分支上、或尚未合并也未删除的提议分支上已有 learning 记录过的内容不会再起草。
 
+## 请 ocra 重新审查
+
+有写权限的人可以在 PR 上评论：
+
+```
+/ocra review
+```
+
+ocra 会像加了 `--full` 一样把整个 PR 重新审查一遍：所有文件，而不只是上次审查之后改过的部分。改了 `.ocra/config.json`、规则或审查员之后，或者上次审查没跑完时，这很有用。把下面的工作流加在上面那个旁边；和[可以审查 fork 的工作流](#来自-fork-的-pr)一样，它也会审查来自 fork 的 PR。v0.10.0 新增。
+
+```yaml
+name: ocra review command
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    # 只处理有写权限的人在 PR 上发的 /ocra review。
+    if: >-
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/ocra review') &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+    # 用推送触发的审查的组，两者不会同时运行。组名重复了 if: 的条件，
+    # 所以其他评论各有自己的组，不会取消正在进行的审查。
+    concurrency:
+      group: >-
+        ocra-${{ github.event.issue.number }}-${{
+          (github.event.issue.pull_request &&
+           startsWith(github.event.comment.body, '/ocra review') &&
+           contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association))
+          && 'review' || github.run_id }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    steps:
+      # 检出基础分支，PR 里的任何东西都不检出。
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jma49/Open-CR-Agent@6d4d4a21b6334c086e0f884c240d550b2e4c1f46 # v0.7.0
+        with:
+          args: --max-cost-usd 2
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+```
+
+- **保留 concurrency 组名里的条件**，和[可以审查 fork 的工作流](#来自-fork-的-pr)一样，这个工作流和它共用组 `ocra-<编号>-review`：如果只写 `ocra-<编号>`，PR 上的每条其他评论都会取消正在进行的审查。配合上面的 `pull_request` 工作流时，把它的组名改成 `ocra-${{ github.event.pull_request.number }}-review` 来共用。
+- **由工作流决定谁能触发。** `issue_comment` 运行的是默认分支上的工作流文件，带着你的密钥，所以 PR 改不了谁能触发；评论的文字不会传给 Action，它只知道要审查哪个 PR。
+- **PR 里的任何东西都不会运行**，和 `pull_request_target` 一样：检出的是你的默认分支，ocra 把 PR 的提交当作 git 对象读取。
+
 ## PR 能改变什么、不能改变什么
 
 `.ocra/config.json`、`.ocra/rules.json`、`.ocra/memory.json`、`.ocra/learnings/` 和 `AGENTS.md` 都从 **base** 提交读取，仓库插件从不加载。diff、标题和描述作为[不可信的数据](./security#不可信的输入)交给审查员。

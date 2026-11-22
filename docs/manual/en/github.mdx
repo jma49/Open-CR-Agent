@@ -248,6 +248,62 @@ jobs:
 - **Let Actions open pull requests** for the workflow's own token: Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests".
 - Each draft is one helper model call, at most `--max` (20) a run; `args` passes options such as `--max 5` or `--max-cost-usd 1` to `ocra learn`. What a learning on the default branch, or on a proposal branch not yet merged or deleted, already records is not drafted again.
 
+## Asking for a review again
+
+Anyone with write access can comment on a pull request:
+
+```
+/ocra review
+```
+
+and ocra reviews the whole pull request again, as with `--full`: every file, not only what changed since the last review. Useful after a change to `.ocra/config.json`, the rules or the reviewers, or when a review was cut short. Add this workflow next to the one above; it reviews a fork's pull request too, as the [fork-safe workflow](#pull-requests-from-forks) does. New in v0.10.0.
+
+```yaml
+name: ocra review command
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    # Only a /ocra review on a pull request by someone who can write.
+    if: >-
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/ocra review') &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+    # The review on push's group, so the two never run at once. The key
+    # repeats the if:, so any other comment gets a group of its own and
+    # cannot cancel the review in progress.
+    concurrency:
+      group: >-
+        ocra-${{ github.event.issue.number }}-${{
+          (github.event.issue.pull_request &&
+           startsWith(github.event.comment.body, '/ocra review') &&
+           contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association))
+          && 'review' || github.run_id }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    steps:
+      # The base branch. Nothing from the pull request is checked out.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jma49/Open-CR-Agent@6d4d4a21b6334c086e0f884c240d550b2e4c1f46 # v0.7.0
+        with:
+          args: --max-cost-usd 2
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+```
+
+- **Keep the condition in the concurrency group**, as in the [fork-safe workflow](#pull-requests-from-forks), whose group (`ocra-<number>-review`) this one shares: with a plain `ocra-<number>`, every other comment on the pull request would cancel the review in progress. With the `pull_request` workflow above, name its group `ocra-${{ github.event.pull_request.number }}-review` to share it.
+- **The workflow decides who may ask.** `issue_comment` runs the workflow file of your default branch with your secrets, so a pull request cannot change who may ask; the comment's text never reaches the Action, which only learns which pull request to review.
+- **Nothing from the pull request runs**, as on `pull_request_target`: the checkout is your default branch, and ocra reads the pull request's commits as git objects.
+
 ## What the pull request can and cannot change
 
 `.ocra/config.json`, `.ocra/rules.json`, `.ocra/memory.json`, `.ocra/learnings/` and `AGENTS.md` come from the **base** commit, and repository plugins never load. The diff, title and description reach reviewers as [untrusted data](./security#untrusted-input).
