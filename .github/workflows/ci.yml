@@ -274,3 +274,22 @@ jobs:
           echo "$plan"
           echo "$plan" | grep -q "Review tasks: 1"
 
+  # Every job above against its ceiling in .github/ci-budgets.json
+  # (docs/ci.md); fails when one ran or set up longer.
+  budget:
+    needs: [verify, node-matrix, platforms, workflows, changeset, commits, packages, action, image]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/ci-budgets.json
+            scripts
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci-budget.mjs
