@@ -126,25 +126,28 @@ export class LocalGitAdapter implements VcsAdapter {
   // takes their paths; in the workspace, those git tracks or would.
   async listFiles(dir: string): Promise<string[]> {
     const { root, head } = await this.target();
-    const inside = relativeInside(root, resolve(root, dir));
+    const absolute = resolve(root, dir);
+    const inside = absolute === root ? "" : relativeInside(root, absolute);
     if (inside === undefined) return [];
-    const prefix = `${inside.split(sep).join("/")}/`;
+    const prefix = inside === "" ? "" : `${inside.split(sep).join("/")}/`;
+    const pathspec = prefix || ".";
     const paths =
       head === undefined
         ? (
             await git(
-              ["ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", prefix],
+              ["ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", pathspec],
               {
                 cwd: root,
               },
             )
           ).split("\0")
-        : (await git(["ls-tree", "-z", head, "--", prefix], { cwd: root }))
+        : (await git(["ls-tree", "-z", head, "--", pathspec], { cwd: root }))
             .split("\0")
             .filter((entry) => /^100(644|755) blob /.test(entry))
             .map((entry) => entry.slice(entry.indexOf("\t") + 1));
     const direct = paths.filter(
-      (p) => p.startsWith(prefix) && !p.slice(prefix.length).includes("/"),
+      (p) =>
+        p.length > prefix.length && p.startsWith(prefix) && !p.slice(prefix.length).includes("/"),
     );
     return [...new Set(direct)].sort();
   }
