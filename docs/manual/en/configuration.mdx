@@ -166,7 +166,7 @@ Pairs the matrix skips are listed under `skipped` in the JSON report; a file no 
 | `tool`, `tools` | The tool that reads one task; for TAPD, one per kind (a kind without one is skipped) |
 | `keyArgument`, `arguments` | The argument the key (for TAPD, the numeric id) goes in, and fixed string arguments sent with it; TAPD also gets `workspace_id` |
 
-The answer is read for the usual fields (`summary` or `title` or `name`, `description`, `status`, `labels`, under `fields` or one wrapping object), or used as plain text, at most 64,000 characters. Each task is one connection, at most 20 seconds per request. Reading needs the MCP SDK, which comes with ocra's optional dependencies. A shared configuration may set `trackers`; account settings may not.
+The answer is read for the usual fields (`summary` or `title` or `name`, `description`, `status`, `labels`, under `fields` or one wrapping object), or used as plain text, at most 64,000 characters. Each task is one connection, at most 20 seconds per request. Reading needs the MCP SDK, which comes with ocra's optional dependencies. A shared configuration may set `trackers`; account settings may not. New in v0.11.0.
 
 ## Project documents
 
@@ -176,7 +176,7 @@ The answer is read for the usual fields (`summary` or `title` or `name`, `descri
 { "projectDocs": ["docs/architecture.md", "docs/design/"] }
 ```
 
-They are read from the trusted revision, like `AGENTS.md`: at most 50 documents of up to 200,000 bytes each; a missing, larger or outside path is a warning. A shared configuration may set `projectDocs`; account settings may not.
+They are read from the trusted revision, like `AGENTS.md`: at most 50 documents of up to 200,000 bytes each; a missing, larger or outside path is a warning. A shared configuration may set `projectDocs`; account settings may not. New in v0.11.0.
 
 ## Shared configuration
 
