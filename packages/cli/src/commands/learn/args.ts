@@ -1,5 +1,6 @@
 import { parseArgs } from "node:util";
 import { UsageError } from "../../io/usage-error.js";
+import { type ChangeFlags, changeOf } from "../change-flags.js";
 import type { ReviewArgs } from "../review/args.js";
 
 export const DEFAULT_MAX = 20;
@@ -63,7 +64,7 @@ export function parseLearnArgs(argv: string[], sources: readonly string[]): Lear
   if (values["require-review"] && !values.propose) {
     throw new UsageError("--require-review goes with --propose");
   }
-  const change = changeOf(values, values.propose === true);
+  const change = changeOf(values, values.propose === true, "--propose");
   const proposeOn = placeOf(values);
   return {
     source: action,
@@ -77,44 +78,6 @@ export function parseLearnArgs(argv: string[], sources: readonly string[]): Lear
   };
 }
 
-interface ChangeFlags {
-  pr?: string;
-  repo?: string;
-  mr?: string;
-  project?: string;
-}
-
-function changeOf(values: ChangeFlags, propose: boolean): LearnArgs["change"] {
-  const github = values.pr !== undefined || values.repo !== undefined;
-  if (github && (values.mr !== undefined || values.project !== undefined)) {
-    throw new UsageError(
-      "GitHub's --pr and --repo cannot be combined with GitLab's --mr and --project",
-    );
-  }
-  if (values.pr !== undefined) {
-    return {
-      pullRequest: {
-        number: positive("--pr", values.pr),
-        ...(values.repo ? { repo: values.repo } : {}),
-        publish: false,
-      },
-    };
-  }
-  if (values.mr !== undefined) {
-    return {
-      mergeRequest: {
-        iid: positive("--mr", values.mr),
-        ...(values.project ? { project: values.project } : {}),
-        publish: false,
-      },
-    };
-  }
-  if (!propose && (values.repo !== undefined || values.project !== undefined)) {
-    throw new UsageError("--repo goes with --pr or --propose, --project with --mr or --propose");
-  }
-  return undefined;
-}
-
 function placeOf(values: ChangeFlags): ProposalPlace | undefined {
   if (values.pr !== undefined || values.repo !== undefined) {
     return { platform: "github", ...(values.repo ? { repository: values.repo } : {}) };
@@ -123,10 +86,4 @@ function placeOf(values: ChangeFlags): ProposalPlace | undefined {
     return { platform: "gitlab", ...(values.project ? { repository: values.project } : {}) };
   }
   return undefined;
-}
-
-function positive(flag: string, value: string): number {
-  const n = Number(value);
-  if (!Number.isInteger(n) || n < 1) throw new UsageError(`${flag} must be a positive number`);
-  return n;
 }
