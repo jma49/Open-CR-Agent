@@ -436,6 +436,12 @@ ocra logout                                   # ends the session on the server a
 - Findings go only when the server returns the account's salt, which it does only while the switch is on, and this machine agreed: `ocra login` records that in `share-findings` beside the credentials (readable only by you) when it finds the switch on, and says so; a review that finds the switch off removes it. After turning the switch on, or off and on again, run `ocra login` again on each machine; until then its reviews warn and send counts only. So ocra Cloud cannot turn sharing on by itself. If ocra Cloud is unreachable before the review, the review warns, hashes with the salt in `account-salt` (or this machine's), sends no findings and skips the account's memory.
 - `--no-upload` and `OCRA_CLOUD=off` still send nothing.
 
+**Watching a review live.** While your account shares findings, a signed-in review also relays its progress to ocra Cloud as it runs: the events `ocra serve` streams ([ocra serve](./serve)), findings included, redacted the same way, sent about once a second (`POST /api/live`). The terminal prints `[ocra] Watch this review live: <address>` once; on that page you can share the run with others, per person or by link, to watch it and comment on its findings. New in v0.11.0.
+
+- The relay never holds up the review: a batch ocra Cloud does not take is sent again a second later, and after three failures in a row ocra warns once (`stopped relaying this review to ocra Cloud live`) and goes on. At the end it waits at most five seconds for the last events.
+- A server that relays nothing yet (404), or that stopped taking the run's events (ocra Cloud keeps 5,000 per run), ends the relay without a warning.
+- `--no-upload` and `OCRA_CLOUD=off` relay nothing, and neither does an account that does not share findings.
+
 ## ocra plugins
 
 Allows, on this machine, the plugins your ocra Cloud settings name ([Plugins from your ocra Cloud account](./plugins#plugins-from-your-ocra-cloud-account)). Nothing here contacts ocra Cloud; `allow` and `deny` run npm.
