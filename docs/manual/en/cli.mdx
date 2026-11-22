@@ -215,9 +215,12 @@ Writes the code graph of a commit: each source file's definitions and the lines 
 ```bash
 ocra graph --out ~/.cache/ocra/graph.json             # HEAD
 ocra graph --out graph.json --rev origin/main         # another commit
+ocra graph --out graph.json --cloud                   # start from ocra Cloud's graph
 ```
 
 An existing graph at `--out` is updated: a file whose content it already holds is not read again, so after the first run an update costs only the files that changed. A graph it cannot read (another format, or more than 512 MB) is built again with a warning. Files over 1 MB, and files that are not UTF-8 text, are left out. The graph holds names, kinds and line numbers, never code. Build it on the main branch after each push, keep the file between runs (an Actions cache, for example), and pass it to reviews of pull requests against that branch.
+
+With `--cloud`, the graph starts from the newest one a self-hosted ocra Cloud server built of the repository's default branch (it keeps one per push, as `CODE_GRAPH` sets), instead of from the file at `--out`: only the files the commit changed since are read and parsed. The server is the one `ocra login` signed in to, and the repository is the one whose host and path match `origin`'s. When there is no graph to use (not signed in, a server that keeps none, a repository it does not keep, a graph of another format), ocra warns and builds from the file at `--out`, or from scratch, as without `--cloud`; the command still succeeds. The graph is read only by the parser: nothing from it runs.
 
 ## ocra serve
 

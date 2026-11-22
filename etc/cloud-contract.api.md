@@ -196,6 +196,12 @@ export const CLOUD_PREFIX = "ocra-";
 // @public (undocumented)
 export const cloudModelSchema: z.ZodString;
 
+// @public (undocumented)
+export const CODE_PLATFORMS: readonly ["github", "gitlab"];
+
+// @public (undocumented)
+export type CodePlatform = (typeof CODE_PLATFORMS)[number];
+
 // @public
 export const DEVICE_ERRORS: readonly ["invalid_request", "invalid_grant", "expired_token", "authorization_pending", "slow_down", "access_denied"];
 
@@ -350,6 +356,50 @@ export const FINGERPRINT: RegExp;
 // @public
 export const GATEWAY_PATH: RegExp;
 
+// @public (undocumented)
+export const GRAPH_BUILD_STATES: readonly ["queued", "running", "done", "failed", "superseded"];
+
+// @public
+export const GRAPH_COMMIT_HEADER = "x-ocra-graph-commit";
+
+// @public (undocumented)
+export type GraphBuildState = (typeof GRAPH_BUILD_STATES)[number];
+
+// @public (undocumented)
+export type GraphRepo = z.infer<typeof graphRepoSchema>;
+
+// @public
+export const graphReposAnswerSchema: z.ZodObject<{
+    repos: z.ZodArray<z.ZodUnknown>;
+}, z.core.$strip>;
+
+// @public
+export const graphRepoSchema: z.ZodObject<{
+    id: z.ZodString;
+    platform: z.ZodEnum<{
+        github: "github";
+        gitlab: "gitlab";
+    }>;
+    host: z.ZodString;
+    fullName: z.ZodString;
+    branch: z.ZodString;
+    latest: z.ZodNullable<z.ZodObject<{
+        commit: z.ZodString;
+        state: z.ZodEnum<{
+            done: "done";
+            failed: "failed";
+            queued: "queued";
+            running: "running";
+            superseded: "superseded";
+        }>;
+        files: z.ZodNullable<z.ZodNumber>;
+        bytes: z.ZodNullable<z.ZodNumber>;
+        truncated: z.ZodBoolean;
+        error: z.ZodNullable<z.ZodString>;
+        finishedAt: z.ZodNullable<z.ZodString>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+
 // @public
 export function isCloudModel(model: string): boolean;
 
@@ -429,6 +479,9 @@ export const MAX_FIELD = 4096;
 
 // @public
 export const MAX_FINDINGS = 200;
+
+// @public
+export const MAX_GRAPH_REPOS = 100;
 
 // @public
 export const MAX_LEARNING_BODY = 4000;
