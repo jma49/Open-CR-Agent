@@ -370,6 +370,47 @@ export const FINGERPRINT: RegExp;
 // @public
 export const GATEWAY_PATH: RegExp;
 
+// @public
+export const GENERATE_KINDS: readonly ["tests", "docstrings"];
+
+// @public
+export const GENERATE_OUTCOMES: readonly ["committed", "dry_run", "nothing", "head_moved", "not_writable"];
+
+// @public (undocumented)
+export type GenerateKind = (typeof GENERATE_KINDS)[number];
+
+// @public (undocumented)
+export type GenerateOutcome = (typeof GENERATE_OUTCOMES)[number];
+
+// @public (undocumented)
+export type GenerateResult = z.infer<typeof generateResultSchema>;
+
+// @public
+export const generateResultSchema: z.ZodObject<{
+    kind: z.ZodEnum<{
+        docstrings: "docstrings";
+        tests: "tests";
+    }>;
+    outcome: z.ZodEnum<{
+        committed: "committed";
+        dry_run: "dry_run";
+        head_moved: "head_moved";
+        not_writable: "not_writable";
+        nothing: "nothing";
+    }>;
+    headSha: z.ZodString;
+    commitSha: z.ZodNullable<z.ZodString>;
+    files: z.ZodArray<z.ZodString>;
+    usage: z.ZodObject<{
+        inputTokens: z.ZodNumber;
+        cachedTokens: z.ZodNumber;
+        outputTokens: z.ZodNumber;
+        reasoningTokens: z.ZodNumber;
+        costUsd: z.ZodNumber;
+    }, z.core.$strip>;
+    reason: z.ZodNullable<z.ZodString>;
+}, z.core.$strip>;
+
 // @public (undocumented)
 export const GRAPH_BUILD_STATES: readonly ["queued", "running", "done", "failed", "superseded"];
 
@@ -496,6 +537,9 @@ export const MAX_FIELD = 4096;
 
 // @public
 export const MAX_FINDINGS = 200;
+
+// @public
+export const MAX_GENERATED_FILES = 20;
 
 // @public
 export const MAX_GRAPH_REPOS = 100;

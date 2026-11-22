@@ -8,6 +8,7 @@ export { at } from "./at.js";
 export { parseUnifiedDiff } from "./diff/parse.js";
 export { RISK_TIERS, severitySchema, verificationSchema } from "./domain.js";
 export { errnoCode, isNotFound } from "./errors.js";
+export type { FileEdit } from "./generate/edits.js";
 export { shortHash } from "./hash.js";
 export { learningSelector } from "./knowledge/select.js";
 export {
@@ -24,6 +25,7 @@ export {
 } from "./memory/memory.js";
 export { answerMention } from "./pipeline/answer.js";
 export { reviewContext } from "./pipeline/context.js";
+export { type Generated, generateChanges } from "./pipeline/generate.js";
 export { MAX_TIMER_MS, REVIEW_DEFAULTS } from "./pipeline/options.js";
 export {
   PLAN_VERSION,

@@ -285,6 +285,42 @@ ocra reply --mr 12 --comment 4811                 # GitLab 的 note
 
 回答是 writer 角色的一次调用，输入是描述、讨论里最近的评论；如果评论在某一行上，再加上该文件的 patch 和那一行附近的代码；否则是问题提到的文件，再否则是最小的几个 patch。文件取自审查的选择结果，并经过同样的访问策略读取，所以提问拿不到机密文件或被排除的文件。回答最多约 250 词，与审查发现一样渲染（提及和命令都会被中和）。配置和审查一样从 base 读取。`ocra reply` 不做审查，也不写会话；要更深入地看某一段，请用 `ocra review`。v0.10.0 新增。
 
+## ocra generate
+
+在 Pull Request 或 Merge Request 的分支上写入一个提交：为改动的代码补测试，或为新增、修改的声明补文档注释。
+
+```bash
+ocra generate tests --pr 7                   # 在改动的源文件旁新建测试文件
+ocra generate docstrings --mr 12             # 在改动的行里补文档注释
+ocra generate tests --pr 7 --dry-run         # 以 diff 打印这些修改，不提交
+ocra generate docstrings --pr 7 --json       # 输出一行 JSON 结果
+```
+
+`--repo`、`--project` 和 `--config <file>` 与 `ocra reply` 相同，令牌也相同；令牌必须能写这个分支（GitHub：contents 写权限；GitLab：api scope 和 Developer 角色），提交以令牌所属的账号身份写入。
+
+文件由 ocra 选：审查会选中的改动源文件（绝不包括机密文件、生成文件或第三方代码），语言为 TypeScript、JavaScript、Python、Go、Java 或 Kotlin（文档注释另支持 Rust）；不包括测试、类型声明、符号链接和子模块；新增行最多的优先，最多 5 个，每个最多 60,000 个字符。每个文件调用一次 writer 角色，模型看到描述、该文件的 patch 和文件本身，文件经过审查的访问策略读取。
+
+- **tests** 为每个源文件新建一个测试文件，路径按仓库的命名习惯：默认放在源文件旁，用 `.test`，旁边的测试用 `.spec` 时也用 `.spec`；`__tests__/` 里已有测试时放进去；`test_<name>.py` 或 `<name>_test.py`，或放在 `tests/` 下；`<name>_test.go`；Maven 或 Gradle 布局用 `src/test/java/…/<Name>Test.java`（Kotlin 同理）。旁边有测试时，模型会参考它的框架和风格。路径上已有文件就跳过：ocra 从不修改已有文件。ocra 不运行这些测试（它不运行仓库里的任何代码，也不安装、不构建），提交信息里写明了这一点；测试由变更请求自己的 CI 运行。
+- **docstrings** 为改动中还没有文档注释的声明补注释，用该语言的写法（`/** … */`，Go 用 `//`，Rust 用 `///`，Python 用 `"""` docstring）。ocra 只插入注释行，只插在改动的行里，不改任何已有的行；模型的回答如果要做别的，这个文件的回答整体被拒绝。
+
+某个文件的调用失败或回答被拒绝时，跳过该文件，原因打印在 stderr；只有全部调用都失败时，这次运行才算失败。ocra 只在它读到的 head 之上提交：如果期间有人 push，GitHub 上分支更新会因为不是 fast-forward 被拒绝，GitLab 上会先比较分支，并要求每个修改的文件仍是原样。
+
+加 `--json` 时，stdout 不打印 diff，而是一行 JSON：
+
+```json
+{"kind":"tests","outcome":"committed","headSha":"<40 hex>","commitSha":"<40 hex>","files":["src/retry.test.ts"],"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0},"reason":null}
+```
+
+| `outcome` | 含义 | 退出码 |
+|---|---|---|
+| `committed` | 分支上多了一个提交，`commitSha` 是它 | `0` |
+| `dry_run` | `--dry-run`：修改已生成并打印，没有提交 | `0` |
+| `nothing` | 没有可写的文件，或模型什么也没补；`reason` 列出每个被跳过的文件 | `0` |
+| `head_moved` | ocra 读取之后分支有了新提交；没有提交 | `3` |
+| `not_writable` | 令牌不能写这个分支：fork 的分支、受保护的分支、只读令牌 | `3` |
+
+`files` 列出修改涉及的路径，无论是否提交；`committed` 和 `dry_run` 时 `reason` 为 `null`。用法、配置和模型错误的退出码为 `2`。结构是 `@open-cr-agent/cloud-contract` 里的 `generateResultSchema`。v0.11.0 新增。
+
 ## ocra metrics
 
 对 `.ocra/sessions/` 下已完成的审查做统计，数据来自每个会话的 `report.json`，不调用任何模型：
