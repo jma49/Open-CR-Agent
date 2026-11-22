@@ -21,6 +21,7 @@ const remoteConfigSchema = z
     verify: z.unknown().optional(),
     judge: z.unknown().optional(),
     showPreExisting: z.unknown().optional(),
+    walkthrough: z.unknown().optional(),
     maxCostUsd: z.unknown().optional(),
     maxTasks: z.unknown().optional(),
     include: z.array(z.string()).optional(),

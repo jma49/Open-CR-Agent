@@ -125,6 +125,7 @@ describe("listSettings", () => {
       "verify",
       "judge",
       "showPreExisting",
+      "walkthrough",
       "sampling",
       "include",
       "exclude",

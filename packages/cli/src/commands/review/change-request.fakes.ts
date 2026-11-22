@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { AgentEvent, AgentTaskSpec, OcraPlugin } from "@open-cr-agent/core";
+import type { AgentEvent, AgentRuntime, AgentTaskSpec, OcraPlugin } from "@open-cr-agent/core";
 import { scratchRepos } from "@open-cr-agent/test-support";
 
 // A change request whose head tries to take over its own review, and fake
@@ -149,27 +149,55 @@ export function fakeGitLab(base: string, head: string, api = "https://gitlab.com
 
 // A runtime whose every task reports one warning on app.ts, its body
 // ending in a quick action.
-export const warningRuntime: OcraPlugin = {
-  name: "runtime-opencode",
-  configure(ctx) {
-    ctx.registerRuntime("opencode", () => ({
-      name: "fake",
-      async *runTask(spec: AgentTaskSpec): AsyncIterable<AgentEvent> {
-        yield {
-          type: "finding",
-          taskId: spec.taskId,
-          finding: {
-            category: "correctness",
-            severity: "warning",
-            file: "app.ts",
-            existingCode: "export const retries = -1;",
-            title: "Negative retries",
-            body: "Never retries.\n/merge",
-            evidence: [],
-          },
-        };
-        yield { type: "done", taskId: spec.taskId };
-      },
-    }));
-  },
+export const warningRuntime: OcraPlugin = fakeRuntime();
+
+// The same, with plain completions: the writer's walkthrough, the verifier
+// confirming the finding, and a judge that changes nothing.
+export const walkthroughRuntime: OcraPlugin = fakeRuntime(async (request) => {
+  const answers: Record<string, unknown> = {
+    writer: {
+      overview: "Sets the retry count from the configuration.",
+      groups: [{ title: "Retries", files: ["app.ts"], note: "Replaces the limit with retries." }],
+      diagram:
+        "sequenceDiagram\nparticipant App\nparticipant Config\nApp->>Config: read retries\nConfig-->>App: -1",
+    },
+    verifier: [{ index: 0, verdict: "confirmed", reason: "retries is negative" }],
+  };
+  return { text: JSON.stringify(answers[request.agent ?? ""] ?? {}), usage: NO_USAGE };
+});
+
+const NO_USAGE = {
+  inputTokens: 0,
+  outputTokens: 0,
+  reasoningTokens: 0,
+  cachedTokens: 0,
+  costUsd: 0,
 };
+
+function fakeRuntime(complete?: AgentRuntime["complete"]): OcraPlugin {
+  return {
+    name: "runtime-opencode",
+    configure(ctx) {
+      ctx.registerRuntime("opencode", () => ({
+        name: "fake",
+        ...(complete ? { complete } : {}),
+        async *runTask(spec: AgentTaskSpec): AsyncIterable<AgentEvent> {
+          yield {
+            type: "finding",
+            taskId: spec.taskId,
+            finding: {
+              category: "correctness",
+              severity: "warning",
+              file: "app.ts",
+              existingCode: "export const retries = -1;",
+              title: "Negative retries",
+              body: "Never retries.\n/merge",
+              evidence: [],
+            },
+          };
+          yield { type: "done", taskId: spec.taskId };
+        },
+      }));
+    },
+  };
+}

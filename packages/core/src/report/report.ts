@@ -16,6 +16,7 @@ import type { RememberedEntry } from "../memory/memory.js";
 import type { AnalyzerEvidenceUse } from "../sarif/evidence.js";
 import type { ExclusionReason } from "../select/select.js";
 import type { RefutedFinding } from "../verify/verify.js";
+import type { Walkthrough } from "../walkthrough/walkthrough.js";
 import type { RunProvenance } from "./provenance.js";
 
 // "unchanged": reviewed by an earlier run and not changed since, so not
@@ -144,6 +145,8 @@ export interface ReviewReport {
   analyzerEvidence?: AnalyzerEvidenceUse[];
   // What the judge merged, dropped or recalibrated; absent when it did not run.
   judgement?: JudgeDecisions;
+  // What the change does, for its reviewers; absent when it was off or failed.
+  walkthrough?: Walkthrough;
   // With an earlier review: whether this run reviewed only what changed since.
   scope?: { mode: "incremental"; since: string } | { mode: "full"; reason: string };
   // Compared with the previous review of the same change, when there was one.

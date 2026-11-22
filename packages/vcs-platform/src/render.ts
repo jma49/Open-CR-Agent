@@ -145,6 +145,7 @@ export function renderSummary({
   const lines = [
     ...verdictSection(report, text),
     ...scopeNote(report),
+    ...walkthroughSection(report.walkthrough),
     ...incompleteNotes(report, text),
     ...unattributedNote(unattributed),
     ...outsideDiff(report.findings, commented),
@@ -173,6 +174,48 @@ function verdictSection(report: ReviewReport, text: PlatformText): string[] {
     "",
     `**${report.findings.length} finding(s)** (${counts}) · risk tier \`${report.tier}\``,
   ];
+}
+
+const MAX_LISTED_FILES = 10;
+
+// The overview is read first; the file groups and the diagram are there for
+// whoever wants them before the diff, so they are folded.
+function walkthroughSection(walkthrough: ReviewReport["walkthrough"]): string[] {
+  if (!walkthrough) return [];
+  const files = walkthrough.groups.reduce((n, g) => n + g.files.length, 0);
+  const lines = [
+    "",
+    "### Walkthrough",
+    "",
+    safeMarkdown(walkthrough.overview, { startsLine: true }),
+    "",
+    `<details><summary>Changes in ${files} file(s)</summary>`,
+    "",
+    ...walkthrough.groups.map(walkthroughGroup),
+    "",
+    "</details>",
+  ];
+  if (walkthrough.diagram) {
+    lines.push(
+      "",
+      "<details><summary>Sequence diagram</summary>",
+      "",
+      "```mermaid",
+      walkthrough.diagram,
+      "```",
+      "",
+      "</details>",
+    );
+  }
+  return lines;
+}
+
+function walkthroughGroup(group: { title: string; files: string[]; note: string }): string {
+  const shown = group.files.slice(0, MAX_LISTED_FILES).map(codeSpan).join(" · ");
+  const more = group.files.length - MAX_LISTED_FILES;
+  const files = more > 0 ? `${shown} and ${more} more` : shown;
+  const note = group.note === "" ? "" : `: ${safeLine(group.note)}`;
+  return `- **${safeLine(group.title)}**${note}\n  ${files}`;
 }
 
 function scopeNote(report: ReviewReport): string[] {

@@ -12,7 +12,7 @@ export const accountSchema: z.ZodObject<{
 }, z.core.$strip>;
 
 // @public
-export const AGENT_ROLES: readonly ["verifier", "judge", "helper"];
+export const AGENT_ROLES: readonly ["verifier", "judge", "helper", "writer"];
 
 // @public (undocumented)
 export type AgentPrefs = z.output<typeof agentPrefsSchema>;
@@ -83,6 +83,7 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
         helper: "helper";
         judge: "judge";
         verifier: "verifier";
+        writer: "writer";
     }> & z.core.$partial, z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
         models: z.ZodOptional<z.ZodNullable<z.ZodPipe<z.ZodPipe<z.ZodUnion<readonly [z.ZodArray<z.ZodString>, z.ZodString]>, z.ZodTransform<string[], string | string[]>>, z.ZodArray<z.ZodString>>>>;
         effort: z.ZodPipe<z.ZodOptional<z.ZodUnion<readonly [z.ZodEnum<{
@@ -111,7 +112,11 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
             models?: string[];
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
         };
-    }, Partial<Record<"helper" | "judge" | "verifier", {
+        writer?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
+    }, Partial<Record<"helper" | "judge" | "verifier" | "writer", {
         models?: string[];
         effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
     }>> | null | undefined>>;
@@ -138,6 +143,10 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
         };
         verifier?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
+        writer?: {
             models?: string[];
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
         };
@@ -168,6 +177,10 @@ export const agentPrefsSchema: z.ZodPipe<z.ZodObject<{
             models?: string[];
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
         };
+        writer?: {
+            models?: string[];
+            effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+        };
     };
 }>>;
 
@@ -179,6 +192,7 @@ export const agentRoleSchema: z.ZodEnum<{
     helper: "helper";
     judge: "judge";
     verifier: "verifier";
+    writer: "writer";
 }>;
 
 // @public (undocumented)
@@ -651,6 +665,7 @@ export const preferencesUpdateSchema: z.ZodObject<{
             helper: "helper";
             judge: "judge";
             verifier: "verifier";
+            writer: "writer";
         }> & z.core.$partial, z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
             models: z.ZodOptional<z.ZodNullable<z.ZodPipe<z.ZodPipe<z.ZodUnion<readonly [z.ZodArray<z.ZodString>, z.ZodString]>, z.ZodTransform<string[], string | string[]>>, z.ZodArray<z.ZodString>>>>;
             effort: z.ZodPipe<z.ZodOptional<z.ZodUnion<readonly [z.ZodEnum<{
@@ -679,7 +694,11 @@ export const preferencesUpdateSchema: z.ZodObject<{
                 models?: string[];
                 effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
             };
-        }, Partial<Record<"helper" | "judge" | "verifier", {
+            writer?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
+        }, Partial<Record<"helper" | "judge" | "verifier" | "writer", {
             models?: string[];
             effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
         }>> | null | undefined>>;
@@ -709,6 +728,10 @@ export const preferencesUpdateSchema: z.ZodObject<{
                 models?: string[];
                 effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
             };
+            writer?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
         };
     }, {
         effort: {
@@ -733,6 +756,10 @@ export const preferencesUpdateSchema: z.ZodObject<{
                 effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
             };
             verifier?: {
+                models?: string[];
+                effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
+            };
+            writer?: {
                 models?: string[];
                 effort?: NonNullable<"high" | "low" | "medium" | "minimal" | "none" | undefined>;
             };
