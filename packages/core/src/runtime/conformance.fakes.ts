@@ -1,11 +1,7 @@
 import { describe, expect, it, type TestContext } from "vitest";
 import type { AgentEvent, AgentRuntime, AgentTaskSpec, ReviewContext } from "../contracts.js";
 import { MAX_AGENT_STEPS, WRAP_UP_MESSAGE, WRAP_UP_STEPS } from "./attempt.js";
-import {
-  type Reply,
-  type SeenRequest,
-  scriptedEndpoint,
-} from "./scripted-endpoint.fakes.js";
+import { type Reply, type SeenRequest, scriptedEndpoint } from "./scripted-endpoint.fakes.js";
 
 // What every AgentRuntime must do, run against a scripted OpenAI-compatible
 // endpoint on this machine, declared as provider "local" with the models
