@@ -310,7 +310,7 @@ ocra stack submit                                          # push, retarget #2 t
 
 The stack is the tree of branches recorded in this clone's git config (`branch.<name>.ocraParent` and `branch.<name>.ocraParentHead`, the parent's commit the branch is built on), rooted at the trunk, origin's default branch. Restack runs `git rebase --onto <parent> <parentHead> <branch>`, so a parent that was amended or squash-merged is not replayed. A conflict stops it at that branch: resolve it, run `git rebase --continue`, then `ocra stack restack` again. Every command but `create` and `track` needs a clean working tree.
 
-`submit` and `sync` use `GITHUB_TOKEN` (or `GH_TOKEN`) or `GITLAB_TOKEN`, with `--repo` or `--project` as for a review; the token needs pull request (merge request) write access. The stack's list in a description sits between `<!-- ocra:stack -->` markers; what you write outside them is kept. `submit` refuses a stack that holds a branch whose change request merged, before pushing anything: run `sync` first. New in v0.11.0.
+`submit` and `sync` use `GITHUB_TOKEN` (or `GH_TOKEN`) or `GITLAB_TOKEN`, with `--repo` or `--project` as for a review; the token needs pull request (merge request) write access. The stack's list in a description sits between `<!-- ocra:stack -->` markers; what you write outside them is kept. `submit` refuses a stack that holds a branch whose change request merged, before pushing anything: run `sync` first. ocra Cloud shows the stack on the pull request page and merges it from the bottom up to the one you choose, stopping at the first the platform refuses. New in v0.11.0.
 
 ## ocra metrics
 
