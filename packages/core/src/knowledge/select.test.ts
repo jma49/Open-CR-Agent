@@ -174,16 +174,28 @@ describe("which learnings apply to a bundle", () => {
 });
 
 describe("the order of selected learnings", () => {
-  it("ranks a path match over a symbol match over a keyword match", () => {
+  it("ranks a path with evidence, then a symbol, then a bare path, then a keyword", () => {
     const result = select(
       [
         learning("keyword", { keywords: ["retry"] }),
-        learning("symbol", { symbols: ["fetchAll"] }),
         learning("path", { paths: ["src/**"] }),
+        learning("symbol", { symbols: ["fetchAll"] }),
+        learning("path-and-keyword", { paths: ["src/**"], keywords: ["retry"] }),
       ],
       [diff("src/a.ts", "+ fetchAll(); retry()")],
     );
-    expect(ids(result.selected)).toEqual(["path", "symbol", "keyword"]);
+    expect(ids(result.selected)).toEqual(["path-and-keyword", "symbol", "path", "keyword"]);
+  });
+
+  it("does not let lessons on a bare path crowd out one whose symbol the change uses", () => {
+    const result = select(
+      [
+        ...Array.from({ length: 20 }, (_, i) => learning(`a${i}`, { paths: ["src/**"] })),
+        learning("z-symbol", { symbols: ["fetchAll"] }),
+      ],
+      [diff("src/a.ts", "+ fetchAll()")],
+    );
+    expect(ids(result.selected)[0]).toBe("z-symbol");
   });
 
   it("ranks more symbol hits higher", () => {
@@ -266,7 +278,7 @@ describe("the limits of a selection", () => {
     const limits = { maxSelected: 1, maxChars: 8_000, maxCritical: 10 };
     const result = select(
       [
-        learning("a-path", { paths: ["src/**"] }),
+        learning("a-path", { paths: ["src/**"], keywords: ["drop"] }),
         learning("b-critical", { critical: true, symbols: ["drop"] }),
       ],
       [diff("src/a.ts", "+ drop()")],

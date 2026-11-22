@@ -1,9 +1,8 @@
 import type { Learning } from "./learning.js";
 
-// A synthetic team's learnings and changes, each change labelled with the
-// learnings a reviewer must be given (`expected`) and some off their paths it
-// must not be given (`unrelated`). The changes are written the way such bugs recur: the
-// learning's words are often absent, its symbol or path is not.
+// A synthetic team's learnings, written the way a team and `ocra learn`
+// write them: globs in several styles, symbols in one language's naming,
+// keywords in English and Chinese, and the same lesson twice.
 
 type Fields = Pick<Learning, "title" | "body" | "paths"> & Partial<Learning>;
 
@@ -177,204 +176,48 @@ export const CORPUS: Learning[] = [
     keywords: ["unsubscribe"],
     body: "Every marketing template includes {{unsubscribeUrl}}; it is a legal requirement.",
   }),
-];
-
-export interface RecallCase {
-  name: string;
-  paths: string[];
-  text: string;
-  expected: string[];
-  unrelated?: string[];
-}
-
-export const CASES: RecallCase[] = [
-  {
-    name: "a query helper that forgets to release",
-    paths: ["services/orders/src/db/orders.ts"],
-    text: "+  const client = await pool.connect();\n+  const rows = await client.query(sql);\n+  return rows;",
-    expected: ["db-pool-release"],
-    unrelated: ["react-effect-cleanup", "money-integer-cents"],
-  },
-  {
-    name: "a migration that renames a column",
-    paths: ["services/orders/migrations/20261121_rename.sql"],
-    text: "+ALTER TABLE orders RENAME COLUMN total TO total_cents;",
-    expected: ["db-migrations-additive"],
-  },
-  {
-    name: "a price computed with parseFloat in a shared package",
-    paths: ["packages/money/src/format.ts"],
-    text: "+export const toAmount = (s: string) => parseFloat(s) * 100;",
-    expected: ["money-integer-cents"],
-  },
-  {
-    name: "a new charge call in billing",
-    paths: ["services/billing/src/charge.ts"],
-    text: "+  const charge = await stripe.charges.create({ amount, currency, customer });",
-    expected: ["billing-idempotency", "money-integer-cents"],
-  },
-  {
-    name: "a retry around the charge client",
-    paths: ["services/billing/src/client.ts"],
-    text: "+  for (let attempt = 0; attempt < 3; attempt++) {\n+    try { return await createCharge(order); } catch {}\n+  }",
-    expected: ["billing-idempotency"],
-  },
-  {
-    name: "a webhook signature check with ===",
-    paths: ["services/auth/src/webhooks/verify.ts"],
-    text: "+  if (computed === header) return true;\n+  // hmac signature of the body",
-    expected: ["auth-token-compare"],
-  },
-  {
-    name: "a login handler that keeps the session",
-    paths: ["services/auth/src/session/login.ts"],
-    text: "+  req.session.userId = user.id;\n+  res.redirect('/');",
-    expected: ["auth-session-rotate"],
-  },
-  {
-    name: "a fetch without a signal in any service",
-    paths: ["services/search/src/upstream.ts"],
-    text: "+  const res = await fetch(base + '/v1/items');",
-    expected: ["http-timeouts"],
-  },
-  {
-    name: "an axios call in the web app",
-    paths: ["apps/web/src/api/client.ts"],
-    text: "+export const getUser = (id: string) => axios.get('/api/users/' + id);",
-    expected: ["http-timeouts"],
-  },
-  {
-    name: "a consumer that acks first",
-    paths: ["services/orders/src/consumers/paid.ts"],
-    text: "+  channel.ack(msg);\n+  await db.transaction(async (tx) => markPaid(tx, id));",
-    expected: ["queue-ack-after-commit"],
-  },
-  {
-    name: "a component that adds a resize listener",
-    paths: ["apps/web/src/components/Chart.tsx"],
-    text: "+  useEffect(() => {\n+    window.addEventListener('resize', onResize);\n+  }, []);",
-    expected: ["react-effect-cleanup"],
-  },
-  {
-    name: "a list rendered with index keys",
-    paths: ["apps/web/src/pages/Orders.tsx"],
-    text: "+  {orders.map((o, index) => <Row key={index} order={o} />)}",
-    expected: ["react-list-keys"],
-  },
-  {
-    name: "a log line with the user's email",
-    paths: ["services/notifications/src/send.ts"],
-    text: "+  logger.info('sent welcome mail to ' + user.email);",
-    expected: ["logs-no-pii"],
-  },
-  {
-    name: "a debug print in the web app",
-    paths: ["apps/web/src/hooks/useCart.ts"],
-    text: "+  console.log('cart', cart);",
-    expected: ["logs-no-pii"],
-  },
-  {
-    name: "a cache read keyed by user only",
-    paths: ["services/api/src/cache/profile.ts"],
-    text: "+  const hit = await redis.get('profile:' + userId);",
-    expected: ["cache-key-tenant"],
-  },
-  {
-    name: "a flag turned on by default",
-    paths: ["config/flags/checkout.yaml"],
-    text: "+newCheckout:\n+  default: true",
-    expected: ["feature-flag-default-off"],
-  },
-  {
-    name: "a report that buckets by local hour",
-    paths: ["services/analytics/src/daily.ts"],
-    text: "+  const hour = new Date(event.at).getHours();",
-    expected: ["date-utc"],
-  },
-  {
-    name: "a resolver that looks up each author",
-    paths: ["services/api/src/resolvers/post.ts"],
-    text: "+  author: (post) => Users.findById(post.authorId),",
-    expected: ["graphql-n-plus-one"],
-  },
-  {
-    name: "a list route that trusts the limit",
-    paths: ["services/api/src/routes/orders.ts"],
-    text: "+  const limit = Number(req.query.limit);\n+  return db.orders.list({ limit });",
-    expected: ["api-pagination-cap"],
-  },
-  {
-    name: "a build script that shells out",
-    paths: ["scripts/release.ts"],
-    text: "+  execSync('git tag ' + version);",
-    expected: ["shell-exec-args"],
-  },
-  {
-    name: "a workflow on a moving tag",
-    paths: [".github/workflows/ci.yml"],
-    text: "+      - uses: some-org/setup-thing@v3",
-    expected: ["ci-pin-actions"],
-  },
-  {
-    name: "a new service image",
-    paths: ["services/search/Dockerfile"],
-    text: '+FROM node:22-slim\n+COPY . .\n+CMD ["node", "dist/main.js"]',
-    expected: ["docker-non-root"],
-  },
-  {
-    name: "a view updated from a network callback",
-    paths: ["apps/ios/Sources/Profile/ProfileView.swift"],
-    text: "+    api.load { profile in self.nameLabel.text = profile.name }",
-    expected: ["mobile-main-thread"],
-  },
-  {
-    name: "a search endpoint passing raw text",
-    paths: ["services/search/src/routes/search.ts"],
-    text: "+  body: { query: { query_string: { query: req.query.q } } }",
-    expected: ["search-escape-query"],
-  },
-  {
-    name: "a retry loop with a fixed sleep",
-    paths: ["packages/http/src/retry.ts"],
-    text: "+  // retry three times\n+  await sleep(1000);\n+  return retry(fn, attempts - 1);",
-    expected: ["retry-backoff-jitter"],
-  },
-  {
-    name: "a new marketing template",
-    paths: ["services/notifications/src/templates/marketing/winter.hbs"],
-    text: "+<h1>Winter sale</h1>\n+<p>{{body}}</p>",
-    expected: ["email-unsubscribe"],
-  },
-  {
-    name: "a renamed module keeps the old path's learnings",
-    paths: ["services/orders/src/db/legacy.ts", "services/orders/src/storage/legacy.ts"],
-    text: "",
-    expected: ["db-pool-release"],
-  },
-  {
-    name: "a leak fixed outside the db directory, named in a comment",
-    paths: ["services/reports/src/export.ts"],
-    text: "+  // avoid a connection leak: give the client back in finally\n+  const c = await getClient();",
-    expected: ["db-pool-release"],
-  },
-  {
-    name: "a column dropped from application code",
-    paths: ["services/orders/src/schema.ts"],
-    text: "+  await knex.schema.table('orders', (t) => t.dropColumn('total'));",
-    expected: ["db-migrations-additive"],
-  },
-  {
-    name: "a docs-only change",
-    paths: ["docs/architecture.md"],
-    text: "+The orders service owns the order lifecycle.",
-    expected: [],
-    unrelated: CORPUS.map((l) => l.id),
-  },
-  {
-    name: "a CSS change",
-    paths: ["apps/web/src/styles/theme.css"],
-    text: "+  --accent: var(--ink);",
-    expected: [],
-    unrelated: ["db-pool-release", "billing-idempotency", "cache-key-tenant"],
-  },
+  learning("db-pool-release-finally", {
+    title: "Give pooled clients back in a finally block",
+    paths: ["services/*/src/db/**"],
+    symbols: ["client.release"],
+    keywords: ["finally"],
+    source: { kind: "review-feedback", ref: "#412" },
+    body: "Release the client in finally, not after the query: a thrown query error skips the release and the pool runs dry.",
+  }),
+  learning("sql-no-select-star", {
+    title: "Queries name their columns",
+    paths: ["*.sql"],
+    keywords: ["select star"],
+    body: "SELECT * breaks readers when a column is added or reordered; name the columns.",
+  }),
+  learning("compose-healthcheck", {
+    title: "Compose services declare a healthcheck",
+    paths: ["docker-compose.yml"],
+    keywords: ["depends_on"],
+    body: "depends_on waits only for the container to start; give each service a healthcheck and wait on service_healthy.",
+  }),
+  learning("refunds-through-ledger", {
+    title: "Refunds are written through the ledger",
+    paths: ["services/payments/"],
+    critical: true,
+    body: "A refund that updates the payment row directly leaves the ledger unbalanced; post it with Ledger.reverse().",
+  }),
+  learning("rounding-half-even", {
+    title: "Round money half to even",
+    paths: ["packages/money/**"],
+    symbols: ["roundHalfEven"],
+    body: "Statements round half to even, as the bank does; Math.round or round() half up drifts by a cent per thousand lines.",
+  }),
+  learning("consumer-no-redelivery", {
+    title: "消费者处理失败时不要重复消费",
+    paths: ["services/*/src/consumers/**"],
+    keywords: ["重复消费", "dead letter"],
+    body: "处理失败的消息转入死信队列，不要直接 nack 重新投递：一条坏消息会被无限重复消费并阻塞整个分区。",
+  }),
+  learning("next-route-params", {
+    title: "Route params are validated before use",
+    paths: ["apps/site/app/\\[lang\\]/**"],
+    symbols: ["params.lang"],
+    body: "params.lang comes from the URL; check it against the supported locales before reading files with it.",
+  }),
 ];
