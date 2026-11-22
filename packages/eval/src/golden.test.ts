@@ -2,6 +2,7 @@ import { mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseLearning } from "@open-cr-agent/cli/internal";
 import { describe, expect, it } from "vitest";
 import { main } from "./cli.js";
 import {
@@ -13,6 +14,7 @@ import {
   untouchedPaths,
 } from "./golden.js";
 import { selectInstances } from "./select.js";
+import { learningFile } from "./team-context.js";
 
 const valid = {
   id: "ocra-anchor-crlf",
@@ -210,6 +212,30 @@ describe("golden cases", () => {
     const committed = fileURLToPath(new URL("../../../evals/golden", import.meta.url));
     const instances = await loadGolden(committed);
     expect(instances.filter((i) => i.golden?.tier !== "adversarial").length).toBeGreaterThan(0);
+  });
+
+  it("gives committed cases team context that ocra reads", async () => {
+    const committed = fileURLToPath(new URL("../../../evals/golden", import.meta.url));
+    const teams = (await loadGolden(committed)).flatMap((i) => i.golden?.team ?? []);
+    expect(teams.some((t) => t.learnings)).toBe(true);
+    expect(teams.some((t) => t.projectDocs)).toBe(true);
+    for (const learning of teams.flatMap((t) => t.learnings ?? [])) {
+      expect(parseLearning(learningFile(learning)), learning.name).not.toBeTypeOf("string");
+    }
+  });
+
+  it("refuses team context the review cannot read", () => {
+    const learning = {
+      name: "Bad Name",
+      title: "t",
+      paths: ["src/"],
+      created: "2026-01-01",
+      body: "b",
+    };
+    expect(() => parseCase({ ...valid, context: { learnings: [learning] } }, "c")).toThrow("name");
+    expect(() => parseCase({ ...valid, context: { projectDocs: ["../docs"] } }, "c")).toThrow(
+      "projectDocs",
+    );
   });
 
   it("keeps code only the maintainer may share out of the public cases", async () => {

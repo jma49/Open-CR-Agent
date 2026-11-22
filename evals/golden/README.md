@@ -4,6 +4,8 @@ ocra's own evaluation cases (ADR-0011, `docs/adr/0011-golden-eval-set.md`), one 
 
 Every case records where it came from: `source.licence` (an SPDX id from the allowlist in `packages/eval/src/golden.ts`; for a choice of licences, the OSI option) and `source.date` (the head commit's date). Every claim in `expect` has an `id` (a short slug, stable within the case: scores, the ceiling and trends pair claims by it), an `origin` (`human-review`, `author-fix`, `ai-reference-vetted`, `model-found-vetted` or `maintainer`), a `producer` (`human`, a model id, or a tool; `<model or tool> (model not recorded)` when a run did not record which model it was) and `optional`. `raters` records who vetted the case, when, and whether blind. A case holds at most 3 required claims, 5 optional ones and 3 `forbid` ranges, and stores only ids, paths, line ranges and ocra's own sentences, never quoted code or comments.
 
+A case may carry `context` (ADR-0060): the project documents and learnings a team would have had, which the case's repository did not hold, so those sources are measured on real changes. A learning restates an earlier fix that is an ancestor of `base` (its `source.ref` names the commit, `created` its date); it never states the issue the case expects. Some are about other code than the change, and clean cases get them too, so a run also shows what a learning costs where it does not help.
+
 ## Vetting protocol
 
 A claim is kept only when all of these hold:

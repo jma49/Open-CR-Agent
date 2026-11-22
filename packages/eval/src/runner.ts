@@ -13,6 +13,7 @@ import { type InstanceResult, readResult } from "./results.js";
 import { carriedEvents } from "./resumed-log.js";
 import { type ReviewOutcome, reviewInstance } from "./reviewer.js";
 import { sessionLogPath } from "./session-trace.js";
+import { withTeamContext } from "./team-context.js";
 import { timedOut } from "./truncation.js";
 
 export interface RunOptions {
@@ -134,10 +135,21 @@ async function reviewOne(
     const status = error instanceof UnavailableCommitError ? "unavailable" : "failed";
     return { result: { ...base, status, durationMs: 0, error: errorMessage(error) } };
   }
-  let target = instance;
+  let target: Instance;
+  let reviewArgs: string[];
+  try {
+    ({ target, args: reviewArgs } = await withTeamContext(
+      repoDir,
+      instance,
+      options.reviewArgs ?? [],
+    ));
+  } catch (error) {
+    const message = `adding the case's team context failed: ${errorMessage(error)}`;
+    return { result: { ...base, status: "failed", durationMs: 0, error: message } };
+  }
   if (instance.golden?.attack) {
     try {
-      target = { ...instance, headCommit: await plantAttack(repoDir, instance) };
+      target = { ...target, headCommit: await plantAttack(repoDir, target) };
     } catch (error) {
       const message = `planting the attack failed: ${errorMessage(error)}`;
       return { result: { ...base, status: "failed", durationMs: 0, error: message } };
@@ -154,7 +166,7 @@ async function reviewOne(
   const outcome = await reviewInstance(repoDir, target, reportPath, {
     command: options.command,
     timeoutMs: options.timeoutMs,
-    reviewArgs: [...(options.reviewArgs ?? []), ...(resumed ? ["--resume", resumed] : [])],
+    reviewArgs: [...reviewArgs, ...(resumed ? ["--resume", resumed] : [])],
   });
   const report = outcome.report;
   const reused = report?.tasks.filter((t) => t.reusedFrom !== undefined).length ?? 0;

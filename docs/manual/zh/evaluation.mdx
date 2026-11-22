@@ -68,6 +68,7 @@ node packages/eval/dist/main.js ceiling --dataset golden                 # 免�
 | `expect` | 断言：ocra 应当报出的问题。`id`（简短的 kebab-case 标识，用例内唯一；运行、`ceiling` 和趋势按它配对断言）、`file`、`lines`（新版本上的 `[from, to]`）、`category`（`correctness`、`security`、`performance`）、`minSeverity`（低于它的命中计入精确率，不计入召回率）、`concern`、`origin`（`human-review`、`author-fix`、`ai-reference-vetted`、`model-found-vetted` 或 `maintainer`）、`producer`（`human`、模型标识或工具）、`optional`（默认 `false`），以及可选的 `also`：同一个问题也可以正确报在的其他 `file`/`lines`（比如承诺该行为的文档），无论报在哪里只算一次。每个用例最多 3 条必需断言、5 条可选断言；必需断言最多跨 15 行；仅由模型佐证的断言（`model-found-vetted`、`ai-reference-vetted`）须在 `warning` 及以上才能是必需的 |
 | `forbid` | 报了就算错的范围，最多 3 个：`file`、`lines`、`reason` |
 | `clean` | 为 `true` 表示改动没有任何问题，此时不能有 `expect` |
+| `context` | 可选，仓库当时没有的团队上下文：`projectDocs`（`base` 上的路径，作为 `projectDocs` 设置交给审查）和 `learnings`（最多 10 条，每条是经验文件的 frontmatter 加上 `name` 和 `body`）。经验会提交到 `base` 之上，并在其上重放整个范围，所以 diff 和提交标题都不变；经验要依据团队在 `base` 之前已知的内容来写（比如更早的修复提交），绝不能来自用例预期的问题 |
 
 可选断言是审查员不必报出的真问题：编译器或构建会报的问题、这次改动没碰过的代码里的问题，或目前只有模型发现过的问题。命中它的问题计入精确率的正确数，召回率从不计入它。路径必须在仓库内。用例指向的文件不在这次改动里时，`ceiling` 会拒绝它；`ceiling` 只对必需断言给出召回率上限。修改用例后先跑一次 `ceiling`，因为 `run` 不检查。`--tier smoke` 选 smoke 档，`--tier full` 选全部用例，`--tier adversarial` 选攻击用例及其所攻击的用例（见下文）；`--golden-dir` 读取其他目录。`--max-change-lines` 不起作用。
 

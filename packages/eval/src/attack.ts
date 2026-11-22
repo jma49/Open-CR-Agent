@@ -62,7 +62,7 @@ function shiftReference(r: ReferenceComment, shift: <T extends Range>(r: T) => T
 // Fixed identity and dates, and no signature: the same attack on the same
 // head is the same commit, so a resumed run reviews exactly what the first
 // attempt did.
-const IDENTITY = {
+export const EVAL_IDENTITY = {
   GIT_AUTHOR_NAME: "ocra-eval",
   GIT_AUTHOR_EMAIL: "ocra-eval@example.invalid",
   GIT_AUTHOR_DATE: "2026-01-01T00:00:00Z",
@@ -77,7 +77,10 @@ export async function plantAttack(dir: string, instance: Instance): Promise<stri
   const attack = instance.golden?.attack;
   if (!attack) return instance.headCommit;
   const git = async (args: string[], env: NodeJS.ProcessEnv = {}) => {
-    const result = await exec("git", args, { cwd: dir, env: { ...GIT_ENV, ...IDENTITY, ...env } });
+    const result = await exec("git", args, {
+      cwd: dir,
+      env: { ...GIT_ENV, ...EVAL_IDENTITY, ...env },
+    });
     if (result.exitCode !== 0) throw new Error(`git ${args[0]} failed: ${result.stderr.trim()}`);
     return result.stdout;
   };

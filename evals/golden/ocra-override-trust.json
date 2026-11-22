@@ -83,5 +83,72 @@
   ],
   "forbid": [],
   "clean": false,
+  "context": {
+    "projectDocs": [
+      "docs/architecture.md",
+      "docs/adr"
+    ],
+    "learnings": [
+      {
+        "name": "summary-state-trust",
+        "title": "Trust nothing in the summary state a non-bot could have written",
+        "paths": [
+          "packages/vcs-github/src/"
+        ],
+        "symbols": [],
+        "keywords": [
+          "summary",
+          "state",
+          "edited"
+        ],
+        "critical": false,
+        "source": {
+          "kind": "fix-commit",
+          "ref": "ec3e875"
+        },
+        "created": "2026-09-27",
+        "body": "ocra keeps its review state in its own summary comment. Anyone can post text that looks like that state, and anyone with access can edit the comment. Only a state block that ends the comment counts, the whole state is ignored unless ocra was the last editor, and dismissals are recomputed from review threads instead of being stored."
+      },
+      {
+        "name": "dismissal-authority",
+        "title": "Only people other than the author, with write access, can dismiss a finding",
+        "paths": [
+          "packages/vcs-github/src/adapter.ts"
+        ],
+        "symbols": [],
+        "keywords": [
+          "dismiss",
+          "permission",
+          "author"
+        ],
+        "critical": false,
+        "source": {
+          "kind": "fix-commit",
+          "ref": "14284c4"
+        },
+        "created": "2026-09-26",
+        "body": "A pull request's author, or on a public repository anyone replying \"won't fix\", could dismiss ocra's findings and pass the check. A dismissal counts only from people other than the author: thread resolvers, and repliers with write access. Commit ids from comments are validated before they reach git."
+      },
+      {
+        "name": "safe-retries",
+        "title": "Retry GitHub requests only when repeating them is safe",
+        "paths": [
+          "packages/vcs-github/src/client.ts"
+        ],
+        "symbols": [],
+        "keywords": [
+          "retry",
+          "rate limit"
+        ],
+        "critical": false,
+        "source": {
+          "kind": "fix-commit",
+          "ref": "6e34588"
+        },
+        "created": "2026-09-27",
+        "body": "Rate-limit refusals (429, 403 secondary limit) are retried honouring Retry-After and the reset time; 5xx and connection errors only for requests that are safe to repeat, never for POSTs that create comments or reviews."
+      }
+    ]
+  },
   "adjudicated": []
 }

@@ -52,5 +52,51 @@
   ],
   "forbid": [],
   "clean": false,
+  "context": {
+    "projectDocs": [
+      "docs/architecture.md",
+      "docs/adr"
+    ],
+    "learnings": [
+      {
+        "name": "fixed-means-code-gone",
+        "title": "A finding is fixed only when its code is gone",
+        "paths": [
+          "packages/core/src/"
+        ],
+        "symbols": [],
+        "keywords": [
+          "fingerprint",
+          "rereview"
+        ],
+        "critical": false,
+        "source": {
+          "kind": "fix-commit",
+          "ref": "87de741"
+        },
+        "created": "2026-09-26",
+        "body": "Fingerprints used a category the model could choose and code it chose to quote, so a different quote or a missed report resolved real issues. The category is always the reviewer's, and an earlier finding counts as fixed only when its anchored lines or its file are gone at head."
+      },
+      {
+        "name": "review-context-policy",
+        "title": "Secret paths and .git/ are refused in core, for every adapter",
+        "paths": [
+          "packages/core/src/"
+        ],
+        "symbols": [],
+        "keywords": [
+          "secret",
+          "read_file"
+        ],
+        "critical": false,
+        "source": {
+          "kind": "fix-commit",
+          "ref": "f2dd0d8"
+        },
+        "created": "2026-09-26",
+        "body": "A prompt injection could make read_file return a git-ignored .env or .git/config. The review context enforces the policy once, in core: reads and diffs of secret paths, .git/ internals, absolute paths and paths leaving the repository are refused, and search results in those files are dropped."
+      }
+    ]
+  },
   "adjudicated": []
 }

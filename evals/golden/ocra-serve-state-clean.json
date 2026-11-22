@@ -24,5 +24,53 @@
   ],
   "expect": [],
   "forbid": [],
-  "clean": true
+  "clean": true,
+  "context": {
+    "projectDocs": [
+      "docs/architecture.md",
+      "docs/adr"
+    ],
+    "learnings": [
+      {
+        "name": "private-file-writes",
+        "title": "Private files are synced before the rename, and renames retried on Windows",
+        "paths": [
+          "packages/cli/src/"
+        ],
+        "symbols": [],
+        "keywords": [
+          "rename",
+          "fsync",
+          "atomic"
+        ],
+        "critical": false,
+        "source": {
+          "kind": "fix-commit",
+          "ref": "5974e6d"
+        },
+        "created": "2026-10-09",
+        "body": "Session files renamed into place without an fsync could be left empty by a crash. The temporary file is synced before the rename, and on Windows a rename that fails with EPERM, EBUSY or EACCES is tried again for about a second."
+      },
+      {
+        "name": "serve-limit-race",
+        "title": "Count reviews still starting against the serve limit",
+        "paths": [
+          "packages/cli/src/commands/serve.ts",
+          "packages/cli/src/serve/"
+        ],
+        "symbols": [],
+        "keywords": [
+          "limit",
+          "concurrent"
+        ],
+        "critical": false,
+        "source": {
+          "kind": "fix-commit",
+          "ref": "12b6d4a"
+        },
+        "created": "2026-11-21",
+        "body": "Two requests at once both passed the limit check before either run had a name, so ocra serve could run more reviews than it allows. A review counts against the limit from the moment it is accepted."
+      }
+    ]
+  }
 }
