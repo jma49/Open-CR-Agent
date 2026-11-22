@@ -153,7 +153,7 @@ jobs:
             missing=""
             for p in $packages; do
               url=$(npm view "$p@$version" dist.attestations.url --prefer-online 2>/dev/null || true)
-              if [ -z "$url" ] || ! curl -fsS -o /dev/null "$url"; then missing="$missing $p"; fi
+              if [ -z "$url" ] || ! curl -fsS --max-time 20 -o /dev/null "$url"; then missing="$missing $p"; fi
             done
             [ -z "$missing" ] && exit 0
             sleep 10
