@@ -1,10 +1,17 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { main } from "./cli.js";
-import { loadGolden, parseCandidate, parseCase, toInstance, untouchedPaths } from "./golden.js";
+import {
+  loadGolden,
+  OWNED_LICENCE,
+  parseCandidate,
+  parseCase,
+  toInstance,
+  untouchedPaths,
+} from "./golden.js";
 import { selectInstances } from "./select.js";
 
 const valid = {
@@ -171,6 +178,11 @@ describe("golden cases", () => {
     expect(toInstance(parsed).golden?.claims.filter((c) => c.optional)).toHaveLength(5);
   });
 
+  it("accepts code the maintainer owns, for the private held-out set", () => {
+    const owned = { ...valid, source: { ...valid.source, licence: OWNED_LICENCE } };
+    expect(() => parseCase(owned, "case.json")).not.toThrow();
+  });
+
   it.each([
     ["SSPL-1.0"],
     ["BUSL-1.1"],
@@ -198,6 +210,17 @@ describe("golden cases", () => {
     const committed = fileURLToPath(new URL("../../../evals/golden", import.meta.url));
     const instances = await loadGolden(committed);
     expect(instances.filter((i) => i.golden?.tier !== "adversarial").length).toBeGreaterThan(0);
+  });
+
+  it("keeps code only the maintainer may share out of the public cases", async () => {
+    const committed = fileURLToPath(new URL("../../../evals/golden", import.meta.url));
+    const files = (await readdir(committed)).filter((f) => f.endsWith(".json"));
+    const owned = [];
+    for (const file of files) {
+      const data = JSON.parse(await readFile(join(committed, file), "utf8"));
+      if (data.source?.licence === OWNED_LICENCE) owned.push(file);
+    }
+    expect(owned).toEqual([]);
   });
 
   it("refuses two labels for one claim on the same code", () => {

@@ -36,6 +36,7 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--model-seed` | Passed to `ocra review --seed`; default `1` (`--seed` is the selection's) |
 | `--repeat <k>` | Review the selection `k` times and report the mean and a 95% confidence interval of precision and recall; see [Repeated runs](#repeated-runs) |
 | `--mock-judge` | Offline word-overlap judge for pipeline checks (not comparable) |
+| `--dry-run` | Print the PRs the run would review, the number of reviews (PRs × repeats), the spend bound (`--pr-max-cost-usd` times the reviews, under `--max-cost-usd`) and the models and judge from the environment, then stop: no review, no judge, nothing written |
 
 When the provider refuses for money or a spent quota (Anthropic's "credit balance is too low" or a spend limit, OpenAI's spent credit, a free tier's daily limit), the run stops starting PRs, logs the provider's answer, and marks the rest `skipped_quota`; rerun the same command once the credit or quota is back to resume. A rate limit, or a provider out of capacity (HTTP 429 or 529), that outlasts ocra's own waits fails only the PR that lost tasks to it: the run goes on with the next PR, and `--retry-failed` reviews the failed one again.
 
@@ -184,6 +185,20 @@ Golden runs scored against the same cases and labels also get a paired section: 
 For single runs, `--spread-of` (a second baseline run) reports a difference no larger than the gap between the two baseline runs as `no change`; without it the direction is not judged.
 
 `compare` works on AACR-Bench and golden runs. It refuses, with exit code 2, a side that is not one setup: a run, its repetitions, or a baseline and its `--spread-of` run whose reviews differ in ocra version or build (commit, uncommitted changes, step cap), prompts, configuration, sampling, runtime, OpenCode install, model chains or catalog entries, or of which some recorded none; that is a run resumed after a rebuild, a change of setup or a catalog refresh. Review those PRs again under a new `--label`, or pass `--allow-mixed` to compare anyway, with those differences as warnings. It warns when the runs reviewed different or differently many pull requests, read different AACR-Bench files, were scored by different judges or against different golden cases or labels, still have unlabeled findings, or differ in ocra version, prompts (`promptHash`), configuration (`configHash`), sampling, runtime, OpenCode install, model chains or catalog entries, when a run was made from a checkout with uncommitted changes, or when one recorded none of that. The two runs compared are usually two commits, so their builds are not compared. After labeling, re-score every run you compare (`ocra-eval score <run-dir>`).
+
+## Noise baseline
+
+```bash
+node packages/eval/dist/main.js run --dataset golden --tier smoke --label smoke-baseline --repeat 6 --pr-max-cost-usd 0.5 --dry-run
+node packages/eval/dist/main.js noise .ocra/eval/smoke-baseline --register .ocra/eval/baselines.json
+```
+
+`noise` measures what `verdict` can tell apart on one setup. It reads a run made with `--repeat k` (k even, 4 to 10; one setup, as `compare` checks), splits its repeats into two halves every way (3 splits for 4 runs, 10 for 6), and judges each split with `verdict`'s own bootstrap and sign test as if one half were a change to the other. Nothing changed between the halves, so:
+
+- a split called `worse` is a false alarm, and the **A/A check** passes when there is none (exit 0; 1 when it fails, 2 when there is no baseline);
+- the **required margin** is the smallest whole number of points at which every split passes: a `--margin` below it leaves even an unchanged change `inconclusive` with k/2 runs a side.
+
+It also prints each run's golden recall, their mean and standard deviation, the median and worst lower bound over the splits, and how many pass at `--margin` (default 0.1). `--register <file>` adds the baseline to a registry, a JSON list with one entry per run label: cases hash, ocra commit, judge, runs, cases, claims, recall mean and standard deviation, required margin, and whether the A/A check passed. A baseline with warnings (different judges, unlabelled findings, mixed provenance) is not registered. Splits of one baseline share their runs, so the false alarms are a check, not a rate.
 
 ## Merge verdict on golden recall
 

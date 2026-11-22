@@ -8,6 +8,7 @@ import { repeatRuns } from "../repeat.js";
 import type { RunInfo } from "../report.js";
 import { defaultOcraCommand, ocraCliRoot } from "../reviewer.js";
 import { RUN_FILES_VERSION } from "../run-files.js";
+import { type RunPlan, renderPlan } from "../run-plan.js";
 import { runInstances } from "../runner.js";
 import { selectInstances } from "../select.js";
 import { prepareSetup, setupName } from "../setups/setup-config.js";
@@ -39,7 +40,6 @@ export async function run(
       .replace(/[-:]/g, "")
       .replace(/\.\d+Z$/, "Z");
   const runDir = resolve(values.out ?? ".ocra/eval", runId);
-  const judge = createJudge(values["mock-judge"] === true, env);
   const repeat = number(values.repeat, "--repeat") ?? 1;
   if (!Number.isInteger(repeat) || repeat < 1)
     throw new Error("--repeat must be a whole number from 1");
@@ -50,6 +50,31 @@ export async function run(
     seed: number(values["model-seed"], "--model-seed") ?? 1,
   };
   const prMaxCost = number(values["pr-max-cost-usd"], "--pr-max-cost-usd");
+  const maxCost = number(values["max-cost-usd"], "--max-cost-usd");
+  if (values["dry-run"]) {
+    const plan: RunPlan = {
+      label: runId,
+      dataset: name,
+      ...(values.tier ? { tier: values.tier } : {}),
+      ids: instances.map((i) => i.id),
+      repeat,
+      ...(prMaxCost === undefined ? {} : { prMaxCostUsd: prMaxCost }),
+      ...(maxCost === undefined ? {} : { maxCostUsd: maxCost }),
+      models: {
+        ...(env.OCRA_MODEL_TOP ? { top: env.OCRA_MODEL_TOP } : {}),
+        ...(env.OCRA_MODEL_STANDARD ? { standard: env.OCRA_MODEL_STANDARD } : {}),
+        ...(env.OCRA_MODEL_LIGHT ? { light: env.OCRA_MODEL_LIGHT } : {}),
+      },
+      ...(values["mock-judge"]
+        ? { judge: "mock" }
+        : env.JUDGE_MODEL
+          ? { judge: env.JUDGE_MODEL }
+          : {}),
+    };
+    out.write(renderPlan(plan));
+    return 0;
+  }
+  const judge = createJudge(values["mock-judge"] === true, env);
   const setupChoice = setupName(values.setup);
   if (setupChoice && values.reviewers) throw new Error("--setup chooses the reviewers itself");
   const userConfig = values.config ? resolve(values.config) : undefined;
@@ -130,7 +155,6 @@ export async function run(
     return writeSummary(dir, info, instances, results, judge, runDir);
   };
 
-  const maxCost = number(values["max-cost-usd"], "--max-cost-usd");
   if (repeat === 1) {
     const { markdown } = await once(runDir, runId, maxCost);
     out.write(`${markdown}\nWritten to ${runDir}\n`);

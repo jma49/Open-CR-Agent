@@ -105,6 +105,10 @@ const claimIdSchema = z
 // carries until someone checks it. No case loads with it.
 export const UNCHECKED_LICENCE = "NOASSERTION";
 
+// Code whose copyright ocra's maintainer holds (ADR-0055): allowed in the
+// private held-out set, never in this public repository's cases.
+export const OWNED_LICENCE = "LicenseRef-maintainer-owned";
+
 const candidateSchema = z
   .object({
     id: idSchema,
@@ -117,7 +121,7 @@ const candidateSchema = z
       .object({
         kind: z.enum(["ocra-history", "dogfood", "aacr", "github", "reviewbench"]),
         ref: z.string().min(1),
-        licence: z.enum([...LICENCES, UNCHECKED_LICENCE]),
+        licence: z.enum([...LICENCES, OWNED_LICENCE, UNCHECKED_LICENCE]),
         date: dateSchema,
       })
       .strict(),

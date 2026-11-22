@@ -36,6 +36,7 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 | `--model-seed` | 透传给 `ocra review --seed`；默认 `1`（`--seed` 是抽样用的） |
 | `--repeat <k>` | 把选中的 PR 审查 `k` 遍，报告精确率和召回率的均值与 95% 置信区间；见[重复运行](#重复运行) |
 | `--mock-judge` | 离线的词重叠判定，只用来检查流程是否跑通（结果不可比） |
+| `--dry-run` | 列出这次运行会审查的 PR、审查次数（PR 数 × 重复次数）、花费上限（`--pr-max-cost-usd` 乘以审查次数，不超过 `--max-cost-usd`）以及环境变量里的模型和判定模型，然后停下：不审查、不调用判定模型、不写任何文件 |
 
 供应商因为钱或额度用尽而拒绝时（Anthropic 的 "credit balance is too low" 或花费上限、OpenAI 的余额用尽、免费档的每日上限），运行不再开始新的 PR，在日志里写出供应商的原话，把剩下的标为 `skipped_quota`；余额或额度恢复后重新运行同一条命令即可接着跑。限流或供应商容量不足（HTTP 429 或 529）若在 ocra 自己的等待之后仍未解除，只让丢了任务的那个 PR 失败：运行继续下一个 PR，`--retry-failed` 会重新审查失败的那个。
 
@@ -184,6 +185,20 @@ node packages/eval/dist/main.js compare .ocra/eval/baseline .ocra/eval/change   
 单次运行时，`--spread-of`（基线的第二次运行）把不超过两次基线差距的差值报告为 `no change`；不加时不判断方向。
 
 `compare` 适用于 AACR-Bench 和黄金集的运行。如果某一方不是同一套设置，它会拒绝比较并以退出码 2 结束：一次运行、它的各次重复，或者基线和它的 `--spread-of` 运行，其中的审查在 ocra 版本或构建（提交、未提交的改动、步数上限）、提示词、配置、采样、运行时、OpenCode 安装、模型链或目录条目上不同，或其中一部分没有记录这些；也就是运行在重新构建、改了设置或目录刷新之后被接着跑过。请用新的 `--label` 重新审查这些 PR，或加 `--allow-mixed` 照样比较，这些差异作为警告列出。两次运行审查的 PR 不同或数量不同、读取的 AACR-Bench 文件不同、评分的 judge 不同、黄金用例或标注不同、还有未标注的问题，或 ocra 版本、提示词（`promptHash`）、配置（`configHash`）、采样、运行时、OpenCode 安装、模型链或目录条目不同，某次运行出自有未提交改动的检出，或其中一次没有记录这些时，都会给出警告。参与比较的两次运行通常是两个提交，所以不比较它们的构建。标注之后，请把参与比较的每次运行都重新评分（`ocra-eval score <run-dir>`）。
+
+## 噪声基线
+
+```bash
+node packages/eval/dist/main.js run --dataset golden --tier smoke --label smoke-baseline --repeat 6 --pr-max-cost-usd 0.5 --dry-run
+node packages/eval/dist/main.js noise .ocra/eval/smoke-baseline --register .ocra/eval/baselines.json
+```
+
+`noise` 衡量在同一套配置上 `verdict` 能分辨多大的差别。它读取一次用 `--repeat k` 做的运行（k 为偶数，4 到 10；必须是同一套配置，检查方式与 `compare` 相同），把这些重复按所有方式分成两半（4 遍有 3 种分法，6 遍有 10 种），并用 `verdict` 自己的 bootstrap 和符号检验评判每种分法，就像一半是另一半的改动。两半之间什么都没改，所以：
+
+- 被判为 `worse` 的分法是误报；没有误报时 **A/A 检查**通过（退出码 0；不通过为 1，无法得出基线为 2）；
+- **所需容差**是让每种分法都通过的最小整数点数：`--margin` 低于它时，即使改动什么都没变，在每边 k/2 遍的情况下也只会得到 `inconclusive`。
+
+它还会输出每一遍的黄金集召回率、均值和标准差，各分法下界的中位数和最差值，以及在 `--margin`（默认 0.1）下有多少种分法通过。`--register <file>` 把这个基线加入登记文件，这是一个 JSON 列表，每个运行名称一条：用例哈希、ocra 提交、判定模型、遍数、用例数、断言数、召回率均值和标准差、所需容差，以及 A/A 检查是否通过。有警告的基线（判定模型不同、有未标注的问题、来源信息不一致）不会登记。同一基线的各种分法共用这些运行，所以误报数是一项检查，不是比率。
 
 ## 黄金集召回率的合并结论
 
