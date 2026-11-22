@@ -1,0 +1,41 @@
+name: Budget
+
+# CI's time budgets (docs/ci.md) for ocra's repositories, so the check lives
+# once: fails when a finished job of the calling run went over its ceiling in
+# the caller's .github/ci-budgets.json. Call it last, after every other job.
+# Callers pin it by commit SHA; the script is read at that same commit.
+#   jobs:
+#     budget:
+#       needs: [<every other job>]
+#       if: ${{ !cancelled() }}
+#       permissions:
+#         actions: read
+#         contents: read
+#       uses: jma49/Open-CR-Agent/.github/workflows/budget.yml@<commit SHA>
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  budget:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/ci-budgets.json
+          sparse-checkout-cone-mode: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: jma49/Open-CR-Agent
+          ref: ${{ job.workflow_sha }}
+          path: .ocra-engine
+          persist-credentials: false
+          sparse-checkout: scripts
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .ocra-engine/scripts/ci-budget.mjs
