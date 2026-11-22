@@ -310,7 +310,7 @@ ocra stack submit                                          # 推送，把 #2 的
 
 栈是记录在本克隆 git config 里的分支树（`branch.<name>.ocraParent`，以及 `branch.<name>.ocraParentHead`，即分支所基于的父分支提交），根是主干，也就是 origin 的默认分支。restack 运行 `git rebase --onto <parent> <parentHead> <branch>`，所以被 amend 或 squash 合并的父分支不会被重放。遇到冲突时它停在那个分支：解决冲突，运行 `git rebase --continue`，再运行一次 `ocra stack restack`。除 `create` 和 `track` 外，每个命令都要求工作区干净。
 
-`submit` 和 `sync` 使用 `GITHUB_TOKEN`（或 `GH_TOKEN`）或 `GITLAB_TOKEN`，`--repo` 或 `--project` 与审查时相同；令牌需要 PR（MR）的写权限。描述里的栈列表在 `<!-- ocra:stack -->` 标记之间；标记之外你写的内容保持不变。如果栈里有分支的变更请求已经合并，`submit` 在推送任何内容之前就会拒绝：先运行 `sync`。v0.11.0 新增。
+`submit` 和 `sync` 使用 `GITHUB_TOKEN`（或 `GH_TOKEN`）或 `GITLAB_TOKEN`，`--repo` 或 `--project` 与审查时相同；令牌需要 PR（MR）的写权限。描述里的栈列表在 `<!-- ocra:stack -->` 标记之间；标记之外你写的内容保持不变。如果栈里有分支的变更请求已经合并，`submit` 在推送任何内容之前就会拒绝：先运行 `sync`。ocra Cloud 在 PR 页面显示这个栈，并能从最下面合并到你选的那一个，遇到平台拒绝合并的就停下。v0.11.0 新增。
 
 ## ocra metrics
 
