@@ -38,6 +38,7 @@
     "@types/node": "~22.19.0",
     "@types/picomatch": "^4.0.3",
     "@vitest/coverage-v8": "^5.1.1",
+    "fast-check": "^4.11.0",
     "knip": "^6.45.1",
     "publint": "^0.3.25",
     "typescript": "^7.0.2",

@@ -65,13 +65,13 @@ created: 2026-11-21
 `return` or a `throw` between them leaks it, and the pool runs dry under load.
 ```
 
-- `title`, `paths` (globs, at least one) and `created` (a date) are required; the body says what to check and why, in at most 4,000 characters.
-- `symbols`: identifiers whose use in a patch makes the learning apply anywhere, matched as whole identifiers.
-- `keywords`: words or phrases matched in the patch whatever their spelling (`connection pool` matches `ConnectionPool` and `connection_pool`).
+- `title`, `paths` (globs, at least one) and `created` (a date) are required; the body says what to check and why, in at most 4,000 characters. Paths read like `.gitignore`: `*.sql` or `Dockerfile` match at any depth, `services/billing/` matches everything under it, a leading `/` anchors to the root, and case is ignored.
+- `symbols`: identifiers whose use in a patch makes the learning apply anywhere, matched as whole identifiers. A name of two words or more matches in any naming convention (`createCharge` matches `create_charge` and `CREATE_CHARGE`), and `pool.connect` matches `pool?.connect`, `pool->connect` and `pool::connect`.
+- `keywords`: words or phrases matched in the patch whatever their spelling (`connection pool` matches `ConnectionPool`, `connection_pool` and `connection pools`). A Chinese or Japanese keyword matches anywhere in the text, spaces or not.
 - `critical`: always given when a path matches.
 - `source`: where it came from (`kind`: `fix-commit`, `review-feedback`, `document`, `remember`, `incident` or `manual`; `ref`: a commit, pull request or link).
 
-Each review task gets the learnings that apply to its files, chosen before any model runs: a path match ranks first, then a symbol, then a keyword. At most 5 are given, within 8,000 characters of body, plus every critical one whose path matches (up to 10). Learnings that apply but do not fit are listed by id and title, up to 10, with a count of the rest; a reviewer reads one with `read_learning`, which answers from the same trusted revision. Reviewers read them as data and report only what the change itself gets wrong. The report's `learnings` lists each one given, with the bundles it went to.
+Each review task gets the learnings that apply to its files, chosen before any model runs: a critical learning whose path matches ranks first, then a path match with a symbol or keyword in the patch, then a symbol alone, then a path alone, then a keyword alone. At most 5 are given, within 8,000 characters of body, plus every critical one whose path matches (up to 10). Learnings that apply but do not fit are listed by id and title, up to 10, with a count of the rest; a reviewer reads one with `read_learning`, which answers from the same trusted revision. Reviewers read them as data and report only what the change itself gets wrong. The report's `learnings` lists each one given, with the bundles it went to.
 
 Learnings are read at the revision under review, and for pull requests from the base commit, like `rules.json`, so a pull request cannot add one that steers its own review. A file that is not a valid learning is skipped with a warning; at most 500 files of up to 16 KB are read.
 

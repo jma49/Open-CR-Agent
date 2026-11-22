@@ -65,13 +65,13 @@ created: 2026-11-21
 `return` or a `throw` between them leaks it, and the pool runs dry under load.
 ```
 
-- `title`、`paths`（glob，至少一个）和 `created`（日期）必填；正文写要检查什么、为什么，最多 4,000 个字符。
-- `symbols`：补丁里用到这些标识符时，不论路径都适用；按完整标识符匹配。
-- `keywords`：在补丁里匹配的词或短语，不管写法（`connection pool` 能匹配 `ConnectionPool` 和 `connection_pool`）。
+- `title`、`paths`（glob，至少一个）和 `created`（日期）必填；正文写要检查什么、为什么，最多 4,000 个字符。路径按 `.gitignore` 的方式理解：`*.sql`、`Dockerfile` 匹配任意深度，`services/billing/` 匹配其下所有文件，开头的 `/` 表示从仓库根目录算起，不区分大小写。
+- `symbols`：补丁里用到这些标识符时，不论路径都适用；按完整标识符匹配。由两个及以上单词组成的名字不论命名风格都能匹配（`createCharge` 能匹配 `create_charge` 和 `CREATE_CHARGE`），`pool.connect` 也能匹配 `pool?.connect`、`pool->connect` 和 `pool::connect`。
+- `keywords`：在补丁里匹配的词或短语，不管写法（`connection pool` 能匹配 `ConnectionPool`、`connection_pool` 和 `connection pools`）。中文或日文关键词在文本中任意位置出现即匹配，不要求前后有空格。
 - `critical`：路径匹配时一定交给审查员。
 - `source`：来源（`kind`：`fix-commit`、`review-feedback`、`document`、`remember`、`incident` 或 `manual`；`ref`：提交、PR 或链接）。
 
-每个审查任务拿到适用于它那些文件的 learning，在任何模型调用之前选好：路径匹配排第一，其次是符号，再次是关键词。最多给 5 条，正文合计不超过 8,000 个字符；路径匹配的 critical 条目另外全部给出（最多 10 条）。适用但放不下的条目只列 id 和标题，最多 10 条，其余给出条数；审查员可以用 `read_learning` 读取其中一条，内容同样来自可信版本。审查员把它们当作数据读，只报告这次改动本身的问题。报告的 `learnings` 列出给过的每一条，以及它去了哪些分组。
+每个审查任务拿到适用于它那些文件的 learning，在任何模型调用之前选好：路径匹配的 critical 条目排第一，其次是路径匹配且补丁中出现其符号或关键词的，再次是只有符号匹配的，然后是只有路径匹配的，最后是只有关键词匹配的。最多给 5 条，正文合计不超过 8,000 个字符；路径匹配的 critical 条目另外全部给出（最多 10 条）。适用但放不下的条目只列 id 和标题，最多 10 条，其余给出条数；审查员可以用 `read_learning` 读取其中一条，内容同样来自可信版本。审查员把它们当作数据读，只报告这次改动本身的问题。报告的 `learnings` 列出给过的每一条，以及它去了哪些分组。
 
 learning 读取被审查的版本，审查 PR 时和 `rules.json` 一样从 base 提交读取，所以 PR 无法加一条来影响对它自己的审查。不合法的文件会被跳过并给出警告；最多读 500 个文件，每个不超过 16 KB。
 

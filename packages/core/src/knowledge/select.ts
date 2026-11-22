@@ -1,6 +1,17 @@
-import picomatch from "picomatch";
 import type { FileDiff } from "../domain.js";
 import type { Learning } from "./learning.js";
+import { pathMatcher } from "./paths.js";
+import {
+  type BundleText,
+  bundleText,
+  type Keyword,
+  keywordMatches,
+  keywordOf,
+  type SymbolPattern,
+  symbolMatches,
+  symbolOf,
+  titleTerms,
+} from "./terms.js";
 
 export interface SelectionLimits {
   // Learnings given to one task, critical ones included.
@@ -26,7 +37,7 @@ interface LearningSelection {
 interface Indexed {
   learning: Learning;
   matchesPath: (path: string) => boolean;
-  symbols: readonly string[];
+  symbols: SymbolPattern[];
   keywords: Keyword[];
   terms: string[];
 }
@@ -67,10 +78,9 @@ function select(
   const paths = files.flatMap((f) =>
     f.oldPath === f.newPath ? [f.newPath] : [f.oldPath, f.newPath],
   );
-  const text = files.map((f) => f.patch).join("\n");
-  const words = wordsOf(text);
+  const text = bundleText(files.map((f) => f.patch).join("\n"));
   const ranked = entries
-    .map((entry) => match(entry, paths, text, words))
+    .map((entry) => match(entry, paths, text))
     .filter((m) => m.path || m.symbols > 0 || m.keywords > 0)
     .sort(byRank);
   return fill(ranked, limits);
@@ -80,8 +90,8 @@ function indexed(learning: Learning): Indexed {
   const keywords = learning.keywords.map(keywordOf).filter((k) => k.length > 0);
   return {
     learning,
-    matchesPath: picomatch([...learning.paths], { dot: true }),
-    symbols: learning.symbols,
+    matchesPath: pathMatcher(learning.paths),
+    symbols: learning.symbols.map(symbolOf),
     keywords,
     terms: [
       ...new Set([
@@ -92,30 +102,36 @@ function indexed(learning: Learning): Indexed {
   };
 }
 
-function match(
-  indexed: Indexed,
-  paths: readonly string[],
-  text: string,
-  words: Set<string>,
-): Match {
+function match(indexed: Indexed, paths: readonly string[], text: BundleText): Match {
   return {
     indexed,
     path: paths.some((p) => indexed.matchesPath(p)),
-    symbols: indexed.symbols.filter((s) => containsIdentifier(text, s)).length,
-    keywords: indexed.keywords.filter((k) => keywordMatches(k, words)).length,
+    symbols: indexed.symbols.filter((s) => symbolMatches(s, text)).length,
+    keywords: indexed.keywords.filter((k) => keywordMatches(k, text)).length,
     terms:
       indexed.terms.length === 0
         ? 0
-        : indexed.terms.filter((t) => words.has(t)).length / indexed.terms.length,
+        : indexed.terms.filter((t) => text.words.has(t)).length / indexed.terms.length,
   };
 }
 
 const isCriticalHit = (m: Match) => m.path && m.indexed.learning.critical;
 
+// A symbol or keyword in the patch is evidence the lesson applies; a path
+// alone only says it is about this part of the code. So a path backed by
+// evidence ranks first, and a symbol named anywhere outranks a bare path:
+// among many lessons on one directory, a bare path must not crowd out the
+// one whose symbol the change uses.
+function tier(m: Match): number {
+  if (isCriticalHit(m)) return 4;
+  if (m.path && (m.symbols > 0 || m.keywords > 0)) return 3;
+  if (m.symbols > 0) return 2;
+  return m.path ? 1 : 0;
+}
+
 function byRank(a: Match, b: Match): number {
   return (
-    Number(isCriticalHit(b)) - Number(isCriticalHit(a)) ||
-    Number(b.path) - Number(a.path) ||
+    tier(b) - tier(a) ||
     b.symbols - a.symbols ||
     b.keywords - a.keywords ||
     b.terms - a.terms ||
@@ -142,108 +158,4 @@ function fill(ranked: readonly Match[], limits: SelectionLimits): LearningSelect
     }
   }
   return { selected, left };
-}
-
-const IDENTIFIER_CHAR = /[\p{L}\p{N}_$]/u;
-
-// A plain search with a check at each end, not a regular expression per
-// symbol: compiling one with Unicode look-behinds for each of 500 learnings'
-// symbols took seconds.
-function containsIdentifier(text: string, symbol: string): boolean {
-  if (symbol.length === 0) return false;
-  const opensWord = isIdentifierChar(codePointAt(symbol, 0));
-  const closesWord = isIdentifierChar(codePointBefore(symbol, symbol.length));
-  for (let at = text.indexOf(symbol); at !== -1; at = text.indexOf(symbol, at + 1)) {
-    const joinedBefore = opensWord && isIdentifierChar(codePointBefore(text, at));
-    const joinedAfter = closesWord && isIdentifierChar(codePointAt(text, at + symbol.length));
-    if (!joinedBefore && !joinedAfter) return true;
-  }
-  return false;
-}
-
-function isIdentifierChar(char: string): boolean {
-  return char !== "" && IDENTIFIER_CHAR.test(char);
-}
-
-function codePointAt(text: string, at: number): string {
-  const code = text.codePointAt(at);
-  return code === undefined ? "" : String.fromCodePoint(code);
-}
-
-function codePointBefore(text: string, end: number): string {
-  return [...text.slice(Math.max(0, end - 2), end)].at(-1) ?? "";
-}
-
-const TOKEN = /[\p{L}\p{N}]+/gu;
-const WORD_BOUNDARY =
-  /(?<=\p{Ll})(?=\p{Lu})|(?<=\p{Lu})(?=\p{Lu}\p{Ll})|(?<=\p{L})(?=\p{N})|(?<=\p{N})(?=\p{L})/u;
-
-// Every token of the text and every part of it split at case changes and
-// digits, lowercased, so the keyword "connection pool" matches
-// `ConnectionPool` and `connection_pool`.
-function wordsOf(text: string): Set<string> {
-  const words = new Set<string>();
-  for (const token of text.match(TOKEN) ?? []) {
-    words.add(token.toLowerCase());
-    for (const part of token.split(WORD_BOUNDARY)) words.add(part.toLowerCase());
-  }
-  return words;
-}
-
-// A keyword matches when each of its tokens is in the text, whole or split
-// anywhere at its case changes and digits: `OAuthToken` matches
-// `oauth_token` as well as `OAuthToken`.
-type Keyword = { whole: string; parts: string[] }[];
-
-function keywordOf(phrase: string): Keyword {
-  return (phrase.match(TOKEN) ?? []).map((token) => ({
-    whole: token.toLowerCase(),
-    parts: token.split(WORD_BOUNDARY).map((p) => p.toLowerCase()),
-  }));
-}
-
-function keywordMatches(keyword: Keyword, words: Set<string>): boolean {
-  return keyword.every(({ parts }) => segmentable(parts, words));
-}
-
-function segmentable(parts: readonly string[], words: Set<string>): boolean {
-  const reachable = [true];
-  for (let end = 1; end <= parts.length; end++) {
-    reachable[end] = false;
-    for (let start = 0; start < end && !reachable[end]; start++) {
-      reachable[end] = reachable[start] === true && words.has(parts.slice(start, end).join(""));
-    }
-  }
-  return reachable[parts.length] === true;
-}
-
-const STOP_WORDS = new Set([
-  "after",
-  "always",
-  "before",
-  "check",
-  "every",
-  "from",
-  "into",
-  "must",
-  "never",
-  "only",
-  "should",
-  "that",
-  "their",
-  "them",
-  "then",
-  "there",
-  "this",
-  "when",
-  "where",
-  "which",
-  "with",
-  "without",
-]);
-
-function titleTerms(title: string): string[] {
-  return (title.toLowerCase().match(TOKEN) ?? []).filter(
-    (w) => w.length >= 4 && !STOP_WORDS.has(w),
-  );
 }
