@@ -75,6 +75,15 @@ async function listen(server: Server) {
   return { url: `http://127.0.0.1:${port}` };
 }
 
+const CATALOG = "models.opencode.ai";
+
+async function until(condition: () => boolean, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!condition() && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
 const servers: Server[] = [];
 afterEach(() => {
   for (const server of servers.splice(0)) server.close();
@@ -123,6 +132,10 @@ describe("a provider declared in configuration", () => {
       expect(result.usage.costUsd).toBeCloseTo(0.00315, 8);
       expect(endpoint.authorizations.length).toBeGreaterThan(0);
       expect(endpoint.authorizations.every((a) => a === "Bearer sk-local-secret")).toBe(true);
+      // OpenCode answers from the catalog it ships with and refreshes it in
+      // the background as it starts, so under load the refresh can come after
+      // the answer.
+      await until(() => proxy.seen.some((to) => to.startsWith(CATALOG)), 20_000);
     } finally {
       await runtime.dispose();
       await rm(caches, { recursive: true, force: true });
@@ -130,8 +143,8 @@ describe("a provider declared in configuration", () => {
     // The proxy is on OpenCode's path: the pricing catalog went there. Nothing
     // else did, because npm installs go to a registry that refuses on this
     // machine (server-env.ts).
-    expect(proxy.seen.some((to) => to.startsWith("models.opencode.ai"))).toBe(true);
-    expect(proxy.seen.filter((to) => !to.startsWith("models.opencode.ai"))).toEqual([]);
+    expect(proxy.seen.some((to) => to.startsWith(CATALOG))).toBe(true);
+    expect(proxy.seen.filter((to) => !to.startsWith(CATALOG))).toEqual([]);
   }, 90_000);
 
   it("keeps the key itself out of OpenCode's configuration", () => {
