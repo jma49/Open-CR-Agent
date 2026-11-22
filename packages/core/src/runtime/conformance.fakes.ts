@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import type { AgentEvent, AgentRuntime, AgentTaskSpec, ReviewContext } from "../contracts.js";
 import { MAX_AGENT_STEPS, WRAP_UP_MESSAGE, WRAP_UP_STEPS } from "./attempt.js";
 import {
@@ -81,24 +81,26 @@ const costOf = (events: readonly AgentEvent[]) =>
 
 export function runtimeConformance(name: string, fixture: RuntimeFixture): void {
   const timeout = fixture.timeoutMs ?? 10_000;
-  const endpoints: FakeEndpoint[] = [];
-  const runtimes: AgentRuntime[] = [];
-  afterEach(async () => {
-    for (const runtime of runtimes.splice(0)) await runtime.dispose?.();
-    for (const endpoint of endpoints.splice(0)) await endpoint.close();
+  const opened: { endpoint: FakeEndpoint; runtime: AgentRuntime }[] = [];
+  afterAll(async () => {
+    for (const { endpoint, runtime } of opened.splice(0)) {
+      await runtime.dispose?.();
+      await endpoint.close();
+    }
   });
   const start = async (
     script: readonly (Reply | ((request: SeenRequest) => Reply))[],
     chain: readonly string[] = ["local/m1"],
   ) => {
     const endpoint = await scriptedEndpoint(script);
-    endpoints.push(endpoint);
     const runtime = fixture.runtime(endpoint.url, chain);
-    runtimes.push(runtime);
+    opened.push({ endpoint, runtime });
     return { endpoint, runtime };
   };
 
-  describe(`${name} conforms to AgentRuntime`, () => {
+  // Concurrent: each scenario owns its endpoint and runtime, and a runtime
+  // that starts a process spends most of a scenario waiting on it.
+  describe.concurrent(`${name} conforms to AgentRuntime`, () => {
     it(
       "offers the review tools, runs them through the review context, and reports the finding, the usage and the end",
       async () => {
