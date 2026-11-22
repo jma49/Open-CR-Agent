@@ -1570,6 +1570,8 @@ export const reviewUploadSchema: z.ZodObject<{
     outcomes: z.ZodCatch<z.ZodOptional<z.ZodObject<{
         fixed: z.ZodCatch<z.ZodNumber>;
         dismissed: z.ZodCatch<z.ZodNumber>;
+        fixedFingerprints: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodCatch<z.ZodNullable<z.ZodString>>>>>;
+        dismissedFingerprints: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodCatch<z.ZodNullable<z.ZodString>>>>>;
     }, z.core.$strip>>>;
     findingList: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodCatch<z.ZodNullable<z.ZodObject<{
         fingerprint: z.ZodString;

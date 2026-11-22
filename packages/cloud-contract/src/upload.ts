@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { LEARNING_ID, MAX_LEARNINGS } from "./learnings.js";
-import { MAX_FIELD } from "./limits.js";
+import { MAX_FIELD, MAX_FINDINGS } from "./limits.js";
 import { MAX_MERGE_CHECKS, sharedMergeCheckSchema } from "./merge-checks.js";
 import { REPOSITORY_URL } from "./repository.js";
 import {
@@ -80,6 +80,12 @@ export const sharedFindingSchema = z.object({
   truncated: z.literal(true).optional().catch(undefined),
 });
 export type SharedFinding = z.input<typeof sharedFindingSchema>;
+
+const outcomeFingerprints = z
+  .array(z.string().regex(FINGERPRINT).nullable().catch(null))
+  .max(MAX_FINDINGS)
+  .optional()
+  .catch(undefined);
 
 /** At most this many file groups, and files in each, in a shared walkthrough. */
 export const MAX_WALKTHROUGH_GROUPS = 12;
@@ -166,7 +172,17 @@ export const reviewUploadSchema = z.object({
     .partial()
     .optional()
     .catch(undefined),
-  outcomes: z.object({ fixed: count, dismissed: count }).optional().catch(undefined),
+  outcomes: z
+    .object({
+      fixed: count,
+      dismissed: count,
+      // Which earlier findings, only with the findings, so ocra Cloud can
+      // mark the ones it holds. Absent from older clients.
+      fixedFingerprints: outcomeFingerprints,
+      dismissedFingerprints: outcomeFingerprints,
+    })
+    .optional()
+    .catch(undefined),
   findingList: z.array(sharedFindingSchema.nullable().catch(null)).optional().catch(undefined),
   walkthrough: sharedWalkthroughSchema.optional().catch(undefined),
   // Absent when the review did not look tasks up; empty when none is linked.
