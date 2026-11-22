@@ -31,7 +31,7 @@ export interface ReviewPromptInput {
   bundle: readonly FileDiff[];
   rules: string;
   guidelines?: string | undefined;
-  // The tasks the change was written for (ADR-0051), already held to the limits.
+  // The tasks the change was written for (ADR-0052), already held to the limits.
   linkedTasks?: readonly LinkedTask[];
   accepted?: readonly MemoryEntry[];
   learnings?: readonly Learning[];

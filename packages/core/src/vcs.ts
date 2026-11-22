@@ -39,7 +39,7 @@ export interface VcsAdapter {
   publish(report: ReviewReport): Promise<{ warnings: string[] }>;
   // Absent: the adapter takes no questions.
   mention?(ref: MentionRef): Promise<Mention>;
-  // The tasks the platform links to the change, in its order (ADR-0051).
+  // The tasks the platform links to the change, in its order (ADR-0052).
   // Absent: the adapter cannot tell.
   linkedTasks?(): Promise<LinkedTask[]>;
 }

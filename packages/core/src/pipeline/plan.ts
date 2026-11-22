@@ -52,7 +52,7 @@ export interface ReviewPlan {
   repoRules: SourcedRule[];
   memory: RememberedEntry[];
   learnings: SelectLearnings;
-  // Absent when none were looked up (ADR-0051).
+  // Absent when none were looked up (ADR-0052).
   linkedTasks?: BoundLinkedTasks;
   evidence: AnalyzerEvidence;
   usage: Usage[];

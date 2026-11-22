@@ -142,7 +142,7 @@ export interface ReviewReport {
   remembered: RememberedEntry[];
   // The team's learnings its tasks were given (ADR-0037); absent when none applied.
   learnings?: LearningUse[];
-  // The tasks linked to the change that its tasks were given (ADR-0051);
+  // The tasks linked to the change that its tasks were given (ADR-0052);
   // absent when none were looked up, empty when none are linked.
   linkedTasks?: LinkedTaskUse[];
   // Analyzer results its tasks were given as evidence (ADR-0042).

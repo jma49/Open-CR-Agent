@@ -1,4 +1,4 @@
-# ADR-0051: The linked task as review context
+# ADR-0052: The linked task as review context
 
 - Status: accepted
 - Date: 2026-11-22

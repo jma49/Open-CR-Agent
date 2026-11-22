@@ -34,7 +34,7 @@ async function run(adapter: VcsAdapter, linkedTasks?: boolean) {
   return { report, prompts: agent.specs.map((s) => s.userPrompt) };
 }
 
-describe("the tasks linked to the change (ADR-0051)", () => {
+describe("the tasks linked to the change (ADR-0052)", () => {
   it("are given to every review task after the change request, and reported", async () => {
     const { report, prompts } = await run(withTasks(async () => [task()]));
     expect(prompts.length).toBeGreaterThan(0);
