@@ -46,5 +46,6 @@
 | [0043](0043-security-evidence-routing.md) | Amends ADR-0042 point 3: an analyzer result tagged `security` goes only to the security reviewer of its file, and to every reviewer of the file when no security reviewer reviews it |
 | [0044](0044-learning-selection-recall.md) | Amends ADR-0037 point 4: learning paths follow `.gitignore`, a compound symbol matches in any naming convention and member-access syntax, keywords match plurals and unspaced scripts, evidence ranks before a bare path; the replay also gates listing, unrelated learnings and token cost, with property tests |
 | [0045](0045-learning-ranking-by-changed-code.md) | Amends ADR-0044 point 4: when the limits leave a learning out, the code of the definitions the change touches (tree-sitter) ranks the learnings on the bundle's paths; it never adds a candidate or a token |
+| [0046](0046-hosted-review-runner.md) | Amends ADR-0024: hosted reviews run on the self-hosted server: one enrolling account per repository pays, a webhook queues each head (newest wins), a leased worker runs the released CLI in pull request mode with `--no-repo-config` in a temporary clone it always deletes, and posts as the ocra bot (a per-job GitHub App installation token, or GitLab's bot token) |
 
 Copy [0000-template.md](0000-template.md) to add a new record.
