@@ -132,6 +132,13 @@ describe.skipIf(!hasBash)("the Action's review step", () => {
     ]);
   });
 
+  it("reviews in full when a comment asked for it", () => {
+    const r = review({ OCRA_FULL: "true", OCRA_ARGS: "--max-cost-usd 2" });
+    expect(r.status).toBe(0);
+    expect(r.args).toEqual(["review", "--pr", "7", "--publish", "--max-cost-usd", "2", "--full"]);
+    expect(review({ OCRA_FULL: "false" }).args).toEqual(["review", "--pr", "7", "--publish"]);
+  });
+
   it("passes concerns (exit 1) unless fail-on-concerns is set, and reports ocra's exit code", () => {
     const passing = review({ FAKE_EXIT: "1" });
     expect(passing.status).toBe(0);
@@ -163,7 +170,9 @@ describe.skipIf(!hasBash)("the Action's review step", () => {
   it("runs only on a pull request", () => {
     const r = review({ OCRA_PR: "" });
     expect(r.status).toBe(2);
-    expect(r.stdout).toContain("::error::ocra review runs on pull_request events");
+    expect(r.stdout).toContain(
+      "::error::ocra review runs on pull_request events and on comments on a pull request",
+    );
     expect(r.args).toBeUndefined();
   });
 
