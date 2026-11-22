@@ -32,6 +32,7 @@ jobs:
       actions: read
       contents: read
       id-token: write
+      issues: read
       pull-requests: write
     # At main, not at this pull request's ref, as for every caller. The
     # called job asks for id-token: write for its Vertex path, so the grant

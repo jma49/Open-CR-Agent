@@ -72,7 +72,7 @@ ocra review --mr 7 --publish                 # GitLab Merge Request
 
 ## 在 CI 里
 
-**GitHub Pull Request**，用 [`action.yml`](action.yml) 里的 Action：行内评论、一条原地更新的摘要评论（附改动导读：按阅读顺序分组的文件，流程复杂时附时序图），复审只看上次 push 以来的改动，评论 `/ocra review` 时完整重审；有写权限的人用 `@ocra` 提问时，在同一个讨论里回答（`ocra reply`，GitLab 也支持）。
+**GitHub Pull Request**，用 [`action.yml`](action.yml) 里的 Action：行内评论、一条原地更新的摘要评论（附改动导读：按阅读顺序分组的文件，流程复杂时附时序图），把 PR 要关闭的 issue 作为改动所针对的任务交给审查员（GitLab 也支持），复审只看上次 push 以来的改动，评论 `/ocra review` 时完整重审；有写权限的人用 `@ocra` 提问时，在同一个讨论里回答（`ocra reply`，GitLab 也支持）。
 
 ```yaml
 # .github/workflows/ocra.yml
@@ -80,6 +80,7 @@ on:
   pull_request:
 permissions:
   contents: read
+  issues: read
   pull-requests: write
 jobs:
   review:

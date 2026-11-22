@@ -13,6 +13,7 @@ on: pull_request
 
 permissions:
   contents: read
+  issues: read
   pull-requests: write
 
 jobs:
@@ -36,6 +37,7 @@ jobs:
 - **每个 action 都按提交固定版本**，在注释里写明版本号：tag 可以移动，提交不能。本页的方案和 `ocra init` 都这样做，`actions/checkout` 也不例外。`git ls-remote --tags https://github.com/jma49/Open-CR-Agent v0.3.0` 会打印某个版本的提交；Dependabot 会更新固定的提交和注释。
 - **保留 `fetch-depth: 0`：**ocra 需要 base 与 head 之间的历史，浅克隆会停下并给出提示。
 - **保留 `concurrency`：**否则连续两次 push 会把同样的评论发两遍，较慢的那次还可能用更旧的 head 覆盖摘要。被取消的运行不发布任何内容（已在发布时除外），把部分报告留在 job 日志里。
+- **保留 `issues: read`：**有了它，审查员能看到 [PR 要关闭的 issue](./how-it-works#关联的任务)；没有它，私有仓库的审查会照常进行并给出警告。
 - **把模型 key 存为仓库 secret。**模型来自 base 分支的 `.ocra/config.json` 或 `env` 里的 `OCRA_MODEL_*` 变量。
 
 遇到 GitHub 限流或短暂故障，ocra 会有限次地重试，但绝不重复可能已经发出评论的请求。
@@ -134,6 +136,7 @@ jobs:
 ```yaml
 permissions:
   contents: read
+  issues: read
   pull-requests: write
   security-events: write
 
@@ -220,6 +223,7 @@ on:
 
 permissions:
   contents: write
+  issues: read
   pull-requests: write
 
 jobs:
@@ -269,6 +273,7 @@ on:
 
 permissions:
   contents: read
+  issues: read
   pull-requests: write
 
 jobs:
@@ -312,6 +317,7 @@ on:
 
 permissions:
   contents: read
+  issues: read
   pull-requests: write
 
 jobs:
@@ -365,6 +371,7 @@ on:
 
 permissions:
   contents: read
+  issues: read
   pull-requests: write
 
 jobs:

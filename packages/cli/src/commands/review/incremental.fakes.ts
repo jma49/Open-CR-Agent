@@ -41,6 +41,8 @@ export function movingPullRequest() {
           repository: {
             pullRequest: {
               reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] },
+              headRefName: "feature",
+              closingIssuesReferences: { nodes: [] },
             },
           },
         },

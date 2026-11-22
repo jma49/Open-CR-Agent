@@ -1,6 +1,7 @@
 import type { CodeMatch } from "./contracts.js";
 import type { ChangeRequest, FileDiff, PriorReview } from "./domain.js";
 import type { ReviewReport } from "./report/report.js";
+import type { LinkedTask } from "./task/linked-task.js";
 
 // A comment that asks ocra something (ADR-0048), by its id on the platform;
 // `inline` names a comment on a line of the diff where the platform keeps
@@ -38,4 +39,7 @@ export interface VcsAdapter {
   publish(report: ReviewReport): Promise<{ warnings: string[] }>;
   // Absent: the adapter takes no questions.
   mention?(ref: MentionRef): Promise<Mention>;
+  // The tasks the platform links to the change, in its order (ADR-0051).
+  // Absent: the adapter cannot tell.
+  linkedTasks?(): Promise<LinkedTask[]>;
 }

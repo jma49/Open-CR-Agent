@@ -1,4 +1,4 @@
-import type { Finding, MentionRef, ReviewReport } from "@open-cr-agent/core";
+import type { Finding, LinkedTask, MentionRef, ReviewReport } from "@open-cr-agent/core";
 import type { PlatformText } from "./render.js";
 import type { SuggestionFence } from "./suggestion.js";
 
@@ -23,6 +23,9 @@ export interface ReviewPlatform {
   // Developer role or higher on GitLab.
   canWrite(login: string): Promise<boolean>;
   threads(): Promise<PlatformThread[]>;
+  // Issues of the reviewed repository the change request closes, in the
+  // platform's order, or the one its head branch is named after (ADR-0051).
+  linkedTasks(): Promise<LinkedTask[]>;
   // Posts inline comments for findings on lines of the diff; findings the
   // platform will not place stay in the summary.
   publishFindings(

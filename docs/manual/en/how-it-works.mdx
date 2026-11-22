@@ -28,6 +28,12 @@ On a pull or merge request the summary comment carries a walkthrough for the peo
 
 The model only groups and describes: which files there are comes from the diff (a path it invents is dropped, a file it leaves out is listed under *Other changes*), and a diagram is shown only when every line is a plain sequence-diagram statement, so no directive, link, click handler or markup reaches the page. A failed or invalid answer costs the walkthrough, with a warning, never the review. `walkthrough` in [`.ocra/config.json`](./configuration) turns it off, or on for local reviews, whose JSON report then carries it.
 
+## Linked tasks
+
+On a pull or merge request, every review task is also given the issues the change was written for, so a reviewer can check that it does what was asked: a missed acceptance criterion, an unfinished subtask, a fix for the wrong case. They are the issues the platform links to it: on GitHub the pull request's closing issues (a closing keyword such as `Closes #12`, or an issue linked in the sidebar), on GitLab the issues the merge request closes; without any, the issue its branch is named after (`12-fix-login`, the name both platforms give a branch made from an issue). Only issues of the reviewed repository count, so a fork's pull request cannot pull another repository's issues into a review.
+
+At most 3 issues, each with its title, state, labels, the first 4,000 characters of its body, its parent's title and first 1,500 characters (GitHub's parent issue, GitLab's epic) and up to 10 sub-issues by title; nothing is searched and no model chooses. The text goes into the part of the prompt every task shares, so it is cached once per run. A failed lookup (a token without access to issues) is a warning, and the review goes on. The report's `linkedTasks` lists what was given. `linkedTasks: false` in [`.ocra/config.json`](./configuration) or `--no-linked-tasks` turns it off.
+
 ## Verdict
 
 A fixed rubric over the final findings, not a model, decides the verdict, so the same findings always give the same verdict:

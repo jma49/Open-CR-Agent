@@ -87,6 +87,7 @@
     "mode": "incremental",
     "since": "a3ed68ab4830af30fc1ae7bb039e802742a173f3"
   },
+  "linkedTasks": [],
   "anchoring": {
     "byMethod": {
       "hunk": 0,

@@ -18,10 +18,27 @@ const mergeRequestSchema = z.object({
   web_url: z.string(),
   source_project_id: z.number(),
   target_project_id: z.number(),
+  source_branch: z.string(),
   // Null while GitLab is still preparing the diff of a new merge request.
   diff_refs: z.object({ base_sha: sha, start_sha: sha, head_sha: sha }).nullable(),
 });
 export type MergeRequest = z.infer<typeof mergeRequestSchema>;
+
+const issueSchema = z.object({
+  iid: z.number(),
+  project_id: z.number(),
+  title: z.string(),
+  description: z
+    .string()
+    .nullable()
+    .transform((d) => d ?? ""),
+  state: z.enum(["opened", "closed"]),
+  labels: z.array(z.string()),
+  web_url: z.string(),
+  // Only on tiers with epics.
+  epic: z.object({ iid: z.number(), title: z.string() }).nullish(),
+});
+export type Issue = z.infer<typeof issueSchema>;
 
 const noteSchema = z.object({
   id: z.number(),
@@ -164,6 +181,23 @@ export class GitLabApi {
 
   async getMergeRequest(iid: number): Promise<MergeRequest> {
     return mergeRequestSchema.parse(await this.request("GET", `/merge_requests/${iid}`));
+  }
+
+  // The issues the merge request closes when it merges, in GitLab's order.
+  async closesIssues(iid: number): Promise<Issue[]> {
+    return z
+      .array(issueSchema)
+      .parse(await this.request("GET", `/merge_requests/${iid}/closes_issues?per_page=10`));
+  }
+
+  // The project's issue, or undefined when it has none by that number.
+  async getIssue(iid: number): Promise<Issue | undefined> {
+    try {
+      return issueSchema.parse(await this.request("GET", `/issues/${iid}`));
+    } catch (error) {
+      if (error instanceof GitLabApiError && error.status === 404) return undefined;
+      throw error;
+    }
   }
 
   async listNotes(iid: number): Promise<Note[]> {

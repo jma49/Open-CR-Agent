@@ -109,6 +109,7 @@
     "mode": "incremental",
     "since": "15533b530281f92f61359255d505e701862ee8e7"
   },
+  "linkedTasks": [],
   "anchoring": {
     "byMethod": {
       "hunk": 1,

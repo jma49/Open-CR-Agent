@@ -39,6 +39,8 @@ export interface ReviewArgs {
   configFile?: string;
   // Do not send this review's counts to ocra Cloud.
   noUpload?: true;
+  // Do not give the reviewers the tasks linked to the change.
+  noLinkedTasks?: true;
   // Override the configuration's sampling.
   temperature?: number;
   seed?: number;
@@ -85,6 +87,8 @@ Options:
   --resume <run-id>  Reuse the completed tasks of an earlier run of this review
                      (its session in .ocra/sessions) whose inputs are unchanged;
                      only the rest run and are paid for; not with --plan
+  --no-linked-tasks  With --pr or --mr: do not give reviewers the issues the
+                     change closes (linkedTasks in config)
   --no-upload        When signed in to ocra Cloud, send nothing about this
                      review: no counts, per-reviewer counts or findings
   -h, --help         Show help
@@ -118,6 +122,7 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
   if (values.output !== undefined) args.output = values.output;
   if (values["no-repo-config"]) args.ignoreRepoConfig = true;
   if (values["no-upload"]) args.noUpload = true;
+  if (values["no-linked-tasks"]) args.noLinkedTasks = true;
   if (values.ultra) args.ultra = true;
   if (values.full) {
     if (!pullRequest && !mergeRequest) throw new UsageError("--full needs --pr or --mr");
@@ -202,6 +207,7 @@ function parse(argv: string[]) {
       output: { type: "string" },
       "no-repo-config": { type: "boolean" },
       "no-upload": { type: "boolean" },
+      "no-linked-tasks": { type: "boolean" },
       config: { type: "string" },
       reviewers: { type: "string" },
       "max-cost-usd": { type: "string" },

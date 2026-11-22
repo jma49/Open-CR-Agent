@@ -11,6 +11,7 @@ import {
 import { skipReasonSchema } from "../matrix/matrix.js";
 import { memoryEntrySchema } from "../memory/memory.js";
 import { exclusionReasonSchema } from "../select/select.js";
+import { TASK_TRACKERS } from "../task/linked-task.js";
 import { taskStatusSchema } from "./report.js";
 
 // The published shape of a review: `--format json` and a session's
@@ -222,6 +223,19 @@ export const reportOutputSchema = z.strictObject({
           .strictObject({ kind: z.string(), ref: z.string().exactOptional() })
           .exactOptional(),
         bundles: z.array(z.string()),
+      }),
+    )
+    .exactOptional(),
+  linkedTasks: z
+    .array(
+      z.strictObject({
+        tracker: z.enum(TASK_TRACKERS),
+        key: z.string(),
+        url: z.string().exactOptional(),
+        title: z.string(),
+        state: z.enum(["open", "closed"]).exactOptional(),
+        labels: z.array(z.string()),
+        cut: z.boolean(),
       }),
     )
     .exactOptional(),

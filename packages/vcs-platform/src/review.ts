@@ -2,6 +2,7 @@ import type {
   ChangeRequest,
   CodeMatch,
   FileDiff,
+  LinkedTask,
   Mention,
   MentionRef,
   PriorFinding,
@@ -184,6 +185,10 @@ export class PlatformReview implements VcsAdapter {
 
   searchCode(literal: string): Promise<CodeMatch[]> {
     return this.options.code.searchCode(literal);
+  }
+
+  linkedTasks(): Promise<LinkedTask[]> {
+    return this.once("linkedTasks", () => this.platform.linkedTasks());
   }
 
   async getPriorReview(): Promise<PriorReview | undefined> {

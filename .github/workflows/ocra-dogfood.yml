@@ -68,6 +68,7 @@ jobs:
       actions: read
       contents: read
       id-token: write
+      issues: read
       pull-requests: write
     env:
       # One review's spend limit (ocra's --max-cost-usd), and the dollars a
