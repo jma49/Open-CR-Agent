@@ -6,7 +6,7 @@ import { originRepository } from "../repository-id.js";
 import { readAccountSalt, saveAccountSalt } from "./account-salt.js";
 import { CloudClient, type CloudSessionLost, sessionLostReason } from "./client.js";
 import type { CloudDeps } from "./deps.js";
-import { type SharedFindings, sharedFindings } from "./findings.js";
+import { type SharedFindings, sharedFindings, sharedOutcomes } from "./findings.js";
 import { sharedLinkedTasks } from "./linked-tasks.js";
 import { accountHasMemory, fetchAccountMemory } from "./memory.js";
 import { sharedMergeChecks } from "./merge-checks.js";
@@ -169,8 +169,13 @@ export function cloudUpload(
     changeRequest && report.mergeChecks
       ? sharedMergeChecks(report.mergeChecks, cloud.shareFindings)
       : undefined;
+  const outcomes =
+    cloud.shareFindings && counts.outcomes
+      ? { ...counts.outcomes, ...sharedOutcomes(report) }
+      : counts.outcomes;
   const upload = {
     ...counts,
+    ...(outcomes ? { outcomes } : {}),
     ...(walkthrough ? { walkthrough } : {}),
     ...(linkedTasks ? { linkedTasks } : {}),
     ...(learnings ? { learnings } : {}),

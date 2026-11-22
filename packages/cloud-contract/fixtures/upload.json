@@ -59,7 +59,9 @@
   },
   "outcomes": {
     "fixed": 1,
-    "dismissed": 1
+    "dismissed": 1,
+    "fixedFingerprints": ["aaaabbbbccccdddd"],
+    "dismissedFingerprints": ["eeeeffff00001111"]
   },
   "pullRequest": {
     "repository": "https://github.com/octo/app",
