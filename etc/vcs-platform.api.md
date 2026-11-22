@@ -122,6 +122,8 @@ export interface PlatformChangeRequest {
     // (undocumented)
     baseSha: string;
     // (undocumented)
+    branch?: string;
+    // (undocumented)
     description: string;
     // (undocumented)
     headSha: string;

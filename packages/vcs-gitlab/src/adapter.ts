@@ -238,6 +238,7 @@ export function mergeRequestOf(mr: MergeRequest): MergeRequestSnapshot {
     baseSha: refs.start_sha,
     headSha: refs.head_sha,
     mergeBaseSha: refs.base_sha,
+    branch: mr.source_branch,
     ...(mr.author ? { author: mr.author.username } : {}),
   };
 }

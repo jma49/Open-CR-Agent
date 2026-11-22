@@ -68,6 +68,7 @@ export type PlanOptions = Pick<
   | "accountMemory"
   | "learnings"
   | "linkedTasks"
+  | "taskSources"
   | "symbols"
   | "sarifEvidence"
   | "selection"
@@ -114,7 +115,10 @@ export async function planReview(
     readTrusted(GUIDELINES_PATH),
     loadRepoRules(readTrusted),
     readTrusted(MEMORY_PATH),
-    loadLinkedTasks(vcs, options.linkedTasks !== false),
+    loadLinkedTasks(vcs, changeRequest, options.taskSources ?? [], {
+      enabled: options.linkedTasks !== false,
+      signal,
+    }),
   ]);
   const usage: Usage[] = [];
   const grouper =
@@ -190,7 +194,7 @@ export async function planReview(
     usage,
     warnings: [
       ...(binaryText ? [binaryText] : []),
-      ...(linked.warning ? [linked.warning] : []),
+      ...linked.warnings,
       ...bundled.warnings,
       ...evidence.warnings,
     ],

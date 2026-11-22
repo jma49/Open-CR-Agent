@@ -66,6 +66,7 @@ export interface PlatformChangeRequest {
   description: string;
   baseSha: string;
   headSha: string;
+  branch?: string;
   // Absent when the platform does not say, for a deleted account.
   author?: string;
 }
