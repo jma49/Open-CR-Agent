@@ -1,4 +1,10 @@
-import { errorMessage, isBlocking, OcraError, type ReviewReport } from "@open-cr-agent/core";
+import {
+  errorMessage,
+  isBlocking,
+  type MentionRef,
+  OcraError,
+  type ReviewReport,
+} from "@open-cr-agent/core";
 import {
   type Bot,
   type CodeSource,
@@ -7,6 +13,7 @@ import {
   type InlineFinding,
   type PlatformChangeRequest,
   type PlatformComment,
+  type PlatformDiscussion,
   PlatformReview,
   type PlatformThread,
   type PublishedFindings,
@@ -19,6 +26,7 @@ import {
   type PullRequest,
   type ReviewComment,
 } from "./client.js";
+import { githubDiscussion } from "./discussion.js";
 
 export interface GitHubPullRequest {
   owner: string;
@@ -134,6 +142,16 @@ class GitHubPlatform implements ReviewPlatform {
 
   resolveThread(id: string): Promise<void> {
     return this.options.api.resolveReviewThread(id);
+  }
+
+  discussion(ref: MentionRef): Promise<PlatformDiscussion | undefined> {
+    return githubDiscussion(this.options.api, this.options.pullRequest.number, ref);
+  }
+
+  async reply(discussion: PlatformDiscussion, body: string): Promise<void> {
+    const { number } = this.options.pullRequest;
+    if (discussion.replyTo === undefined) await this.options.api.createIssueComment(number, body);
+    else await this.options.api.replyToLineComment(number, Number(discussion.replyTo), body);
   }
 
   // With requestChanges on, ocra's "changes requested" follows the verdict:

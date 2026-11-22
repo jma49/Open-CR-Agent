@@ -647,6 +647,33 @@ const memoryEntrySchema: z.ZodObject<{
 export type MemorySource = "repository" | "account";
 
 // @public (undocumented)
+export type Mention = {
+    asked: true;
+    by: string;
+    question: string;
+    thread: readonly {
+        author: string;
+        body: string;
+    }[];
+    on?: {
+        path: string;
+        line?: number;
+    };
+    answer(text: string): Promise<void>;
+} | {
+    asked: false;
+    reason: string;
+};
+
+// @public (undocumented)
+export interface MentionRef {
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    inline?: boolean;
+}
+
+// @public (undocumented)
 export const MODEL_TIERS: readonly ["top", "standard", "light"];
 
 // @public (undocumented)
@@ -2029,6 +2056,8 @@ export interface VcsAdapter {
     getDiff(): Promise<FileDiff[]>;
     // (undocumented)
     getPriorReview(): Promise<PriorReview | undefined>;
+    // (undocumented)
+    mention?(ref: MentionRef): Promise<Mention>;
     // (undocumented)
     readonly name: string;
     // (undocumented)

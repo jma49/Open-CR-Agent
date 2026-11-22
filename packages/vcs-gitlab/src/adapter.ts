@@ -1,4 +1,10 @@
-import { errorMessage, type FileDiff, OcraError, type ReviewReport } from "@open-cr-agent/core";
+import {
+  errorMessage,
+  type FileDiff,
+  type MentionRef,
+  OcraError,
+  type ReviewReport,
+} from "@open-cr-agent/core";
 import {
   type Bot,
   type CodeSource,
@@ -7,6 +13,7 @@ import {
   type InlineFinding,
   type PlatformChangeRequest,
   type PlatformComment,
+  type PlatformDiscussion,
   PlatformReview,
   type PlatformThread,
   type PublishedFindings,
@@ -20,6 +27,7 @@ import {
   type Note,
   type Position,
 } from "./client.js";
+import { gitlabDiscussion } from "./discussion.js";
 
 export interface GitLabAdapterOptions {
   // The merge request's number in its project (iid, not the global id).
@@ -180,6 +188,15 @@ class GitLabPlatform implements ReviewPlatform {
 
   resolveThread(id: string): Promise<void> {
     return this.options.api.resolveDiscussion(this.options.iid, id);
+  }
+
+  discussion(ref: MentionRef): Promise<PlatformDiscussion | undefined> {
+    return gitlabDiscussion(this.options.api, this.options.iid, ref);
+  }
+
+  async reply(discussion: PlatformDiscussion, body: string): Promise<void> {
+    if (discussion.replyTo === undefined) await this.options.api.createNote(this.options.iid, body);
+    else await this.options.api.replyToDiscussion(this.options.iid, discussion.replyTo, body);
   }
 
   private remember(note: Note): void {
