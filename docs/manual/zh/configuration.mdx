@@ -198,7 +198,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 | 账户中的键 | 如何生效 |
 |---|---|
 | `runtime`（`opencode` 或 `direct`）、`models.<tier>`、`effort.<tier>`、`reviewers.<id>`、`roles.<role>` | 只补充配置没有写的部分；配置中某个审查员或角色的条目整体优先 |
-| `concurrency`、`taskTimeoutMinutes`、`runTimeoutMinutes`、`maxCostUsd`、`maxTasks`、`verify`、`judge`、`sampling` | 只在配置没有设置时生效（`sampling` 算一个整体）：账户可以给没有上限的运行加上限，但不能放宽限制 |
+| `concurrency`、`taskTimeoutMinutes`、`runTimeoutMinutes`、`maxCostUsd`、`maxTasks`、`verify`、`judge`、`linkedTasks`、`sampling` | 只在配置没有设置时生效（`sampling` 算一个整体）：账户可以给没有上限的运行加上限，但不能放宽限制 |
 | `include` | 合并：先是配置中的模式，再是账户的 |
 | `exclude` | 只在配置没有设置时生效：账户排除的文件既不审查，也不算作未审查，所以配置里写了 `exclude`（哪怕是 `[]`）就不再采用账户的 |
 | `rules` | 追加在仓库规则和共享规则之后：最多 50 条，格式与 [`.ocra/rules.json`](./rules) 的条目相同，每条规则最多 2,000 个字符，以同样的方式嵌入提示词 |

@@ -198,7 +198,7 @@ Signed in to [ocra Cloud](./cli#ocra-login-ocra-logout-ocra-whoami), `ocra revie
 | Account key | How it applies |
 |---|---|
 | `runtime` (`opencode` or `direct`), `models.<tier>`, `effort.<tier>`, `reviewers.<id>`, `roles.<role>` | Only where the configuration leaves it out; a reviewer's or role's entry in the configuration wins whole |
-| `concurrency`, `taskTimeoutMinutes`, `runTimeoutMinutes`, `maxCostUsd`, `maxTasks`, `verify`, `judge`, `sampling` | Only when the configuration does not set it (`sampling` as one setting): the account can bound an unbounded run, never loosen a limit |
+| `concurrency`, `taskTimeoutMinutes`, `runTimeoutMinutes`, `maxCostUsd`, `maxTasks`, `verify`, `judge`, `linkedTasks`, `sampling` | Only when the configuration does not set it (`sampling` as one setting): the account can bound an unbounded run, never loosen a limit |
 | `include` | Combined: the configuration's patterns, then the account's |
 | `exclude` | Only when the configuration sets none: a file the account excludes is neither reviewed nor counted as unreviewed, so an `exclude` in the configuration, even `[]`, keeps the account's out |
 | `rules` | Added after the repository's and the shared ones: at most 50, each like an [`.ocra/rules.json`](./rules) entry with a rule of at most 2,000 characters, embedded in the prompt the same way |

@@ -123,6 +123,8 @@ export const reviewSettingsSchema = z
     maxTasks: z.number().int().min(1).max(1000).nullish(),
     verify: z.boolean().nullish(),
     judge: z.boolean().nullish(),
+    // Whether reviews are given the tasks the change is linked to (ADR-0052).
+    linkedTasks: z.boolean().nullish(),
     sampling: z
       .strictObject({
         temperature: z.number().min(0).max(2).optional(),
