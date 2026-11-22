@@ -6,6 +6,43 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-22
+
+`ocra generate` writes tests and doc comments onto a pull request, `ocra stack` keeps stacks of pull and merge requests, `ocra mcp` lets coding agents call a review, pre-merge checks in plain words get a verdict, and reviewers see the issues and tracker tasks a change is linked to. The Action's new tag is `jma49/Open-CR-Agent@v0.11.0`.
+
+### Added
+
+- `ocra generate tests` and `ocra generate docstrings` write one commit on a pull or merge request's branch: new test files beside the changed sources, or doc comments inserted in the changed lines, one writer call per file (at most 5); `--dry-run` prints the edits as a diff, `--json` prints the outcome, and a moved or fork branch exits 3 without a commit.
+- `VcsAdapter.commit` and `VcsAdapter.listFiles`, and the GitHub and GitLab adapters' commit on the change request's branch, made only on top of the head ocra read.
+- `@open-cr-agent/cloud-contract` describes `ocra generate --json`'s line: `generateResultSchema`, `GENERATE_KINDS`, `GENERATE_OUTCOMES` and `MAX_GENERATED_FILES`.
+- Reviewers of a pull or merge request see the issues it closes, or the issue its branch is named after: at most 3, cut to fixed sizes, from the reviewed repository only. The report's `linkedTasks` lists them; `linkedTasks: false` or `--no-linked-tasks` turns it off.
+- `VcsAdapter.linkedTasks()` and the `LinkedTask` record for adapters that can link tasks.
+- A signed-in review whose ocra Cloud account shares findings relays its progress to ocra Cloud as it runs and prints where to watch it, so the run can be shared with others to watch and comment on; best effort, never slowing the review, and off with `--no-upload`.
+- `@open-cr-agent/cloud-contract`: `liveBatchSchema`, `liveAnswerSchema`, `LIVE_EVENTS_PATH` and the live relay's limits.
+- `ocra mcp`: a Model Context Protocol server on standard input and output with one `review` tool, so a coding agent such as Claude Code, Cursor or Codex can review its changes with ocra; its arguments only narrow the review, as `ocra serve`'s do, and its answer marks the findings as untrusted data.
+- `mergeChecks` in configuration: pre-merge checks in plain words, each judged against the change with a reason, in the summary comment and the report's `mergeChecks`.
+- `ReviewOptions.mergeChecks` for embedders.
+- A pull or merge request review's upload carries each check's outcome (its reason when the account shares findings) and the ids of the learnings its tasks were given.
+- The contract exports `mergeCheckSchema`, `sharedMergeCheckSchema` and `LEARNING_PROPOSAL_BRANCH`.
+- `projectDocs` in configuration: the sections of the team's design documents that name a bundle's files are given to its review tasks, and the report's `projectDocs` lists them.
+- `ReviewOptions.projectDocs` for embedders.
+- A pull or merge request review's upload names its linked issues (tracker, number, address, state), with their titles and labels when the account shares findings.
+- `ocra stack` keeps a stack of pull or merge requests: `create`, `track`, `log`, `restack`, `submit` and `sync`, on GitHub and GitLab.
+- `githubStackHost` and `gitlabStackHost`, over the `StackHost` port in `vcs-platform`.
+- `trackers` in configuration: Jira and TAPD tasks a pull or merge request names by key (title, description or branch) are read through the team's MCP server and given to the reviewers with the linked issues.
+- `ReviewOptions.taskSources` and `ChangeRequest.branch` for embedders.
+
+### Changed
+
+- `ocra init` pins the Action to v0.10.0.
+- Workflows written by `ocra init` and the manual's recipes grant `issues: read`.
+- Review tasks on files under sensitive paths (`auth/`, CI workflows and the like) start first, so a run stopped by the spend or task limit has reviewed those files; `--plan` lists tasks in that order, and task ids are unchanged.
+
+### Fixed
+
+- The local adapter's `listFiles` lists the repository's root directory instead of nothing.
+- The Action no longer fails now and then with "1 package has an invalid attestation": it fetches sigstore's trusted root once before `npm audit signatures` verifies the packages in parallel.
+
 ## [0.10.0] - 2026-11-22
 
 A walkthrough of the change in the summary, `@ocra` questions answered in their thread, and `/ocra review` to review a pull request again. The Action's new tag is `jma49/Open-CR-Agent@v0.10.0`.
@@ -505,7 +542,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.7.0...v0.8.0
