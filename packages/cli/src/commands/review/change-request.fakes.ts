@@ -192,6 +192,19 @@ export const walkthroughRuntime: OcraPlugin = fakeRuntime(async (request) => {
   return { text: JSON.stringify(answers[request.agent ?? ""] ?? {}), usage: NO_USAGE };
 });
 
+// A runtime that judges the base's pre-merge checks: one met, one not.
+export const mergeChecksRuntime: OcraPlugin = fakeRuntime(async (request) => {
+  const checks = request.system.includes("pre-merge checks")
+    ? {
+        checks: [
+          { id: "limits", outcome: "failed", reason: "app.ts sets the retry count to -1." },
+          { id: "notes", outcome: "passed", reason: "The description says what changed." },
+        ],
+      }
+    : {};
+  return { text: JSON.stringify(checks), usage: NO_USAGE };
+});
+
 const NO_USAGE = {
   inputTokens: 0,
   outputTokens: 0,
