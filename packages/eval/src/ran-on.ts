@@ -53,7 +53,7 @@ export interface Setup {
   config?: ConfigSnapshot;
 }
 
-// ocra's own default (cli config/schema.ts DEFAULT_RUNTIME), which the CLI
+// ocra's own default (cli config/cli-config.ts DEFAULT_RUNTIME), which the CLI
 // does not export: copied, not imported.
 const DEFAULT_RUNTIME = "opencode";
 

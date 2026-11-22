@@ -1,5 +1,5 @@
+import { configSchema } from "@open-cr-agent/cloud-contract";
 import { describe, expect, it } from "vitest";
-import { configSchema } from "../../config/schema.js";
 import { chooseProvider, configFor, PRESETS } from "./providers.js";
 
 const KEYS = {

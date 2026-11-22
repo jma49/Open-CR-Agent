@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
+import { configSchema } from "@open-cr-agent/cloud-contract";
 import { MODEL_TIERS, OcraError, type SourcedRule } from "@open-cr-agent/core";
 import { z } from "zod";
-import { configSchema } from "./schema.js";
 
 // A review's settings come in layers: a shared configuration (extends), the
 // repository's file or the user's own (--config), OCRA_* variables, the

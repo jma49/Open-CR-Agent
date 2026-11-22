@@ -1,4 +1,13 @@
 export {
+  CONFIG_SCHEMA_ID,
+  configJsonSchema,
+  configSchema,
+  MAX_TIMEOUT_MINUTES,
+  type OcraConfig,
+  type OcraConfigInput,
+  type TrackersConfig,
+} from "./config.js";
+export {
   accountSchema,
   DEVICE_ERRORS,
   type DeviceCode,

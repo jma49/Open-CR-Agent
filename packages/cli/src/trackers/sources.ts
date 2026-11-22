@@ -1,5 +1,5 @@
+import type { TrackersConfig } from "@open-cr-agent/cloud-contract";
 import type { Env, TaskSource } from "@open-cr-agent/core";
-import type { TrackersConfig } from "../config/schema.js";
 import { jiraKeys, tapdKey, tapdKeys } from "./keys.js";
 import { mcpTaskSource } from "./mcp-source.js";
 

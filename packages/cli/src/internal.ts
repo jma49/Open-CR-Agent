@@ -8,5 +8,4 @@ export {
   cliPlanOutputSchema,
   planJsonSchema,
 } from "./commands/review/plan-schema.js";
-export { configJsonSchema } from "./config/schema.js";
 export { sessionsDir } from "./session/store.js";
