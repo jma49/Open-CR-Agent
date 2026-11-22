@@ -6,6 +6,7 @@ import { type ContextChoice, contextArgs, describeContext } from "./commands/opt
 import { type CaseContext, renderContext, summarizeContext } from "./context.js";
 import type { Instance } from "./instance.js";
 import { prepareRepository, UnavailableCommitError } from "./repos.js";
+import { withTeamContext } from "./team-context.js";
 
 export interface ContextOptions {
   outDir: string;
@@ -32,7 +33,8 @@ export async function measureContext(
     }
     try {
       const dir = await (options.prepare ?? prepareRepository)(options.reposDir, instance);
-      const plan = await planChange(dir, instance, options.command, extraArgs);
+      const { target, args } = await withTeamContext(dir, instance, extraArgs);
+      const plan = await planChange(dir, target, options.command, args);
       cases.push({ id: instance.id, tasks: plan.tasks });
       options.log(`${label}: ${plan.tasks.length} task(s), ${plan.promptTokens} tokens`);
     } catch (error) {

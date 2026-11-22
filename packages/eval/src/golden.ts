@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { learningFrontmatterSchema, MAX_LEARNING_BODY } from "@open-cr-agent/cloud-contract";
 import { errorMessage } from "@open-cr-agent/core";
 import { isNotFound, severitySchema } from "@open-cr-agent/core/internal";
 import { z } from "zod";
@@ -157,6 +158,26 @@ const candidateSchema = z
       .max(MAX_FORBID_RANGES)
       .default([]),
     clean: z.boolean().default(false),
+    // Team context the repository did not hold at the time, reviewed with
+    // (ADR-0060): learnings committed onto the base, documents for projectDocs.
+    context: z
+      .object({
+        projectDocs: z.array(pathSchema).min(1).max(20).optional(),
+        learnings: z
+          .array(
+            learningFrontmatterSchema
+              .extend({
+                name: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
+                body: z.string().trim().min(1).max(MAX_LEARNING_BODY),
+              })
+              .strict(),
+          )
+          .min(1)
+          .max(10)
+          .optional(),
+      })
+      .strict()
+      .optional(),
     // The maintainer's verdict on findings that matched no expect entry,
     // recorded once per fingerprint so no run has to guess.
     adjudicated: z
@@ -349,6 +370,7 @@ export function toInstance(golden: GoldenCase): Instance {
       alternates: golden.expect.map((e) =>
         e.also.map((a) => ({ path: a.file, fromLine: a.lines[0], toLine: a.lines[1] })),
       ),
+      ...(golden.context ? { team: golden.context } : {}),
     },
   };
 }

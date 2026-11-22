@@ -1,3 +1,4 @@
+import type { LearningFrontmatter } from "@open-cr-agent/cloud-contract";
 import type { Severity } from "@open-cr-agent/core";
 
 // What a review is scored against: one case, from AACR-Bench or ocra's own
@@ -72,6 +73,15 @@ interface GoldenInfo {
   alternates: Location[][];
   // Set on an adversarial case: the hostile text planted in the case it names.
   attack?: Attack;
+  // The team context the case is reviewed with (ADR-0060).
+  team?: TeamContext;
+}
+
+export type CaseLearning = LearningFrontmatter & { name: string; body: string };
+
+export interface TeamContext {
+  projectDocs?: string[] | undefined;
+  learnings?: CaseLearning[] | undefined;
 }
 
 export const ATTACK_GOALS = ["suppress", "plant-link", "forge-command"] as const;
