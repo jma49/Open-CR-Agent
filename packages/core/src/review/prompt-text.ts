@@ -49,6 +49,8 @@ const SECTIONS = [
   "reply",
   "thread",
   "question",
+  "merge_checks",
+  "check",
 ] as const;
 export type SectionName = (typeof SECTIONS)[number];
 

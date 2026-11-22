@@ -14,6 +14,7 @@ import type { JudgeDecisions } from "../judge/judge.js";
 import type { LearningUse } from "../knowledge/learning.js";
 import type { SkippedCell } from "../matrix/matrix.js";
 import type { RememberedEntry } from "../memory/memory.js";
+import type { MergeCheckResult } from "../merge-checks/merge-check.js";
 import type { AnalyzerEvidenceUse } from "../sarif/evidence.js";
 import type { ExclusionReason } from "../select/select.js";
 import type { LinkedTaskUse } from "../task/linked-task.js";
@@ -154,6 +155,8 @@ export interface ReviewReport {
   judgement?: JudgeDecisions;
   // What the change does, for its reviewers; absent when it was off or failed.
   walkthrough?: Walkthrough;
+  // Each pre-merge check's outcome, in the order given; absent when none was given.
+  mergeChecks?: MergeCheckResult[];
   // With an earlier review: whether this run reviewed only what changed since.
   scope?: { mode: "incremental"; since: string } | { mode: "full"; reason: string };
   // Compared with the previous review of the same change, when there was one.

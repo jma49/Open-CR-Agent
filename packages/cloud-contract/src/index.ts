@@ -64,6 +64,7 @@ export {
 } from "./graphs.js";
 export {
   LEARNING_ID,
+  LEARNING_PROPOSAL_BRANCH,
   LEARNING_SOURCES,
   LEARNINGS_DIR,
   type LearningFrontmatter,
@@ -90,6 +91,17 @@ export {
   type RememberRequest,
   rememberRequestSchema,
 } from "./memory.js";
+export {
+  MAX_MERGE_CHECK_INSTRUCTION,
+  MAX_MERGE_CHECKS,
+  MERGE_CHECK_ID,
+  MERGE_CHECK_OUTCOMES,
+  type MergeCheck,
+  type MergeCheckOutcome,
+  mergeCheckSchema,
+  type SharedMergeCheck,
+  sharedMergeCheckSchema,
+} from "./merge-checks.js";
 export {
   type AgentPrefs,
   agentPrefsSchema,

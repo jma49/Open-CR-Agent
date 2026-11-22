@@ -265,6 +265,29 @@
         "maxLength": 500
       }
     },
+    "mergeChecks": {
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[\\w.:-]{1,64}$"
+          },
+          "instruction": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "id",
+          "instruction"
+        ],
+        "additionalProperties": false
+      }
+    },
     "maxCostUsd": {
       "type": "number",
       "exclusiveMinimum": 0

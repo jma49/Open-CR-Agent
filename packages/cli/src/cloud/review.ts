@@ -1,4 +1,4 @@
-import type { ReviewSource } from "@open-cr-agent/cloud-contract";
+import type { ReviewSource, ReviewUpload } from "@open-cr-agent/cloud-contract";
 import { errorMessage, type MemoryEntry, type ReviewReport } from "@open-cr-agent/core";
 import type { Output } from "../io/output.js";
 import { MachineSecretError } from "../io/private-file.js";
@@ -6,9 +6,10 @@ import { originRepository } from "../repository-id.js";
 import { readAccountSalt, saveAccountSalt } from "./account-salt.js";
 import { CloudClient, type CloudSessionLost, sessionLostReason } from "./client.js";
 import type { CloudDeps } from "./deps.js";
-import { sharedFindings } from "./findings.js";
+import { type SharedFindings, sharedFindings } from "./findings.js";
 import { sharedLinkedTasks } from "./linked-tasks.js";
 import { accountHasMemory, fetchAccountMemory } from "./memory.js";
+import { sharedMergeChecks } from "./merge-checks.js";
 import { hasSharingConsent, saveSharingConsent } from "./sharing-consent.js";
 import { repoHash, uploadOf, uploadReview } from "./upload.js";
 import { sharedWalkthrough } from "./walkthrough.js";
@@ -145,6 +146,39 @@ async function keepAccountSalt(
   }
 }
 
+/** What a review sends: the counts, and what goes with a change request or the findings. */
+export function cloudUpload(
+  report: ReviewReport,
+  cloud: Pick<CloudReview, "repository" | "repoHash" | "shareFindings">,
+  run: { source: ReviewSource; durationMs: number; changeRequestNumber?: number },
+): { upload: ReviewUpload; shared?: SharedFindings } {
+  const number = run.changeRequestNumber;
+  const changeRequest = number === undefined ? undefined : { repository: cloud.repository, number };
+  const counts = uploadOf(report, run.source, cloud.repoHash, run.durationMs, changeRequest);
+  const walkthrough =
+    cloud.shareFindings && report.walkthrough ? sharedWalkthrough(report.walkthrough) : undefined;
+  const linkedTasks =
+    changeRequest && report.linkedTasks
+      ? sharedLinkedTasks(report.linkedTasks, cloud.shareFindings)
+      : undefined;
+  // Which learnings applied is named like the files, so with a pull or
+  // merge request's identity (ADR-0038) or with the findings.
+  const learnings =
+    changeRequest || cloud.shareFindings ? (report.learnings ?? []).map((l) => l.id) : undefined;
+  const mergeChecks =
+    changeRequest && report.mergeChecks
+      ? sharedMergeChecks(report.mergeChecks, cloud.shareFindings)
+      : undefined;
+  const upload = {
+    ...counts,
+    ...(walkthrough ? { walkthrough } : {}),
+    ...(linkedTasks ? { linkedTasks } : {}),
+    ...(learnings ? { learnings } : {}),
+    ...(mergeChecks ? { mergeChecks } : {}),
+  };
+  return cloud.shareFindings ? { upload, shared: sharedFindings(report) } : { upload };
+}
+
 /** Sends the counts, and the findings when the account shares them. */
 export async function sendToCloud(
   report: ReviewReport,
@@ -158,21 +192,7 @@ export async function sendToCloud(
     warn: (message: string) => void;
   },
 ): Promise<void> {
-  const number = run.changeRequestNumber;
-  const changeRequest = number === undefined ? undefined : { repository: cloud.repository, number };
-  const counts = uploadOf(report, run.source, cloud.repoHash, run.durationMs, changeRequest);
-  const walkthrough =
-    cloud.shareFindings && report.walkthrough ? sharedWalkthrough(report.walkthrough) : undefined;
-  const linkedTasks =
-    changeRequest && report.linkedTasks
-      ? sharedLinkedTasks(report.linkedTasks, cloud.shareFindings)
-      : undefined;
-  const upload = {
-    ...counts,
-    ...(walkthrough ? { walkthrough } : {}),
-    ...(linkedTasks ? { linkedTasks } : {}),
-  };
-  const shared = cloud.shareFindings ? sharedFindings(report) : undefined;
+  const { upload, shared } = cloudUpload(report, cloud, run);
   const sent = await uploadReview(upload, deps, run.warn, shared?.findings);
   if (!sent) return;
   if (sent.findings > 0) {

@@ -164,6 +164,16 @@ describe("loadConfig", () => {
       expect(await loadConfig(root(`{"${key}":35791}`), {})).toMatchObject({ [key]: 35791 });
     }
   });
+
+  it("reads pre-merge checks, and refuses two with one id", async () => {
+    const check = { id: "notes", instruction: " Say who is affected. " };
+    expect(await loadConfig(root(JSON.stringify({ mergeChecks: [check] })), {})).toMatchObject({
+      mergeChecks: [{ id: "notes", instruction: "Say who is affected." }],
+    });
+    await expect(
+      loadConfig(root(JSON.stringify({ mergeChecks: [check, check] })), {}),
+    ).rejects.toThrow("each check needs its own id");
+  });
 });
 
 describe("configJsonSchema", () => {

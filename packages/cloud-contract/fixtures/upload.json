@@ -66,6 +66,36 @@
     "number": 42,
     "headSha": "2222222222222222222222222222222222222222"
   },
+  "walkthrough": {
+    "overview": "Retries failed queries once, with the token api_key=[redacted] in a log.",
+    "groups": [
+      {
+        "title": "Retries",
+        "files": ["src/retry.ts", "src/db.ts"],
+        "note": "Wraps the query in a retry."
+      }
+    ],
+    "diagram": "sequenceDiagram\n  App->>DB: query\n  DB-->>App: timeout",
+    "redacted": true
+  },
+  "linkedTasks": [
+    {
+      "tracker": "github",
+      "key": "#41",
+      "url": "https://github.com/octo/app/issues/41",
+      "state": "open",
+      "title": "Retry failed queries",
+      "labels": ["db"]
+    }
+  ],
+  "learnings": ["retry-budget"],
+  "mergeChecks": [
+    {
+      "id": "chk_7.1732270000",
+      "outcome": "failed",
+      "reason": "The description does not say how many times src/retry.ts retries a query."
+    }
+  ],
   "findingList": [
     {
       "fingerprint": "0123456789abcdef",
@@ -113,28 +143,6 @@
       "body": "The id reaches the query unescaped.",
       "suggestion": null,
       "code": "const q = 'SELECT * FROM t WHERE id = ' + id;"
-    }
-  ],
-  "walkthrough": {
-    "overview": "Retries failed queries once, with the token api_key=[redacted] in a log.",
-    "groups": [
-      {
-        "title": "Retries",
-        "files": ["src/retry.ts", "src/db.ts"],
-        "note": "Wraps the query in a retry."
-      }
-    ],
-    "diagram": "sequenceDiagram\n  App->>DB: query\n  DB-->>App: timeout",
-    "redacted": true
-  },
-  "linkedTasks": [
-    {
-      "tracker": "github",
-      "key": "#41",
-      "url": "https://github.com/octo/app/issues/41",
-      "state": "open",
-      "title": "Retry failed queries",
-      "labels": ["db"]
     }
   ]
 }

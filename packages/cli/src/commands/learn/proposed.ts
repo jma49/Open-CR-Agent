@@ -1,9 +1,9 @@
+import { LEARNING_PROPOSAL_BRANCH } from "@open-cr-agent/cloud-contract";
 import { errorMessage, type Learning } from "@open-cr-agent/core";
 import { mapWithConcurrency } from "@open-cr-agent/core/internal";
 import { fetchRemoteBranches, LocalGitAdapter } from "@open-cr-agent/vcs-local/internal";
 import { loadLearnings } from "../review/learnings.js";
 import { originUrl } from "../review/target.js";
-import { PROPOSAL_BRANCH } from "./propose.js";
 
 const MAX_PROPOSALS = 20;
 const READ_CONCURRENCY = 4;
@@ -17,7 +17,9 @@ export async function proposedLearnings(
 ): Promise<Learning[]> {
   if ((await originUrl(root)) === undefined) return [];
   try {
-    const branches = await fetchRemoteBranches(root, PROPOSAL_BRANCH, { max: MAX_PROPOSALS });
+    const branches = await fetchRemoteBranches(root, LEARNING_PROPOSAL_BRANCH, {
+      max: MAX_PROPOSALS,
+    });
     const loaded = await mapWithConcurrency(branches, READ_CONCURRENCY, (branch) =>
       loadLearnings(
         new LocalGitAdapter({ cwd: root, target: { mode: "commit", commit: branch.sha } }),

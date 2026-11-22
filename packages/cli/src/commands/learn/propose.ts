@@ -1,4 +1,4 @@
-import { LEARNINGS_DIR } from "@open-cr-agent/cloud-contract";
+import { LEARNING_PROPOSAL_BRANCH, LEARNINGS_DIR } from "@open-cr-agent/cloud-contract";
 import type { LearningDraft } from "@open-cr-agent/core/internal";
 import { proposeOnGitHub } from "@open-cr-agent/vcs-github";
 import { proposeOnGitLab } from "@open-cr-agent/vcs-gitlab";
@@ -9,9 +9,6 @@ import type { ReviewDeps } from "../review/deps.js";
 import type { ResolvedRun } from "../review/resolve-run.js";
 import { originUrl } from "../review/target.js";
 import { freeLearningPath, learningFile } from "./write.js";
-
-// A proposal's branch: this prefix and the time it was opened.
-export const PROPOSAL_BRANCH = "ocra/learnings-";
 
 export interface Proposed extends ProposedChange {
   platform: ProposalPlace["platform"];
@@ -57,7 +54,7 @@ export async function proposeLearnings(
       signal: run.interrupt.signal,
     },
     {
-      branch: `${PROPOSAL_BRANCH}${stamp}`,
+      branch: `${LEARNING_PROPOSAL_BRANCH}${stamp}`,
       title: `chore(ocra): add ${files.length} learning(s) from ${from}`,
       commitMessage: `chore(ocra): add ${files.length} learning(s) from ${from}`,
       body: [

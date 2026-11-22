@@ -78,6 +78,12 @@ export type { JudgeDecisions } from "./judge/judge.js";
 export type { Learning, LearningSource, LearningUse } from "./knowledge/learning.js";
 export type { SkippedCell, SkipReason } from "./matrix/matrix.js";
 export type { MemoryEntry, MemorySource, RememberedEntry } from "./memory/memory.js";
+export {
+  MERGE_CHECK_OUTCOMES,
+  type MergeCheck,
+  type MergeCheckOutcome,
+  type MergeCheckResult,
+} from "./merge-checks/merge-check.js";
 export { type ProxyEnv, proxiedFetch } from "./net/proxied-fetch.js";
 export { AccessDeniedError } from "./pipeline/context.js";
 export type {

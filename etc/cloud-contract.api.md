@@ -461,6 +461,9 @@ export function isCloudModel(model: string): boolean;
 // @public
 export const LEARNING_ID: RegExp;
 
+// @public
+export const LEARNING_PROPOSAL_BRANCH = "ocra/learnings-";
+
 // @public (undocumented)
 export const LEARNING_SOURCES: readonly ["fix-commit", "review-feedback", "document", "remember", "incident", "manual"];
 
@@ -560,6 +563,12 @@ export const MAX_LINKED_TASKS = 3;
 export const MAX_MEMORY_PER_REPO = 500;
 
 // @public
+export const MAX_MERGE_CHECK_INSTRUCTION = 500;
+
+// @public
+export const MAX_MERGE_CHECKS = 20;
+
+// @public
 export const MAX_REVIEWERS = 40;
 
 // @public
@@ -590,6 +599,24 @@ export const memoryEntrySchema: z.ZodObject<{
     reason: z.ZodString;
     createdAt: z.ZodString;
 }, z.core.$strip>;
+
+// @public
+export const MERGE_CHECK_ID: RegExp;
+
+// @public
+export const MERGE_CHECK_OUTCOMES: readonly ["passed", "failed", "inconclusive"];
+
+// @public (undocumented)
+export type MergeCheck = z.output<typeof mergeCheckSchema>;
+
+// @public (undocumented)
+export type MergeCheckOutcome = (typeof MERGE_CHECK_OUTCOMES)[number];
+
+// @public
+export const mergeCheckSchema: z.ZodObject<{
+    id: z.ZodString;
+    instruction: z.ZodString;
+}, z.core.$strict>;
 
 // @public (undocumented)
 export const MODEL_ID: RegExp;
@@ -1337,6 +1364,18 @@ export const reviewUploadSchema: z.ZodObject<{
         title: z.ZodCatch<z.ZodOptional<z.ZodString>>;
         labels: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodString>>>;
     }, z.core.$strip>>>>>>;
+    learnings: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodCatch<z.ZodNullable<z.ZodString>>>>>;
+    mergeChecks: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodCatch<z.ZodNullable<z.ZodObject<{
+        id: z.ZodString;
+        outcome: z.ZodEnum<{
+            failed: "failed";
+            inconclusive: "inconclusive";
+            passed: "passed";
+        }>;
+        reason: z.ZodCatch<z.ZodOptional<z.ZodString>>;
+        redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
+        truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
+    }, z.core.$strip>>>>>>;
     pullRequest: z.ZodCatch<z.ZodOptional<z.ZodObject<{
         repository: z.ZodString;
         number: z.ZodNumber;
@@ -1457,6 +1496,22 @@ export const sharedLinkedTaskSchema: z.ZodObject<{
     }>>>;
     title: z.ZodCatch<z.ZodOptional<z.ZodString>>;
     labels: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodString>>>;
+}, z.core.$strip>;
+
+// @public (undocumented)
+export type SharedMergeCheck = z.input<typeof sharedMergeCheckSchema>;
+
+// @public
+export const sharedMergeCheckSchema: z.ZodObject<{
+    id: z.ZodString;
+    outcome: z.ZodEnum<{
+        failed: "failed";
+        inconclusive: "inconclusive";
+        passed: "passed";
+    }>;
+    reason: z.ZodCatch<z.ZodOptional<z.ZodString>>;
+    redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
+    truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
 }, z.core.$strip>;
 
 // @public (undocumented)

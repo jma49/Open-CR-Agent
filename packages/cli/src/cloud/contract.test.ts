@@ -21,11 +21,8 @@ import { priorFinding, reviewReport, taskOutcome, usage } from "@open-cr-agent/t
 import { describe, expect, it } from "vitest";
 import { parseAccountPlugins } from "../plugins/account.js";
 import { parseAccountSettings } from "./account-settings.js";
-import { sharedFindings } from "./findings.js";
-import { sharedLinkedTasks } from "./linked-tasks.js";
 import { parseAccountMemory } from "./memory.js";
-import { uploadOf } from "./upload.js";
-import { sharedWalkthrough } from "./walkthrough.js";
+import { cloudUpload } from "./review.js";
 
 // The fixtures in @open-cr-agent/cloud-contract are what ocra Cloud tests
 // its side against (its generated copy, pinned to an engine commit). These
@@ -169,25 +166,42 @@ const report = reviewReport({
     ],
     diagram: "sequenceDiagram\n  App->>DB: query\n  DB-->>App: timeout",
   },
+  learnings: [
+    {
+      id: "retry-budget",
+      title: "Retries share one budget",
+      critical: false,
+      bundles: ["src/retry.ts"],
+    },
+  ],
+  mergeChecks: [
+    {
+      id: "chk_7.1732270000",
+      instruction: "A change to retries says how often it retries in the description.",
+      outcome: "failed",
+      reason: "The description does not say how many times src/retry.ts retries a query.",
+    },
+  ],
   usage: usage({ inputTokens: 1200, outputTokens: 340, costUsd: 0.4375 }),
 });
 
 describe("the contract's fixtures", () => {
   it("upload.json is what this CLI sends", () => {
+    const { upload, shared } = cloudUpload(
+      report,
+      {
+        repository: "https://github.com/octo/app",
+        repoHash: "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+        shareFindings: true,
+      },
+      { source: "github", durationMs: 61_234.4, changeRequestNumber: 42 },
+    );
     const sent = {
       about: read("upload.json").about,
-      ...uploadOf(
-        report,
-        "github",
-        "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
-        61_234.4,
-        { repository: "https://github.com/octo/app", number: 42 },
-      ),
+      ...upload,
       // Not this CLI's version: the fixture would change with every release.
       ocraVersion: "0.0.0",
-      findingList: sharedFindings(report).findings,
-      walkthrough: sharedWalkthrough(report.walkthrough ?? { overview: "", groups: [] }),
-      linkedTasks: sharedLinkedTasks(report.linkedTasks ?? [], true),
+      findingList: shared?.findings,
     };
     // OCRA_UPDATE_FIXTURES=1 rewrites it; then npm run format.
     if (process.env.OCRA_UPDATE_FIXTURES) {
