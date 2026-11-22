@@ -42,7 +42,8 @@
     "knip": "^6.45.1",
     "publint": "^0.3.25",
     "typescript": "^7.0.2",
-    "vitest": "^5.1.1"
+    "vitest": "^5.1.1",
+    "yaml": "^2.9.1"
   },
   "packageManager": "npm@10.9.9",
   "overrides": {
