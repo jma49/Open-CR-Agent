@@ -113,6 +113,10 @@ ocra-remember:
 
 用 `GITLAB_TOKEN` 做的提交会触发项目的流水线，所以它开的 Merge Request 会在流水线成功后合并。合并到受保护的默认分支需要该分支允许合并的角色，默认是 Maintainer；只有 Developer 时，ocra 给出警告并把 Merge Request 留给人处理。
 
+### 向 ocra 提问
+
+Developer 及以上角色的人在评论或 diff 讨论里写 `@ocra <问题>`，会像 [GitHub](./github#向-ocra-提问) 上一样在同一个讨论里得到回答，用 [`ocra reply --mr <iid> --comment <note id>`](./cli#ocra-reply)。GitLab CI 不会因评论启动流水线，所以请在项目评论 webhook（Note Hook）的接收端运行它：webhook 里有 MR 的 iid 和 note 的 id。v0.10.0 新增。
+
 ## Merge Request 不能改变什么
 
 ocra 不会执行 Merge Request 里的任何东西：配置、`.ocra/rules.json`、`.ocra/learnings/` 和 `AGENTS.md` 从它所基于的提交读取，仓库插件从不加载。发出的每一行如果以斜杠开头，前面都会加一个零宽空格，所以问题无法变成 `/merge`、`/approve` 这样的快捷操作（GitLab 会以令牌的权限执行它们）。运行 ocra 的流水线则是另一回事（见下一节）。

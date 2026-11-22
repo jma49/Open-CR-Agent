@@ -113,6 +113,10 @@ ocra-remember:
 
 A commit made with `GITLAB_TOKEN` starts the project's pipelines, so the merge request it opens merges when they succeed. Merging into a protected default branch takes a role the branch allows to merge, Maintainer by default: with Developer, ocra warns and leaves the merge request for a person.
 
+### Asking ocra about the change
+
+`@ocra <question>` in a comment or a diff thread, from someone with the Developer role or higher, gets an answer in its thread as on [GitHub](./github#asking-ocra-about-the-change), with [`ocra reply --mr <iid> --comment <note id>`](./cli#ocra-reply). GitLab CI starts no pipeline on a comment, so run it from a receiver of the project's comment webhook (a Note Hook): it gives the merge request's iid and the note's id. New in v0.10.0.
+
 ## What the merge request cannot change
 
 ocra runs nothing from the merge request: configuration, `.ocra/rules.json`, `.ocra/learnings/` and `AGENTS.md` come from its base commit, and repository plugins never load. Every posted line that starts with a slash gets a zero-width space before it, so a finding cannot become a quick action such as `/merge` or `/approve`, which GitLab would run with the token's rights. The pipeline that runs ocra is another matter (next section).

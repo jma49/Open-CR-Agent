@@ -8,6 +8,7 @@ import { LOGIN_USAGE, loginCommand } from "./commands/login.js";
 import { memoryCommand } from "./commands/memory.js";
 import { metricsCommand } from "./commands/metrics.js";
 import { PLUGINS_USAGE, pluginsCommand } from "./commands/plugins.js";
+import { REPLY_USAGE, replyCommand } from "./commands/reply.js";
 import { parseReviewArgs, REVIEW_USAGE } from "./commands/review/args.js";
 import type { ReviewDeps } from "./commands/review/deps.js";
 import { BUILTIN_RUNTIMES } from "./commands/review/runtimes.js";
@@ -31,6 +32,7 @@ Commands:
   graph       Write or update the code graph of a commit, for review --graph
   memory      Remember findings the team accepts (run "ocra memory --help")
   learn       Draft the team's learnings from its fix commits (run "ocra learn --help")
+  reply       Answer a comment that mentions @ocra on a pull or merge request (run "ocra reply --help")
   metrics     Counts over past reviews: runs, cost, findings, per reviewer (run "ocra metrics --help")
   plugins     Allow plugins your ocra Cloud settings name on this machine (run "ocra plugins --help")
   login       Sign in to ocra Cloud (in development; run "ocra login --help")
@@ -94,6 +96,15 @@ export async function run(
       if (error instanceof UsageError) {
         err.write(`${error.message ? `${error.message}\n\n` : ""}${LEARN_USAGE}`);
       } else err.write(failure(error));
+      return EXIT.error;
+    }
+  }
+  if (command === "reply") {
+    try {
+      return await replyCommand(rest, { out, err }, deps);
+    } catch (error) {
+      if (error instanceof UsageError) err.write(`${error.message}\n\n${REPLY_USAGE}`);
+      else err.write(failure(error));
       return EXIT.error;
     }
   }
