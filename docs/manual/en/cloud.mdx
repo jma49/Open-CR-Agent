@@ -24,7 +24,7 @@ The Learnings page lists a repository's [learnings](./configuration#learnings) (
 
 ## Pre-merge checks
 
-Each repository can carry up to 20 checks, each off, a warning or blocking: a linked issue (open, or with a label), a title prefix or pattern, a filled-in description with given headings, a size limit, no unresolved critical finding of ocra's on the head, and a check written in plain words. Plain-language checks are stored but not judged yet, and the linked issue check needs the CLI that uploads linked issues (0.11.0); both say so instead of passing.
+Each repository can carry up to 20 checks, each off, a warning or blocking: a linked issue (open, or with a label), a title prefix or pattern, a filled-in description with given headings, a size limit, no unresolved critical finding of ocra's on the head, and a check written in plain words. A plain-language check is judged by the server's own review of the pull request (*self-hosted*), as [`mergeChecks`](./how-it-works#pre-merge-checks) are in a review you run; an edited check waits for the next review. The linked issue check waits for a review by CLI 0.11.0 or later, which uploads the linked issues. A check that cannot tell says so instead of passing.
 
 The pull request's page shows the result. On a self-hosted server the bot also posts it, as the `ocra / pre-merge` check run on GitHub or commit status on GitLab, and a failing blocking check fails it.
 
