@@ -18,7 +18,7 @@ A walkthrough of the change in the summary, `@ocra` questions answered in their 
 - The `writer` role, which writes the walkthrough on the standard tier; `roles.writer` sets its models and effort.
 - `ocra graph --cloud` starts from the code graph a self-hosted ocra Cloud server keeps of the repository, and parses only the files changed since; without one it builds the graph locally.
 - `@open-cr-agent/cloud-contract` describes the server's code graph listing: `graphRepoSchema`, `graphReposAnswerSchema`, `CODE_PLATFORMS`, `GRAPH_BUILD_STATES`, `GRAPH_COMMIT_HEADER` and `MAX_GRAPH_REPOS`.
-- `ocra reply` answers a comment that mentions `@ocra` on a pull or merge request, in its thread, for people with write access, once per comment.
+- `ocra reply` answers a comment that mentions `@ocra` on a GitHub pull request or GitLab merge request, in its thread, for people with write access, once per comment; `--config` names ocra's account as for a review.
 - The Action's `reply` input runs it on `issue_comment` and `pull_request_review_comment`.
 - `VcsAdapter.mention`, and the `Mention` and `MentionRef` types.
 - A shared finding carries its fix (`fix`: the lines it replaces and the replacement) when the account shares findings, sent only as written, so ocra Cloud can commit it to the pull request.
