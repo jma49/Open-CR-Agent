@@ -6,6 +6,13 @@ import { reviewUploadSchema, sharedFindingSchema, uploadAnswerSchema } from "./u
 const { about: _, ...body } = upload;
 
 describe("the review upload", () => {
+  it("reads a walkthrough that does not fit as absent, and keeps the rest", () => {
+    const groups = Array.from({ length: 13 }, () => ({ title: "t", files: ["a.ts"], note: "" }));
+    const parsed = reviewUploadSchema.parse({ ...body, walkthrough: { overview: "o", groups } });
+    expect(parsed.walkthrough).toBeUndefined();
+    expect(parsed.runId).toBe(body.runId);
+  });
+
   it("keeps every field of the CLI's real upload", () => {
     expect(reviewUploadSchema.parse(body)).toEqual(body);
   });

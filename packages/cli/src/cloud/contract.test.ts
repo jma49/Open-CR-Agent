@@ -24,6 +24,7 @@ import { parseAccountSettings } from "./account-settings.js";
 import { sharedFindings } from "./findings.js";
 import { parseAccountMemory } from "./memory.js";
 import { uploadOf } from "./upload.js";
+import { sharedWalkthrough } from "./walkthrough.js";
 
 // The fixtures in @open-cr-agent/cloud-contract are what ocra Cloud tests
 // its side against (its generated copy, pinned to an engine commit). These
@@ -144,6 +145,18 @@ const report = reviewReport({
     unchanged: [],
   },
   unverifiedCriticals: 0,
+  walkthrough: {
+    overview:
+      "Retries failed queries once, with the token api_key=sk-live-0123456789abcdef in a log.",
+    groups: [
+      {
+        title: "Retries",
+        files: ["src/retry.ts", "src/db.ts"],
+        note: "Wraps the query in a retry.",
+      },
+    ],
+    diagram: "sequenceDiagram\n  App->>DB: query\n  DB-->>App: timeout",
+  },
   usage: usage({ inputTokens: 1200, outputTokens: 340, costUsd: 0.4375 }),
 });
 
@@ -161,6 +174,7 @@ describe("the contract's fixtures", () => {
       // Not this CLI's version: the fixture would change with every release.
       ocraVersion: "0.0.0",
       findingList: sharedFindings(report).findings,
+      walkthrough: sharedWalkthrough(report.walkthrough ?? { overview: "", groups: [] }),
     };
     // OCRA_UPDATE_FIXTURES=1 rewrites it; then npm run format.
     if (process.env.OCRA_UPDATE_FIXTURES) {

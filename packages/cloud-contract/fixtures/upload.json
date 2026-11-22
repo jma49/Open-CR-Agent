@@ -114,5 +114,17 @@
       "suggestion": null,
       "code": "const q = 'SELECT * FROM t WHERE id = ' + id;"
     }
-  ]
+  ],
+  "walkthrough": {
+    "overview": "Retries failed queries once, with the token api_key=[redacted] in a log.",
+    "groups": [
+      {
+        "title": "Retries",
+        "files": ["src/retry.ts", "src/db.ts"],
+        "note": "Wraps the query in a retry."
+      }
+    ],
+    "diagram": "sequenceDiagram\n  App->>DB: query\n  DB-->>App: timeout",
+    "redacted": true
+  }
 }

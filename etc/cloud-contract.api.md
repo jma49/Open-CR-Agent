@@ -515,6 +515,12 @@ export const MAX_REVIEWERS = 40;
 // @public
 export const MAX_TOTAL_BYTES = 262144;
 
+// @public (undocumented)
+export const MAX_WALKTHROUGH_FILES = 200;
+
+// @public
+export const MAX_WALKTHROUGH_GROUPS = 12;
+
 // @public
 export const memoryAnswerSchema: z.ZodObject<{
     entries: z.ZodArray<z.ZodUnknown>;
@@ -1254,6 +1260,17 @@ export const reviewUploadSchema: z.ZodObject<{
         redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
         truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     }, z.core.$strip>>>>>>;
+    walkthrough: z.ZodCatch<z.ZodOptional<z.ZodObject<{
+        overview: z.ZodString;
+        groups: z.ZodArray<z.ZodObject<{
+            title: z.ZodString;
+            files: z.ZodArray<z.ZodString>;
+            note: z.ZodString;
+        }, z.core.$strip>>;
+        diagram: z.ZodCatch<z.ZodNullable<z.ZodString>>;
+        redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
+        truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
+    }, z.core.$strip>>>;
     pullRequest: z.ZodCatch<z.ZodOptional<z.ZodObject<{
         repository: z.ZodString;
         number: z.ZodNumber;
@@ -1353,6 +1370,22 @@ export const sharedFixSchema: z.ZodObject<{
     startLine: z.ZodNumber;
     endLine: z.ZodNumber;
     replacement: z.ZodString;
+}, z.core.$strip>;
+
+// @public (undocumented)
+export type SharedWalkthrough = z.input<typeof sharedWalkthroughSchema>;
+
+// @public
+export const sharedWalkthroughSchema: z.ZodObject<{
+    overview: z.ZodString;
+    groups: z.ZodArray<z.ZodObject<{
+        title: z.ZodString;
+        files: z.ZodArray<z.ZodString>;
+        note: z.ZodString;
+    }, z.core.$strip>>;
+    diagram: z.ZodCatch<z.ZodNullable<z.ZodString>>;
+    redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
+    truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
 }, z.core.$strip>;
 
 // @public
