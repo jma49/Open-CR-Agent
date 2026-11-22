@@ -30,8 +30,12 @@ function learning(id: string, fields: Partial<Learning> = {}): Learning {
 }
 
 const ids = (learnings: readonly Learning[]) => learnings.map((l) => l.id);
-const select = (learnings: Learning[], files: FileDiff[], limits = DEFAULT_SELECTION_LIMITS) =>
-  learningSelector(learnings, limits)(files);
+const select = (
+  learnings: Learning[],
+  files: FileDiff[],
+  limits = DEFAULT_SELECTION_LIMITS,
+  around?: string,
+) => learningSelector(learnings, limits)(files, around);
 
 describe("which learnings apply to a bundle", () => {
   it("selects nothing when there are no learnings", () => {
@@ -223,6 +227,35 @@ describe("the order of selected learnings", () => {
     const b = learning("b", { paths: ["src/**"] });
     expect(ids(select([b, a], files).selected)).toEqual(["a", "b"]);
     expect(ids(select([a, b], files).selected)).toEqual(["a", "b"]);
+  });
+});
+
+describe("the code around a change", () => {
+  const crowded = [
+    learning("a-bare", { paths: ["src/**"] }),
+    learning("b-around", { paths: ["src/**"], symbols: ["client.release"] }),
+    learning("c-elsewhere", { symbols: ["client.release"] }),
+  ];
+
+  it("ranks a learning on the bundle's paths whose symbol it uses above a bare path", () => {
+    const around = "function load() {\n  client.release();\n}";
+    const result = select(crowded, [diff("src/a.ts", "+ x")], DEFAULT_SELECTION_LIMITS, around);
+    expect(ids(result.selected)).toEqual(["b-around", "a-bare"]);
+  });
+
+  it("ranks below a symbol in the patch itself", () => {
+    const result = select(
+      [learning("a-patch", { paths: ["src/**"], symbols: ["retry"] }), ...crowded],
+      [diff("src/a.ts", "+ retry()")],
+      DEFAULT_SELECTION_LIMITS,
+      "client.release()",
+    );
+    expect(ids(result.selected)).toEqual(["a-patch", "b-around", "a-bare"]);
+  });
+
+  it("never makes a candidate of a learning off the bundle's paths", () => {
+    const result = learningSelector(crowded)([diff("lib/a.ts", "+ x")], "client.release()");
+    expect(result).toEqual({ selected: [], left: [] });
   });
 });
 

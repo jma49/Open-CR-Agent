@@ -4,7 +4,7 @@ import { runtimeGrouper } from "../bundle/runtime-grouper.js";
 import type { AgentRuntime, ReviewContext, Usage } from "../contracts.js";
 import type { ChangeRequest, FileDiff, PriorReview, RiskTier } from "../domain.js";
 import { errorMessage } from "../errors.js";
-import { learningSelector, type SelectLearnings } from "../knowledge/select.js";
+import type { SelectLearnings } from "../knowledge/select.js";
 import { rank } from "../matrix/matrix.js";
 import { MEMORY_PATH, mergeMemory, parseMemory, type RememberedEntry } from "../memory/memory.js";
 import type { ReviewEvent, ReviewReport } from "../report/report.js";
@@ -24,6 +24,7 @@ import {
 import { triage } from "../triage.js";
 import type { VcsAdapter } from "../vcs.js";
 import { reviewContext } from "./context.js";
+import { bundleLearnings } from "./learnings.js";
 import type { ReviewHooks, ReviewOptions } from "./options.js";
 import { resumedBundles } from "./resume.js";
 import { newRunId } from "./run-id.js";
@@ -62,6 +63,7 @@ export type PlanOptions = Pick<
   | "readTrusted"
   | "accountMemory"
   | "learnings"
+  | "symbols"
   | "sarifEvidence"
   | "selection"
   | "bundling"
@@ -141,6 +143,13 @@ export async function planReview(
 
   const binaryText = binaryTextWarning(decisions);
   const evidence = analyzerEvidence(options.sarifEvidence ?? [], bundled.bundles);
+  const context = reviewContext(vcs, diffs, options.learnings);
+  const learnings = await bundleLearnings(
+    options.learnings ?? [],
+    bundled.bundles,
+    context,
+    options.symbols,
+  );
   return {
     changeRequest,
     decisions,
@@ -159,7 +168,7 @@ export async function planReview(
       : scope.note
         ? { scope: scope.note }
         : {}),
-    context: reviewContext(vcs, diffs, options.learnings),
+    context,
     guidelines,
     repoRules: [
       ...(options.rules ?? []),
@@ -169,7 +178,7 @@ export async function planReview(
       memoryText === undefined ? [] : parseMemory(memoryText),
       options.accountMemory ?? [],
     ),
-    learnings: learningSelector(options.learnings ?? []),
+    learnings,
     evidence,
     usage,
     warnings: [...(binaryText ? [binaryText] : []), ...bundled.warnings, ...evidence.warnings],

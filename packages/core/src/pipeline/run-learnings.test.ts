@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { SymbolExtractor } from "../contracts.js";
 import type { Learning } from "../knowledge/learning.js";
 import { MAX_LISTED_LEARNINGS } from "../review/prompt.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
@@ -128,5 +129,50 @@ describe("a review with the team's learnings", () => {
     );
     expect(report.learnings?.map((l) => l.id)).toEqual(["l00", "l01", "l02", "l03", "l04"]);
     expect(read).toBe("Title of l7\n\nBody of l07.");
+  });
+
+  it("ranks a crowded directory's learnings by the code around the change", async () => {
+    const source = [
+      "export async function load(id) {",
+      "  const client = await pool.connect();",
+      "  const row = await client.query(sql, [id]);",
+      "  client.release();",
+      "  return row;",
+      "}",
+    ].join("\n");
+    const edit = [
+      "diff --git a/src/db/load.ts b/src/db/load.ts",
+      "--- a/src/db/load.ts",
+      "+++ b/src/db/load.ts",
+      "@@ -3 +3 @@",
+      "-  const row = await client.query(sql, id);",
+      "+  const row = await client.query(sql, [id]);",
+    ].join("\n");
+    const extractor: SymbolExtractor = {
+      symbols: async () => ({
+        definitions: [{ name: "load", kind: "function", startLine: 1, endLine: 6 }],
+        uses: new Map(),
+      }),
+    };
+    const crowded = [
+      ...Array.from({ length: 20 }, (_, i) => learning(`a${i}`, { paths: ["src/db/**"] })),
+      learning("z-release", { paths: ["src/db/**"], symbols: ["client.release"] }),
+    ];
+    const given = async (symbols?: SymbolExtractor) => {
+      const fake = runtime(async function* (spec) {
+        yield { type: "done", taskId: spec.taskId };
+      });
+      const report = await review({
+        vcs: vcs({ "src/db/load.ts": source }, edit),
+        runtime: fake,
+        reviewers: [correctnessReviewer],
+        stages: { verify: false },
+        learnings: crowded,
+        ...(symbols ? { symbols } : {}),
+      });
+      return report.learnings?.map((l) => l.id) ?? [];
+    };
+    expect(await given(extractor)).toContain("z-release");
+    expect(await given()).not.toContain("z-release");
   });
 });

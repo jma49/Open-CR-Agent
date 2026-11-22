@@ -45,5 +45,6 @@
 | [0042](0042-analyzer-evidence.md) | `--sarif-evidence` shows reviewers an analyzer's results on and near the change as data to confirm, selected per bundle before any model call (at most 20, change first, then severity and security tag), never as findings of their own; the report's `analyzerEvidence` says what was given; `--import-sarif` keeps ADR-0019 |
 | [0043](0043-security-evidence-routing.md) | Amends ADR-0042 point 3: an analyzer result tagged `security` goes only to the security reviewer of its file, and to every reviewer of the file when no security reviewer reviews it |
 | [0044](0044-learning-selection-recall.md) | Amends ADR-0037 point 4: learning paths follow `.gitignore`, a compound symbol matches in any naming convention and member-access syntax, keywords match plurals and unspaced scripts, evidence ranks before a bare path; the replay also gates listing, unrelated learnings and token cost, with property tests |
+| [0045](0045-learning-ranking-by-changed-code.md) | Amends ADR-0044 point 4: when the limits leave a learning out, the code of the definitions the change touches (tree-sitter) ranks the learnings on the bundle's paths; it never adds a candidate or a token |
 
 Copy [0000-template.md](0000-template.md) to add a new record.

@@ -47,10 +47,17 @@ interface Match {
   path: boolean;
   symbols: number;
   keywords: number;
+  // Symbols and keywords found only in the code around the change.
+  around: number;
   terms: number;
 }
 
-export type SelectLearnings = (files: readonly FileDiff[]) => LearningSelection;
+// `around` is the code of the definitions the change touches, beyond the
+// patch's own lines (changedCode). It only ranks learnings whose path
+// matches, so it never adds a candidate or a token: among many lessons on
+// one directory it tells apart the one whose symbol the changed function
+// calls.
+export type SelectLearnings = (files: readonly FileDiff[], around?: string) => LearningSelection;
 
 // The learnings of a run, compiled once and selected from per bundle with
 // no model: what a reviewer is shown must not depend on what a model guessed.
@@ -59,12 +66,14 @@ export function learningSelector(
   limits: SelectionLimits = DEFAULT_SELECTION_LIMITS,
 ): SelectLearnings {
   const entries = learnings.map(indexed);
-  const selections = new WeakMap<readonly FileDiff[], LearningSelection>();
-  return (files) => {
-    const cached = selections.get(files);
+  const selections = new WeakMap<readonly FileDiff[], Map<string, LearningSelection>>();
+  return (files, around = "") => {
+    const forFiles = selections.get(files) ?? new Map<string, LearningSelection>();
+    selections.set(files, forFiles);
+    const cached = forFiles.get(around);
     if (cached) return cached;
-    const selection = select(entries, files, limits);
-    selections.set(files, selection);
+    const selection = select(entries, files, around, limits);
+    forFiles.set(around, selection);
     return selection;
   };
 }
@@ -72,6 +81,7 @@ export function learningSelector(
 function select(
   entries: readonly Indexed[],
   files: readonly FileDiff[],
+  around: string,
   limits: SelectionLimits,
 ): LearningSelection {
   if (entries.length === 0) return { selected: [], left: [] };
@@ -79,8 +89,9 @@ function select(
     f.oldPath === f.newPath ? [f.newPath] : [f.oldPath, f.newPath],
   );
   const text = bundleText(files.map((f) => f.patch).join("\n"));
+  const aroundText = around === "" ? undefined : bundleText(around);
   const ranked = entries
-    .map((entry) => match(entry, paths, text))
+    .map((entry) => match(entry, paths, text, aroundText))
     .filter((m) => m.path || m.symbols > 0 || m.keywords > 0)
     .sort(byRank);
   return fill(ranked, limits);
@@ -102,12 +113,26 @@ function indexed(learning: Learning): Indexed {
   };
 }
 
-function match(indexed: Indexed, paths: readonly string[], text: BundleText): Match {
+function match(
+  indexed: Indexed,
+  paths: readonly string[],
+  text: BundleText,
+  around: BundleText | undefined,
+): Match {
+  const path = paths.some((p) => indexed.matchesPath(p));
+  const symbols = indexed.symbols.filter((s) => symbolMatches(s, text));
+  const keywords = indexed.keywords.filter((k) => keywordMatches(k, text));
+  const nearby =
+    path && around
+      ? indexed.symbols.filter((s) => !symbols.includes(s) && symbolMatches(s, around)).length +
+        indexed.keywords.filter((k) => !keywords.includes(k) && keywordMatches(k, around)).length
+      : 0;
   return {
     indexed,
-    path: paths.some((p) => indexed.matchesPath(p)),
-    symbols: indexed.symbols.filter((s) => symbolMatches(s, text)).length,
-    keywords: indexed.keywords.filter((k) => keywordMatches(k, text)).length,
+    path,
+    symbols: symbols.length,
+    keywords: keywords.length,
+    around: nearby,
     terms:
       indexed.terms.length === 0
         ? 0
@@ -119,12 +144,14 @@ const isCriticalHit = (m: Match) => m.path && m.indexed.learning.critical;
 
 // A symbol or keyword in the patch is evidence the lesson applies; a path
 // alone only says it is about this part of the code. So a path backed by
-// evidence ranks first, and a symbol named anywhere outranks a bare path:
-// among many lessons on one directory, a bare path must not crowd out the
-// one whose symbol the change uses.
+// evidence ranks first, then a path backed by the code around the change,
+// and a symbol named anywhere outranks a bare path: among many lessons on
+// one directory, a bare path must not crowd out the one whose symbol the
+// change uses.
 function tier(m: Match): number {
-  if (isCriticalHit(m)) return 4;
-  if (m.path && (m.symbols > 0 || m.keywords > 0)) return 3;
+  if (isCriticalHit(m)) return 5;
+  if (m.path && (m.symbols > 0 || m.keywords > 0)) return 4;
+  if (m.path && m.around > 0) return 3;
   if (m.symbols > 0) return 2;
   return m.path ? 1 : 0;
 }
@@ -134,6 +161,7 @@ function byRank(a: Match, b: Match): number {
     tier(b) - tier(a) ||
     b.symbols - a.symbols ||
     b.keywords - a.keywords ||
+    b.around - a.around ||
     b.terms - a.terms ||
     (a.indexed.learning.id < b.indexed.learning.id ? -1 : 1)
   );

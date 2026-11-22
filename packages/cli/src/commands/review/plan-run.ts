@@ -17,6 +17,7 @@ import {
   effectiveSettings,
   renderSettings,
 } from "./settings-sources.js";
+import { reviewSymbols } from "./symbols.js";
 
 // --plan: what the review would do and cost, without calling a model.
 export async function planRun(
@@ -29,6 +30,7 @@ export async function planRun(
   const preview = await previewReview({
     ...configuredOptions(run, args),
     vcs: run.vcs,
+    symbols: reviewSymbols(deps.env),
     inputPrice: inputPriceOf(config.providers),
   });
   const settings = effectiveSettings(run.listed);
