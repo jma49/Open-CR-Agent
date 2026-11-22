@@ -25,6 +25,23 @@ describe("the review upload", () => {
     expect(many.runId).toBe(body.runId);
   });
 
+  it("reads a learning id or a check that does not fit as null, and too many as absent", () => {
+    const check = { id: "chk_1.2", outcome: "failed", reason: "no migration note" };
+    const parsed = reviewUploadSchema.parse({
+      ...body,
+      learnings: ["retry-budget", "../etc"],
+      mergeChecks: [check, { id: "chk_2", outcome: "skipped" }],
+    });
+    expect(parsed.learnings).toEqual(["retry-budget", null]);
+    expect(parsed.mergeChecks).toEqual([check, null]);
+    const many = reviewUploadSchema.parse({
+      ...body,
+      mergeChecks: Array.from({ length: 21 }, () => check),
+    });
+    expect(many.mergeChecks).toBeUndefined();
+    expect(many.runId).toBe(body.runId);
+  });
+
   it("keeps every field of the CLI's real upload", () => {
     expect(reviewUploadSchema.parse(body)).toEqual(body);
   });

@@ -1,3 +1,4 @@
+import { MAX_MERGE_CHECKS, mergeCheckSchema } from "@open-cr-agent/cloud-contract";
 import { type AgentRole, EFFORT_LEVELS, type RiskTier } from "@open-cr-agent/core";
 import { AGENT_ROLES, MAX_TIMER_MS, RISK_TIERS } from "@open-cr-agent/core/internal";
 import { z } from "zod";
@@ -146,6 +147,14 @@ export const configSchema = z
     trackers: trackersSchema.default({}),
     // Markdown files, or directories of them, in the repository (ADR-0052).
     projectDocs: z.array(docPath).max(MAX_PROJECT_DOC_ENTRIES).optional(),
+    // Pre-merge checks in plain words, judged against the change (ADR-0054).
+    mergeChecks: z
+      .array(mergeCheckSchema)
+      .max(MAX_MERGE_CHECKS)
+      .refine((checks) => new Set(checks.map((c) => c.id)).size === checks.length, {
+        error: "each check needs its own id",
+      })
+      .optional(),
     maxCostUsd: z.number().positive().optional(),
     maxTasks: z.number().int().min(1).max(1_000).optional(),
     // Unset: each provider's default. A seed makes sampling repeatable only

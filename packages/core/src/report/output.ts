@@ -58,6 +58,14 @@ export function toReportOutput(report: ReviewReport): ReportOutput {
   }
   if (report.judgement) output.judgement = outputJudgement(report.judgement);
   if (report.walkthrough) output.walkthrough = outputWalkthrough(report.walkthrough);
+  if (report.mergeChecks) {
+    output.mergeChecks = report.mergeChecks.map(({ id, instruction, outcome, reason }) => ({
+      id,
+      instruction,
+      outcome,
+      reason,
+    }));
+  }
   if (report.anchoring) output.anchoring = outputAnchoring(report.anchoring);
   if (report.spendLimit) output.spendLimit = outputSpendLimit(report.spendLimit);
   if (report.provenance) output.provenance = outputProvenance(report.provenance);

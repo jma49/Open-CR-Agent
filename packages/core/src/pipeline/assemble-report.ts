@@ -10,6 +10,7 @@ import { evidenceUses } from "../sarif/evidence.js";
 import type { CheckStage } from "./check-stage.js";
 import type { ExecuteStage, StageContext } from "./execute-stage.js";
 import type { FilterStage } from "./filter-stage.js";
+import type { MergeChecksStage } from "./merge-checks-stage.js";
 import type { ReviewPlan } from "./plan.js";
 import { runProvenance } from "./provenance.js";
 import type { WalkthroughStage } from "./walkthrough-stage.js";
@@ -24,6 +25,7 @@ export interface Stages {
   filtered: FilterStage;
   checked: CheckStage;
   walkthrough: WalkthroughStage;
+  mergeChecks: MergeChecksStage;
 }
 
 export function assembleReport(run: RunFacts, stages: Stages, context: StageContext): ReviewReport {
@@ -32,6 +34,7 @@ export function assembleReport(run: RunFacts, stages: Stages, context: StageCont
   const { executed, filtered, checked } = stages;
   if (checked.judged.decisions) report.judgement = checked.judged.decisions;
   if (stages.walkthrough.walkthrough) report.walkthrough = stages.walkthrough.walkthrough;
+  if (options.mergeChecks?.length) report.mergeChecks = stages.mergeChecks.results;
   const limit = spendLimit.status();
   if (limit) report.spendLimit = limit;
   report.anchoring = summarizeAnchoring(report.findings, executed.relocations.length);
@@ -69,11 +72,17 @@ export function assembleReport(run: RunFacts, stages: Stages, context: StageCont
 
 function reportBody(
   run: RunFacts,
-  { executed, filtered, checked, walkthrough }: Stages,
+  { executed, filtered, checked, walkthrough, mergeChecks }: Stages,
   { plan }: StageContext,
 ): ReviewReport {
   const { verification, judged } = checked;
-  const calls = [...plan.usage, ...executed.usage(), ...walkthrough.usage, ...checked.usage];
+  const calls = [
+    ...plan.usage,
+    ...executed.usage(),
+    ...walkthrough.usage,
+    ...mergeChecks.usage,
+    ...checked.usage,
+  ];
   return {
     runId: run.runId,
     changeRequest: plan.changeRequest,
@@ -99,6 +108,7 @@ function reportBody(
       ...executed.warnings,
       ...filtered.warnings,
       ...walkthrough.warnings,
+      ...mergeChecks.warnings,
       ...checked.warnings,
     ],
   };

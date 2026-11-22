@@ -8,6 +8,7 @@ import type { ProjectDoc } from "../docs/project-docs.js";
 import { OcraError } from "../errors.js";
 import type { Learning } from "../knowledge/learning.js";
 import type { MemoryEntry } from "../memory/memory.js";
+import type { MergeCheck } from "../merge-checks/merge-check.js";
 import type { ReviewEvent } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { SourcedRule } from "../rules/repo-rules.js";
@@ -52,6 +53,9 @@ export interface ReviewOptions {
   // The team's design documents, read from the trusted revision; each task
   // is given the sections that name its files (ADR-0052).
   projectDocs?: readonly ProjectDoc[];
+  // The team's pre-merge checks in plain words, each judged against the
+  // change beside the review tasks (ADR-0054).
+  mergeChecks?: readonly MergeCheck[];
   // Which files are reviewed; what is left out is defaultSelectionPolicy's.
   selection?: Partial<SelectionPolicy>;
   limits?: ReviewLimits;

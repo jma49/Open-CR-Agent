@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { LEARNING_ID, MAX_LEARNINGS } from "./learnings.js";
 import { MAX_FIELD } from "./limits.js";
+import { MAX_MERGE_CHECKS, sharedMergeCheckSchema } from "./merge-checks.js";
 import { REPOSITORY_URL } from "./repository.js";
 import {
   REPO_HASH,
@@ -171,6 +173,19 @@ export const reviewUploadSchema = z.object({
   linkedTasks: z
     .array(sharedLinkedTaskSchema.nullable().catch(null))
     .max(MAX_LINKED_TASKS)
+    .optional()
+    .catch(undefined),
+  // The ids of the learnings its tasks were given (ADR-0037): with a pull or
+  // merge request's review, else with the findings. Absent from older clients.
+  learnings: z
+    .array(z.string().regex(LEARNING_ID).nullable().catch(null))
+    .max(MAX_LEARNINGS)
+    .optional()
+    .catch(undefined),
+  // Absent when the review was given no checks; only with a pull or merge request.
+  mergeChecks: z
+    .array(sharedMergeCheckSchema.nullable().catch(null))
+    .max(MAX_MERGE_CHECKS)
     .optional()
     .catch(undefined),
   // A pull or merge request's review: which one, so ocra Cloud can show the

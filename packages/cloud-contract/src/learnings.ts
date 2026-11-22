@@ -6,6 +6,8 @@ import { z } from "zod";
 
 /** Where the learnings of a repository live, relative to its root. */
 export const LEARNINGS_DIR = ".ocra/learnings";
+/** The branches `ocra learn --propose` opens its pull requests from start with it. */
+export const LEARNING_PROPOSAL_BRANCH = "ocra/learnings-";
 /** Learning files read per repository; the rest are left out with a warning. */
 export const MAX_LEARNINGS = 500;
 /** Bytes of one learning file, frontmatter included. */

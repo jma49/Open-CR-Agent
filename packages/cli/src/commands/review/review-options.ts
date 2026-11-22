@@ -37,6 +37,7 @@ export function configuredOptions(run: ResolvedRun, args: ReviewArgs): Configure
     ...(args.noLinkedTasks || config.linkedTasks === false ? { linkedTasks: false } : {}),
     ...(run.taskSources.length > 0 ? { taskSources: run.taskSources } : {}),
     ...(run.projectDocs.length > 0 ? { projectDocs: run.projectDocs } : {}),
+    ...(config.mergeChecks?.length ? { mergeChecks: config.mergeChecks } : {}),
     ...(run.sarifEvidence.length > 0 ? { sarifEvidence: run.sarifEvidence } : {}),
     limits,
     stages: {

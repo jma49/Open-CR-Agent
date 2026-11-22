@@ -708,6 +708,38 @@
       ],
       "additionalProperties": false
     },
+    "mergeChecks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed",
+              "inconclusive"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "instruction",
+          "outcome",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
     "rereview": {
       "type": "object",
       "properties": {

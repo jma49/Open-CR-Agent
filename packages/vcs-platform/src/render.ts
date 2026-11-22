@@ -146,6 +146,7 @@ export function renderSummary({
     ...verdictSection(report, text),
     ...scopeNote(report),
     ...walkthroughSection(report.walkthrough),
+    ...mergeChecksSection(report.mergeChecks),
     ...incompleteNotes(report, text),
     ...unattributedNote(unattributed),
     ...outsideDiff(report.findings, commented),
@@ -216,6 +217,21 @@ function walkthroughGroup(group: { title: string; files: string[]; note: string 
   const files = more > 0 ? `${shown} and ${more} more` : shown;
   const note = group.note === "" ? "" : `: ${safeLine(group.note)}`;
   return `- **${safeLine(group.title)}**${note}\n  ${files}`;
+}
+
+const OUTCOME_LABEL = { passed: "Passed", failed: "Failed", inconclusive: "Inconclusive" } as const;
+
+function mergeChecksSection(results: ReviewReport["mergeChecks"]): string[] {
+  if (!results?.length) return [];
+  return [
+    "",
+    "### Pre-merge checks",
+    "",
+    ...results.map(
+      (r) =>
+        `- **${OUTCOME_LABEL[r.outcome]}**: ${safeLine(r.instruction)}${r.reason === "" ? "" : `\n  ${safeLine(r.reason)}`}`,
+    ),
+  ];
 }
 
 function scopeNote(report: ReviewReport): string[] {

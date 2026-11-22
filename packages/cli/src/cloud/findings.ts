@@ -13,11 +13,10 @@ import type { Finding, ReviewReport } from "@open-cr-agent/core";
 // this pass keeps a secret from leaving the machine at all. It catches
 // patterns, not every secret.
 
+export type SharedFindings = { findings: SharedFinding[]; left: number };
+
 /** The report's findings as uploaded, redacted and bounded; `left` counts those not sent. */
-export function sharedFindings(report: Pick<ReviewReport, "findings">): {
-  findings: SharedFinding[];
-  left: number;
-} {
+export function sharedFindings(report: Pick<ReviewReport, "findings">): SharedFindings {
   const findings: SharedFinding[] = [];
   let total = 0;
   for (const finding of report.findings.slice(0, MAX_FINDINGS)) {

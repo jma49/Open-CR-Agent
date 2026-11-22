@@ -10,6 +10,7 @@ import {
 } from "../domain.js";
 import { skipReasonSchema } from "../matrix/matrix.js";
 import { memoryEntrySchema } from "../memory/memory.js";
+import { MERGE_CHECK_OUTCOMES } from "../merge-checks/merge-check.js";
 import { exclusionReasonSchema } from "../select/select.js";
 import { TASK_TRACKERS } from "../task/linked-task.js";
 import { taskStatusSchema } from "./report.js";
@@ -261,6 +262,16 @@ export const reportOutputSchema = z.strictObject({
       ),
       diagram: z.string().exactOptional(),
     })
+    .exactOptional(),
+  mergeChecks: z
+    .array(
+      z.strictObject({
+        id: z.string(),
+        instruction: z.string(),
+        outcome: z.enum(MERGE_CHECK_OUTCOMES),
+        reason: z.string(),
+      }),
+    )
     .exactOptional(),
   rereview: z
     .strictObject({

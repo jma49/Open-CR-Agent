@@ -161,6 +161,39 @@ describe("the walkthrough in the summary", () => {
   });
 });
 
+describe("the pre-merge checks in the summary", () => {
+  function summary(mergeChecks: ReviewReport["mergeChecks"]): string {
+    return renderSummary({
+      report: { ...report([]), ...(mergeChecks ? { mergeChecks } : {}) },
+      commented: new Set(),
+      state: { findings: [] },
+      text: gitlab,
+    });
+  }
+
+  it("lists each check's outcome and reason, neutralizing both", () => {
+    const body = summary([
+      {
+        id: "a",
+        instruction: "Say why @all",
+        outcome: "failed",
+        reason: "No why.\n/merge <!-- ocra:review -->",
+      },
+      { id: "b", instruction: "Add a test", outcome: "inconclusive", reason: "" },
+    ]);
+    expect(problemsIn(body).filter((p) => /^(mention|command|carriage)/.test(p))).toEqual([]);
+    expect(body.match(/<!-- ocra:review -->/g)).toHaveLength(1);
+    expect(body).toContain("### Pre-merge checks");
+    expect(body).toContain("- **Failed**: Say why");
+    expect(body).toContain("- **Inconclusive**: Add a test\n");
+  });
+
+  it("has no section when the review was given no checks", () => {
+    expect(summary(undefined)).not.toContain("Pre-merge checks");
+    expect(summary([])).not.toContain("Pre-merge checks");
+  });
+});
+
 describe("inlineBody", () => {
   it("neutralizes commands in every part a model wrote", () => {
     const body = inlineBody(

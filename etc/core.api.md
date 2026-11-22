@@ -758,6 +758,28 @@ export interface MentionRef {
 }
 
 // @public (undocumented)
+export const MERGE_CHECK_OUTCOMES: readonly ["passed", "failed", "inconclusive"];
+
+// @public (undocumented)
+export interface MergeCheck {
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    instruction: string;
+}
+
+// @public (undocumented)
+export type MergeCheckOutcome = (typeof MERGE_CHECK_OUTCOMES)[number];
+
+// @public (undocumented)
+export interface MergeCheckResult extends MergeCheck {
+    // (undocumented)
+    outcome: MergeCheckOutcome;
+    // (undocumented)
+    reason: string;
+}
+
+// @public (undocumented)
 export const MODEL_TIERS: readonly ["top", "standard", "light"];
 
 // @public (undocumented)
@@ -1273,6 +1295,16 @@ export const reportOutputSchema: z.ZodObject<{
         }, z.core.$strict>>;
         diagram: z.ZodExactOptional<z.ZodString>;
     }, z.core.$strict>>;
+    mergeChecks: z.ZodExactOptional<z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        instruction: z.ZodString;
+        outcome: z.ZodEnum<{
+            failed: "failed";
+            inconclusive: "inconclusive";
+            passed: "passed";
+        }>;
+        reason: z.ZodString;
+    }, z.core.$strict>>>;
     rereview: z.ZodExactOptional<z.ZodObject<{
         fixed: z.ZodArray<z.ZodObject<{
             fingerprint: z.ZodString;
@@ -1689,6 +1721,8 @@ export interface ReviewOptions {
     // (undocumented)
     linkedTasks?: boolean;
     // (undocumented)
+    mergeChecks?: readonly MergeCheck[];
+    // (undocumented)
     mode?: ReviewMode;
     // (undocumented)
     models?: ModelChains;
@@ -1753,6 +1787,8 @@ export interface ReviewReport {
     learnings?: LearningUse[];
     // (undocumented)
     linkedTasks?: LinkedTaskUse[];
+    // (undocumented)
+    mergeChecks?: MergeCheckResult[];
     // (undocumented)
     projectDocs?: ProjectDocUse[];
     // (undocumented)
