@@ -1,8 +1,7 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { describe, expect, it, type TestContext } from "vitest";
 import type { AgentEvent, AgentRuntime, AgentTaskSpec, ReviewContext } from "../contracts.js";
 import { MAX_AGENT_STEPS, WRAP_UP_MESSAGE, WRAP_UP_STEPS } from "./attempt.js";
 import {
-  type FakeEndpoint,
   type Reply,
   type SeenRequest,
   scriptedEndpoint,
@@ -81,30 +80,28 @@ const costOf = (events: readonly AgentEvent[]) =>
 
 export function runtimeConformance(name: string, fixture: RuntimeFixture): void {
   const timeout = fixture.timeoutMs ?? 10_000;
-  const opened: { endpoint: FakeEndpoint; runtime: AgentRuntime }[] = [];
-  afterAll(async () => {
-    for (const { endpoint, runtime } of opened.splice(0)) {
-      await runtime.dispose?.();
-      await endpoint.close();
-    }
-  });
+  // Each scenario's endpoint and runtime end with it, through its own test
+  // context: scenarios run concurrently.
   const start = async (
+    onTestFinished: TestContext["onTestFinished"],
     script: readonly (Reply | ((request: SeenRequest) => Reply))[],
     chain: readonly string[] = ["local/m1"],
   ) => {
     const endpoint = await scriptedEndpoint(script);
     const runtime = fixture.runtime(endpoint.url, chain);
-    opened.push({ endpoint, runtime });
+    onTestFinished(async () => {
+      await runtime.dispose?.();
+      await endpoint.close();
+    });
     return { endpoint, runtime };
   };
 
-  // Concurrent: each scenario owns its endpoint and runtime, and a runtime
-  // that starts a process spends most of a scenario waiting on it.
+  // A runtime that starts a process spends most of a scenario waiting on it.
   describe.concurrent(`${name} conforms to AgentRuntime`, () => {
     it(
       "offers the review tools, runs them through the review context, and reports the finding, the usage and the end",
-      async () => {
-        const { endpoint, runtime } = await start([
+      async ({ onTestFinished }) => {
+        const { endpoint, runtime } = await start(onTestFinished, [
           { toolCalls: [{ name: "read_file", args: { path: FILE } }] },
           { toolCalls: [{ name: "report_finding", args: FINDING }] },
           { content: "Reviewed.", toolCalls: [{ name: "task_done", args: {} }] },
@@ -145,11 +142,12 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
 
     it(
       "says a task that used every step without task_done ended at the step cap",
-      async () => {
+      async ({ onTestFinished }) => {
         // OpenCode tells an agent on its last step to answer in text only; a
         // model that obeys ends there, as one that keeps calling tools would
         // not (it steps past the cap).
         const { endpoint, runtime } = await start(
+          onTestFinished,
           Array.from(
             { length: MAX_AGENT_STEPS + 5 },
             () => (request: SeenRequest) =>
@@ -169,8 +167,8 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
 
     it(
       "says a task that answered without task_done, steps to spare, stopped early",
-      async () => {
-        const { runtime } = await start([{ content: "Looks fine to me." }]);
+      async ({ onTestFinished }) => {
+        const { runtime } = await start(onTestFinished, [{ content: "Looks fine to me." }]);
         const events = await collect(
           runtime.runTask(taskSpec(fakeContext()), new AbortController().signal),
         );
@@ -181,7 +179,7 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
 
     it(
       "gives a review that reaches the step cap one turn with only the reporting tools, and keeps what it reports",
-      async () => {
+      async ({ onTestFinished }) => {
         // Reads on every step but the last, where it answers in text, as a
         // model told it is out of steps does; once only the reporting tools
         // are left, reports, then answers in text.
@@ -206,6 +204,7 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
           };
         };
         const { endpoint, runtime } = await start(
+          onTestFinished,
           Array.from({ length: MAX_AGENT_STEPS + 5 }, () => reader),
         );
         const events = await collect(
@@ -244,8 +243,8 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
 
     it(
       "says in each attempt's summary which files it read, what it searched for and what it answered",
-      async () => {
-        const { runtime } = await start([
+      async ({ onTestFinished }) => {
+        const { runtime } = await start(onTestFinished, [
           { toolCalls: [{ name: "read_file", args: { path: FILE } }] },
           { toolCalls: [{ name: "code_search", args: { literal: "const a" } }] },
           { toolCalls: [{ name: "read_file", args: { path: FILE, startLine: 2 } }] },
@@ -272,8 +271,9 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
 
     it(
       "stops on a credential error without trying another model",
-      async () => {
+      async ({ onTestFinished }) => {
         const { endpoint, runtime } = await start(
+          onTestFinished,
           [{ status: 401, body: '{"error":{"message":"invalid api key"}}' }],
           ["local/m1", "local/m2"],
         );
@@ -290,11 +290,12 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
 
     it(
       "moves to the next model on a daily quota, and the key appears in no event",
-      async () => {
+      async ({ onTestFinished }) => {
         // m1 is out for the day however often a client retries (a short
         // Retry-After keeps those retries quick); m2 answers. OpenCode's
         // client retries m1 a dozen times, so the script outlasts that.
         const { endpoint, runtime } = await start(
+          onTestFinished,
           Array.from(
             { length: 30 },
             () => (request: SeenRequest) =>
@@ -322,8 +323,8 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
 
     it(
       "ends a cancelled task without finishing or failing it",
-      async () => {
-        const { runtime } = await start([{ delayMs: 20_000 }]);
+      async ({ onTestFinished }) => {
+        const { runtime } = await start(onTestFinished, [{ delayMs: 20_000 }]);
         const controller = new AbortController();
         setTimeout(() => controller.abort(), 500);
         const events = await collect(runtime.runTask(taskSpec(fakeContext()), controller.signal));
@@ -334,8 +335,8 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
 
     it(
       "answers a completion without tools, priced",
-      async () => {
-        const { endpoint, runtime } = await start([
+      async ({ onTestFinished }) => {
+        const { endpoint, runtime } = await start(onTestFinished, [
           { content: "yes", usage: { prompt_tokens: 1_000, completion_tokens: 10 } },
         ]);
         if (!runtime.complete) throw new Error("the runtime has no complete()");
