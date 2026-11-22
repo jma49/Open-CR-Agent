@@ -79,6 +79,31 @@ export const sharedFindingSchema = z.object({
 });
 export type SharedFinding = z.input<typeof sharedFindingSchema>;
 
+/** At most this many file groups, and files in each, in a shared walkthrough. */
+export const MAX_WALKTHROUGH_GROUPS = 12;
+export const MAX_WALKTHROUGH_FILES = 200;
+
+/**
+ * The review's walkthrough of the change (ADR-0047), shared with the
+ * findings and redacted the same way; one that does not fit reads as absent.
+ */
+export const sharedWalkthroughSchema = z.object({
+  overview: z.string().max(MAX_FIELD),
+  groups: z
+    .array(
+      z.object({
+        title: z.string().max(MAX_FIELD),
+        files: z.array(z.string().min(1).max(1024)).max(MAX_WALKTHROUGH_FILES),
+        note: z.string().max(MAX_FIELD),
+      }),
+    )
+    .max(MAX_WALKTHROUGH_GROUPS),
+  diagram: z.string().max(MAX_FIELD).nullable().catch(null),
+  redacted: z.literal(true).optional().catch(undefined),
+  truncated: z.literal(true).optional().catch(undefined),
+});
+export type SharedWalkthrough = z.input<typeof sharedWalkthroughSchema>;
+
 /**
  * The review's counts, and the shared findings in `findingList`. A finding
  * or a reviewer's counts that do not fit read as null; the server keeps
@@ -118,6 +143,7 @@ export const reviewUploadSchema = z.object({
     .catch(undefined),
   outcomes: z.object({ fixed: count, dismissed: count }).optional().catch(undefined),
   findingList: z.array(sharedFindingSchema.nullable().catch(null)).optional().catch(undefined),
+  walkthrough: sharedWalkthroughSchema.optional().catch(undefined),
   // A pull or merge request's review: which one, so ocra Cloud can show the
   // verdict on it (ADR-0038).
   pullRequest: z
