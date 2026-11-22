@@ -5,3 +5,6 @@ paths:
   .github/workflows/commits.yml:
     ignore:
       - 'property "workflow_sha" is not defined'
+  .github/workflows/budget.yml:
+    ignore:
+      - 'property "workflow_sha" is not defined'
