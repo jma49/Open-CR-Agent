@@ -28,6 +28,12 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Fi
 
 模型只负责分组和描述：有哪些文件由 diff 决定（它编造的路径会被丢弃，漏掉的文件列在 *Other changes* 下）；时序图只有每一行都是普通的时序图语句时才显示，因此指令、链接、点击处理和标记都到不了页面上。调用失败或回答无效只会少一份导读并给出警告，不影响审查。[`.ocra/config.json`](./configuration) 中的 `walkthrough` 可以关闭它，也可以为本地审查打开，这时 JSON 报告里会带上它。
 
+## 关联的任务
+
+审查 Pull Request 或 Merge Request 时，每个审查任务还会拿到这次改动所针对的 issue，审查员可以据此检查改动是否做了要求的事：漏掉的验收条件、没做完的子任务、修错了场景。这些是平台关联到改动上的 issue：GitHub 上是 Pull Request 要关闭的 issue（`Closes #12` 这样的关闭关键字，或在侧栏关联的 issue），GitLab 上是 Merge Request 要关闭的 issue；都没有时，取分支名所对应的 issue（`12-fix-login`，两个平台从 issue 创建分支时都这样命名）。只算被审查仓库自己的 issue，因此来自 fork 的 Pull Request 无法把其他仓库的 issue 带进审查。
+
+最多 3 个 issue，每个带标题、状态、标签、正文的前 4,000 个字符、父任务的标题和前 1,500 个字符（GitHub 的父 issue，GitLab 的 epic），以及最多 10 个子 issue 的标题；不做搜索，也不由模型挑选。这些文字放在所有任务共享的提示词部分，每次运行只缓存一次。查询失败（令牌无权读取 issue）只产生一条警告，审查照常进行。报告的 `linkedTasks` 列出交出去的内容。在 [`.ocra/config.json`](./configuration) 中设置 `linkedTasks: false` 或使用 `--no-linked-tasks` 可以关闭。
+
 ## 结论（verdict）
 
 结论由一套固定规则根据最终的问题决定，而不是由模型决定，所以相同的问题总会得到相同的结论：

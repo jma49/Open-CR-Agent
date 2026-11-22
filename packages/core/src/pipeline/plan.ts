@@ -21,10 +21,12 @@ import {
   type FileDecision,
   selectFiles,
 } from "../select/select.js";
+import type { BoundLinkedTasks } from "../task/linked-task.js";
 import { triage } from "../triage.js";
 import type { VcsAdapter } from "../vcs.js";
 import { reviewContext } from "./context.js";
 import { bundleLearnings } from "./learnings.js";
+import { loadLinkedTasks } from "./linked-tasks.js";
 import type { ReviewHooks, ReviewOptions } from "./options.js";
 import { resumedBundles } from "./resume.js";
 import { newRunId } from "./run-id.js";
@@ -50,6 +52,8 @@ export interface ReviewPlan {
   repoRules: SourcedRule[];
   memory: RememberedEntry[];
   learnings: SelectLearnings;
+  // Absent when none were looked up (ADR-0051).
+  linkedTasks?: BoundLinkedTasks;
   evidence: AnalyzerEvidence;
   usage: Usage[];
   warnings: string[];
@@ -63,6 +67,7 @@ export type PlanOptions = Pick<
   | "readTrusted"
   | "accountMemory"
   | "learnings"
+  | "linkedTasks"
   | "symbols"
   | "sarifEvidence"
   | "selection"
@@ -105,10 +110,11 @@ export async function planReview(
     tier,
   });
 
-  const [guidelines, fileRules, memoryText] = await Promise.all([
+  const [guidelines, fileRules, memoryText, linked] = await Promise.all([
     readTrusted(GUIDELINES_PATH),
     loadRepoRules(readTrusted),
     readTrusted(MEMORY_PATH),
+    loadLinkedTasks(vcs, options.linkedTasks !== false),
   ]);
   const usage: Usage[] = [];
   const grouper =
@@ -179,9 +185,15 @@ export async function planReview(
       options.accountMemory ?? [],
     ),
     learnings,
+    ...(linked.tasks ? { linkedTasks: linked.tasks } : {}),
     evidence,
     usage,
-    warnings: [...(binaryText ? [binaryText] : []), ...bundled.warnings, ...evidence.warnings],
+    warnings: [
+      ...(binaryText ? [binaryText] : []),
+      ...(linked.warning ? [linked.warning] : []),
+      ...bundled.warnings,
+      ...evidence.warnings,
+    ],
   };
 }
 

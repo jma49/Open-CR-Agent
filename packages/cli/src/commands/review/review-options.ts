@@ -34,6 +34,7 @@ export function configuredOptions(run: ResolvedRun, args: ReviewArgs): Configure
     selection: { include: config.include, exclude: config.exclude },
     readTrusted: (path) => run.target.trusted.readFile(path),
     learnings: run.learnings,
+    ...(args.noLinkedTasks || config.linkedTasks === false ? { linkedTasks: false } : {}),
     ...(run.sarifEvidence.length > 0 ? { sarifEvidence: run.sarifEvidence } : {}),
     limits,
     stages: {

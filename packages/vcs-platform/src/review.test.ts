@@ -48,6 +48,7 @@ function inMemory(scenario: Scenario) {
     comments: async () => comments.map(({ id, author, body }) => ({ id, author, body })),
     editor: async (comment) => comments.find((c) => c.id === comment.id)?.editedBy,
     canWrite: async (login) => login === AUTHOR || login === MAINTAINER,
+    linkedTasks: async () => [],
     threads: async () =>
       (scenario.threads ?? []).map((t, i) => ({
         id: `T${i}`,

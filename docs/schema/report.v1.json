@@ -462,6 +462,54 @@
         "additionalProperties": false
       }
     },
+    "linkedTasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tracker": {
+            "type": "string",
+            "enum": [
+              "github",
+              "gitlab"
+            ]
+          },
+          "key": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ]
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cut": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "tracker",
+          "key",
+          "title",
+          "labels",
+          "cut"
+        ],
+        "additionalProperties": false
+      }
+    },
     "analyzerEvidence": {
       "type": "array",
       "items": {

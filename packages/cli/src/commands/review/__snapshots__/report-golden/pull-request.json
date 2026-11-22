@@ -307,6 +307,19 @@
       ]
     }
   ],
+  "linkedTasks": [
+    {
+      "tracker": "github",
+      "key": "#3",
+      "url": "https://github.com/o/r/issues/3",
+      "title": "Retry failed uploads",
+      "state": "open",
+      "labels": [
+        "reliability"
+      ],
+      "cut": false
+    }
+  ],
   "anchoring": {
     "byMethod": {
       "hunk": 1,

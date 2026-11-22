@@ -55,6 +55,9 @@ export function taskPrompt(
     bundle: cell.bundle.files,
     rules: resolveRules(files, plan.repoRules, cell.reviewer.rules),
     guidelines: plan.guidelines,
+    ...(plan.linkedTasks && plan.linkedTasks.given.length > 0
+      ? { linkedTasks: plan.linkedTasks.given }
+      : {}),
     accepted: memoryFor(files, plan.memory),
     learnings: learnings.selected,
     moreLearnings: learnings.left,

@@ -92,6 +92,7 @@ ocra review [options]
 | `--max-cost-usd <n>` | 本次运行的花费上限。达到 80% 时仍在运行的审查任务停止，已找到的问题保留；这些任务的文件算作未审查（退出码 `3`），已经审完的任务除外。剩下的部分留给核查和裁决；再用完时，剩余问题标为*未核查*，不会拦下改动。任务大约每 10 秒报告一次花费，所以每个任务最多超出这段时间的花费加上正在进行的一步。任务按分组逐个运行，涉及敏感路径（`auth/`、CI 工作流等）的分组先跑，所以受限的运行会先审完风险最高的那部分文件；使用 `--pr` 时，下一次审查接着审剩下的 |
 | `--plan` | 免费，不调用模型：显示会审查和排除的文件、分组、审查任务和每个首轮提示词的大小（含 `--ultra` 下或 5 个文件以上的分组所做的规划调用）。任务的模型链已知时，按链上第一个模型的价格估算这些提示词的输入花费，逐个任务并给出总计：[自行声明的供应商](./providers#你自己的端点)用声明的价格，价格为 0 或经由 ocra Cloud 时显示 `input unpriced`，其余显示 `input price unknown`。输出、后续轮次、核查和裁决不做估算。跳过 light 模型分组，所以较大的改动按每个文件一组显示（超过 20 个文件时按目录）。和 `--pr` 或 `--mr` 一起用时，按审查实际会覆盖的范围规划：能判断时只规划自上次审查以来改动的部分，和审查本身一样，并会说明（`--full` 则规划全部）。不写会话日志 |
 | `--import-sarif <文件>` | 把分析工具（Semgrep、CodeQL 等）的 SARIF 2.1.0 日志里的结果加入审查，可以重复使用。见 [SARIF 输入](#sarif-输入)。不能和 `--plan` 一起用 |
+| `--no-linked-tasks` | 配合 `--pr` 或 `--mr`：不把改动[关联的 issue](./how-it-works#关联的任务) 交给审查员（配置中的 `linkedTasks`） |
 | `--sarif-evidence <文件>` | 把分析工具 SARIF 2.1.0 日志里落在改动上和改动附近的结果交给审查员，作为需要核实的证据，而不是问题；可以重复使用。见 [SARIF 作为证据](#sarif-作为证据) |
 | `--graph <文件>` | 在这个[代码图](#ocra-graph)里查找改动符号的调用方，在 `--scip` 之后、搜索之前。不能和 `--plan` 一起用 |
 | `--scip <文件>` | 先在这个 [SCIP](https://github.com/scip-code/scip) 索引里查找改动符号的调用方（见[模式](./how-it-works#模式)）。不能和 `--plan` 一起用 |
@@ -144,6 +145,7 @@ ocra review [options]
 - 问题列表，以及 `rereview`：已修复、未再报告、未重新检查、未改动或已驳回的旧问题，记录了报告者时各带 `reviewer`；
 - `remembered`：被 memory 接受的问题，带来源 `source`（`repository` 表示 `.ocra/memory.json`，`account` 表示你的 [ocra Cloud memory](#ocra-cloud-账户里的-memory)）；维护者的放行在 `changeRequest.override`；
 - `learnings`：任务拿到的每条 [learning](./rules#ocralearnings)，带 `title`、`critical`、`source` 和它去过的分组 `bundles`；
+- `linkedTasks`：交给任务的每个[关联 issue](./how-it-works#关联的任务)，带 `tracker`、`key`、`url`、`title`、`state`、`labels`，以及文字是否被裁剪（`cut`）；没有关联时为空，本地审查或关闭开关时不出现；
 - `analyzerEvidence`：用 [`--sarif-evidence`](#sarif-作为证据) 交给任务的每个工具，带 `version`、结果条数 `results` 和它们去过的分组 `bundles`；
 - token 用量与花费；设置了花费上限时的 `spendLimit`（`reached` 为 `review` 表示审查任务因此停止，`total` 表示整个上限用完）；警告信息。
 

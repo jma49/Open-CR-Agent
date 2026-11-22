@@ -13,6 +13,7 @@ on: pull_request
 
 permissions:
   contents: read
+  issues: read
   pull-requests: write
 
 jobs:
@@ -36,6 +37,7 @@ jobs:
 - **Pin every action by commit**, with the version as a comment: a tag can move, a commit cannot. The recipes here and `ocra init` do, `actions/checkout` included. `git ls-remote --tags https://github.com/jma49/Open-CR-Agent v0.3.0` prints a release's commit; Dependabot updates the pin and comment.
 - **Keep `fetch-depth: 0`:** ocra needs the history between base and head; a shallow checkout stops with a message.
 - **Keep `concurrency`:** otherwise two quick pushes post the same comments twice, and the slower run can overwrite the summary with an older head. A cancelled run publishes nothing (unless already publishing) and leaves its partial report in the job log.
+- **Keep `issues: read`:** with it the reviewers see the [issues the pull request closes](./how-it-works#linked-tasks); without it, a private repository's review goes on with a warning.
 - **Store the model key as a repository secret.** Models come from the base branch's `.ocra/config.json` or `OCRA_MODEL_*` variables in `env`.
 
 ocra retries GitHub's rate limits and short outages a few times, never a request that may already have posted a comment.
@@ -134,6 +136,7 @@ To also see findings as code scanning alerts, write SARIF with the `sarif` input
 ```yaml
 permissions:
   contents: read
+  issues: read
   pull-requests: write
   security-events: write
 
@@ -220,6 +223,7 @@ on:
 
 permissions:
   contents: write
+  issues: read
   pull-requests: write
 
 jobs:
@@ -269,6 +273,7 @@ on:
 
 permissions:
   contents: read
+  issues: read
   pull-requests: write
 
 jobs:
@@ -312,6 +317,7 @@ on:
 
 permissions:
   contents: read
+  issues: read
   pull-requests: write
 
 jobs:
@@ -366,6 +372,7 @@ on:
 
 permissions:
   contents: read
+  issues: read
   pull-requests: write
 
 jobs:

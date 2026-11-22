@@ -171,6 +171,7 @@ export function fakeGitLab(scenario: Scenario, options: FakeGitLabOptions = {}) 
         web_url: "https://gitlab.example.com/group/project/-/merge_requests/7",
         source_project_id: 42,
         target_project_id: 42,
+        source_branch: "feature",
         diff_refs:
           options.diffRefs === null ? null : { base_sha: BASE, start_sha: START, head_sha: HEAD },
       });

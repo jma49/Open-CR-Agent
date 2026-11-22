@@ -69,6 +69,30 @@ export function changeRequestFixture(baseConfig?: object) {
   return { clone: clone.dir, base, head, marker };
 }
 
+// The issue pull request 7 closes.
+const linkedIssue = {
+  repository: {
+    pullRequest: {
+      headRefName: "feature",
+      closingIssuesReferences: {
+        nodes: [
+          {
+            number: 3,
+            title: "Retry failed uploads",
+            body: "Uploads that fail with a 5xx are retried up to the configured count.",
+            state: "OPEN",
+            url: "https://github.com/o/r/issues/3",
+            repository: { nameWithOwner: "o/r" },
+            labels: { nodes: [{ name: "reliability" }] },
+            parent: null,
+            subIssues: { nodes: [] },
+          },
+        ],
+      },
+    },
+  },
+};
+
 // GitHub's API for pull request 7 of o/r, recording what ocra sends.
 export function fakeGitHub(base: string, head: string, comments: unknown[] = []) {
   const calls: { method: string; path: string; body?: unknown }[] = [];
@@ -97,6 +121,7 @@ export function fakeGitHub(base: string, head: string, comments: unknown[] = [])
     if (url.endsWith("/graphql")) {
       const query = (JSON.parse(init?.body as string) as { query: string }).query;
       if (query.includes("node(id: $id)")) return json({ data: { node: { editor: null } } });
+      if (query.includes("closingIssuesReferences")) return json({ data: linkedIssue });
     }
     return json({});
   }) as typeof fetch;
@@ -138,6 +163,7 @@ export function fakeGitLab(base: string, head: string, api = "https://gitlab.com
         web_url: "https://gitlab.com/o/r/-/merge_requests/7",
         source_project_id: 1,
         target_project_id: 1,
+        source_branch: "feature",
         diff_refs: { base_sha: base, start_sha: base, head_sha: head },
       });
     }

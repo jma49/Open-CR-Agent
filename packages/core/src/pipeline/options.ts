@@ -41,6 +41,9 @@ export interface ReviewOptions {
   // The team's learnings, which the caller reads from the same trusted
   // revision as the rules (ADR-0037); each task is given those that apply.
   learnings?: readonly Learning[];
+  // Give the review tasks the tasks the platform links to the change
+  // (ADR-0051); on unless false.
+  linkedTasks?: boolean;
   // Which files are reviewed; what is left out is defaultSelectionPolicy's.
   selection?: Partial<SelectionPolicy>;
   limits?: ReviewLimits;

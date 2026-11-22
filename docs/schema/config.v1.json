@@ -126,6 +126,9 @@
     "walkthrough": {
       "type": "boolean"
     },
+    "linkedTasks": {
+      "type": "boolean"
+    },
     "maxCostUsd": {
       "type": "number",
       "exclusiveMinimum": 0
