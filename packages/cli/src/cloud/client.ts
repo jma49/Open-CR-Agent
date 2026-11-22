@@ -20,6 +20,7 @@ import {
   uploadAnswerSchema,
 } from "@open-cr-agent/cloud-contract";
 import { errorMessage, OcraError } from "@open-cr-agent/core";
+import { errnoCode } from "@open-cr-agent/core/internal";
 import type { z } from "zod";
 import { readLimited } from "../io/read-limited.js";
 import { VERSION } from "../version.js";
@@ -370,9 +371,21 @@ export class CloudClient {
         signal: AbortSignal.timeout(init.timeoutMs ?? CLOUD_TIMEOUT_MS),
       });
     } catch (error) {
-      throw new CloudError(errorMessage(error), { cause: error });
+      throw new CloudError(notSent(error), { cause: error });
     }
   }
+}
+
+// fetch says only "fetch failed"; its cause names the network or TLS error.
+// A server whose certificate authority Node does not trust (a self-hosted
+// one with a company or internal CA) is fixed on this machine, so say how.
+function notSent(error: unknown): string {
+  const cause = error instanceof Error && error.cause instanceof Error ? error.cause : undefined;
+  if (!cause) return errorMessage(error);
+  const untrusted = /SELF_SIGNED|UNABLE_TO_(VERIFY|GET_ISSUER)/.test(errnoCode(cause) ?? "");
+  return `${errorMessage(error)}: ${errorMessage(cause)}${
+    untrusted ? " (trust the server's certificate authority with NODE_EXTRA_CA_CERTS)" : ""
+  }`;
 }
 
 // A renewal gives a token that lives about `lifetime_ms`: asking for more
