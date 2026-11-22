@@ -169,13 +169,14 @@ export function cloudUpload(
     changeRequest && report.mergeChecks
       ? sharedMergeChecks(report.mergeChecks, cloud.shareFindings)
       : undefined;
+  // Which earlier findings were fixed or dismissed is named like the findings.
   const outcomes =
     cloud.shareFindings && counts.outcomes
-      ? { ...counts.outcomes, ...sharedOutcomes(report) }
-      : counts.outcomes;
+      ? { outcomes: { ...counts.outcomes, ...sharedOutcomes(report) } }
+      : {};
   const upload = {
     ...counts,
-    ...(outcomes ? { outcomes } : {}),
+    ...outcomes,
     ...(walkthrough ? { walkthrough } : {}),
     ...(linkedTasks ? { linkedTasks } : {}),
     ...(learnings ? { learnings } : {}),
