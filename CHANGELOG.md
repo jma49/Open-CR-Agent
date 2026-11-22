@@ -8,20 +8,29 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [0.12.0] - 2026-11-22
 
-A small release: ocra Cloud account settings can turn linked tasks off, `ocra review --mr` reads the project from the `origin` of a GitLab installed under a relative URL root, and the Action finds Homebrew's npm. The Action's new tag is `jma49/Open-CR-Agent@v0.12.0`.
+`ocra review --fixes` proposes fixes that are checked against the reviewed head, `--without` measures what each context source is worth, and every context source has a bound. The Action's new tag is `jma49/Open-CR-Agent@v0.12.0`.
 
 ### Added
 
 - ocra Cloud account settings may turn linked tasks off (`linkedTasks`), where the configuration leaves it out.
+- `fixes: true` or `ocra review --fixes` proposes a fix for findings a local edit fixes, one `fixer` call per file, each kept only if it applies to the reviewed head, touches only the finding's lines and still parses; the report's `fixes` says why one was not kept (ADR-0058).
+- `ReviewOptions.syntax` and `treeSitterSyntax()` check that a fix leaves its file parsing.
+- ocra Cloud account settings can turn fixes on (`fixes` in the review settings).
+- `ocra-eval run --fixes`, with fix counts in the golden summary.
+- `ocra review --without <sources>` (`ReviewMode.without`) leaves context sources out of every review prompt, to measure what each is worth.
+- `ocra review --plan --format json` gives each task's first prompt by source: tokens, cuts and duplicated lines (`context`).
 
 ### Changed
 
 - `ocra init` pins the Action to v0.11.0.
+- The judge's call counts toward the spend limit.
+- Review prompts hold the changed-files list to 150 files, accepted findings to the last 20 on the bundle's files, the repository's rules to 12,000 characters, and task and learning titles to 300 characters; smaller inputs render as before.
 
 ### Fixed
 
 - `ocra review --mr` reads the project from an HTTPS `origin` of a GitLab installed under a relative URL root (`CI_API_V4_URL` such as `https://example.com/gitlab/api/v4`).
 - The Action finds npm's sigstore client where Homebrew and similar installs keep npm, away from the Node binary, so it fetches the trusted root before checking signatures there too.
+- A tree-sitter parse cut off by its time budget no longer carries over into the next file's symbols.
 
 ## [0.11.0] - 2026-11-22
 
