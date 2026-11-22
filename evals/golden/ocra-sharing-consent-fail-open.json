@@ -1,0 +1,43 @@
+{
+  "id": "ocra-sharing-consent-fail-open",
+  "repo": "jma49/Open-CR-Agent",
+  "base": "e7a0f576511925947350ac6ae9ddbf577e58766b",
+  "head": "60accb3366a82128e12485de45e4c654b949aac9",
+  "language": "TypeScript",
+  "tier": "full",
+  "source": {
+    "kind": "ocra-history",
+    "ref": "60accb3366a8 (fix(cli): send findings only with this machine's consent), fixed by 8145eab (remove a sharing consent when the account cannot confirm it)",
+    "licence": "Apache-2.0",
+    "date": "2026-10-09"
+  },
+  "rationale": "The change sends findings to ocra Cloud only with this machine's consent, recorded at login from whether the account shares findings. When the account's answer cannot be had (a failed request, a refused status), keepSharing returns without touching the consent file, so a consent from an earlier login stays and later reviews keep sending findings the account no longer confirms. Upstream removed the record on that path, failing closed. Required: in the change, a privacy consequence, fixed by the author.",
+  "raters": [
+    {
+      "by": "agent (claude), blind, rater A",
+      "date": "2026-11-22"
+    },
+    {
+      "by": "agent (claude), blind, rater B",
+      "date": "2026-11-22"
+    }
+  ],
+  "expect": [
+    {
+      "id": "consent-kept-on-failure",
+      "file": "packages/cli/src/commands/login.ts",
+      "lines": [
+        189,
+        198
+      ],
+      "category": "security",
+      "minSeverity": "warning",
+      "concern": "When the account's salt cannot be fetched the function returns false but leaves an earlier consent file in place, so later reviews keep sending findings although the account never confirmed sharing.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": false
+    }
+  ],
+  "forbid": []
+}

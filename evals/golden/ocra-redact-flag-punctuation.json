@@ -1,0 +1,43 @@
+{
+  "id": "ocra-redact-flag-punctuation",
+  "repo": "jma49/Open-CR-Agent",
+  "base": "89dde7b2d2bc2792b57b4ed7e572d87dd0a63778",
+  "head": "4533e8fbf22a921df935cc26c20bc193f6d30efb",
+  "language": "TypeScript",
+  "tier": "full",
+  "source": {
+    "kind": "ocra-history",
+    "ref": "4533e8fbf22a (fix(cloud-contract): redact escaped, block and flag secret values), fixed by 253c7f8 (redact a flag's secret before shell punctuation)",
+    "licence": "Apache-2.0",
+    "date": "2026-10-09"
+  },
+  "rationale": "The change redacts the value after a secret flag such as --password in findings shared with ocra Cloud. On a shell line the value is often followed by a semicolon, a comma or a closing parenthesis, and the bare-value check then reads it as code and keeps it, so the secret is shared. Upstream stripped that last character before the check, as it already did for NAME=value. Required: in the change, a secret leak, fixed by the author.",
+  "raters": [
+    {
+      "by": "agent (claude), blind, rater A",
+      "date": "2026-11-22"
+    },
+    {
+      "by": "agent (claude), blind, rater B",
+      "date": "2026-11-22"
+    }
+  ],
+  "expect": [
+    {
+      "id": "flag-value-punctuation",
+      "file": "packages/cloud-contract/src/redact.ts",
+      "lines": [
+        154,
+        162
+      ],
+      "category": "security",
+      "minSeverity": "warning",
+      "concern": "A flag's value followed by a semicolon, comma or closing parenthesis fails the bare-secret check as a whole, so a password written that way on a shell line is shared unredacted.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": false
+    }
+  ],
+  "forbid": []
+}

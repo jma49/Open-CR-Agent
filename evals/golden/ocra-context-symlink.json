@@ -1,0 +1,66 @@
+{
+  "id": "ocra-context-symlink",
+  "repo": "jma49/Open-CR-Agent",
+  "base": "49e56552baafc1722bd0ba8b01bbc697c0ef8ae7",
+  "head": "f2dd0d8e0deb59307fe0a9f1d2b54a6c0e3d1ce3",
+  "language": "TypeScript",
+  "tier": "full",
+  "source": {
+    "kind": "ocra-history",
+    "ref": "f2dd0d8e0deb (fix(core): refuse secret paths and .git/ in the review context), fixed by d41ae60 (read symlinks as git stores them so links cannot reach secrets)",
+    "licence": "Apache-2.0",
+    "date": "2026-09-26"
+  },
+  "rationale": "The change puts the access policy for agents in the review context: secret paths and .git are refused by name. Reads then go to the adapter, which follows symbolic links in the working tree, so a committed notes.txt pointing at .env, or a directory link into .git, hands an agent the secret the name check refused, and AGENTS.md linked to a secret reaches the prompt. Upstream made working-tree reads return a link's target path as git stores it. The symlink claim is required. A file renamed away from a secret name, readable under its new name, was fixed in the same commit and is optional: selection already kept it out of review, and the claim waits for the second rater.",
+  "raters": [
+    {
+      "by": "agent (claude), blind, rater A",
+      "date": "2026-11-22"
+    },
+    {
+      "by": "agent (claude), blind, rater B",
+      "date": "2026-11-22"
+    }
+  ],
+  "expect": [
+    {
+      "id": "symlink-bypass",
+      "file": "packages/core/src/pipeline/context.ts",
+      "lines": [
+        35,
+        39
+      ],
+      "category": "security",
+      "minSeverity": "warning",
+      "concern": "The policy checks only the requested name, while the adapter follows symbolic links, so a committed link with a harmless name lets an agent read a secret file or git internals the policy refuses.",
+      "also": [
+        {
+          "file": "packages/core/src/pipeline/context.ts",
+          "lines": [
+            13,
+            15
+          ]
+        }
+      ],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": false
+    },
+    {
+      "id": "renamed-secret",
+      "file": "packages/core/src/pipeline/context.ts",
+      "lines": [
+        11,
+        19
+      ],
+      "category": "security",
+      "minSeverity": "warning",
+      "concern": "A secret file renamed to an innocent name in the change is still read under its new name, since only the name is checked.",
+      "also": [],
+      "origin": "author-fix",
+      "producer": "claude (version not recorded)",
+      "optional": true
+    }
+  ],
+  "forbid": []
+}

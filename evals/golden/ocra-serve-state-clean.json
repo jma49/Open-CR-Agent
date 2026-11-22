@@ -1,0 +1,28 @@
+{
+  "id": "ocra-serve-state-clean",
+  "repo": "jma49/Open-CR-Agent",
+  "base": "afd29e6d6a62cdacf17754faaeb053db95135ae2",
+  "head": "b5966488f76d43857ccf0a2ca842fba7e2fda58f",
+  "language": "TypeScript",
+  "tier": "full",
+  "source": {
+    "kind": "ocra-history",
+    "ref": "b5966488f76d (fix(cli): write ocra serve's state file in one rename), no later fix to the changed code",
+    "licence": "Apache-2.0",
+    "date": "2026-11-21"
+  },
+  "rationale": "A small fix with no known issue in the changed code: ocra serve's state file is written through the shared atomic private-file write instead of a direct write, so a client polling for it never reads it half written. The shared write creates the directory with the same mode the removed mkdir used and the file with 0600, so nothing else changes.",
+  "raters": [
+    {
+      "by": "agent (claude), blind, rater A",
+      "date": "2026-11-22"
+    },
+    {
+      "by": "agent (claude), blind, rater B",
+      "date": "2026-11-22"
+    }
+  ],
+  "expect": [],
+  "forbid": [],
+  "clean": true
+}

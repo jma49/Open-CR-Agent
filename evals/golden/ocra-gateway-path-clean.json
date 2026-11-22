@@ -1,0 +1,28 @@
+{
+  "id": "ocra-gateway-path-clean",
+  "repo": "jma49/Open-CR-Agent",
+  "base": "1b50de99e028f7028f738e12b6429743ab35b514",
+  "head": "b7e9832851d6baa2ebc54760bedfdb7031c5deea",
+  "language": "TypeScript",
+  "tier": "full",
+  "source": {
+    "kind": "ocra-history",
+    "ref": "b7e9832851d6 (fix(cloud-contract): refuse dot and empty segments in gateway paths), no later fix to the changed code",
+    "licence": "Apache-2.0",
+    "date": "2026-10-09"
+  },
+  "rationale": "A small, tested fix with no known issue in the changed code: the gateway path pattern refuses dot and empty segments, which a URL would resolve out of the provider's prefix, and keeps dots inside a segment. Percent-encoded dots were already refused, since % is outside the allowed characters.",
+  "raters": [
+    {
+      "by": "agent (claude), blind, rater A",
+      "date": "2026-11-22"
+    },
+    {
+      "by": "agent (claude), blind, rater B",
+      "date": "2026-11-22"
+    }
+  ],
+  "expect": [],
+  "forbid": [],
+  "clean": true
+}
