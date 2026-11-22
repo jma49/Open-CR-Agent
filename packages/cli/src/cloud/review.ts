@@ -7,6 +7,7 @@ import { readAccountSalt, saveAccountSalt } from "./account-salt.js";
 import { CloudClient, type CloudSessionLost, sessionLostReason } from "./client.js";
 import type { CloudDeps } from "./deps.js";
 import { sharedFindings } from "./findings.js";
+import { sharedLinkedTasks } from "./linked-tasks.js";
 import { accountHasMemory, fetchAccountMemory } from "./memory.js";
 import { hasSharingConsent, saveSharingConsent } from "./sharing-consent.js";
 import { repoHash, uploadOf, uploadReview } from "./upload.js";
@@ -162,7 +163,15 @@ export async function sendToCloud(
   const counts = uploadOf(report, run.source, cloud.repoHash, run.durationMs, changeRequest);
   const walkthrough =
     cloud.shareFindings && report.walkthrough ? sharedWalkthrough(report.walkthrough) : undefined;
-  const upload = walkthrough ? { ...counts, walkthrough } : counts;
+  const linkedTasks =
+    changeRequest && report.linkedTasks
+      ? sharedLinkedTasks(report.linkedTasks, cloud.shareFindings)
+      : undefined;
+  const upload = {
+    ...counts,
+    ...(walkthrough ? { walkthrough } : {}),
+    ...(linkedTasks ? { linkedTasks } : {}),
+  };
   const shared = cloud.shareFindings ? sharedFindings(report) : undefined;
   const sent = await uploadReview(upload, deps, run.warn, shared?.findings);
   if (!sent) return;

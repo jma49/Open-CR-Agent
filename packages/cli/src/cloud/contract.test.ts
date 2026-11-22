@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 import { parseAccountPlugins } from "../plugins/account.js";
 import { parseAccountSettings } from "./account-settings.js";
 import { sharedFindings } from "./findings.js";
+import { sharedLinkedTasks } from "./linked-tasks.js";
 import { parseAccountMemory } from "./memory.js";
 import { uploadOf } from "./upload.js";
 import { sharedWalkthrough } from "./walkthrough.js";
@@ -145,6 +146,17 @@ const report = reviewReport({
     unchanged: [],
   },
   unverifiedCriticals: 0,
+  linkedTasks: [
+    {
+      tracker: "github",
+      key: "#41",
+      url: "https://github.com/octo/app/issues/41",
+      title: "Retry failed queries",
+      state: "open",
+      labels: ["db"],
+      cut: false,
+    },
+  ],
   walkthrough: {
     overview:
       "Retries failed queries once, with the token api_key=sk-live-0123456789abcdef in a log.",
@@ -175,6 +187,7 @@ describe("the contract's fixtures", () => {
       ocraVersion: "0.0.0",
       findingList: sharedFindings(report).findings,
       walkthrough: sharedWalkthrough(report.walkthrough ?? { overview: "", groups: [] }),
+      linkedTasks: sharedLinkedTasks(report.linkedTasks ?? [], true),
     };
     // OCRA_UPDATE_FIXTURES=1 rewrites it; then npm run format.
     if (process.env.OCRA_UPDATE_FIXTURES) {

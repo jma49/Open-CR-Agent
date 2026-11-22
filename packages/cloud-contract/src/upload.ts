@@ -104,6 +104,29 @@ export const sharedWalkthroughSchema = z.object({
 });
 export type SharedWalkthrough = z.input<typeof sharedWalkthroughSchema>;
 
+/** At most this many linked tasks in an upload, as the engine gives reviewers. */
+export const MAX_LINKED_TASKS = 3;
+export const LINKED_TASK_TRACKERS = ["github", "gitlab"] as const;
+
+/**
+ * A task the change is linked to (ADR-0051): which one and its state with
+ * every pull or merge request upload, what it says (title, labels) only
+ * with the findings, redacted the same way.
+ */
+export const sharedLinkedTaskSchema = z.object({
+  tracker: z.enum(LINKED_TASK_TRACKERS),
+  key: z.string().regex(/^[#&]?[\w.-]{1,64}$/),
+  url: z
+    .url({ protocol: /^https?$/ })
+    .max(2048)
+    .optional()
+    .catch(undefined),
+  state: z.enum(["open", "closed"]).nullable().catch(null),
+  title: z.string().max(MAX_FIELD).optional().catch(undefined),
+  labels: z.array(z.string().max(256)).max(10).optional().catch(undefined),
+});
+export type SharedLinkedTask = z.input<typeof sharedLinkedTaskSchema>;
+
 /**
  * The review's counts, and the shared findings in `findingList`. A finding
  * or a reviewer's counts that do not fit read as null; the server keeps
@@ -144,6 +167,12 @@ export const reviewUploadSchema = z.object({
   outcomes: z.object({ fixed: count, dismissed: count }).optional().catch(undefined),
   findingList: z.array(sharedFindingSchema.nullable().catch(null)).optional().catch(undefined),
   walkthrough: sharedWalkthroughSchema.optional().catch(undefined),
+  // Absent when the review did not look tasks up; empty when none is linked.
+  linkedTasks: z
+    .array(sharedLinkedTaskSchema.nullable().catch(null))
+    .max(MAX_LINKED_TASKS)
+    .optional()
+    .catch(undefined),
   // A pull or merge request's review: which one, so ocra Cloud can show the
   // verdict on it (ADR-0038).
   pullRequest: z
