@@ -1,14 +1,13 @@
 import { LEARNINGS_DIR } from "@open-cr-agent/cloud-contract";
-import { OcraError } from "@open-cr-agent/core";
 import type { LearningDraft } from "@open-cr-agent/core/internal";
 import { proposeOnGitHub } from "@open-cr-agent/vcs-github";
 import { proposeOnGitLab } from "@open-cr-agent/vcs-gitlab";
 import type { ProposedChange } from "@open-cr-agent/vcs-platform";
 import { safeMarkdown } from "@open-cr-agent/vcs-platform/internal";
+import { type ProposalPlace, platformOf } from "../platform-place.js";
 import type { ReviewDeps } from "../review/deps.js";
 import type { ResolvedRun } from "../review/resolve-run.js";
 import { originUrl } from "../review/target.js";
-import type { ProposalPlace } from "./args.js";
 import { freeLearningPath, learningFile } from "./write.js";
 
 // A proposal's branch: this prefix and the time it was opened.
@@ -47,7 +46,7 @@ export async function proposeLearnings(
   });
   const stamp = new Date(deps.now()).toISOString().replace(/\D/g, "").slice(0, 14);
   const origin = () => originUrl(run.root);
-  const place = named ?? placeOf(deps.env, await origin());
+  const place = named ?? platformOf(deps.env, await origin(), "--propose");
   const propose = place.platform === "gitlab" ? proposeOnGitLab : proposeOnGitHub;
   const proposed = await propose(
     {
@@ -74,20 +73,4 @@ export async function proposeLearnings(
     },
   );
   return { ...proposed, platform: place.platform };
-}
-
-// The platform no flag named: the CI it runs in, else origin's host, else
-// the one platform a token is set for.
-function placeOf(env: ReviewDeps["env"], origin: string | undefined): ProposalPlace {
-  if (env.GITLAB_CI) return { platform: "gitlab" };
-  if (env.GITHUB_ACTIONS) return { platform: "github" };
-  if (origin && /(?:^|[@/.])github\.com[:/]/i.test(origin)) return { platform: "github" };
-  if (origin && /(?:^|[@/.])gitlab\.com[:/]/i.test(origin)) return { platform: "gitlab" };
-  const github = Boolean(env.GITHUB_TOKEN ?? env.GH_TOKEN);
-  const gitlab = Boolean(env.GITLAB_TOKEN);
-  if (github !== gitlab) return { platform: github ? "github" : "gitlab" };
-  throw new OcraError(
-    "CONFIG_INVALID",
-    "Cannot tell whether --propose opens a GitHub pull request or a GitLab merge request; pass --repo <owner/name> or --project <id|path>",
-  );
 }

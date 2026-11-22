@@ -28,6 +28,11 @@ export {
   type PlatformReviewOptions,
 } from "./review.js";
 export {
+  pickStacked,
+  type StackedChangeRequest,
+  type StackHost,
+} from "./stack.js";
+export {
   githubSuggestion,
   gitlabSuggestion,
   type SuggestionFence,

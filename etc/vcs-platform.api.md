@@ -116,6 +116,9 @@ export interface LocalCode {
 export const MAX_ATTEMPTS = 3;
 
 // @public (undocumented)
+export function pickStacked(found: readonly StackedChangeRequest[]): StackedChangeRequest | undefined;
+
+// @public (undocumented)
 export interface PlatformChangeRequest {
     // (undocumented)
     author?: string;
@@ -346,6 +349,43 @@ export interface ReviewPlatform {
 
 // @public (undocumented)
 export const signalSchema: z.ZodInstanceOf<AbortSignal>;
+
+// @public (undocumented)
+export interface StackedChangeRequest {
+    // (undocumented)
+    base: string;
+    // (undocumented)
+    body: string;
+    // (undocumented)
+    head: string;
+    // (undocumented)
+    number: number;
+    // (undocumented)
+    state: "open" | "merged" | "closed";
+    // (undocumented)
+    title: string;
+    // (undocumented)
+    webUrl: string;
+}
+
+// @public (undocumented)
+export interface StackHost {
+    // (undocumented)
+    find(head: string): Promise<StackedChangeRequest | undefined>;
+    // (undocumented)
+    open(request: {
+        head: string;
+        base: string;
+        title: string;
+        body: string;
+        draft: boolean;
+    }): Promise<StackedChangeRequest>;
+    // (undocumented)
+    update(number: number, change: {
+        base?: string;
+        body?: string;
+    }): Promise<void>;
+}
 
 // @public (undocumented)
 export type SuggestionFence = (range: LineRange) => string | undefined;

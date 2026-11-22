@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util";
 import { UsageError } from "../../io/usage-error.js";
 import { type ChangeFlags, changeOf } from "../change-flags.js";
+import type { ProposalPlace } from "../platform-place.js";
 import type { ReviewArgs } from "../review/args.js";
 
 export const DEFAULT_MAX = 20;
@@ -17,11 +18,6 @@ export interface LearnArgs {
   change?: Pick<ReviewArgs, "pullRequest" | "mergeRequest">;
   // Where --propose opens its change request, when a flag names it.
   proposeOn?: ProposalPlace;
-}
-
-export interface ProposalPlace {
-  platform: "github" | "gitlab";
-  repository?: string;
 }
 
 export function parseLearnArgs(argv: string[], sources: readonly string[]): LearnArgs | "help" {
