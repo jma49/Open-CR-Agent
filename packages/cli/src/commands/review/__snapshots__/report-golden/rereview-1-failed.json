@@ -86,6 +86,7 @@
     "costUsd": 0
   },
   "warnings": [],
+  "linkedTasks": [],
   "anchoring": {
     "byMethod": {
       "hunk": 0,

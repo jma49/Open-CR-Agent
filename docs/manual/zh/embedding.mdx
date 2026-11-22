@@ -89,6 +89,7 @@ try {
 | `mode.full` | 即使平台报告了上次审查以来的改动，也审查所有文件 |
 | `mode.ultra` | 以成本换召回率（[模式](./how-it-works#模式)） |
 | `sarif` | 解析好的 SARIF 日志（`parseSarifLog`），其中落在改动上的结果加入审查（[SARIF 输入](./cli#sarif-输入)） |
+| `linkedTasks` | 设为 `false` 时不使用适配器关联到改动上的任务（`VcsAdapter.linkedTasks`）；默认交给每个任务，报告的 `linkedTasks` 列出它们（[关联的任务](./how-it-works#关联的任务)） |
 | `sarifEvidence` | 解析好的 SARIF 日志，其中落在改动上和改动附近的结果作为证据交给审查员，而不是作为问题；报告的 `analyzerEvidence` 列出交了什么（[SARIF 作为证据](./cli#sarif-作为证据)） |
 | `signal` | 一个 `AbortSignal`：运行会停下，保留已发现的问题并写出部分报告 |
 | `onEvent` | 在运行过程中接收每个 `ReviewEvent` |

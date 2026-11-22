@@ -121,6 +121,8 @@ export { REDACTED, redact, redactField } from "./redact.js";
 export { normaliseRemote, REPOSITORY_URL } from "./repository.js";
 export {
   FINGERPRINT,
+  LINKED_TASK_TRACKERS,
+  MAX_LINKED_TASKS,
   MAX_WALKTHROUGH_FILES,
   MAX_WALKTHROUGH_GROUPS,
   type ReviewerCounts,
@@ -129,10 +131,12 @@ export {
   reviewUploadSchema,
   type SharedFinding,
   type SharedFix,
+  type SharedLinkedTask,
   type SharedWalkthrough,
   severityCountsSchema,
   sharedFindingSchema,
   sharedFixSchema,
+  sharedLinkedTaskSchema,
   sharedWalkthroughSchema,
   type UploadAnswer,
   uploadAnswerSchema,

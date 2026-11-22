@@ -72,6 +72,7 @@ describe("GitLabApi", () => {
         web_url: "u",
         source_project_id: 1,
         target_project_id: 1,
+        source_branch: "feature",
         diff_refs: { base_sha: "b".repeat(40), start_sha: "b".repeat(40), head_sha: head },
       });
     await expect(api([mr("--upload-pack=touch /tmp/x")]).client.getMergeRequest(7)).rejects.toThrow(

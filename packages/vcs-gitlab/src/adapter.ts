@@ -3,6 +3,7 @@ import {
   type CommitResult,
   errorMessage,
   type FileDiff,
+  type LinkedTask,
   type MentionRef,
   OcraError,
   type ReviewReport,
@@ -31,6 +32,7 @@ import {
 } from "./client.js";
 import { gitlabCommit } from "./commit.js";
 import { gitlabDiscussion } from "./discussion.js";
+import { gitlabLinkedTasks } from "./tasks.js";
 
 export interface GitLabAdapterOptions {
   // The merge request's number in its project (iid, not the global id).
@@ -114,6 +116,10 @@ class GitLabPlatform implements ReviewPlatform {
       throw new OcraError("VCS_API_FAILED", `GitLab did not say who last edited note ${id}`);
     }
     return editors.get(id);
+  }
+
+  linkedTasks(): Promise<LinkedTask[]> {
+    return gitlabLinkedTasks(this.options.api, this.options.iid);
   }
 
   async canWrite(login: string): Promise<boolean> {

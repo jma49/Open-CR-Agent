@@ -13,6 +13,18 @@ describe("the review upload", () => {
     expect(parsed.runId).toBe(body.runId);
   });
 
+  it("reads a linked task that does not fit as null, and too many as absent", () => {
+    const task = { tracker: "github", key: "#1", state: "open" };
+    const parsed = reviewUploadSchema.parse({
+      ...body,
+      linkedTasks: [task, { ...task, key: "#1 <script>" }],
+    });
+    expect(parsed.linkedTasks).toEqual([task, null]);
+    const many = reviewUploadSchema.parse({ ...body, linkedTasks: [task, task, task, task] });
+    expect(many.linkedTasks).toBeUndefined();
+    expect(many.runId).toBe(body.runId);
+  });
+
   it("keeps every field of the CLI's real upload", () => {
     expect(reviewUploadSchema.parse(body)).toEqual(body);
   });

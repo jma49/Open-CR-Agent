@@ -2,6 +2,7 @@ import type {
   ChangeCommit,
   CommitResult,
   Finding,
+  LinkedTask,
   MentionRef,
   ReviewReport,
 } from "@open-cr-agent/core";
@@ -29,6 +30,9 @@ export interface ReviewPlatform {
   // Developer role or higher on GitLab.
   canWrite(login: string): Promise<boolean>;
   threads(): Promise<PlatformThread[]>;
+  // Issues of the reviewed repository the change request closes, in the
+  // platform's order, or the one its head branch is named after (ADR-0052).
+  linkedTasks(): Promise<LinkedTask[]>;
   // Posts inline comments for findings on lines of the diff; findings the
   // platform will not place stay in the summary.
   publishFindings(

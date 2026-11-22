@@ -53,6 +53,7 @@ export function assembleReport(run: RunFacts, stages: Stages, context: StageCont
   }
   const learnings = learningUses(plan);
   if (learnings.length > 0) report.learnings = learnings;
+  if (plan.linkedTasks) report.linkedTasks = plan.linkedTasks.uses;
   const evidence = evidenceUses(plan.evidence, plan.bundles);
   if (evidence.length > 0) report.analyzerEvidence = evidence;
   if (plan.scope) report.scope = plan.scope;

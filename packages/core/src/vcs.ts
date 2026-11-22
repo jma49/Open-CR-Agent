@@ -1,6 +1,7 @@
 import type { CodeMatch } from "./contracts.js";
 import type { ChangeRequest, FileDiff, PriorReview } from "./domain.js";
 import type { ReviewReport } from "./report/report.js";
+import type { LinkedTask } from "./task/linked-task.js";
 
 // A comment that asks ocra something (ADR-0048), by its id on the platform;
 // `inline` names a comment on a line of the diff where the platform keeps
@@ -59,4 +60,7 @@ export interface VcsAdapter {
   listFiles?(dir: string): Promise<string[]>;
   // Absent: the adapter cannot commit to the change request.
   commit?(commit: ChangeCommit): Promise<CommitResult>;
+  // The tasks the platform links to the change, in its order (ADR-0052).
+  // Absent: the adapter cannot tell.
+  linkedTasks?(): Promise<LinkedTask[]>;
 }

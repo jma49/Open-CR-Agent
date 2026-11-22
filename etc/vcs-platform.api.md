@@ -11,6 +11,7 @@ import type { CommitResult } from '@open-cr-agent/core';
 import type { FileDiff } from '@open-cr-agent/core';
 import type { Finding } from '@open-cr-agent/core';
 import type { LineRange } from '@open-cr-agent/core';
+import type { LinkedTask } from '@open-cr-agent/core';
 import type { Mention } from '@open-cr-agent/core';
 import type { MentionRef } from '@open-cr-agent/core';
 import type { PluginRegistry } from '@open-cr-agent/core';
@@ -179,6 +180,8 @@ export class PlatformReview implements VcsAdapter {
     // (undocumented)
     getPriorReview(): Promise<PriorReview | undefined>;
     // (undocumented)
+    linkedTasks(): Promise<LinkedTask[]>;
+    // (undocumented)
     listFiles(dir: string): Promise<string[]>;
     // (undocumented)
     mention(ref: MentionRef): Promise<Mention>;
@@ -329,6 +332,8 @@ export interface ReviewPlatform {
     discussion(ref: MentionRef): Promise<PlatformDiscussion | undefined>;
     // (undocumented)
     editor(comment: PlatformComment): Promise<string | undefined>;
+    // (undocumented)
+    linkedTasks(): Promise<LinkedTask[]>;
     // (undocumented)
     publishFindings(report: ReviewReport, fresh: readonly InlineFinding[]): Promise<PublishedFindings>;
     // (undocumented)

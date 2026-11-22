@@ -3,6 +3,7 @@ import {
   type CommitResult,
   errorMessage,
   isBlocking,
+  type LinkedTask,
   type MentionRef,
   OcraError,
   type ReviewReport,
@@ -30,6 +31,7 @@ import {
 } from "./client.js";
 import { githubCommit } from "./commit.js";
 import { githubDiscussion } from "./discussion.js";
+import { githubLinkedTasks } from "./tasks.js";
 
 export interface GitHubPullRequest {
   owner: string;
@@ -127,6 +129,10 @@ class GitHubPlatform implements ReviewPlatform {
         ...(c.editor ? { editor: c.editor } : {}),
       })),
     }));
+  }
+
+  linkedTasks(): Promise<LinkedTask[]> {
+    return githubLinkedTasks(this.options.api, this.options.pullRequest);
   }
 
   async publishFindings(

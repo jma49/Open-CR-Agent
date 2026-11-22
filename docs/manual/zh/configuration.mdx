@@ -106,6 +106,7 @@ agent 运行时只拿到 `PATH`、`HOME`、语言区域、代理和 CA 设置，
 | `showPreExisting` | `true` | 报告 Verify 判断为改动之前就已存在的问题，标为*已有问题*。它们从不计入结论；设为 `false` 则不显示，只在警告里给出数量 |
 | `verify` | `true` | 报告前逐条核查问题（每个有问题的文件调用一次 standard 档位模型） |
 | `walkthrough` | `--pr` 和 `--mr` 时开启 | 把[改动导读](./how-it-works#改动导读)写进摘要评论和报告（每次运行一次 standard 档位的调用）；`false` 不写，`true` 在本地审查时也写 |
+| `linkedTasks` | `true` | 把 Pull Request 或 Merge Request [关联的 issue](./how-it-works#关联的任务) 交给审查员，每个都裁到固定大小；`false`（或 `--no-linked-tasks`）让提示词保持原样 |
 | `sampling` | 无 | `{ "temperature": 0–2, "seed": n }`，用于每次模型调用，两项都可省略（不设置时用供应商默认值）；`--temperature` 和 `--seed` 会覆盖它。`direct` 两项都发送。`opencode` 只把温度传给目录标明接受温度的模型（[声明的模型](./providers#你自己的端点)都标明了），种子报告为未应用。`provenance.sampling` 写明实际应用了什么。种子只有在供应商遵守时才能让运行可重复 |
 
 某个任务失败或超时不会导致整次运行失败，它负责的文件会被标记为 `failed`。
@@ -141,7 +142,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`showPreExisting`、`walkthrough`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`effort`、`reviewers`、`roles`、`github`、`providers`（仅在固定内容时）和 `rules`（格式同 `.ocra/rules.json` 的条目）。它不能列出插件或选择运行时，因为它不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 合并，`models`、`effort`、`reviewers`、`roles`、`github` 和 `providers` 按键合并。
+共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`showPreExisting`、`walkthrough`、`linkedTasks`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`effort`、`reviewers`、`roles`、`github`、`providers`（仅在固定内容时）和 `rules`（格式同 `.ocra/rules.json` 的条目）。它不能列出插件或选择运行时，因为它不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 合并，`models`、`effort`、`reviewers`、`roles`、`github` 和 `providers` 按键合并。
 
 只接受 `https` 地址，不跟随重定向，最大 256 KB。`#sha256=` 固定文件内容；声明了 `providers` 的文件必须固定，因为供应商决定了你的代码发往哪里（见[模型供应商](./providers#你自己的端点)）。文件无法加载或无效时，ocra 警告后只用仓库自己的设置，只写在共享文件里的限制（例如 `maxCostUsd`）就不生效；必须始终生效的限制请在仓库里也写一份。
 

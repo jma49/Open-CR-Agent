@@ -498,6 +498,9 @@ export const LEARNINGS_DIR = ".ocra/learnings";
 export type LearningSourceKind = (typeof LEARNING_SOURCES)[number];
 
 // @public (undocumented)
+export const LINKED_TASK_TRACKERS: readonly ["github", "gitlab"];
+
+// @public (undocumented)
 export type LiveFinding = z.infer<typeof liveFindingSchema>;
 
 // @public (undocumented)
@@ -549,6 +552,9 @@ export const MAX_LEARNING_BYTES = 16384;
 
 // @public
 export const MAX_LEARNINGS = 500;
+
+// @public
+export const MAX_LINKED_TASKS = 3;
 
 // @public
 export const MAX_MEMORY_PER_REPO = 500;
@@ -1315,6 +1321,20 @@ export const reviewUploadSchema: z.ZodObject<{
         redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
         truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     }, z.core.$strip>>>;
+    linkedTasks: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodCatch<z.ZodNullable<z.ZodObject<{
+        tracker: z.ZodEnum<{
+            github: "github";
+            gitlab: "gitlab";
+        }>;
+        key: z.ZodString;
+        url: z.ZodCatch<z.ZodOptional<z.ZodURL>>;
+        state: z.ZodCatch<z.ZodNullable<z.ZodEnum<{
+            closed: "closed";
+            open: "open";
+        }>>>;
+        title: z.ZodCatch<z.ZodOptional<z.ZodString>>;
+        labels: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodString>>>;
+    }, z.core.$strip>>>>>>;
     pullRequest: z.ZodCatch<z.ZodOptional<z.ZodObject<{
         repository: z.ZodString;
         number: z.ZodNumber;
@@ -1414,6 +1434,25 @@ export const sharedFixSchema: z.ZodObject<{
     startLine: z.ZodNumber;
     endLine: z.ZodNumber;
     replacement: z.ZodString;
+}, z.core.$strip>;
+
+// @public (undocumented)
+export type SharedLinkedTask = z.input<typeof sharedLinkedTaskSchema>;
+
+// @public
+export const sharedLinkedTaskSchema: z.ZodObject<{
+    tracker: z.ZodEnum<{
+        github: "github";
+        gitlab: "gitlab";
+    }>;
+    key: z.ZodString;
+    url: z.ZodCatch<z.ZodOptional<z.ZodURL>>;
+    state: z.ZodCatch<z.ZodNullable<z.ZodEnum<{
+        closed: "closed";
+        open: "open";
+    }>>>;
+    title: z.ZodCatch<z.ZodOptional<z.ZodString>>;
+    labels: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodString>>>;
 }, z.core.$strip>;
 
 // @public (undocumented)

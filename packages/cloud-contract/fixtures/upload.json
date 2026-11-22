@@ -126,5 +126,15 @@
     ],
     "diagram": "sequenceDiagram\n  App->>DB: query\n  DB-->>App: timeout",
     "redacted": true
-  }
+  },
+  "linkedTasks": [
+    {
+      "tracker": "github",
+      "key": "#41",
+      "url": "https://github.com/octo/app/issues/41",
+      "state": "open",
+      "title": "Retry failed queries",
+      "labels": ["db"]
+    }
+  ]
 }

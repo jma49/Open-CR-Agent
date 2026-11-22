@@ -16,6 +16,7 @@ function gitlab(diffRefs: unknown = { base_sha: BASE, start_sha: BASE, head_sha:
         author: { id: 5, username: "contributor" },
         source_project_id: 1,
         target_project_id: 1,
+        source_branch: "feature",
         web_url: "https://gitlab.example.com/g/p/-/merge_requests/7",
         diff_refs: diffRefs,
       }),

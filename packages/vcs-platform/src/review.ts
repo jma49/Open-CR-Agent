@@ -4,6 +4,7 @@ import type {
   CodeMatch,
   CommitResult,
   FileDiff,
+  LinkedTask,
   Mention,
   MentionRef,
   PriorFinding,
@@ -195,6 +196,10 @@ export class PlatformReview implements VcsAdapter {
 
   async commit(commit: ChangeCommit): Promise<CommitResult> {
     return commitToChangeRequest(this.platform, await this.changeRequest(), commit);
+  }
+
+  linkedTasks(): Promise<LinkedTask[]> {
+    return this.once("linkedTasks", () => this.platform.linkedTasks());
   }
 
   async getPriorReview(): Promise<PriorReview | undefined> {

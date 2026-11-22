@@ -654,6 +654,63 @@ const lineRangeSchema: z.ZodObject<{
 }, z.core.$strip>;
 
 // @public (undocumented)
+export const LINKED_TASK_LIMITS: {
+    readonly tasks: 3;
+    readonly body: 4000;
+    readonly parentBody: 1500;
+    readonly subtasks: 10;
+    readonly labels: 10;
+};
+
+// @public (undocumented)
+export interface LinkedTask {
+    // (undocumented)
+    body: string;
+    // (undocumented)
+    key: string;
+    // (undocumented)
+    labels: readonly string[];
+    // (undocumented)
+    parent?: {
+        key: string;
+        title: string;
+        body: string;
+    };
+    // (undocumented)
+    state?: TaskState;
+    // (undocumented)
+    subtasks: readonly {
+        key: string;
+        title: string;
+        state?: TaskState;
+    }[];
+    // (undocumented)
+    title: string;
+    // (undocumented)
+    tracker: TaskTracker;
+    // (undocumented)
+    url?: string;
+}
+
+// @public (undocumented)
+export interface LinkedTaskUse {
+    // (undocumented)
+    cut: boolean;
+    // (undocumented)
+    key: string;
+    // (undocumented)
+    labels: string[];
+    // (undocumented)
+    state?: TaskState;
+    // (undocumented)
+    title: string;
+    // (undocumented)
+    tracker: TaskTracker;
+    // (undocumented)
+    url?: string;
+}
+
+// @public (undocumented)
 export const MAX_AGENT_STEPS = 30;
 
 // @public (undocumented)
@@ -1126,6 +1183,21 @@ export const reportOutputSchema: z.ZodObject<{
         }, z.core.$strict>>;
         bundles: z.ZodArray<z.ZodString>;
     }, z.core.$strict>>>;
+    linkedTasks: z.ZodExactOptional<z.ZodArray<z.ZodObject<{
+        tracker: z.ZodEnum<{
+            github: "github";
+            gitlab: "gitlab";
+        }>;
+        key: z.ZodString;
+        url: z.ZodExactOptional<z.ZodString>;
+        title: z.ZodString;
+        state: z.ZodExactOptional<z.ZodEnum<{
+            closed: "closed";
+            open: "open";
+        }>>;
+        labels: z.ZodArray<z.ZodString>;
+        cut: z.ZodBoolean;
+    }, z.core.$strict>>>;
     analyzerEvidence: z.ZodExactOptional<z.ZodArray<z.ZodObject<{
         tool: z.ZodString;
         version: z.ZodExactOptional<z.ZodString>;
@@ -1581,6 +1653,8 @@ export interface ReviewOptions {
     // (undocumented)
     limits?: ReviewLimits;
     // (undocumented)
+    linkedTasks?: boolean;
+    // (undocumented)
     mode?: ReviewMode;
     // (undocumented)
     models?: ModelChains;
@@ -1639,6 +1713,8 @@ export interface ReviewReport {
     judgement?: JudgeDecisions;
     // (undocumented)
     learnings?: LearningUse[];
+    // (undocumented)
+    linkedTasks?: LinkedTaskUse[];
     // (undocumented)
     provenance?: RunProvenance;
     // (undocumented)
@@ -1974,6 +2050,9 @@ export interface SymbolReference {
 }
 
 // @public (undocumented)
+export const TASK_TRACKERS: readonly ["github", "gitlab"];
+
+// @public (undocumented)
 export interface TaskAttempt extends AttemptOutcome {
     // (undocumented)
     wrapUp?(): Promise<AttemptOutcome>;
@@ -2018,6 +2097,9 @@ export interface TaskOutcome {
 }
 
 // @public (undocumented)
+export type TaskState = "open" | "closed";
+
+// @public (undocumented)
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
 
 // @public (undocumented)
@@ -2027,6 +2109,9 @@ const taskStatusSchema: z.ZodEnum<{
     failed: "failed";
     timed_out: "timed_out";
 }>;
+
+// @public (undocumented)
+export type TaskTracker = (typeof TASK_TRACKERS)[number];
 
 // @public (undocumented)
 export function thinkingBudget(capability: EffortCapability, level: Effort, outputLimit?: number): number | undefined;
@@ -2083,6 +2168,8 @@ export interface VcsAdapter {
     getDiff(): Promise<FileDiff[]>;
     // (undocumented)
     getPriorReview(): Promise<PriorReview | undefined>;
+    // (undocumented)
+    linkedTasks?(): Promise<LinkedTask[]>;
     // (undocumented)
     listFiles?(dir: string): Promise<string[]>;
     // (undocumented)
