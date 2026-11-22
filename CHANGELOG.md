@@ -6,6 +6,23 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-22
+
+A small release: ocra Cloud account settings can turn linked tasks off, GitLab under a relative URL root works from `origin`, and the Action finds Homebrew's npm. The Action's new tag is `jma49/Open-CR-Agent@v0.12.0`.
+
+### Added
+
+- ocra Cloud account settings may turn linked tasks off (`linkedTasks`), where the configuration leaves it out.
+
+### Changed
+
+- `ocra init` pins the Action to v0.11.0.
+
+### Fixed
+
+- `ocra review --mr` reads the project from an HTTPS `origin` of a GitLab installed under a relative URL root (`CI_API_V4_URL` such as `https://example.com/gitlab/api/v4`).
+- The Action finds npm's sigstore client where Homebrew and similar installs keep npm, away from the Node binary, so it fetches the trusted root before checking signatures there too.
+
 ## [0.11.0] - 2026-11-22
 
 `ocra generate` writes tests and doc comments onto a pull request, `ocra stack` keeps stacks of pull and merge requests, `ocra mcp` lets coding agents call a review, pre-merge checks in plain words get a verdict, and reviewers see the issues and tracker tasks a change is linked to. The Action's new tag is `jma49/Open-CR-Agent@v0.11.0`.
@@ -542,7 +559,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.8.0...v0.9.0

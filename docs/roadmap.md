@@ -1,6 +1,6 @@
 # Roadmap
 
-What comes after M1–M4 ([architecture](architecture.md)), as of 2026-11-22 (0.11.0 released). The long-term direction, decided on 2026-10-01: ocra is not another review bot but the engine other review agents are built on.
+What comes after M1–M4 ([architecture](architecture.md)), as of 2026-11-22 (0.12.0 released). The long-term direction, decided on 2026-10-01: ocra is not another review bot but the engine other review agents are built on.
 
 ## The rule while evaluation is scarce
 
