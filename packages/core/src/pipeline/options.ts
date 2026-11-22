@@ -4,6 +4,7 @@ import type { AnchorContext } from "../anchor/anchor.js";
 import type { BundlePolicy } from "../bundle/bundle.js";
 import type { FileGrouper } from "../bundle/grouping.js";
 import type { AgentRuntime, ModelChains, ReferenceIndex, SymbolExtractor } from "../contracts.js";
+import type { ProjectDoc } from "../docs/project-docs.js";
 import { OcraError } from "../errors.js";
 import type { Learning } from "../knowledge/learning.js";
 import type { MemoryEntry } from "../memory/memory.js";
@@ -48,6 +49,9 @@ export interface ReviewOptions {
   // Trackers the platform does not link (Jira, TAPD), whose tasks the
   // change request names by key.
   taskSources?: readonly TaskSource[];
+  // The team's design documents, read from the trusted revision; each task
+  // is given the sections that name its files (ADR-0052).
+  projectDocs?: readonly ProjectDoc[];
   // Which files are reviewed; what is left out is defaultSelectionPolicy's.
   selection?: Partial<SelectionPolicy>;
   limits?: ReviewLimits;

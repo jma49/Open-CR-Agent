@@ -1,4 +1,5 @@
 import type { Bundle } from "../bundle/bundle.js";
+import { sectionsFor } from "../docs/project-docs.js";
 import type { MatrixCell } from "../matrix/matrix.js";
 import { memoryFor } from "../memory/memory.js";
 import { buildReviewPrompt, type ReviewPrompt, type ReviewPromptInput } from "../review/prompt.js";
@@ -43,6 +44,7 @@ export function taskPrompt(
 ): TaskPrompt {
   const files = cell.bundle.files.map((f) => f.newPath);
   const learnings = plan.learnings(cell.bundle.files);
+  const docs = sectionsFor(plan.docSections, files);
   const analyzerResults = evidenceForReviewer(
     plan.evidence.forBundle(cell.bundle),
     cell.reviewer.category,
@@ -61,6 +63,7 @@ export function taskPrompt(
     accepted: memoryFor(files, plan.memory),
     learnings: learnings.selected,
     moreLearnings: learnings.left,
+    ...(docs.given.length > 0 ? { projectDocs: docs } : {}),
     ...(analyzerResults.length > 0 ? { analyzerResults } : {}),
   };
   const prompt = buildReviewPrompt(input);

@@ -168,6 +168,16 @@ Pairs the matrix skips are listed under `skipped` in the JSON report; a file no 
 
 The answer is read for the usual fields (`summary` or `title` or `name`, `description`, `status`, `labels`, under `fields` or one wrapping object), or used as plain text, at most 64,000 characters. Each task is one connection, at most 20 seconds per request. Reading needs the MCP SDK, which comes with ocra's optional dependencies. A shared configuration may set `trackers`; account settings may not.
 
+## Project documents
+
+`projectDocs` lists the design documents a reviewer should check a change against: Markdown files (`.md`, `.mdx`), or directories whose Markdown files directly in them are read, by path in the repository ([Project documents](./how-it-works#project-documents)):
+
+```json
+{ "projectDocs": ["docs/architecture.md", "docs/design/"] }
+```
+
+They are read from the trusted revision, like `AGENTS.md`: at most 50 documents of up to 200,000 bytes each; a missing, larger or outside path is a warning. A shared configuration may set `projectDocs`; account settings may not.
+
 ## Shared configuration
 
 Repositories can extend an organization's common settings:
@@ -176,7 +186,7 @@ Repositories can extend an organization's common settings:
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `showPreExisting`, `walkthrough`, `linkedTasks`, `trackers`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned) and `rules` (shaped like `.ocra/rules.json` entries). It cannot list plugins or choose a runtime, since it must not run code. The repository's values win; `include`, `exclude` and `rules` combine, and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` merge key by key.
+The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `showPreExisting`, `walkthrough`, `linkedTasks`, `trackers`, `projectDocs`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned) and `rules` (shaped like `.ocra/rules.json` entries). It cannot list plugins or choose a runtime, since it must not run code. The repository's values win; `include`, `exclude` and `rules` combine, and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` merge key by key.
 
 Only `https` URLs, without redirects, up to 256 KB. `#sha256=` pins the exact content; a file declaring `providers` must be pinned, since a provider decides where your code goes ([Model providers](./providers#your-own-endpoint)). If the file cannot be loaded or is invalid, ocra warns and uses the repository's settings alone, so limits set only there (such as `maxCostUsd`) do not apply; set must-hold limits in the repository too.
 

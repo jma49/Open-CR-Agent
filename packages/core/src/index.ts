@@ -39,6 +39,11 @@ export type {
   Usage,
 } from "./contracts.js";
 export { MODEL_TIERS, SYMBOL_KINDS } from "./contracts.js";
+export {
+  PROJECT_DOC_LIMITS,
+  type ProjectDoc,
+  type ProjectDocUse,
+} from "./docs/project-docs.js";
 export type {
   AnchorMethod,
   ChangeRequest,

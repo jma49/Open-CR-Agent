@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { AttemptRecord, IncompleteEnding, Usage } from "../contracts.js";
+import type { ProjectDocUse } from "../docs/project-docs.js";
 import type {
   AnchorMethod,
   ChangeRequest,
@@ -145,6 +146,8 @@ export interface ReviewReport {
   // The tasks linked to the change that its tasks were given (ADR-0052);
   // absent when none were looked up, empty when none are linked.
   linkedTasks?: LinkedTaskUse[];
+  // The project documents' sections its tasks were given; absent when none were.
+  projectDocs?: ProjectDocUse[];
   // Analyzer results its tasks were given as evidence (ADR-0042).
   analyzerEvidence?: AnalyzerEvidenceUse[];
   // What the judge merged, dropped or recalibrated; absent when it did not run.

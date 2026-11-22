@@ -42,6 +42,9 @@ export function toReportOutput(report: ReviewReport): ReportOutput {
   };
   if (report.scope) output.scope = outputScope(report.scope);
   if (report.learnings) output.learnings = report.learnings.map(outputLearning);
+  if (report.projectDocs) {
+    output.projectDocs = report.projectDocs.map((d) => ({ ...d, bundles: [...d.bundles] }));
+  }
   if (report.linkedTasks) {
     output.linkedTasks = report.linkedTasks.map((t) => ({ ...t, labels: [...t.labels] }));
   }

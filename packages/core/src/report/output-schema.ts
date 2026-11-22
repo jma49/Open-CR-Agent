@@ -226,6 +226,9 @@ export const reportOutputSchema = z.strictObject({
       }),
     )
     .exactOptional(),
+  projectDocs: z
+    .array(z.strictObject({ path: z.string(), heading: z.string(), bundles: z.array(z.string()) }))
+    .exactOptional(),
   linkedTasks: z
     .array(
       z.strictObject({

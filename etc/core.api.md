@@ -930,6 +930,31 @@ export interface PriorReview {
 }
 
 // @public (undocumented)
+export const PROJECT_DOC_LIMITS: {
+    readonly given: 3;
+    readonly listed: 10;
+    readonly sectionChars: 3000;
+};
+
+// @public (undocumented)
+export interface ProjectDoc {
+    // (undocumented)
+    path: string;
+    // (undocumented)
+    text: string;
+}
+
+// @public (undocumented)
+export interface ProjectDocUse {
+    // (undocumented)
+    bundles: string[];
+    // (undocumented)
+    heading: string;
+    // (undocumented)
+    path: string;
+}
+
+// @public (undocumented)
 export interface ProvenanceInput {
     // (undocumented)
     accountSettings?: {
@@ -1158,6 +1183,11 @@ export const reportOutputSchema: z.ZodObject<{
             kind: z.ZodString;
             ref: z.ZodExactOptional<z.ZodString>;
         }, z.core.$strict>>;
+        bundles: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>>>;
+    projectDocs: z.ZodExactOptional<z.ZodArray<z.ZodObject<{
+        path: z.ZodString;
+        heading: z.ZodString;
         bundles: z.ZodArray<z.ZodString>;
     }, z.core.$strict>>>;
     linkedTasks: z.ZodExactOptional<z.ZodArray<z.ZodObject<{
@@ -1640,6 +1670,8 @@ export interface ReviewOptions {
     // (undocumented)
     onEvent?: (event: ReviewEvent) => void;
     // (undocumented)
+    projectDocs?: readonly ProjectDoc[];
+    // (undocumented)
     readTrusted?: (path: string) => Promise<string | undefined>;
     // (undocumented)
     references?: ReferenceIndex;
@@ -1696,6 +1728,8 @@ export interface ReviewReport {
     learnings?: LearningUse[];
     // (undocumented)
     linkedTasks?: LinkedTaskUse[];
+    // (undocumented)
+    projectDocs?: ProjectDocUse[];
     // (undocumented)
     provenance?: RunProvenance;
     // (undocumented)

@@ -34,6 +34,10 @@ On a pull or merge request, every review task is also given the issues the chang
 
 At most 3 issues, each with its title, state, labels, the first 4,000 characters of its body, its parent's title and first 1,500 characters (GitHub's parent issue, GitLab's epic) and up to 10 sub-issues by title; nothing is searched and no model chooses. The text goes into the part of the prompt every task shares, so it is cached once per run. A failed lookup (a token without access to issues) is a warning, and the review goes on. The report's `linkedTasks` lists what was given. `linkedTasks: false` in [`.ocra/config.json`](./configuration) or `--no-linked-tasks` turns it off.
 
+## Project documents
+
+With [`projectDocs`](./configuration#project-documents) set, each review task is also given the sections of the team's design documents that name its files, so a reviewer can check the change against the intended design. A document is split at its headings (levels 1 to 3, outside code blocks); a section names a file when it mentions the file's path, its name, or its directory (a generic one such as `src` alone does not count), and the path counts most. Each task gets at most 3 sections, the first 3,000 characters of each, and the headings of up to 10 more it can read; nothing is searched and no model chooses. A section that names none of a task's files adds nothing to its prompt. The report's `projectDocs` lists each section given and the bundles it went to.
+
 ## Verdict
 
 A fixed rubric over the final findings, not a model, decides the verdict, so the same findings always give the same verdict:

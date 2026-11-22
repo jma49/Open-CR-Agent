@@ -81,6 +81,18 @@ const trackersSchema = z
   .strict();
 export type TrackersConfig = z.infer<typeof trackersSchema>;
 
+const MAX_PROJECT_DOC_ENTRIES = 20;
+// A path inside the repository, as git names it; validated again after
+// normalising when it is read.
+const docPath = z
+  .string()
+  .min(1)
+  .max(500)
+  .refine(
+    (path) => !path.startsWith("/") && !path.includes("\\") && !path.split("/").includes(".."),
+    "must be a path inside the repository, with / between its parts",
+  );
+
 const price = z.number().min(0).max(10_000);
 
 const providerSchema = z
@@ -132,6 +144,8 @@ export const configSchema = z
     walkthrough: z.boolean().optional(),
     linkedTasks: z.boolean().optional(),
     trackers: trackersSchema.default({}),
+    // Markdown files, or directories of them, in the repository (ADR-0052).
+    projectDocs: z.array(docPath).max(MAX_PROJECT_DOC_ENTRIES).optional(),
     maxCostUsd: z.number().positive().optional(),
     maxTasks: z.number().int().min(1).max(1_000).optional(),
     // Unset: each provider's default. A seed makes sampling repeatable only
