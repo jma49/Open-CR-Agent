@@ -1,13 +1,13 @@
 {
   "setup": {
     "platforms": 60,
-    "*": 25
+    "*": 30
   },
   "running": {
-    "verify": 150,
-    "node-matrix": 120,
-    "image": 120,
-    "platforms": 100,
+    "verify": 170,
+    "node-matrix": 140,
+    "image": 125,
+    "platforms": 105,
     "action": 70,
     "packages": 70,
     "*": 40
