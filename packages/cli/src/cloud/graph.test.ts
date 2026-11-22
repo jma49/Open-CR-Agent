@@ -42,7 +42,7 @@ describe("ocra Cloud's code graph", () => {
     expect([...(graph?.graph.files.keys() ?? [])]).toEqual(["src/answer.ts"]);
   });
 
-  it("matches a GitLab group path on its own host, in any case", async () => {
+  it("matches a GitLab group path on its own host", async () => {
     const { calls } = await fetched(
       { [REPOS]: Response.json(graphs.answer) },
       "https://git.example.com/platform/services/api",
