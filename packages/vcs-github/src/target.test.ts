@@ -75,6 +75,29 @@ describe("resolveGitHubTarget", () => {
     expect(originRead()).toBe(false);
   });
 
+  it("finds the repository from an origin on the GitHub Enterprise Server GITHUB_API_URL names", async () => {
+    for (const origin of [
+      "https://github.example.com/o/r.git",
+      "git@github.example.com:o/r.git",
+      "ssh://git@github.example.com:2222/o/r",
+    ]) {
+      const { options: o, api } = options(
+        { GITHUB_TOKEN: "t", GITHUB_API_URL: "https://github.example.com/api/v3" },
+        origin,
+      );
+      await resolveGitHubTarget(o);
+      expect(api.urls).toEqual(["https://github.example.com/api/v3/repos/o/r/pulls/7"]);
+    }
+  });
+
+  it("refuses an origin on another server than GITHUB_API_URL's", async () => {
+    const { options: o } = options(
+      { GITHUB_TOKEN: "t", GITHUB_API_URL: "https://github.example.com/api/v3" },
+      "https://git.other.example/o/r.git",
+    );
+    await expect(resolveGitHubTarget(o)).rejects.toMatchObject({ code: "CONFIG_INVALID" });
+  });
+
   it("refuses an origin that is not on github.com", async () => {
     const { options: o } = options({ GITHUB_TOKEN: "t" }, "https://gitlab.com/o/r.git");
     await expect(resolveGitHubTarget(o)).rejects.toMatchObject({ code: "CONFIG_INVALID" });
