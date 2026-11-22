@@ -1,3 +1,4 @@
+import type { ChangeCommit } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import {
   AUTHOR,
@@ -32,6 +33,7 @@ function inMemory(scenario: Scenario) {
   const inline: string[] = [];
   const resolved: string[] = [];
   const replies: string[] = [];
+  const commits: ChangeCommit[] = [];
   let summary = "";
   const platform: ReviewPlatform = {
     text: { changeRequest: "change request", authority: "write access" },
@@ -89,9 +91,14 @@ function inMemory(scenario: Scenario) {
     reply: async (_, body) => {
       replies.push(body);
     },
+    commit: async (commit) => {
+      commits.push(commit);
+      return { committed: true, sha: "c".repeat(40) };
+    },
   };
   return {
     review: new PlatformReview({ name: "memory", platform, code }),
+    commits: () => commits,
     inline: () => inline,
     summary: () => summary,
     replies: () => replies,
@@ -131,6 +138,53 @@ describe("resolving the threads of fixed findings", () => {
       },
     });
     expect(conversation.resolved()).toEqual(["T0"]);
+  });
+});
+
+describe("committing to the change request", () => {
+  const file = { path: "src/a.test.ts", content: "x\n", created: true, executable: false };
+
+  it("hands the platform a commit made from the head ocra read", async () => {
+    const conversation = inMemory({});
+    const commit = { parent: HEAD, message: "test: add tests", files: [file] };
+    expect(await conversation.review.commit(commit)).toEqual({
+      committed: true,
+      sha: "c".repeat(40),
+    });
+    expect(conversation.commits()).toEqual([commit]);
+  });
+
+  it("writes nothing for edits made from another head", async () => {
+    const conversation = inMemory({});
+    const result = await conversation.review.commit({ parent: BASE, message: "m", files: [file] });
+    expect(result).toMatchObject({ committed: false, outcome: "head_moved" });
+    expect(conversation.commits()).toEqual([]);
+  });
+
+  it.each([
+    "../outside.ts",
+    "/etc/passwd",
+    "src/../../x.ts",
+    ".git/hooks/pre-commit",
+    "src/.GIT/config",
+    "src//a.ts",
+    "./a.ts",
+    "src\\a.ts",
+    "a\nb.ts",
+  ])("refuses to commit to %j", async (path) => {
+    const conversation = inMemory({});
+    await expect(
+      conversation.review.commit({ parent: HEAD, message: "m", files: [{ ...file, path }] }),
+    ).rejects.toThrow("ocra does not commit to");
+    expect(conversation.commits()).toEqual([]);
+  });
+
+  it("refuses one path named twice, in any case", async () => {
+    const conversation = inMemory({});
+    const files = [file, { ...file, path: "SRC/a.test.ts" }];
+    await expect(conversation.review.commit({ parent: HEAD, message: "m", files })).rejects.toThrow(
+      "ocra does not commit to",
+    );
   });
 });
 

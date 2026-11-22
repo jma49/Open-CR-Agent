@@ -1,0 +1,212 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { generateResultSchema } from "@open-cr-agent/cloud-contract";
+import type { CompletionRequest, OcraPlugin } from "@open-cr-agent/core";
+import { afterEach, describe, expect, it } from "vitest";
+import { capture, deps } from "../run.fakes.js";
+import { run } from "../run.js";
+import { changeRequestFixture, fakeGitHub, removeFixtures } from "./review/change-request.fakes.js";
+
+afterEach(removeFixtures);
+
+const COMMIT = "c".repeat(40);
+const TEST = "import { retries } from './app';\nit('is negative', () => expect(retries).toBe(-1));";
+
+function writer(seen: CompletionRequest[], answer: unknown): OcraPlugin {
+  return {
+    name: "runtime-opencode",
+    configure(ctx) {
+      ctx.registerRuntime("opencode", () => ({
+        name: "fake",
+        runTask: () => {
+          throw new Error("generate runs no review task");
+        },
+        complete: async (request) => {
+          seen.push(request);
+          return {
+            text: JSON.stringify(answer),
+            usage: {
+              inputTokens: 40,
+              outputTokens: 20,
+              reasoningTokens: 0,
+              cachedTokens: 0,
+              costUsd: 0.03,
+            },
+          };
+        },
+      }));
+    },
+  };
+}
+
+// Pull request 7 of o/r, its head branch "feature" in o/r itself unless
+// `fork` names another repository; when it `moved`, a push lands after
+// ocra read the pull request. The configuration leaves out the hostile
+// head's .ocra/ files, so app.ts is the one changed source file.
+function pullRequest(options: { fork?: string; moved?: boolean } = {}) {
+  const { clone, base, head } = changeRequestFixture();
+  const config = join(clone, ".git", "ocra-generate.json");
+  writeFileSync(config, JSON.stringify({ exclude: [".ocra/**"] }));
+  const github = fakeGitHub(base, head);
+  let reads = 0;
+  const fetchImpl = (async (url: string, init?: RequestInit) => {
+    const path = url.replace("https://api.github.com/repos/o/r", "");
+    const answer = await github.fetchImpl(url, init);
+    const json = (value: unknown, status = 200) =>
+      new Response(JSON.stringify(value), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      });
+    if (path === "/pulls/7") {
+      const pull = (await answer.json()) as { head: object };
+      reads += 1;
+      const sha = options.moved && reads > 1 ? "d".repeat(40) : head;
+      const repo = { full_name: options.fork ?? "o/r" };
+      return json({ ...pull, head: { ...pull.head, sha, repo } });
+    }
+    if (path === `/git/commits/${head}`) return json({ tree: { sha: "t1" } });
+    if (path === "/git/trees") return json({ sha: "t2" }, 201);
+    if (path === "/git/commits") return json({ sha: COMMIT }, 201);
+    return answer;
+  }) as typeof fetch;
+  return { clone, head, calls: github.calls, fetchImpl, config };
+}
+
+async function generate(pr: ReturnType<typeof pullRequest>, args: string[], answer: unknown) {
+  const seen: CompletionRequest[] = [];
+  const out = capture();
+  const err = capture();
+  const cwd = pr.clone;
+  const fetchImpl = pr.fetchImpl;
+  const code = await run(
+    [
+      "generate",
+      ...args,
+      ...(args.includes("--pr") ? ["--repo", "o/r"] : []),
+      "--config",
+      pr.config,
+    ],
+    out,
+    err,
+    deps(cwd, async function* () {}, {
+      runtimes: { opencode: async () => writer(seen, answer) },
+      env: { GITHUB_TOKEN: "t" },
+      fetch: fetchImpl,
+    }),
+  );
+  return { code, seen, out: out.text(), err: err.text() };
+}
+
+const writes = (calls: { method: string; path: string }[]) =>
+  calls.filter((c) => c.method !== "GET" && !c.path.endsWith("/graphql"));
+
+describe("ocra generate", () => {
+  it("commits a new test beside the changed file on the pull request's branch", async () => {
+    const pr = pullRequest();
+    const { head, calls } = pr;
+    const args = ["tests", "--pr", "7", "--json"];
+    const result = await generate(pr, args, { content: TEST });
+    expect(result.code).toBe(0);
+    expect(result.seen.map((r) => r.agent)).toEqual(["writer"]);
+    expect(result.seen[0]?.user).toContain("export const retries = -1;");
+    expect(generateResultSchema.parse(JSON.parse(result.out))).toEqual({
+      kind: "tests",
+      outcome: "committed",
+      headSha: head,
+      commitSha: COMMIT,
+      files: ["app.test.ts"],
+      usage: {
+        inputTokens: 40,
+        outputTokens: 20,
+        reasoningTokens: 0,
+        cachedTokens: 0,
+        costUsd: 0.03,
+      },
+      reason: null,
+    });
+    const body = (path: string) => calls.find((c) => c.path === path)?.body;
+    expect(body("/git/trees")).toMatchObject({
+      tree: [{ path: "app.test.ts", mode: "100644", type: "blob", content: `${TEST}\n` }],
+    });
+    const { message } = body("/git/commits") as { message: string };
+    expect(message).toMatch(/^test: add tests generated by ocra for app\.ts\n/);
+    expect(message).toContain("ocra did not run these tests");
+    expect(writes(calls).at(-1)).toEqual({
+      method: "PATCH",
+      path: "/git/refs/heads/feature",
+      body: { sha: COMMIT, force: false },
+    });
+    expect(result.err).toContain("[ocra] Committed cccccccccccc with 1 file(s); $0.0300");
+  });
+
+  it("prints doc comments as a diff on a dry run and commits nothing", async () => {
+    const pr = pullRequest();
+    const { calls } = pr;
+    const answer = { insertions: [{ after: 1, lines: ["/** How often to retry. */"] }] };
+    const result = await generate(pr, ["docstrings", "--pr", "7", "--dry-run"], answer);
+    expect(result.code).toBe(0);
+    expect(result.out).toBe(
+      [
+        "diff --git a/app.ts b/app.ts",
+        "--- a/app.ts",
+        "+++ b/app.ts",
+        "@@ -1,2 +1,3 @@",
+        " export const limit = 10;",
+        "+/** How often to retry. */",
+        " export const retries = -1;",
+        "",
+      ].join("\n"),
+    );
+    expect(writes(calls)).toEqual([]);
+    expect(result.err).toContain("[ocra] Dry run: 1 file(s) not committed");
+  });
+
+  it("commits nothing to a fork's branch, and says why with its own exit code", async () => {
+    const pr = pullRequest({ fork: "someone/r" });
+    const { calls } = pr;
+    const args = ["tests", "--pr", "7", "--json"];
+    const result = await generate(pr, args, { content: TEST });
+    expect(result.code).toBe(3);
+    expect(JSON.parse(result.out)).toMatchObject({
+      outcome: "not_writable",
+      commitSha: null,
+      files: ["app.test.ts"],
+    });
+    expect(writes(calls)).toEqual([]);
+    expect(result.err).toContain("[ocra] Nothing committed: the branch is on a fork");
+  });
+
+  it("commits nothing once the branch moved past the head it read", async () => {
+    const pr = pullRequest({ moved: true });
+    const { calls } = pr;
+    const result = await generate(pr, ["tests", "--pr", "7", "--json"], {
+      content: TEST,
+    });
+    expect(result.code).toBe(3);
+    expect(JSON.parse(result.out)).toMatchObject({ outcome: "head_moved" });
+    expect(writes(calls)).toEqual([]);
+  });
+
+  it("exits 0 and commits nothing when the model has nothing to add", async () => {
+    const pr = pullRequest();
+    const answer = { insertions: [] };
+    const result = await generate(pr, ["docstrings", "--pr", "7", "--json"], answer);
+    expect(result.code).toBe(0);
+    expect(JSON.parse(result.out)).toMatchObject({
+      outcome: "nothing",
+      commitSha: null,
+      files: [],
+      reason: "app.ts: the model added no doc comment",
+    });
+  });
+
+  it("refuses a call without a kind or a change request", async () => {
+    const pr = pullRequest();
+    const noKind = await generate(pr, ["--pr", "7"], {});
+    expect(noKind.code).toBe(2);
+    expect(noKind.err).toContain("needs tests or docstrings");
+    expect(noKind.err).toContain("Usage: ocra generate");
+    const noChange = await generate(pr, ["tests"], {});
+    expect(noChange.err).toContain("needs --pr or --mr");
+  });
+});

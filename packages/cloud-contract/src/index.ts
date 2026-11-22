@@ -43,6 +43,15 @@ export {
   usageSchema,
 } from "./events.js";
 export {
+  GENERATE_KINDS,
+  GENERATE_OUTCOMES,
+  type GenerateKind,
+  type GenerateOutcome,
+  type GenerateResult,
+  generateResultSchema,
+  MAX_GENERATED_FILES,
+} from "./generate.js";
+export {
   CODE_PLATFORMS,
   type CodePlatform,
   GRAPH_BUILD_STATES,

@@ -1,4 +1,11 @@
-import type { Finding, LinkedTask, MentionRef, ReviewReport } from "@open-cr-agent/core";
+import type {
+  ChangeCommit,
+  CommitResult,
+  Finding,
+  LinkedTask,
+  MentionRef,
+  ReviewReport,
+} from "@open-cr-agent/core";
 import type { PlatformText } from "./render.js";
 import type { SuggestionFence } from "./suggestion.js";
 
@@ -40,6 +47,11 @@ export interface ReviewPlatform {
   // Answers in the comment's thread, or after it on the change request when
   // the platform keeps no thread for it.
   reply(discussion: PlatformDiscussion, body: string): Promise<void>;
+  // Writes the commit on the change request's source branch only while its
+  // head is the commit's parent, as the token's own account; a moved branch
+  // or a branch the token may not write to (a fork's) is an outcome, not an
+  // error.
+  commit(commit: ChangeCommit): Promise<CommitResult>;
 }
 
 export interface PlatformDiscussion {

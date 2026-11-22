@@ -1,4 +1,6 @@
 import {
+  type ChangeCommit,
+  type CommitResult,
   errorMessage,
   type FileDiff,
   type LinkedTask,
@@ -28,6 +30,7 @@ import {
   type Note,
   type Position,
 } from "./client.js";
+import { gitlabCommit } from "./commit.js";
 import { gitlabDiscussion } from "./discussion.js";
 import { gitlabLinkedTasks } from "./tasks.js";
 
@@ -203,6 +206,10 @@ class GitLabPlatform implements ReviewPlatform {
   async reply(discussion: PlatformDiscussion, body: string): Promise<void> {
     if (discussion.replyTo === undefined) await this.options.api.createNote(this.options.iid, body);
     else await this.options.api.replyToDiscussion(this.options.iid, discussion.replyTo, body);
+  }
+
+  commit(commit: ChangeCommit): Promise<CommitResult> {
+    return gitlabCommit(this.options.api, this.options.iid, commit);
   }
 
   private remember(note: Note): void {

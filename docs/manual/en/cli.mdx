@@ -312,6 +312,42 @@ The stack is the tree of branches recorded in this clone's git config (`branch.<
 
 `submit` and `sync` use `GITHUB_TOKEN` (or `GH_TOKEN`) or `GITLAB_TOKEN`, with `--repo` or `--project` as for a review; the token needs pull request (merge request) write access. The stack's list in a description sits between `<!-- ocra:stack -->` markers; what you write outside them is kept. `submit` refuses a stack that holds a branch whose change request merged, before pushing anything: run `sync` first. New in v0.11.0.
 
+## ocra generate
+
+Writes one commit on a pull or merge request's branch: tests for the code it changes, or doc comments on the declarations it adds or alters.
+
+```bash
+ocra generate tests --pr 7                   # new test files beside the changed sources
+ocra generate docstrings --mr 12             # doc comments in the changed lines
+ocra generate tests --pr 7 --dry-run         # print the edits as a diff; commit nothing
+ocra generate docstrings --pr 7 --json       # one line of JSON with the outcome
+```
+
+`--repo`, `--project` and `--config <file>` work as for `ocra reply`, with the same tokens; the token must be able to write to the branch (GitHub: contents write; GitLab: the api scope and the Developer role), and the commit is made as the token's account.
+
+ocra picks the files: the change's source files that a review would select (never a secret, generated or vendored file), in TypeScript, JavaScript, Python, Go, Java or Kotlin (doc comments also in Rust), never a test, a type declaration, a symbolic link or a submodule; most added lines first, at most 5, each at most 60,000 characters. Each file gets one call on the writer role, which sees the description, the file's patch and the file itself, read through the review's access policy.
+
+- **tests** writes one new test file per source file, at the path the repository's naming gives it: beside the source as `.test` or, where the tests beside it use it, `.spec`; in `__tests__/` when that folder holds tests; `test_<name>.py` or `<name>_test.py`, or under `tests/`; `<name>_test.go`; `src/test/java/…/<Name>Test.java` (and Kotlin's) for a Maven or Gradle layout. The model sees a test beside it, when there is one, to follow its framework and style. A path that already has a file is skipped: ocra never changes an existing file. ocra does not run the tests (it runs no code from the repository, installs and builds nothing), and the commit message says so; the change request's own CI runs them.
+- **docstrings** asks for doc comments on the changed declarations that have none, in the language's form (`/** … */`, `//` for Go, `///` for Rust, a `"""` docstring for Python). ocra inserts only comment lines, only in the changed lines, and changes no existing line; a reply that would do anything else is refused for that file.
+
+A file whose call fails, or whose reply is refused, is skipped with its reason on stderr; the run fails only when every call failed. ocra commits only on top of the head it read: if someone pushed in between, on GitHub the branch update is refused as not a fast-forward, on GitLab the branch is compared first and each changed file must still be as it was.
+
+With `--json`, stdout is one line instead of the diff:
+
+```json
+{"kind":"tests","outcome":"committed","headSha":"<40 hex>","commitSha":"<40 hex>","files":["src/retry.test.ts"],"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0},"reason":null}
+```
+
+| `outcome` | Meaning | Exit |
+|---|---|---|
+| `committed` | One commit on the branch; `commitSha` names it | `0` |
+| `dry_run` | `--dry-run`: the edits were made and printed, nothing committed | `0` |
+| `nothing` | No file to write for, or the model added nothing; `reason` lists each skipped file | `0` |
+| `head_moved` | The branch moved after ocra read it; nothing committed | `3` |
+| `not_writable` | The token cannot write to the branch: a fork's, a protected one, a read-only token | `3` |
+
+`files` lists the paths the edits touch, committed or not; `reason` is `null` for `committed` and `dry_run`. Usage, configuration and model errors exit `2`. The shape is `generateResultSchema` in `@open-cr-agent/cloud-contract`. New in v0.11.0.
+
 ## ocra metrics
 
 Counts over the finished reviews in `.ocra/sessions/`, from each session's `report.json`; no model is called:
