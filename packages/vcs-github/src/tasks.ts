@@ -71,7 +71,7 @@ const issueOrPullRequestSchema = z.object({
 const ISSUE_BRANCH = /^(\d+)-/;
 
 // The issues of this repository the pull request closes, or the one its
-// branch is named after (ADR-0051). Another repository's issue is left out:
+// branch is named after (ADR-0052). Another repository's issue is left out:
 // a fork's author could otherwise pull text they cannot read into a review
 // posted where they can.
 export async function githubLinkedTasks(api: GitHubApi, pr: Repository): Promise<LinkedTask[]> {

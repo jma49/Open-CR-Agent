@@ -1,4 +1,4 @@
-// A task in the team's tracker that the change was written for (ADR-0051),
+// A task in the team's tracker that the change was written for (ADR-0052),
 // as a platform adapter converted it from its tracker's API.
 export interface LinkedTask {
   tracker: TaskTracker;

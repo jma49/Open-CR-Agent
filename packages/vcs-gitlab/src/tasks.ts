@@ -5,7 +5,7 @@ import type { GitLabApi, Issue } from "./client.js";
 const ISSUE_BRANCH = /^(\d+)-/;
 
 // The issues of this project the merge request closes, or the one its source
-// branch is named after (ADR-0051). Another project's issue is left out: a
+// branch is named after (ADR-0052). Another project's issue is left out: a
 // fork's author could otherwise pull text they cannot read into a review
 // posted where they can.
 export async function gitlabLinkedTasks(api: GitLabApi, iid: number): Promise<LinkedTask[]> {

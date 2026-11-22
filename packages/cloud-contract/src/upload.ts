@@ -109,7 +109,7 @@ export const MAX_LINKED_TASKS = 3;
 export const LINKED_TASK_TRACKERS = ["github", "gitlab"] as const;
 
 /**
- * A task the change is linked to (ADR-0051): which one and its state with
+ * A task the change is linked to (ADR-0052): which one and its state with
  * every pull or merge request upload, what it says (title, labels) only
  * with the findings, redacted the same way.
  */

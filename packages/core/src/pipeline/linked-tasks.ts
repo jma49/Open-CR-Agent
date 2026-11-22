@@ -9,7 +9,7 @@ export interface LoadedLinkedTasks {
   warning?: string;
 }
 
-// A failed lookup costs the task context, not the review (ADR-0051).
+// A failed lookup costs the task context, not the review (ADR-0052).
 export async function loadLinkedTasks(
   vcs: VcsAdapter,
   enabled: boolean,
