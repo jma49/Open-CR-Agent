@@ -87,6 +87,23 @@ describe("the review upload", () => {
     expect(parsed.findingList?.slice(0, -1)).toEqual(body.findingList);
   });
 
+  it("reads an outcome fingerprint that does not fit as null, and too many as absent", () => {
+    const parsed = reviewUploadSchema.parse({
+      ...body,
+      outcomes: { fixed: 1, dismissed: 0, fixedFingerprints: ["aaaabbbbccccdddd", "a b"] },
+    });
+    expect(parsed.outcomes).toEqual({
+      fixed: 1,
+      dismissed: 0,
+      fixedFingerprints: ["aaaabbbbccccdddd", null],
+    });
+    const many = reviewUploadSchema.parse({
+      ...body,
+      outcomes: { fixed: 201, dismissed: 0, dismissedFingerprints: Array(201).fill("aaaabbbb") },
+    });
+    expect(many.outcomes).toEqual({ fixed: 201, dismissed: 0 });
+  });
+
   it("drops a pull request it cannot name, and keeps the counts", () => {
     for (const pullRequest of [
       { ...body.pullRequest, repository: "git@github.com:octo/app" },
