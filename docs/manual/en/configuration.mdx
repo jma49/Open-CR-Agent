@@ -101,7 +101,7 @@ For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Gro
 | `taskTimeoutMinutes` | `10` | Limit for one review task, at most `35791` (about 24.8 days, the longest a timer keeps) |
 | `runTimeoutMinutes` | `25` | Limit for the whole run, at most `35791` |
 | `maxCostUsd` | none | Spend limit for the run: review tasks use up to 80% of it, verification and judging the rest (see `--max-cost-usd`) |
-| `maxTasks` | `60` | Most review tasks one run starts. Past it, `--ultra`'s second passes go first, then later reviewers, so every file keeps its first reviewer as long as possible; skipped files are reported as not reviewed (exit code `3`) |
+| `maxTasks` | `60` | Most review tasks one run starts. Past it, `--ultra`'s second passes go first, then later reviewers, so every file keeps its first reviewer as long as possible, files on sensitive paths longest; skipped files are reported as not reviewed (exit code `3`) |
 | `judge` | `true` | Merge, filter and recalibrate findings across reviewers (one top-tier call per run with findings) |
 | `showPreExisting` | `true` | Report findings Verify traced to code from before the change, marked *pre-existing*. They never count towards the verdict; `false` leaves them out, with a warning giving their number |
 | `verify` | `true` | Fact-check findings before reporting them (one standard-tier call per file with findings) |
