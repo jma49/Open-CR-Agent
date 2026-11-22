@@ -15,6 +15,7 @@
     "plugins",
     "embedding",
     "serve",
+    "mcp",
     "---核心概念---",
     "how-it-works",
     "security",

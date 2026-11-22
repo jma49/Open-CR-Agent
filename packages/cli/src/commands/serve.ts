@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { errorMessage, type ReviewEvent, type ReviewReport } from "@open-cr-agent/core";
+import { errorMessage } from "@open-cr-agent/core";
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
 import { ocraConfigDir } from "../config/user-dir.js";
 import { EXIT } from "../io/exit.js";
@@ -10,12 +10,10 @@ import type { Output } from "../io/output.js";
 import { writePrivateFile } from "../io/private-file.js";
 import { UsageError } from "../io/usage-error.js";
 import { Runs } from "../serve/runs.js";
-import { type RunRequest, serveServer } from "../serve/server.js";
-import type { ReviewArgs } from "./review/args.js";
-import { deliver } from "./review/deliver.js";
+import { serveServer } from "../serve/server.js";
 import type { ReviewDeps } from "./review/deps.js";
-import { executeRun } from "./review/execute-run.js";
-import { type ReviewIo, resolveRun } from "./review/resolve-run.js";
+import type { ReviewIo } from "./review/resolve-run.js";
+import { reviewOnce } from "./review/review-once.js";
 
 export const SERVE_USAGE = `Usage: ocra serve [options]
 
@@ -62,35 +60,6 @@ export async function serveCommand(port: number, err: Output, deps: ReviewDeps):
   });
   await rm(file, { force: true });
   return EXIT.ok;
-}
-
-// One review, as `ocra review --format json` would run it, with its events
-// and cancellation wired to the run.
-async function reviewOnce(
-  request: RunRequest,
-  signal: AbortSignal,
-  onEvent: (event: ReviewEvent) => void,
-  io: ReviewIo,
-  deps: ReviewDeps,
-): Promise<ReviewReport> {
-  const args: ReviewArgs = {
-    target: request.target,
-    format: "json",
-    ...(request.reviewers ? { reviewers: request.reviewers } : {}),
-    ...(request.maxCostUsd !== undefined ? { maxCostUsd: request.maxCostUsd } : {}),
-  };
-  const runDeps: ReviewDeps = {
-    ...deps,
-    onEvent,
-    onInterrupt(handler) {
-      signal.addEventListener("abort", handler, { once: true });
-      return () => signal.removeEventListener("abort", handler);
-    },
-  };
-  const run = await resolveRun(args, io, runDeps);
-  const executed = await executeRun(run, args, io, runDeps);
-  if (!executed.interrupted) await deliver(run, executed, args, io, runDeps);
-  return executed.report;
 }
 
 function stateFile(env: ReviewDeps["env"], root: string): string {

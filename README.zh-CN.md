@@ -145,6 +145,7 @@ CI 绝不能把不完整的审查（`3`）当成通过。结论是模型给出�
 ```
 
 另外：`extends` 通过 https 共享配置；`--config <file>` 改为读取你自己的文件而不是仓库里的；`.ocra/learnings/*.md` 存放团队从以往改动中学到的东西，每个任务拿到适用于它那些文件的条目，选取不经过模型（[审查规则](docs/manual/zh/rules.mdx#ocralearnings)）；`ocra learn mine` 从历史里的修复提交、`ocra learn feedback` 从已接受的问题、`ocra learn import` 从事故复盘和规范、`ocra learn remember` 从 PR 上的 `/ocra remember` 备注起草它们，每条调用一次 helper 模型，`--propose` 把它们开成检查通过后自动合并的 GitHub pull request 或 GitLab Merge Request，设了 `learnings.requireReview` 则留给人合并，Action 的 `learn` 输入可以定时或在 `/ocra remember` 评论时运行它们（[CLI](docs/manual/zh/cli.mdx#ocra-learn)）；`ocra memory` 让已接受的问题不再报告；`ocra metrics` 汇总运行、成本和问题。`ocra login` / `logout` / `whoami` 连接 ocra Cloud（开发中）：你的[账户设置](docs/manual/zh/configuration.mdx#账户设置)放在仓库配置之下生效，从不涉及供应商和插件；只有账户开启、且本机是在开启期间登录的，才上传问题，并先脱敏密钥（[CLI](docs/manual/zh/cli.mdx#ocra-loginocra-logoutocra-whoami)）。全部配置项：[配置](docs/manual/zh/configuration.mdx)、[审查规则](docs/manual/zh/rules.mdx)。
+`ocra mcp` 让 Claude Code、Cursor、Codex 这类编码 agent 通过 Model Context Protocol 请求审查，审查方式与 `ocra review` 相同（[ocra mcp](docs/manual/zh/mcp.mdx)）；`ocra serve` 通过 HTTP 为编辑器和脚本做同样的事（[ocra serve](docs/manual/zh/serve.mdx)）。
 `ocra graph` 生成一个提交的代码图，按文件增量更新，`ocra review --graph` 从中查找调用方（[CLI](docs/manual/zh/cli.mdx#ocra-graph)）。
 
 ## 扩展 ocra

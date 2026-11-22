@@ -4,36 +4,13 @@ import type { ReviewEvent as WireEvent } from "@open-cr-agent/cloud-contract";
 import { errorMessage, toReportOutput } from "@open-cr-agent/core";
 import type { LocalTarget } from "@open-cr-agent/vcs-local";
 import { z } from "zod";
+import { type RunRequest, runRequestSchema } from "../commands/review/request.js";
 import { type ReviewStarter, type Run, type Runs, RunsBusy } from "./runs.js";
 
 const MAX_BODY_BYTES = 16_384;
 const HEARTBEAT_MS = 15_000;
 // A subscriber this far behind is dropped; it can reconnect from its last id.
 const MAX_BUFFERED_BYTES = 4 * 1024 * 1024;
-
-const ref = z
-  .string()
-  .regex(/^[\w./~^@{}-]{1,200}$/)
-  .refine((r) => !r.startsWith("-"), "a ref cannot start with -");
-
-const runRequestSchema = z
-  .object({
-    target: z
-      .discriminatedUnion("mode", [
-        z.object({ mode: z.literal("workspace") }),
-        z.object({ mode: z.literal("range"), from: ref, to: ref.default("HEAD") }),
-        z.object({ mode: z.literal("commit"), commit: ref }),
-      ])
-      .default({ mode: "workspace" }),
-    reviewers: z
-      .array(z.string().regex(/^[A-Za-z0-9][\w.:@-]{0,99}$/))
-      .min(1)
-      .max(20)
-      .optional(),
-    maxCostUsd: z.number().positive().max(1_000).optional(),
-  })
-  .strict();
-export type RunRequest = z.infer<typeof runRequestSchema>;
 
 export interface ServeOptions {
   token: string;
