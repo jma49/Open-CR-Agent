@@ -18,7 +18,7 @@ const repoRulesFileSchema = z.object({ rules: z.array(repoRuleSchema) });
 
 export const REPO_RULES_PATH = ".ocra/rules.json";
 export const MARKDOWN_RULES_PATH = ".ocra/rules.md";
-const MAX_MARKDOWN_RULES_CHARS = 20_000;
+export const MAX_MARKDOWN_RULES_CHARS = 20_000;
 
 export function parseRepoRules(json: string): RepoRule[] {
   let data: unknown;

@@ -54,7 +54,11 @@ export { nothingReviewedSummary, quotaNote, unconfirmedCriticals } from "./repor
 export { serializeOutput } from "./report/serialize.js";
 export { reconcile } from "./rereview/reconcile.js";
 export { CONTEXT_SOURCES, type ContextSource } from "./review/context-sources.js";
-export { repoRuleSchema } from "./rules/repo-rules.js";
+export {
+  MARKDOWN_RULES_PATH,
+  MAX_MARKDOWN_RULES_CHARS,
+  repoRuleSchema,
+} from "./rules/repo-rules.js";
 export { EVENTS_FILE, REPORT_FILE } from "./session/jsonl.js";
 export { readResumedRun } from "./session/resume-read.js";
 export { isUnsafeCodePoint } from "./unsafe-text.js";

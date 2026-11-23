@@ -181,6 +181,7 @@ export {
 } from "./providers.js";
 export { REDACTED, redact, redactField } from "./redact.js";
 export { normaliseRemote, REPOSITORY_URL } from "./repository.js";
+export { MAX_RULES_MARKDOWN_CHARS, RULES_MARKDOWN_PATH } from "./rules.js";
 export {
   FINGERPRINT,
   LINKED_TASK_TRACKERS,
