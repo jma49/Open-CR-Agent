@@ -8,6 +8,8 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [0.15.0] - 2026-11-23
 
+A review on an `anthropic` provider sends fewer tokens and pays less for the ones it repeats, and a review that reviewed nothing says why instead of passing. The Action's new tag is `jma49/Open-CR-Agent@v0.15.0`.
+
 ### Changed
 
 - On an Anthropic Messages endpoint, a single-request call (a plan phase, Verify, Judge, grouping) no longer stores its prompt in the provider's prompt cache. Nothing read it back, and storing costs a quarter more than sending.
