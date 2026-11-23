@@ -6,6 +6,20 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-23
+
+### Changed
+
+- On an Anthropic Messages endpoint, a single-request call (a plan phase, Verify, Judge, grouping) no longer stores its prompt in the provider's prompt cache. Nothing read it back, and storing costs a quarter more than sending.
+- Generated migration metadata is no longer reviewed: Drizzle's `meta/` snapshots and journal, Prisma's `migration_lock.toml`, EF Core's `*.Designer.cs` and model snapshot; nor are the lock files of Deno, NuGet, SwiftPM, CocoaPods, pub, Mix and Gradle. `include` brings a file back.
+- On an `anthropic` provider, review tasks read the start of the prompt they share from the prompt cache instead of each storing it (`AgentTaskSpec.sharedPrefixes`).
+
+### Fixed
+
+- `configSchema.safeParse` returns an issue at the provider's or tracker's address when that address is not a URL, instead of throwing a `TypeError`; ocra reports such a `.ocra/config.json` as invalid instead of crashing.
+- A review that reviewed nothing no longer uploads the verdict `approved` to ocra Cloud; it uploads none.
+- "Nothing was reviewed" now says why: the model provider refused every call (a daily limit or a rate limit), or the first task error. The JSON report's failed tasks carry `quota` when every model they could use was out of quota.
+
 ## [0.14.0] - 2026-11-23
 
 ### Added
@@ -600,7 +614,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.11.0...v0.12.0
