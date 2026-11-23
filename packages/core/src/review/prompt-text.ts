@@ -41,6 +41,8 @@ const SECTIONS = [
   "findings",
   "finding",
   "lines_to_replace",
+  "replacement",
+  "edit",
   "diff",
   "file_excerpt",
   "related_code",

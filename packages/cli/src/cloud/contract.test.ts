@@ -16,7 +16,13 @@ import {
 import {
   AGENT_ROLES,
   MAX_TIMER_MS,
+  MEND_ITEM_OUTCOMES,
+  MEND_ITEM_REASONS,
+  MEND_LEVELS,
+  MEND_OUTCOMES,
+  type MendState,
   RISK_TIERS,
+  ROUND_STOPS,
   severitySchema,
   verificationSchema,
 } from "@open-cr-agent/core/internal";
@@ -46,7 +52,8 @@ describe("the contract's vocabulary", () => {
     const efforts: Same<Effort, contract.Effort> = true;
     const files: Same<CoverageEntry["status"], contract.FileStatus> = true;
     const tasks: Same<TaskStatus, contract.TaskStatus> = true;
-    expect([verdicts, tiers, efforts, files, tasks]).toEqual([true, true, true, true, true]);
+    const mendStates: Same<MendState, contract.MendState> = true;
+    expect([verdicts, tiers, efforts, files, tasks, mendStates]).toEqual(Array(6).fill(true));
     expect(contract.RISK_TIERS).toEqual(RISK_TIERS);
     expect(contract.SEVERITIES).toEqual(severitySchema.options);
     expect(contract.VERIFICATIONS).toEqual(verificationSchema.options);
@@ -56,6 +63,11 @@ describe("the contract's vocabulary", () => {
     expect(contract.STAGES).toEqual(REVIEW_STAGES);
     expect(contract.GUIDELINE_SCOPES).toEqual(GUIDELINE_SCOPES);
     expect(contract.FIX_REJECTIONS).toEqual(FIX_REJECTIONS);
+    expect(contract.MEND_LEVELS).toEqual(MEND_LEVELS);
+    expect(contract.MEND_OUTCOMES).toEqual(MEND_OUTCOMES);
+    expect(contract.MEND_STOPS).toEqual(ROUND_STOPS);
+    expect(contract.MEND_ITEM_OUTCOMES).toEqual(MEND_ITEM_OUTCOMES);
+    expect(contract.MEND_ITEM_REASONS).toEqual(MEND_ITEM_REASONS);
     expect(contract.MAX_TIMEOUT_MINUTES).toBe(Math.floor(MAX_TIMER_MS / 60_000));
   });
 });

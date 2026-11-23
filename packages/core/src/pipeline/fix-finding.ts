@@ -1,9 +1,9 @@
 import { oneShot } from "../agent/model-call.js";
-import { roleCall } from "../agent/settings.js";
-import { spendLimit } from "../agent/spend-limit.js";
+import { type AgentCallSettings, roleCall } from "../agent/settings.js";
+import { type SpendLimit, spendLimit } from "../agent/spend-limit.js";
 import { matchInContent, matchInHunks } from "../anchor/match.js";
 import { quoteSignature } from "../anchor/quote.js";
-import type { AgentRuntime, SyntaxChecker, Usage } from "../contracts.js";
+import type { AgentRuntime, ReviewContext, SyntaxChecker, Usage } from "../contracts.js";
 import type { FileDiff, FindingFix, LineRange, Severity } from "../domain.js";
 import { OcraError } from "../errors.js";
 import type { FixRejection } from "../fix/check.js";
@@ -80,25 +80,51 @@ export async function fixFinding(options: FixFindingOptions): Promise<FixedFindi
   if (options.expectedHead !== undefined && options.expectedHead !== headSha) {
     return { headSha, outcome: "head_moved", warnings: [] };
   }
-  const end = (reason: FixFindingReason, warnings: string[] = []): FixedFinding => ({
-    headSha,
-    outcome: OUTCOME_OF[reason],
-    reason,
-    warnings,
-  });
-  if (finding.lowConfidence) return end("not_candidate");
   const diffs = await vcs.getDiff();
-  const context = reviewContext(vcs, diffs);
+  const fixed = await fixAtHead(finding, {
+    runtime: options.runtime,
+    syntax: options.syntax,
+    diffs,
+    context: reviewContext(vcs, diffs),
+    spendLimit: spendLimit(options.maxCostUsd),
+    call: roleCall("fixer", options),
+    signal: options.signal,
+    onUsage: options.onUsage,
+  });
+  if ("fix" in fixed) return { headSha, outcome: "proposed", ...fixed };
+  return { headSha, outcome: OUTCOME_OF[fixed.reason], ...fixed };
+}
+
+interface HeadFixOptions {
+  runtime: AgentRuntime;
+  syntax: SyntaxChecker;
+  diffs: readonly FileDiff[];
+  context: ReviewContext;
+  spendLimit: Pick<SpendLimit, "mayCall" | "charge">;
+  call: AgentCallSettings;
+  signal: AbortSignal;
+  onUsage: (usage: Usage) => void;
+}
+
+type HeadFix =
+  | { fix: FindingFix; warnings: string[] }
+  | { reason: FixFindingReason; warnings: string[] };
+
+// The fix for one stored finding in a change already read: the finding is
+// anchored again by its quote, asked for through proposeFixes and checked.
+export async function fixAtHead(finding: StoredFinding, options: HeadFixOptions): Promise<HeadFix> {
+  const { diffs, context } = options;
+  if (finding.lowConfidence) return { reason: "not_candidate", warnings: [] };
   let content: string | undefined;
   try {
     content = await context.readFile(finding.file);
   } catch {
     // The access policy refuses it: no review read it, and no fix will.
-    return end("not_candidate");
+    return { reason: "not_candidate", warnings: [] };
   }
-  if (content === undefined) return end("stale");
+  if (content === undefined) return { reason: "stale", warnings: [] };
   const located = locate(finding, diffs, content);
-  if (typeof located === "string") return end(located);
+  if (typeof located === "string") return { reason: located, warnings: [] };
   const lineRange = located.range;
 
   const quote = quoteSignature(content, lineRange);
@@ -120,7 +146,6 @@ export async function fixFinding(options: FixFindingOptions): Promise<FixedFindi
     anchor: { method: "hunk", inDiff: true },
     status: "new",
   };
-  const limit = spendLimit(options.maxCostUsd);
   const result = await proposeFixes([candidate], {
     runtime: options.runtime,
     syntax: options.syntax,
@@ -129,13 +154,13 @@ export async function fixFinding(options: FixFindingOptions): Promise<FixedFindi
     signal: options.signal,
     concurrency: 1,
     maxFixes: 1,
-    spendLimit: limit,
-    call: roleCall("fixer", options),
+    spendLimit: options.spendLimit,
+    call: options.call,
   });
   for (const usage of result.usage) options.onUsage(usage);
   const fix = result.findings[0]?.fix;
-  if (fix) return { headSha, outcome: "proposed", fix, warnings: result.warnings };
-  return end(result.summary.rejected[0]?.reason ?? "failed", result.warnings);
+  if (fix) return { fix, warnings: result.warnings };
+  return { reason: result.summary.rejected[0]?.reason ?? "failed", warnings: result.warnings };
 }
 
 // Where the finding's quote is at the head. Only a quote that fits one place

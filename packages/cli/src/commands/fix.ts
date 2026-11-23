@@ -1,5 +1,3 @@
-import { readFile, stat } from "node:fs/promises";
-import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import {
   type FixResult,
@@ -7,12 +5,13 @@ import {
   sharedFindingSchema,
 } from "@open-cr-agent/cloud-contract";
 import { treeSitterSyntax } from "@open-cr-agent/code-graph";
-import { addUsage, emptyUsage, errorMessage, OcraError, type Usage } from "@open-cr-agent/core";
-import { type FixedFinding, fixFinding, type StoredFinding } from "@open-cr-agent/core/internal";
+import { addUsage, emptyUsage, type Usage } from "@open-cr-agent/core";
+import { type FixedFinding, fixFinding } from "@open-cr-agent/core/internal";
 import { EXIT } from "../io/exit.js";
 import { forTerminal } from "../io/terminal.js";
 import { UsageError } from "../io/usage-error.js";
 import { changeOf } from "./change-flags.js";
+import { expectedHead, maxCost, readJsonInput, storedFinding } from "./fix-input.js";
 import { parseLocalTarget, type ReviewArgs } from "./review/args.js";
 import type { ReviewDeps } from "./review/deps.js";
 import { startRuntime } from "./review/execute-run.js";
@@ -53,7 +52,6 @@ errors, or a runtime that cannot start (a failed call is rejected: failed).
 
 // A stored finding is a few fields of at most a few kilobytes each.
 const MAX_FINDING_BYTES = 256 * 1024;
-const COMMIT_ID = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
 
 export async function fixCommand(argv: string[], io: ReviewIo, deps: ReviewDeps): Promise<number> {
   const { values } = parseArgs({
@@ -89,12 +87,17 @@ export async function fixCommand(argv: string[], io: ReviewIo, deps: ReviewDeps)
     throw new UsageError("ocra fix needs --pr, --mr, --from or --commit");
   }
   if (!values.finding) throw new UsageError("ocra fix needs --finding <file|->");
-  if (values.head !== undefined && !COMMIT_ID.test(values.head)) {
-    throw new UsageError("--head must be a full commit id (40 or 64 lowercase hex characters)");
-  }
+  const head = expectedHead(values.head);
   if (values.config === "") throw new UsageError("--config needs a file");
-  const maxCostUsd = costOf(values["max-cost-usd"]);
-  const finding = await readFinding(values.finding, deps);
+  const maxCostUsd = maxCost(values["max-cost-usd"]);
+  const finding = storedFinding(
+    await readJsonInput(values.finding, deps, {
+      flag: "--finding",
+      what: "a finding",
+      schema: sharedFindingSchema,
+      maxBytes: MAX_FINDING_BYTES,
+    }),
+  );
 
   const reviewArgs: ReviewArgs = {
     target,
@@ -115,7 +118,7 @@ export async function fixCommand(argv: string[], io: ReviewIo, deps: ReviewDeps)
       syntax: treeSitterSyntax(),
       effort: run.config.effort,
       roles: run.config.roles,
-      ...(values.head !== undefined ? { expectedHead: values.head } : {}),
+      ...(head !== undefined ? { expectedHead: head } : {}),
       ...(limit !== undefined ? { maxCostUsd: limit } : {}),
       signal: run.interrupt.signal,
       onUsage: (spent) => (usage = addUsage(usage, spent)),
@@ -134,68 +137,6 @@ export async function fixCommand(argv: string[], io: ReviewIo, deps: ReviewDeps)
     stopCloud();
     await runtime.dispose?.();
   }
-}
-
-function costOf(value: string | undefined): number | undefined {
-  if (value === undefined) return undefined;
-  const max = Number(value);
-  if (!(max > 0)) throw new UsageError(`--max-cost-usd must be a positive number, got ${value}`);
-  return max;
-}
-
-async function readFinding(source: string, deps: ReviewDeps): Promise<StoredFinding> {
-  let text: string;
-  if (source === "-") {
-    text = await (deps.readStdin ?? readStdin)(MAX_FINDING_BYTES);
-  } else {
-    const path = resolve(deps.cwd, source);
-    if ((await stat(path)).size > MAX_FINDING_BYTES) throw tooLarge();
-    text = await readFile(path, "utf8");
-  }
-  let json: unknown;
-  try {
-    json = JSON.parse(text);
-  } catch (error) {
-    throw new OcraError("INPUT_INVALID", `--finding is not JSON: ${errorMessage(error)}`);
-  }
-  const parsed = sharedFindingSchema.safeParse(json);
-  if (!parsed.success) {
-    const fields = [...new Set(parsed.error.issues.map((i) => i.path.join(".") || "(root)"))];
-    throw new OcraError("INPUT_INVALID", `--finding is not a finding: ${fields.join(", ")}`);
-  }
-  return storedFinding(parsed.data);
-}
-
-async function readStdin(max: number): Promise<string> {
-  const chunks: Buffer[] = [];
-  let size = 0;
-  for await (const chunk of process.stdin) {
-    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
-    size += buffer.length;
-    if (size > max) throw tooLarge();
-    chunks.push(buffer);
-  }
-  return Buffer.concat(chunks).toString("utf8");
-}
-
-function tooLarge(): OcraError {
-  return new OcraError("INPUT_INVALID", `--finding is over ${MAX_FINDING_BYTES} bytes`);
-}
-
-function storedFinding(f: ReturnType<typeof sharedFindingSchema.parse>): StoredFinding {
-  return {
-    fingerprint: f.fingerprint,
-    reviewer: f.reviewer,
-    severity: f.severity,
-    category: f.category ?? "",
-    file: f.file,
-    title: f.title,
-    body: f.body,
-    ...(f.suggestion ? { suggestion: f.suggestion } : {}),
-    ...(f.code ? { existingCode: f.code } : {}),
-    ...(f.lowConfidence ? { lowConfidence: true } : {}),
-    ...(f.redacted || f.truncated ? { altered: true } : {}),
-  };
 }
 
 function resultOf(fingerprint: string, fixed: FixedFinding, usage: Usage): FixResult {
