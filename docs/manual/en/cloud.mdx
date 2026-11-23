@@ -83,7 +83,7 @@ Usage, spend and reviews by day, and cycle time: for your pull requests merged i
 
 ## Code graphs
 
-*Self-hosted.* The server keeps a graph of each added repository's default branch, updated after every push by parsing only the changed files: symbol names, kinds and lines, never code. It answers the pull request page's impact rail and [`ocra graph --cloud`](./cli#ocra-graph).
+The server keeps a graph of each added repository's default branch, updated after every push by parsing only the changed files: symbol names, kinds and lines, never code. Reviews that ocra Cloud runs read it to follow a change to its callers, and a repository's first such review adds it. It answers the pull request page's impact rail and [`ocra graph --cloud`](./cli#ocra-graph). On app.ocracloud.com a review runner builds the graphs, and the impact rail shows a pull request once ocra has reviewed it there; it keeps the newest graph of up to 5 repositories per account.
 
 ## Running your own server
 
