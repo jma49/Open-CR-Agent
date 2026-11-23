@@ -29,5 +29,5 @@ Measured with `ocra-eval perf` (ADR-0061, scripted model) on two real changes:
 
 - A change of many small bundles costs about a third fewer tasks and model requests for these reviewers; a change of full bundles is unchanged.
 - A pack of five files or more gets a plan call (ADR-0066), so plan calls rise while review tasks fall.
-- A task covers up to 10 files within the same step cap. Whether these reviewers find as much is what the golden comparison on large cases linked in the pull request answers.
+- A task covers up to 10 files within the same step cap. On the five large golden cases (13 to 28 files, three runs a side, Haiku) no metric got worse: precision 23.0% to 26.9%, recall 25.9% to 29.6%, both within noise; cost per reviewed pull request fell from $0.040 to $0.033 and the median time from 39.6 to 35.6 seconds.
 - Plugins can set `span: "packed"` on their own reviewers.
