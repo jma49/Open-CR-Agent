@@ -1,6 +1,6 @@
 ---
 title: Review rules
-description: Teach reviewers your project's conventions with AGENTS.md and path-scoped rules.
+description: Teach reviewers your project's conventions with AGENTS.md and path-scoped rules, in JSON or plain language.
 icon: ListChecks
 ---
 
@@ -46,6 +46,30 @@ Path-scoped rules apply only when a bundle contains a matching file:
 - `rule`: free text given to the reviewer.
 
 An invalid `rules.json` stops the run with an error. For pull requests it is read from the base commit.
+
+## .ocra/rules.md
+
+The same rules in plain language, for the team to write and read without JSON. A section whose heading names a path applies to files under it, as an `AGENTS.md` section does with `guidelineScope: "matched"`; every other section applies to every file:
+
+```markdown
+# Review rules
+
+Every finding names the input that breaks the code. Do not flag missing log lines.
+
+## services/billing/
+
+Every write must carry an idempotency key. Flag handlers that retry without one.
+
+## db/migrations/
+
+Migrations must be backward compatible with the previous release.
+```
+
+- A heading names a path when it contains one with a slash (`## services/billing/`, ``### `web/src` ``); a subsection takes the path of the heading above it.
+- Each section that has text becomes one rule, heading included, and goes to the tasks whose files it applies to, after the rules of `rules.json`. The report lists it with `source: "repository"`.
+- Globs (`**/*.sql`) stay in `rules.json`; a repository can keep both files.
+
+A file over 20,000 characters stops the run with an error. For pull requests it is read from the base commit, like `rules.json`.
 
 ## .ocra/learnings
 

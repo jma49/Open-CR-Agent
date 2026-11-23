@@ -141,7 +141,7 @@ CI must never read an incomplete review (`3`) as a pass. The verdict is advice f
 }
 ```
 
-Repository guidelines come from `AGENTS.md`; path-scoped rules from `.ocra/rules.json`:
+Repository guidelines come from `AGENTS.md`; path-scoped rules from `.ocra/rules.json`, or in plain language from `.ocra/rules.md`, whose sections apply to the path their heading names:
 
 ```json
 { "rules": [{ "path": "api/**", "rule": "Handlers must check tenant ownership." }] }
@@ -161,7 +161,7 @@ What ships is built on the same contracts anyone can implement:
 | `VcsAdapter` | Where a change comes from and where the review goes | local git, GitHub, GitLab |
 | `AgentRuntime` | How one isolated review task runs | OpenCode; `direct`, a tool loop over your declared endpoints |
 | Reviewer | Who reviews what, at which model tier | `correctness`, `security`, `performance`, `docs`, `agents-md` |
-| Rules and tools | Path-scoped instructions; read-only tools an agent may call | `.ocra/rules.json`; `read_file`, `read_diff`, `code_search`, `report_finding` |
+| Rules and tools | Path-scoped instructions; read-only tools an agent may call | `.ocra/rules.json`, `.ocra/rules.md`; `read_file`, `read_diff`, `code_search`, `report_finding` |
 | Analyzers | Findings from non-model tools, as the SARIF 2.1.0 log a CI job hands over (`--import-sarif`), or the same results shown to the reviewers as evidence to confirm (`--sarif-evidence`); ocra runs no tool | tested with Semgrep's output |
 
 A plugin is a module with a name and lifecycle hooks:

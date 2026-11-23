@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CORRECTNESS_RULES } from "./builtin/index.js";
 import { detectLanguage } from "./languages.js";
-import { parseRepoRules } from "./repo-rules.js";
+import { parseMarkdownRules, parseRepoRules } from "./repo-rules.js";
 import { resolveRules } from "./resolve.js";
 
 describe("detectLanguage", () => {
@@ -34,6 +34,39 @@ describe("parseRepoRules", () => {
   it("reports invalid JSON and invalid shapes", () => {
     expect(() => parseRepoRules("{")).toThrow(".ocra/rules.json is not valid JSON");
     expect(() => parseRepoRules('{"rules":[{"path":"a"}]}')).toThrow(".ocra/rules.json is invalid");
+  });
+});
+
+describe("parseMarkdownRules", () => {
+  it("scopes a section whose heading names a path, and its subsections, to that path", () => {
+    const rules = parseMarkdownRules(
+      [
+        "Every finding names the input that breaks it.",
+        "## services/billing/",
+        "### Retries",
+        "Writes carry an idempotency key.",
+        "## Severity",
+        "A missing log line is a suggestion.",
+      ].join("\n"),
+    );
+    const billing = [
+      "services/billing",
+      "services/billing/**",
+      "**/services/billing",
+      "**/services/billing/**",
+    ];
+    expect(rules).toEqual([
+      { path: "**", rule: "Every finding names the input that breaks it." },
+      { path: billing, rule: "### Retries\nWrites carry an idempotency key." },
+      { path: "**", rule: "## Severity\nA missing log line is a suggestion." },
+    ]);
+    expect(resolveRules(["services/billing/charge.ts"], rules)).toContain("idempotency key");
+    expect(resolveRules(["web/app.ts"], rules)).not.toContain("idempotency key");
+  });
+
+  it("leaves out headings without text and refuses a file over the limit", () => {
+    expect(parseMarkdownRules("# Review rules\n\n## web/\n")).toEqual([]);
+    expect(() => parseMarkdownRules("x".repeat(20_001))).toThrow(".ocra/rules.md is longer than");
   });
 });
 
