@@ -462,6 +462,9 @@ export function exploredBy(uses: readonly ToolUse[]): {
 };
 
 // @public (undocumented)
+export function fetchFailure(error: unknown): string;
+
+// @public (undocumented)
 export type FileChangeKind = "added" | "modified" | "deleted" | "renamed";
 
 // @public (undocumented)

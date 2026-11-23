@@ -1,6 +1,6 @@
 import {
   type Effort,
-  errorMessage,
+  fetchFailure,
   type ModelPrice,
   parseQuotaError,
   type ToolDefinition,
@@ -207,7 +207,7 @@ async function send(
     return {
       ok: false,
       error: {
-        message: errorMessage(error),
+        message: withoutSecrets(fetchFailure(error), secrets),
         retryable: true,
         transient: true,
       },
