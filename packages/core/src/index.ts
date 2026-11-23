@@ -178,6 +178,7 @@ export {
   effortCapability,
   thinkingBudget,
 } from "./runtime/effort-capability.js";
+export type { RateLimits } from "./runtime/failback.js";
 export { type ModelRef, parseModel } from "./runtime/models.js";
 export { parseQuotaError, type QuotaError } from "./runtime/quota.js";
 export { reviewTools } from "./runtime/tools.js";

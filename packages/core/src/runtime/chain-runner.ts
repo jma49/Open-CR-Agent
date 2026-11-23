@@ -9,7 +9,7 @@ import type {
 } from "../contracts.js";
 import { OcraError } from "../errors.js";
 import type { AttemptOutcome, TaskAttempt } from "./attempt.js";
-import { completeWithFailback, withFailback } from "./failback.js";
+import { completeWithFailback, type RateLimits, withFailback } from "./failback.js";
 import { callChain, ModelHealth } from "./models.js";
 
 // What a runtime does with one model; the ChainRunner does the rest.
@@ -23,12 +23,14 @@ export interface ModelAttempts {
   // onUsage receives what the attempt has spent so far, as it grows. An
   // outcome without an error counts as finished, whatever the signal says. An
   // attempt that offers wrapUp gets the wrap-up turn when it ends without
-  // the done tool (TaskAttempt).
+  // the done tool (TaskAttempt). An attempt that can send one request again
+  // waits a rate limit out through `limits`; one that cannot ends with it.
   task(
     model: string,
     spec: AgentTaskSpec,
     signal: AbortSignal,
     onUsage: (spent: Usage) => void,
+    limits: RateLimits,
   ): Promise<TaskAttempt>;
   complete(model: string, request: CompletionRequest, signal: AbortSignal): Promise<AttemptOutcome>;
 }
@@ -65,7 +67,7 @@ export class ChainRunner {
       chain,
       health: this.health,
       signal,
-      attempt: (model, onUsage) => this.attempts.task(model, spec, signal, onUsage),
+      attempt: (model, onUsage, limits) => this.attempts.task(model, spec, signal, onUsage, limits),
     });
   }
 

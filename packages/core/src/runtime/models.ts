@@ -137,6 +137,7 @@ export class ModelHealth {
   // the model is paused joins that pause rather than counting another wait,
   // and only a wait it states can lengthen the pause.
   recordQuota(model: string, quota: QuotaError): "wait" | "out_of_quota" {
+    if (this.outOfQuota.has(model)) return "out_of_quota";
     const now = this.now();
     const state = this.quotas.get(model) ?? { waits: 0, pausedUntil: 0 };
     const joins = state.pausedUntil > now;
