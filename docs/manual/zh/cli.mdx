@@ -260,6 +260,8 @@ ocra learn mine --max-cost-usd 0.5 # 花费到上限就停止起草
 
 `ocra learn feedback` 从团队用 [`ocra memory add`](#ocra-memory) 接受的问题起草，最新的在前，和审查一样从同一个版本读取 `.ocra/memory.json`。每次调用拿到问题的标题、团队给出的理由和它所在的文件，只有理由不止适用于这一条问题时（这里有意这样写、风险在别处处理）才写成经验；这条 learning 随后告诉审查员在那里不要报告什么。路径取该文件所在目录，`source` 是 `{ kind: review-feedback, ref: <问题 id> }`，检查、限制和 `--propose` 都和 `mine` 相同。
 
+`ocra learn feedback --pr <n>`（或 `--mr <iid>`，`--repo`、`--project` 与审查时相同）还会从这个 PR 或 MR 的审查里、有写权限的人在讨论串中拒绝的问题起草：一条表示拒绝的回复（`/ocra dismiss`、"won't fix"、"by design"），或者有写权限的人把讨论串标记为已解决时他们的最后一条回复。每次调用拿到问题的标题、他们说的话和这次变更里的该文件。和 `/ocra remember` 一样，作者本人也可以在这里拒绝：这不会影响审查结论，而 `--propose` 会把 learning 交给一个 pull request。被他人编辑过的回复、没有写权限的人的回复、没人回复的讨论串都不产生候选。
+
 ### 从文档
 
 `ocra learn import docs/postmortems/*.md` 从团队自己写的东西起草：事故复盘、规范、设计笔记。每个 Markdown 文件的每个 `##` 小节（第一个小节之前的文字归在文档标题下）是一个候选，连同它按路径提到的最多 5 个仓库文件（如 `src/db/pool.ts`），从受信任的版本读取。没有提到仓库文件的小节不会起草：没有审查能拿到它。只有审查员能在这些文件的 diff 里检查的内容才会写成经验；路径取这些文件所在目录，`source` 是 `{ kind: document, ref: <文件>#<小节> }`。单个文件最大 256 KB。
