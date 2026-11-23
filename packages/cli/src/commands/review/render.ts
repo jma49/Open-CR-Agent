@@ -6,7 +6,12 @@ import {
   toReportOutput,
   type Verification,
 } from "@open-cr-agent/core";
-import { serializeOutput, unconfirmedCriticals } from "@open-cr-agent/core/internal";
+import {
+  nothingReviewedSummary,
+  quotaNote,
+  serializeOutput,
+  unconfirmedCriticals,
+} from "@open-cr-agent/core/internal";
 import { forTerminal } from "../../io/terminal.js";
 import { partlyReviewed, partlyReviewedCount } from "./partly-reviewed.js";
 
@@ -119,7 +124,7 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
   if (missed > 0) {
     const limit = report.spendLimit?.reached
       ? `; the spend limit of $${report.spendLimit.usd} was reached`
-      : "";
+      : quotaNote(report.tasks);
     lines.push(`Incomplete: ${missed} selected file(s) were not reviewed${limit}.`);
   }
   for (const line of partlyReviewed(partly)) lines.push(`Incomplete: ${line}`);
@@ -129,7 +134,7 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
 }
 
 function emptyMessage(report: ReviewReport, nothingReviewed: boolean, notReviewed: number): string {
-  if (nothingReviewed) return "Nothing was reviewed.";
+  if (nothingReviewed) return nothingReviewedSummary(report.tasks);
   if (notReviewed > 0) return "No issues found in the files that were reviewed.";
   const open = report.rereview
     ? report.rereview.notReproduced.length +

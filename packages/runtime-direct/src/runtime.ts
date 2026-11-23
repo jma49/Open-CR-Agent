@@ -155,6 +155,7 @@ export class DirectRuntime implements AgentRuntime {
       tools: [],
       context: NO_CONTEXT,
       maxSteps: 1,
+      oneRequest: true,
       timeoutMs: request.timeoutMs,
       signal,
     });

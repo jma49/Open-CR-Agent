@@ -34,6 +34,8 @@ export interface LoopInput {
   context: ReviewContext;
   // Model requests the attempt may make.
   maxSteps: number;
+  // DialogueStart.oneRequest: a completion.
+  oneRequest?: boolean;
   // Review agents only: sent once when the agent stops with steps left, no
   // done call and no answer.
   resume?: string;

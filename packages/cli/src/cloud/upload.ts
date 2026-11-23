@@ -39,7 +39,9 @@ export function uploadOf(
     repoHash,
     source,
     tier: report.tier,
-    verdict: report.verdict,
+    // A run that reviewed nothing reached no verdict: the rubric's answer
+    // for "no findings" would read as a pass.
+    verdict: gaps.nothingReviewed ? null : report.verdict,
     complete: !isIncompleteReview(report),
     findings: {
       critical: severity("critical"),

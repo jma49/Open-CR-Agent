@@ -103,6 +103,7 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
       break;
     }
   }
+  const quota = health.quotaStop(options.chain);
   yield {
     type: "error",
     taskId,
@@ -110,6 +111,7 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
       ? `every ${chainName(options)} failed (${lastError})`
       : `every ${chainName(options)} is out of quota for this run`,
     retryable: true,
+    ...(quota ? { quota } : {}),
   };
 }
 

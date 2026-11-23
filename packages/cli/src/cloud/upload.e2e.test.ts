@@ -176,6 +176,19 @@ describe("the review upload", () => {
     expect(up.files).toEqual({ reviewed: 0, notReviewed: 1 });
   });
 
+  it("sends no verdict for a run that reviewed nothing", () => {
+    const nothing = reviewReport({
+      ...report,
+      verdict: "approved",
+      findings: [],
+      coverage: [{ path: "src/secret.ts", status: "failed" }],
+      tasks: [taskOutcome({ reviewer: "logic", status: "failed", usage: usage() })],
+    });
+    const up = uploadOf(nothing, "github", "f".repeat(64), 1);
+    expect(up.verdict).toBeNull();
+    expect(up.complete).toBe(false);
+  });
+
   it("counts per reviewer, by verification and by outcome", () => {
     const up = uploadOf(report, "local", "f".repeat(64), 1);
     expect(up.reviewers).toEqual({

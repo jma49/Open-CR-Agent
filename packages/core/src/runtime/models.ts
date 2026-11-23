@@ -1,4 +1,4 @@
-import type { ModelChains, ModelTier } from "../contracts.js";
+import type { ModelChains, ModelTier, QuotaStop } from "../contracts.js";
 import { OcraError } from "../errors.js";
 import {
   MAX_QUOTA_WAIT_MS,
@@ -61,7 +61,7 @@ interface Quota {
 export class ModelHealth {
   private readonly circuits = new Map<string, Circuit>();
   private readonly quotas = new Map<string, Quota>();
-  private readonly outOfQuota = new Set<string>();
+  private readonly outOfQuota = new Map<string, QuotaStop>();
   private readonly threshold: number;
   private readonly cooldownMs: number;
   private readonly maxCooldownMs: number;
@@ -121,6 +121,14 @@ export class ModelHealth {
     return this.outOfQuota.has(model);
   }
 
+  // Set only when the whole chain is out of quota: a daily limit on any of
+  // its models outweighs a rate limit, since waiting cannot clear it.
+  quotaStop(chain: readonly string[]): QuotaStop | undefined {
+    const stops = chain.map((model) => this.outOfQuota.get(model));
+    if (stops.length === 0 || stops.includes(undefined)) return undefined;
+    return stops.includes("daily_limit") ? "daily_limit" : "rate_limit";
+  }
+
   // A rate limit with a short wait pauses the model for every task; a daily
   // limit, a long stated wait, or too many waits in a row mean the model is
   // out of quota for the rest of the run. Vertex AI's shared quota answers
@@ -135,7 +143,7 @@ export class ModelHealth {
     const waits = joins ? state.waits : state.waits + 1;
     const wait = quota.retryAfterMs ?? (joins ? 0 : UNSTATED_QUOTA_WAIT_MS * 2 ** (waits - 1));
     if (quota.daily || wait > MAX_QUOTA_WAIT_MS || waits > QUOTA_RETRIES) {
-      this.outOfQuota.add(model);
+      this.outOfQuota.set(model, quota.daily ? "daily_limit" : "rate_limit");
       return "out_of_quota";
     }
     this.quotas.set(model, { waits, pausedUntil: Math.max(state.pausedUntil, now + wait) });

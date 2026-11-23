@@ -145,6 +145,7 @@ export async function runJob(
     usage,
   };
   if (result.error !== undefined) outcome.error = result.error;
+  if (result.quota !== undefined) outcome.quota = result.quota;
   if (result.ended !== undefined) outcome.ended = result.ended;
   if (result.wrapUp) outcome.wrapUp = result.wrapUp;
   // A task cut off before it finished (ADR-0030) is reviewed again, not reused.

@@ -150,6 +150,17 @@ describe("DirectRuntime on a Messages endpoint", () => {
     ]);
   });
 
+  it("stores no conversation a completion would never read again", async () => {
+    const server = await endpoint([{ text: "ok" }]);
+    await runtime(server.url).complete(call(), signal());
+
+    expect(server.seen[0]?.body).toMatchObject({
+      system: [{ type: "text", text: "s", cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: [{ type: "text", text: "u" }] }],
+    });
+    expect(JSON.stringify(server.seen[0]?.body.messages)).not.toContain("cache_control");
+  });
+
   it("prices fresh, stored and cached input apart", async () => {
     const server = await endpoint([
       { text: "ok", usage: { input: 10, cacheRead: 1000, cacheWrite: 200, output: 5 } },
