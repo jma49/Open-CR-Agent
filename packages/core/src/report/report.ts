@@ -65,6 +65,20 @@ export function coverageGaps(run: {
   return { notReviewed, nothingReviewed: notReviewed > 0 && !reviewed, incomplete };
 }
 
+const REFUSED: Record<QuotaStop, string> = {
+  daily_limit: "a daily limit was reached",
+  rate_limit: "a rate limit outlasted the run's waits",
+};
+
+// What stopped the tasks no model would take, for the line that counts the
+// files left unreviewed; empty when quota stopped none.
+export function quotaNote(tasks: readonly Pick<TaskOutcome, "quota">[]): string {
+  const stop = tasks.some((t) => t.quota === "daily_limit")
+    ? "daily_limit"
+    : tasks.find((t) => t.quota !== undefined)?.quota;
+  return stop ? `; the model provider refused calls because ${REFUSED[stop]}` : "";
+}
+
 const NOTHING_REVIEWED = "Nothing was reviewed";
 const MAX_QUOTED_ERROR = 300;
 
@@ -78,8 +92,8 @@ export function nothingReviewedSummary(
   const refused = failed.filter((t) => t.quota !== undefined);
   if (failed.length > 0 && refused.length === failed.length) {
     return refused.some((t) => t.quota === "daily_limit")
-      ? `${NOTHING_REVIEWED}: the model provider refused every call because a daily limit was reached. Run the review again after the limit resets.`
-      : `${NOTHING_REVIEWED}: the model provider refused every call because of a rate limit that outlasted the run's waits. Run the review again later.`;
+      ? `${NOTHING_REVIEWED}: the model provider refused every call because ${REFUSED.daily_limit}. Run the review again after the limit resets.`
+      : `${NOTHING_REVIEWED}: the model provider refused every call because ${REFUSED.rate_limit}. Run the review again later.`;
   }
   const error = failed.find((t) => t.error !== undefined)?.error;
   if (error !== undefined) {
