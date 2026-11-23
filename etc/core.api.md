@@ -304,6 +304,8 @@ export interface CompletionRequest {
     // (undocumented)
     models?: readonly string[];
     // (undocumented)
+    sharedPrefixes?: readonly number[];
+    // (undocumented)
     system: string;
     // (undocumented)
     tier: ModelTier;
