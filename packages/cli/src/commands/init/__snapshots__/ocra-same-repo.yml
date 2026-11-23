@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@b0416a1b03acee5f70d6d3a7e95f3b3169e1ae5e # v0.15.0
+      - uses: jma49/Open-CR-Agent@418d488e69f4e753ae7f9b976553196775e30322 # v0.16.0
         with:
           args: --max-cost-usd 2
         env:
