@@ -24,7 +24,9 @@ export const MEND_USAGE = `Usage: ocra mend (--pr <n> | --mr <n> | --from <ref> 
                  --findings <file|-> [options]
 
 Runs one round of the fix loop over findings a person accepted: each open
-finding gets one fixer model call, as ocra fix makes it; the edit must pass
+finding gets one fixer model call, as ocra fix makes it, or, when that
+cannot place a local edit, a fixer task on the direct runtime whose one
+edit tool writes to a copy of the head in memory; the edit must pass
 the gate (a file of the change that is not protected, no test turned off,
 small, committable, parses no worse) and one verifier model call; the edits
 that pass become one commit on top of the head they were made at, or are
