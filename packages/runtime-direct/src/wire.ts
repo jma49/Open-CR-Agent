@@ -37,14 +37,18 @@ export interface CallError {
   // A 400 that names the effort parameter: the endpoint or model does not
   // take it.
   effortRefused?: boolean;
+  // A 400 that names the tools: the endpoint or model takes none.
+  toolsRefused?: boolean;
 }
 
 // effortDropped: the endpoint refused the effort parameter, and the answer
-// is that of the same request sent again without it.
+// is that of the same request sent again without it. toolsDropped: it
+// refused the tools, and the answer is that of the request with the tools as
+// text (ADR-0070).
 export type Answer = (
   | { ok: true; text: string; calls: ToolRequest[]; usage: Usage }
   | { ok: false; error: CallError }
-) & { effortDropped?: true };
+) & { effortDropped?: true; toolsDropped?: true };
 
 export interface Dialogue {
   // shared: where in the text a start that other conversations open with too
@@ -68,6 +72,8 @@ interface DialogueStart {
   // The dialogue is one request and its answer: nothing reads what the
   // request would store in a provider's prompt cache.
   oneRequest?: boolean;
+  // The model calls tools as text from the first request on.
+  textTools?: boolean;
 }
 
 export type Wire = (start: DialogueStart) => Dialogue;

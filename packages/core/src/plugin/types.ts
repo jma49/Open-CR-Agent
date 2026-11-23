@@ -39,6 +39,10 @@ export interface CustomProvider {
   // How a chat completions endpoint takes a reasoning effort: OpenAI's
   // `reasoning_effort` (default), or OpenRouter's `reasoning: { effort }`.
   effort?: "openai" | "openrouter";
+  // How a chat completions endpoint's models call tools: through the
+  // protocol's `tools` (default), or as text in the answer, for an endpoint
+  // that takes no `tools` (ADR-0070).
+  toolCalls?: "api" | "text";
 }
 
 export interface ModelPrice {

@@ -182,6 +182,12 @@ export {
 export type { RateLimits } from "./runtime/failback.js";
 export { type ModelRef, parseModel } from "./runtime/models.js";
 export { MAX_QUOTA_WAIT_MS, parseQuotaError, type QuotaError } from "./runtime/quota.js";
+export {
+  parseTextToolCalls,
+  type TextToolCall,
+  textToolInstructions,
+  textToolResults,
+} from "./runtime/text-tools.js";
 export { reviewTools } from "./runtime/tools.js";
 export type { AnalyzerEvidenceUse } from "./sarif/evidence.js";
 export { parseSarifLog, SarifError, type SarifLog } from "./sarif/schema.js";

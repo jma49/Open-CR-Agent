@@ -54,10 +54,37 @@ icon: Cpu
 - **`baseUrl`** 必须是 `https`，或者本机上的普通 `http`：`localhost`、`127.0.0.1` 或 `::1`。比如 Ollama 用 `http://127.0.0.1:11434/v1`。地址里不能有 `{` 或 `}`，OpenCode 会把它们替换成变量或文件内容。
 - **`apiKeyEnv`** 是保存密钥的变量名；密钥从不写进文件，运行时也只拿到这一个变量。平台令牌和云凭据（`GITHUB_`、`GITLAB_`、`CI_`、`AWS_`、`AZURE_` 等）会被拒绝。不需要密钥的服务可以省略。
 - **`effort`**（可选）说明端点怎样接收两种运行时发送的[推理强度](./configuration#推理强度)：`openai`（默认；OpenAI、Gemini 的 OpenAI 兼容端点和 OpenRouter 都接受）发送 `reasoning_effort`，`openrouter` 发送 `reasoning: { effort }`。
+- **`toolCalls`**（可选）说明端点上的模型在 `direct` 运行时下怎样调用评审工具：`api`（默认）通过协议的 `tools` 参数，`text` 用于不接受该参数的端点（见[不支持函数调用的端点](#不支持函数调用的端点)）。`opencode` 运行时拒绝 `text`。
 - **每个模型都要有价格**，单位是每百万 token 美元：`input`、`output`，可选 `cachedInput`，用于报告的花费和 `--max-cost-usd`。价格为 0（你自己的硬件）时，运行会警告花费上限不计入这个模型。
 - 共享配置（`extends`）只有用 `#sha256=` 固定后才能声明供应商，否则提供文件的人就能把你的代码转到别处。声明了供应商却没固定的共享文件会被忽略，警告里给出检查后要加的固定值。仓库里同 id 的声明优先。审查 PR 和 Merge Request 时，供应商来自 base 提交。
 
 已在 CI 里用真实的 OpenCode 二进制文件对模拟的 OpenAI 兼容服务测试过（密钥发往该去的地方，价格被计入，不访问其他地址），也在 OpenRouter 上真实运行过（一个免费模型，2026-10-02）。
+
+### 不支持函数调用的端点
+
+评审者靠调用工具工作：读文件、搜索代码，每条发现也用一个工具上报。有些服务不接受 `tools` 参数：启动时没带 `--enable-auto-tool-choice` 和 `--tool-call-parser` 的 vLLM、没有工具模板的 Ollama 模型、只转发消息的公司网关。在 [`direct` 运行时](#选择运行时)上，ocra 仍然能用它们评审：
+
+- **端点拒绝工具时**（HTTP 400 或 422，且错误里提到工具），请求会重发一次，工具改在系统提示词里描述。模型把每次调用写成一个包含 JSON 的 `<tool_call>` 块，这是 Qwen、Hermes 等开源模型训练时用的格式，结果在下一条消息里返回。本次运行会记住这个模型，所以只有它最初的几个请求会被拒绝一次。
+- **端点悄悄丢掉工具时**，模型根本看不到工具，评审会以“部分评审、没有工具调用”结束。在该供应商上声明 `"toolCalls": "text"`，每个请求从一开始就走文本方式。
+
+```json
+{
+  "runtime": "direct",
+  "providers": {
+    "gateway": {
+      "type": "openai-compatible",
+      "baseUrl": "https://llm.example.com/v1",
+      "apiKeyEnv": "GATEWAY_API_KEY",
+      "toolCalls": "text",
+      "models": { "qwen3-coder": { "input": 0, "output": 0 } }
+    }
+  }
+}
+```
+
+两种方式下，步骤、步数上限、对每条发现的检查以及工具能读到的内容都一样。模型能不能守住这个格式取决于模型本身：写出 ocra 读不懂的调用时，ocra 会告诉它，它可以改正；始终不写调用的模型什么也评审不了，报告会如实说明。如果服务端自己能解析工具调用，优先打开它：那是两者中更可靠的一种。
+
+已在脚本化端点上测试（被拒绝的 `tools` 参数、声明了的供应商、格式错误的调用）；尚未在真实模型上运行。
 
 ### 使用 Anthropic API 的端点
 

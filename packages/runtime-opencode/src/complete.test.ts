@@ -189,6 +189,19 @@ describe("openCodeConfig", () => {
       openCodeConfig({ url: "http://127.0.0.1:1/mcp", headers: {} }, {}, custom),
     ).toThrow(/use "runtime": "direct"/);
   });
+
+  it("refuses a declared provider that takes tool calls as text", () => {
+    const custom = {
+      corp: {
+        baseUrl: "https://llm.example.com/v1",
+        toolCalls: "text" as const,
+        models: { m1: { input: 0, output: 0 } },
+      },
+    };
+    expect(() =>
+      openCodeConfig({ url: "http://127.0.0.1:1/mcp", headers: {} }, {}, custom),
+    ).toThrow(/takes tool calls as text.*use "runtime": "direct"/);
+  });
 });
 
 describe("sampling on OpenCode", () => {

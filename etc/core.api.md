@@ -216,6 +216,9 @@ export interface BootstrapContext<Settings = unknown> {
 }
 
 // @public (undocumented)
+const brand: unique symbol;
+
+// @public (undocumented)
 export class ChainRunner {
     constructor(models: ModelChains, attempts: ModelAttempts);
     // (undocumented)
@@ -386,6 +389,8 @@ export interface CustomProvider {
     effort?: "openai" | "openrouter";
     // (undocumented)
     models: Readonly<Record<string, ModelPrice>>;
+    // (undocumented)
+    toolCalls?: "api" | "text";
 }
 
 // @public (undocumented)
@@ -922,6 +927,12 @@ export function parseQuotaError(message: string, statusCode?: number): QuotaErro
 export function parseSarifLog(text: string): SarifLog;
 
 // @public (undocumented)
+export function parseTextToolCalls(answer: string): {
+    text: string;
+    calls: TextToolCall[];
+};
+
+// @public (undocumented)
 export const performanceReviewerPlugin: OcraPlugin;
 
 // @public (undocumented)
@@ -1057,6 +1068,11 @@ export interface ProjectDocUse {
     // (undocumented)
     path: string;
 }
+
+// @public (undocumented)
+type PromptText = string & {
+    readonly [brand]: "PromptText";
+};
 
 // @public (undocumented)
 export interface ProvenanceInput {
@@ -2308,6 +2324,25 @@ const taskStatusSchema: z.ZodEnum<{
 
 // @public (undocumented)
 export type TaskTracker = (typeof TASK_TRACKERS)[number];
+
+// @public (undocumented)
+export interface TextToolCall {
+    // (undocumented)
+    input: unknown;
+    // (undocumented)
+    malformed?: true;
+    // (undocumented)
+    name: string;
+}
+
+// @public (undocumented)
+export function textToolInstructions(tools: readonly ToolDefinition[]): string;
+
+// @public (undocumented)
+export function textToolResults(outputs: readonly {
+    name: string;
+    output: string;
+}[]): PromptText;
 
 // @public (undocumented)
 export function thinkingBudget(capability: EffortCapability, level: Effort, outputLimit?: number): number | undefined;
