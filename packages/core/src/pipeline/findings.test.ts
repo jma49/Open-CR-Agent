@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapWithConcurrency } from "../agent/pool.js";
+import { limiter, mapWithConcurrency } from "../agent/pool.js";
 import type { Finding } from "../domain.js";
 import { dedupeFindings, fingerprint, toFinding } from "./findings.js";
 
@@ -58,6 +58,33 @@ describe("mapWithConcurrency", () => {
   });
 });
 
+describe("limiter", () => {
+  it("runs jobs as they are added, a few at a time, in order", async () => {
+    const limited = limiter(2);
+    const started: number[] = [];
+    let running = 0;
+    let peak = 0;
+    const job = (n: number) => async () => {
+      started.push(n);
+      running += 1;
+      peak = Math.max(peak, running);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      running -= 1;
+      return n;
+    };
+    const results = await Promise.all([1, 2, 3, 4, 5].map((n) => limited(job(n))));
+    expect(results).toEqual([1, 2, 3, 4, 5]);
+    expect(started).toEqual([1, 2, 3, 4, 5]);
+    expect(peak).toBe(2);
+  });
+
+  it("frees a place when a job fails", async () => {
+    const limited = limiter(1);
+    await expect(limited(() => Promise.reject(new Error("no")))).rejects.toThrow("no");
+    await expect(limited(async () => "next")).resolves.toBe("next");
+  });
+});
+
 describe("dedupeFindings", () => {
   it("keeps the most severe copy whole, so its text matches its severity", () => {
     const base = { fingerprint: "f", file: "a.ts" } as Finding;
@@ -75,5 +102,15 @@ describe("dedupeFindings", () => {
       ["2", "critical", "Crash on empty input"],
       ["3", "suggestion", undefined],
     ]);
+  });
+
+  it("keeps the copy verification already has among equally severe ones", () => {
+    const first = { fingerprint: "f", id: "1", severity: "warning" } as Finding;
+    const checked = { ...first, id: "2" } as Finding;
+    const worse = { ...first, id: "3", severity: "critical" } as Finding;
+    const has = new Set(["2"]);
+    expect(dedupeFindings([first, checked], has).map((f) => f.id)).toEqual(["2"]);
+    expect(dedupeFindings([checked, first], has).map((f) => f.id)).toEqual(["2"]);
+    expect(dedupeFindings([checked, worse], has).map((f) => f.id)).toEqual(["3"]);
   });
 });

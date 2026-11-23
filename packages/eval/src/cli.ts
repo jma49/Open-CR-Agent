@@ -28,9 +28,10 @@ Commands:
                        time, ocra's CPU time and peak memory, git processes,
                        and the requests and input tokens of each model call.
                        --latency-ms is what each request waits (default 0);
-                       --budget is a JSON file of ceilings (wallMs, cpuMs,
-                       peakMemoryMb, gitProcesses, modelRequests,
-                       inputTokens). Exit 0 within the budget, 1 over it
+                       --budget is a JSON file of ceilings (wallMs,
+                       firstVerifiedMs, cpuMs, peakMemoryMb, gitProcesses,
+                       modelRequests, inputTokens). Exit 0 within the
+                       budget, 1 over it
   run                  Review the selected PRs with ocra, then score them
   score <run-dir>      Re-score an existing run
   adjudicate <run-dir> Record the labels typed into a golden run's adjudication.json in its cases

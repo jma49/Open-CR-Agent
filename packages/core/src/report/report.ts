@@ -270,6 +270,16 @@ export type ReviewEvent =
   | { type: "coverage_settled"; coverage: CoverageEntry[] }
   // One per model call: together they are the run's usage.
   | { type: "usage_reported"; usage: Usage }
+  // One file's findings checked while tasks still run (ADR-0074). kept:
+  // with the verifier's answer; refuted and settled: ids. A settled finding
+  // is in the report as it is here, whatever the judge decides.
+  | {
+      type: "findings_verified";
+      file: string;
+      kept: Finding[];
+      refuted: string[];
+      settled: string[];
+    }
   | { type: "verification_finished"; checked: number; refuted: RefutedFinding[] }
   | { type: "judge_finished"; verdict: Verdict; judgement?: JudgeDecisions }
   | { type: "run_finished"; report: ReviewReport };

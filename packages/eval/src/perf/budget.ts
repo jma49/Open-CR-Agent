@@ -4,6 +4,7 @@ import type { PerfResult } from "./measure.js";
 // Ceilings for one measured review; a measure left out has none.
 export const perfBudgetSchema = z.strictObject({
   wallMs: z.number().positive().exactOptional(),
+  firstVerifiedMs: z.number().positive().exactOptional(),
   cpuMs: z.number().positive().exactOptional(),
   peakMemoryMb: z.number().positive().exactOptional(),
   gitProcesses: z.number().positive().exactOptional(),
@@ -14,6 +15,7 @@ export type PerfBudget = z.output<typeof perfBudgetSchema>;
 
 const MEASURES: Record<keyof PerfBudget, { label: string; of: (r: PerfResult) => number }> = {
   wallMs: { label: "wall time (ms)", of: (r) => r.wallMs },
+  firstVerifiedMs: { label: "first verified finding (ms)", of: (r) => r.firstVerifiedMs ?? 0 },
   cpuMs: { label: "ocra CPU time (ms)", of: (r) => r.cpuMs },
   peakMemoryMb: { label: "peak memory (MB)", of: (r) => r.peakMemoryMb },
   gitProcesses: { label: "git processes", of: (r) => r.git.processes },
@@ -52,6 +54,9 @@ export function renderPerf(result: PerfResult): string {
     "| Measure | Value |",
     "|---|---|",
     `| Wall time | ${(result.wallMs / 1000).toFixed(1)} s |`,
+    ...(result.firstVerifiedMs === undefined
+      ? []
+      : [`| First verified finding | ${(result.firstVerifiedMs / 1000).toFixed(1)} s |`]),
     `| ocra CPU time | ${(result.cpuMs / 1000).toFixed(1)} s |`,
     `| Peak memory | ${result.peakMemoryMb} MB |`,
     `| git processes | ${git.processes} (${commands}) |`,

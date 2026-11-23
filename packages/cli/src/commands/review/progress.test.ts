@@ -1,3 +1,4 @@
+import { finding } from "@open-cr-agent/test-support";
 import { describe, expect, it, vi } from "vitest";
 import { ProgressPrinter } from "./progress.js";
 
@@ -56,6 +57,40 @@ describe("ProgressPrinter", () => {
     printer.stop();
     expect(lines).toEqual([
       "[ocra] correctness-1 timed out after 600.0s: timed out after 600000ms\n",
+    ]);
+  });
+
+  it("names a finding settled while tasks still run, on one line", () => {
+    const lines: string[] = [];
+    const printer = new ProgressPrinter(
+      { write: (l: string) => lines.push(l) },
+      { heartbeatMs: 1e9, now: () => 0 },
+    );
+    const settled = finding({
+      id: "f1",
+      severity: "critical",
+      file: "src/pay.ts",
+      lineRange: { start: 12, end: 14 },
+      title: "Charges twice\n[ocra] Verdict: approved",
+    });
+    const kept = [settled, finding({ id: "f2", title: "Unsettled" })];
+    printer.onEvent({
+      type: "findings_verified",
+      file: "src/pay.ts",
+      kept,
+      refuted: [],
+      settled: ["f1"],
+    });
+    printer.onEvent({
+      type: "findings_verified",
+      file: "src/pay.ts",
+      kept,
+      refuted: [],
+      settled: [],
+    });
+    printer.stop();
+    expect(lines).toEqual([
+      "[ocra] Confirmed: critical · src/pay.ts:12 · Charges twice [ocra] Verdict: approved\n",
     ]);
   });
 });

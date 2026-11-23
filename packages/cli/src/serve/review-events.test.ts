@@ -70,6 +70,13 @@ const run: ReviewEvent[] = [
   { type: "finding", taskId: task.taskId, finding: merged },
   { type: "usage_reported", usage: spent },
   { type: "task_finished", outcome: task },
+  {
+    type: "findings_verified",
+    file: found.file,
+    kept: [{ ...found, verification: "confirmed" }],
+    refuted: [],
+    settled: [found.id],
+  },
   { type: "stage_started", stage: "filter" },
   { type: "coverage_settled", coverage },
   { type: "stage_started", stage: "verify" },
@@ -95,14 +102,30 @@ describe("the live events of a run", () => {
     expect(written).toEqual(read());
   });
 
-  it("send the report's findings again at the end, and mark the ones the judge dropped", () => {
+  it("send a finding again once verified and at the end, and mark the ones the judge dropped", () => {
     const findings = mapped().filter((e) => e.kind === "finding");
-    expect(findings.map((e) => [e.data.id, e.data.verification, e.data.dropped])).toEqual([
-      ["f1", undefined, undefined],
-      ["f2", undefined, undefined],
-      ["f1", "confirmed", undefined],
-      ["f2", undefined, true],
+    expect(
+      findings.map((e) => [e.data.id, e.data.verification, e.data.settled, e.data.dropped]),
+    ).toEqual([
+      ["f1", undefined, undefined, undefined],
+      ["f2", undefined, undefined, undefined],
+      ["f1", "confirmed", true, undefined],
+      ["f1", "confirmed", true, undefined],
+      ["f2", undefined, undefined, true],
     ]);
+  });
+
+  it("mark a finding the verifier refuted while tasks still ran as dropped", () => {
+    const mapper = new ReviewEventMapper(runId, "workspace");
+    mapper.map({ type: "finding", taskId: task.taskId, finding: merged });
+    const [dropped] = mapper.map({
+      type: "findings_verified",
+      file: merged.file,
+      kept: [],
+      refuted: [merged.id],
+      settled: [],
+    });
+    expect(dropped).toMatchObject({ kind: "finding", data: { id: merged.id, dropped: true } });
   });
 
   it("give one file.finished per file, and end with finished", () => {

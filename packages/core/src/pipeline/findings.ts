@@ -43,12 +43,21 @@ export function toFinding(
 }
 
 // The most severe copy wins whole: its title and explanation describe the
-// severity it carries.
-export function dedupeFindings(findings: readonly Finding[]): Finding[] {
+// severity it carries. Among equally severe copies the one verification
+// already has (`checked`, by id) wins, so it is not checked twice.
+export function dedupeFindings(
+  findings: readonly Finding[],
+  checked: ReadonlySet<string> = new Set(),
+): Finding[] {
   const byFingerprint = new Map<string, Finding>();
   for (const finding of findings) {
     const existing = byFingerprint.get(finding.fingerprint);
-    if (!existing || SEVERITY_RANK[finding.severity] > SEVERITY_RANK[existing.severity]) {
+    const rank = existing && SEVERITY_RANK[finding.severity] - SEVERITY_RANK[existing.severity];
+    if (
+      rank === undefined ||
+      rank > 0 ||
+      (rank === 0 && checked.has(finding.id) && !checked.has(existing?.id ?? ""))
+    ) {
       byFingerprint.set(finding.fingerprint, finding);
     }
   }

@@ -1780,6 +1780,12 @@ export type ReviewEvent = {
     type: "usage_reported";
     usage: Usage;
 } | {
+    type: "findings_verified";
+    file: string;
+    kept: Finding[];
+    refuted: string[];
+    settled: string[];
+} | {
     type: "verification_finished";
     checked: number;
     refuted: RefutedFinding[];

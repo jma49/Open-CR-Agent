@@ -32,7 +32,10 @@ export async function filterStage(
       ? await importSarif(options.sarif, plan, emit)
       : { findings: [], outcomes: [], warnings: [] };
   const { results } = executed;
-  const found = dedupeFindings([...results.flatMap((r) => r.findings), ...imported.findings]);
+  const found = dedupeFindings(
+    [...results.flatMap((r) => r.findings), ...imported.findings],
+    executed.early?.submitted,
+  );
   const coverage = coverageOf(
     plan.decisions,
     results,

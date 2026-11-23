@@ -28,8 +28,9 @@ type FailureReason = Extract<WireEvent, { kind: "failed" }>["data"]["reason"];
 
 /**
  * Turns one run's core events into the contract's, numbered and checked
- * against its schema. Findings are sent again from the report when the run
- * ends, so Verify's and the judge's changes replace what the tasks found.
+ * against its schema. Findings are sent again when Verify has checked them
+ * and from the report when the run ends, so Verify's and the judge's changes
+ * replace what the tasks found.
  */
 export class ReviewEventMapper {
   private seq = 0;
@@ -85,6 +86,8 @@ export class ReviewEventMapper {
         this.found.set(live.id, live);
         return [{ kind: "finding", data: live }];
       }
+      case "findings_verified":
+        return this.verified(event);
       case "usage_reported":
         this.spent = addUsage(this.spent, event.usage);
         return [{ kind: "usage", data: this.spent }];
@@ -95,10 +98,26 @@ export class ReviewEventMapper {
     }
   }
 
+  private verified(event: Extract<ReviewEvent, { type: "findings_verified" }>): Kinded[] {
+    const settled = new Set(event.settled);
+    const kept = event.kept.map((f): LiveFinding => {
+      const live = liveFinding(f);
+      return settled.has(f.id) ? { ...live, settled: true } : live;
+    });
+    for (const live of kept) this.found.set(live.id, live);
+    const refuted = event.refuted.flatMap((id): LiveFinding[] => {
+      const live = this.found.get(id);
+      return live ? [{ ...live, dropped: true }] : [];
+    });
+    return [...kept, ...refuted].map((data): Kinded => ({ kind: "finding", data }));
+  }
+
   private ending(report: ReviewReport): Kinded[] {
     const kept = new Set(report.findings.map((f) => f.id));
     const findings: Kinded[] = [
-      ...report.findings.map((f): Kinded => ({ kind: "finding", data: liveFinding(f) })),
+      ...report.findings.map(
+        (f): Kinded => ({ kind: "finding", data: { ...liveFinding(f), settled: true } }),
+      ),
       ...[...this.found.values()]
         .filter((f) => !kept.has(f.id))
         .map((f): Kinded => ({ kind: "finding", data: { ...f, dropped: true } })),

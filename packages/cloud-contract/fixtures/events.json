@@ -113,59 +113,6 @@
       "runId": "run-2026-11-21-c3d4",
       "seq": 9,
       "at": "2026-11-21T08:00:00.900Z",
-      "kind": "stage",
-      "data": {
-        "stage": "filter"
-      }
-    },
-    {
-      "version": 1,
-      "runId": "run-2026-11-21-c3d4",
-      "seq": 10,
-      "at": "2026-11-21T08:00:01.000Z",
-      "kind": "file.finished",
-      "data": {
-        "path": "src/auth/session.ts",
-        "status": "reviewed"
-      }
-    },
-    {
-      "version": 1,
-      "runId": "run-2026-11-21-c3d4",
-      "seq": 11,
-      "at": "2026-11-21T08:00:01.100Z",
-      "kind": "file.finished",
-      "data": {
-        "path": "src/auth/session.test.ts",
-        "status": "failed"
-      }
-    },
-    {
-      "version": 1,
-      "runId": "run-2026-11-21-c3d4",
-      "seq": 12,
-      "at": "2026-11-21T08:00:01.200Z",
-      "kind": "file.finished",
-      "data": {
-        "path": "package-lock.json",
-        "status": "excluded"
-      }
-    },
-    {
-      "version": 1,
-      "runId": "run-2026-11-21-c3d4",
-      "seq": 13,
-      "at": "2026-11-21T08:00:01.300Z",
-      "kind": "stage",
-      "data": {
-        "stage": "verify"
-      }
-    },
-    {
-      "version": 1,
-      "runId": "run-2026-11-21-c3d4",
-      "seq": 14,
-      "at": "2026-11-21T08:00:01.400Z",
       "kind": "finding",
       "data": {
         "id": "f1",
@@ -179,7 +126,61 @@
         "title": "Session token compared with ===",
         "body": "The comparison returns early on the first differing byte, so its timing tells an attacker how much of a guessed token is right.",
         "suggestion": "Compare with crypto.timingSafeEqual on equal-length buffers.",
-        "verification": "confirmed"
+        "verification": "confirmed",
+        "settled": true
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 10,
+      "at": "2026-11-21T08:00:01.000Z",
+      "kind": "stage",
+      "data": {
+        "stage": "filter"
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 11,
+      "at": "2026-11-21T08:00:01.100Z",
+      "kind": "file.finished",
+      "data": {
+        "path": "src/auth/session.ts",
+        "status": "reviewed"
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 12,
+      "at": "2026-11-21T08:00:01.200Z",
+      "kind": "file.finished",
+      "data": {
+        "path": "src/auth/session.test.ts",
+        "status": "failed"
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 13,
+      "at": "2026-11-21T08:00:01.300Z",
+      "kind": "file.finished",
+      "data": {
+        "path": "package-lock.json",
+        "status": "excluded"
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 14,
+      "at": "2026-11-21T08:00:01.400Z",
+      "kind": "stage",
+      "data": {
+        "stage": "verify"
       }
     },
     {
@@ -187,6 +188,28 @@
       "runId": "run-2026-11-21-c3d4",
       "seq": 15,
       "at": "2026-11-21T08:00:01.500Z",
+      "kind": "finding",
+      "data": {
+        "id": "f1",
+        "fingerprint": "a1b2c3d4e5f60718",
+        "reviewer": "security",
+        "severity": "critical",
+        "category": "security",
+        "file": "src/auth/session.ts",
+        "lineStart": 42,
+        "lineEnd": 44,
+        "title": "Session token compared with ===",
+        "body": "The comparison returns early on the first differing byte, so its timing tells an attacker how much of a guessed token is right.",
+        "suggestion": "Compare with crypto.timingSafeEqual on equal-length buffers.",
+        "verification": "confirmed",
+        "settled": true
+      }
+    },
+    {
+      "version": 1,
+      "runId": "run-2026-11-21-c3d4",
+      "seq": 16,
+      "at": "2026-11-21T08:00:01.600Z",
       "kind": "finding",
       "data": {
         "id": "f2",
@@ -206,8 +229,8 @@
     {
       "version": 1,
       "runId": "run-2026-11-21-c3d4",
-      "seq": 16,
-      "at": "2026-11-21T08:00:01.600Z",
+      "seq": 17,
+      "at": "2026-11-21T08:00:01.700Z",
       "kind": "warning",
       "data": {
         "message": "1 file not reviewed: src/auth/session.test.ts"
@@ -216,8 +239,8 @@
     {
       "version": 1,
       "runId": "run-2026-11-21-c3d4",
-      "seq": 17,
-      "at": "2026-11-21T08:00:01.700Z",
+      "seq": 18,
+      "at": "2026-11-21T08:00:01.800Z",
       "kind": "finished",
       "data": {
         "verdict": "significant_concerns",
@@ -234,8 +257,8 @@
     {
       "version": 1,
       "runId": "run-2026-11-21-c3d4",
-      "seq": 18,
-      "at": "2026-11-21T08:00:01.700Z",
+      "seq": 19,
+      "at": "2026-11-21T08:00:01.800Z",
       "kind": "comment.added",
       "data": {
         "by": "a newer server"

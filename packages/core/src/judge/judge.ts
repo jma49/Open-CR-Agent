@@ -45,6 +45,9 @@ export interface JudgeOptions {
   // Earlier findings still open but not reported this time; the judge does
   // not see them, the verdict counts them.
   carried?: readonly PriorFinding[];
+  // Ids of findings already shown as settled (ADR-0074): the judge merges
+  // other findings into them, never them into another.
+  settled?: ReadonlySet<string>;
 }
 
 export async function judgeFindings(
@@ -85,7 +88,7 @@ export async function judgeFindings(
     return fallback([`judge failed, reporting findings unjudged: ${errorMessage(error)}`], usage);
   }
 
-  const judged = applyDecisions(findings, response);
+  const judged = applyDecisions(findings, response, options.settled);
   if (options.keepDropped) {
     const dropped = new Set(judged.decisions.dropped.map((d) => d.fingerprint));
     judged.findings.push(
@@ -108,7 +111,7 @@ export async function judgeFindings(
 // A critical finding the verifier confirmed is never dropped and never
 // downgraded: the judge reads text the change's author controls, and either
 // would take a blocking finding out of the verdict.
-function protectedFinding(f: Finding): boolean {
+export function protectedFinding(f: Finding): boolean {
   return f.severity === "critical" && f.verification === "confirmed";
 }
 
@@ -117,19 +120,21 @@ function protectedFinding(f: Finding): boolean {
 export function applyDecisions(
   findings: readonly Finding[],
   response: JudgeResponse,
+  settled: ReadonlySet<string> = new Set(),
 ): { findings: Finding[]; decisions: JudgeDecisions; warnings: string[] } {
   const valid = (i: number) => Number.isInteger(i) && i >= 0 && i < findings.length;
   const decisions: JudgeDecisions = { merged: [], dropped: [], recalibrated: [] };
   const warnings: string[] = [];
   const removed = new Set<number>();
   const isProtected = (i: number) => protectedFinding(at(findings, i));
+  const isSettled = (i: number) => settled.has(at(findings, i).id);
 
   for (const group of response.duplicates) {
     const members = [...new Set(group.filter(valid))].filter((i) => !removed.has(i));
-    // Merging keeps one member; keep a protected one so it is not merged away.
-    const first = members.findIndex(isProtected);
-    if (first > 0) members.unshift(...members.splice(first, 1));
-    const [keep, ...rest] = members;
+    // Merging keeps one member: a settled one, else a protected one, so
+    // neither is merged away. Other settled members stay as they are.
+    const keep = members.find(isSettled) ?? members.find(isProtected) ?? members[0];
+    const rest = members.filter((i) => i !== keep && !isSettled(i));
     if (keep === undefined || rest.length === 0) continue;
     for (const i of rest) removed.add(i);
     decisions.merged.push({
