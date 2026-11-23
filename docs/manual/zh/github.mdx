@@ -30,12 +30,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-- **每个 action 都按提交固定版本**，在注释里写明版本号：tag 可以移动，提交不能。本页的方案和 `ocra init` 都这样做，`actions/checkout` 也不例外。`git ls-remote --tags https://github.com/jma49/Open-CR-Agent v0.3.0` 会打印某个版本的提交；Dependabot 会更新固定的提交和注释。
+- **每个 action 都按提交固定版本**，在注释里写明版本号：tag 可以移动，提交不能。本页的方案和 `ocra init` 都这样做，`actions/checkout` 也不例外。`git ls-remote --tags https://github.com/ocrahq/Open-CR-Agent v0.3.0` 会打印某个版本的提交；Dependabot 会更新固定的提交和注释。
 - **保留 `fetch-depth: 0`：**ocra 需要 base 与 head 之间的历史，浅克隆会停下并给出提示。
 - **保留 `concurrency`：**否则连续两次 push 会把同样的评论发两遍，较慢的那次还可能用更旧的 head 覆盖摘要。被取消的运行不发布任何内容（已在发布时除外），把部分报告留在 job 日志里。
 - **保留 `issues: read`：**有了它，审查员能看到 [PR 要关闭的 issue](./how-it-works#关联的任务)；没有它，私有仓库的审查会照常进行并给出警告。
@@ -72,7 +72,7 @@ jobs:
 
 ```yaml
       - id: ocra
-        uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+        uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       - if: ${{ !cancelled() && steps.ocra.outputs.report != '' }}
@@ -99,7 +99,7 @@ jobs:
 默认运行时 OpenCode 连同原生二进制文件，占 Action 所装 108 个包中的 97 个、175 MB 中的约 165 MB。如果 base 分支配置里的模型都在你声明的端点上，并且配置设了 `"runtime": "direct"`（[选择运行时](./providers#选择运行时)），设置 `opencode: false`（v0.3.0 新增），只装 11 个包。此时如果配置选的是 `opencode`，评审会在调用任何模型之前以退出码 `2` 停下，并说明缺了哪个包。
 
 ```yaml
-      - uses: jma49/Open-CR-Agent@<commit> # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@<commit> # v0.17.0
         with:
           opencode: false
         env:
@@ -128,7 +128,7 @@ jobs:
 
 一条问题可以带一个修复（fix）：替换它所指那几行的代码。这时它的行内评论末尾有一个建议块，有写权限的人可以一键提交（**Commit suggestion**，或批量提交）。只有评论正好落在被替换的行上时才给出，摘要里从不给；代码要么原样发布，要么不发：含有 HTML 注释开头、`/ocra`、回车符、控制字符或双向文本字符，或者超过 20,000 个字符时，不附建议块，问题照常发布。建议是模型的提议，提交前请先读一遍。
 
-修复来自 [Fix 阶段](./how-it-works)，它默认关闭，由 [`fixes`](./configuration) 或 `--fixes` 开启（[ADR-0058](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0058-checked-fix-proposals.md)）；不开启时，评论以文字形式给出建议。
+修复来自 [Fix 阶段](./how-it-works)，它默认关闭，由 [`fixes`](./configuration) 或 `--fixes` 开启（[ADR-0058](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0058-checked-fix-proposals.md)）；不开启时，评论以文字形式给出建议。
 
 ## 代码扫描
 
@@ -149,7 +149,7 @@ jobs:
         with:
           fetch-depth: 0
       - id: ocra
-        uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+        uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         with:
           sarif: true
         env:
@@ -173,7 +173,7 @@ jobs:
 
 ```yaml
       - run: pipx run semgrep scan --config p/default --metrics=off --sarif --output semgrep.sarif
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         with:
           args: --import-sarif semgrep.sarif
         env:
@@ -243,7 +243,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         with:
           learn: ${{ github.event_name == 'schedule' && 'mine' || 'remember' }}
         env:
@@ -293,7 +293,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         with:
           reply: true
         env:
@@ -345,7 +345,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         with:
           args: --max-cost-usd 2
         env:
@@ -401,7 +401,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         with:
           args: --max-cost-usd 2
         env:
@@ -466,7 +466,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         with:
           github-token: ${{ steps.app.outputs.token }}
           args: --max-cost-usd 2
@@ -474,7 +474,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-[上面](#来自-fork-的-pr)关于 `pull_request_target` 的规则照样适用。这套配置还没有完整跑过；如果某一步失败，请[提 issue](https://github.com/jma49/Open-CR-Agent/issues/new/choose)。
+[上面](#来自-fork-的-pr)关于 `pull_request_target` 的规则照样适用。这套配置还没有完整跑过；如果某一步失败，请[提 issue](https://github.com/ocrahq/Open-CR-Agent/issues/new/choose)。
 
 ## 配置
 

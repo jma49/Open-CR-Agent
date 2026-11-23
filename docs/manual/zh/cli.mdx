@@ -39,7 +39,7 @@ ocra init --provider anthropic     # 当前 shell 里没有这个供应商的 ke
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/jma49/Open-CR-Agent/main/docs/schema/config.v1.json",
+  "$schema": "https://raw.githubusercontent.com/ocrahq/Open-CR-Agent/main/docs/schema/config.v1.json",
   "models": {
     "top": "google/gemini-3.1-pro-preview",
     "standard": "google/gemini-3.5-flash",
@@ -54,7 +54,7 @@ key 本身从不写入文件；OpenCode 从 `GEMINI_API_KEY` 读取它。模型�
 
 ```text
 Wrote .ocra/config.json: Gemini models through GEMINI_API_KEY, on the OpenCode runtime.
-  OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/jma49/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime
+  OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime
 Wrote .github/workflows/ocra.yml: pull requests from members are reviewed on every push, anyone else's once each time a maintainer adds the ocra-review label.
 
 Next:
@@ -169,9 +169,9 @@ ocra review [options]
 - `rules`：每条路径规则的 `path`、`rule` 和 `source`（`repository` 表示 `.ocra/rules.json`，`shared`、`account` 或 `plugin`）；
 - `accountSettings`：登录时所用[账户设置](./configuration#账户设置)的 `version`。
 
-报告的 [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json)（draft 2020-12）由代码生成并经测试核对；`@open-cr-agent/core` 的 `reportJsonSchema()` 返回它。
+报告的 [JSON Schema](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/schema/report.v1.json)（draft 2020-12）由代码生成并经测试核对；`@open-cr-agent/core` 的 `reportJsonSchema()` 返回它。
 
-**`--plan` 的 JSON** 同样带版本号，有自己的 [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/plan.v1.json)：变更信息、风险档位、有上次审查时的 `scope`（`incremental` 带 `since`，或 `full` 带 `reason`，和报告中的一样）、选中和排除的文件、分组、各任务（估算的提示词大小、`models`、设置了时的 `effort`、模型链已知时的 `inputCost`：`model` 为链上第一个模型，`status` 为带 `usd` 的 `priced`、`unpriced` 或 `unknown`）、被跳过的组合、`groupingSkipped`、`promptTokens`（总计）、有任务带估算时的 `inputCost`（已定价任务的 `usd` 之和及各状态的任务数）、警告信息、`settings`（每项的 `key`、`value`（默认值时不存在）和 `source`），以及读取了账户设置时的 `accountSettings`。
+**`--plan` 的 JSON** 同样带版本号，有自己的 [JSON Schema](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/schema/plan.v1.json)：变更信息、风险档位、有上次审查时的 `scope`（`incremental` 带 `since`，或 `full` 带 `reason`，和报告中的一样）、选中和排除的文件、分组、各任务（估算的提示词大小、`models`、设置了时的 `effort`、模型链已知时的 `inputCost`：`model` 为链上第一个模型，`status` 为带 `usd` 的 `priced`、`unpriced` 或 `unknown`）、被跳过的组合、`groupingSkipped`、`promptTokens`（总计）、有任务带估算时的 `inputCost`（已定价任务的 `usd` 之和及各状态的任务数）、警告信息、`settings`（每项的 `key`、`value`（默认值时不存在）和 `source`），以及读取了账户设置时的 `accountSettings`。
 
 ### SARIF 输出
 
@@ -395,7 +395,7 @@ ocra memory list
 
 ## ocra login、ocra logout、ocra whoami
 
-**开发中。** ocra Cloud（[ADR-0024](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0024-ocra-cloud.md)）的地址是 https://app.ocracloud.com；`OCRA_CLOUD_URL` 可以指定其他服务器，例如公司自己部署的服务器；它的证书由公司自己的证书颁发机构签发时，用 `NODE_EXTRA_CA_CERTS` 把该机构交给 Node，否则每次调用都会失败并给出证书错误。不登录也能审查；设置 `OCRA_CLOUD=off` 后这几个命令拒绝运行。
+**开发中。** ocra Cloud（[ADR-0024](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0024-ocra-cloud.md)）的地址是 https://app.ocracloud.com；`OCRA_CLOUD_URL` 可以指定其他服务器，例如公司自己部署的服务器；它的证书由公司自己的证书颁发机构签发时，用 `NODE_EXTRA_CA_CERTS` 把该机构交给 Node，否则每次调用都会失败并给出证书错误。不登录也能审查；设置 `OCRA_CLOUD=off` 后这几个命令拒绝运行。
 
 ```bash
 ocra login                                    # 显示一个验证码，并打开浏览器确认

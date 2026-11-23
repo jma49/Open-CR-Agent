@@ -10,7 +10,7 @@ ocra reads `.ocra/config.json` from the root of the reviewed repository. Every k
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/jma49/Open-CR-Agent/main/docs/schema/config.v1.json",
+  "$schema": "https://raw.githubusercontent.com/ocrahq/Open-CR-Agent/main/docs/schema/config.v1.json",
   "models": {
     "top": "google/gemini-3.1-pro-preview",
     "standard": ["google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
@@ -31,7 +31,7 @@ ocra reads `.ocra/config.json` from the root of the reviewed repository. Every k
 }
 ```
 
-`$schema` points editors at the file's [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/config.v1.json) (draft 2020-12, generated from the code and tested against it) for completion and validation; ocra ignores it.
+`$schema` points editors at the file's [JSON Schema](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/schema/config.v1.json) (draft 2020-12, generated from the code and tested against it) for completion and validation; ocra ignores it.
 
 ## Models
 

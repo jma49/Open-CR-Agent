@@ -14,7 +14,7 @@ On 8 changes with 16 known issues, the current configuration found **7 (44%)** i
 
 `ocra-eval` runs the real `ocra review` on changes pinned at fixed commits and scores what it reports ([Evaluation](./evaluation)). Two datasets:
 
-- **Golden cases** ([ADR-0011](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)) belong to ocra. Each pins a public repository at two commits and lists the issues ocra must report, other places the same issue may rightly be reported, ranges where a finding would be wrong, or that the change has no issue. Every run so far used the 8 cases the *smoke* tier had then, with 16 expected issues. The smoke tier has since grown to 10 cases and the *full* tier to 65, 42 of them added on 2026-10-23 from AACR-Bench, each vetted blind by two agents, and 7 on 2026-11-22 from fixes in ocra's own history (5 issues and 2 changes with none), also vetted blind by two agents; neither has been run as it is now. Since 2026-10-23 ([ADR-0036](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0036-golden-case-set-policy.md)) a case requires at most 3 issues, and an issue the reviewers are not asked to report (one a compiler reports, one in code the change leaves alone) or that only a model has found is optional: a finding on it counts as correct, and recall leaves it out. The smoke tier now requires 7 issues and the full tier 57. The numbers on this page were scored before that change and are not comparable with runs scored after it.
+- **Golden cases** ([ADR-0011](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)) belong to ocra. Each pins a public repository at two commits and lists the issues ocra must report, other places the same issue may rightly be reported, ranges where a finding would be wrong, or that the change has no issue. Every run so far used the 8 cases the *smoke* tier had then, with 16 expected issues. The smoke tier has since grown to 10 cases and the *full* tier to 65, 42 of them added on 2026-10-23 from AACR-Bench, each vetted blind by two agents, and 7 on 2026-11-22 from fixes in ocra's own history (5 issues and 2 changes with none), also vetted blind by two agents; neither has been run as it is now. Since 2026-10-23 ([ADR-0036](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0036-golden-case-set-policy.md)) a case requires at most 3 issues, and an issue the reviewers are not asked to report (one a compiler reports, one in code the change leaves alone) or that only a model has found is optional: a finding on it counts as correct, and recall leaves it out. The smoke tier now requires 7 issues and the full tier 57. The numbers on this page were scored before that change and are not comparable with runs scored after it.
 - **[AACR-Bench](https://github.com/alibaba/aacr-bench)** is an external benchmark of real pull requests whose ground truth is review comments checked by experts, about three quarters of them written by AI models; it is the number comparable with published results.
 
 | The 8 cases these runs used | Cases | Expected issues | Languages |
@@ -36,7 +36,7 @@ Every run until 2026-10-01 used Gemini on Vertex AI: `gemini-3.5-flash` for the 
 
 ### The current configuration
 
-One run on 2026-09-29 (UTC), with ocra's default settings as of `main` at [`664c850`](https://github.com/jma49/Open-CR-Agent/commit/664c850893a7016dcf13f993e8c52ba43b3526ba) plus the 30-step limit per review agent merged right after it ([`f966d83`](https://github.com/jma49/Open-CR-Agent/commit/f966d83e5e385d75ae0285401c342228da59e13f)):
+One run on 2026-09-29 (UTC), with ocra's default settings as of `main` at [`664c850`](https://github.com/ocrahq/Open-CR-Agent/commit/664c850893a7016dcf13f993e8c52ba43b3526ba) plus the 30-step limit per review agent merged right after it ([`f966d83`](https://github.com/ocrahq/Open-CR-Agent/commit/f966d83e5e385d75ae0285401c342228da59e13f)):
 
 - **Found 7 of the 16 expected issues (44%):** 5 of the 6 the cases rate as warnings, 2 of the 10 rated as suggestions. No case expects a critical issue.
 - **Reported 7 findings, all correct (7 of 7, 100%)**, and nothing on the change with no issue.
@@ -72,7 +72,7 @@ Both configurations that ran twice found about the same number each time (6 and 
 
 ### On a free model
 
-Two runs of today's smoke tier (10 cases, 18 expected issues) on Space Bunny Alpha (`stealth/space-bunny-alpha`), an anonymous free preview on OpenRouter reached as a declared OpenAI-compatible endpoint. The free key reaches no other model, so every tier, verification, the judge and the scoring judge ran on it. ocra was `main` as of 2026-10-02 ([`c997e07`](https://github.com/jma49/Open-CR-Agent/commit/c997e079dbc37298022c8c3837b67afe64411b89)) with default settings. OpenRouter's free models share one daily quota per account (1000 requests once the account has bought at least $10 of credits, about 50 without; see [Providers](./providers#free-models-through-openrouter)) and a smoke case takes 30 to 250, so even at 1000 a day each run stretched from 2026-10-02 to 2026-10-04. OpenRouter withdrew the model on 2026-10-06, so these runs cannot be repeated.
+Two runs of today's smoke tier (10 cases, 18 expected issues) on Space Bunny Alpha (`stealth/space-bunny-alpha`), an anonymous free preview on OpenRouter reached as a declared OpenAI-compatible endpoint. The free key reaches no other model, so every tier, verification, the judge and the scoring judge ran on it. ocra was `main` as of 2026-10-02 ([`c997e07`](https://github.com/ocrahq/Open-CR-Agent/commit/c997e079dbc37298022c8c3837b67afe64411b89)) with default settings. OpenRouter's free models share one daily quota per account (1000 requests once the account has bought at least $10 of credits, about 50 without; see [Providers](./providers#free-models-through-openrouter)) and a smoke case takes 30 to 250, so even at 1000 a day each run stretched from 2026-10-02 to 2026-10-04. OpenRouter withdrew the model on 2026-10-06, so these runs cannot be repeated.
 
 | Run | Found | Precision | Findings | Unlabeled | Seconds per change (median) |
 |---|---|---|---|---|---|
@@ -133,7 +133,7 @@ ocra finds real bugs and has rarely reported something wrong, but it missed more
 
 ## Reproduce
 
-The cases and labels are in [`evals/golden`](https://github.com/jma49/Open-CR-Agent/tree/main/evals/golden). With models configured as in [Evaluation](./evaluation), a run on the 8 cases above cost $8 to $13 at list prices; the smoke tier now has 10:
+The cases and labels are in [`evals/golden`](https://github.com/ocrahq/Open-CR-Agent/tree/main/evals/golden). With models configured as in [Evaluation](./evaluation), a run on the 8 cases above cost $8 to $13 at list prices; the smoke tier now has 10:
 
 ```bash
 node packages/eval/dist/main.js run --dataset golden --tier smoke --label mine --max-cost-usd 20 --pr-max-cost-usd 6

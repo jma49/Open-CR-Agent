@@ -122,7 +122,7 @@ function configWritten({ preset, found, others }: Choice): string {
 const RUNTIME_NAME = { opencode: "OpenCode runtime", direct: "direct runtime" } as const;
 
 const SWITCH_LATER =
-  "OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/jma49/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime";
+  "OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime";
 
 function kept(path: string): string {
   return `Kept ${path}: it exists (--force replaces it).\n`;

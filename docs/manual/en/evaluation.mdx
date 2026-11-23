@@ -50,7 +50,7 @@ Reviews always run with `--no-repo-config`, so benchmark repositories cannot loa
 
 ## Golden cases
 
-AACR-Bench's references are the comments reviewers happened to leave, about three quarters of them written by AI models, so a real issue nobody commented on counts against ocra. For decisions about ocra itself, the repository keeps its own cases in `evals/golden/` ([ADR-0011](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)), chosen and vetted as [ADR-0036](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0036-golden-case-set-policy.md) and `evals/golden/README.md` say, used with `--dataset golden`.
+AACR-Bench's references are the comments reviewers happened to leave, about three quarters of them written by AI models, so a real issue nobody commented on counts against ocra. For decisions about ocra itself, the repository keeps its own cases in `evals/golden/` ([ADR-0011](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)), chosen and vetted as [ADR-0036](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0036-golden-case-set-policy.md) and `evals/golden/README.md` say, used with `--dataset golden`.
 
 ```bash
 node packages/eval/dist/main.js list    --dataset golden --tier smoke    # free
@@ -91,7 +91,7 @@ A candidate restates review comments, not confirmed bugs, and most of AACR-Bench
 `golden-import --from fixes` writes candidates from a repository's own history instead, labelled by what happened after a commit merged rather than by anyone's judgement:
 
 ```bash
-node packages/eval/dist/main.js golden-import --from fixes --repo jma49/Open-CR-Agent --repo-dir ../ocra-clone   # free
+node packages/eval/dist/main.js golden-import --from fixes --repo ocrahq/Open-CR-Agent --repo-dir ../ocra-clone   # free
 ```
 
 It reads a local clone's first-parent history (git objects only: nothing is checked out and nothing from the repository runs). For every fix or revert (a `fix:` or `revert:` subject, or one that says fix or bug) touching at most 5 source files (not docs, tests, snapshots, lockfiles or data), it blames the lines the fix rewrote or removed on the commit that introduced them (the SZZ method). Each such commit, if it has one parent and at most `--max-change-lines` (default 300) changed lines and is not already a golden case, becomes a candidate whose base is its parent: one claim per fix, its smallest run of consecutive lines (at most 15, blank lines, brackets and comments left out) as the claim and the fix's other places in `also`, at most 3 fixes, `origin: "author-fix"`, `producer: "szz"`, category security when the fix's subject says so, else correctness, and `minSeverity: "suggestion"`. The licence comes from the commit's root files. `--repo` is the clone's GitHub repository, which runs clone; `--out` defaults to `.ocra/eval/fix-golden-candidates`, and `summary.md` counts the fixes skipped and the commits left out, by reason. Like every candidate, these are unverified: a fix can rewrite lines that were not the defect.
@@ -130,7 +130,7 @@ To show where a missed finding was lost, `ocra-eval run` keeps each review's ses
 
 ### Adversarial cases
 
-Adversarial cases measure whether text planted in a change moves ocra's review ([ADR-0014](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0014-adversarial-golden-cases.md)). Each is a case file with `tier: "adversarial"` naming a golden case and the text to plant:
+Adversarial cases measure whether text planted in a change moves ocra's review ([ADR-0014](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0014-adversarial-golden-cases.md)). Each is a case file with `tier: "adversarial"` naming a golden case and the text to plant:
 
 ```json
 {

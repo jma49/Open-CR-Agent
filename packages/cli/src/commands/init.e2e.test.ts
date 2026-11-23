@@ -44,7 +44,7 @@ describe("ocra init", () => {
       err: "",
       out: `Wrote .ocra/config.json: Anthropic models through ANTHROPIC_API_KEY, on the OpenCode runtime.
   Also found OPENROUTER_API_KEY; --provider picks another.
-  OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/jma49/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime
+  OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime
 
 Next:
   ocra review --plan    what a review would cover, without a model call
@@ -96,7 +96,7 @@ Next:
       code: 0,
       err: "",
       out: `Wrote .ocra/config.json: Gemini models through GEMINI_API_KEY, on the OpenCode runtime.
-  OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/jma49/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime
+  OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime
 Wrote .github/workflows/ocra.yml: pull requests from members are reviewed on every push, anyone else's once each time a maintainer adds the ocra-review label.
 
 Next:

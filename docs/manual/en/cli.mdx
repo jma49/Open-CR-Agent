@@ -39,7 +39,7 @@ For Gemini, the file is:
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/jma49/Open-CR-Agent/main/docs/schema/config.v1.json",
+  "$schema": "https://raw.githubusercontent.com/ocrahq/Open-CR-Agent/main/docs/schema/config.v1.json",
   "models": {
     "top": "google/gemini-3.1-pro-preview",
     "standard": "google/gemini-3.5-flash",
@@ -54,7 +54,7 @@ The key is never written; OpenCode reads it from `GEMINI_API_KEY`. Change the mo
 
 ```text
 Wrote .ocra/config.json: Gemini models through GEMINI_API_KEY, on the OpenCode runtime.
-  OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/jma49/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime
+  OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime
 Wrote .github/workflows/ocra.yml: pull requests from members are reviewed on every push, anyone else's once each time a maintainer adds the ocra-review label.
 
 Next:
@@ -169,9 +169,9 @@ The format is a contract (`"version": 1`): later releases only add optional fiel
 - `rules`: each path rule's `path`, `rule` and `source` (`repository` for `.ocra/rules.json`, `shared`, `account` or `plugin`);
 - `accountSettings`: the [account settings](./configuration#account-settings) `version`, when signed in.
 
-The report's [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json) (draft 2020-12) is generated from the code and tested against it; `reportJsonSchema()` in `@open-cr-agent/core` returns it.
+The report's [JSON Schema](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/schema/report.v1.json) (draft 2020-12) is generated from the code and tested against it; `reportJsonSchema()` in `@open-cr-agent/core` returns it.
 
-**`--plan` JSON** is versioned the same way and has its own [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/plan.v1.json): change request, risk tier, `scope` with a previous review (`incremental` with `since`, or `full` with `reason`, as in the report), selected and excluded files, bundles, tasks (estimated prompt size, `models`, `effort` when set, `inputCost` when the chain is known: `model`, the chain's first, and `status` `priced` with `usd`, `unpriced` or `unknown`), skipped pairs, `groupingSkipped`, `promptTokens` (total), `inputCost` when any task has one (`usd` over priced tasks and the count per status), warnings, `settings` (each `key`, `value`, absent for a default, and `source`), and `accountSettings` when read.
+**`--plan` JSON** is versioned the same way and has its own [JSON Schema](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/schema/plan.v1.json): change request, risk tier, `scope` with a previous review (`incremental` with `since`, or `full` with `reason`, as in the report), selected and excluded files, bundles, tasks (estimated prompt size, `models`, `effort` when set, `inputCost` when the chain is known: `model`, the chain's first, and `status` `priced` with `usd`, `unpriced` or `unknown`), skipped pairs, `groupingSkipped`, `promptTokens` (total), `inputCost` when any task has one (`usd` over priced tasks and the count per status), warnings, `settings` (each `key`, `value`, absent for a default, and `source`), and `accountSettings` when read.
 
 ### SARIF output
 
@@ -395,7 +395,7 @@ When you are [signed in](#ocra-login-ocra-logout-ocra-whoami), you can also reme
 
 ## ocra login, ocra logout, ocra whoami
 
-**In development.** ocra Cloud ([ADR-0024](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0024-ocra-cloud.md)) lives at https://app.ocracloud.com; `OCRA_CLOUD_URL` names another server, such as a company's self-hosted one; when its certificate comes from the company's own authority, give that authority to Node with `NODE_EXTRA_CA_CERTS`, or every call fails naming the certificate error. Reviews work without a login, and with `OCRA_CLOUD=off` these commands refuse to run.
+**In development.** ocra Cloud ([ADR-0024](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0024-ocra-cloud.md)) lives at https://app.ocracloud.com; `OCRA_CLOUD_URL` names another server, such as a company's self-hosted one; when its certificate comes from the company's own authority, give that authority to Node with `NODE_EXTRA_CA_CERTS`, or every call fails naming the certificate error. Reviews work without a login, and with `OCRA_CLOUD=off` these commands refuse to run.
 
 ```bash
 ocra login                                    # shows a code and opens the browser to confirm it

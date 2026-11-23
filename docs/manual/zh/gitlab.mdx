@@ -64,7 +64,7 @@ ocra-review:
 - **每个问题一个讨论串**：放在新增的行上，或者改动旁边未改动的行上。GitLab 不肯放置的问题留在摘要里。
 - **一条摘要评论**，在原处更新，内容与 [GitHub 上](./github#会发布什么)相同。
 - **解决讨论串**：问题引用的代码已经不在时。
-- **可以应用的建议**（开启 [`fixes`](./configuration) 或 `--fixes` 时，[ADR-0058](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0058-checked-fix-proposals.md)）：问题的修复会在讨论串末尾放一个 `suggestion:-N+0` 块，从讨论串所在行往上覆盖到第一行被修复的代码（**Apply suggestion**）；只在讨论串正好覆盖被修复的行、往上不超过 100 行时给出，代码要么原样发布，要么不发，和 [GitHub](./github#可提交的建议) 一样。
+- **可以应用的建议**（开启 [`fixes`](./configuration) 或 `--fixes` 时，[ADR-0058](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0058-checked-fix-proposals.md)）：问题的修复会在讨论串末尾放一个 `suggestion:-N+0` 块，从讨论串所在行往上覆盖到第一行被修复的代码（**Apply suggestion**）；只在讨论串正好覆盖被修复的行、往上不超过 100 行时给出，代码要么原样发布，要么不发，和 [GitHub](./github#可提交的建议) 一样。
 
 维护者说了算。这里的维护者指 Developer 及以上角色、且不是作者的人，不限于 GitLab 的 Maintainer 角色；他们解决 ocra 的讨论串，或者用 `/ocra dismiss`、以"won't fix""by design""false positive"开头的回复答复它，就驳回了这个问题。他们的其他回复会在问题再次出现时交给 Judge。被别人编辑过的评论一律不算数。
 

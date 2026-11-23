@@ -78,7 +78,7 @@ describe("configFor", () => {
       const config = JSON.parse(configFor(chooseProvider(name, {}).preset));
       expect(config).toEqual({
         $schema:
-          "https://raw.githubusercontent.com/jma49/Open-CR-Agent/main/docs/schema/config.v1.json",
+          "https://raw.githubusercontent.com/ocrahq/Open-CR-Agent/main/docs/schema/config.v1.json",
         models: { top, standard, light },
       });
     },
@@ -87,7 +87,7 @@ describe("configFor", () => {
   it("puts OpenRouter's free router on the direct runtime, priced at 0", () => {
     expect(JSON.parse(configFor(chooseProvider("openrouter", {}).preset))).toEqual({
       $schema:
-        "https://raw.githubusercontent.com/jma49/Open-CR-Agent/main/docs/schema/config.v1.json",
+        "https://raw.githubusercontent.com/ocrahq/Open-CR-Agent/main/docs/schema/config.v1.json",
       runtime: "direct",
       models: {
         top: "router/openrouter/free",

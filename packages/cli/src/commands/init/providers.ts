@@ -115,7 +115,7 @@ function keyList(): string {
 }
 
 const SCHEMA_URL =
-  "https://raw.githubusercontent.com/jma49/Open-CR-Agent/main/docs/schema/config.v1.json";
+  "https://raw.githubusercontent.com/ocrahq/Open-CR-Agent/main/docs/schema/config.v1.json";
 
 // The smallest .ocra/config.json that reviews with the preset: on OpenCode,
 // models by tier; on the direct runtime, also the one endpoint they are on,
