@@ -6,6 +6,27 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-23
+
+### Added
+
+- The contract exports `configSchema`, the Zod schema `.ocra/config.json` is checked against, with its refinements (endpoints, credential variable names, unique check ids, providers' models), and `configJsonSchema()`.
+- A provider declared with `"type": "anthropic"` runs on the direct runtime through Anthropic's Messages API, with the prompt cache at every step and the effort as `output_config.effort`.
+- `ocra-<provider>/<model>` reaches an ocra Cloud provider that lists only a Messages endpoint, such as `ocra-anthropic/<model>`.
+- `guidelineScope` (`--guidelines`): give each review task every section of `AGENTS.md` (`all`, the default), the sections for its files (`matched`), or give them only to the `agents-md` reviewer (`reviewer`).
+- The review upload's `outcomes` can carry `fixedFingerprints` and `dismissedFingerprints`, at most 200 each; a signed-in review sends them when the account shares findings, so ocra Cloud can mark which earlier findings a re-review saw fixed or dismissed.
+
+### Changed
+
+- `ocra init` pins the Action to v0.12.0 by its commit.
+- `AGENTS.md` longer than 20,000 characters is no longer cut mid-section: sections that do not fit are left out whole and listed by heading.
+- Code search on a large repository costs less: one `git grep` runs at a time, shared by the searches that wait for it and stopped once each has its matches, and the `direct` runtime runs the tool calls of one step together. A review of 398 files in a repository of 32,000 took 64 s instead of 99 s with a model that answers at once; results are the same ([#695](https://github.com/jma49/Open-CR-Agent/pull/695)).
+
+### Fixed
+
+- A call to ocra Cloud that could not be sent names its network or certificate error instead of only `fetch failed`, and says to use `NODE_EXTRA_CA_CERTS` for a server whose certificate authority Node does not trust.
+- `ocra review --pr` on GitHub Enterprise Server finds the repository from an `origin` on the server `GITHUB_API_URL` names, without `--repo`.
+
 ## [0.12.0] - 2026-11-22
 
 `ocra review --fixes` proposes fixes, each checked against the reviewed head, `--without` measures what each context source is worth, and every context source has a bound. The Action's new tag is `jma49/Open-CR-Agent@v0.12.0`.
@@ -568,7 +589,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.9.0...v0.10.0
