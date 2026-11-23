@@ -7,6 +7,7 @@ import type { AnalyzerResult } from "../sarif/evidence.js";
 import { LINKED_TASK_LIMITS, type LinkedTask } from "../task/linked-task.js";
 import type { ContextSource, OptionalContext } from "./context-sources.js";
 import type { SymbolUse } from "./impact.js";
+import { PLAN_INSTRUCTIONS } from "./plan-phase.js";
 import {
   data,
   join,
@@ -51,9 +52,11 @@ export interface ReviewPromptInput {
   analyzerResults?: readonly AnalyzerResult[];
   // --ultra: the plan phase's checklist for this bundle.
   plan?: string | undefined;
-  // For the plan phase itself: the same sections without the instruction to
-  // report findings, which the planner must not do.
-  forPlanning?: boolean;
+  // "call": the plan phase's own prompt, which ends by asking for the
+  // checklist where a review's asks for findings. "after": the prompt of a
+  // task whose plan call was made. Both say where the files end (`shared`),
+  // which is as far as the two read alike.
+  planPhase?: "call" | "after";
   // Sources an ablation run leaves out (ADR-0057).
   without?: ReadonlySet<OptionalContext>;
 }
@@ -62,7 +65,8 @@ export interface ReviewPrompt {
   system: string;
   user: string;
   // Where in `user` a start that other tasks of the run are given too ends,
-  // shortest first (AgentTaskSpec.sharedPrefixes).
+  // shortest first, then where the start a plan call shares with its task
+  // ends (AgentTaskSpec.sharedPrefixes).
   shared: number[];
 }
 
@@ -90,9 +94,8 @@ export function buildReviewPrompt(input: ReviewPromptInput): ReviewPrompt {
     user += i > 0 ? `${PART_SEPARATOR}${part.text}` : part.text;
     const group = SHARED_GROUP[part.source];
     const next = parts[i + 1];
-    if (group !== undefined && next && SHARED_GROUP[next.source] !== group) {
-      shared.push(user.length);
-    }
+    const sharedGroupEnds = group !== undefined && next && SHARED_GROUP[next.source] !== group;
+    if (sharedGroupEnds || (input.planPhase && part.source === "diff")) shared.push(user.length);
   });
   return { system: system?.text ?? "", user, shared };
 }
@@ -147,14 +150,14 @@ export function reviewPromptParts(input: ReviewPromptInput): PromptPart[] {
       ]),
     );
   }
-  if (!input.forPlanning) {
-    add(
-      "instructions",
-      ocraText(
-        `Review every file in <ocra_review_files>. Report each issue with ${REVIEW_TOOLS.reportFinding} as soon as you confirm it, then call ${REVIEW_TOOLS.taskDone}. Where a file shows "‹ocra_", the file itself has "<ocra_"; quote it that way.`,
-      ),
-    );
-  }
+  add(
+    "instructions",
+    ocraText(
+      input.planPhase === "call"
+        ? PLAN_INSTRUCTIONS
+        : `Review every file in <ocra_review_files>. Report each issue with ${REVIEW_TOOLS.reportFinding} as soon as you confirm it, then call ${REVIEW_TOOLS.taskDone}. Where a file shows "‹ocra_", the file itself has "<ocra_"; quote it that way.`,
+    ),
+  );
   return parts;
 }
 

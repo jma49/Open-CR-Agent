@@ -81,15 +81,17 @@ function answer(request: ChatRequest): { kind: ModelCallKind; reply: Reply } {
       .join("\n");
   const system = text("system");
   const user = text("user");
+  // Asked as the reviewer, with its tools (ADR-0066), so it is told apart
+  // by how the prompt ends.
+  if (user.trimEnd().endsWith("at most 150 words.")) {
+    return { kind: "plan", reply: { content: "- Check the added lines." } };
+  }
   if (request.tools?.some((t) => t.function.name.endsWith("report_finding"))) {
     return { kind: "review", reply: reviewStep(request, user) };
   }
   if (system.includes("judge of a multi-agent code review")) {
     const verdict = { duplicates: [], drop: [], severity: [], summary: "Scripted summary." };
     return { kind: "judge", reply: { content: JSON.stringify(verdict) } };
-  }
-  if (system.includes("You prepare one reviewer's pass")) {
-    return { kind: "plan", reply: { content: "- Check the added lines." } };
   }
   const titles = [...user.matchAll(/^Title: /gm)];
   if (titles.length > 0) {
