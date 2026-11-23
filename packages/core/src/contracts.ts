@@ -130,7 +130,15 @@ export type AgentEvent =
   // ended: absent when the agent called the done tool; otherwise how it
   // stopped without it, so its files count as only partly reviewed. wrapUp:
   // such an attempt was given one more turn to report what it had confirmed.
-  | { type: "done"; taskId: string; ended?: IncompleteEnding; wrapUp?: { findings: number } }
+  // refusedFindings: per finding the runtime refused for its arguments and
+  // the agent did not send again, the fields that failed.
+  | {
+      type: "done";
+      taskId: string;
+      ended?: IncompleteEnding;
+      wrapUp?: { findings: number };
+      refusedFindings?: string[];
+    }
   // quota: every model of the task's chain is out of quota for this run.
   | { type: "error"; taskId: string; error: string; retryable: boolean; quota?: QuotaStop };
 

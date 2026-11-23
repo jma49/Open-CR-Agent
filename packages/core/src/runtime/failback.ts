@@ -8,7 +8,6 @@ import {
   attemptRecord,
   attemptSummary,
   type TaskAttempt,
-  type WrapUpOutcome,
 } from "./attempt.js";
 import type { ModelHealth } from "./models.js";
 import { type QuotaError, sleep } from "./quota.js";
@@ -93,7 +92,7 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
       // the run's limit: the pipeline decides what that stop means.
       if (!outcome.error) {
         health.recordSuccess(model);
-        yield doneEvent(taskId, ended, outcome.wrappedUp);
+        yield doneEvent(taskId, ended, outcome);
         return;
       }
       // A cancelled attempt is neither finished nor the model's fault.
@@ -131,13 +130,14 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
 function doneEvent(
   taskId: string,
   ended: AttemptEnding,
-  wrappedUp: WrapUpOutcome | undefined,
+  { wrappedUp, refusedFindings }: AttemptOutcome,
 ): AgentEvent {
   return {
     type: "done",
     taskId,
     ...(ended === "step_cap" || ended === "stopped_early" ? { ended } : {}),
     ...(wrappedUp ? { wrapUp: { findings: wrappedUp.findings } } : {}),
+    ...(refusedFindings?.length ? { refusedFindings } : {}),
   };
 }
 

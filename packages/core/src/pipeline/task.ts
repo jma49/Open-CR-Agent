@@ -12,6 +12,7 @@ import type {
 import { type ReportedFinding, reportedFindingSchema, type TaskFinding } from "../domain.js";
 import { errorMessage } from "../errors.js";
 import type { TaskStatus } from "../report/report.js";
+import { oneLine } from "../review/prompt-text.js";
 
 export interface TaskResult {
   status: TaskStatus;
@@ -153,6 +154,14 @@ function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks)
     case "done":
       if (event.ended) result.ended = event.ended;
       if (event.wrapUp) result.wrapUp = { findings: event.wrapUp.findings };
+      if (event.refusedFindings?.length) {
+        result.warnings.push(
+          `${event.refusedFindings.length} finding(s) the reviewer reported were refused for their arguments and are missing (${event.refusedFindings
+            .slice(0, MAX_FINDINGS_PER_TASK)
+            .map((fields) => oneLine(fields).slice(0, 100))
+            .join("; ")})`,
+        );
+      }
       return true;
     case "error":
       result.status = "failed";

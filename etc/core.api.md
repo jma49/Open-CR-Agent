@@ -35,6 +35,7 @@ export type AgentEvent = {
     wrapUp?: {
         findings: number;
     };
+    refusedFindings?: string[];
 } | {
     type: "error";
     taskId: string;
@@ -175,6 +176,8 @@ export interface AttemptOutcome {
     findings: unknown[];
     // (undocumented)
     read?: string[];
+    // (undocumented)
+    refusedFindings?: string[];
     // (undocumented)
     resumed?: true;
     // (undocumented)
