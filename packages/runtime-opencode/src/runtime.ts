@@ -24,6 +24,7 @@ import {
   type TaskAttempt,
   type Usage,
   WRAP_UP_MESSAGE,
+  WRAP_UP_STEPS,
   withoutSecrets,
 } from "@open-cr-agent/core";
 import { createOpencodeClient, type OpencodeClient } from "@opencode-ai/sdk/v2";
@@ -35,6 +36,7 @@ import {
   DISABLED_BUILTINS,
   DONE_TOOL,
   HELPER_AGENT,
+  HELPER_AGENT_STEPS,
   MCP_SERVER,
   openCodeConfig,
   openCodeSampling,
@@ -52,7 +54,6 @@ import { createUntimedDispatcher, untimedFetch } from "./transport.js";
 // Sent once to a review agent that stopped before finishing (session-prompt.ts).
 const REVIEW_RESUME = {
   doneTool: REVIEW_TOOLS.taskDone,
-  maxSteps: MAX_AGENT_STEPS,
   message: RESUME_MESSAGE,
 };
 
@@ -145,11 +146,13 @@ export class OpenCodeRuntime implements AgentRuntime {
         system: spec.systemPrompt,
         user: spec.userPrompt,
         tools: DISABLED_BUILTINS,
+        maxSteps: MAX_AGENT_STEPS,
         toolPrefix: `${MCP_SERVER}_`,
         resume: REVIEW_RESUME,
         wrapUp: {
           ...this.effortCall(infra, WRAP_UP_AGENT, spec.reviewer, spec.effort, model),
           tools: wrapUpTools(this.helperTools),
+          maxSteps: WRAP_UP_STEPS,
           message: WRAP_UP_MESSAGE,
         },
       },
@@ -179,6 +182,7 @@ export class OpenCodeRuntime implements AgentRuntime {
         system: request.system,
         user: request.user,
         tools: this.helperTools,
+        maxSteps: HELPER_AGENT_STEPS,
         toolPrefix: `${MCP_SERVER}_`,
       },
       signal,
