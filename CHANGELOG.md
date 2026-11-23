@@ -6,6 +6,32 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-23
+
+`ocra fix` writes a checked fix for one reported finding, inline comments can be limited by severity and number and read at a glance, and findings the direct runtime used to refuse for their arguments are kept. The packages' `repository` is `ocrahq/Open-CR-Agent`. The Action's new tag is `ocrahq/Open-CR-Agent@v0.19.0`.
+
+### Added
+
+- `ocra fix` writes a checked fix for one finding a review reported (`--finding`, `--head`, `--json`), prints it and commits nothing; it exits 3 when the finding's code is gone or the head moved.
+- `fixResultSchema`, `FIX_OUTCOMES`, `FIX_REASONS` and `FIX_REJECTIONS` in `@open-cr-agent/cloud-contract`; a shared finding carries `lowConfidence`.
+- `minInlineSeverity` and `maxInlineComments` (`--min-inline-severity`, `--max-inline-comments`) post fewer inline comments; the rest are listed in the summary and kept in the report (`inline` in the JSON report).
+- `ultra` as a configuration key, and `--no-ultra` to turn off an `ultra` the configuration or the ocra Cloud account turns on.
+- ocra Cloud account settings take `minInlineSeverity` and `maxInlineComments`.
+- A shared finding carries its `evidence` to ocra Cloud (at most 5 one-line entries of 300 characters, redacted like its other text), so the web can show it as a pull request comment does; `MAX_EVIDENCE` and `MAX_EVIDENCE_FIELD` in `@open-cr-agent/cloud-contract`.
+
+### Changed
+
+- An inline comment on GitHub and GitLab opens with the finding's title on a line of its own, with its severity, reviewer and verification under it, names its fix **Suggested fix**, and folds the facts the reviewer checked under **Evidence**. A finding listed in the summary puts its title first and its text on the next line.
+- The built-in reviewers word a finding to be read in a diff: a title of at most 12 words, a body of at most three sentences that opens with what goes wrong, code in backticks.
+- Outside `--ultra`, a large bundle gets a plan call only for a reviewer with a task per bundle. The docs, guidelines, security and performance reviewers no longer plan first: those calls were about a tenth of a review's cost and changed no result.
+
+### Fixed
+
+- A finding whose evidence the reviewer sent as one string instead of a list is kept; it was refused and usually lost.
+- A finding refused for its arguments in the same answer as `task_done` is no longer lost: the task goes on, so the reviewer reads the refusal and can report it again.
+- The warning about a refused finding stays when the reviewer then reports a finding for another file; any accepted report used to clear it.
+- A finding the direct runtime refused for its arguments and the reviewer did not send again is named in a warning of the report and in the task's progress line, with the fields that failed.
+
 ## [0.18.0] - 2026-11-23
 
 A critical finding the verifier confirms is known while the review still runs, and the `direct` runtime reviews on endpoints that take no `tools` parameter. The Action's new tag is `ocrahq/Open-CR-Agent@v0.18.0`.
@@ -678,7 +704,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.15.0...v0.16.0
