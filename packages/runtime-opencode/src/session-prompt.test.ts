@@ -91,6 +91,72 @@ describe("promptSession", () => {
     expect(outcome.usage.costUsd).toBe(0.25);
   });
 
+  it("stops a session OpenCode holds in a long retry, as a quota refusal", async () => {
+    const aborted: string[] = [];
+    const api = {
+      create: async () => ({ data: { id: "s1" } }),
+      // OpenCode answers the prompt with an error once the session is stopped.
+      prompt: (_: unknown, options: { signal: AbortSignal }) =>
+        new Promise((resolve) =>
+          options.signal.addEventListener("abort", () => resolve({ error: {} }), { once: true }),
+        ),
+      messages: async () => ({ data: spent }),
+      // A daily limit's Retry-After, which OpenCode would sleep out.
+      status: async () => ({
+        data: {
+          s1: {
+            type: "retry",
+            attempt: 1,
+            message: "Too Many Requests: daily_limit",
+            next: Date.now() + 14 * 3_600_000,
+          },
+        },
+      }),
+      abort: async ({ sessionID }: { sessionID: string }) => {
+        aborted.push(sessionID);
+        return { data: true };
+      },
+    } as never;
+    // The task's own timeout, which the session would otherwise wait out.
+    const timeout = AbortSignal.timeout(500);
+    const outcome = await promptSession(api, input, REPORT_TOOL, timeout, {
+      inactivityMs: 60_000,
+      pollMs: 20,
+    });
+    expect(outcome.error).toMatchObject({
+      message: "Too Many Requests: daily_limit",
+      retryable: true,
+      quota: { daily: true, retryAfterMs: expect.any(Number) },
+    });
+    expect(outcome.error?.quota?.retryAfterMs).toBeGreaterThan(13 * 3_600_000);
+    expect(aborted).toContain("s1");
+    expect(outcome.usage.costUsd).toBe(0.25);
+  });
+
+  it("leaves a session in a short retry to OpenCode", async () => {
+    let polls = 0;
+    const api = {
+      create: async () => ({ data: { id: "s1" } }),
+      prompt: () => new Promise((resolve) => setTimeout(() => resolve({ data: {} }), 120)),
+      messages: async () => ({ data: spent }),
+      status: async () => {
+        polls += 1;
+        return {
+          data: {
+            s1: { type: "retry", attempt: 1, message: "rate limit", next: Date.now() + 5_000 },
+          },
+        };
+      },
+      abort: async () => ({ data: true }),
+    } as never;
+    const outcome = await promptSession(api, input, REPORT_TOOL, new AbortController().signal, {
+      inactivityMs: 60_000,
+      pollMs: 20,
+    });
+    expect(polls).toBeGreaterThan(0);
+    expect(outcome.error).toBeUndefined();
+  });
+
   it("lets a session that keeps writing run past the inactivity window", async () => {
     let text = "";
     const aborted: string[] = [];
