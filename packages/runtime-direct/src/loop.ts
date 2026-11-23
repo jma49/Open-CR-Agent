@@ -157,11 +157,16 @@ class Conversation {
       const outputs = await Promise.all(
         response.calls.map(async (call) => {
           outcome.toolCalls.push(call.name);
-          if (call.name === REVIEW_TOOLS.taskDone) done = true;
-          return { call, output: await runTool(tools, call, input.context, outcome, uses) };
+          return { call, ...(await runTool(tools, call, input.context, outcome, uses)) };
         }),
       );
       dialogue.answer(outputs);
+      // A finding sent in the same answer as task_done and refused for its
+      // arguments was lost without a word: the task goes on, so the model
+      // reads why and can send it again.
+      done =
+        outputs.some(({ call }) => call.name === REVIEW_TOOLS.taskDone) &&
+        !outputs.some(({ call, refused }) => refused && call.name === REVIEW_TOOLS.reportFinding);
       if (done) break;
     }
     outcome.text = texts.join("\n").trim();
@@ -203,19 +208,22 @@ async function runTool(
   context: ReviewContext,
   outcome: AttemptOutcome,
   uses: ToolUse[],
-): Promise<string> {
+): Promise<{ output: string; refused?: true }> {
   const tool = tools.get(call.name);
-  if (!tool) return `Unknown tool: ${call.name}`;
-  if (call.malformed) return "Invalid arguments: not JSON";
+  if (!tool) return { output: `Unknown tool: ${call.name}`, refused: true };
+  if (call.malformed) return { output: "Invalid arguments: not JSON", refused: true };
   const parsed = tool.inputSchema.safeParse(call.input);
   if (!parsed.success) {
-    return `Invalid arguments: ${parsed.error.issues.map((i) => `${i.path.join(".") || "input"}: ${i.message}`).join("; ")}`;
+    return {
+      output: `Invalid arguments: ${parsed.error.issues.map((i) => `${i.path.join(".") || "input"}: ${i.message}`).join("; ")}`,
+      refused: true,
+    };
   }
   uses.push({ name: tool.name, input: parsed.data });
   if (tool.name === REVIEW_TOOLS.reportFinding) outcome.findings.push(parsed.data);
   try {
-    return await tool.execute(parsed.data, context);
+    return { output: await tool.execute(parsed.data, context) };
   } catch (error) {
-    return `Tool failed: ${errorMessage(error)}`;
+    return { output: `Tool failed: ${errorMessage(error)}` };
   }
 }
