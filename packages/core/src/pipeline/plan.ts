@@ -11,6 +11,8 @@ import { rank } from "../matrix/matrix.js";
 import { MEMORY_PATH, mergeMemory, parseMemory, type RememberedEntry } from "../memory/memory.js";
 import type { ReviewEvent, ReviewReport } from "../report/report.js";
 import {
+  MARKDOWN_RULES_PATH,
+  parseMarkdownRules,
   parseRepoRules,
   REPO_RULES_PATH,
   type RepoRule,
@@ -213,8 +215,11 @@ export async function planReview(
 async function loadRepoRules(
   read: (path: string) => Promise<string | undefined>,
 ): Promise<RepoRule[]> {
-  const text = await read(REPO_RULES_PATH);
-  return text === undefined ? [] : parseRepoRules(text);
+  const [json, markdown] = await Promise.all([read(REPO_RULES_PATH), read(MARKDOWN_RULES_PATH)]);
+  return [
+    ...(json === undefined ? [] : parseRepoRules(json)),
+    ...(markdown === undefined ? [] : parseMarkdownRules(markdown)),
+  ];
 }
 
 // Review only what changed since the prior review when the platform can

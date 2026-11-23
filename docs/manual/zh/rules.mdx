@@ -1,6 +1,6 @@
 ---
 title: 审查规则
-description: 用 AGENTS.md 和按路径生效的规则，把项目约定教给审查员。
+description: 用 AGENTS.md 和按路径生效的规则（JSON 或自然语言），把项目约定教给审查员。
 icon: ListChecks
 ---
 
@@ -46,6 +46,30 @@ icon: ListChecks
 - `rule`：交给审查员的规则文本。
 
 `rules.json` 不合法时审查会报错停止。审查 PR 时从 base 提交读取。
+
+## .ocra/rules.md
+
+同样的规则，用自然语言写，团队不必写 JSON 也能读写。标题里写了路径的小节只对该路径下的文件生效（和 `guidelineScope: "matched"` 时的 `AGENTS.md` 小节一样），其余小节对所有文件生效：
+
+```markdown
+# Review rules
+
+Every finding names the input that breaks the code. Do not flag missing log lines.
+
+## services/billing/
+
+Every write must carry an idempotency key. Flag handlers that retry without one.
+
+## db/migrations/
+
+Migrations must be backward compatible with the previous release.
+```
+
+- 标题里包含带斜杠的路径（`## services/billing/`、``### `web/src` ``）就算写了路径；子小节沿用上一级标题的路径。
+- 每个有正文的小节是一条规则（含标题），交给文件匹配的审查任务，排在 `rules.json` 的规则之后。报告里它的 `source` 是 `repository`。
+- glob（`**/*.sql`）仍写在 `rules.json` 里；一个仓库可以两个文件都有。
+
+文件超过 20,000 个字符时审查会报错停止。审查 PR 时和 `rules.json` 一样从 base 提交读取。
 
 ## .ocra/learnings
 

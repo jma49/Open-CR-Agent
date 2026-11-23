@@ -120,7 +120,7 @@ Developer 及以上角色的人在评论或 diff 讨论里写 `@ocra <问题>`�
 
 ## Merge Request 不能改变什么
 
-ocra 不会执行 Merge Request 里的任何东西：配置、`.ocra/rules.json`、`.ocra/learnings/` 和 `AGENTS.md` 从它所基于的提交读取，仓库插件从不加载。发出的每一行如果以斜杠开头，前面都会加一个零宽空格，所以问题无法变成 `/merge`、`/approve` 这样的快捷操作（GitLab 会以令牌的权限执行它们）。运行 ocra 的流水线则是另一回事（见下一节）。
+ocra 不会执行 Merge Request 里的任何东西：配置、`.ocra/rules.json`、`.ocra/rules.md`、`.ocra/learnings/` 和 `AGENTS.md` 从它所基于的提交读取，仓库插件从不加载。发出的每一行如果以斜杠开头，前面都会加一个零宽空格，所以问题无法变成 `/merge`、`/approve` 这样的快捷操作（GitLab 会以令牌的权限执行它们）。运行 ocra 的流水线则是另一回事（见下一节）。
 
 ## 谁掌控流水线
 
