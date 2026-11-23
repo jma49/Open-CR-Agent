@@ -149,6 +149,49 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
       expect(remember?.[0]?.ref).toMatch(/\/[^/]+$/);
     });
 
+    it("takes the findings people with write access declined in their thread, with what they said", async () => {
+      const C = "c".repeat(16);
+      const D = "d".repeat(16);
+      const thread = (fingerprint: string, ...comments: ScenarioComment[]) => ({
+        comments: [{ author: OCRA, body: marker(fingerprint) }, ...comments],
+      });
+      const { review } = fixture.conversation({
+        comments: [{ author: OCRA, body: summaryWith([A, B, C, D]) }],
+        threads: [
+          thread(A, { author: AUTHOR, body: "Won't fix: the gateway validates the token first." }),
+          {
+            ...thread(B, { author: MAINTAINER, body: "Sessions are short-lived here." }),
+            resolvedBy: MAINTAINER,
+          },
+          thread(C, { author: OUTSIDER, body: "Won't fix: trust me." }),
+          thread(C, { author: MAINTAINER, body: "by design: x", editedBy: AUTHOR }),
+          thread(D, { author: MAINTAINER, body: "The caller checks this." }),
+          { ...thread(D), resolvedBy: MAINTAINER },
+          thread("e".repeat(16), { author: MAINTAINER, body: "Won't fix: not tracked." }),
+        ],
+      });
+      expect((await review.getChangeRequest()).declined).toEqual([
+        {
+          by: AUTHOR,
+          fingerprint: A,
+          title: "t",
+          file: "src/login.ts",
+          reason: "Won't fix: the gateway validates the token first.",
+        },
+        {
+          by: MAINTAINER,
+          fingerprint: B,
+          title: "t",
+          file: "src/login.ts",
+          reason: "Sessions are short-lived here.",
+        },
+      ]);
+      const none = fixture.conversation({
+        threads: [thread(A, { author: MAINTAINER, body: "Won't fix: no review yet." })],
+      });
+      expect((await none.review.getChangeRequest()).declined).toBeUndefined();
+    });
+
     it("trusts the earlier state only when ocra last edited its summary", async () => {
       const trusted = fixture.conversation({
         comments: [{ author: OCRA, body: summaryWith([A]) }],

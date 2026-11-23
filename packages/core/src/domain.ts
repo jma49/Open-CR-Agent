@@ -130,6 +130,9 @@ export interface ChangeRequest {
   // `/ocra remember <note>` comments from people with write access: what
   // they want future reviews to know (ADR-0040). `ref` names the comment.
   remember?: { by: string; note: string; ref: string }[];
+  // Findings of the earlier review that someone with write access declined
+  // in their thread, with what they said (ADR-0069).
+  declined?: { by: string; fingerprint: string; title: string; file: string; reason: string }[];
 }
 
 export const riskTierSchema = z.enum(["trivial", "lite", "full"]);

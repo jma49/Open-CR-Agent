@@ -5,11 +5,11 @@ import { learningDrafter } from "@open-cr-agent/core/internal";
 import { EXIT } from "../io/exit.js";
 import { forTerminal } from "../io/terminal.js";
 import { UsageError } from "../io/usage-error.js";
-import { acceptedFindingCandidates } from "./learn/accepted-findings.js";
+import { acceptedFindingCandidates, declinedFindingCandidates } from "./learn/accepted-findings.js";
 import { DEFAULT_MAX, parseLearnArgs } from "./learn/args.js";
 import { documentCandidates } from "./learn/documents.js";
 import { fixCandidates } from "./learn/fix-commits.js";
-import { type LearnResult, learnFrom } from "./learn/pipeline.js";
+import { type Candidate, type LearnResult, learnFrom } from "./learn/pipeline.js";
 import { proposeLearnings } from "./learn/propose.js";
 import { proposedLearnings } from "./learn/proposed.js";
 import { rememberedCandidates } from "./learn/remembered.js";
@@ -26,7 +26,9 @@ export const LEARN_USAGE = `Usage: ocra learn <mine|feedback|import <file.md>...
 Drafts learnings for .ocra/learnings/, one helper model call each:
   mine        from the fix commits on HEAD's first-parent line, newest first
   feedback    from the findings the team accepted in .ocra/memory.json,
-              with the reason it gave, newest first
+              with the reason it gave, newest first; with --pr or --mr,
+              also from the findings of its review that someone with write
+              access declined in their thread, with what they said
   import      from each ## section of the Markdown files named that names
               files of the repository
   remember    from each "/ocra remember <note>" on --pr or --mr by someone
@@ -47,7 +49,8 @@ Options:
   --project <id|path> The GitLab project: --mr's, or where --propose opens
                       it (needs GITLAB_TOKEN)
   --require-review    With --propose: leave it for a person to merge
-  --pr <n>, --mr <n>  With remember: the pull or merge request it reads
+  --pr <n>, --mr <n>  With remember or feedback: the pull or merge request
+                      it reads
   --max <n>           Drafts at most (default: ${DEFAULT_MAX})
   --max-cost-usd <n>  Spend limit (default: the configuration's maxCostUsd)
   -h, --help          Show help
@@ -58,7 +61,7 @@ const SOURCES = {
   mine: { what: "fix commits", candidates: (run: ResolvedRun) => fixCandidates(run.root) },
   feedback: {
     what: "accepted findings",
-    candidates: (run: ResolvedRun) => acceptedFindingCandidates(run.target.trusted),
+    candidates: (run: ResolvedRun) => feedbackCandidates(run),
   },
   remember: {
     what: "remembered notes",
@@ -71,6 +74,17 @@ const SOURCES = {
   },
 } as const;
 type Source = keyof typeof SOURCES;
+const READS_CHANGE: ReadonlySet<string> = new Set<Source>(["remember", "feedback"]);
+
+// The repository's accepted findings, then the pull or merge request's
+// declined ones that the repository does not already hold.
+async function feedbackCandidates(run: ResolvedRun): Promise<Candidate[]> {
+  const accepted = await acceptedFindingCandidates(run.target.trusted);
+  if (run.target.changeRequestNumber === undefined) return accepted;
+  const held = new Set(accepted.map((c) => c.ref));
+  const declined = await declinedFindingCandidates(run.vcs, run.target.trusted);
+  return [...accepted, ...declined.filter((c) => !held.has(c.ref))];
+}
 
 export async function learnCommand(
   argv: string[],
@@ -82,12 +96,11 @@ export async function learnCommand(
     io.out.write(LEARN_USAGE);
     return EXIT.ok;
   }
-  if ((args.source === "remember") !== (args.change !== undefined)) {
-    throw new UsageError(
-      args.source === "remember"
-        ? "ocra learn remember needs --pr or --mr"
-        : "--pr and --mr go with ocra learn remember",
-    );
+  if (args.source === "remember" && args.change === undefined) {
+    throw new UsageError("ocra learn remember needs --pr or --mr");
+  }
+  if (args.change !== undefined && !READS_CHANGE.has(args.source)) {
+    throw new UsageError("--pr and --mr go with ocra learn remember and ocra learn feedback");
   }
   const reviewArgs: ReviewArgs = {
     target: { mode: "workspace" },
