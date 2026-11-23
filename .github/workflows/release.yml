@@ -147,16 +147,15 @@ jobs:
           version=$(node -p 'require("./packages/cli/package.json").version')
           # The registry can take minutes to serve a version it just accepted,
           # longer for some packages than others (0.2.0 waited on three while
-          # cli was served), and the image installs every one of them and
-          # checks their attestations, which can lag the version further
-          # (0.11.0: a 404 for one package's attestations).
+          # cli was served). The image installs them all and checks their
+          # attestations, and a version can be listed before either downloads.
+          served() { url=$(npm view "$1@$version" "$2" --prefer-online 2>/dev/null || true); [ -n "$url" ] && curl -fsS --max-time 60 -o /dev/null "$url"; }
           # shellcheck disable=SC2016 # JavaScript, not shell, expands ${…} here
           packages=$(node -e 'const fs = require("fs"); for (const d of fs.readdirSync("packages")) { const j = JSON.parse(fs.readFileSync(`packages/${d}/package.json`)); if (!j.private) console.log(j.name); }')
           for _ in $(seq 1 60); do
             missing=""
             for p in $packages; do
-              url=$(npm view "$p@$version" dist.attestations.url --prefer-online 2>/dev/null || true)
-              if [ -z "$url" ] || ! curl -fsS --max-time 20 -o /dev/null "$url"; then missing="$missing $p"; fi
+              if ! { served "$p" dist.tarball && served "$p" dist.attestations.url; }; then missing="$missing $p"; fi
             done
             [ -z "$missing" ] && exit 0
             sleep 10
