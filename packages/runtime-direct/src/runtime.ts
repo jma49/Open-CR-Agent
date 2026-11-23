@@ -25,10 +25,12 @@ import {
   WRAP_UP_STEPS,
   WRAP_UP_TOOLS,
 } from "@open-cr-agent/core";
+import { anthropicWire } from "./anthropic.js";
 import { EffortLedger } from "./effort.js";
 import { runLoop } from "./loop.js";
-import type { Endpoint } from "./openai.js";
+import { openaiWire } from "./openai.js";
 import { RECORD_DIR_ENV, recordingFetch } from "./record.js";
+import type { Endpoint, Wire } from "./wire.js";
 
 export interface DirectRuntimeOptions extends RuntimeOptions {
   // Tests point this at a server of their own; otherwise requests honor the
@@ -37,6 +39,7 @@ export interface DirectRuntimeOptions extends RuntimeOptions {
 }
 
 interface Target {
+  wire: Wire;
   endpoint: Endpoint;
   model: string;
   price: ModelPrice;
@@ -48,13 +51,15 @@ interface Call {
   model: string;
 }
 
-// Talks to the declared OpenAI-compatible endpoints itself: no OpenCode
-// process, no catalog fetch, no package install, nothing on disk. A model of
+// Talks to the declared endpoints itself, in OpenAI's chat completions or
+// Anthropic's Messages protocol as each declares: no OpenCode process, no
+// catalog fetch, no package install, nothing on disk. A model of
 // a provider that is not declared in configuration is refused, since the
 // runtime knows no other address to send code to.
 export class DirectRuntime implements AgentRuntime {
   readonly name = "direct";
-  // The chat completions protocol takes both settings.
+  // The chat completions protocol takes both settings; an agent on a
+  // Messages endpoint reports them as not applied.
   readonly sampling: AppliedSampling;
   private readonly chains: ChainRunner;
   private readonly tools: readonly ToolDefinition[];
@@ -176,9 +181,9 @@ export class DirectRuntime implements AgentRuntime {
   // effort is recorded.
   private call({ agent, effort, model }: Call) {
     const { providerID } = parseModel(model);
-    const style = this.options.providers?.[providerID]?.effort;
+    const takesSampling = this.options.providers?.[providerID]?.api !== "anthropic";
     return {
-      params: this.efforts.params(agent, effort, model, style),
+      settings: this.efforts.params(agent, effort, model, takesSampling),
       onEffortRefused: () => this.efforts.refuse(agent, model),
     };
   }
@@ -192,7 +197,7 @@ export class DirectRuntime implements AgentRuntime {
     if (!provider) {
       return new OcraError(
         "CONFIG_INVALID",
-        `"${model}" names no provider declared in configuration; the direct runtime reaches only declared OpenAI-compatible endpoints (use the opencode runtime for ${providerID})`,
+        `"${model}" names no provider declared in configuration; the direct runtime reaches only declared endpoints (use the opencode runtime for ${providerID})`,
       );
     }
     const price = provider.models[modelID];
@@ -212,6 +217,7 @@ export class DirectRuntime implements AgentRuntime {
     const { provider, modelID, price } = declared;
     const key = provider.apiKeyEnv ? this.options.env[provider.apiKeyEnv] : undefined;
     return {
+      wire: provider.api === "anthropic" ? anthropicWire : openaiWire(provider.effort),
       endpoint: {
         baseUrl: provider.baseUrl,
         ...(key ? { apiKey: key } : {}),

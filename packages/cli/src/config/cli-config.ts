@@ -195,6 +195,7 @@ function toProviders(
     Object.entries(declared).map(([id, p]) => [
       id,
       {
+        ...(p.type === "anthropic" ? { api: "anthropic" as const } : {}),
         baseUrl: p.baseUrl,
         ...(p.apiKeyEnv ? { apiKeyEnv: p.apiKeyEnv } : {}),
         ...(p.effort ? { effort: p.effort } : {}),

@@ -366,7 +366,10 @@ export const configSchema: z.ZodObject<{
     }, z.core.$strict>>>;
     pluginSettings: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
     providers: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodObject<{
-        type: z.ZodLiteral<"openai-compatible">;
+        type: z.ZodEnum<{
+            anthropic: "anthropic";
+            "openai-compatible": "openai-compatible";
+        }>;
         baseUrl: z.ZodURL;
         apiKeyEnv: z.ZodOptional<z.ZodString>;
         models: z.ZodRecord<z.ZodString, z.ZodObject<{

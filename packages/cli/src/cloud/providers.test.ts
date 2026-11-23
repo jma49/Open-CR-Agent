@@ -17,6 +17,7 @@ const listing = {
       paths: ["/chat/completions", "/v1/chat/completions", "/anthropic/v1/messages"],
     },
     { name: "kimi-coding", paths: ["/v1/messages"] },
+    { name: "embeddings", paths: ["/v1/embeddings"] },
   ],
 };
 
@@ -234,10 +235,29 @@ describe("models through ocra Cloud", () => {
     expect(off.calls).toEqual([]);
 
     const t = setup({});
-    for (const model of ["ocra-kimi-coding/kimi", "ocra-nope/m"]) {
+    for (const model of ["ocra-embeddings/e1", "ocra-nope/m"]) {
       const e = await failure(withCloudProviders([[model]], {}, {}, t.deps, t.warn));
       expect(isOcraError(e) && e.code).toBe("CONFIG_INVALID");
     }
+  });
+
+  it("declares a provider that only speaks Anthropic's Messages protocol as one", async () => {
+    const t = setup({});
+    const out = await withCloudProviders(
+      [["ocra-kimi-coding/kimi", "ocra-deepseek/chat"]],
+      {},
+      {},
+      t.deps,
+      t.warn,
+    );
+    expect(out.providers["ocra-kimi-coding"]).toEqual({
+      api: "anthropic",
+      baseUrl: `${SERVER}/api/gateway/kimi-coding`,
+      apiKeyEnv: CLOUD_TOKEN_ENV,
+      models: { kimi: { input: 0, output: 0 } },
+    });
+    // A provider with both is reached through its chat completions.
+    expect(out.providers["ocra-deepseek"]).not.toHaveProperty("api");
   });
 
   it("refuses a providers answer that is not a list, with an ocra error, not a crash", async () => {
@@ -257,7 +277,7 @@ describe("models through ocra Cloud", () => {
       withCloudProviders([["ocra-openrouter/m"]], {}, {}, odd.deps, odd.warn),
     );
     expect(isOcraError(e) && e.code).toBe("CONFIG_INVALID");
-    expect(errorMessage(e)).toContain('no OpenAI-compatible chat endpoint for "openrouter"');
+    expect(errorMessage(e)).toContain('no chat completions or Messages endpoint for "openrouter"');
   });
 
   it("takes the effort style ocra Cloud lists, and refuses one it does not know", async () => {

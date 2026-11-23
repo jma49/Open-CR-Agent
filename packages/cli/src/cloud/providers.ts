@@ -131,18 +131,19 @@ export async function withCloudProviders(
         `ignoring ${paths.length - valid.length} gateway path(s) ocra Cloud listed for "${name}" that are not plain paths`,
       );
     }
-    const chat = valid.find((path) => path.endsWith("/chat/completions"));
-    if (!chat) {
+    const route = gatewayRoute(valid);
+    if (!route) {
       throw new OcraError(
         "CONFIG_INVALID",
-        `ocra Cloud has no OpenAI-compatible chat endpoint for "${name}" (named by ${id})`,
+        `ocra Cloud has no chat completions or Messages endpoint for "${name}" (named by ${id})`,
       );
     }
     declared[id] = {
-      baseUrl: `${session.server}/api/gateway/${name}${chat.slice(0, -"/chat/completions".length)}`,
+      ...(route.api === "anthropic" ? { api: route.api } : {}),
+      baseUrl: `${session.server}/api/gateway/${name}${route.prefix}`,
       apiKeyEnv: CLOUD_TOKEN_ENV,
       models: Object.fromEntries([...modelIds].map((m) => [m, { input: 0, output: 0 }])),
-      ...effortStyleOf(entry?.effort, name, warn),
+      ...(route.api === "openai" ? effortStyleOf(entry?.effort, name, warn) : {}),
     };
   }
   warn(
@@ -169,6 +170,22 @@ export async function withCloudProviders(
     enumerable: true,
   });
   return { providers: declared, env: live, stop: () => token.stop() };
+}
+
+const CHAT_PATH = "/chat/completions";
+const MESSAGES_PATH = "/v1/messages";
+
+// The protocol a gateway provider is declared with and the path its endpoint
+// sits under: OpenAI's chat completions where the provider has them, else
+// Anthropic's Messages, the only API some providers offer.
+function gatewayRoute(
+  paths: readonly string[],
+): { api: NonNullable<CustomProvider["api"]>; prefix: string } | undefined {
+  const chat = paths.find((path) => path.endsWith(CHAT_PATH));
+  if (chat) return { api: "openai", prefix: chat.slice(0, -CHAT_PATH.length) };
+  const messages = paths.find((path) => path.endsWith(MESSAGES_PATH));
+  if (messages) return { api: "anthropic", prefix: messages.slice(0, -MESSAGES_PATH.length) };
+  return undefined;
 }
 
 function minutes(ms: number): number {

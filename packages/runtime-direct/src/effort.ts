@@ -1,13 +1,12 @@
 import type { AppliedSettings, Effort, Sampling } from "@open-cr-agent/core";
-import type { CallParams } from "./openai.js";
-
-export type EffortStyle = "openai" | "openrouter";
+import type { CallSettings } from "./wire.js";
 
 // What each call sends besides the conversation, and what the run applied
 // per agent (ADR-0025). Reasoning models refuse a temperature (OpenAI) or
 // need their own (Anthropic), so a call that asks for an effort other than
 // "none" sends no sampling settings, even after its endpoint refused the
-// effort: the agent's calls stay alike within a run.
+// effort: the agent's calls stay alike within a run. A protocol that takes
+// no sampling settings (Anthropic's Messages) is sent none at all.
 export class EffortLedger {
   // Models whose endpoint refused the effort parameter: later calls go
   // without it instead of paying for another refusal.
@@ -24,16 +23,18 @@ export class EffortLedger {
     agent: string,
     effort: Effort | undefined,
     model: string,
-    style: EffortStyle = "openai",
-  ): CallParams {
-    if (effort === undefined) return { ...this.sampling };
-    const keepsSampling = effort === "none";
+    takesSampling = true,
+  ): CallSettings {
+    const asked = requested(this.sampling);
+    if (effort === undefined) {
+      if (takesSampling) return { ...this.sampling };
+      if (asked.length > 0) this.record(agent, true, asked);
+      return {};
+    }
+    const keepsSampling = takesSampling && effort === "none";
     const sends = !this.refused.has(model);
-    this.record(agent, sends, keepsSampling ? [] : requested(this.sampling));
-    return {
-      ...(keepsSampling ? this.sampling : {}),
-      ...(sends ? effortParam(effort, style) : {}),
-    };
+    this.record(agent, sends, keepsSampling ? [] : asked);
+    return { ...(keepsSampling ? this.sampling : {}), ...(sends ? { effort } : {}) };
   }
 
   refuse(agent: string, model: string): void {
@@ -54,10 +55,6 @@ export class EffortLedger {
       ...(left.length > 0 ? { notApplied: left } : {}),
     });
   }
-}
-
-function effortParam(effort: Effort, style: EffortStyle): CallParams {
-  return style === "openrouter" ? { reasoning: { effort } } : { reasoning_effort: effort };
 }
 
 function requested(sampling: Sampling): (keyof Sampling)[] {

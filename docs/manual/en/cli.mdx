@@ -410,7 +410,7 @@ ocra logout                                   # ends the session on the server a
 - If ocra Cloud is unreachable (network error, 5xx, 429), the session is kept; a review warns once and runs without your account's rules, limits (`maxCostUsd` included), models and memory, and uploads nothing; a review naming an `ocra-` model stops with an error, and `ocra whoami` exits 2. A 404 for account settings means none, without a warning.
 - If `ocra login` cannot read your login after getting tokens, it saves the session and says the login is unknown.
 
-**Models through ocra Cloud.** While signed in, `ocra-<provider>/<model>` goes through ocra Cloud with the key stored there for `<provider>` (an OpenAI-compatible chat endpoint the server lists):
+**Models through ocra Cloud.** While signed in, `ocra-<provider>/<model>` goes through ocra Cloud with the key stored there for `<provider>` (a chat completions endpoint the server lists, or its Messages endpoint for a provider that has no other, such as `ocra-anthropic/<model>`):
 
 ```json
 { "runtime": "direct", "models": { "standard": "ocra-openrouter/qwen/qwen3.8-27b:free" } }

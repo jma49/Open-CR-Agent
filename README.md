@@ -220,7 +220,7 @@ Users install only `@open-cr-agent/cli`; the rest are for embedding:
 |---|---|
 | `@open-cr-agent/core` | Domain types, pipeline, `VcsAdapter` / `AgentRuntime` / plugin contracts |
 | `@open-cr-agent/runtime-opencode` | `AgentRuntime` on the OpenCode SDK |
-| `@open-cr-agent/runtime-direct` | `AgentRuntime` over declared OpenAI-compatible endpoints |
+| `@open-cr-agent/runtime-direct` | `AgentRuntime` over declared endpoints, in OpenAI's or Anthropic's protocol |
 | `@open-cr-agent/vcs-platform` | The review conversation platforms share |
 | `@open-cr-agent/vcs-github` | `VcsAdapter` for GitHub pull requests |
 | `@open-cr-agent/vcs-gitlab` | `VcsAdapter` for GitLab merge requests |

@@ -5,6 +5,7 @@ import {
   scriptedEndpoint,
 } from "../../core/src/runtime/scripted-endpoint.fakes.js";
 import { runLoop } from "./loop.js";
+import { openaiWire } from "./openai.js";
 
 const endpoints: FakeEndpoint[] = [];
 afterEach(async () => {
@@ -39,6 +40,7 @@ describe("runLoop", () => {
     };
 
     const attempt = await runLoop({
+      wire: openaiWire(),
       endpoint: { baseUrl: server.url },
       model: "m1",
       price: { input: 1, output: 1 },
