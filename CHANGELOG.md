@@ -6,6 +6,22 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-11-23
+
+`ocra mend` runs one round of the fix loop over the findings a person accepted, `.ocra/rules.md` holds review rules in plain language, and `--depth` picks how thorough a review is. The Action's new tag is `ocrahq/Open-CR-Agent@v0.20.0`.
+
+### Added
+
+- `ocra mend` runs one round of the fix loop over accepted findings (`--findings`, `--level propose|commit`, `--state`, `--head`, `--protect`, `--json`): a checked fix each, a gate over what may be edited, one verifier call, then one unforced commit or the edits printed; it exits 3 when the head moved or the branch cannot be written to.
+- `mendResultSchema`, `mendStateSchema`, `mendFindingsSchema` and the `MEND_*` vocabularies in `@open-cr-agent/cloud-contract`.
+- `.ocra/rules.md`: review rules in plain language; a section whose heading names a path applies to files under it, every other section to every file.
+- `@open-cr-agent/cloud-contract`: `RULES_MARKDOWN_PATH` and `MAX_RULES_MARKDOWN_CHARS`, so ocra Cloud checks the file as reviews read it.
+- `depth` (`--depth`): `quick`, `standard` or `deep`, a preset of reviewers, effort, `ultra`, pre-existing findings and the inline floor that fills what the configuration leaves unset. ocra Cloud account settings take it too.
+
+### Changed
+
+- `ocra init` writes a workflow that pins the Action to v0.19.0.
+
 ## [0.19.0] - 2026-11-23
 
 `ocra fix` writes a checked fix for one reported finding, inline comments can be limited by severity and number and read at a glance, and findings the direct runtime used to refuse for their arguments are kept. The packages' `repository` is `ocrahq/Open-CR-Agent`. The Action's new tag is `ocrahq/Open-CR-Agent@v0.19.0`.
@@ -704,7 +720,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.16.0...v0.17.0
