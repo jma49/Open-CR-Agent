@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { CompletionRequest, OcraPlugin } from "@open-cr-agent/core";
 import { scratchRepos } from "@open-cr-agent/test-support";
@@ -351,6 +351,28 @@ describe("ocra learn mine", () => {
     const text = readFileSync(join(clone, result.out.trim()), "utf8");
     expect(text).toContain("kind: remember");
     expect(text).toContain("ref: o/r#7/4");
+  });
+
+  it("takes ocra's account from --config, as a review does", async () => {
+    const { clone, base, head } = changeRequestFixture();
+    const note = {
+      id: 4,
+      node_id: "IC_4",
+      user: { login: "maintainer", type: "User" },
+      body: "/ocra remember Retries must never be negative in app.ts.",
+    };
+    const config = join(clone, "..", `learn-config-${Date.now()}.json`);
+    writeFileSync(config, JSON.stringify({ github: { botLogin: "maintainer" } }));
+    const seen: CompletionRequest[] = [];
+    const result = await learn(
+      clone,
+      seen,
+      ["--pr", "7", "--repo", "o/r", "--config", config],
+      { env: { GITHUB_TOKEN: "t" }, fetch: fakeGitHub7(base, head, [note]).fetchImpl },
+      "remember",
+    );
+    expect(result.code).toBe(0);
+    expect(seen).toHaveLength(0);
   });
 
   it("refuses remember without a pull or merge request, and --pr elsewhere", async () => {

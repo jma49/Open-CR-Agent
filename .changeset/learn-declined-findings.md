@@ -7,3 +7,4 @@
 ### Added
 
 - `ocra learn feedback --pr <n>` (or `--mr <iid>`) also drafts learnings from the findings of the pull or merge request's review that someone with write access declined in their thread, with what they said (`ChangeRequest.declined`).
+- `ocra learn --config <file>` reads that configuration file instead of the repository's, as `ocra review` does.

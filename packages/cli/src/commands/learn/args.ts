@@ -14,6 +14,8 @@ export interface LearnArgs {
   // Leave the proposal to a person whatever learnings.requireReview says.
   requireReview: boolean;
   maxCostUsd?: number;
+  // Read instead of the repository's .ocra/config.json.
+  configFile?: string;
   // The pull or merge request `ocra learn remember` reads.
   change?: Pick<ReviewArgs, "pullRequest" | "mergeRequest">;
   // Where --propose opens its change request, when a flag names it.
@@ -34,6 +36,7 @@ export function parseLearnArgs(argv: string[], sources: readonly string[]): Lear
       repo: { type: "string" },
       mr: { type: "string" },
       project: { type: "string" },
+      config: { type: "string" },
       help: { type: "boolean", short: "h" },
     },
   });
@@ -60,6 +63,7 @@ export function parseLearnArgs(argv: string[], sources: readonly string[]): Lear
   if (values["require-review"] && !values.propose) {
     throw new UsageError("--require-review goes with --propose");
   }
+  if (values.config === "") throw new UsageError("--config needs a file");
   const change = changeOf(values, values.propose === true, "--propose");
   const proposeOn = placeOf(values);
   return {
@@ -69,6 +73,7 @@ export function parseLearnArgs(argv: string[], sources: readonly string[]): Lear
     propose: values.propose === true,
     requireReview: values["require-review"] === true,
     ...(maxCostUsd !== undefined ? { maxCostUsd } : {}),
+    ...(values.config !== undefined ? { configFile: values.config } : {}),
     ...(change ? { change } : {}),
     ...(values.propose && proposeOn ? { proposeOn } : {}),
   };

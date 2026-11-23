@@ -53,6 +53,8 @@ Options:
                       it reads
   --max <n>           Drafts at most (default: ${DEFAULT_MAX})
   --max-cost-usd <n>  Spend limit (default: the configuration's maxCostUsd)
+  --config <file>     Read this configuration file instead of the
+                      repository's .ocra/config.json
   -h, --help          Show help
 `;
 
@@ -107,6 +109,7 @@ export async function learnCommand(
     format: "text",
     ...args.change,
     ...(args.maxCostUsd !== undefined ? { maxCostUsd: args.maxCostUsd } : {}),
+    ...(args.configFile !== undefined ? { configFile: args.configFile } : {}),
   };
   const run = await resolveRun(reviewArgs, io, deps, { logged: false });
   const maxCostUsd = args.maxCostUsd ?? run.config.maxCostUsd;
