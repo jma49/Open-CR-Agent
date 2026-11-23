@@ -17,7 +17,7 @@ ocra Cloud holds a finding in the shape the CLI uploads it (`sharedFindingSchema
 4. **One call and the same checks:** the candidate goes through `proposeFixes`, so the fixer role, its prompt (no change, so no evaluation run), the neutralization of the finding's text as data, the spend limit and `checkFix` with the tree-sitter checker are the review's. The command's usage is the call's, reported in the result.
 5. **It never writes.** The fix is printed; nothing is committed or pushed, and ocra Cloud commits it as it commits a review's fix.
 6. **The result is the contract's `fixResultSchema`**: `fingerprint`, `headSha`, `outcome` (`proposed`, `rejected`, `not_fixable`, `stale`, `head_moved`), `fix` (only when proposed), `reason` (the review's rejections, `FIX_REJECTIONS`, plus `not_candidate`; none for `proposed` and `head_moved`) and `usage`. The contract's `FIX_REJECTIONS` is a copy of core's, held equal by a test, since the contract depends on Zod alone.
-7. **Exit codes:** `0` when the command ran, whether or not a fix was kept (the result says why not); `3` when the finding no longer applies to the head (`stale`, `head_moved`), as `ocra generate` exits 3 when the branch moved; `2` for usage, input, configuration and model errors; `130` when interrupted.
+7. **Exit codes:** `0` when the command ran, whether or not a fix was kept (the result says why not); `3` when the finding no longer applies to the head (`stale`, `head_moved`), as `ocra generate` exits 3 when the branch moved; `2` for usage, input and configuration errors and a runtime that cannot start (a failed call is `rejected` with `failed`, as in a review); `130` when interrupted.
 
 ## Consequences
 

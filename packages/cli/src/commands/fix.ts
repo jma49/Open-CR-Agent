@@ -47,7 +47,8 @@ Options:
   -h, --help          Show help
 
 Exit codes: 0 a fix, or none for a reason the output gives; 3 the finding's
-code is gone (stale) or the head moved; 2 usage, input or model errors.
+code is gone (stale) or the head moved; 2 usage, input or configuration
+errors, or a runtime that cannot start (a failed call is rejected: failed).
 `;
 
 // A stored finding is a few fields of at most a few kilobytes each.

@@ -396,7 +396,7 @@ ocra 通过审查的访问策略读取变更和问题所在文件在 head 上的
 | `stale` | head 上的文件里已经没有问题的代码，或文件已不存在。请重新审查变更 | `stale` | `3` |
 | `head_moved` | head 不是 `--head` | `null` | `3` |
 
-存储的文本被脱敏或截断过（`redacted`、`truncated`）、而代码又找不到的问题，结果是 `not_candidate` 而不是 `stale`：它存储的代码可能不是文件里的样子。用法、输入、配置和模型错误的退出码为 `2`。结构是 `@open-cr-agent/cloud-contract` 里的 `fixResultSchema`（[ADR-0077](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0077-fix-one-finding.md)）。v0.19.0 新增。
+存储的文本被脱敏或截断过（`redacted`、`truncated`）、而代码又找不到的问题，结果是 `not_candidate` 而不是 `stale`：它存储的代码可能不是文件里的样子。用法、输入和配置错误，以及运行时无法启动，退出码为 `2`；模型调用失败时结果是 `rejected`，理由为 `failed`。结构是 `@open-cr-agent/cloud-contract` 里的 `fixResultSchema`（[ADR-0077](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0077-fix-one-finding.md)）。v0.19.0 新增。
 
 ## ocra metrics
 
