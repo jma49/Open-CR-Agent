@@ -147,6 +147,62 @@ describe("a provider declared in configuration", () => {
     expect(proxy.seen.filter((to) => !to.startsWith(CATALOG))).toEqual([]);
   }, 90_000);
 
+  it("stops a call OpenCode would retry at midnight, as a daily limit, within one activity poll", async () => {
+    let calls = 0;
+    const gateway = await listen(
+      createServer((req, res) => {
+        req.resume();
+        req.on("end", () => {
+          calls += 1;
+          // A gateway at its daily cap: wait until midnight.
+          res.writeHead(429, { "Content-Type": "application/json", "Retry-After": "50000" });
+          res.end(JSON.stringify({ error: "daily_limit" }));
+        });
+      }),
+    );
+    const runtime = new OpenCodeRuntime({
+      models: { light: ["local/m1"] },
+      tools: [],
+      env: {
+        PATH: process.env.PATH,
+        HOME: process.env.HOME,
+        TMPDIR: process.env.TMPDIR,
+        LOCAL_KEY: "sk-local-secret",
+        NO_PROXY: "127.0.0.1",
+        no_proxy: "127.0.0.1",
+      },
+      providers: {
+        local: {
+          baseUrl: `${gateway.url}/v1`,
+          apiKeyEnv: "LOCAL_KEY",
+          models: { m1: { input: 3, output: 15 } },
+        },
+      },
+    });
+    const started = Date.now();
+    try {
+      const failed = await runtime
+        .complete(
+          {
+            tier: "light",
+            system: "Answer in one word.",
+            user: "Are you there?",
+            timeoutMs: 30_000,
+          },
+          AbortSignal.timeout(40_000),
+        )
+        .then(
+          () => undefined,
+          (error: unknown) => error,
+        );
+      expect(String(failed)).toContain("daily_limit");
+      expect(Date.now() - started).toBeLessThan(25_000);
+      expect(calls).toBe(1);
+    } finally {
+      await runtime.dispose();
+    }
+  }, 90_000);
+
   it("keeps the key itself out of OpenCode's configuration", () => {
     const config = openCodeConfig(
       { url: "http://127.0.0.1:1/mcp", headers: {} },
