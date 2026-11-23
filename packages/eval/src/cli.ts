@@ -7,6 +7,7 @@ import { goldenImport } from "./commands/golden-import.js";
 import { list } from "./commands/list.js";
 import { noise } from "./commands/noise.js";
 import type { Output } from "./commands/options.js";
+import { perf } from "./commands/perf.js";
 import { run } from "./commands/run.js";
 import { rescore } from "./commands/score.js";
 import { trend } from "./commands/trend.js";
@@ -20,6 +21,16 @@ Commands:
   context [--without <sources>] [--guidelines <scope>]
                        Each review task's first prompt by context source: tokens,
                        cuts and duplicated lines (free, no model)
+  perf --from <ref> [--to <ref>] [--repo-dir <clone>] [--latency-ms <n>]
+       [--runtime <direct|opencode>] [--budget <file>]
+                       What one review of a local range costs around the model
+                       calls, with a scripted model (free, no network): wall
+                       time, ocra's CPU time and peak memory, git processes,
+                       and the requests and input tokens of each model call.
+                       --latency-ms is what each request waits (default 0);
+                       --budget is a JSON file of ceilings (wallMs, cpuMs,
+                       peakMemoryMb, gitProcesses, modelRequests,
+                       inputTokens). Exit 0 within the budget, 1 over it
   run                  Review the selected PRs with ocra, then score them
   score <run-dir>      Re-score an existing run
   adjudicate <run-dir> Record the labels typed into a golden run's adjudication.json in its cases
@@ -125,6 +136,7 @@ export async function main(
     if (command === "list") return await list(rest, out);
     if (command === "ceiling") return await ceiling(rest, out, err);
     if (command === "context") return await context(rest, out, err);
+    if (command === "perf") return await perf(rest, out);
     if (command === "run") return await run(rest, out, err, env);
     if (command === "score") return await rescore(rest, out, err, env);
     if (command === "adjudicate") return await adjudicate(rest, out);

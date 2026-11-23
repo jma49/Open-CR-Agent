@@ -1,0 +1,7 @@
+{
+  "cpuMs": 4000,
+  "peakMemoryMb": 300,
+  "gitProcesses": 40,
+  "modelRequests": 220,
+  "inputTokens": 600000
+}
