@@ -45,5 +45,5 @@ export const docsReviewer: ReviewerDefinition = {
   category: "documentation",
   modelTier: "light",
   systemPrompt: SYSTEM_PROMPT,
-  scope: { minTier: "lite", ignore: [...TEST_FILES] },
+  scope: { minTier: "lite", ignore: [...TEST_FILES], span: "change" },
 };
