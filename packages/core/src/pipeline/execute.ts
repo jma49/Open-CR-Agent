@@ -113,6 +113,7 @@ export async function runJob(
       ...call,
       systemPrompt: prepared.prompt.system,
       userPrompt: prepared.prompt.user,
+      sharedPrefixes: prepared.prompt.shared,
       context: plan.context,
       timeoutMs: options.taskTimeoutMs,
     },
