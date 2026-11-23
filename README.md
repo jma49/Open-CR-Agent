@@ -32,7 +32,7 @@ English · [简体中文](README.zh-CN.md)
  └─────────── deterministic ─────────────┘   └─ LLM ─┘  └ code ┘  └ code ┘  └ LLM ┘  └ LLM ┘  └ code ┘
 ```
 
-Each (bundle, reviewer) cell is an isolated agent task that reports findings through a typed tool. Models fail over along a chain with a per-model circuit breaker; a failed task is a coverage gap in the report, not a failed run.
+Each (bundle, reviewer) cell is an isolated agent task that reports findings through a typed tool; the docs and agents-md reviewers take the change as a whole. Models fail over along a chain with a per-model circuit breaker; a failed task is a coverage gap in the report, not a failed run.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/agents-en-dark.svg">

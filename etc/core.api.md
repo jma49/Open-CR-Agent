@@ -1676,6 +1676,8 @@ export interface ReviewerScope {
     minTier?: RiskTier;
     // (undocumented)
     requiresGuidelines?: boolean;
+    // (undocumented)
+    span?: "bundle" | "change";
 }
 
 // @public (undocumented)

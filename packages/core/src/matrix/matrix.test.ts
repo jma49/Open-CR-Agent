@@ -7,7 +7,7 @@ import { docsReviewer } from "../review/reviewers/docs.js";
 import { planMatrix, planTasks } from "./matrix.js";
 
 function bundle(label: string, ...paths: string[]): Bundle {
-  return { label, files: paths.map((p) => ({ newPath: p, oldPath: p }) as FileDiff) };
+  return { label, files: paths.map((p) => ({ newPath: p, oldPath: p, patch: "" }) as FileDiff) };
 }
 
 function reviewer(id: string, scope?: ReviewerDefinition["scope"]): ReviewerDefinition {
@@ -78,6 +78,54 @@ describe("planMatrix", () => {
       "below_tier",
       "disabled",
       "below_tier",
+    ]);
+  });
+});
+
+describe("a reviewer that spans the change", () => {
+  const docs = reviewer("docs", { span: "change", ignore: ["**/*.test.ts"] });
+
+  it("gets the change in one task, after the per-bundle tasks, sensitive files first", () => {
+    const b = [
+      bundle("ui", "src/ui.ts", "src/ui.test.ts"),
+      bundle("auth", "src/auth/login.ts"),
+      bundle("tests", "src/api.test.ts"),
+    ];
+    const matrix = planMatrix(b, [docs, correctness], "full");
+    expect(cells(matrix)).toEqual([
+      ["correctness-2", ["src/auth/login.ts"]],
+      ["correctness-1", ["src/ui.ts", "src/ui.test.ts"]],
+      ["correctness-3", ["src/api.test.ts"]],
+      ["docs-1", ["src/auth/login.ts", "src/ui.ts"]],
+    ]);
+    expect(matrix.cells.at(-1)?.bundle.label).toBe("whole change");
+    expect(matrix.skipped).toEqual([
+      { reviewer: "docs", bundle: "tests", reason: "no_matching_files" },
+    ]);
+  });
+
+  it("keeps the label of the only bundle it reviews", () => {
+    const matrix = planMatrix([bundle("cli", "src/args.ts", "README.md")], [docs], "full");
+    expect(matrix.cells.map((c) => [c.taskId, c.bundle.label])).toEqual([["docs-1", "cli"]]);
+  });
+
+  it("splits a change too large for one task by files and by diff size", () => {
+    const sized = (path: string, chars: number) =>
+      ({ newPath: path, oldPath: path, patch: "x".repeat(chars) }) as FileDiff;
+    const small = Array.from({ length: 45 }, (_, i) => ({
+      label: `b${i}`,
+      files: [sized(`src/f${i}.ts`, 10)],
+    }));
+    const byFiles = planMatrix(small, [docs], "full").cells;
+    expect(byFiles.map((c) => [c.taskId, c.bundle.label, c.bundle.files.length])).toEqual([
+      ["docs-1", "whole change (1 of 3)", 20],
+      ["docs-2", "whole change (2 of 3)", 20],
+      ["docs-3", "whole change (3 of 3)", 5],
+    ]);
+
+    const large = ["a", "b", "c"].map((n) => ({ label: n, files: [sized(`src/${n}.ts`, 70_000)] }));
+    expect(planMatrix(large, [docs], "full").cells.map((c) => c.bundle.files.length)).toEqual([
+      1, 1, 1,
     ]);
   });
 });
