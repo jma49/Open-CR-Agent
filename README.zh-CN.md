@@ -94,7 +94,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@a326a54a23f0fe215aa3fb28063cdbd9ebd7d723 # v0.12.0
+      - uses: jma49/Open-CR-Agent@bb30772a7850fbd7df4ab09fb3a4982f749316a9 # v0.13.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
