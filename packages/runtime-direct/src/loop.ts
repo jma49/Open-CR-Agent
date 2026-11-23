@@ -150,15 +150,20 @@ class Conversation {
         }
         break;
       }
-      for (const call of response.toolCalls) {
-        outcome.toolCalls.push(call.function.name);
-        if (call.function.name === REVIEW_TOOLS.taskDone) done = true;
-        messages.push({
-          role: "tool",
-          tool_call_id: call.id,
-          content: await runTool(tools, call, input.context, outcome, uses),
-        });
-      }
+      // Together, as OpenCode runs a step's calls, so its searches share one
+      // grep; each call is recorded as it starts, in the order given.
+      const answers = await Promise.all(
+        response.toolCalls.map(async (call): Promise<ChatMessage> => {
+          outcome.toolCalls.push(call.function.name);
+          if (call.function.name === REVIEW_TOOLS.taskDone) done = true;
+          return {
+            role: "tool",
+            tool_call_id: call.id,
+            content: await runTool(tools, call, input.context, outcome, uses),
+          };
+        }),
+      );
+      messages.push(...answers);
       if (done) break;
     }
     outcome.text = texts.join("\n").trim();
