@@ -186,6 +186,7 @@ function outputTask(t: TaskOutcome): Output<"tasks">[number] {
     durationMs: t.durationMs,
     usage: outputUsage(t.usage),
     ...(t.error === undefined ? {} : { error: t.error }),
+    ...(t.quota === undefined ? {} : { quota: t.quota }),
     ...(t.ended === undefined ? {} : { ended: t.ended }),
     ...(t.reusedFrom === undefined ? {} : { reusedFrom: t.reusedFrom }),
     ...(t.wrapUp === undefined ? {} : { wrapUp: { findings: t.wrapUp.findings } }),

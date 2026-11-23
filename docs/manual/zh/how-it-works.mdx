@@ -69,6 +69,8 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Fi
 
 每条问题都标明核查（Verify）的结果：**已确认**、**不确定**或**未核查**（被跳过、失败或预算不足）。未经确认的 critical 照常显示为 critical 并标为未核实，但结论最高只到 `minor_issues`，一个模型未经核查的判断不能拦下改动。某条 critical 的核查失败或预算不足时，运行算作不完整（退出码 `3`），绝不会被当成通过；`verify: false` 时不算。Judge 既不能丢弃、也不能降级已确认的 critical；这类尝试会被忽略并记入警告。如果 Judge 被关闭、没有 `top` 模型或调用失败，问题不经裁决直接报告，规则照样适用。
 
+什么都没审查的运行没有结论：终端和 PR 摘要会写 “Not reviewed” 及原因（模型服务拒绝了全部调用时，说明是每日上限还是限流；JSON 报告里这些任务带有 `quota`：`daily_limit` 或 `rate_limit`），上传到 ocra Cloud 的记录也不带结论。
+
 结论**只是参考意见，不是安全门禁**（[原因](./security#结论不是安全门禁)）。
 
 ## 模式

@@ -1055,6 +1055,13 @@
           "error": {
             "type": "string"
           },
+          "quota": {
+            "type": "string",
+            "enum": [
+              "daily_limit",
+              "rate_limit"
+            ]
+          },
           "ended": {
             "type": "string",
             "enum": [

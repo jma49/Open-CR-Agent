@@ -6,7 +6,11 @@ import {
   toReportOutput,
   type Verification,
 } from "@open-cr-agent/core";
-import { serializeOutput, unconfirmedCriticals } from "@open-cr-agent/core/internal";
+import {
+  nothingReviewedSummary,
+  serializeOutput,
+  unconfirmedCriticals,
+} from "@open-cr-agent/core/internal";
 import { forTerminal } from "../../io/terminal.js";
 import { partlyReviewed, partlyReviewedCount } from "./partly-reviewed.js";
 
@@ -129,7 +133,7 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
 }
 
 function emptyMessage(report: ReviewReport, nothingReviewed: boolean, notReviewed: number): string {
-  if (nothingReviewed) return "Nothing was reviewed.";
+  if (nothingReviewed) return nothingReviewedSummary(report.tasks);
   if (notReviewed > 0) return "No issues found in the files that were reviewed.";
   const open = report.rereview
     ? report.rereview.notReproduced.length +

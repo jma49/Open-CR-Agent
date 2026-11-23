@@ -99,6 +99,12 @@ export interface ReviewContext {
 export const INCOMPLETE_ENDINGS = ["step_cap", "stopped_early"] as const;
 export type IncompleteEnding = (typeof INCOMPLETE_ENDINGS)[number];
 
+// Why every model a task could use refused it: a per-day limit, which a new
+// run meets again until it resets, or a rate limit that outlasted the run's
+// waits.
+export const QUOTA_STOPS = ["daily_limit", "rate_limit"] as const;
+export type QuotaStop = (typeof QUOTA_STOPS)[number];
+
 // What one attempt of a review task looked at and answered: the files it
 // read, the literals it searched for and its final text. Kept in the session
 // log, never in the report, so an analysis can tell a file the reviewer never
@@ -120,7 +126,8 @@ export type AgentEvent =
   // stopped without it, so its files count as only partly reviewed. wrapUp:
   // such an attempt was given one more turn to report what it had confirmed.
   | { type: "done"; taskId: string; ended?: IncompleteEnding; wrapUp?: { findings: number } }
-  | { type: "error"; taskId: string; error: string; retryable: boolean };
+  // quota: every model of the task's chain is out of quota for this run.
+  | { type: "error"; taskId: string; error: string; retryable: boolean; quota?: QuotaStop };
 
 export interface Usage {
   inputTokens: number;

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { EFFORT_LEVELS } from "../agent/settings.js";
-import { INCOMPLETE_ENDINGS, MODEL_TIERS } from "../contracts.js";
+import { INCOMPLETE_ENDINGS, MODEL_TIERS, QUOTA_STOPS } from "../contracts.js";
 import {
   anchorMethodSchema,
   riskTierSchema,
@@ -139,6 +139,8 @@ export const taskOutcomeSchema = z.strictObject({
   files: z.array(z.string()),
   status: taskStatusSchema,
   error: z.string().exactOptional(),
+  // Every model the task could use was out of quota.
+  quota: z.enum(QUOTA_STOPS).exactOptional(),
   ended: z.enum(INCOMPLETE_ENDINGS).exactOptional(),
   findings: z.int().nonnegative(),
   durationMs: z.number(),

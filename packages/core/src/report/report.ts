@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { AttemptRecord, IncompleteEnding, Usage } from "../contracts.js";
+import type { AttemptRecord, IncompleteEnding, QuotaStop, Usage } from "../contracts.js";
 import type { ProjectDocUse } from "../docs/project-docs.js";
 import type {
   AnchorMethod,
@@ -65,6 +65,30 @@ export function coverageGaps(run: {
   return { notReviewed, nothingReviewed: notReviewed > 0 && !reviewed, incomplete };
 }
 
+const NOTHING_REVIEWED = "Nothing was reviewed";
+const MAX_QUOTED_ERROR = 300;
+
+// Why a run reviewed nothing, for every surface that shows its summary: the
+// models refusing the calls is the reader's to fix (wait, or raise a limit),
+// which "no reviewer finished" does not tell them.
+export function nothingReviewedSummary(
+  tasks: readonly Pick<TaskOutcome, "status" | "error" | "quota">[],
+): string {
+  const failed = tasks.filter((t) => t.status === "failed");
+  const refused = failed.filter((t) => t.quota !== undefined);
+  if (failed.length > 0 && refused.length === failed.length) {
+    return refused.some((t) => t.quota === "daily_limit")
+      ? `${NOTHING_REVIEWED}: the model provider refused every call because a daily limit was reached. Run the review again after the limit resets.`
+      : `${NOTHING_REVIEWED}: the model provider refused every call because of a rate limit that outlasted the run's waits. Run the review again later.`;
+  }
+  const error = failed.find((t) => t.error !== undefined)?.error;
+  if (error !== undefined) {
+    const quoted = error.length > MAX_QUOTED_ERROR ? `${error.slice(0, MAX_QUOTED_ERROR)}…` : error;
+    return `${NOTHING_REVIEWED}: ${failed.length} review task(s) failed. The first error: ${quoted}`;
+  }
+  return `${NOTHING_REVIEWED}: no reviewer covered or finished any selected file.`;
+}
+
 // An incomplete review: it left an unfinished file or a critical finding
 // Verify could not check, so its result must never be read as a pass. The
 // exit code (3), SARIF, the pull request summary, the ocra Cloud upload and
@@ -108,6 +132,8 @@ export interface TaskOutcome {
   files: string[];
   status: TaskStatus;
   error?: string;
+  // Every model the task could use was out of quota, so no model reviewed it.
+  quota?: QuotaStop;
   // The task finished without its agent calling the done tool: its files
   // count as only partly reviewed.
   ended?: IncompleteEnding;
