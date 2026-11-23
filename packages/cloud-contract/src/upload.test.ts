@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import upload from "../fixtures/upload.json" with { type: "json" };
-import { MAX_FIELD } from "./limits.js";
+import { MAX_EVIDENCE, MAX_EVIDENCE_FIELD, MAX_FIELD } from "./limits.js";
 import { reviewUploadSchema, sharedFindingSchema, uploadAnswerSchema } from "./upload.js";
 
 const { about: _, ...body } = upload;
@@ -205,5 +205,28 @@ describe("the upload's answer", () => {
       findings: undefined,
       dropped: undefined,
     });
+  });
+});
+
+describe("a shared finding's evidence", () => {
+  const [finding] = body.findingList;
+
+  it("is kept as sent, and absent from an older upload", () => {
+    const evidence = ["`id` comes from `req.params`", "no caller escapes it"];
+    expect(sharedFindingSchema.parse({ ...finding, evidence }).evidence).toEqual(evidence);
+    expect(sharedFindingSchema.parse(body.findingList[1])).not.toHaveProperty("evidence");
+  });
+
+  it("reads as absent with too many entries, one too long, or not a list", () => {
+    for (const bad of [
+      Array(MAX_EVIDENCE + 1).fill("a fact"),
+      ["x".repeat(MAX_EVIDENCE_FIELD + 1)],
+      ["a fact", 3],
+      "a fact",
+    ]) {
+      const parsed = sharedFindingSchema.parse({ ...finding, evidence: bad });
+      expect(parsed.evidence, JSON.stringify(bad).slice(0, 60)).toBeUndefined();
+      expect(parsed.title).toBe(finding?.title);
+    }
   });
 });

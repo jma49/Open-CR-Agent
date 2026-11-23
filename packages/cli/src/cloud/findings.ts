@@ -1,5 +1,7 @@
 import {
   FINGERPRINT,
+  MAX_EVIDENCE,
+  MAX_EVIDENCE_FIELD,
   MAX_FINDINGS,
   MAX_TOTAL_BYTES,
   redactField,
@@ -52,8 +54,8 @@ export function sharedOutcomes(report: ReviewReport): {
 function share(f: Finding): SharedFinding {
   let redacted = false;
   let truncated = false;
-  const text = (value: string): string => {
-    const r = redactField(value);
+  const text = (value: string, max?: number): string => {
+    const r = redactField(value, max);
     redacted ||= r.redacted;
     truncated ||= r.truncated;
     return r.text;
@@ -74,6 +76,10 @@ function share(f: Finding): SharedFinding {
   };
   const fix = shareableFix(f);
   if (fix) shared.fix = fix;
+  const facts = f.evidence.map((e) => e.replace(/\s+/g, " ").trim()).filter(Boolean);
+  if (facts.length > 0) {
+    shared.evidence = facts.slice(0, MAX_EVIDENCE).map((e) => text(e, MAX_EVIDENCE_FIELD));
+  }
   if (f.lowConfidence) shared.lowConfidence = true;
   if (redacted) shared.redacted = true;
   if (truncated) shared.truncated = true;
@@ -91,8 +97,12 @@ function shareableFix({ fix }: Finding): SharedFix | undefined {
 
 // Bytes as sent, escapes included, so the body stays under the server's limit.
 function textBytes(f: SharedFinding): number {
-  return [f.title, f.body, f.suggestion ?? "", f.code ?? "", f.fix?.replacement ?? ""].reduce(
-    (sum, s) => sum + Buffer.byteLength(JSON.stringify(s)),
-    0,
-  );
+  return [
+    f.title,
+    f.body,
+    f.suggestion ?? "",
+    f.code ?? "",
+    f.fix?.replacement ?? "",
+    ...(f.evidence ?? []),
+  ].reduce((sum, s) => sum + Buffer.byteLength(JSON.stringify(s)), 0);
 }

@@ -6,7 +6,11 @@
 export const MAX_FINDINGS = 200;
 /** Characters kept of each text field of a shared finding. */
 export const MAX_FIELD = 4_096;
-/** The text of one review's shared findings: title, body, suggestion and code. */
+/** Evidence entries kept per shared finding, as many as a platform comment shows. */
+export const MAX_EVIDENCE = 5;
+/** Characters kept of one evidence entry. */
+export const MAX_EVIDENCE_FIELD = 300;
+/** The text of one review's shared findings: title, body, suggestion, code, fix and evidence. */
 export const MAX_TOTAL_BYTES = 262_144;
 /** Reviewers whose counts one upload carries. */
 export const MAX_REVIEWERS = 40;

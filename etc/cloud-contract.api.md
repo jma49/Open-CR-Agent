@@ -824,6 +824,12 @@ export const liveRunSchema: z.ZodObject<{
 export const MAX_CHAIN = 4;
 
 // @public
+export const MAX_EVIDENCE = 5;
+
+// @public
+export const MAX_EVIDENCE_FIELD = 300;
+
+// @public
 export const MAX_FIELD = 4096;
 
 // @public
@@ -1700,6 +1706,7 @@ export const reviewUploadSchema: z.ZodObject<{
             endLine: z.ZodNumber;
             replacement: z.ZodString;
         }, z.core.$strip>>>;
+        evidence: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodString>>>;
         lowConfidence: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
         redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
         truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
@@ -1830,6 +1837,7 @@ export const sharedFindingSchema: z.ZodObject<{
         endLine: z.ZodNumber;
         replacement: z.ZodString;
     }, z.core.$strip>>>;
+    evidence: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodString>>>;
     lowConfidence: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;

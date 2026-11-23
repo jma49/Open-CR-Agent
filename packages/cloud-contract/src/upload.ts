@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { LEARNING_ID, MAX_LEARNINGS } from "./learnings.js";
-import { MAX_FIELD, MAX_FINDINGS } from "./limits.js";
+import { MAX_EVIDENCE, MAX_EVIDENCE_FIELD, MAX_FIELD, MAX_FINDINGS } from "./limits.js";
 import { MAX_MERGE_CHECKS, sharedMergeCheckSchema } from "./merge-checks.js";
 import { REPOSITORY_URL } from "./repository.js";
 import {
@@ -75,6 +75,12 @@ export const sharedFindingSchema = z.object({
   code: z.string().max(MAX_FIELD).nullable().catch(null),
   // Added with sharedFixSchema; optional so a server reading older uploads still can.
   fix: sharedFixSchema.optional().catch(undefined),
+  // What the reviewer read to reach the finding, one fact per entry; optional as `fix` is.
+  evidence: z
+    .array(z.string().max(MAX_EVIDENCE_FIELD))
+    .max(MAX_EVIDENCE)
+    .optional()
+    .catch(undefined),
   // Kept by --ultra though the judge would drop it; `ocra fix` asks no fix for it.
   lowConfidence: z.literal(true).optional().catch(undefined),
   // Set when the CLI replaced a secret-looking string or cut a long field.

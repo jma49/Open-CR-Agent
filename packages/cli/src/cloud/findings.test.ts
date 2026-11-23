@@ -1,4 +1,11 @@
-import { MAX_FIELD, MAX_FINDINGS, MAX_TOTAL_BYTES, REDACTED } from "@open-cr-agent/cloud-contract";
+import {
+  MAX_EVIDENCE,
+  MAX_EVIDENCE_FIELD,
+  MAX_FIELD,
+  MAX_FINDINGS,
+  MAX_TOTAL_BYTES,
+  REDACTED,
+} from "@open-cr-agent/cloud-contract";
 import type { Finding } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import { sharedFindings } from "./findings.js";
@@ -85,6 +92,27 @@ describe("sharedFindings", () => {
     expect(findings[1]).not.toHaveProperty("fix");
     expect(findings[2]).not.toHaveProperty("fix");
     expect(findings[3]).not.toHaveProperty("fix");
+    expect(JSON.stringify(findings)).not.toContain(secret);
+  });
+
+  it("sends the evidence a comment shows: one line each, redacted, at most five", () => {
+    const secret = `ghp_${"Ab3dE5gH7jK9mN1pQ2rS4tU6vW8xY0z".repeat(2).slice(0, 36)}`;
+    const { findings } = sharedFindings({
+      findings: [
+        finding({ evidence: ["`id` comes from\n  `req.params`", "  ", `token ${secret}`] }),
+        finding({ evidence: Array.from({ length: MAX_EVIDENCE + 2 }, (_, i) => `fact ${i}`) }),
+        finding({ evidence: [`x ${"y".repeat(MAX_EVIDENCE_FIELD)}`] }),
+        finding({ evidence: ["", " "] }),
+      ],
+    });
+    expect(findings[0]?.evidence).toEqual(["`id` comes from `req.params`", `token ${REDACTED}`]);
+    expect(findings[0]?.redacted).toBe(true);
+    expect(findings[0]).not.toHaveProperty("truncated");
+    expect(findings[1]?.evidence).toEqual(["fact 0", "fact 1", "fact 2", "fact 3", "fact 4"]);
+    expect(findings[1]).not.toHaveProperty("truncated");
+    expect(findings[2]?.evidence?.[0]?.length).toBeLessThanOrEqual(MAX_EVIDENCE_FIELD);
+    expect(findings[2]?.truncated).toBe(true);
+    expect(findings[3]).not.toHaveProperty("evidence");
     expect(JSON.stringify(findings)).not.toContain(secret);
   });
 
