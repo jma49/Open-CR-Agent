@@ -74,6 +74,7 @@ function share(f: Finding): SharedFinding {
   };
   const fix = shareableFix(f);
   if (fix) shared.fix = fix;
+  if (f.lowConfidence) shared.lowConfidence = true;
   if (redacted) shared.redacted = true;
   if (truncated) shared.truncated = true;
   return shared;

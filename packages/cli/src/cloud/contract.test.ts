@@ -4,6 +4,7 @@ import {
   type CoverageEntry,
   EFFORT_LEVELS,
   type Effort,
+  FIX_REJECTIONS,
   type Finding,
   GUIDELINE_SCOPES,
   MODEL_TIERS,
@@ -54,6 +55,7 @@ describe("the contract's vocabulary", () => {
     expect(contract.AGENT_ROLES).toEqual(AGENT_ROLES);
     expect(contract.STAGES).toEqual(REVIEW_STAGES);
     expect(contract.GUIDELINE_SCOPES).toEqual(GUIDELINE_SCOPES);
+    expect(contract.FIX_REJECTIONS).toEqual(FIX_REJECTIONS);
     expect(contract.MAX_TIMEOUT_MINUTES).toBe(Math.floor(MAX_TIMER_MS / 60_000));
   });
 });

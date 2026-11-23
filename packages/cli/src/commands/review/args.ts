@@ -373,7 +373,11 @@ function parseMergeRequest(values: {
   return target;
 }
 
-function parseLocalTarget(values: { from?: string; to?: string; commit?: string }): LocalTarget {
+export function parseLocalTarget(values: {
+  from?: string;
+  to?: string;
+  commit?: string;
+}): LocalTarget {
   if (values.commit !== undefined) {
     if (values.from !== undefined || values.to !== undefined) {
       throw new UsageError("--commit cannot be combined with --from or --to");

@@ -21,6 +21,8 @@ export interface ReviewDeps {
   // ocra wrote here (ADR-0031). Absent, sessions are not sealed and cannot be
   // resumed.
   sessionKey?(): Promise<string>;
+  // Reads stdin up to `max` bytes, for ocra fix --finding -; only tests replace it.
+  readStdin?(max: number): Promise<string>;
   // Calls the handler on Ctrl-C or SIGTERM; returns a function that stops listening.
   onInterrupt?(handler: () => void): () => void;
   // Each review event, after the plugins and the progress lines: ocra serve streams them.

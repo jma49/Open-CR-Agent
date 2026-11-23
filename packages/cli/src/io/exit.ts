@@ -9,5 +9,7 @@ export const EXIT = {
   incomplete: 3,
   // ocra generate: edits made, but the branch moved or cannot be written to.
   notCommitted: 3,
+  // ocra fix: the finding's code is not at the head, or the head is not --head.
+  findingGone: 3,
   interrupted: 130,
 } as const;

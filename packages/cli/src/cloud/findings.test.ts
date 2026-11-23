@@ -88,6 +88,14 @@ describe("sharedFindings", () => {
     expect(JSON.stringify(findings)).not.toContain(secret);
   });
 
+  it("marks a finding kept with low confidence", () => {
+    const { findings } = sharedFindings({
+      findings: [finding({ lowConfidence: true }), finding({ lowConfidence: false })],
+    });
+    expect(findings[0]?.lowConfidence).toBe(true);
+    expect(findings[1]).not.toHaveProperty("lowConfidence");
+  });
+
   it("cuts a long field and marks the finding truncated", () => {
     const { findings } = sharedFindings({
       findings: [finding({ body: "x".repeat(MAX_FIELD + 10) }), finding()],

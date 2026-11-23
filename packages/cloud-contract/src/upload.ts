@@ -75,6 +75,8 @@ export const sharedFindingSchema = z.object({
   code: z.string().max(MAX_FIELD).nullable().catch(null),
   // Added with sharedFixSchema; optional so a server reading older uploads still can.
   fix: sharedFixSchema.optional().catch(undefined),
+  // Kept by --ultra though the judge would drop it; `ocra fix` asks no fix for it.
+  lowConfidence: z.literal(true).optional().catch(undefined),
   // Set when the CLI replaced a secret-looking string or cut a long field.
   redacted: z.literal(true).optional().catch(undefined),
   truncated: z.literal(true).optional().catch(undefined),
