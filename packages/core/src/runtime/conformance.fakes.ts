@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { AgentEvent, AgentRuntime, AgentTaskSpec, ReviewContext } from "../contracts.js";
-import { MAX_AGENT_STEPS, WRAP_UP_MESSAGE, WRAP_UP_STEPS } from "./attempt.js";
+import { MAX_AGENT_STEPS, WRAP_UP_MESSAGE } from "./attempt.js";
 import {
   type FakeEndpoint,
   type Reply,
@@ -117,9 +117,9 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
         expect(events.filter((e) => e.type === "finding")).toEqual([
           { type: "finding", taskId: "t1", finding: FINDING, model: "local/m1" },
         ]);
-        // Every step cost 100 in and 10 out tokens at $3 and $15 per million; a
-        // runtime may take one more step than the script to hear task_done out.
-        expect(endpoint.seen.length).toBeGreaterThanOrEqual(3);
+        // task_done ends the conversation: its result is not sent to the model.
+        expect(endpoint.seen.length).toBe(3);
+        // Every step cost 100 in and 10 out tokens at $3 and $15 per million.
         expect(costOf(events)).toBeCloseTo(endpoint.seen.length * (100 * 3e-6 + 10 * 15e-6), 10);
 
         expect(context.reads).toEqual([FILE]);
@@ -215,7 +215,8 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
         );
         expect(turn).toBe(MAX_AGENT_STEPS);
         const wrapUp = endpoint.seen.slice(turn);
-        expect(wrapUp.length).toBeLessThanOrEqual(WRAP_UP_STEPS);
+        // The turn's task_done ends it as well.
+        expect(wrapUp.length).toBe(1);
         const reporting = ["report_finding", "task_done"];
         const offered = (wrapUp[0]?.tools ?? []).map(
           (t) => reporting.find((n) => t.function.name.endsWith(n)) ?? t.function.name,
@@ -260,8 +261,7 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
             model: "local/m1",
             read: [FILE],
             searched: ["const a"],
-            // OpenCode takes one more step to hear task_done out.
-            text: expect.stringContaining("Nothing to report."),
+            text: "Nothing to report.",
           },
         ]);
       },

@@ -1,7 +1,7 @@
 import type { AttemptOutcome } from "@open-cr-agent/core";
 import { CompletionError, parseQuotaError } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
-import { HELPER_AGENT_STEPS, openCodeConfig } from "./opencode-config.js";
+import { DONE_TOOL, HELPER_AGENT_STEPS, openCodeConfig, wrapUpTools } from "./opencode-config.js";
 import { OpenCodeRuntime } from "./runtime.js";
 
 const usage = {
@@ -153,6 +153,15 @@ describe("openCodeConfig", () => {
     const config = openCodeConfig({ url: "http://127.0.0.1:1/mcp", headers: {} }, {});
     for (const agent of Object.values(config.agent)) expect(agent.steps).toBeGreaterThan(1);
     expect(config.agent["ocra-helper"].steps).toBe(HELPER_AGENT_STEPS);
+  });
+
+  it("has the reviewing agents ask before the done tool, and no prompt allow it", () => {
+    const helperTools = { bash: false, ocra_report_finding: false, [DONE_TOOL]: false };
+    const { agent } = openCodeConfig({ url: "http://127.0.0.1:1/mcp", headers: {} }, helperTools);
+    expect(agent["ocra-reviewer"].permission).toMatchObject({ [DONE_TOOL]: "ask" });
+    expect(agent["ocra-wrap-up"].permission).toMatchObject({ [DONE_TOOL]: "ask" });
+    expect(agent["ocra-reviewer"].tools).not.toHaveProperty(DONE_TOOL);
+    expect(wrapUpTools(helperTools)).toEqual({ bash: false, ocra_report_finding: true });
   });
 
   it.each([
