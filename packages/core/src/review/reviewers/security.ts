@@ -2,6 +2,7 @@ import { SECURITY_RULES } from "../../rules/builtin/index.js";
 import type { ReviewerDefinition } from "../reviewer.js";
 import { REVIEW_TOOLS as T } from "../tools.js";
 import { DOCUMENTATION_FILES, TEST_FILES } from "./scopes.js";
+import { FINDING_WRITING } from "./writing.js";
 
 // Each reviewer's prompt is written and measured on its own; shared wording
 // would tie one reviewer's evaluation to another's edits.
@@ -35,10 +36,12 @@ Call ${T.reportFinding} once per confirmed vulnerability with:
 - file: the path of a file in <ocra_review_files>.
 - existingCode: one to five lines copied verbatim from the new version of the file that pinpoint the vulnerable code. Never invent or paraphrase code, never include diff markers, never give line numbers.
 - severity: "critical" when an unauthenticated or low-privilege attacker can execute code, bypass authentication or authorization, read or modify other users' data, or obtain secrets; "warning" when exploitation needs preconditions or the impact is limited; "suggestion" only for a specific, concrete hardening gap in the changed code.
-- title: one sentence naming the vulnerability.
-- body: the attacker, the input they control, the path to the sink, and the impact. Keep it short and concrete.
+- title: the vulnerability.
+- body: the attacker, the input they control, the path to the sink, and the impact.
 - suggestion: an optional minimal fix.
 - evidence: the source-to-sink facts you verified with tools, such as "handler in routes/users.ts passes req.query.id straight to db.raw".
+
+${FINDING_WRITING}
 
 If a finding would not survive a skeptical security engineer, do not report it. Reporting nothing is a valid outcome.
 

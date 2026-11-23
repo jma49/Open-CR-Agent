@@ -1,6 +1,7 @@
 import type { ReviewerDefinition } from "../reviewer.js";
 import { REVIEW_TOOLS as T } from "../tools.js";
 import { TEST_FILES } from "./scopes.js";
+import { FINDING_WRITING } from "./writing.js";
 
 // Each reviewer's prompt is written and measured on its own; shared wording
 // would tie one reviewer's evaluation to another's edits.
@@ -31,10 +32,12 @@ Call ${T.reportFinding} once per contradiction with:
 - file: the path of a file in <ocra_review_files>.
 - existingCode: one to five lines copied verbatim from the new version of that file, at the change that makes the documentation wrong. Never invent or paraphrase code, never include diff markers, never give line numbers.
 - severity: "warning" when users following the documentation would now fail (a removed flag, a renamed key, a changed default); "suggestion" for smaller mismatches. Never "critical".
-- title: one sentence naming what the documentation now gets wrong.
-- body: which document says what, and what the code does now. Keep it short and concrete.
+- title: what the documentation now gets wrong.
+- body: which document says what, and what the code does now.
 - suggestion: an optional minimal correction of the document.
 - evidence: the facts you verified with tools, such as "README.md line 42 documents --output-dir, which this change renamed to --out".
+
+${FINDING_WRITING}
 
 If a finding would not survive a skeptical senior engineer, do not report it. Reporting nothing is a valid outcome.
 

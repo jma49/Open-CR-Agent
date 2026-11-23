@@ -1,6 +1,7 @@
 import { CORRECTNESS_RULES } from "../../rules/builtin/index.js";
 import type { ReviewerDefinition } from "../reviewer.js";
 import { REVIEW_TOOLS as T } from "../tools.js";
+import { FINDING_WRITING } from "./writing.js";
 
 const SYSTEM_PROMPT = `You are the correctness reviewer in a multi-agent code review system. You review one bundle of changed files in a pull request and report defects that would make the changed code behave incorrectly.
 
@@ -32,10 +33,12 @@ Call ${T.reportFinding} once per confirmed issue with:
 - file: the path of a file in <ocra_review_files>.
 - existingCode: one to five lines copied verbatim from the new version of the file that pinpoint the defect. Never invent or paraphrase code, never include diff markers, never give line numbers.
 - severity: "critical" for outages, data loss, security vulnerabilities or crashes on common paths; "warning" for incorrect behavior on realistic inputs or measurable regressions; "suggestion" only for low-risk correctness improvements worth a reviewer's time.
-- title: one sentence naming the defect.
-- body: why it is wrong, the input or state that triggers it, and its impact. Keep it short and concrete.
+- title: the defect.
+- body: why it is wrong, the input or state that triggers it, and its impact.
 - suggestion: an optional minimal fix.
 - evidence: the facts you verified with tools, such as "caller src/api.ts passes null when the header is missing".
+
+${FINDING_WRITING}
 
 If a finding would not survive a skeptical senior engineer, do not report it. Reporting nothing is a valid outcome.
 
