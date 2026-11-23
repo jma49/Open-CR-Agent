@@ -46,8 +46,11 @@ type Turn = Exclude<Anthropic.MessageParam, { role: "system" }>;
 // A conversation in Anthropic's Messages protocol, streamed so a long answer
 // does not sit behind an idle connection. The system prompt and the
 // conversation so far are marked for the provider's prompt cache at every
-// request: an agent's next step reads what the last one stored.
-export const anthropicWire: Wire = ({ endpoint, model, price, system }) => {
+// request: an agent's next step reads what the last one stored. A dialogue
+// of one request has no next step, and storing costs a quarter more than
+// sending, so its conversation goes unmarked; its system prompt stays
+// marked for the other calls of its kind.
+export const anthropicWire: Wire = ({ endpoint, model, price, system, oneRequest }) => {
   const client = clientOf(endpoint);
   const secrets = endpoint.apiKey ? [endpoint.apiKey] : [];
   const messages: Turn[] = [];
@@ -63,7 +66,7 @@ export const anthropicWire: Wire = ({ endpoint, model, price, system }) => {
         model,
         max_tokens: MAX_OUTPUT_TOKENS,
         system: [{ type: "text", text: system, ...CACHED }],
-        messages: withBreakpoint(messages),
+        messages: oneRequest ? messages : withBreakpoint(messages),
         ...(tools.length > 0 ? { tools: tools.map(toolSpec) } : {}),
         ...effortParams(sent.effort),
       });

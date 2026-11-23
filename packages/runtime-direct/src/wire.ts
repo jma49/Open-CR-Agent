@@ -63,6 +63,9 @@ interface DialogueStart {
   model: string;
   price: ModelPrice;
   system: string;
+  // The dialogue is one request and its answer: nothing reads what the
+  // request would store in a provider's prompt cache.
+  oneRequest?: boolean;
 }
 
 export type Wire = (start: DialogueStart) => Dialogue;
