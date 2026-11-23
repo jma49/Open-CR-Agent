@@ -89,6 +89,7 @@ export {
   type MergeCheckOutcome,
   type MergeCheckResult,
 } from "./merge-checks/merge-check.js";
+export { fetchFailure } from "./net/fetch-failure.js";
 export { type ProxyEnv, proxiedFetch } from "./net/proxied-fetch.js";
 export { AccessDeniedError } from "./pipeline/context.js";
 export type {

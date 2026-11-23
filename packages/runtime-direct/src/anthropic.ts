@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import {
   type Effort,
   errorMessage,
+  fetchFailure,
   type ModelPrice,
   parseQuotaError,
   type ToolDefinition,
@@ -214,12 +215,13 @@ function cutOff(message: Anthropic.Message): string | undefined {
 
 function failure(error: unknown, secrets: readonly string[]): CallError {
   // An endpoint may echo the request's headers in an error.
-  const shown = excerpt(withoutSecrets(errorMessage(error), secrets));
+  const text = (message: string) => excerpt(withoutSecrets(message, secrets));
   if (!(error instanceof Anthropic.APIError) || error.status === undefined) {
     // No status: the connection failed, or the stream was not one the SDK
     // could read to its end.
-    return { message: shown, retryable: true, transient: true };
+    return { message: text(fetchFailure(error)), retryable: true, transient: true };
   }
+  const shown = text(errorMessage(error));
   const { status } = error;
   const quota = parseQuotaError(shown, status);
   if (quota && quota.retryAfterMs === undefined) {
