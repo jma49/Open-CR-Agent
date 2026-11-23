@@ -149,7 +149,8 @@ export function renderSummary({
     ...mergeChecksSection(report.mergeChecks),
     ...incompleteNotes(report, text),
     ...unattributedNote(unattributed),
-    ...outsideDiff(report.findings, commented),
+    ...outsideDiff(report, commented),
+    ...heldInline(report, commented),
     ...memoryNotes(report.remembered),
     ...rereviewSections(report.rereview),
     ...coverageAndCost(report),
@@ -298,16 +299,47 @@ function unattributedNote(unattributed: number): string[] {
   ];
 }
 
-function outsideDiff(findings: readonly Finding[], commented: ReadonlySet<string>): string[] {
-  const inSummary = findings.filter((f) => !commented.has(f.fingerprint));
+function summaryLine(f: Finding): string {
+  return `- ${ICON[f.severity]} ${location(f)} **${safeLine(f.title)}** _(${verification(f)}${f.lowConfidence ? ", low confidence" : ""}${f.preExisting ? ", pre-existing" : ""})_: ${safeLine(f.body)}`;
+}
+
+function heldFingerprints(report: ReviewReport): Set<string> {
+  return new Set(report.inline?.held.map((h) => h.fingerprint));
+}
+
+function outsideDiff(report: ReviewReport, commented: ReadonlySet<string>): string[] {
+  const held = heldFingerprints(report);
+  const inSummary = report.findings.filter(
+    (f) => !commented.has(f.fingerprint) && !held.has(f.fingerprint),
+  );
   if (inSummary.length === 0) return [];
+  return ["", "### Findings outside the diff", ...inSummary.map(summaryLine)];
+}
+
+// The findings the inline policy held back (ADR-0076), folded: whoever chose
+// fewer comments still finds every finding here, in the policy's order.
+function heldInline(report: ReviewReport, commented: ReadonlySet<string>): string[] {
+  const inline = report.inline;
+  if (!inline) return [];
+  const byFingerprint = new Map(report.findings.map((f) => [f.fingerprint, f]));
+  const shown = inline.held.flatMap((h) => {
+    const f = byFingerprint.get(h.fingerprint);
+    return f && !commented.has(f.fingerprint) ? [{ f, reason: h.reason }] : [];
+  });
+  if (shown.length === 0) return [];
+  const below = shown.filter((s) => s.reason === "below_floor").length;
+  const over = shown.length - below;
+  const why = [
+    ...(below > 0 ? [`${below} below the ${inline.minSeverity} severity floor`] : []),
+    ...(over > 0 ? [`${over} past the limit of ${inline.maxComments} inline comment(s)`] : []),
+  ].join(", ");
   return [
     "",
-    "### Findings outside the diff",
-    ...inSummary.map(
-      (f) =>
-        `- ${ICON[f.severity]} ${location(f)} **${safeLine(f.title)}** _(${verification(f)}${f.lowConfidence ? ", low confidence" : ""}${f.preExisting ? ", pre-existing" : ""})_: ${safeLine(f.body)}`,
-    ),
+    `<details><summary>${shown.length} finding(s) not posted inline: ${why}</summary>`,
+    "",
+    ...shown.map((s) => summaryLine(s.f)),
+    "",
+    "</details>",
   ];
 }
 

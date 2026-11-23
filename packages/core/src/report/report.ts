@@ -21,6 +21,7 @@ import type { ExclusionReason } from "../select/select.js";
 import type { LinkedTaskUse } from "../task/linked-task.js";
 import type { RefutedFinding } from "../verify/verify.js";
 import type { Walkthrough } from "../walkthrough/walkthrough.js";
+import type { InlineSelection } from "./inline.js";
 import type { RunProvenance } from "./provenance.js";
 
 // "unchanged": reviewed by an earlier run and not changed since, so not
@@ -217,6 +218,9 @@ export interface ReviewReport {
   // ones stopped); "total": the whole limit, so later verification, judging
   // or relocation may have been skipped.
   spendLimit?: { usd: number; reached?: "review" | "total" };
+  // With an inline comment policy: the findings it holds back from inline
+  // comments, which the summary lists instead (ADR-0076).
+  inline?: InlineSelection;
   // When the caller supplied its version and configuration hash.
   provenance?: RunProvenance;
   usage: Usage;

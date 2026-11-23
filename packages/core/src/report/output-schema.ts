@@ -14,6 +14,7 @@ import { memoryEntrySchema } from "../memory/memory.js";
 import { MERGE_CHECK_OUTCOMES } from "../merge-checks/merge-check.js";
 import { exclusionReasonSchema } from "../select/select.js";
 import { TASK_TRACKERS } from "../task/linked-task.js";
+import { inlineSelectionSchema } from "./inline.js";
 import { taskStatusSchema } from "./report.js";
 
 // The published shape of a review: `--format json` and a session's
@@ -301,6 +302,7 @@ export const reportOutputSchema = z.strictObject({
   spendLimit: z
     .strictObject({ usd: z.number(), reached: z.enum(["review", "total"]).exactOptional() })
     .exactOptional(),
+  inline: inlineSelectionSchema.exactOptional(),
   provenance: provenanceSchema.exactOptional(),
   usage: usageSchema,
   warnings: z.array(z.string()),

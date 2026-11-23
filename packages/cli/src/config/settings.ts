@@ -14,13 +14,14 @@ type FileSettings = z.output<typeof configSchema>;
 export type Settings = FileSettings & {
   // A shared configuration's rules, then the account's.
   rules: SourcedRule[];
-  // Recall over cost (--ultra); the account may turn it on by default.
+  // Recall over cost (--ultra); off unless a layer turns it on.
   ultra: boolean;
 };
 
 type SettingSource = "shared" | "file" | "env" | "account" | "flag";
 
-type LayerSettings = { [K in keyof Settings]?: Settings[K] };
+// A layer read with the file's schema may hold a key as undefined; it sets nothing.
+type LayerSettings = { [K in keyof Settings]?: Settings[K] | undefined };
 
 export interface SettingsLayer {
   source: SettingSource;
@@ -59,6 +60,7 @@ interface Listed {
 
 const ALL = ["shared", "file", "env", "account"] as const;
 const NOT_ENV = ["shared", "file", "account"] as const;
+const WITH_FLAG = [...NOT_ENV, "flag"] as const;
 const ALWAYS: Listed = { list: "always" };
 
 // How each setting merges, which layers may set it, and how --plan lists
@@ -87,6 +89,8 @@ const MERGE: {
   verify: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   judge: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   showPreExisting: { merge: "replace", from: ["shared", "file"], plan: ALWAYS },
+  minInlineSeverity: { merge: "replace", from: WITH_FLAG, plan: { list: "set" } },
+  maxInlineComments: { merge: "replace", from: WITH_FLAG, plan: { list: "set" } },
   walkthrough: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   fixes: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   linkedTasks: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
@@ -106,7 +110,7 @@ const MERGE: {
       show: (rules: SourcedRule[]) => rules.map(({ path, source }) => ({ path, source })),
     },
   },
-  ultra: { merge: "replace", from: ["account", "flag"], plan: { list: "set" } },
+  ultra: { merge: "replace", from: WITH_FLAG, plan: { list: "set" } },
   $schema: { merge: "replace", from: ["shared", "file"] },
   github: { merge: "entries", from: ["shared", "file"] },
   learnings: { merge: "entries", from: ["shared", "file"], plan: { list: "set" } },

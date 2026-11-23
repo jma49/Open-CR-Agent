@@ -16,6 +16,7 @@ import { OcraError } from "../errors.js";
 import type { Learning } from "../knowledge/learning.js";
 import type { MemoryEntry } from "../memory/memory.js";
 import type { MergeCheck } from "../merge-checks/merge-check.js";
+import type { InlinePolicy } from "../report/inline.js";
 import type { ReviewEvent } from "../report/report.js";
 import {
   isOptionalContext,
@@ -75,6 +76,9 @@ export interface ReviewOptions {
   // Which files are reviewed; what is left out is defaultSelectionPolicy's.
   selection?: Partial<SelectionPolicy>;
   limits?: ReviewLimits;
+  // Which findings a platform posts as inline comments; the rest are listed
+  // in its summary, and every finding stays in the report (ADR-0076).
+  inline?: InlinePolicy;
   stages?: ReviewStages;
   mode?: ReviewMode;
   identity?: RunIdentity;

@@ -333,6 +333,34 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
       }
     });
 
+    it("posts inline only what the inline policy keeps, and lists the rest in the summary", async () => {
+      const conversation = fixture.conversation({});
+      const C = "c".repeat(16);
+      await conversation.review.publish({
+        ...report([
+          finding(A, { severity: "critical", title: "Kept" }),
+          finding(B, { title: "Over the cap" }),
+          finding(C, { severity: "suggestion", title: "Below the floor" }),
+        ]),
+        inline: {
+          minSeverity: "warning",
+          maxComments: 1,
+          held: [
+            { fingerprint: B, reason: "over_cap" },
+            { fingerprint: C, reason: "below_floor" },
+          ],
+        },
+      });
+      expect(conversation.inline()).toEqual([expect.stringContaining(`ocra:finding ${A}`)]);
+      const summary = conversation.summary();
+      expect(summary).toContain(
+        "2 finding(s) not posted inline: 1 below the warning severity floor, 1 past the limit of 1 inline comment(s)",
+      );
+      expect(summary).toContain("Over the cap");
+      expect(summary).toContain("Below the floor");
+      expect(summary).not.toContain("Findings outside the diff");
+    });
+
     it("does not comment twice on a finding its own unedited thread already has", async () => {
       const conversation = fixture.conversation({
         threads: [

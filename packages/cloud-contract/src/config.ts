@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { MAX_MERGE_CHECKS, mergeCheckSchema } from "./merge-checks.js";
-import { AGENT_ROLES, effortSchema as effort, GUIDELINE_SCOPES, RISK_TIERS } from "./vocabulary.js";
+import {
+  AGENT_ROLES,
+  effortSchema as effort,
+  GUIDELINE_SCOPES,
+  RISK_TIERS,
+  severitySchema,
+} from "./vocabulary.js";
 
 // What .ocra/config.json may say: the CLI checks every layer of settings
 // against it, and ocra Cloud a file before it commits one, so both refuse
@@ -155,6 +161,12 @@ export const configSchema = z
     verify: z.boolean().optional(),
     judge: z.boolean().optional(),
     showPreExisting: z.boolean().optional(),
+    // Recall over cost (--ultra, --no-ultra); unset, the account's or off.
+    ultra: z.boolean().optional(),
+    // Which findings are posted as inline comments; the rest are listed in
+    // the summary and kept in the report (ADR-0076).
+    minInlineSeverity: severitySchema.optional(),
+    maxInlineComments: z.number().int().min(0).max(1_000).optional(),
     walkthrough: z.boolean().optional(),
     fixes: z.boolean().optional(),
     linkedTasks: z.boolean().optional(),

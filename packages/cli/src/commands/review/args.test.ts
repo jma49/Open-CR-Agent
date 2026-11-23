@@ -31,6 +31,27 @@ describe("parseReviewArgs", () => {
     });
   });
 
+  it("takes --ultra or --no-ultra, not both", () => {
+    expect(parseReviewArgs(["--ultra"])).toMatchObject({ ultra: true });
+    expect(parseReviewArgs(["--no-ultra"])).toMatchObject({ ultra: false });
+    expect(() => parseReviewArgs(["--ultra", "--no-ultra"])).toThrow(UsageError);
+  });
+
+  it("takes a floor and a cap for inline comments, and refuses others", () => {
+    expect(
+      parseReviewArgs(["--min-inline-severity", "warning", "--max-inline-comments", "0"]),
+    ).toMatchObject({ minInlineSeverity: "warning", maxInlineComments: 0 });
+    for (const argv of [
+      ["--min-inline-severity", "major"],
+      ["--max-inline-comments", "-1"],
+      ["--max-inline-comments", "2.5"],
+      ["--max-inline-comments", ""],
+      ["--max-inline-comments", "1001"],
+    ]) {
+      expect(() => parseReviewArgs(argv)).toThrow(UsageError);
+    }
+  });
+
   it("takes a configuration file of the user's own", () => {
     expect(parseReviewArgs(["--config", "ci/ocra.json"])).toMatchObject({
       configFile: "ci/ocra.json",

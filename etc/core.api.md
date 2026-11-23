@@ -612,6 +612,29 @@ const INCOMPLETE_ENDINGS: readonly ["step_cap", "stopped_early"];
 export type IncompleteEnding = (typeof INCOMPLETE_ENDINGS)[number];
 
 // @public (undocumented)
+export const INLINE_HOLD_REASONS: readonly ["below_floor", "over_cap"];
+
+// @public (undocumented)
+export type InlineHoldReason = (typeof INLINE_HOLD_REASONS)[number];
+
+// @public (undocumented)
+export interface InlinePolicy {
+    // (undocumented)
+    maxComments?: number;
+    // (undocumented)
+    minSeverity?: Severity;
+}
+
+// @public (undocumented)
+export interface InlineSelection extends InlinePolicy {
+    // (undocumented)
+    held: {
+        fingerprint: string;
+        reason: InlineHoldReason;
+    }[];
+}
+
+// @public (undocumented)
 export function isBlocking(run: {
     verdict: Verdict;
     changeRequest: Pick<ChangeRequest, "override">;
@@ -1559,6 +1582,21 @@ export const reportOutputSchema: z.ZodObject<{
             total: "total";
         }>>;
     }, z.core.$strict>>;
+    inline: z.ZodExactOptional<z.ZodObject<{
+        minSeverity: z.ZodExactOptional<z.ZodEnum<{
+            critical: "critical";
+            suggestion: "suggestion";
+            warning: "warning";
+        }>>;
+        maxComments: z.ZodExactOptional<z.ZodInt>;
+        held: z.ZodArray<z.ZodObject<{
+            fingerprint: z.ZodString;
+            reason: z.ZodEnum<{
+                below_floor: "below_floor";
+                over_cap: "over_cap";
+            }>;
+        }, z.core.$strict>>;
+    }, z.core.$strict>>;
     provenance: z.ZodExactOptional<z.ZodObject<{
         ocraVersion: z.ZodString;
         promptHash: z.ZodString;
@@ -1836,6 +1874,8 @@ export interface ReviewOptions {
     // (undocumented)
     identity?: RunIdentity;
     // (undocumented)
+    inline?: InlinePolicy;
+    // (undocumented)
     learnings?: readonly Learning[];
     // (undocumented)
     limits?: ReviewLimits;
@@ -1906,6 +1946,8 @@ export interface ReviewReport {
     findings: Finding[];
     // (undocumented)
     fixes?: FixSummary;
+    // (undocumented)
+    inline?: InlineSelection;
     // (undocumented)
     judgement?: JudgeDecisions;
     // (undocumented)

@@ -76,6 +76,13 @@ export function toReportOutput(report: ReviewReport): ReportOutput {
   }
   if (report.anchoring) output.anchoring = outputAnchoring(report.anchoring);
   if (report.spendLimit) output.spendLimit = outputSpendLimit(report.spendLimit);
+  if (report.inline) {
+    const { held, ...policy } = report.inline;
+    output.inline = {
+      ...policy,
+      held: held.map(({ fingerprint, reason }) => ({ fingerprint, reason })),
+    };
+  }
   if (report.provenance) output.provenance = outputProvenance(report.provenance);
   if (report.rereview) {
     const r = report.rereview;

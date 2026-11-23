@@ -99,7 +99,7 @@ export async function resolveRun(
     {
       target: target.layers,
       ...(account.layer ? { account: account.layer } : {}),
-      ultra: args.ultra === true,
+      flags: flagSettings(args),
     },
     warn,
   );
@@ -251,4 +251,13 @@ function reviewerOverrides(
     if (!args.reviewers.includes(id)) overrides[id] = { ...overrides[id], enabled: false };
   }
   return overrides;
+}
+
+// What the command line sets over every other layer.
+function flagSettings(args: ReviewArgs) {
+  return {
+    ...(args.ultra !== undefined ? { ultra: args.ultra } : {}),
+    ...(args.minInlineSeverity ? { minInlineSeverity: args.minInlineSeverity } : {}),
+    ...(args.maxInlineComments !== undefined ? { maxInlineComments: args.maxInlineComments } : {}),
+  };
 }

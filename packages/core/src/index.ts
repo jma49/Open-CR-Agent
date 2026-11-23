@@ -127,6 +127,12 @@ export type {
   VcsFactory,
 } from "./plugin/types.js";
 export {
+  INLINE_HOLD_REASONS,
+  type InlineHoldReason,
+  type InlinePolicy,
+  type InlineSelection,
+} from "./report/inline.js";
+export {
   type OutputFinding,
   type OutputPriorFinding,
   type ReportOutput,

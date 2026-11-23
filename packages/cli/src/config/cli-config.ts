@@ -32,7 +32,7 @@ const DEFAULT_RUNTIME = "opencode";
 
 export type CliConfig = Omit<
   z.infer<typeof configSchema>,
-  "models" | "effort" | "providers" | "runtime"
+  "models" | "effort" | "providers" | "runtime" | "ultra"
 > & {
   runtime: string;
   models: ModelChains;
@@ -104,17 +104,21 @@ export async function loadConfigLayers(
 
 // The run's configuration from all its layers, earliest first: the
 // configuration's own, the account's settings (which only fill what those
-// leave out), then the command's --ultra. What needs the final settings is
+// leave out), then the command's flags. What needs the final settings is
 // checked here, after the last layer, so a chain the account adds is
 // checked like the repository's.
 export function resolveRunConfig(
-  from: { target: readonly SettingsLayer[]; account?: SettingsLayer; ultra?: boolean },
+  from: {
+    target: readonly SettingsLayer[];
+    account?: SettingsLayer;
+    flags?: SettingsLayer["settings"];
+  },
   warn?: (message: string) => void,
 ): ResolvedConfig {
   const resolved = resolveConfig([
     ...from.target,
     ...(from.account ? [from.account] : []),
-    ...(from.ultra ? [{ source: "flag" as const, settings: { ultra: true } }] : []),
+    ...(from.flags ? [{ source: "flag" as const, settings: from.flags }] : []),
   ]);
   const { config } = resolved;
   for (const model of unpriced(config.providers, [
