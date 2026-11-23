@@ -83,7 +83,7 @@ export function taskPrompt(
   };
   const prompt = buildReviewPrompt(input);
   const callers = (ultra || plan.tier === "full") && !without?.has("callers");
-  if (!ultra && !isLargeBundle(cell.bundle)) return { input, prompt, callers };
+  if (!ultra && !plansFirst(cell)) return { input, prompt, callers };
   return {
     input,
     prompt,
@@ -103,6 +103,13 @@ function guidelinesInput(
     guidelines: guidelines.text,
     ...(guidelines.left.length > 0 ? { moreGuidelines: guidelines.left } : {}),
   };
+}
+
+// A checklist orders a reviewer's steps inside one large bundle. A reviewer
+// that takes the change as a whole is over the size on most changes, and
+// its plan calls were a tenth of a review's bill for no finding more.
+function plansFirst({ reviewer, bundle }: MatrixCell): boolean {
+  return (reviewer.scope?.span ?? "bundle") === "bundle" && isLargeBundle(bundle);
 }
 
 function isLargeBundle({ files }: Bundle): boolean {
