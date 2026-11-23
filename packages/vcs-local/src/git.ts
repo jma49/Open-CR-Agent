@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { OcraError } from "@open-cr-agent/core";
 import { errnoCode } from "@open-cr-agent/core/internal";
 
@@ -78,6 +78,69 @@ export function git(args: readonly string[], options: GitOptions): Promise<strin
     });
     if (options.input === undefined) child.stdin?.end();
     else child.stdin?.end(options.input);
+  });
+}
+
+const STDERR_CHARS = 4_000;
+
+/**
+ * A command's output a line at a time, never held whole. Ends early when
+ * `onLine` returns false, or at a line longer than `maxLineBytes`, which is
+ * not given.
+ */
+export function gitLines(
+  args: readonly string[],
+  options: Pick<GitOptions, "cwd" | "okExitCodes" | "timeoutMs"> & { maxLineBytes: number },
+  onLine: (line: string) => boolean,
+): Promise<"ended" | "stopped" | "line_too_long"> {
+  const okExitCodes = options.okExitCodes ?? [0];
+  const timeoutMs = options.timeoutMs ?? GIT_TIMEOUT_MS;
+  return new Promise((resolve, reject) => {
+    const child = spawn("git", args, {
+      cwd: options.cwd,
+      env: childEnvironment(),
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let cut: "stopped" | "line_too_long" | "timed_out" | undefined;
+    const stop = (reason: NonNullable<typeof cut>) => {
+      cut = reason;
+      child.kill("SIGKILL");
+    };
+    const timer = setTimeout(() => stop("timed_out"), timeoutMs);
+    let pending: Buffer[] = [];
+    let pendingBytes = 0;
+    child.stdout.on("data", (chunk: Buffer) => {
+      let start = 0;
+      while (!cut) {
+        const end = chunk.indexOf(0x0a, start);
+        if (end < 0) break;
+        const line = Buffer.concat([...pending, chunk.subarray(start, end)]).toString("utf8");
+        pending = [];
+        pendingBytes = 0;
+        start = end + 1;
+        if (!onLine(line)) stop("stopped");
+      }
+      if (cut || start === chunk.length) return;
+      pending.push(chunk.subarray(start));
+      pendingBytes += chunk.length - start;
+      if (pendingBytes > options.maxLineBytes) stop("line_too_long");
+    });
+    let stderr = "";
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr = (stderr + chunk.toString("utf8")).slice(-STDERR_CHARS);
+    });
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on("close", (exitCode) => {
+      clearTimeout(timer);
+      if (cut === "timed_out") {
+        reject(new GitError(args, undefined, `timed out after ${Math.round(timeoutMs / 1000)}s`));
+      } else if (cut) resolve(cut);
+      else if (exitCode !== null && okExitCodes.includes(exitCode)) resolve("ended");
+      else reject(new GitError(args, exitCode ?? undefined, stderr));
+    });
   });
 }
 

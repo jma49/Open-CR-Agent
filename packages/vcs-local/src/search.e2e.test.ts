@@ -61,7 +61,24 @@ describe("searchCode asked several times in one turn", () => {
     expect(readFileSync(trace, "utf8").match(/built-in: git .*grep/g)).toHaveLength(1);
   });
 
-  it("searches one at a time when their output together passes the cap", async () => {
+  it("runs one more for those asked while it runs", async () => {
+    const { r, adapter } = committed(files);
+    const shared = adapter();
+    await shared.searchCode("warm-up");
+    const trace = join(r.dir, "..", `${process.pid}-waiting-trace.log`);
+    process.env.GIT_TRACE = trace;
+    const asked = [shared.searchCode("limit")];
+    for (const literal of ["retries", "missing", "x[0].y"]) {
+      await new Promise((resolve) => setImmediate(resolve));
+      asked.push(shared.searchCode(literal));
+    }
+    const answers = await Promise.all(asked);
+    delete process.env.GIT_TRACE;
+    expect(readFileSync(trace, "utf8").match(/built-in: git .*grep/g)).toHaveLength(2);
+    expect(answers.map((matches) => matches.length)).toEqual([20, 2, 0, 1]);
+  });
+
+  it("answers each when their output together passes what one search reads", async () => {
     const { adapter } = committed({
       "big.txt": "common line\n".repeat(400_000),
       "rare.ts": "rare();\n",
@@ -70,5 +87,20 @@ describe("searchCode asked several times in one turn", () => {
     const [common, rare] = await Promise.all(["common", "rare"].map((l) => shared.searchCode(l)));
     expect(common).toHaveLength(20);
     expect(rare).toEqual([{ path: "rare.ts", line: 1, text: "rare();" }]);
+  });
+
+  it("searches one at a time past a line longer than a search reads", async () => {
+    const { adapter } = committed({
+      "a.ts": "before();\n",
+      "bundle.txt": `minified ${"x".repeat(13 * 1024 * 1024)}\n`,
+      "c.ts": "after();\n",
+    });
+    const shared = adapter();
+    const [before, minified, after] = await Promise.all(
+      ["before", "minified", "after"].map((l) => shared.searchCode(l)),
+    );
+    expect(before).toEqual([{ path: "a.ts", line: 1, text: "before();" }]);
+    expect(minified).toEqual([]);
+    expect(after).toEqual([{ path: "c.ts", line: 1, text: "after();" }]);
   });
 });
