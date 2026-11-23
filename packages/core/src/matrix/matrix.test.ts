@@ -82,6 +82,50 @@ describe("planMatrix", () => {
   });
 });
 
+describe("a reviewer whose bundles are packed", () => {
+  const packed = reviewer("security", { span: "packed", ignore: ["**/*.md"] });
+  const sized = (path: string, chars = 10) =>
+    ({ newPath: path, oldPath: path, patch: "x".repeat(chars) }) as FileDiff;
+
+  it("reviews whole bundles together, named after the first, sensitive ones apart", () => {
+    const b = [
+      bundle("ui", "src/ui.ts", "README.md"),
+      bundle("auth", "src/auth/login.ts"),
+      bundle("api", "src/api.ts"),
+      bundle("session", "src/auth/session.ts"),
+    ];
+    const matrix = planMatrix(b, [correctness, packed], "full");
+    expect(
+      matrix.cells.map((c) => [c.taskId, c.bundle.label, c.bundle.files.map((f) => f.newPath)]),
+    ).toEqual([
+      ["correctness-2", "auth", ["src/auth/login.ts"]],
+      ["correctness-4", "session", ["src/auth/session.ts"]],
+      ["correctness-1", "ui", ["src/ui.ts", "README.md"]],
+      ["security-2", "auth + session", ["src/auth/login.ts", "src/auth/session.ts"]],
+      ["correctness-3", "api", ["src/api.ts"]],
+      ["security-1", "ui + api", ["src/ui.ts", "src/api.ts"]],
+    ]);
+  });
+
+  it("keeps a pack within the bundle limits and never splits a bundle", () => {
+    const four = (n: number) => ({
+      label: `b${n}`,
+      files: [0, 1, 2, 3].map((f) => sized(`src/b${n}/f${f}.ts`)),
+    });
+    const byFiles = planMatrix([four(0), four(1), four(2)], [packed], "full").cells;
+    expect(byFiles.map((c) => [c.taskId, c.bundle.label, c.bundle.files.length])).toEqual([
+      ["security-1", "b0 + b1", 8],
+      ["security-3", "b2", 4],
+    ]);
+
+    const large = ["a", "b", "c"].map((n) => ({ label: n, files: [sized(`src/${n}.ts`, 50_000)] }));
+    expect(planMatrix(large, [packed], "full").cells.map((c) => c.bundle.label)).toEqual([
+      "a + b",
+      "c",
+    ]);
+  });
+});
+
 describe("a reviewer that spans the change", () => {
   const docs = reviewer("docs", { span: "change", ignore: ["**/*.test.ts"] });
 

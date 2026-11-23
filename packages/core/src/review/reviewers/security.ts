@@ -49,6 +49,6 @@ export const securityReviewer: ReviewerDefinition = {
   category: "security",
   modelTier: "standard",
   systemPrompt: SYSTEM_PROMPT,
-  scope: { minTier: "lite", ignore: [...DOCUMENTATION_FILES, ...TEST_FILES] },
+  scope: { minTier: "lite", span: "packed", ignore: [...DOCUMENTATION_FILES, ...TEST_FILES] },
   rules: { general: SECURITY_RULES },
 };
