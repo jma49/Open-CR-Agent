@@ -15,7 +15,7 @@ const DIGEST =
   "d165bc5575a0a4460fb06921d0786c1fbf6ee7490f32d4f615166dcfb391619b9c6311752183bf7c30dd24d006b9e6fac27cd6c96fa76a4822577b55cc591754";
 const ATTESTATIONS = "https://registry.npmjs.org/-/npm/v1/attestations/@open-cr-agent%2fcli@0.1.2";
 // packages/cli/package.json's repository.url.
-const REPOSITORY = "git+https://github.com/jma49/Open-CR-Agent.git";
+const REPOSITORY = "git+https://github.com/ocrahq/Open-CR-Agent.git";
 const cli = {
   name: "@open-cr-agent/cli",
   version: "0.1.2",
@@ -34,7 +34,7 @@ function statement(workflow = {}, subject = { name: "pkg:npm/%40open-cr-agent/cl
         externalParameters: {
           workflow: {
             ref: "refs/tags/v0.1.2",
-            repository: "https://github.com/jma49/Open-CR-Agent",
+            repository: "https://github.com/ocrahq/Open-CR-Agent",
             path: RELEASE_WORKFLOW,
             ...workflow,
           },
@@ -87,7 +87,7 @@ describe("slsaStatement", () => {
 describe("provenanceProblem", () => {
   it("accepts a release built by this repository's release workflow from its tag", () => {
     expect(provenanceProblem(statement(), cli)).toBeUndefined();
-    expect(repositoryUrl(REPOSITORY)).toBe("https://github.com/jma49/open-cr-agent");
+    expect(repositoryUrl(REPOSITORY)).toBe("https://github.com/ocrahq/open-cr-agent");
   });
 
   it("rejects a package without provenance", () => {
@@ -114,7 +114,7 @@ describe("provenanceProblem", () => {
         cli,
       ),
     ).toBe(
-      "@open-cr-agent/cli@0.1.2 was built from https://github.com/attacker/Open-CR-Agent, not git+https://github.com/jma49/Open-CR-Agent.git",
+      "@open-cr-agent/cli@0.1.2 was built from https://github.com/attacker/Open-CR-Agent, not git+https://github.com/ocrahq/Open-CR-Agent.git",
     );
     expect(provenanceProblem(statement({ path: ".github/workflows/ci.yml" }), cli)).toMatch(
       /built by \.github\/workflows\/ci\.yml, not \.github\/workflows\/release\.yml/,
