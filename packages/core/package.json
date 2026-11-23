@@ -1,6 +1,6 @@
 {
   "name": "@open-cr-agent/core",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "description": "Domain types, review pipeline stages and plugin contracts for Open-CR-Agent",
   "keywords": [
     "code-review",
@@ -12,7 +12,7 @@
   "homepage": "https://ocracloud.com",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jma49/Open-CR-Agent.git",
+    "url": "git+https://github.com/ocrahq/Open-CR-Agent.git",
     "directory": "packages/core"
   },
   "bugs": "https://github.com/ocrahq/Open-CR-Agent/issues",

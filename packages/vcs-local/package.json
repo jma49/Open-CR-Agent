@@ -1,6 +1,6 @@
 {
   "name": "@open-cr-agent/vcs-local",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "description": "Local git adapter for Open-CR-Agent: working tree, ranges and commits",
   "keywords": [
     "code-review",
@@ -10,7 +10,7 @@
   "homepage": "https://ocracloud.com",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jma49/Open-CR-Agent.git",
+    "url": "git+https://github.com/ocrahq/Open-CR-Agent.git",
     "directory": "packages/vcs-local"
   },
   "bugs": "https://github.com/ocrahq/Open-CR-Agent/issues",
@@ -37,7 +37,7 @@
     "!dist/**/*.map"
   ],
   "dependencies": {
-    "@open-cr-agent/core": "0.18.0",
+    "@open-cr-agent/core": "0.19.0",
     "zod": "^4.6.6"
   },
   "publishConfig": {
