@@ -41,6 +41,7 @@ const SETTINGS = {
   rules: accountRules,
   // Under the configuration's ultra and the command's --ultra or --no-ultra.
   ultra: shape.ultra,
+  depth: shape.depth,
 } as const;
 
 const AGENTS = {

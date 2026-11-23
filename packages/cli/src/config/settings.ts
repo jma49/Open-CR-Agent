@@ -1,13 +1,15 @@
 import { isDeepStrictEqual } from "node:util";
-import { configSchema } from "@open-cr-agent/cloud-contract";
+import { configSchema, type ReviewDepth } from "@open-cr-agent/cloud-contract";
 import { MODEL_TIERS, OcraError, type SourcedRule } from "@open-cr-agent/core";
 import { z } from "zod";
+import { depthPreset } from "./depth.js";
 
 // A review's settings come in layers: a shared configuration (extends), the
 // repository's file or the user's own (--config), OCRA_* variables, the
 // ocra Cloud account's settings under them all (ADR-0027), and the command
 // line. One merge applies them and records, per setting, the layers its
-// value came from, so what --plan reports is what was applied.
+// value came from, so what --plan reports is what was applied. A depth
+// (quick, standard, deep) then fills what no layer set with its preset.
 
 type FileSettings = z.output<typeof configSchema>;
 
@@ -18,7 +20,7 @@ export type Settings = FileSettings & {
   ultra: boolean;
 };
 
-type SettingSource = "shared" | "file" | "env" | "account" | "flag";
+type SettingSource = "shared" | "file" | "env" | "account" | "flag" | "depth";
 
 // A layer read with the file's schema may hold a key as undefined; it sets nothing.
 type LayerSettings = { [K in keyof Settings]?: Settings[K] | undefined };
@@ -61,6 +63,7 @@ interface Listed {
 const ALL = ["shared", "file", "env", "account"] as const;
 const NOT_ENV = ["shared", "file", "account"] as const;
 const WITH_FLAG = [...NOT_ENV, "flag"] as const;
+const WITH_DEPTH = [...WITH_FLAG, "depth"] as const;
 const ALWAYS: Listed = { list: "always" };
 
 // How each setting merges, which layers may set it, and how --plan lists
@@ -78,8 +81,12 @@ const MERGE: {
 } = {
   runtime: { merge: "replace", from: ["file", "account"], plan: ALWAYS },
   models: { merge: "entries", from: ALL, plan: { list: "always", entries: MODEL_TIERS } },
-  effort: { merge: "entries", from: ALL, plan: { list: "always", entries: MODEL_TIERS } },
-  reviewers: { merge: "entries", from: NOT_ENV, plan: { list: "set" } },
+  effort: {
+    merge: "entries",
+    from: [...ALL, "depth"],
+    plan: { list: "always", entries: MODEL_TIERS },
+  },
+  reviewers: { merge: "entries", from: [...NOT_ENV, "depth"], plan: { list: "set" } },
   roles: { merge: "entries", from: NOT_ENV, plan: { list: "set" } },
   concurrency: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   taskTimeoutMinutes: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
@@ -88,8 +95,8 @@ const MERGE: {
   maxTasks: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   verify: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   judge: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
-  showPreExisting: { merge: "replace", from: ["shared", "file"], plan: ALWAYS },
-  minInlineSeverity: { merge: "replace", from: WITH_FLAG, plan: { list: "set" } },
+  showPreExisting: { merge: "replace", from: ["shared", "file", "depth"], plan: ALWAYS },
+  minInlineSeverity: { merge: "replace", from: WITH_DEPTH, plan: { list: "set" } },
   maxInlineComments: { merge: "replace", from: WITH_FLAG, plan: { list: "set" } },
   walkthrough: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
   fixes: { merge: "replace", from: NOT_ENV, plan: ALWAYS },
@@ -110,7 +117,8 @@ const MERGE: {
       show: (rules: SourcedRule[]) => rules.map(({ path, source }) => ({ path, source })),
     },
   },
-  ultra: { merge: "replace", from: WITH_FLAG, plan: { list: "set" } },
+  depth: { merge: "replace", from: WITH_FLAG, plan: { list: "set" } },
+  ultra: { merge: "replace", from: WITH_DEPTH, plan: { list: "set" } },
   $schema: { merge: "replace", from: ["shared", "file"] },
   github: { merge: "entries", from: ["shared", "file"] },
   learnings: { merge: "entries", from: ["shared", "file"], plan: { list: "set" } },
@@ -150,7 +158,7 @@ export function resolveSettings(layers: readonly SettingsLayer[]): {
     const from = sources[name] ?? [];
     if (!from.includes(source)) sources[name] = [...from, source];
   };
-  for (const { source, settings, under = false } of layers) {
+  const apply = ({ source, settings, under = false }: SettingsLayer) => {
     for (const [key, value] of Object.entries(settings)) {
       if (value === undefined) continue;
       const rule = MERGE[key as keyof Settings];
@@ -184,7 +192,13 @@ export function resolveSettings(layers: readonly SettingsLayer[]): {
         record(key, source);
       }
     }
-  }
+  };
+  for (const layer of layers) apply(layer);
+  apply({
+    source: "depth",
+    settings: depthPreset(merged.depth as ReviewDepth | undefined),
+    under: true,
+  });
   return { settings: merged as Settings, sources };
 }
 

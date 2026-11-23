@@ -6,6 +6,7 @@ import {
   agentRoleSchema,
   effortSchema,
   REVIEWER_ID,
+  reviewDepthSchema,
   runtimeSchema,
   severitySchema,
 } from "./vocabulary.js";
@@ -117,6 +118,7 @@ const ruleSchema = z.strictObject({
 export const reviewSettingsSchema = z
   .strictObject({
     ultra: z.boolean().nullish(),
+    depth: reviewDepthSchema.nullish(),
     concurrency: z.number().int().min(1).max(32).nullish(),
     taskTimeoutMinutes: minutes.nullish(),
     runTimeoutMinutes: minutes.nullish(),

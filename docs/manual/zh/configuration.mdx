@@ -116,6 +116,20 @@ agent 运行时只拿到 `PATH`、`HOME`、语言区域、代理和 CA 设置，
 
 某个任务失败或超时不会导致整次运行失败，它负责的文件会被标记为 `failed`。
 
+## 审查深度
+
+`depth` 用一个词选审查有多深入：`quick`、`standard`（ocra 的默认值）或 `deep`。它只填补下面这些没有任何一层自己设置的项：配置里的键、账户设置、`OCRA_EFFORT_*` 变量或命令行参数总是优先于深度。`--depth` 对单次运行覆盖它。
+
+| 设置 | `quick` | `standard` | `deep` |
+|---|---|---|---|
+| 审查员 | `correctness` 在所有风险档运行，`security` 只在 `full` 档运行；关闭 `performance`、`docs` 和 `agents-md` | 按风险档（见[审查员](#审查员)） | 所有审查员在所有风险档运行，每个跑两次（`ultra`） |
+| `effort.standard` | `low` | 不设置 | `high` |
+| `effort.top` | 不设置 | 不设置 | `high` |
+| `minInlineSeverity` | `warning` | 不设置 | 不设置 |
+| `showPreExisting` | `false` | 不设置 | 不设置 |
+
+每种深度都会做验证和 judge。你自己为某个审查员写的条目会整体替代深度对它的设置。`--plan` 会把深度填补的项标为来源 `depth`。
+
 ## 行内评论
 
 在 Pull Request 或 Merge Request 上，没有设置策略时，每条落在 diff 行上的问题都会成为一条行内评论。下面的键可以少发一些；没发出的问题会列在摘要评论里一个折叠的 *not posted inline* 小节中并注明原因，仍保留在 [JSON 报告](./cli#json-输出)里（`inline.held` 列出它们），也照旧计入结论。
@@ -200,7 +214,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`showPreExisting`、`ultra`、`minInlineSeverity`、`maxInlineComments`、`walkthrough`、`fixes`、`mergeChecks`、`linkedTasks`、`guidelineScope`、`trackers`、`projectDocs`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`effort`、`reviewers`、`roles`、`github`、`providers`（仅在固定内容时）和 `rules`（格式同 `.ocra/rules.json` 的条目）。它不能列出插件或选择运行时，因为它不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 合并，`models`、`effort`、`reviewers`、`roles`、`github` 和 `providers` 按键合并。
+共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`showPreExisting`、`ultra`、`depth`、`minInlineSeverity`、`maxInlineComments`、`walkthrough`、`fixes`、`mergeChecks`、`linkedTasks`、`guidelineScope`、`trackers`、`projectDocs`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`effort`、`reviewers`、`roles`、`github`、`providers`（仅在固定内容时）和 `rules`（格式同 `.ocra/rules.json` 的条目）。它不能列出插件或选择运行时，因为它不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 合并，`models`、`effort`、`reviewers`、`roles`、`github` 和 `providers` 按键合并。
 
 只接受 `https` 地址，不跟随重定向，最大 256 KB。`#sha256=` 固定文件内容；声明了 `providers` 的文件必须固定，因为供应商决定了你的代码发往哪里（见[模型供应商](./providers#你自己的端点)）。文件无法加载或无效时，ocra 警告后只用仓库自己的设置，只写在共享文件里的限制（例如 `maxCostUsd`）就不生效；必须始终生效的限制请在仓库里也写一份。
 
@@ -211,7 +225,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 | 账户中的键 | 如何生效 |
 |---|---|
 | `runtime`（`opencode` 或 `direct`）、`models.<tier>`、`effort.<tier>`、`reviewers.<id>`、`roles.<role>` | 只补充配置没有写的部分；配置中某个审查员或角色的条目整体优先 |
-| `concurrency`、`taskTimeoutMinutes`、`runTimeoutMinutes`、`maxCostUsd`、`maxTasks`、`verify`、`judge`、`fixes`、`linkedTasks`、`sampling`、`ultra`、`minInlineSeverity`、`maxInlineComments` | 只在配置没有设置时生效（`sampling` 算一个整体）：账户可以给没有上限的运行加上限，但不能放宽限制 |
+| `concurrency`、`taskTimeoutMinutes`、`runTimeoutMinutes`、`maxCostUsd`、`maxTasks`、`verify`、`judge`、`fixes`、`linkedTasks`、`sampling`、`ultra`、`depth`、`minInlineSeverity`、`maxInlineComments` | 只在配置没有设置时生效（`sampling` 算一个整体）：账户可以给没有上限的运行加上限，但不能放宽限制 |
 | `include` | 合并：先是配置中的模式，再是账户的 |
 | `exclude` | 只在配置没有设置时生效：账户排除的文件既不审查，也不算作未审查，所以配置里写了 `exclude`（哪怕是 `[]`）就不再采用账户的 |
 | `rules` | 追加在仓库规则和共享规则之后：最多 50 条，格式与 [`.ocra/rules.json`](./rules) 的条目相同，每条规则最多 2,000 个字符，以同样的方式嵌入提示词 |
