@@ -6,6 +6,8 @@ import type {
   SymbolExtractor,
 } from "../contracts.js";
 import { PLAN_INSTRUCTIONS } from "../review/plan-phase.js";
+import { correctnessReviewer } from "../review/reviewers/correctness.js";
+import { securityReviewer } from "../review/reviewers/security.js";
 import { previewReview } from "./preview.js";
 import { patch, vcs } from "./run.fakes.js";
 import { review, reviewWithHooks } from "./run.js";
@@ -201,5 +203,16 @@ describe("review --ultra", () => {
     const reviews = preview.tasks.reduce((sum, t) => sum + t.promptTokens, 0);
     expect(preview.promptTokens).toBe(reviews + (preview.tasks[0]?.planPromptTokens ?? 0));
     expect((await previewReview({ vcs: change() })).planCalls).toBe(0);
+  });
+
+  it("plans a large bundle only for a reviewer that works bundle by bundle", async () => {
+    const diff = patch("src/auth/retry.ts", `export const retries = "${"3".repeat(40_000)}";`);
+    const preview = await previewReview({
+      vcs: vcs({}, diff),
+      reviewers: [correctnessReviewer, securityReviewer],
+    });
+    const planned = preview.tasks.filter((t) => t.planPromptTokens !== undefined);
+    expect(preview.tasks.map((t) => t.reviewer)).toContain("security");
+    expect(planned.map((t) => t.reviewer)).toEqual(["correctness"]);
   });
 });
