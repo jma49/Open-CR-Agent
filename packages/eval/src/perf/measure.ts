@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { errorMessage } from "@open-cr-agent/core";
 import { readReport } from "@open-cr-agent/core/internal";
 import { benchmarkEnv, exec } from "../exec.js";
@@ -63,7 +64,7 @@ export async function measureReview(options: PerfOptions): Promise<PerfResult> {
       node,
       [
         "--import",
-        paths.probe,
+        pathToFileURL(paths.probe).href,
         ...cli,
         "review",
         "--from",
