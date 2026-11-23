@@ -104,7 +104,7 @@ try {
 
 一个 `ReviewReport`，内容与 [JSON 报告](./cli#json-输出)相同。
 
-- **对外发布的是 `toReportOutput(report)`**，不是报告本身：它是 CLI 写出的带版本号的 JSON，类型为 `ReportOutput`，由 `reportOutputSchema`（类型即由它推导）和 [JSON Schema](https://github.com/jma49/Open-CR-Agent/blob/main/docs/schema/report.v1.json) 校验。内部报告的字段可能会变。
+- **对外发布的是 `toReportOutput(report)`**，不是报告本身：它是 CLI 写出的带版本号的 JSON，类型为 `ReportOutput`，由 `reportOutputSchema`（类型即由它推导）和 [JSON Schema](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/schema/report.v1.json) 校验。内部报告的字段可能会变。
 - **不完整的审查不算通过。** 审查留下了没审完的选中文件，或有没人能核查的 critical 时，`isIncompleteReview(report)` 为真，这正是 CLI 以 3 退出的情形；结论让运行失败（退出码 1）时，即 `significant_concerns` 且没人推翻，`isBlocking(report)` 为真。像 CLI 的[退出码](./cli#退出码)那样用它们做门禁，永远不要只看 `verdict`。要看细节：`coverageGaps(report)` 给出有多少选中的文件没被审查、是否什么都没审到，并在 `incomplete` 里按任务的结束方式（`step_cap`、`stopped_early`）给出只审查了一部分的文件数；`report.unverifiedCriticals` 是没人能核查的 critical 数量。
 
 `vcs.publish(report)` 像 `--publish` 一样按平台的信任规则发布审查，没能发出去的部分以警告返回。
@@ -161,6 +161,6 @@ ocra 的各个包抛出带 `code` 的 `OcraError`（或其子类）：`isOcraErr
 - **`@open-cr-agent/cli`**：`run(argv)`，即带参数（不含 node 和脚本路径）运行 `ocra` 命令，输出写到 stdout 和 stderr，返回值是[退出码](./cli)。
 - **`@open-cr-agent/vcs-platform`** 是 ocra 各平台适配器共用的部分，还不是约定。
 
-每个名字和类型的形状都在该包位于 [`etc/`](https://github.com/jma49/Open-CR-Agent/tree/main/etc) 的 API 报告里；入口变了而报告没变时，CI 会失败。
+每个名字和类型的形状都在该包位于 [`etc/`](https://github.com/ocrahq/Open-CR-Agent/tree/main/etc) 的 API 报告里；入口变了而报告没变时，CI 会失败。
 
 `/internal` 入口（`@open-cr-agent/core/internal` 等）供 ocra 各包之间共用，不是约定：任何版本（包括补丁版本）都可能修改它们。请只依赖主入口。

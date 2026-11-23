@@ -5,7 +5,8 @@
 // The Action as the manual pins it: the release's commit and its version.
 // `node scripts/changelog.mjs action-pin <version>` moves this line with the
 // manual's; scripts/lib/manual-pins.test.mjs fails when they differ.
-export const ACTION_USES = "jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0";
+export const ACTION_USES =
+  "ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0";
 
 // By commit like the Action, so a moved tag cannot change what runs with the
 // workflow's secrets; scripts/lib/manual-pins.test.mjs keeps every recipe pinned.
@@ -25,7 +26,7 @@ export interface WorkflowOptions {
 export function workflowFor({ kind, keyEnv, direct }: WorkflowOptions): string {
   const header = [
     "# Written by ocra init. What it does and how to change it:",
-    "# https://github.com/jma49/Open-CR-Agent/blob/main/docs/manual/en/github.mdx",
+    "# https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/manual/en/github.mdx",
   ];
   const action = [
     `uses: ${ACTION_USES}`,

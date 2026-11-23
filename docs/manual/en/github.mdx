@@ -30,12 +30,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-- **Pin every action by commit**, with the version as a comment: a tag can move, a commit cannot. The recipes here and `ocra init` do, `actions/checkout` included. `git ls-remote --tags https://github.com/jma49/Open-CR-Agent v0.3.0` prints a release's commit; Dependabot updates the pin and comment.
+- **Pin every action by commit**, with the version as a comment: a tag can move, a commit cannot. The recipes here and `ocra init` do, `actions/checkout` included. `git ls-remote --tags https://github.com/ocrahq/Open-CR-Agent v0.3.0` prints a release's commit; Dependabot updates the pin and comment.
 - **Keep `fetch-depth: 0`:** ocra needs the history between base and head; a shallow checkout stops with a message.
 - **Keep `concurrency`:** otherwise two quick pushes post the same comments twice, and the slower run can overwrite the summary with an older head. A cancelled run publishes nothing (unless already publishing) and leaves its partial report in the job log.
 - **Keep `issues: read`:** with it the reviewers see the [issues the pull request closes](./how-it-works#linked-tasks); without it, a private repository's review goes on with a warning.
@@ -72,7 +72,7 @@ Give the step an `id` to read its outputs. They are set whenever ocra ran, also 
 
 ```yaml
       - id: ocra
-        uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+        uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       - if: ${{ !cancelled() && steps.ocra.outputs.report != '' }}
@@ -99,7 +99,7 @@ On `pull_request`, pull requests from forks get no secrets, so the `if:` skips t
 OpenCode, the default runtime, with its native binary is 97 of the 108 packages the Action installs and about 165 MB of 175 MB. When every model in the base branch's configuration is on an endpoint you declare and it sets `"runtime": "direct"` ([Choosing the runtime](./providers#choosing-the-runtime)), set `opencode: false` (new in v0.3.0) to install 11 packages. If the configuration then selects `opencode`, the review stops before any model call with exit code `2`, naming the missing package.
 
 ```yaml
-      - uses: jma49/Open-CR-Agent@<commit> # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@<commit> # v0.17.0
         with:
           opencode: false
         env:
@@ -128,7 +128,7 @@ Maintainers stay in charge. A maintainer, someone with write access (admin, main
 
 A finding can carry a fix: code that replaces the lines it is about. Its inline comment then ends with a suggestion block that anyone with write access can commit (**Commit suggestion**, or in a batch). ocra offers one only when the comment sits on exactly the replaced lines, never in the summary, and posts the code exactly or not at all: a fix holding an HTML comment opener, `/ocra`, a carriage return or a control or bidirectional character, or longer than 20,000 characters, gets no block; the finding is still posted. A suggestion is a model's proposal: read it before committing.
 
-Fixes come from the [Fix stage](./how-it-works), which is off unless [`fixes`](./configuration) or `--fixes` turns it on ([ADR-0058](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0058-checked-fix-proposals.md)); without it, comments give suggestions as text.
+Fixes come from the [Fix stage](./how-it-works), which is off unless [`fixes`](./configuration) or `--fixes` turns it on ([ADR-0058](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0058-checked-fix-proposals.md)); without it, comments give suggestions as text.
 
 ## Code scanning
 
@@ -149,7 +149,7 @@ jobs:
         with:
           fetch-depth: 0
       - id: ocra
-        uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+        uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         with:
           sarif: true
         env:
@@ -173,7 +173,7 @@ Run Semgrep, CodeQL or another SARIF-writing analyzer first and pass its log wit
 
 ```yaml
       - run: pipx run semgrep scan --config p/default --metrics=off --sarif --output semgrep.sarif
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         with:
           args: --import-sarif semgrep.sarif
         env:
@@ -243,7 +243,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         with:
           learn: ${{ github.event_name == 'schedule' && 'mine' || 'remember' }}
         env:
@@ -293,7 +293,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         with:
           reply: true
         env:
@@ -346,7 +346,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         with:
           args: --max-cost-usd 2
         env:
@@ -402,7 +402,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         with:
           args: --max-cost-usd 2
         env:
@@ -467,7 +467,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         with:
           github-token: ${{ steps.app.outputs.token }}
           args: --max-cost-usd 2
@@ -475,7 +475,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-The rules for `pull_request_target` [above](#pull-requests-from-forks) apply. This exact setup has not been run end to end yet; if a step fails, [open an issue](https://github.com/jma49/Open-CR-Agent/issues/new/choose).
+The rules for `pull_request_target` [above](#pull-requests-from-forks) apply. This exact setup has not been run end to end yet; if a step fails, [open an issue](https://github.com/ocrahq/Open-CR-Agent/issues/new/choose).
 
 ## Configuration
 

@@ -50,7 +50,7 @@ node packages/eval/dist/main.js score .ocra/eval/baseline                       
 
 ## 黄金用例
 
-AACR-Bench 的标准答案是评审碰巧留下的评论，其中约四分之三由 AI 模型写成，没人评论过的真问题会算作 ocra 的误报。评估 ocra 自身的改动时，使用仓库自己的用例 `evals/golden/`（[ADR-0011](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)），按 [ADR-0036](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0036-golden-case-set-policy.md) 和 `evals/golden/README.md` 的规定挑选和核查，配合 `--dataset golden`。
+AACR-Bench 的标准答案是评审碰巧留下的评论，其中约四分之三由 AI 模型写成，没人评论过的真问题会算作 ocra 的误报。评估 ocra 自身的改动时，使用仓库自己的用例 `evals/golden/`（[ADR-0011](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0011-golden-eval-set.md)），按 [ADR-0036](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0036-golden-case-set-policy.md) 和 `evals/golden/README.md` 的规定挑选和核查，配合 `--dataset golden`。
 
 ```bash
 node packages/eval/dist/main.js list    --dataset golden --tier smoke    # 免费
@@ -91,7 +91,7 @@ node packages/eval/dist/main.js golden-import --from aacr --limit 50   # 免费
 `golden-import --from fixes` 则从仓库自己的历史中写出候选，标签来自提交合并后发生的事，而不是任何人的判断：
 
 ```bash
-node packages/eval/dist/main.js golden-import --from fixes --repo jma49/Open-CR-Agent --repo-dir ../ocra-clone   # 免费
+node packages/eval/dist/main.js golden-import --from fixes --repo ocrahq/Open-CR-Agent --repo-dir ../ocra-clone   # 免费
 ```
 
 它读取本地克隆的 first-parent 历史（只读 git 对象：不检出，也不运行仓库里的任何东西）。对每个最多改动 5 个源码文件（不含文档、测试、快照、锁文件和数据）的修复或回滚（主题为 `fix:`、`revert:`，或写了 fix、bug），它把修复改写或删除的行 blame 到引入这些行的提交上（SZZ 方法）。这样的提交如果只有一个父提交、改动不超过 `--max-change-lines`（默认 300）行、且还不是黄金用例，就成为一个以其父提交为基线的候选：每个修复一条断言，取它最短的一段连续行（最多 15 行，空行、括号和注释不计）作为断言，修复的其他位置放进 `also`，最多 3 个修复，`origin: "author-fix"`，`producer: "szz"`，修复主题提到安全时类别为 security，否则为 correctness，`minSeverity: "suggestion"`。许可证取自该提交根目录的文件。`--repo` 是克隆对应的 GitHub 仓库，运行时会克隆它；`--out` 默认为 `.ocra/eval/fix-golden-candidates`，`summary.md` 按原因统计被跳过的修复和被略去的提交。和所有候选一样，它们未经核实：修复也可能改写了并非缺陷所在的行。
@@ -130,7 +130,7 @@ node packages/eval/dist/main.js adjudicate .ocra/eval/golden-baseline
 
 ### 对抗用例
 
-对抗用例衡量埋在改动里的文字能否改变 ocra 的审查（[ADR-0014](https://github.com/jma49/Open-CR-Agent/blob/main/docs/adr/0014-adversarial-golden-cases.md)）。每个是一个 `tier: "adversarial"` 的用例文件，写明攻击哪个黄金用例、埋入什么文字：
+对抗用例衡量埋在改动里的文字能否改变 ocra 的审查（[ADR-0014](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0014-adversarial-golden-cases.md)）。每个是一个 `tier: "adversarial"` 的用例文件，写明攻击哪个黄金用例、埋入什么文字：
 
 ```json
 {

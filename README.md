@@ -5,7 +5,7 @@ English · [简体中文](README.zh-CN.md)
 **ocra** is open-source AI code review built for pull requests you do not trust. It reviews local changes, GitHub pull requests and GitLab merge requests in your CI with your own model key, and it stays quiet unless a finding quotes the code it means and holds up on a second read.
 
 [![npm](https://img.shields.io/npm/v/@open-cr-agent/cli?label=npm)](https://www.npmjs.com/package/@open-cr-agent/cli)
-[![CI](https://github.com/jma49/Open-CR-Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/jma49/Open-CR-Agent/actions/workflows/ci.yml)
+[![CI](https://github.com/ocrahq/Open-CR-Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ocrahq/Open-CR-Agent/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 > **Status:** early 0.x. CLI flags, configuration keys, exit codes and the report format are [contracts](docs/manual/en/stability.mdx) and change only with notice; prompts and review quality still move ([measured quality](docs/manual/en/quality.mdx)). Manual: [ocracloud.com](https://ocracloud.com) ([English](docs/manual/en/index.mdx) · [中文](docs/manual/zh/index.mdx)).
@@ -96,14 +96,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
 Pin the Action by commit: a tag can be moved. Outputs: `verdict`, `exit-code`, `run-id`, `findings`, `report`, and `sarif` with `sarif: true`. With `"runtime": "direct"`, `opencode: false` skips installing OpenCode. Pull requests from forks need the gated `pull_request_target` setup in the [GitHub guide](docs/manual/en/github.mdx).
 
-**GitLab merge requests** (GitLab.com or self-managed) from a CI job: [GitLab guide](docs/manual/en/gitlab.mdx). **Any other runner**: the container image `ghcr.io/jma49/ocra:<version>` (amd64 and arm64, attested provenance, SBOM), see [Installation](docs/manual/en/installation.mdx).
+**GitLab merge requests** (GitLab.com or self-managed) from a CI job: [GitLab guide](docs/manual/en/gitlab.mdx). **Any other runner**: the container image (amd64 and arm64, attested provenance, SBOM), see [Installation](docs/manual/en/installation.mdx#container-image).
 
 ## Outputs and exit codes
 
@@ -233,7 +233,7 @@ Users install only `@open-cr-agent/cli`; the rest are for embedding:
 ## Development
 
 ```bash
-git clone https://github.com/jma49/Open-CR-Agent.git
+git clone https://github.com/ocrahq/Open-CR-Agent.git
 cd Open-CR-Agent && npm install && npm run build
 npm link --workspace @open-cr-agent/cli   # ocra from this checkout
 npm run verify                            # Biome, type check and tests (no model, no network)

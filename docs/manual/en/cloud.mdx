@@ -4,7 +4,7 @@ description: "The web console on top of the CLI: your pull requests and their re
 icon: Cloud
 ---
 
-ocra Cloud is a web console and a model gateway on top of the same engine. It lives at https://app.ocracloud.com and is free during early access; you bring the model keys. A company can run its own server instead ([self-hosting](https://github.com/jma49/ocra-cloud/blob/main/docs/self-hosting.md)). The CLI uses it only while you are [signed in](./cli#ocra-login-ocra-logout-ocra-whoami); what it receives is in the [threat model](./threat-model#ocra-cloud).
+ocra Cloud is a web console and a model gateway on top of the same engine. It lives at https://app.ocracloud.com and is free during early access; you bring the model keys. A company can run its own server instead ([self-hosting](https://github.com/ocrahq/ocra-cloud/blob/main/docs/self-hosting.md)). The CLI uses it only while you are [signed in](./cli#ocra-login-ocra-logout-ocra-whoami); what it receives is in the [threat model](./threat-model#ocra-cloud).
 
 Some pages need a bot: an account of the server's own, which reviews and writes on the platform as ocra. They are marked *with the bot* below.
 
@@ -60,7 +60,7 @@ The pull request's page shows the result. The bot also posts it, as the `ocra / 
 - **Findings are kept.** From the first review the server runs for you, it keeps those reviews' findings with the code each one quotes, redacted like any upload, so that the pull request's page, the Reviews page and your notifications can show them. This does not turn on sharing for reviews from your own machine. Account and privacy switches it off and can delete what is kept; a later review does not switch it back on.
 - **@ocra.** A person's comment that mentions `@ocra` on an enrolled repository's pull request gets an answer in its thread ([`ocra reply`](./cli#ocra-reply)).
 
-On the hosted console the reviews run on remote runners: machines that ask the server for the next job, clone the repository and run the released CLI. A runner holds no model key and gets a token for one repository per job. A server of your own runs reviews itself, on [runners](https://github.com/jma49/ocra-cloud/blob/main/docs/runner.md), or both. Without a server, the [Action](./github#asking-ocra-about-the-change) does the same in your own workflow.
+On the hosted console the reviews run on remote runners: machines that ask the server for the next job, clone the repository and run the released CLI. A runner holds no model key and gets a token for one repository per job. A server of your own runs reviews itself, on [runners](https://github.com/ocrahq/ocra-cloud/blob/main/docs/runner.md), or both. Without a server, the [Action](./github#asking-ocra-about-the-change) does the same in your own workflow.
 
 ## Review settings
 
@@ -87,7 +87,7 @@ The server keeps a graph of each added repository's default branch, updated afte
 
 ## Running your own server
 
-A company can run ocra Cloud on its own machines, for example next to an internal GitLab and internal models; the [self-hosting guide](https://github.com/jma49/ocra-cloud/blob/main/docs/self-hosting.md) has every variable. It is a Node server in Docker, without any Cloudflare service.
+A company can run ocra Cloud on its own machines, for example next to an internal GitLab and internal models; the [self-hosting guide](https://github.com/ocrahq/ocra-cloud/blob/main/docs/self-hosting.md) has every variable. It is a Node server in Docker, without any Cloudflare service.
 
 - **Database.** Postgres by default (13 or later; the compose file runs Postgres 17 beside the server); a SQLite file for a trial.
 - **Sign-in.** A GitHub App, or OpenID Connect: the company's SSO (Keycloak, Azure AD, Okta) or a self-hosted GitLab. With GitLab as the provider, the same sign-in connects GitLab.
