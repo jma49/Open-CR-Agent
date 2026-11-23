@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import {
   type Effort,
@@ -30,8 +31,9 @@ const MAX_OUTPUT_TOKENS = 32_000;
 const CACHE_WRITE_FACTOR = 1.25;
 const CACHED = { cache_control: { type: "ephemeral" } } as const;
 // The API takes four cache marks a request: the system prompt's, the newest
-// block's, and these. A dialogue of one request leaves its newest block
-// unmarked and has that mark for a shared start.
+// block's, and these, for the guidelines' end and the files'. A dialogue of
+// one request leaves its newest block unmarked and has that mark for a
+// shared start.
 const MAX_SHARED_MARKS = 2;
 // How the API names the effort parameters in a 400 that refuses them.
 const EFFORT_PARAMETER = /\b(?:effort|output_config|thinking)\b/i;
@@ -62,22 +64,22 @@ export const anthropicWire: Wire = ({ endpoint, model, price, system, oneRequest
   const client = clientOf(endpoint);
   const secrets = endpoint.apiKey ? [endpoint.apiKey] : [];
   const messages: Turn[] = [];
-  // What the first request stores for the run's other conversations.
-  let opening: string | undefined;
+  // What the first request stores for the run's other conversations,
+  // shortest first.
+  let opening: string[] = [];
 
   return {
     say: (text, shared = []) => {
       const ends = sharedEnds(text, shared);
-      const [first] = ends;
-      if (messages.length === 0 && first !== undefined) {
-        opening = [endpoint.baseUrl, model, system, text.slice(0, first)].join("\0");
+      if (messages.length === 0) {
+        opening = ends.map((end) => startKey(endpoint.baseUrl, model, system, text.slice(0, end)));
       }
       const marks = oneRequest ? MAX_SHARED_MARKS + 1 : MAX_SHARED_MARKS;
       messages.push({ role: "user", content: textBlocks(text, ends, marks) });
     },
     ask: async (tools, settings, signal): Promise<Answer> => {
-      const begun = opening === undefined ? undefined : await starts?.claim(opening, signal);
-      opening = undefined;
+      const begun = (await starts?.claim(opening, signal)) ?? (() => undefined);
+      opening = [];
       const send = (request: Request) =>
         onceMore(() => stream(client, request, price, secrets, signal, begun), signal).finally(
           begun,
@@ -155,13 +157,18 @@ function effortParams(effort: Effort | undefined): Pick<Request, "output_config"
   };
 }
 
+function startKey(...parts: string[]): string {
+  return createHash("sha256").update(parts.join("\0")).digest("hex");
+}
+
 function sharedEnds(text: string, shared: readonly number[]): number[] {
   return shared.filter((end) => end > 0 && end < text.length);
 }
 
 // The text as blocks that end where a shared start does: together they read
-// as the text does. The first `marks` are stored; a later one only ends a
-// block, which is where a request looks for what another stored.
+// as the text does. The last `marks` are stored, the longest starts a task
+// can share; an earlier one only ends a block, which is where a request
+// looks for what another stored.
 function textBlocks(
   text: string,
   ends: readonly number[],
@@ -170,7 +177,8 @@ function textBlocks(
   const blocks: Anthropic.TextBlockParam[] = [];
   let from = 0;
   for (const [i, end] of ends.entries()) {
-    blocks.push({ type: "text", text: text.slice(from, end), ...(i < marks ? CACHED : {}) });
+    const stored = i >= ends.length - marks;
+    blocks.push({ type: "text", text: text.slice(from, end), ...(stored ? CACHED : {}) });
     from = end;
   }
   return [...blocks, { type: "text", text: text.slice(from) }];
@@ -200,12 +208,12 @@ async function stream(
   price: ModelPrice,
   secrets: readonly string[],
   signal: AbortSignal,
-  begun?: () => void,
+  begun: () => void,
 ): Promise<Reply> {
   let message: Anthropic.Message;
   try {
     const answer = client.messages.stream(request, { signal });
-    if (begun) answer.once("streamEvent", begun);
+    answer.once("streamEvent", begun);
     message = await answer.finalMessage();
   } catch (error) {
     if (signal.aborted) return { ok: false, error: { message: "cancelled", retryable: false } };

@@ -24,6 +24,9 @@ export interface ReviewerDefinition {
   id: string;
   category: string;
   modelTier: ModelTier;
+  // The reviewer's brief: who it is, what it looks for and how it reports.
+  // Sent after the files, under a system prompt all reviewers share
+  // (ADR-0073); the name is the plugin contract's.
   systemPrompt: string;
   scope?: ReviewerScope;
   rules?: RuleSet;

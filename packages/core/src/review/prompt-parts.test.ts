@@ -29,13 +29,14 @@ describe("reviewPromptParts", () => {
       "changed_files",
       "linked_tasks",
       "guidelines",
-      "rules",
       "accepted",
       "learnings",
       "project_docs",
       "diff",
       "callers",
       "analyzer",
+      "reviewer_brief",
+      "rules",
       "instructions",
     ]);
   });

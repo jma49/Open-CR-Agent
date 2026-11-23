@@ -253,7 +253,6 @@ async function preparePrompt(
     ...task.input,
     callers,
     plan: planned.plan,
-    planPhase: "after",
   });
   // The sample that made the call pays for it and reports its warning.
   if (shared) return { prompt, usage: [], warnings: [] };

@@ -151,7 +151,7 @@ describe("DirectRuntime on a Messages endpoint", () => {
     ]);
   });
 
-  it("only ends a block at a start past the two a task can mark", async () => {
+  it("marks the two longest starts a task shares, and only ends a block at a shorter one", async () => {
     const server = await endpoint([
       { text: "Reviewed.", toolCalls: [{ name: "task_done", input: {} }] },
     ]);
@@ -164,9 +164,9 @@ describe("DirectRuntime on a Messages endpoint", () => {
 
     const mark = { cache_control: { type: "ephemeral" } };
     expect(server.seen[0]?.body.messages[0]?.content).toEqual([
-      { type: "text", text: "change", ...mark },
+      { type: "text", text: "change" },
       { type: "text", text: " guidelines", ...mark },
-      { type: "text", text: " files" },
+      { type: "text", text: " files", ...mark },
       { type: "text", text: " plan", ...mark },
     ]);
   });

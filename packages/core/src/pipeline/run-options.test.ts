@@ -58,8 +58,9 @@ describe("review() options", () => {
       "system",
       "change_request",
       "changed_files",
-      "rules",
       "diff",
+      "reviewer_brief",
+      "rules",
       "instructions",
     ]);
     expect(await sources(["changed_files"])).not.toContain("changed_files");

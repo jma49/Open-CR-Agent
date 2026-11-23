@@ -12,27 +12,31 @@ const MAX_WAIT_MS = 10_000;
 export class SharedStarts {
   private readonly stored = new Map<string, Promise<void>>();
 
-  // The first request with this start gets what to call once its answer has
-  // begun, or it has ended without one. Any other gets nothing, after that
-  // call, the wait's limit or the signal.
-  async claim(start: string, signal: AbortSignal): Promise<(() => void) | undefined> {
-    const storing = this.stored.get(start);
-    if (!storing) {
-      let begun: () => void = () => undefined;
-      this.stored.set(
-        start,
-        new Promise<void>((resolve) => {
-          begun = resolve;
-        }),
-      );
-      return begun;
+  // Returns once every start is stored or the request is the first with it:
+  // what to call when its answer has begun, or it has ended without one.
+  // `starts` are the keys of what the request opens with, shortest first.
+  async claim(starts: readonly string[], signal: AbortSignal): Promise<() => void> {
+    const first: (() => void)[] = [];
+    for (const start of starts) {
+      const storing = this.stored.get(start);
+      if (storing) {
+        await settled(storing, signal);
+        continue;
+      }
+      this.stored.set(start, new Promise<void>((resolve) => first.push(resolve)));
     }
-    const waited = new AbortController();
-    const limit = setTimeout(MAX_WAIT_MS, undefined, {
-      signal: AbortSignal.any([signal, waited.signal]),
-    }).catch(() => undefined);
-    await Promise.race([storing, limit]);
-    waited.abort();
-    return undefined;
+    return () => {
+      for (const begun of first) begun();
+    };
   }
+}
+
+// After the storing answer has begun, the wait's limit or the signal.
+async function settled(storing: Promise<void>, signal: AbortSignal): Promise<void> {
+  const waited = new AbortController();
+  const limit = setTimeout(MAX_WAIT_MS, undefined, {
+    signal: AbortSignal.any([signal, waited.signal]),
+  }).catch(() => undefined);
+  await Promise.race([storing, limit]);
+  waited.abort();
 }

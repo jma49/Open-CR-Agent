@@ -90,7 +90,7 @@ export function taskPrompt(
     callers,
     planCall: {
       key: `${cell.reviewer.id}\0${cell.bundle.label}`,
-      prompt: () => buildReviewPrompt({ ...input, planPhase: "call" }),
+      prompt: () => buildReviewPrompt({ ...input, planCall: true }),
     },
   };
 }

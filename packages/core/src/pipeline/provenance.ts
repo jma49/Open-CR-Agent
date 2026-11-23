@@ -49,9 +49,10 @@ export function promptHash(
 ): string {
   const reviewerPrompts = reviewers
     .filter((r) => overrides[r.id]?.enabled !== false)
-    .map((r) => [r.id, reviewerSystemPrompt(r)])
+    .map((r) => [r.id, r.systemPrompt])
     .sort(([a], [b]) => ((a as string) < (b as string) ? -1 : 1));
   return stableHash({
+    frame: reviewerFrame(),
     reviewers: Object.fromEntries(reviewerPrompts),
     helpers: {
       grouping: GROUPING_SYSTEM_PROMPT,
@@ -63,9 +64,10 @@ export function promptHash(
   });
 }
 
-function reviewerSystemPrompt(reviewer: ReviewerDefinition): string {
+// The system prompt every reviewer is given.
+function reviewerFrame(): string {
   return buildReviewPrompt({
-    reviewer,
+    reviewer: { id: "", category: "", modelTier: "standard", systemPrompt: "" },
     changeRequest: { id: "", title: "", description: "", baseSha: "", headSha: "" },
     changedFiles: [],
     bundle: [],

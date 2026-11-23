@@ -15,9 +15,8 @@ const builtIn = [
 
 describe("built-in reviewer prompts", () => {
   it.each(builtIn.map((r) => [r.id, r.systemPrompt]))(
-    "%s names only ocra's tags and says only they are ocra's",
+    "%s names only ocra's tags",
     (_id, prompt) => {
-      expect(prompt).toContain("Only tags that start with <ocra_ are ocra's");
       // A section named without the prefix no longer exists in the prompt.
       expect(prompt.match(/<\/?(?!ocra_)[a-z_]+>/g) ?? []).toEqual([]);
     },

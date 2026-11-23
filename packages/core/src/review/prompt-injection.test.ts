@@ -104,7 +104,11 @@ describe("prompt injection", () => {
         accepted: [{ fingerprint: "0123456789abcdef", file: path, title: text, reason: text }],
       }).user;
     const benign = prompt("benign", "a.ts");
-    expect(skeleton(benign)).toEqual([
+    const structure = skeleton(benign);
+    // The brief and the closing instruction name sections in their text.
+    const brief = structure.indexOf("<ocra_reviewer_brief");
+    expect(structure.slice(brief)).toContain("</ocra_review_rules");
+    expect(structure.slice(0, brief + 1)).toEqual([
       "<ocra_change_request",
       "<ocra_title",
       "</ocra_title",
@@ -115,16 +119,13 @@ describe("prompt injection", () => {
       "</ocra_changed_files",
       "<ocra_repository_guidelines",
       "</ocra_repository_guidelines",
-      "<ocra_review_rules",
-      "</ocra_review_rules",
       "<ocra_accepted_findings",
       "</ocra_accepted_findings",
       "<ocra_review_files",
       "<ocra_file",
       "</ocra_file",
       "</ocra_review_files",
-      // The closing instruction names the section.
-      "<ocra_review_files",
+      "<ocra_reviewer_brief",
     ]);
     expect(skeleton(prompt(ATTACK, PATH_ATTACK))).toEqual(skeleton(benign));
     expect(strayTags(prompt(ATTACK, PATH_ATTACK))).toBe("");

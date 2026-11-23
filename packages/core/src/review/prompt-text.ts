@@ -47,6 +47,7 @@ const SECTIONS = [
   "callers",
   "analyzer_results",
   "review_plan",
+  "reviewer_brief",
   "reply",
   "thread",
   "question",

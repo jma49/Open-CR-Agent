@@ -63,7 +63,7 @@ describe("the agents-md reviewer and the repository's guidelines", () => {
     expect(matched.correctness).toContain("- `web/`");
     expect(matched["agents-md"]).toContain("Use the tokens.");
     const reviewer = await prompts("reviewer");
-    expect(reviewer.correctness).not.toContain("<ocra_repository_guidelines>");
+    expect(reviewer.correctness).not.toContain("</ocra_repository_guidelines>");
     expect(reviewer["agents-md"]).toContain("Use the tokens.");
   });
 });
