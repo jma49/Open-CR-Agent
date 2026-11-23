@@ -866,6 +866,9 @@ export const MAX_LIVE_EVENTS = 5000;
 export const MAX_MEMORY_PER_REPO = 500;
 
 // @public
+export const MAX_MEND_FINDINGS = 200;
+
+// @public
 export const MAX_MERGE_CHECK_INSTRUCTION = 500;
 
 // @public
@@ -904,6 +907,160 @@ export const memoryEntrySchema: z.ZodObject<{
     title: z.ZodNullable<z.ZodString>;
     reason: z.ZodString;
     createdAt: z.ZodString;
+}, z.core.$strip>;
+
+// @public
+export const MEND_ITEM_OUTCOMES: readonly ["fixed", "proposed", "rejected", "deferred", "needs_human", "gone"];
+
+// @public
+export const MEND_ITEM_REASONS: readonly ["declined", "failed", "stale", "unchanged", "unsafe", "too_large", "no_parser", "syntax", "not_candidate", "out_of_scope", "protected", "tamper", "unresolved", "unsure", "unchecked", "overlap", "no_room", "attempts", "head_moved", "not_writable"];
+
+// @public
+export const MEND_LEVELS: readonly ["propose", "commit"];
+
+// @public
+export const MEND_OUTCOMES: readonly ["committed", "proposed", "nothing", "stopped", "head_moved", "not_writable"];
+
+// @public
+export const MEND_STOPS: readonly ["rounds", "spend"];
+
+// @public
+export const mendFindingsSchema: z.ZodArray<z.ZodObject<{
+    fingerprint: z.ZodString;
+    reviewer: z.ZodString;
+    severity: z.ZodEnum<{
+        critical: "critical";
+        suggestion: "suggestion";
+        warning: "warning";
+    }>;
+    category: z.ZodCatch<z.ZodNullable<z.ZodString>>;
+    verification: z.ZodCatch<z.ZodNullable<z.ZodEnum<{
+        confirmed: "confirmed";
+        uncertain: "uncertain";
+        unchecked: "unchecked";
+    }>>>;
+    file: z.ZodString;
+    lineStart: z.ZodCatch<z.ZodNullable<z.ZodNumber>>;
+    lineEnd: z.ZodCatch<z.ZodNullable<z.ZodNumber>>;
+    title: z.ZodString;
+    body: z.ZodString;
+    suggestion: z.ZodCatch<z.ZodNullable<z.ZodString>>;
+    code: z.ZodCatch<z.ZodNullable<z.ZodString>>;
+    fix: z.ZodCatch<z.ZodOptional<z.ZodObject<{
+        startLine: z.ZodNumber;
+        endLine: z.ZodNumber;
+        replacement: z.ZodString;
+    }, z.core.$strip>>>;
+    evidence: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodString>>>;
+    lowConfidence: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
+    redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
+    truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
+}, z.core.$strip>>;
+
+// @public (undocumented)
+export type MendItemOutcome = (typeof MEND_ITEM_OUTCOMES)[number];
+
+// @public (undocumented)
+export type MendItemReason = (typeof MEND_ITEM_REASONS)[number];
+
+// @public (undocumented)
+export type MendLevel = (typeof MEND_LEVELS)[number];
+
+// @public (undocumented)
+export type MendOutcome = (typeof MEND_OUTCOMES)[number];
+
+// @public (undocumented)
+export type MendResult = z.infer<typeof mendResultSchema>;
+
+// @public
+export const mendResultSchema: z.ZodObject<{
+    headSha: z.ZodString;
+    outcome: z.ZodEnum<{
+        committed: "committed";
+        head_moved: "head_moved";
+        not_writable: "not_writable";
+        nothing: "nothing";
+        proposed: "proposed";
+        stopped: "stopped";
+    }>;
+    stopped: z.ZodNullable<z.ZodEnum<{
+        rounds: "rounds";
+        spend: "spend";
+    }>>;
+    commitSha: z.ZodNullable<z.ZodString>;
+    items: z.ZodArray<z.ZodObject<{
+        fingerprint: z.ZodString;
+        outcome: z.ZodEnum<{
+            deferred: "deferred";
+            fixed: "fixed";
+            gone: "gone";
+            needs_human: "needs_human";
+            proposed: "proposed";
+            rejected: "rejected";
+        }>;
+        reason: z.ZodNullable<z.ZodEnum<{
+            attempts: "attempts";
+            declined: "declined";
+            failed: "failed";
+            head_moved: "head_moved";
+            no_parser: "no_parser";
+            no_room: "no_room";
+            not_candidate: "not_candidate";
+            not_writable: "not_writable";
+            out_of_scope: "out_of_scope";
+            overlap: "overlap";
+            protected: "protected";
+            stale: "stale";
+            syntax: "syntax";
+            tamper: "tamper";
+            too_large: "too_large";
+            unchanged: "unchanged";
+            unchecked: "unchecked";
+            unresolved: "unresolved";
+            unsafe: "unsafe";
+            unsure: "unsure";
+        }>>;
+        edits: z.ZodArray<z.ZodObject<{
+            path: z.ZodString;
+            startLine: z.ZodNumber;
+            endLine: z.ZodNumber;
+            replacement: z.ZodString;
+        }, z.core.$strip>>;
+    }, z.core.$strip>>;
+    state: z.ZodObject<{
+        rounds: z.ZodNumber;
+        costUsd: z.ZodNumber;
+        items: z.ZodRecord<z.ZodString, z.ZodObject<{
+            attempts: z.ZodNumber;
+            closed: z.ZodOptional<z.ZodEnum<{
+                gone: "gone";
+                needs_human: "needs_human";
+            }>>;
+        }, z.core.$strip>>;
+    }, z.core.$strip>;
+    usage: z.ZodObject<{
+        inputTokens: z.ZodNumber;
+        cachedTokens: z.ZodNumber;
+        outputTokens: z.ZodNumber;
+        reasoningTokens: z.ZodNumber;
+        costUsd: z.ZodNumber;
+    }, z.core.$strip>;
+}, z.core.$strip>;
+
+// @public (undocumented)
+export type MendState = z.infer<typeof mendStateSchema>;
+
+// @public
+export const mendStateSchema: z.ZodObject<{
+    rounds: z.ZodNumber;
+    costUsd: z.ZodNumber;
+    items: z.ZodRecord<z.ZodString, z.ZodObject<{
+        attempts: z.ZodNumber;
+        closed: z.ZodOptional<z.ZodEnum<{
+            gone: "gone";
+            needs_human: "needs_human";
+        }>>;
+    }, z.core.$strip>>;
 }, z.core.$strip>;
 
 // @public

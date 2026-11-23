@@ -123,6 +123,23 @@ export {
   rememberRequestSchema,
 } from "./memory.js";
 export {
+  MAX_MEND_FINDINGS,
+  MEND_ITEM_OUTCOMES,
+  MEND_ITEM_REASONS,
+  MEND_LEVELS,
+  MEND_OUTCOMES,
+  MEND_STOPS,
+  type MendItemOutcome,
+  type MendItemReason,
+  type MendLevel,
+  type MendOutcome,
+  type MendResult,
+  type MendState,
+  mendFindingsSchema,
+  mendResultSchema,
+  mendStateSchema,
+} from "./mend.js";
+export {
   MAX_MERGE_CHECK_INSTRUCTION,
   MAX_MERGE_CHECKS,
   MERGE_CHECK_ID,

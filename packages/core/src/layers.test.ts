@@ -30,6 +30,7 @@ const LAYERS: readonly (readonly string[])[] = [
     "merge-checks/",
     "chat/",
     "generate/",
+    "mend/",
     "sarif/",
     "matrix/",
   ],

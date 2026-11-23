@@ -23,6 +23,7 @@ export {
   parseMemory,
   serializeMemory,
 } from "./memory/memory.js";
+export { type MendState, ROUND_STOPS } from "./mend/state.js";
 export { answerMention } from "./pipeline/answer.js";
 export { reviewContext } from "./pipeline/context.js";
 export {
@@ -31,6 +32,14 @@ export {
   type StoredFinding,
 } from "./pipeline/fix-finding.js";
 export { type Generated, generateChanges } from "./pipeline/generate.js";
+export {
+  MEND_ITEM_OUTCOMES,
+  MEND_ITEM_REASONS,
+  MEND_LEVELS,
+  MEND_OUTCOMES,
+  type MendRound,
+  mendRound,
+} from "./pipeline/mend.js";
 export { MAX_TIMER_MS, REVIEW_DEFAULTS } from "./pipeline/options.js";
 export {
   PLAN_VERSION,
