@@ -15,7 +15,7 @@ ocra reads `.ocra/config.json` from the root of the reviewed repository. Every k
     "standard": ["google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
     "light": "google/gemini-flash-lite-latest"
   },
-  "concurrency": 4,
+  "concurrency": 8,
   "taskTimeoutMinutes": 10,
   "runTimeoutMinutes": 25,
   "verify": true,
@@ -42,7 +42,7 @@ Models are written as `provider/model`, using OpenCode's provider IDs (for examp
 | `light` | Helper calls such as grouping changed files |
 | `top` | The judge |
 
-When a model is overloaded or rejects a request, the task retries on the next model in the chain. A rate limit with a stated wait of up to 90 seconds pauses that model for every task, then retries; one without a stated wait pauses it for 15 seconds, then 30, then 60. Limits that arrive during a pause, as when tasks running at once are refused together, count as that pause. A daily limit, a longer wait, or a limit after three pauses in a row drops the model for the run. Each model has a circuit breaker: after two failures in a row it is skipped for a minute, then probed with one request; success restores it, failure doubles the pause (up to ten minutes). Credential errors stop at once, since the provider's other models would fail too.
+When a model is overloaded or rejects a request, the task retries on the next model in the chain. A rate limit with a stated wait of up to 90 seconds pauses that model for every task, then retries; one without a stated wait pauses it for 15 seconds, then 30, then 60. On the `direct` runtime a task keeps what it has done: the refused request is sent again after the pause, and the steps before it are not asked or paid for twice (new in v0.16.0); on `opencode` a task that ends on a rate limit starts again after the pause. Limits that arrive during a pause, as when tasks running at once are refused together, count as that pause. A daily limit, a longer wait, or a limit after three pauses in a row drops the model for the run. Each model has a circuit breaker: after two failures in a row it is skipped for a minute, then probed with one request; success restores it, failure doubles the pause (up to ten minutes). Credential errors stop at once, since the provider's other models would fail too.
 
 Environment variables override the file, comma-separated for chains:
 
@@ -97,7 +97,7 @@ For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Gro
 
 | Key | Default | Meaning |
 |---|---|---|
-| `concurrency` | `4` | Review tasks running at once (1–32) |
+| `concurrency` | `8` | Review tasks running at once (1–32); `4` before v0.16.0. A review takes about as long as its model requests divided by this, so lower it only when your provider's rate limit keeps pausing the run |
 | `taskTimeoutMinutes` | `10` | Limit for one review task, at most `35791` (about 24.8 days, the longest a timer keeps) |
 | `runTimeoutMinutes` | `25` | Limit for the whole run, at most `35791` |
 | `maxCostUsd` | none | Spend limit for the run: review tasks use up to 80% of it, verification and judging the rest (see `--max-cost-usd`) |

@@ -139,7 +139,7 @@ The pipeline owns orchestration; a runtime executes one isolated task. `runtime-
 ## Resilience
 
 - Per-task and whole-run timeouts; a task whose session is idle for five minutes fails over (`session-prompt.ts`).
-- A circuit breaker per model (closed → open → half-open, cooldown doubling to a limit). Any error but a credential error fails over to the next model in the chain. A short stated rate-limit wait pauses that model for every task; a daily limit, a long or missing wait, or repeated limits remove it for the run.
+- A circuit breaker per model (closed → open → half-open, cooldown doubling to a limit). Any error but a credential error fails over to the next model in the chain. A short stated rate-limit wait pauses that model for every task, and an attempt that can send one request again (the direct runtime's) waits it out inside the task through `RateLimits.waitOut` instead of starting over (ADR-0067); a daily limit, a long or missing wait, or repeated limits remove it for the run.
 - A failed task never fails the run; it is recorded in the coverage manifest.
 - The spend limit keeps a reserve: review tasks stop starting at 80% (`REVIEW_BUDGET_SHARE`), Verify and Judge use the rest, and findings left unchecked cannot block. Tasks run bundle by bundle, those on sensitive paths first (ADR-0049), so a limited run finishes whole files, the riskiest first, and the next review continues; the report says the limit was reached (`spendLimit`, ADR-0015).
 - A review task finishes when its agent calls the done tool, and no model request follows the call on either runtime (ADR-0063); one that ended at the step cap or stopped early leaves its files `incomplete`, and the run exits 3 (ADR-0030).

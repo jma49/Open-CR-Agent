@@ -128,7 +128,7 @@ CI 绝不能把不完整的审查（`3`）当成通过。结论是模型给出�
     "standard": ["google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
     "light": "google/gemini-flash-lite-latest"
   },
-  "concurrency": 4,
+  "concurrency": 8,
   "taskTimeoutMinutes": 10,
   "runTimeoutMinutes": 25,
   "include": [],

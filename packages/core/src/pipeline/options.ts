@@ -165,7 +165,7 @@ export interface ReviewHooks {
 }
 
 export const REVIEW_DEFAULTS = {
-  concurrency: 4,
+  concurrency: 8,
   taskTimeoutMs: 10 * 60_000,
   runTimeoutMs: 25 * 60_000,
 } as const;
