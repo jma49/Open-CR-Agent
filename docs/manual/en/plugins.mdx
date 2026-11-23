@@ -73,7 +73,7 @@ Use `bootstrap` for work that may fail harmlessly, such as fetching remote setti
 |---|---|
 | `registerVcs(name, factory)` | A code host adapter, for [embedding](./embedding) only: the `ocra` command reviews local git, GitHub and GitLab and never selects a registered adapter by name |
 | `registerRuntime(name, factory)` | An agent runtime |
-| `registerReviewer(definition)` | A reviewer with its own prompt and model tier |
+| `registerReviewer(definition)` | A reviewer with its own instructions and model tier. Its `systemPrompt` is sent after the files, in `<ocra_reviewer_brief>`, under the system prompt every reviewer shares |
 | `registerRules(rules)` | Path-scoped review rules |
 | `registerTool(tool)` | A tool reviewers can call, with a Zod input schema |
 | `onEvent(listener)` | A listener for every review event (telemetry, notifications). A listener that throws is disabled with one warning; the review continues |

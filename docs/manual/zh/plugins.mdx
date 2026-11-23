@@ -73,7 +73,7 @@ ocra plugins deny ocra-plugin-team-rules
 |---|---|
 | `registerVcs(name, factory)` | 代码托管平台适配器，仅用于[嵌入](./embedding)：`ocra` 命令只审查本地 git、GitHub 和 GitLab，不会按名字选用插件注册的适配器 |
 | `registerRuntime(name, factory)` | agent 运行时 |
-| `registerReviewer(definition)` | 有自己提示词和模型层级的审查员 |
+| `registerReviewer(definition)` | 有自己说明和模型层级的审查员。它的 `systemPrompt` 放在文件之后的 `<ocra_reviewer_brief>` 里发送，所有审查员共用同一份系统提示词 |
 | `registerRules(rules)` | 按路径生效的审查规则 |
 | `registerTool(tool)` | 审查员可以调用的工具，输入用 Zod schema 定义 |
 | `onEvent(listener)` | 审查过程中每个事件的监听器（遥测、通知）。监听器抛出异常时会被停用，并给出一次警告，审查继续进行 |
