@@ -398,6 +398,64 @@ With `--json`, stdout is one line:
 
 A finding whose stored text was redacted or cut (`redacted`, `truncated`) and whose code is not found is `not_candidate`, not `stale`: its stored code may not be the file's. Usage, input and configuration errors, and a runtime that cannot start, exit `2`; a failed model call is `rejected` with `failed`. The shape is `fixResultSchema` in `@open-cr-agent/cloud-contract` ([ADR-0077](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0077-fix-one-finding.md)). New in v0.19.0.
 
+## ocra mend
+
+Runs one round of the fix loop over findings a person accepted: it writes a checked fix for each, and either prints them (`--level propose`, the default) or writes them as one commit on the pull or merge request's branch (`--level commit`). A scheduler (ocra Cloud, or a CI workflow) starts a round when something changed and keeps the state between rounds; no process waits for CI. Nothing from the repository runs: the change's own checks test the commit. ocra never force-pushes, approves or merges.
+
+```bash
+ocra mend --pr 7 --findings accepted.json --head <sha> --json              # propose: print the checked edits
+ocra mend --pr 7 --findings accepted.json --level commit --state state.json --json
+ocra mend --mr 12 --findings - --level commit --json < accepted.json       # a GitLab merge request
+ocra mend --from main --findings accepted.json                             # a local range; propose only
+```
+
+| Option | Meaning |
+|---|---|
+| `--findings <file\|->` | The accepted findings as a JSON array, the most important first, each in the shape ocra Cloud stores (`sharedFindingSchema`); `-` reads stdin. At most 200 findings and 2 MiB |
+| `--level <level>` | `propose` (default): the checked edits are in the result and nothing is committed. `commit`: one commit on the branch |
+| `--state <file>` | The `state` the last round printed. Omit it for a change's first round |
+| `--head <sha>` | The full commit id the findings were reviewed at. When the change's head is another, ocra calls no model and answers `head_moved` |
+| `--protect <glob>` | A path no round may edit, besides the built-in ones; repeatable. It adds paths and removes none |
+| `--pr`, `--repo`, `--mr`, `--project` | The pull or merge request, as for `ocra generate`. `--level commit` needs a token that can write to the branch |
+| `--from`, `--to`, `--commit` | A local range or commit instead. Nothing is committed there: `--level commit` answers `not_writable` |
+| `--config <file>` | Use this configuration file instead of the repository's (the base branch's with `--pr` or `--mr`) |
+| `--max-cost-usd <n>` | Spend limit for the change's rounds together, the state's spend included; else `maxCostUsd` in the configuration |
+| `--json` | Print one line of JSON with the outcome on stdout |
+
+**What a round does.** It takes the first 5 findings that are still open. Each gets one call on the `fixer` role, with the rules of [`ocra fix`](#ocra-fix): the finding's code is found again at the head, and the answer must change those lines and nothing else, stay small and parse no worse. The edit then passes a gate in code and one call on the `verifier` role, which reads the finding, the lines replaced, the replacement and the file around it, and must answer that the edit resolves the finding and adds no defect of its own; "unsure", a failed call or an answer that is not the expected JSON refuses the edit. Edits that pass are put together, the first finding first; one that touches lines an earlier one changes, or would take the round past 10 files or 200 added lines, waits for the next round. The commit is written only on top of the head the round read, never forced, and its message lists the findings it fixes.
+
+**The gate.** A round edits only regular files of the change that a review would read. It never edits CI configuration (`.github/`, `.gitlab/`, `.gitlab-ci.yml`, `.circleci/`, `.buildkite/`, `Jenkinsfile`, Azure and Bitbucket pipelines), `.ocra/`, `AGENTS.md`, `CODEOWNERS`, dependency manifests (`package.json`, `pyproject.toml`, `requirements*.txt`, `Pipfile`, `go.mod`, `Cargo.toml`, `pom.xml`, Gradle build and settings files, `Gemfile`, `composer.json`), `Dockerfile`, `Makefile`, generated files, migrations, or a path `--protect` names. In a test file, an edit may not add a call that turns a test off (`.skip`, `.only`, `.todo`, `xit`, `@Ignore`, `@Disabled`, `pytest.mark.skip`, `skipif`, `xfail`, `unittest.skip`, `t.Skip`, `#[ignore]`). An edit holds no control or bidirectional characters. A finding the gate refuses goes to a person.
+
+**The caps.** A finding gets 2 attempts, a change 6 rounds, and the rounds together the spend limit. The state counts them: pass each round the state the last one printed. A finding that was not tried, or whose edit was not written (the round was full, the head moved), uses no attempt.
+
+With `--json`, stdout is one line:
+
+```json
+{"headSha":"<40 hex>","outcome":"committed","stopped":null,"commitSha":"<40 hex>","items":[{"fingerprint":"b491fb26b470419c","outcome":"fixed","reason":null,"edits":[{"path":"src/total.ts","startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"}]}],"state":{"rounds":1,"costUsd":0.06,"items":{"b491fb26b470419c":{"attempts":1}}},"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
+```
+
+| `outcome` | Meaning | Exit |
+|---|---|---|
+| `committed` | One commit, `commitSha`, on the branch | `0` |
+| `proposed` | `--level propose`: the edits are in `items`, nothing committed | `0` |
+| `nothing` | No finding got an edit that passed; `items` says why | `0` |
+| `stopped` | No round ran: the change reached the cap `stopped` names (`rounds` or `spend`) | `0` |
+| `head_moved` | The head is not `--head`, or the branch moved after ocra read it; nothing committed | `3` |
+| `not_writable` | The token cannot write to the branch, or the change is a local one | `3` |
+
+Each entry of `items` is one finding, in the order given:
+
+| Item `outcome` | Meaning | `reason` |
+|---|---|---|
+| `fixed` | Its edits are in the commit | `null` |
+| `proposed` | Its edits are in the result, for a person to commit | `null` |
+| `rejected` | No edit passed this round; another round may try | `failed`, `unchanged`, `unsafe`, `syntax`, `declined`, `unresolved`, `unsure` or `unchecked` |
+| `deferred` | Not tried, or not written; no attempt counted | `no_room`, `overlap`, `head_moved` or `not_writable` |
+| `needs_human` | Closed for a person to decide | `not_candidate`, `no_parser`, `out_of_scope`, `protected`, `too_large`, `tamper`, or `attempts` when both attempts are used |
+| `gone` | Its code is not at the head any more | `stale` |
+
+`edits` replace whole lines `startLine` to `endLine` of `path` at `headSha`; it is empty unless the item is `fixed` or `proposed`. Usage, input and configuration errors, and a runtime that cannot start, exit `2`. The shapes are `mendResultSchema`, `mendStateSchema` and `mendFindingsSchema` in `@open-cr-agent/cloud-contract` ([ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)). This is the loop's first step: failed checks, merge conflicts and reviewers' requests are planned. New in v0.19.0.
+
 ## ocra metrics
 
 Counts over the finished reviews in `.ocra/sessions/`, from each session's `report.json`; no model is called:
