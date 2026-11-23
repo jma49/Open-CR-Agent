@@ -1,0 +1,131 @@
+# The paid comparison a prompt, rule or stage change needs before it merges
+# (AGENTS.md, Change checklist), started by hand on the branch of the change:
+# the golden tier reviewed by the base's build and by this branch's, the same
+# models and configuration on both sides, then `ocra-eval compare`.
+# It needs the maintainer's key as the repository secret ANTHROPIC_API_KEY.
+# Each side stops starting new PRs at max_cost_usd, so a run costs at most
+# about twice that plus the judge's calls. Prices below are Anthropic's list
+# prices per million tokens; the Console stays authoritative.
+name: eval compare
+
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Branch the change is compared with
+        default: main
+      tier:
+        description: Golden tier (smoke or full)
+        default: smoke
+        type: choice
+        options: [smoke, full]
+      repeat:
+        description: Repeats per side
+        default: "3"
+      max_cost_usd:
+        description: Spend limit per side, in dollars
+        default: "5"
+      model:
+        description: Model for every tier
+        default: claude-haiku-5-5
+        type: choice
+        options: [claude-haiku-5-5, claude-sonnet-5-5]
+      judge_model:
+        description: Model that matches findings to golden claims
+        default: claude-haiku-5-5
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eval-compare-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  compare:
+    if: github.repository == 'jma49/Open-CR-Agent'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      BASE: ${{ inputs.base }}
+      TIER: ${{ inputs.tier }}
+      REPEAT: ${{ inputs.repeat }}
+      MAX_COST: ${{ inputs.max_cost_usd }}
+      MODEL: ${{ inputs.model }}
+      JUDGE_MODEL: ${{ inputs.judge_model }}
+      JUDGE_BASE_URL: https://api.anthropic.com/v1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: npm run build
+      - name: Build the base
+        shell: bash
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/base" "origin/$BASE"
+          cd "$RUNNER_TEMP/base"
+          npm ci
+          npm run build
+      # Outside the reviewed tree: the reviews run with --no-repo-config. An
+      # effort on every tier means no sampling is sent, which Anthropic's API
+      # refuses since 2026-10-21.
+      - name: Write the configuration
+        shell: bash
+        run: |
+          case "$MODEL" in
+            claude-haiku-5-5) PRICE='"input": 0.1, "output": 0.5, "cachedInput": 0.01' ;;
+            claude-sonnet-5-5) PRICE='"input": 2, "output": 10, "cachedInput": 0.1' ;;
+            *) echo "::error::no price for $MODEL"; exit 1 ;;
+          esac
+          cat > "$RUNNER_TEMP/eval.json" <<JSON
+          {
+            "runtime": "direct",
+            "models": { "top": "claude/$MODEL", "standard": "claude/$MODEL", "light": "claude/$MODEL" },
+            "effort": { "top": "medium", "standard": "medium", "light": "low" },
+            "providers": {
+              "claude": {
+                "type": "openai-compatible",
+                "baseUrl": "https://api.anthropic.com/v1",
+                "apiKeyEnv": "ANTHROPIC_API_KEY",
+                "models": { "$MODEL": { $PRICE } }
+              }
+            }
+          }
+          JSON
+      - name: Review with the base
+        shell: bash
+        working-directory: ${{ runner.temp }}/base
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          JUDGE_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::ANTHROPIC_API_KEY is not set as a repository secret"
+            exit 1
+          fi
+          node packages/eval/dist/main.js run --dataset golden --tier "$TIER" \
+            --label base --repeat "$REPEAT" --max-cost-usd "$MAX_COST" \
+            --config "$RUNNER_TEMP/eval.json" --out "$GITHUB_WORKSPACE/.ocra/eval"
+      - name: Review with the change
+        shell: bash
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          JUDGE_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          node packages/eval/dist/main.js run --dataset golden --tier "$TIER" \
+            --label change --repeat "$REPEAT" --max-cost-usd "$MAX_COST" \
+            --config "$RUNNER_TEMP/eval.json"
+      - name: Compare
+        shell: bash
+        run: |
+          set -o pipefail
+          node packages/eval/dist/main.js compare .ocra/eval/base .ocra/eval/change \
+            --allow-mixed | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: eval-compare
+          path: .ocra/eval/
+          retention-days: 30

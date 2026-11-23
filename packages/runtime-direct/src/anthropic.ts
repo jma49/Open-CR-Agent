@@ -28,6 +28,9 @@ const MAX_OUTPUT_TOKENS = 32_000;
 // Anthropic charges a quarter above the input rate for input it stores.
 const CACHE_WRITE_FACTOR = 1.25;
 const CACHED = { cache_control: { type: "ephemeral" } } as const;
+// The API takes four cache marks a request: the system prompt's, the newest
+// block's, and these.
+const MAX_SHARED_MARKS = 2;
 // How the API names the effort parameters in a 400 that refuses them.
 const EFFORT_PARAMETER = /\b(?:effort|output_config|thinking)\b/i;
 // The API has no level under "low", and its newer models cannot stop
@@ -46,8 +49,13 @@ type Turn = Exclude<Anthropic.MessageParam, { role: "system" }>;
 // A conversation in Anthropic's Messages protocol, streamed so a long answer
 // does not sit behind an idle connection. The system prompt and the
 // conversation so far are marked for the provider's prompt cache at every
-// request: an agent's next step reads what the last one stored.
-export const anthropicWire: Wire = ({ endpoint, model, price, system }) => {
+// request: an agent's next step reads what the last one stored. A start the
+// run's other conversations open with is marked too, so they read it from
+// the first that stored it (ADR-0064). A dialogue of one request has no next
+// step, and storing costs a quarter more than sending, so its conversation
+// goes unmarked; its system prompt stays marked for the other calls of its
+// kind.
+export const anthropicWire: Wire = ({ endpoint, model, price, system, oneRequest }) => {
   const client = clientOf(endpoint);
   const secrets = endpoint.apiKey ? [endpoint.apiKey] : [];
   const messages: Turn[] = [];
@@ -55,15 +63,15 @@ export const anthropicWire: Wire = ({ endpoint, model, price, system }) => {
     onceMore(() => stream(client, request, price, secrets, signal), signal);
 
   return {
-    say: (text) => {
-      messages.push({ role: "user", content: [{ type: "text", text }] });
+    say: (text, shared = []) => {
+      messages.push({ role: "user", content: textBlocks(text, shared) });
     },
     ask: async (tools, settings, signal): Promise<Answer> => {
       const request = (sent: CallSettings): Request => ({
         model,
         max_tokens: MAX_OUTPUT_TOKENS,
         system: [{ type: "text", text: system, ...CACHED }],
-        messages: withBreakpoint(messages),
+        messages: oneRequest ? messages : withBreakpoint(messages),
         ...(tools.length > 0 ? { tools: tools.map(toolSpec) } : {}),
         ...effortParams(sent.effort),
       });
@@ -130,6 +138,19 @@ function effortParams(effort: Effort | undefined): Pick<Request, "output_config"
     output_config: { effort: LEVELS[effort] },
     ...(effort === "none" ? {} : { thinking: { type: "adaptive" } }),
   };
+}
+
+// The text as blocks that end where a shared start does, each marked but the
+// last: together they read as the text does.
+function textBlocks(text: string, shared: readonly number[]): Anthropic.TextBlockParam[] {
+  const ends = shared.filter((end) => end > 0 && end < text.length).slice(-MAX_SHARED_MARKS);
+  const blocks: Anthropic.TextBlockParam[] = [];
+  let from = 0;
+  for (const end of ends) {
+    blocks.push({ type: "text", text: text.slice(from, end), ...CACHED });
+    from = end;
+  }
+  return [...blocks, { type: "text", text: text.slice(from) }];
 }
 
 // The last block of the conversation carries the cache mark; the stored

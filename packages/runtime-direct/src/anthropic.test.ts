@@ -126,6 +126,41 @@ describe("DirectRuntime on a Messages endpoint", () => {
     ]);
   });
 
+  it("marks the starts a task shares with the run's others, in blocks that read as the prompt", async () => {
+    const server = await endpoint([
+      { text: "Reviewed.", toolCalls: [{ name: "task_done", input: {} }] },
+    ]);
+    const spec = {
+      ...task(),
+      userPrompt: "change guidelines files",
+      sharedPrefixes: [0, 6, 17, 23],
+    };
+    await collect(runtime(server.url).runTask(spec, signal()));
+
+    const mark = { cache_control: { type: "ephemeral" } };
+    expect(server.seen[0]?.body.messages).toEqual([
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "change", ...mark },
+          { type: "text", text: " guidelines", ...mark },
+          { type: "text", text: " files", ...mark },
+        ],
+      },
+    ]);
+  });
+
+  it("stores no conversation a completion would never read again", async () => {
+    const server = await endpoint([{ text: "ok" }]);
+    await runtime(server.url).complete(call(), signal());
+
+    expect(server.seen[0]?.body).toMatchObject({
+      system: [{ type: "text", text: "s", cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: [{ type: "text", text: "u" }] }],
+    });
+    expect(JSON.stringify(server.seen[0]?.body.messages)).not.toContain("cache_control");
+  });
+
   it("prices fresh, stored and cached input apart", async () => {
     const server = await endpoint([
       { text: "ok", usage: { input: 10, cacheRead: 1000, cacheWrite: 200, output: 5 } },

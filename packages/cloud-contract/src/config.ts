@@ -20,9 +20,10 @@ const modelChain = z
 // Where review code is sent: over https, or plain http only to this machine.
 // OpenCode replaces {env:NAME} and {file:path} anywhere in its configuration,
 // so an address with braces could carry a variable or a file (the checkout's
-// .git/config holds its token) to the endpoint.
+// .git/config holds its token) to the endpoint. A failed format check lets
+// later checks run unless it aborts, and new URL() throws on what it refused.
 const endpoint = z
-  .url()
+  .url({ abort: true })
   .refine((value) => {
     const url = new URL(value);
     if (url.protocol === "https:") return true;

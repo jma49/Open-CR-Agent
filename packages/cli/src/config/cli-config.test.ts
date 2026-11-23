@@ -169,6 +169,28 @@ describe("loadConfig", () => {
     );
   });
 
+  it("refuses a provider or tracker address that is not a URL as invalid configuration", async () => {
+    const provider = {
+      type: "openai-compatible",
+      baseUrl: "llm",
+      models: { m: { input: 1, output: 2 } },
+    };
+    const tracker = {
+      projects: ["OCRA"],
+      server: { url: "jira" },
+      tool: "get",
+      keyArgument: "key",
+    };
+    for (const [config, path] of [
+      [{ providers: { gateway: provider } }, "providers.gateway.baseUrl"],
+      [{ trackers: { jira: tracker } }, "trackers.jira.server.url"],
+    ] as const) {
+      const load = loadConfig(root(JSON.stringify(config)), {});
+      await expect(load).rejects.toThrow(ConfigError);
+      await expect(load).rejects.toThrow(`Invalid URL\n  → at ${path}`);
+    }
+  });
+
   it("refuses a timeout longer than a timer keeps, and takes the longest it keeps", async () => {
     for (const key of ["taskTimeoutMinutes", "runTimeoutMinutes"]) {
       await expect(loadConfig(root(`{"${key}":99999}`), {})).rejects.toThrow(

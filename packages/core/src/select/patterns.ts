@@ -164,6 +164,13 @@ export const GENERATED_PATTERNS = [
   "**/composer.lock",
   "**/go.sum",
   "**/flake.lock",
+  "**/deno.lock",
+  "**/packages.lock.json",
+  "**/Package.resolved",
+  "**/Podfile.lock",
+  "**/pubspec.lock",
+  "**/mix.lock",
+  "**/gradle.lockfile",
   "**/node_modules/**",
   "**/vendor/**",
   "**/third_party/**",
@@ -177,6 +184,18 @@ export const GENERATED_PATTERNS = [
   "**/*.generated.*",
   "**/*.g.dart",
   "**/__snapshots__/**",
+];
+
+// What a migration tool writes next to the migrations it generates: the
+// schema as it stands after each one, which the migration itself already
+// says. One Drizzle snapshot is thousands of lines, and every reviewer was
+// given it whole (ADR-0064).
+export const MIGRATION_METADATA_PATTERNS = [
+  "**/meta/[0-9]*_snapshot.json",
+  "**/meta/_journal.json",
+  "**/migrations/migration_lock.toml",
+  "**/migrations/*.Designer.cs",
+  "**/migrations/*ModelSnapshot.cs",
 ];
 
 export const MIGRATION_PATTERNS = ["**/migrations/**", "**/migrate/**", "**/*.migration.*"];
