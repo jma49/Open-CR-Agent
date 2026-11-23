@@ -28,6 +28,39 @@ describe("review completeness", () => {
     expect(report.coverage.map((c) => c.status)).toEqual(["unreviewed"]);
   });
 
+  it("says the models refused the calls when a daily limit left nothing reviewed", async () => {
+    const report = await review({
+      vcs: vcs({}, patch("src/a.ts", "const a = 1;")),
+      runtime: runtime(async function* (spec) {
+        yield {
+          type: "error",
+          taskId: spec.taskId,
+          error: "every standard model is out of quota for this run",
+          retryable: true,
+          quota: "daily_limit",
+        };
+      }),
+      reviewers: [reviewer("correctness"), reviewer("security")],
+    });
+    expect(report.tasks.map((t) => t.quota)).toEqual(["daily_limit", "daily_limit"]);
+    expect(report.summary).toBe(
+      "Nothing was reviewed: the model provider refused every call because a daily limit was reached. Run the review again after the limit resets.",
+    );
+  });
+
+  it("quotes the first error when every task failed for another reason", async () => {
+    const report = await review({
+      vcs: vcs({}, patch("src/a.ts", "const a = 1;")),
+      runtime: runtime(async function* (spec) {
+        yield { type: "error", taskId: spec.taskId, error: "m: HTTP 401", retryable: false };
+      }),
+      reviewers: [reviewer("correctness")],
+    });
+    expect(report.summary).toBe(
+      "Nothing was reviewed: 1 review task(s) failed. The first error: m: HTTP 401",
+    );
+  });
+
   it("keeps the verdict and summary when one reviewer finished and another failed (#263)", async () => {
     const report = await review({
       vcs: vcs({}, patch("src/a.ts", "const a = 1;")),

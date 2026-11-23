@@ -4,7 +4,7 @@ import type { Usage } from "../contracts.js";
 import { projectDocUses } from "../docs/project-docs.js";
 import type { Finding, Severity } from "../domain.js";
 import type { LearningUse } from "../knowledge/learning.js";
-import { type ReviewReport, summarizeAnchoring } from "../report/report.js";
+import { nothingReviewedSummary, type ReviewReport, summarizeAnchoring } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { evidenceUses } from "../sarif/evidence.js";
 import type { CheckStage } from "./check-stage.js";
@@ -87,17 +87,16 @@ function reportBody(
     ...checked.usage,
     ...fixed.usage,
   ];
+  const tasks = [...executed.results.map((r) => r.outcome), ...filtered.imported.outcomes];
   return {
     runId: run.runId,
     changeRequest: plan.changeRequest,
     tier: plan.tier,
     verdict: judged.verdict,
-    summary: filtered.nothingReviewed
-      ? "Nothing was reviewed: no reviewer covered or finished any selected file."
-      : judged.summary,
+    summary: filtered.nothingReviewed ? nothingReviewedSummary(tasks) : judged.summary,
     coverage: filtered.coverage,
     bundles: plan.bundles.map((b) => ({ label: b.label, files: b.files.map((f) => f.newPath) })),
-    tasks: [...executed.results.map((r) => r.outcome), ...filtered.imported.outcomes],
+    tasks,
     skipped: executed.matrix.skipped,
     findings: sortFindings(fixed.findings),
     // Counted before the judge: dropping or downgrading a critical nobody

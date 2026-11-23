@@ -6,6 +6,7 @@ import type {
   AgentTaskSpec,
   AttemptRecord,
   IncompleteEnding,
+  QuotaStop,
   Usage,
 } from "../contracts.js";
 import { type ReportedFinding, reportedFindingSchema, type TaskFinding } from "../domain.js";
@@ -15,6 +16,7 @@ import type { TaskStatus } from "../report/report.js";
 export interface TaskResult {
   status: TaskStatus;
   error?: string;
+  quota?: QuotaStop;
   // The task finished without its agent calling the done tool.
   ended?: IncompleteEnding;
   findings: TaskFinding[];
@@ -155,6 +157,7 @@ function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks)
     case "error":
       result.status = "failed";
       result.error = event.error;
+      if (event.quota) result.quota = event.quota;
       return true;
   }
 }

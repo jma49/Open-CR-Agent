@@ -40,6 +40,7 @@ export type AgentEvent = {
     taskId: string;
     error: string;
     retryable: boolean;
+    quota?: QuotaStop;
 };
 
 // @public (undocumented)
@@ -1073,12 +1074,18 @@ export interface ProxyEnv {
 }
 
 // @public (undocumented)
+const QUOTA_STOPS: readonly ["daily_limit", "rate_limit"];
+
+// @public (undocumented)
 export interface QuotaError {
     // (undocumented)
     daily: boolean;
     // (undocumented)
     retryAfterMs?: number;
 }
+
+// @public (undocumented)
+export type QuotaStop = (typeof QUOTA_STOPS)[number];
 
 // @public (undocumented)
 export interface QuoteSignature {
@@ -1454,6 +1461,10 @@ export const reportOutputSchema: z.ZodObject<{
             timed_out: "timed_out";
         }>;
         error: z.ZodExactOptional<z.ZodString>;
+        quota: z.ZodExactOptional<z.ZodEnum<{
+            daily_limit: "daily_limit";
+            rate_limit: "rate_limit";
+        }>>;
         ended: z.ZodExactOptional<z.ZodEnum<{
             step_cap: "step_cap";
             stopped_early: "stopped_early";
@@ -2227,6 +2238,8 @@ export interface TaskOutcome {
     files: string[];
     // (undocumented)
     findings: number;
+    // (undocumented)
+    quota?: QuotaStop;
     // (undocumented)
     reusedFrom?: string;
     // (undocumented)

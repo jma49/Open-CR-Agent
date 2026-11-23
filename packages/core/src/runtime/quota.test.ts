@@ -173,17 +173,34 @@ describe("withFailback on rate limits", () => {
     const daily = limited("Quota exceeded for metric: requests per day");
     const first = await run({ a: [daily] }, ["a"], health);
     expect(first.attempted).toEqual(["a"]);
-    expect(first.events.at(-1)).toMatchObject({ type: "error" });
+    expect(first.events.at(-1)).toMatchObject({ type: "error", quota: "daily_limit" });
 
     const second = await run({}, ["a"], health);
     expect(second.attempted).toEqual([]);
     expect(second.events.at(-1)).toMatchObject({
       type: "error",
       error: "every standard model is out of quota for this run",
+      quota: "daily_limit",
     });
 
     const fallback = await run({}, ["a", "b"], health);
     expect(fallback.attempted).toEqual(["b"]);
+  });
+
+  it("names a quota stop only when the whole chain is out of quota", async () => {
+    const health = new ModelHealth();
+    const broken: AttemptOutcome = { ...ok, error: { message: "boom", retryable: true } };
+    const mixed = await run(
+      { a: [limited("Quota exceeded for metric: requests per day")], b: [broken] },
+      ["a", "b"],
+      health,
+    );
+    expect(mixed.events.at(-1)).toMatchObject({ type: "error" });
+    expect(mixed.events.at(-1)).not.toHaveProperty("quota");
+
+    health.recordQuota("b", { daily: false, retryAfterMs: MAX_QUOTA_WAIT_MS + 1 });
+    expect(health.quotaStop(["b"])).toBe("rate_limit");
+    expect(health.quotaStop(["a", "b"])).toBe("daily_limit");
   });
 
   // Another task's request runs into the daily limit while this one waits.

@@ -191,7 +191,7 @@ describe("renderText", () => {
     };
     for (const report of [failed, skipped]) {
       expect(renderText(report)).toContain("Verdict: not reached (nothing was reviewed)");
-      expect(renderText(report)).toContain("Nothing was reviewed.");
+      expect(renderText(report)).toContain("Nothing was reviewed: ");
       expect(renderText(report)).not.toContain("No issues found");
       expect(renderText(report)).not.toContain("Verdict: approved");
     }

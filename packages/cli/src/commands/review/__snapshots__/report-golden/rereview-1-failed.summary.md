@@ -1,7 +1,7 @@
 <!-- ocra:review -->
 ## ocra review · ⏸️ Not reviewed
 
-Nothing was reviewed: no reviewer covered or finished any selected file.
+Nothing was reviewed: 1 review task(s) failed. The first error: model unavailable
 
 **0 finding(s)** (0 critical, 0 warning, 0 suggestion) · risk tier `trivial`
 
