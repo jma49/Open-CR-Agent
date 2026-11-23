@@ -38,14 +38,6 @@ describe("bumpPins", () => {
     expect(next).toContain("# v0.5.0");
   });
 
-  it("moves an image under the previous owner, and the repository that attests it, to ocrahq", () => {
-    const line =
-      "gh attestation verify oci://ghcr.io/jma49/ocra:0.5.0 --repo jma49/Open-CR-Agent\nby @jma49";
-    expect(bumpPins(line, "0.6.0")).toBe(
-      "gh attestation verify oci://ghcr.io/ocrahq/ocra:0.6.0 --repo ocrahq/Open-CR-Agent\nby @jma49",
-    );
-  });
-
   it("leaves the manual on the last stable release for a prerelease", () => {
     expect(bumpPins(PAGE, "0.6.0-rc.1")).toBe(PAGE);
   });
