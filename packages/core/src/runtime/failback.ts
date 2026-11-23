@@ -259,9 +259,9 @@ export async function completeWithFailback(options: CompleteOptions): Promise<Co
   throw new CompletionError(`every ${chainName(options)} failed (${lastError})`, usage);
 }
 
-// Every task after the first that found the chain out of quota fails here
-// without a request, so the refusal that used the quota up is repeated: a
-// run whose tasks all failed must still say why.
+// Tasks that start after the chain ran out of quota fail without sending a
+// request, so they repeat the refusal that used the quota up: a run whose
+// tasks all failed must still say why.
 function outOfQuota(options: Pick<FailbackOptions, "tier" | "agent" | "chain" | "health">): string {
   const refusal = options.health.quotaRefusal(options.chain);
   const why = refusal === undefined ? "" : ` (${refusal})`;
