@@ -31,6 +31,7 @@ import { EffortLedger } from "./effort.js";
 import { runLoop } from "./loop.js";
 import { openaiWire } from "./openai.js";
 import { RECORD_DIR_ENV, recordingFetch } from "./record.js";
+import { SharedStarts } from "./shared-starts.js";
 import type { Endpoint, Wire } from "./wire.js";
 
 export interface DirectRuntimeOptions extends RuntimeOptions {
@@ -41,6 +42,7 @@ export interface DirectRuntimeOptions extends RuntimeOptions {
 
 interface Target {
   wire: Wire;
+  starts: SharedStarts;
   endpoint: Endpoint;
   model: string;
   price: ModelPrice;
@@ -69,6 +71,7 @@ export class DirectRuntime implements AgentRuntime {
   // Models whose endpoint refused the tools: their later calls start with
   // the tools as text instead of paying for another refusal (ADR-0070).
   private readonly toolsAsText = new Set<string>();
+  private readonly starts = new SharedStarts();
 
   private readonly options: DirectRuntimeOptions;
 
@@ -232,6 +235,7 @@ export class DirectRuntime implements AgentRuntime {
     const key = provider.apiKeyEnv ? this.options.env[provider.apiKeyEnv] : undefined;
     return {
       wire: provider.api === "anthropic" ? anthropicWire : openaiWire(provider.effort),
+      starts: this.starts,
       endpoint: {
         baseUrl: provider.baseUrl,
         ...(key ? { apiKey: key } : {}),

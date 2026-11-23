@@ -5,6 +5,8 @@ import { createServer, type ServerResponse } from "node:http";
 // was sent is kept.
 
 interface SeenMessages {
+  // How many answers had begun when the request arrived.
+  answersBegun: number;
   apiKey: string | undefined;
   authorization: string | undefined;
   body: {
@@ -25,6 +27,8 @@ export interface MessagesReply {
   toolCalls?: { name: string; input: unknown }[];
   stopReason?: string;
   usage?: { input?: number; cacheRead?: number; cacheWrite?: number; output?: number };
+  // How long the answer takes to begin.
+  afterMs?: number;
   // An error instead of a message.
   status?: number;
   body?: string;
@@ -40,6 +44,7 @@ export interface FakeMessages {
 export async function messagesEndpoint(script: readonly MessagesReply[]): Promise<FakeMessages> {
   const seen: SeenMessages[] = [];
   const replies = [...script];
+  let answersBegun = 0;
   const server = createServer((req, res) => {
     let body = "";
     req.on("data", (chunk) => {
@@ -55,6 +60,7 @@ export async function messagesEndpoint(script: readonly MessagesReply[]): Promis
         return typeof value === "string" ? value : undefined;
       };
       seen.push({
+        answersBegun,
         apiKey: header("x-api-key"),
         authorization: header("authorization"),
         body: JSON.parse(body),
@@ -71,7 +77,11 @@ export async function messagesEndpoint(script: readonly MessagesReply[]): Promis
           );
         return;
       }
-      streamed(res, reply, seen.length);
+      const turn = seen.length;
+      setTimeout(() => {
+        answersBegun += 1;
+        streamed(res, reply, turn);
+      }, reply.afterMs ?? 0);
     });
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));

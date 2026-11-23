@@ -1,5 +1,6 @@
 import { setTimeout } from "node:timers/promises";
 import type { Effort, ModelPrice, QuotaError, ToolDefinition, Usage } from "@open-cr-agent/core";
+import type { SharedStarts } from "./shared-starts.js";
 
 // What the agent loop needs of a model API, whichever protocol the endpoint
 // speaks: each wire keeps the conversation in its own protocol's messages
@@ -74,6 +75,9 @@ interface DialogueStart {
   oneRequest?: boolean;
   // The model calls tools as text from the first request on.
   textTools?: boolean;
+  // The run's requests that store a start for each other, on a wire that
+  // marks starts.
+  starts?: SharedStarts;
 }
 
 export type Wire = (start: DialogueStart) => Dialogue;

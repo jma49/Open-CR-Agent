@@ -13,6 +13,7 @@ import {
   type ToolUse,
   type Usage,
 } from "@open-cr-agent/core";
+import type { SharedStarts } from "./shared-starts.js";
 import {
   type Answer,
   type CallSettings,
@@ -50,6 +51,8 @@ export interface LoopInput {
   onEffortRefused?: () => void;
   // DialogueStart.textTools.
   textTools?: boolean;
+  // DialogueStart.starts.
+  starts?: SharedStarts;
   // The endpoint refused the tools; the rest of the attempt calls them as text.
   onToolsRefused?: () => void;
   signal: AbortSignal;

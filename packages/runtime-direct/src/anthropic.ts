@@ -56,20 +56,32 @@ type Turn = Exclude<Anthropic.MessageParam, { role: "system" }>;
 // the first that stored it (ADR-0064). A dialogue of one request has no next
 // step, and storing costs a quarter more than sending, so its conversation
 // goes unmarked; its system prompt stays marked for the other calls of its
-// kind.
-export const anthropicWire: Wire = ({ endpoint, model, price, system, oneRequest }) => {
+// kind. The first request waits for the answer to another that is storing
+// the same start to begin (ADR-0072).
+export const anthropicWire: Wire = ({ endpoint, model, price, system, oneRequest, starts }) => {
   const client = clientOf(endpoint);
   const secrets = endpoint.apiKey ? [endpoint.apiKey] : [];
   const messages: Turn[] = [];
-  const send = (request: Request, signal: AbortSignal) =>
-    onceMore(() => stream(client, request, price, secrets, signal), signal);
+  // What the first request stores for the run's other conversations.
+  let opening: string | undefined;
 
   return {
     say: (text, shared = []) => {
+      const ends = sharedEnds(text, shared);
+      const [first] = ends;
+      if (messages.length === 0 && first !== undefined) {
+        opening = [endpoint.baseUrl, model, system, text.slice(0, first)].join("\0");
+      }
       const marks = oneRequest ? MAX_SHARED_MARKS + 1 : MAX_SHARED_MARKS;
-      messages.push({ role: "user", content: textBlocks(text, shared, marks) });
+      messages.push({ role: "user", content: textBlocks(text, ends, marks) });
     },
     ask: async (tools, settings, signal): Promise<Answer> => {
+      const begun = opening === undefined ? undefined : await starts?.claim(opening, signal);
+      opening = undefined;
+      const send = (request: Request) =>
+        onceMore(() => stream(client, request, price, secrets, signal, begun), signal).finally(
+          begun,
+        );
       const request = (sent: CallSettings): Request => ({
         model,
         max_tokens: MAX_OUTPUT_TOKENS,
@@ -78,10 +90,10 @@ export const anthropicWire: Wire = ({ endpoint, model, price, system, oneRequest
         ...(tools.length > 0 ? { tools: tools.map(toolSpec) } : {}),
         ...effortParams(sent.effort),
       });
-      let reply = await send(request(settings), signal);
+      let reply = await send(request(settings));
       let dropped = false;
       if (!reply.ok && reply.error.effortRefused && settings.effort !== undefined) {
-        reply = await send(request(withoutEffort(settings)), signal);
+        reply = await send(request(withoutEffort(settings)));
         dropped = true;
       }
       const effortDropped = dropped ? { effortDropped: true as const } : {};
@@ -143,15 +155,18 @@ function effortParams(effort: Effort | undefined): Pick<Request, "output_config"
   };
 }
 
+function sharedEnds(text: string, shared: readonly number[]): number[] {
+  return shared.filter((end) => end > 0 && end < text.length);
+}
+
 // The text as blocks that end where a shared start does: together they read
 // as the text does. The first `marks` are stored; a later one only ends a
 // block, which is where a request looks for what another stored.
 function textBlocks(
   text: string,
-  shared: readonly number[],
+  ends: readonly number[],
   marks: number,
 ): Anthropic.TextBlockParam[] {
-  const ends = shared.filter((end) => end > 0 && end < text.length);
   const blocks: Anthropic.TextBlockParam[] = [];
   let from = 0;
   for (const [i, end] of ends.entries()) {
@@ -185,10 +200,13 @@ async function stream(
   price: ModelPrice,
   secrets: readonly string[],
   signal: AbortSignal,
+  begun?: () => void,
 ): Promise<Reply> {
   let message: Anthropic.Message;
   try {
-    message = await client.messages.stream(request, { signal }).finalMessage();
+    const answer = client.messages.stream(request, { signal });
+    if (begun) answer.once("streamEvent", begun);
+    message = await answer.finalMessage();
   } catch (error) {
     if (signal.aborted) return { ok: false, error: { message: "cancelled", retryable: false } };
     return { ok: false, error: failure(error, secrets) };
