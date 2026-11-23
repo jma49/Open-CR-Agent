@@ -1,6 +1,6 @@
 ---
 title: ocra Cloud
-description: "The web console on top of the CLI: your pull requests and their reviews, merging, learnings, checks, automations, notifications and insights."
+description: "The web console on top of the CLI: your pull requests and their reviews, merging, learnings, checks, automations, notifications, insights and running your own server."
 ---
 
 ocra Cloud is a web console and a model gateway on top of the same engine. It lives at https://app.ocracloud.com and is free during early access; you bring the model keys. A company can run its own server instead ([self-hosting](https://github.com/jma49/ocra-cloud/blob/main/docs/self-hosting.md)). The CLI uses it only while you are [signed in](./cli#ocra-login-ocra-logout-ocra-whoami); what it receives is in the [threat model](./threat-model#ocra-cloud).
@@ -9,14 +9,28 @@ Some pages need a server with a bot account, which reviews and writes on the pla
 
 ## Pull requests
 
-The Inbox sorts your pull and merge requests on GitHub and GitLab into sections: needs your review, returned to you, approved, waiting for review, drafts and merged this week; you can add sections of your own. A pull request's page reads its diff live as you, and sends your comment, review and merge to the platform as you; nothing it reads is kept.
+The Inbox sorts your pull and merge requests on GitHub and GitLab into sections: needs your review, returned to you, approved, waiting for review, drafts and merged this week; you can add sections and saved views of your own. A pull request with news since you last opened it is marked unread, and the pull requests of one [stack](./cli#ocra-stack) sit together. The command menu (Ctrl or ⌘ K) goes to any page and searches pull requests, reviews, findings and repositories. A pull request's page reads its diff live as you, and sends your comment, review and merge to the platform as you; nothing it reads is kept.
 
 - **The review.** The verdict and findings of ocra's newest review of it, and the [walkthrough](./how-it-works#walkthrough) with its files in reading order and its sequence diagram, when your account shares findings.
 - **Fixes.** A finding that came with a fix (CLI 0.10.0 and later, with [`fixes`](./configuration) on, which the account's settings can do) can be committed to the pull request's branch as you, only while the branch is still at the reviewed commit and the file is unchanged; the finding is then marked fixed.
-- **Merging.** Merge, squash or rebase, or put it in the platform's own merge queue (GitHub's merge queue, GitLab's merge trains) and take it out again; the page shows where it is in the queue. A merge names the commit you read: one that moved since is refused.
+- **Since you last looked.** The diff can show only what changed since the head you last saw or reviewed.
+- **Review threads.** The pull request's threads, with their suggestions applied together as one commit and each thread resolved or reopened, as you.
+- **Description.** "Write the PR description" drafts a description from ocra's review; you edit it and save it to the platform. Only ocra's section is redrafted, the rest stays your text.
+- **Reviewers.** Suggested reviewers: the changed files' code owners, who reviewed the same directories, and the repository's recent reviewers, each with the reviews already asked of them.
+- **Issues from findings.** A finding can be opened as an issue in the reviewed repository, from a draft you edit first.
+- **Ready to merge.** One checklist of what still stands between the pull request and its merge, read live: draft, conflicts, approvals, code owners, required checks, unresolved threads and ocra's pre-merge checks.
+- **Merging.** Merge, squash or rebase, or put it in the platform's own merge queue (GitHub's merge queue, GitLab's merge trains) and take it out again; the page shows where it is in the queue. A merge names the commit you read: one that moved since is refused. "Merge when ready" arms the platform's own auto-merge as you; where it is off, a self-hosted server keeps the request and merges once the checklist above is met.
+- **Review now and generate.** *Self-hosted.* For a repository enrolled in [auto review](#auto-review-and-ocra), ask for a review of the current head, or for tests or doc comments ([`ocra generate`](./cli#ocra-generate)) committed to the branch by the bot.
 - **Stacks.** A pull request in a stack made with [`ocra stack`](./cli#ocra-stack) shows the stack and merges it from the bottom up to the one you choose.
 - **Impact.** Where the server keeps a [code graph](#code-graphs) of the repository, a rail beside the findings lists the changed symbols and where the rest of the code uses them, matched by name.
 - **Pre-merge checks.** The [checks](#pre-merge-checks) the repository sets, with each one's outcome on the current head.
+
+## Reviews
+
+Every review uploaded by a signed-in CLI, with its findings, its walkthrough and the [linked tasks](./how-it-works#linked-tasks) it was given, when your account shares findings.
+
+- **Ask ocra.** A review's page answers questions about it and its pull request ("why is this finding critical?"), with your own model key. The change is data to the model, never instructions.
+- **Live.** A review run by CLI 0.11.0 or later relays its progress while it runs; the Live page shows the run, and you can let named people, or anyone signed in to the server, watch it and comment on findings. Nothing is shared until you say so.
 
 ## Learnings
 
@@ -36,6 +50,10 @@ The pull request's page shows the result. On a self-hosted server the bot also p
 
 *Self-hosted.* An enrolled repository's pull requests are reviewed by the server as they open or gain commits, with the enrolling account's models, keys, budget and rules, and nothing from the pull request runs. A comment that mentions `@ocra` there gets an answer in its thread ([`ocra reply`](./cli#ocra-reply)). Without a server, the [Action](./github#asking-ocra-about-the-change) does the same in your own workflow.
 
+## Review settings
+
+Settings that apply where the repository's [`.ocra/config.json`](./configuration) leaves them out: the models of each tier, rules, plugins, the spend limit, fixes (`fixes`) and linked tasks (`linkedTasks`, v0.12.0). The Review config page edits a repository's `.ocra/config.json` itself, checked against its schema, as a pull request or a commit as you. Account and privacy lists the signed-in browsers and terminals and an audit log of the account's key changes, kept 90 days.
+
 ## Notifications
 
 Reviews are announced in Slack or WeCom group chats, or by email on a server with a mail account: every review, reviews with findings, or only critical ones. A channel can also get a daily digest of the day before and a weekly report at a weekday and hour you choose: reviews, findings by severity, findings later runs saw fixed or dismissed, merged pull requests with the median time to merge, and the most reviewed repositories. A day or week with nothing to report sends nothing. Finding titles appear only when your account shares findings.
@@ -47,3 +65,15 @@ Usage, spend and reviews by day, and cycle time: for your pull requests merged i
 ## Code graphs
 
 *Self-hosted.* The server keeps a graph of each added repository's default branch, updated after every push by parsing only the changed files: symbol names, kinds and lines, never code. It answers the pull request page's impact rail and [`ocra graph --cloud`](./cli#ocra-graph).
+
+## Running your own server
+
+A company can run ocra Cloud on its own machines, for example next to an internal GitLab and internal models; the [self-hosting guide](https://github.com/jma49/ocra-cloud/blob/main/docs/self-hosting.md) has every variable. It is a Node server in Docker, without any Cloudflare service.
+
+- **Database.** Postgres by default (13 or later; the compose file runs Postgres 17 beside the server); a SQLite file for a trial.
+- **Sign-in.** A GitHub App, or OpenID Connect: the company's SSO (Keycloak, Azure AD, Okta) or a self-hosted GitLab. With GitLab as the provider, the same sign-in connects GitLab.
+- **Code platforms.** GitLab.com or a self-hosted GitLab (`GITLAB_URL`, also one installed under a relative URL root such as `https://example.com/gitlab`); github.com or one GitHub Enterprise Server (`GITHUB_URL`), whose API, sign-in, bot and links then all go to that server. One server has one GitHub.
+- **Company models.** `MODEL_ENDPOINTS` declares the company's OpenAI-compatible endpoints, `BUILTIN_PROVIDERS=off` hides the public ones, and `DEFAULT_MODELS` gives every new account its models; one model is enough, since a tier left out takes the nearest named one.
+- **Email.** `SMTP_URL` and `SMTP_FROM` turn on email notifications.
+
+The pages marked *self-hosted* above need such a server with its bot.
