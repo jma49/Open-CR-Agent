@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util";
 import { errorMessage, isOcraError } from "@open-cr-agent/core";
 import { defaultCloudDeps } from "./cloud/deps.js";
+import { FIX_USAGE, fixCommand } from "./commands/fix.js";
 import { GENERATE_USAGE, generateCommand } from "./commands/generate.js";
 import { GRAPH_USAGE, graphCommand } from "./commands/graph.js";
 import { INIT_USAGE, initCommand } from "./commands/init.js";
@@ -39,6 +40,7 @@ Commands:
   stack       Keep a stack of pull or merge requests (run "ocra stack --help")
   reply       Answer a comment that mentions @ocra on a pull or merge request (run "ocra reply --help")
   generate    Commit tests or docstrings for a pull or merge request's changes (run "ocra generate --help")
+  fix         Write a checked fix for one finding a review reported (run "ocra fix --help")
   metrics     Counts over past reviews: runs, cost, findings, per reviewer (run "ocra metrics --help")
   plugins     Allow plugins your ocra Cloud settings name on this machine (run "ocra plugins --help")
   login       Sign in to ocra Cloud (in development; run "ocra login --help")
@@ -130,6 +132,15 @@ export async function run(
       return await generateCommand(rest, { out, err }, deps);
     } catch (error) {
       if (error instanceof UsageError) err.write(`${error.message}\n\n${GENERATE_USAGE}`);
+      else err.write(failure(error));
+      return EXIT.error;
+    }
+  }
+  if (command === "fix") {
+    try {
+      return await fixCommand(rest, { out, err }, deps);
+    } catch (error) {
+      if (error instanceof UsageError) err.write(`${error.message}\n\n${FIX_USAGE}`);
       else err.write(failure(error));
       return EXIT.error;
     }

@@ -548,6 +548,60 @@ export const fileStatusSchema: z.ZodEnum<{
 export const FINGERPRINT: RegExp;
 
 // @public
+export const FIX_OUTCOMES: readonly ["proposed", "rejected", "not_fixable", "stale", "head_moved"];
+
+// @public
+export const FIX_REASONS: readonly ["declined", "failed", "stale", "unchanged", "unsafe", "too_large", "no_parser", "syntax", "not_candidate"];
+
+// @public
+export const FIX_REJECTIONS: readonly ["declined", "failed", "stale", "unchanged", "unsafe", "too_large", "no_parser", "syntax"];
+
+// @public (undocumented)
+export type FixOutcome = (typeof FIX_OUTCOMES)[number];
+
+// @public (undocumented)
+export type FixReason = (typeof FIX_REASONS)[number];
+
+// @public (undocumented)
+export type FixResult = z.infer<typeof fixResultSchema>;
+
+// @public
+export const fixResultSchema: z.ZodObject<{
+    fingerprint: z.ZodString;
+    headSha: z.ZodString;
+    outcome: z.ZodEnum<{
+        head_moved: "head_moved";
+        not_fixable: "not_fixable";
+        proposed: "proposed";
+        rejected: "rejected";
+        stale: "stale";
+    }>;
+    fix: z.ZodNullable<z.ZodObject<{
+        startLine: z.ZodNumber;
+        endLine: z.ZodNumber;
+        replacement: z.ZodString;
+    }, z.core.$strip>>;
+    reason: z.ZodNullable<z.ZodEnum<{
+        declined: "declined";
+        failed: "failed";
+        no_parser: "no_parser";
+        not_candidate: "not_candidate";
+        stale: "stale";
+        syntax: "syntax";
+        too_large: "too_large";
+        unchanged: "unchanged";
+        unsafe: "unsafe";
+    }>>;
+    usage: z.ZodObject<{
+        inputTokens: z.ZodNumber;
+        cachedTokens: z.ZodNumber;
+        outputTokens: z.ZodNumber;
+        reasoningTokens: z.ZodNumber;
+        costUsd: z.ZodNumber;
+    }, z.core.$strip>;
+}, z.core.$strip>;
+
+// @public
 export const GATEWAY_PATH: RegExp;
 
 // @public
@@ -1646,6 +1700,7 @@ export const reviewUploadSchema: z.ZodObject<{
             endLine: z.ZodNumber;
             replacement: z.ZodString;
         }, z.core.$strip>>>;
+        lowConfidence: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
         redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
         truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     }, z.core.$strip>>>>>>;
@@ -1775,6 +1830,7 @@ export const sharedFindingSchema: z.ZodObject<{
         endLine: z.ZodNumber;
         replacement: z.ZodString;
     }, z.core.$strip>>>;
+    lowConfidence: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
 }, z.core.$strip>;

@@ -25,7 +25,7 @@ export type GenerateOutcome = (typeof GENERATE_OUTCOMES)[number];
 /** The most files one result names; the CLI writes for fewer. */
 export const MAX_GENERATED_FILES = 20;
 
-const commitId = z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/);
+export const commitId = z.string().regex(/^[0-9a-f]{40}([0-9a-f]{24})?$/);
 
 /**
  * The one line `ocra generate --json` prints. `files`: the paths the edits

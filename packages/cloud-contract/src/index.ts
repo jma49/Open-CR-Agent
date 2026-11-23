@@ -52,6 +52,15 @@ export {
   usageSchema,
 } from "./events.js";
 export {
+  FIX_OUTCOMES,
+  FIX_REASONS,
+  FIX_REJECTIONS,
+  type FixOutcome,
+  type FixReason,
+  type FixResult,
+  fixResultSchema,
+} from "./fix.js";
+export {
   GENERATE_KINDS,
   GENERATE_OUTCOMES,
   type GenerateKind,

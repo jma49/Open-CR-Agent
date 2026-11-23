@@ -25,6 +25,11 @@ export {
 } from "./memory/memory.js";
 export { answerMention } from "./pipeline/answer.js";
 export { reviewContext } from "./pipeline/context.js";
+export {
+  type FixedFinding,
+  fixFinding,
+  type StoredFinding,
+} from "./pipeline/fix-finding.js";
 export { type Generated, generateChanges } from "./pipeline/generate.js";
 export { MAX_TIMER_MS, REVIEW_DEFAULTS } from "./pipeline/options.js";
 export {
