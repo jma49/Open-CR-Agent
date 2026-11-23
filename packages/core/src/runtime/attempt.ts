@@ -60,6 +60,9 @@ export interface AttemptOutcome {
   // Messages of the session the runtime could not read: their findings and
   // usage are missing from this outcome.
   unreadMessages?: number;
+  // The fields that failed in each report_finding call the runtime refused
+  // for its arguments and the agent did not follow with an accepted one.
+  refusedFindings?: string[];
 }
 
 export interface WrapUpOutcome {
@@ -93,7 +96,10 @@ export function attemptSummary(model: string, outcome: AttemptOutcome): string {
   const unread = outcome.unreadMessages
     ? `, ${outcome.unreadMessages} session message(s) not read (their findings and usage are missing)`
     : "";
-  return `${model}: ${outcome.steps} step(s), ${toolSummary(outcome.toolCalls)}${resumed}${wrapUpSummary(outcome.wrappedUp)}, ${inputTokens} in / ${outputTokens} out / ${reasoningTokens} reasoning tokens, $${costUsd.toFixed(4)}${unread}`;
+  const refused = outcome.refusedFindings?.length
+    ? `, ${outcome.refusedFindings.length} finding(s) refused for their arguments and not sent again`
+    : "";
+  return `${model}: ${outcome.steps} step(s), ${toolSummary(outcome.toolCalls)}${resumed}${wrapUpSummary(outcome.wrappedUp)}, ${inputTokens} in / ${outputTokens} out / ${reasoningTokens} reasoning tokens, $${costUsd.toFixed(4)}${unread}${refused}`;
 }
 
 function wrapUpSummary(wrapUp: WrapUpOutcome | undefined): string {

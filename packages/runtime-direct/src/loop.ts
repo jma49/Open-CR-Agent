@@ -164,9 +164,15 @@ class Conversation {
       // A finding sent in the same answer as task_done and refused for its
       // arguments was lost without a word: the task goes on, so the model
       // reads why and can send it again.
+      const reports = outputs.filter(({ call }) => call.name === REVIEW_TOOLS.reportFinding);
+      const refused = reports.flatMap((report) => report.refused ?? []);
+      // An accepted report after a refusal is taken as the finding sent again.
+      if (reports.length > refused.length) delete outcome.refusedFindings;
+      if (refused.length > 0) {
+        outcome.refusedFindings = [...(outcome.refusedFindings ?? []), ...refused];
+      }
       done =
-        outputs.some(({ call }) => call.name === REVIEW_TOOLS.taskDone) &&
-        !outputs.some(({ call, refused }) => refused && call.name === REVIEW_TOOLS.reportFinding);
+        outputs.some(({ call }) => call.name === REVIEW_TOOLS.taskDone) && refused.length === 0;
       if (done) break;
     }
     outcome.text = texts.join("\n").trim();
@@ -208,15 +214,15 @@ async function runTool(
   context: ReviewContext,
   outcome: AttemptOutcome,
   uses: ToolUse[],
-): Promise<{ output: string; refused?: true }> {
+): Promise<{ output: string; refused?: string }> {
   const tool = tools.get(call.name);
-  if (!tool) return { output: `Unknown tool: ${call.name}`, refused: true };
-  if (call.malformed) return { output: "Invalid arguments: not JSON", refused: true };
+  if (!tool) return { output: `Unknown tool: ${call.name}`, refused: "unknown tool" };
+  if (call.malformed) return { output: "Invalid arguments: not JSON", refused: "not JSON" };
   const parsed = tool.inputSchema.safeParse(call.input);
   if (!parsed.success) {
     return {
       output: `Invalid arguments: ${parsed.error.issues.map((i) => `${i.path.join(".") || "input"}: ${i.message}`).join("; ")}`,
-      refused: true,
+      refused: parsed.error.issues.map((i) => i.path.join(".") || "input").join(", "),
     };
   }
   uses.push({ name: tool.name, input: parsed.data });

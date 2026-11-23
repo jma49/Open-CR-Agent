@@ -246,3 +246,25 @@ describe("the wrap-up turn", () => {
     expect(report.tasks.map((t) => t.status)).toEqual(["completed", "cancelled"]);
   });
 });
+
+describe("a finding the runtime refused for its arguments", () => {
+  it("is named in a warning when the reviewer did not send it again", async () => {
+    const { runtime } = scriptedRuntime({
+      attempt: ({ spec }) => ({ ...finished(spec), refusedFindings: ["existingCode\nx"] }),
+    });
+    const progress: string[] = [];
+    const report = await reviewWithHooks({
+      vcs: vcs({}, files(1)),
+      runtime,
+      stages: noChecks,
+      onEvent: (e) => {
+        if (e.type === "task_progress") progress.push(e.message);
+      },
+    });
+
+    expect(report.warnings.join("\n")).toContain(
+      "1 finding(s) the reviewer reported were refused for their arguments and are missing (existingCode x)",
+    );
+    expect(progress.join("\n")).toContain("1 finding(s) refused for their arguments");
+  });
+});
