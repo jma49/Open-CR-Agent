@@ -184,4 +184,40 @@ describe("runLoop", () => {
     expect(attempt.findings).toMatchObject([{ evidence: ["code_search found no writer"] }]);
     expect(attempt.refusedFindings).toBeUndefined();
   });
+
+  it("keeps a refusal on record when a finding for another file is accepted", async () => {
+    const accepted = {
+      existingCode: "const a = 1;",
+      severity: "warning",
+      title: "t",
+      body: "b",
+    };
+    const server = await scriptedEndpoint([
+      { toolCalls: [{ name: "report_finding", args: { file: "src/a.ts", title: "t" } }] },
+      { toolCalls: [{ name: "report_finding", args: { ...accepted, file: "src/b.ts" } }] },
+      { toolCalls: [{ name: "task_done", args: {} }] },
+    ]);
+    endpoints.push(server);
+
+    const attempt = await runLoop({
+      wire: openaiWire(),
+      endpoint: { baseUrl: server.url },
+      model: "m1",
+      price: { input: 1, output: 1 },
+      system: "system",
+      user: "user",
+      tools: reviewTools,
+      context: {
+        readFile: async () => undefined,
+        readDiff: () => undefined,
+        searchCode: async () => [],
+      },
+      maxSteps: 5,
+      timeoutMs: 10_000,
+      signal: new AbortController().signal,
+    });
+
+    expect(attempt.findings).toMatchObject([{ file: "src/b.ts" }]);
+    expect(attempt.refusedFindings).toEqual(["existingCode, severity, body"]);
+  });
 });
