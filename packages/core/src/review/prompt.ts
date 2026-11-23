@@ -26,6 +26,12 @@ import { REVIEW_TOOLS } from "./tools.js";
 const TURN_BUDGET = `## Turn budget
 Your turns are limited, and the last one allows no tool calls, so a finding you have not reported by then is lost. Report each issue with ${REVIEW_TOOLS.reportFinding} as soon as you have confirmed it, before you investigate the next one; never keep findings for the end. Spread your turns over every file in <ocra_review_files>.`;
 
+// With no finding to report a task still wrote about a thousand output
+// tokens (production reviews, 2026-11-23), and output is about half of a
+// review's cost.
+const QUIET = `## What you write
+Nobody reads the text you write outside tool calls: only ${REVIEW_TOOLS.reportFinding} reaches the author. Keep it to the few short notes you need to reason about the code. Do not describe what you are about to do, do not restate the diff or a finding you have reported, and do not summarize the review: when every file is reviewed, call ${REVIEW_TOOLS.taskDone} and write nothing else.`;
+
 export interface ReviewPromptInput {
   reviewer: ReviewerDefinition;
   changeRequest: ChangeRequest;
@@ -107,7 +113,7 @@ export function reviewPromptParts(input: ReviewPromptInput): PromptPart[] {
   const without = input.without ?? new Set<OptionalContext>();
   const parts: PromptPart[] = [];
   const add = (source: ContextSource, text: PromptText) => parts.push({ source, text });
-  add("system", ocraText(`${input.reviewer.systemPrompt}\n\n${TURN_BUDGET}`));
+  add("system", ocraText(`${input.reviewer.systemPrompt}\n\n${TURN_BUDGET}\n\n${QUIET}`));
   add(
     "change_request",
     renderChangeRequest(input.changeRequest, MAX_DESCRIPTION_CHARS, !without.has("description")),
