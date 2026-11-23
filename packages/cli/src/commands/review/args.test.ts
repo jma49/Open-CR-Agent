@@ -37,6 +37,11 @@ describe("parseReviewArgs", () => {
     expect(() => parseReviewArgs(["--ultra", "--no-ultra"])).toThrow(UsageError);
   });
 
+  it("takes a depth, and refuses an unknown one", () => {
+    expect(parseReviewArgs(["--depth", "quick"])).toMatchObject({ depth: "quick" });
+    expect(() => parseReviewArgs(["--depth", "thorough"])).toThrow("--depth must be quick");
+  });
+
   it("takes a floor and a cap for inline comments, and refuses others", () => {
     expect(
       parseReviewArgs(["--min-inline-severity", "warning", "--max-inline-comments", "0"]),

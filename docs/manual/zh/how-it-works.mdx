@@ -87,7 +87,7 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Fi
 | Judge | 丢掉臆测和吹毛求疵 | 保留它们并标为*低置信度*，不计入结论 |
 | 成本 | 基准 | 约两倍或更多，外加每个任务一次计划调用 |
 
-两种模式下的核查（Verify）完全一样。
+两种模式下的核查（Verify）完全一样。[`depth`](./configuration#审查深度) 在这些设置之上给出三个预设：`quick`、`standard` 和 `deep`（`deep` 会开启 `--ultra`）。
 
 调用方用 [tree-sitter](https://tree-sitter.github.io/) 查找，支持 TypeScript、JavaScript、Python、Go、Rust 和 Java：符号体内任何一行改动都算这个符号改了，不只是签名；签名改动的排在前面，最多 8 个符号。用法指代码里出现的名字（注释和字符串不算），附上它所在的函数或类，每个符号最多 10 处。其他语言退回到按改动行匹配定义模式、再整词搜索。每个文件解析出的内容按文件内容缓存在 `~/.cache/ocra/symbols/`（`$XDG_CACHE_HOME/ocra/`，Windows 上是 `%LOCALAPPDATA%\ocra\`，或 `$OCRA_CACHE_DIR`，CI 可以在多次运行之间保留它，[GitHub Action](./github) 就是这样做的）；删掉它只会多花解析时间。
 

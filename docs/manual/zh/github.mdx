@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@105bb601915fbeeebff578d474b1009993ee7c12 # v0.19.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
@@ -72,7 +72,7 @@ jobs:
 
 ```yaml
       - id: ocra
-        uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+        uses: ocrahq/Open-CR-Agent@105bb601915fbeeebff578d474b1009993ee7c12 # v0.19.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       - if: ${{ !cancelled() && steps.ocra.outputs.report != '' }}
@@ -99,7 +99,7 @@ jobs:
 默认运行时 OpenCode 连同原生二进制文件，占 Action 所装 108 个包中的 97 个、175 MB 中的约 165 MB。如果 base 分支配置里的模型都在你声明的端点上，并且配置设了 `"runtime": "direct"`（[选择运行时](./providers#选择运行时)），设置 `opencode: false`（v0.3.0 新增），只装 11 个包。此时如果配置选的是 `opencode`，评审会在调用任何模型之前以退出码 `2` 停下，并说明缺了哪个包。
 
 ```yaml
-      - uses: ocrahq/Open-CR-Agent@<commit> # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@<commit> # v0.19.0
         with:
           opencode: false
         env:
@@ -151,7 +151,7 @@ jobs:
         with:
           fetch-depth: 0
       - id: ocra
-        uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+        uses: ocrahq/Open-CR-Agent@105bb601915fbeeebff578d474b1009993ee7c12 # v0.19.0
         with:
           sarif: true
         env:
@@ -175,7 +175,7 @@ jobs:
 
 ```yaml
       - run: pipx run semgrep scan --config p/default --metrics=off --sarif --output semgrep.sarif
-      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@105bb601915fbeeebff578d474b1009993ee7c12 # v0.19.0
         with:
           args: --import-sarif semgrep.sarif
         env:
@@ -245,7 +245,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@105bb601915fbeeebff578d474b1009993ee7c12 # v0.19.0
         with:
           learn: ${{ github.event_name == 'schedule' && 'mine' || 'remember' }}
         env:
@@ -295,7 +295,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@105bb601915fbeeebff578d474b1009993ee7c12 # v0.19.0
         with:
           reply: true
         env:
@@ -347,7 +347,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@105bb601915fbeeebff578d474b1009993ee7c12 # v0.19.0
         with:
           args: --max-cost-usd 2
         env:
@@ -403,7 +403,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@105bb601915fbeeebff578d474b1009993ee7c12 # v0.19.0
         with:
           args: --max-cost-usd 2
         env:
@@ -468,7 +468,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@105bb601915fbeeebff578d474b1009993ee7c12 # v0.19.0
         with:
           github-token: ${{ steps.app.outputs.token }}
           args: --max-cost-usd 2

@@ -22,6 +22,11 @@ export const SEVERITIES = ["critical", "warning", "suggestion"] as const;
 export const severitySchema = z.enum(SEVERITIES);
 export type Severity = z.infer<typeof severitySchema>;
 
+/** How thorough a review is: a preset of the settings it leaves unset. */
+export const REVIEW_DEPTHS = ["quick", "standard", "deep"] as const;
+export const reviewDepthSchema = z.enum(REVIEW_DEPTHS);
+export type ReviewDepth = z.infer<typeof reviewDepthSchema>;
+
 export const VERIFICATIONS = ["confirmed", "uncertain", "unchecked"] as const;
 export const verificationSchema = z.enum(VERIFICATIONS);
 export type Verification = z.infer<typeof verificationSchema>;

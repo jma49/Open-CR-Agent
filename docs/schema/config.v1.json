@@ -126,6 +126,14 @@
     "ultra": {
       "type": "boolean"
     },
+    "depth": {
+      "type": "string",
+      "enum": [
+        "quick",
+        "standard",
+        "deep"
+      ]
+    },
     "minInlineSeverity": {
       "type": "string",
       "enum": [

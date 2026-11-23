@@ -116,6 +116,20 @@ For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Gro
 
 A task that fails or times out never fails the run; its files are reported as `failed`.
 
+## Depth
+
+`depth` picks how thorough a review is in one word, `quick`, `standard` (ocra's defaults) or `deep`, and fills the settings below wherever no layer sets them itself: a key in the configuration, the account's settings, an `OCRA_EFFORT_*` variable or a flag always wins over the depth. `--depth` overrides it for one run.
+
+| Setting | `quick` | `standard` | `deep` |
+|---|---|---|---|
+| Reviewers | `correctness` at every tier, `security` only at the `full` tier; `performance`, `docs` and `agents-md` off | By risk tier ([Reviewers](#reviewers)) | Every reviewer at every tier, two samples each (`ultra`) |
+| `effort.standard` | `low` | unset | `high` |
+| `effort.top` | unset | unset | `high` |
+| `minInlineSeverity` | `warning` | unset | unset |
+| `showPreExisting` | `false` | unset | unset |
+
+Verification and the judge run at every depth. A reviewer entry of your own replaces the depth's for that reviewer whole. `--plan` lists what the depth filled with the source `depth`.
+
 ## Inline comments
 
 On a pull or merge request, every finding anchored to lines in the diff becomes an inline comment unless you set a policy. These keys choose fewer; the findings left out are listed in a folded *not posted inline* section of the summary comment with the reason, stay in the [JSON report](./cli#json-output) (whose `inline.held` names them) and count towards the verdict as before.
@@ -200,7 +214,7 @@ Repositories can extend an organization's common settings:
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `showPreExisting`, `ultra`, `minInlineSeverity`, `maxInlineComments`, `walkthrough`, `fixes`, `mergeChecks`, `linkedTasks`, `guidelineScope`, `trackers`, `projectDocs`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned) and `rules` (shaped like `.ocra/rules.json` entries). It cannot list plugins or choose a runtime, since it must not run code. The repository's values win; `include`, `exclude` and `rules` combine, and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` merge key by key.
+The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `showPreExisting`, `ultra`, `depth`, `minInlineSeverity`, `maxInlineComments`, `walkthrough`, `fixes`, `mergeChecks`, `linkedTasks`, `guidelineScope`, `trackers`, `projectDocs`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned) and `rules` (shaped like `.ocra/rules.json` entries). It cannot list plugins or choose a runtime, since it must not run code. The repository's values win; `include`, `exclude` and `rules` combine, and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` merge key by key.
 
 Only `https` URLs, without redirects, up to 256 KB. `#sha256=` pins the exact content; a file declaring `providers` must be pinned, since a provider decides where your code goes ([Model providers](./providers#your-own-endpoint)). If the file cannot be loaded or is invalid, ocra warns and uses the repository's settings alone, so limits set only there (such as `maxCostUsd`) do not apply; set must-hold limits in the repository too.
 
@@ -211,7 +225,7 @@ Signed in to [ocra Cloud](./cli#ocra-login-ocra-logout-ocra-whoami), `ocra revie
 | Account key | How it applies |
 |---|---|
 | `runtime` (`opencode` or `direct`), `models.<tier>`, `effort.<tier>`, `reviewers.<id>`, `roles.<role>` | Only where the configuration leaves it out; a reviewer's or role's entry in the configuration wins whole |
-| `concurrency`, `taskTimeoutMinutes`, `runTimeoutMinutes`, `maxCostUsd`, `maxTasks`, `verify`, `judge`, `fixes`, `linkedTasks`, `sampling`, `ultra`, `minInlineSeverity`, `maxInlineComments` | Only when the configuration does not set it (`sampling` as one setting): the account can bound an unbounded run, never loosen a limit |
+| `concurrency`, `taskTimeoutMinutes`, `runTimeoutMinutes`, `maxCostUsd`, `maxTasks`, `verify`, `judge`, `fixes`, `linkedTasks`, `sampling`, `ultra`, `depth`, `minInlineSeverity`, `maxInlineComments` | Only when the configuration does not set it (`sampling` as one setting): the account can bound an unbounded run, never loosen a limit |
 | `include` | Combined: the configuration's patterns, then the account's |
 | `exclude` | Only when the configuration sets none: a file the account excludes is neither reviewed nor counted as unreviewed, so an `exclude` in the configuration, even `[]`, keeps the account's out |
 | `rules` | Added after the repository's and the shared ones: at most 50, each like an [`.ocra/rules.json`](./rules) entry with a rule of at most 2,000 characters, embedded in the prompt the same way |

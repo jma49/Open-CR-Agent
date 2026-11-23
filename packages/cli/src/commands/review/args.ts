@@ -1,5 +1,10 @@
 import { parseArgs } from "node:util";
-import { configSchema, SEVERITIES } from "@open-cr-agent/cloud-contract";
+import {
+  configSchema,
+  REVIEW_DEPTHS,
+  type ReviewDepth,
+  SEVERITIES,
+} from "@open-cr-agent/cloud-contract";
 import {
   errorMessage,
   GUIDELINE_SCOPES,
@@ -38,6 +43,7 @@ export interface ReviewArgs {
   maxCostUsd?: number;
   // --ultra or --no-ultra, over the configuration's and the account's.
   ultra?: boolean;
+  depth?: ReviewDepth;
   // Override minInlineSeverity and maxInlineComments.
   minInlineSeverity?: Severity;
   maxInlineComments?: number;
@@ -96,6 +102,8 @@ Options:
   --graph <file>     Find callers of changed symbols in this code graph (ocra graph),
                      after --scip and before searching; not with --plan
   --plan             Show files, bundles, review tasks and prompt sizes; call no model
+  --depth <depth>    quick, standard or deep: a preset of the settings the
+                     configuration leaves unset (depth in config)
   --ultra            Favor recall: all reviewers at every tier, two samples each (about 2x cost)
   --no-ultra         Do not use --ultra, even where the configuration or the
                      ocra Cloud account turns it on (ultra in config)
@@ -159,6 +167,12 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
   if (values["no-linked-tasks"]) args.noLinkedTasks = true;
   if (values.ultra && values["no-ultra"]) {
     throw new UsageError("--ultra cannot be combined with --no-ultra");
+  }
+  if (values.depth !== undefined) {
+    if (!(REVIEW_DEPTHS as readonly string[]).includes(values.depth)) {
+      throw new UsageError(`--depth must be ${REVIEW_DEPTHS.join(", ")}, got ${values.depth}`);
+    }
+    args.depth = values.depth as ReviewDepth;
   }
   if (values.ultra) args.ultra = true;
   if (values["no-ultra"]) args.ultra = false;
@@ -296,6 +310,7 @@ function parse(argv: string[]) {
       "sarif-evidence": { type: "string", multiple: true },
       scip: { type: "string" },
       graph: { type: "string" },
+      depth: { type: "string" },
       ultra: { type: "boolean" },
       "no-ultra": { type: "boolean" },
       "min-inline-severity": { type: "string" },
