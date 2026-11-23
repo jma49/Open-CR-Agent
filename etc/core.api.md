@@ -753,6 +753,9 @@ export interface LinkedTaskUse {
 export const MAX_AGENT_STEPS = 30;
 
 // @public (undocumented)
+export const MAX_QUOTA_WAIT_MS = 90000;
+
+// @public (undocumented)
 export type MemoryEntry = z.infer<typeof memoryEntrySchema>;
 
 // @public (undocumented)

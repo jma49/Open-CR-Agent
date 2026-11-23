@@ -2,8 +2,11 @@ import {
   type AttemptOutcome,
   emptyUsage,
   errorMessage,
+  MAX_QUOTA_WAIT_MS,
   OcraError,
   parseModel,
+  parseQuotaError,
+  type QuotaError,
   type TaskAttempt,
   type Usage,
 } from "@open-cr-agent/core";
@@ -93,7 +96,10 @@ function capped(outcome: AttemptOutcome, lastTurnSteps: number, resume: ResumeOp
   return atCap ? { ...outcome, atStepCap: true as const } : outcome;
 }
 
-type SessionApi = Pick<OpencodeClient["session"], "create" | "prompt" | "messages" | "abort">;
+type SessionApi = Pick<
+  OpencodeClient["session"],
+  "create" | "prompt" | "messages" | "abort" | "status"
+>;
 
 export async function promptSession(
   session: SessionApi,
@@ -178,12 +184,17 @@ async function runTurn(
       },
       { signal: attempt },
     );
+    // The request was cut off, but OpenCode would keep retrying the session.
+    if (silence.refused) stop();
     // The session ran even when the answer is an error, and it may have
     // spent tokens and reported findings: keep them.
     if (response.error) {
       return {
         ...(await harvest(session, sessionID, reportTool, input.toolPrefix)),
-        error: { message: JSON.stringify(response.error), retryable: false },
+        error: refusal(silence.refused) ?? {
+          message: JSON.stringify(response.error),
+          retryable: false,
+        },
       };
     }
     try {
@@ -210,9 +221,10 @@ async function runTurn(
       ...partial,
       error: signal.aborted
         ? { message: "cancelled", retryable: false }
-        : silence.signal.aborted
-          ? { message: `no activity for ${seconds}s`, retryable: true }
-          : { message: errorMessage(error), retryable: true },
+        : (refusal(silence.refused) ??
+          (silence.signal.aborted
+            ? { message: `no activity for ${seconds}s`, retryable: true }
+            : { message: errorMessage(error), retryable: true })),
     };
   } finally {
     silence.stop();
@@ -220,14 +232,26 @@ async function runTurn(
   }
 }
 
+type Refusal = { message: string; quota: QuotaError };
+
+const refusal = (refused: Refusal | undefined) =>
+  refused && { message: refused.message, retryable: true, quota: refused.quota };
+
 // Aborts when the session's messages stop changing. A failed poll counts as
 // no news, not as silence, so a slow server alone cannot end a task.
+// Also aborts when OpenCode holds the session in a retry it was told to wait
+// longer for than a run waits on a rate limit: it would sleep out a daily
+// limit's wait until the task's timeout, where the model chain can stop at once.
 function watchActivity(
   session: SessionApi,
   sessionID: string,
   options: ActivityOptions,
-): { signal: AbortSignal; stop(): void } {
+): { signal: AbortSignal; refused?: Refusal; stop(): void } {
   const controller = new AbortController();
+  const watch: { signal: AbortSignal; refused?: Refusal; stop(): void } = {
+    signal: controller.signal,
+    stop: () => clearInterval(timer),
+  };
   const inactivityMs = options.inactivityMs ?? INACTIVITY_MS;
   let last = "";
   let changedAt = Date.now();
@@ -237,6 +261,12 @@ function watchActivity(
     if (polling) return;
     polling = true;
     try {
+      const refused = await longRetry(session, sessionID).catch(() => undefined);
+      if (refused) {
+        watch.refused = refused;
+        controller.abort();
+        return;
+      }
       const messages = await session.messages(
         { sessionID },
         { signal: AbortSignal.timeout(HARVEST_TIMEOUT_MS) },
@@ -263,7 +293,17 @@ function watchActivity(
     }
   }, options.pollMs ?? ACTIVITY_POLL_MS);
   timer.unref?.();
-  return { signal: controller.signal, stop: () => clearInterval(timer) };
+  return watch;
+}
+
+async function longRetry(session: SessionApi, sessionID: string): Promise<Refusal | undefined> {
+  const statuses = await session.status({}, { signal: AbortSignal.timeout(HARVEST_TIMEOUT_MS) });
+  const status = statuses.data?.[sessionID];
+  if (status?.type !== "retry") return undefined;
+  const retryAfterMs = Math.max(0, status.next - Date.now());
+  if (retryAfterMs <= MAX_QUOTA_WAIT_MS) return undefined;
+  const quota = parseQuotaError(status.message, 429) ?? { daily: false };
+  return { message: status.message, quota: { ...quota, retryAfterMs } };
 }
 
 // What changes while an agent works: steps, parts, streamed text, tool states.
