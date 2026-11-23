@@ -74,6 +74,7 @@ const FINDING = {
   body: "b",
 };
 const signal = () => new AbortController().signal;
+const DONE = { text: "Reviewed.", toolCalls: [{ name: "task_done", input: {} }] };
 
 describe("DirectRuntime on a Messages endpoint", () => {
   it("runs the tool loop in Anthropic's protocol and reports what the model found", async () => {
@@ -191,6 +192,34 @@ describe("DirectRuntime on a Messages endpoint", () => {
       { type: "text", text: " list" },
     ]);
     expect(result.text).toBe("- check it");
+  });
+
+  it("holds a task until the answer to one storing the same start has begun", async () => {
+    const server = await endpoint([{ ...DONE, afterMs: 50 }, DONE]);
+    const spec = { ...task(), userPrompt: "change files", sharedPrefixes: [6] };
+    const direct = runtime(server.url);
+
+    await Promise.all([
+      collect(direct.runTask(spec, signal())),
+      collect(direct.runTask({ ...spec, userPrompt: "change other files" }, signal())),
+    ]);
+
+    expect(server.seen.map((request) => request.answersBegun)).toEqual([0, 1]);
+  });
+
+  it("sends tasks that share no start together", async () => {
+    const server = await endpoint(Array.from({ length: 4 }, () => ({ ...DONE, afterMs: 50 })));
+    const spec = { ...task(), userPrompt: "change files", sharedPrefixes: [6] };
+    const direct = runtime(server.url);
+
+    await Promise.all([
+      collect(direct.runTask(spec, signal())),
+      collect(direct.runTask({ ...spec, systemPrompt: "another reviewer" }, signal())),
+      collect(direct.runTask({ ...spec, userPrompt: "unlike files" }, signal())),
+      collect(direct.runTask({ ...spec, sharedPrefixes: [] }, signal())),
+    ]);
+
+    expect(server.seen.map((request) => request.answersBegun)).toEqual([0, 0, 0, 0]);
   });
 
   it("stores no conversation a completion would never read again", async () => {
