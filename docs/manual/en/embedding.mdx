@@ -79,8 +79,8 @@ These `ReviewOptions` fields are a contract under the [0.x rule](./stability): a
 | `roles` | Per role (`verifier`, `judge`, `helper`, `writer`, `fixer`): its own `effort` and `models` chain |
 | `effort` | Reasoning effort per model tier ([Effort](./configuration#effort)) |
 | `models` | The tier chains the runtime was given (it takes them in `RuntimeOptions.models`), so `provenance.agents` can record each agent's chain |
-| `rules` | Path-scoped rules, the registry's plus yours (`SourcedRule[]`: a `RepoRule` with an optional `source`: `repository`, `shared`, `account` or `plugin`); `provenance.rules` lists them, `.ocra/rules.json`'s as `repository` |
-| `readTrusted` | Where `AGENTS.md`, `.ocra/rules.json` and `.ocra/memory.json` are read from; default the revision under review. For a pull request, pass a reader of the trusted base |
+| `rules` | Path-scoped rules, the registry's plus yours (`SourcedRule[]`: a `RepoRule` with an optional `source`: `repository`, `shared`, `account` or `plugin`); `provenance.rules` lists them, those of `.ocra/rules.json` and `.ocra/rules.md` as `repository` |
+| `readTrusted` | Where `AGENTS.md`, `.ocra/rules.json`, `.ocra/rules.md` and `.ocra/memory.json` are read from; default the revision under review. For a pull request, pass a reader of the trusted base |
 | `learnings` | The team's [learnings](./rules#ocralearnings) (`Learning[]`), read by you from the same trusted revision; each task is given those that apply, and the report's `learnings` lists them |
 | `selection` | Which files are reviewed: `include`, `exclude`, `maxPatchChars` (200,000); each one left out keeps its default |
 | `limits.concurrency`, `limits.taskTimeoutMs`, `limits.runTimeoutMs` | Parallel tasks (8), the per-task timeout (10 minutes) and the run's (25 minutes); a timeout past 2^31 - 1 ms (about 24.8 days), `Infinity` included, is cut to that. `review()` refuses a concurrency that is not a whole number of at least 1, and a timeout that is not a positive number, with `CONFIG_INVALID` before it starts |
@@ -113,13 +113,13 @@ Event shapes (`onEvent`) are not a contract: a listener should tolerate new type
 
 ## Errors
 
-`review()` rejects only when the run cannot start: no reviewers, an invalid `.ocra/rules.json` or `.ocra/memory.json`, or a change the VCS adapter cannot read. After that, failed tasks and helper calls, exhausted quotas and the spend limit are recorded in the report, not thrown.
+`review()` rejects only when the run cannot start: no reviewers, an invalid `.ocra/rules.json`, `.ocra/rules.md` or `.ocra/memory.json`, or a change the VCS adapter cannot read. After that, failed tasks and helper calls, exhausted quotas and the spend limit are recorded in the report, not thrown.
 
 ocra's packages throw `OcraError` (or a subclass) with a `code`: `isOcraError(error, code?)` checks it, `OCRA_ERROR_CODES` lists the codes, and an underlying error (a JSON parse error, a failed read) is the `cause`. Branch on the code, never the message, which may be reworded. A plugin's adapter or runtime may throw other errors; `errorMessage(error)` gives the message of any thrown value.
 
 | Code | Meaning |
 |---|---|
-| `CONFIG_INVALID` | Configuration that cannot be used: options, `.ocra/config.json` and what it extends, `.ocra/rules.json`, `.ocra/memory.json`, a model name, no reviewer, no model for a tier |
+| `CONFIG_INVALID` | Configuration that cannot be used: options, `.ocra/config.json` and what it extends, `.ocra/rules.json`, `.ocra/rules.md`, `.ocra/memory.json`, a model name, no reviewer, no model for a tier |
 | `CONFIG_CREDENTIALS_MISSING` | A token or model key the run needs is not set |
 | `INPUT_USAGE` | A command line ocra cannot run (the CLI's usage errors) |
 | `INPUT_INVALID` | Input given to ocra that it cannot read, such as a SARIF log or a list of commit ids |
