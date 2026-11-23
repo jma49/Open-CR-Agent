@@ -1,4 +1,4 @@
-import type { ReviewEvent } from "@open-cr-agent/core";
+import type { Finding, ReviewEvent } from "@open-cr-agent/core";
 import type { Output } from "../../io/output.js";
 import { forTerminal } from "../../io/terminal.js";
 
@@ -58,6 +58,16 @@ function describe(event: ReviewEvent): string | undefined {
       const skipped = event.skipped.length;
       return `${event.tasks} review task(s)${skipped > 0 ? `, ${skipped} reviewer/bundle pair(s) skipped` : ""}`;
     }
+    case "findings_verified": {
+      const settled = event.kept.filter((f) => event.settled.includes(f.id));
+      if (settled.length === 0) return undefined;
+      return settled
+        .map(
+          (f) =>
+            `Confirmed: ${f.severity} · ${f.file}${lineOf(f)} · ${f.title.replace(/\s+/g, " ")}`,
+        )
+        .join("\n[ocra] ");
+    }
     case "verification_finished":
       return `Verified ${event.checked} finding(s)${event.refuted.length > 0 ? `, dropped ${event.refuted.length} that the code disproves` : ""}`;
     case "judge_finished": {
@@ -85,3 +95,5 @@ function describe(event: ReviewEvent): string | undefined {
       return undefined;
   }
 }
+
+const lineOf = (f: Finding) => (f.lineRange ? `:${f.lineRange.start}` : "");

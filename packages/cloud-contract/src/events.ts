@@ -50,7 +50,8 @@ const id = z.string().regex(/^[\w.:-]{1,128}$/);
 const line = z.number().int().positive().lt(10_000_000);
 
 // A finding sent again under the same id (after Verify or the judge)
-// replaces the earlier one.
+// replaces the earlier one. settled: the run's report carries it as it is
+// here (ADR-0074), so it can be shown as a result before the run ends.
 export const liveFindingSchema = z.object({
   id,
   fingerprint: z.string().regex(FINGERPRINT),
@@ -66,6 +67,7 @@ export const liveFindingSchema = z.object({
   verification: verificationSchema.optional(),
   preExisting: z.literal(true).optional(),
   dropped: z.literal(true).optional(),
+  settled: z.literal(true).optional(),
 });
 export type LiveFinding = z.infer<typeof liveFindingSchema>;
 

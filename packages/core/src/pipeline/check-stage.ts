@@ -2,8 +2,10 @@ import { roleCall } from "../agent/settings.js";
 import type { Usage } from "../contracts.js";
 import { type JudgeResult, judgeFindings } from "../judge/judge.js";
 import { stillOpen } from "../rereview/reconcile.js";
-import { markUnchecked, type VerificationResult, verifyFindings } from "../verify/verify.js";
-import type { StageContext } from "./execute-stage.js";
+import { type EarlyVerification, verifyRemaining } from "../verify/early.js";
+import { markUnchecked, type VerificationResult } from "../verify/verify.js";
+import type { EarlyCheck } from "./early-check.js";
+import { type StageContext, verifyOptions } from "./execute-stage.js";
 import type { FilterStage } from "./filter-stage.js";
 
 export interface CheckStage {
@@ -17,12 +19,17 @@ export interface CheckStage {
 // recalibrates them and gives the verdict.
 export async function checkStage(
   filtered: FilterStage,
+  early: EarlyCheck | undefined,
   context: StageContext,
 ): Promise<CheckStage> {
   context.emit({ type: "stage_started", stage: "verify" });
-  const verification = hidePreExisting(await verify(filtered, context), context.settings);
+  const checked = await early?.result();
+  const verification = hidePreExisting(
+    await verify(filtered, checked?.verification, context),
+    context.settings,
+  );
   context.emit({ type: "stage_started", stage: "judge" });
-  const judged = await judge(verification, filtered, context);
+  const judged = await judge(verification, filtered, checked?.settled, context);
   for (const usage of judged.usage) context.spendLimit.charge(usage);
   return {
     verification,
@@ -34,8 +41,10 @@ export async function checkStage(
 
 async function verify(
   { reconciled }: FilterStage,
-  { options, settings, plan, spendLimit, signal, emit }: StageContext,
+  early: EarlyVerification | undefined,
+  context: StageContext,
 ): Promise<VerificationResult> {
+  const { settings, emit } = context;
   if (!settings.verify) {
     return {
       checked: 0,
@@ -46,15 +55,7 @@ async function verify(
       warnings: [],
     };
   }
-  const verification = await verifyFindings(reconciled.findings, {
-    runtime: options.runtime,
-    diffs: plan.selected,
-    context: plan.context,
-    signal,
-    concurrency: settings.concurrency,
-    spendLimit,
-    call: roleCall("verifier", options),
-  });
+  const verification = await verifyRemaining(reconciled.findings, early, verifyOptions(context));
   if (verification.checked > 0) {
     emit({
       type: "verification_finished",
@@ -86,6 +87,7 @@ function hidePreExisting(
 async function judge(
   verification: VerificationResult,
   { reconciled, nothingReviewed }: FilterStage,
+  settled: ReadonlySet<string> | undefined,
   { options, settings, plan, spendLimit, signal, emit }: StageContext,
 ): Promise<JudgeResult> {
   const wanted = settings.judge && verification.kept.length > 0;
@@ -99,6 +101,7 @@ async function judge(
     enabled: wanted && affordable,
     keepDropped: settings.ultra,
     carried: stillOpen(reconciled),
+    ...(settled ? { settled } : {}),
   });
   if (wanted && !affordable) {
     judged.warnings.push(

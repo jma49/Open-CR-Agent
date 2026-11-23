@@ -23,6 +23,9 @@ export interface PerfResult {
   latencyMs: number;
   review: { exitCode: number; files: number; tasks: number; findings: number };
   wallMs: number;
+  // When Verify answered for the first file: the earliest a checked finding
+  // can be shown (ADR-0074). Absent when the review verified nothing.
+  firstVerifiedMs?: number;
   // The ocra process alone, not the git and runtime processes it starts.
   cpuMs: number;
   peakMemoryMb: number;
@@ -93,6 +96,7 @@ export async function measureReview(options: PerfOptions): Promise<PerfResult> {
     });
     const usage = JSON.parse(await readFile(paths.usage, "utf8")) as NodeJS.ResourceUsage;
     const byKind = model.calls();
+    const firstVerifiedAt = model.firstVerifiedAt();
     return {
       runtime,
       latencyMs,
@@ -103,6 +107,7 @@ export async function measureReview(options: PerfOptions): Promise<PerfResult> {
         findings: report.findings.length,
       },
       wallMs,
+      ...(firstVerifiedAt === undefined ? {} : { firstVerifiedMs: firstVerifiedAt - started }),
       cpuMs: Math.round((usage.userCPUTime + usage.systemCPUTime) / 1000),
       // Kilobytes on every platform Node reports it for.
       peakMemoryMb: Math.round(usage.maxRSS / 1024),

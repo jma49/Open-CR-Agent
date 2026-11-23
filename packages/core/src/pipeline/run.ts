@@ -15,7 +15,8 @@ import { walkthroughStage } from "./walkthrough-stage.js";
 
 // The library entry: plan (deterministic stages) → execute (one agent task
 // per cell, beside the walkthrough and the pre-merge checks) → filter
-// (memory, the previous review) → check (verify, judge) → fix → report. The `ocra`
+// (memory, the previous review) → check (verify, which starts while tasks
+// still run, and judge) → fix → report. The `ocra`
 // command is one caller. The manual's Embedding page says which options are
 // a contract.
 export function review(options: ReviewOptions): Promise<ReviewReport> {
@@ -47,7 +48,7 @@ export async function reviewWithHooks(options: ReviewOptions & ReviewHooks): Pro
   const mergeChecks = mergeChecksStage(context);
   const executed = await executeStage(reviewers, context);
   const filtered = await filterStage(executed, plan.prior.review, context);
-  const checked = await checkStage(filtered, context);
+  const checked = await checkStage(filtered, executed.early, context);
   const fixed = await fixStage(checked, context);
   const report = assembleReport(
     { runId, reviewers },

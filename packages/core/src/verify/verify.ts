@@ -1,5 +1,5 @@
 import { parseJsonAnswer } from "../agent/json.js";
-import { oneShot } from "../agent/model-call.js";
+import { type OneShot, oneShot } from "../agent/model-call.js";
 import { mapWithConcurrency } from "../agent/pool.js";
 import type { AgentCallSettings } from "../agent/settings.js";
 import type { SpendLimit } from "../agent/spend-limit.js";
@@ -67,89 +67,120 @@ export async function verifyFindings(
     return result;
   }
 
-  const byFile = new Map<string, Finding[]>();
-  for (const finding of findings) {
-    byFile.set(finding.file, [...(byFile.get(finding.file) ?? []), finding]);
-  }
-
   let unaffordable = 0;
-  await mapWithConcurrency([...byFile], options.concurrency, async ([file, group]) => {
+  await mapWithConcurrency([...byFile(findings)], options.concurrency, async ([file, group]) => {
     if (options.spendLimit && !options.spendLimit.mayCall()) {
       unaffordable += group.length;
       result.kept.push(...markUnchecked(group));
       return;
     }
     result.checked += group.length;
-    const refutedIndexes = new Map<number, string>();
-    const outcomes = new Map<number, Verification>();
-    const preExisting = new Set<number>();
-    try {
-      const patch = options.diffs.find((d) => d.newPath === file)?.patch ?? "";
-      const [content, related] = await Promise.all([
-        options.context.readFile(file).catch(() => undefined),
-        relatedCode(file, group, options.context),
-      ]);
-      const prompt = buildVerificationPrompt(
-        file,
-        group,
-        patch,
-        content === undefined ? undefined : fileExcerpt(content, group),
-        related,
-      );
-      const answer = await ask(
-        {
-          tier: "standard",
-          agent: "verifier",
-          call: options.call,
-          system: prompt.system,
-          user: prompt.user,
-          timeoutMs: VERIFY_TIMEOUT_MS,
-        },
-        options.signal,
-      );
-      const parsed = verificationResponseSchema.safeParse(parseJsonAnswer(answer));
-      if (!parsed.success)
-        throw new OcraError("RUNTIME_INVALID_OUTPUT", "the verifier returned an invalid response");
-      for (const entry of parsed.data) {
-        const { index } = entry;
-        if (index < 0 || index >= group.length) continue;
-        if (outcomes.has(index) || refutedIndexes.has(index)) continue;
-        if (entry.verdict === "refuted") refutedIndexes.set(index, entry.reason);
-        else outcomes.set(index, entry.verdict);
-        if (entry.verdict !== "refuted" && entry.origin === "pre_existing") preExisting.add(index);
-      }
-    } catch (error) {
-      result.warnings.push(
-        `verification of ${file} failed, keeping its findings: ${errorMessage(error)}`,
-      );
-    }
-    group.forEach((finding, i) => {
-      const reason = refutedIndexes.get(i);
-      if (reason === undefined) {
-        result.kept.push({
-          ...finding,
-          verification: outcomes.get(i) ?? "unchecked",
-          ...(preExisting.has(i) ? { preExisting: true as const } : {}),
-        });
-      } else {
-        result.refuted.push({
-          fingerprint: finding.fingerprint,
-          file: finding.file,
-          title: finding.title,
-          reason,
-        });
-      }
-    });
+    const verified = await verifyFile(file, group, options, ask);
+    result.kept.push(...verified.kept);
+    result.refuted.push(...verified.refuted.map(refutedFinding));
+    if (verified.warning) result.warnings.push(verified.warning);
   });
-  result.missed = result.kept
-    .filter((f) => f.verification === "unchecked")
-    .map((f) => f.fingerprint);
+  result.missed = missedOf(result.kept);
   if (unaffordable > 0) {
     result.warnings.push(
       `spend limit reached: ${unaffordable} finding(s) were not verified and cannot block`,
     );
   }
   return result;
+}
+
+function byFile(findings: readonly Finding[]): Map<string, Finding[]> {
+  const groups = new Map<string, Finding[]>();
+  for (const finding of findings) {
+    groups.set(finding.file, [...(groups.get(finding.file) ?? []), finding]);
+  }
+  return groups;
+}
+
+export const missedOf = (kept: readonly Finding[]) =>
+  kept.filter((f) => f.verification === "unchecked").map((f) => f.fingerprint);
+
+export const refutedFinding = ({ finding, reason }: Refutation): RefutedFinding => ({
+  fingerprint: finding.fingerprint,
+  file: finding.file,
+  title: finding.title,
+  reason,
+});
+
+export interface Refutation {
+  finding: Finding;
+  reason: string;
+}
+
+export interface FileVerification {
+  kept: Finding[];
+  refuted: Refutation[];
+  // The call failed: its findings are kept, unchecked.
+  warning?: string;
+}
+
+// One call for one file's findings. Never throws: a failure keeps them.
+export async function verifyFile(
+  file: string,
+  group: readonly Finding[],
+  options: Pick<VerifyOptions, "diffs" | "context" | "signal" | "call">,
+  ask: OneShot,
+): Promise<FileVerification> {
+  const verified: FileVerification = { kept: [], refuted: [] };
+  const refutedIndexes = new Map<number, string>();
+  const outcomes = new Map<number, Verification>();
+  const preExisting = new Set<number>();
+  try {
+    const patch = options.diffs.find((d) => d.newPath === file)?.patch ?? "";
+    const [content, related] = await Promise.all([
+      options.context.readFile(file).catch(() => undefined),
+      relatedCode(file, group, options.context),
+    ]);
+    const prompt = buildVerificationPrompt(
+      file,
+      group,
+      patch,
+      content === undefined ? undefined : fileExcerpt(content, group),
+      related,
+    );
+    const answer = await ask(
+      {
+        tier: "standard",
+        agent: "verifier",
+        call: options.call,
+        system: prompt.system,
+        user: prompt.user,
+        timeoutMs: VERIFY_TIMEOUT_MS,
+      },
+      options.signal,
+    );
+    const parsed = verificationResponseSchema.safeParse(parseJsonAnswer(answer));
+    if (!parsed.success)
+      throw new OcraError("RUNTIME_INVALID_OUTPUT", "the verifier returned an invalid response");
+    for (const entry of parsed.data) {
+      const { index } = entry;
+      if (index < 0 || index >= group.length) continue;
+      if (outcomes.has(index) || refutedIndexes.has(index)) continue;
+      if (entry.verdict === "refuted") refutedIndexes.set(index, entry.reason);
+      else outcomes.set(index, entry.verdict);
+      if (entry.verdict !== "refuted" && entry.origin === "pre_existing") preExisting.add(index);
+    }
+  } catch (error) {
+    verified.warning = `verification of ${file} failed, keeping its findings: ${errorMessage(error)}`;
+  }
+  group.forEach((finding, i) => {
+    const reason = refutedIndexes.get(i);
+    if (reason === undefined) {
+      verified.kept.push({
+        ...finding,
+        verification: outcomes.get(i) ?? "unchecked",
+        ...(preExisting.has(i) ? { preExisting: true as const } : {}),
+      });
+    } else {
+      verified.refuted.push({ finding, reason });
+    }
+  });
+  return verified;
 }
 
 export function markUnchecked(findings: readonly Finding[]): Finding[] {

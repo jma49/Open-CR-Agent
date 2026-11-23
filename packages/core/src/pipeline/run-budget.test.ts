@@ -178,7 +178,7 @@ describe("review with a spend limit", () => {
     expect(report.warnings).toEqual([]);
   });
 
-  it("leaves findings unchecked, and says so, when nothing is left", async () => {
+  it("leaves findings unchecked, and says so, once nothing is left", async () => {
     const rt = pricedRuntime(0.6);
     const report = await reviewWithHooks({
       vcs: vcs({}, files(2)),
@@ -186,10 +186,11 @@ describe("review with a spend limit", () => {
       bundling: perFile,
       limits: { concurrency: 1, maxCostUsd: 1 },
     });
-    expect(rt.requests).toEqual([]);
-    expect(report.findings.map((f) => f.verification)).toEqual(["unchecked", "unchecked"]);
+    // The first file is verified while the second task, which uses up the limit, runs.
+    expect(rt.requests.map((r) => r.tier)).toEqual(["standard"]);
+    expect(report.findings.map((f) => f.verification)).toEqual(["confirmed", "unchecked"]);
     expect(report.warnings).toEqual([
-      "spend limit reached: 2 finding(s) were not verified and cannot block",
+      "spend limit reached: 1 finding(s) were not verified and cannot block",
       "spend limit of $1 reached: findings were not judged",
     ]);
     expect(report.spendLimit).toEqual({ usd: 1, reached: "total" });

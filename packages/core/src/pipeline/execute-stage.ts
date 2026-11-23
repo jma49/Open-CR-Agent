@@ -14,6 +14,8 @@ import {
 import type { ReviewEvent, TaskOutcome } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { securityReviewed } from "../sarif/evidence.js";
+import type { VerifyOptions } from "../verify/verify.js";
+import { type EarlyCheck, earlyCheck } from "./early-check.js";
 import { type ExecuteOptions, type JobResult, prepareJob, reuseJob, runJob } from "./execute.js";
 import {
   guidelinesShown,
@@ -43,6 +45,8 @@ export interface ExecuteStage {
   relocations: readonly Usage[];
   usage(): Usage[];
   warnings: string[];
+  // Absent when the run does not verify.
+  early?: EarlyCheck;
 }
 
 // One agent task per (bundle, reviewer) cell of the matrix, within the task
@@ -75,7 +79,7 @@ export async function executeStage(
   if (resume) execute.reuse = { pool, runId: resume.runId };
   const notStarted = new Set<string>();
   let unaffordable = 0;
-  const results = await mapWithConcurrency(matrix.cells, settings.concurrency, async (cell) => {
+  const runCell = async (cell: MatrixCell): Promise<JobResult> => {
     // Once the run is cancelled or timed out, remaining cells are not started.
     if (context.signal.aborted) {
       notStarted.add(cell.taskId);
@@ -90,6 +94,12 @@ export async function executeStage(
       return skipCell(cell, `spend limit of $${settings.maxCostUsd} reached`, emit);
     }
     return runJob(cell, plan, execute, prepared);
+  };
+  const early = earlyCheck(matrix.cells, verifyOptions(context), context);
+  const results = await mapWithConcurrency(matrix.cells, settings.concurrency, async (cell) => {
+    const result = await runCell(cell);
+    early?.taskEnded(cell, result.findings);
+    return result;
   });
   if (unaffordable > 0) {
     warnings.push(
@@ -105,6 +115,26 @@ export async function executeStage(
     relocations,
     usage: () => [...results.map((r) => r.usage), ...relocations],
     warnings,
+    ...(early ? { early } : {}),
+  };
+}
+
+// One for the calls made while tasks run and the ones Verify makes after.
+export function verifyOptions({
+  options,
+  settings,
+  plan,
+  spendLimit,
+  signal,
+}: StageContext): VerifyOptions {
+  return {
+    runtime: options.runtime,
+    diffs: plan.selected,
+    context: plan.context,
+    signal,
+    concurrency: settings.concurrency,
+    spendLimit,
+    call: roleCall("verifier", options),
   };
 }
 

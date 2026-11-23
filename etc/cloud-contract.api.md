@@ -739,6 +739,7 @@ export const liveFindingSchema: z.ZodObject<{
     }>>;
     preExisting: z.ZodOptional<z.ZodLiteral<true>>;
     dropped: z.ZodOptional<z.ZodLiteral<true>>;
+    settled: z.ZodOptional<z.ZodLiteral<true>>;
 }, z.core.$strip>;
 
 // @public (undocumented)
@@ -1388,6 +1389,7 @@ export const reviewEventSchema: z.ZodIntersection<z.ZodObject<{
         }>>;
         preExisting: z.ZodOptional<z.ZodLiteral<true>>;
         dropped: z.ZodOptional<z.ZodLiteral<true>>;
+        settled: z.ZodOptional<z.ZodLiteral<true>>;
     }, z.core.$strip>;
 }, z.core.$strip>, z.ZodObject<{
     kind: z.ZodLiteral<"warning">;

@@ -61,7 +61,7 @@ export function reconcile(input: ReconcileInput): Reconciled {
 
   for (const finding of findings) {
     const old = before.get(finding.fingerprint);
-    if (old?.dismissed && RANK[finding.severity] <= RANK[old.severity]) {
+    if (old && staysDismissed(finding, old)) {
       result.dismissed.push(old);
       continue;
     }
@@ -72,6 +72,11 @@ export function reconcile(input: ReconcileInput): Reconciled {
     });
   }
   return result;
+}
+
+// A person's dismissal holds unless the finding came back more severe.
+export function staysDismissed(finding: Pick<Finding, "severity">, old: PriorFinding): boolean {
+  return !!old.dismissed && RANK[finding.severity] <= RANK[old.severity];
 }
 
 // Earlier findings that are neither fixed nor dismissed keep counting towards

@@ -15,6 +15,8 @@ export interface ModelCalls {
 export interface ScriptedModel {
   url: string;
   calls(): Record<ModelCallKind, ModelCalls>;
+  // When the first Verify request was answered (epoch ms); undefined when none was.
+  firstVerifiedAt(): number | undefined;
   close(): Promise<void>;
 }
 
@@ -44,6 +46,7 @@ const SEARCHES = 3;
  */
 export async function scriptedModel(latencyMs = 0): Promise<ScriptedModel> {
   const seen: { kind: ModelCallKind; prompt: string; repeated: number }[] = [];
+  let firstVerifiedAt: number | undefined;
   const server = createServer((req, res) => {
     let body = "";
     req.on("data", (chunk) => {
@@ -54,7 +57,10 @@ export async function scriptedModel(latencyMs = 0): Promise<ScriptedModel> {
       const { kind, reply } = answer(request);
       const prompt = promptText(request);
       seen.push({ kind, prompt, repeated: longestSharedStart(prompt, seen) });
-      const send = () => respond(res, request, reply, prompt.length);
+      const send = () => {
+        if (kind === "verify") firstVerifiedAt ??= Date.now();
+        respond(res, request, reply, prompt.length);
+      };
       if (latencyMs > 0) setTimeout(send, latencyMs);
       else send();
     });
@@ -65,6 +71,7 @@ export async function scriptedModel(latencyMs = 0): Promise<ScriptedModel> {
   return {
     url: `http://127.0.0.1:${port}/v1`,
     calls: () => summarize(seen),
+    firstVerifiedAt: () => firstVerifiedAt,
     close: () =>
       new Promise((resolve) => {
         server.closeAllConnections();
