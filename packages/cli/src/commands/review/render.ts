@@ -8,6 +8,7 @@ import {
 } from "@open-cr-agent/core";
 import {
   nothingReviewedSummary,
+  quotaNote,
   serializeOutput,
   unconfirmedCriticals,
 } from "@open-cr-agent/core/internal";
@@ -123,7 +124,7 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
   if (missed > 0) {
     const limit = report.spendLimit?.reached
       ? `; the spend limit of $${report.spendLimit.usd} was reached`
-      : "";
+      : quotaNote(report.tasks);
     lines.push(`Incomplete: ${missed} selected file(s) were not reviewed${limit}.`);
   }
   for (const line of partlyReviewed(partly)) lines.push(`Incomplete: ${line}`);

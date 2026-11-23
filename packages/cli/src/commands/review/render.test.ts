@@ -96,6 +96,17 @@ describe("renderText", () => {
     );
   });
 
+  it("says a daily limit left files unreviewed", () => {
+    const report: ReviewReport = {
+      ...base,
+      coverage: [...base.coverage, { path: "src/b.ts", status: "failed" }],
+      tasks: [...base.tasks, { ...at(base.tasks, 0), status: "failed", quota: "daily_limit" }],
+    };
+    expect(renderText(report)).toContain(
+      "Incomplete: 1 selected file(s) were not reviewed; the model provider refused calls because a daily limit was reached.",
+    );
+  });
+
   it("says when the spend limit was reached and which files never started", () => {
     const report: ReviewReport = {
       ...base,

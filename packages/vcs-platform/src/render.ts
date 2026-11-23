@@ -11,7 +11,7 @@ import {
   type Severity,
   type Verification,
 } from "@open-cr-agent/core";
-import { unconfirmedCriticals } from "@open-cr-agent/core/internal";
+import { quotaNote, unconfirmedCriticals } from "@open-cr-agent/core/internal";
 import { safeMarkdown } from "./neutralize.js";
 import { type ReviewState, SUMMARY_MARKER, writeState } from "./state.js";
 import { type SuggestionFence, suggestionBlock } from "./suggestion.js";
@@ -266,7 +266,7 @@ function incompleteNotes(report: ReviewReport, text: PlatformText): string[] {
   if (missed > 0) {
     const limit = report.spendLimit?.reached
       ? `; the spend limit of $${report.spendLimit.usd} was reached`
-      : "";
+      : quotaNote(report.tasks);
     gaps.push(`**Incomplete:** ${missed} selected file(s) were not reviewed${limit}.`);
   }
   if (incomplete.step_cap > 0) {

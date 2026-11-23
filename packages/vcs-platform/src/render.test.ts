@@ -54,6 +54,44 @@ describe("renderSummary", () => {
     );
   });
 
+  it("says a daily limit left files unreviewed", () => {
+    const usage = {
+      inputTokens: 0,
+      outputTokens: 0,
+      reasoningTokens: 0,
+      cachedTokens: 0,
+      costUsd: 0,
+    };
+    const body = renderSummary({
+      report: {
+        ...report([]),
+        coverage: [
+          { path: "src/ok.ts", status: "reviewed" },
+          { path: "src/late.ts", status: "failed" },
+        ],
+        tasks: [
+          {
+            taskId: "t",
+            reviewer: "logic",
+            bundle: "b",
+            files: ["src/late.ts"],
+            status: "failed",
+            quota: "daily_limit",
+            findings: 0,
+            durationMs: 0,
+            usage,
+          },
+        ],
+      },
+      commented: new Set(),
+      state: { findings: [] },
+      text: gitlab,
+    });
+    expect(body).toContain(
+      "**Incomplete:** 1 selected file(s) were not reviewed; the model provider refused calls because a daily limit was reached. They are listed",
+    );
+  });
+
   it("names which memory hid findings, the repository's or the reviewing account's, and only those", () => {
     const entry = { file: "src/a.ts", title: "t", reason: "r" };
     const body = renderSummary({
