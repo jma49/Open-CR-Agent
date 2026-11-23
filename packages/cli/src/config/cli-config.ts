@@ -199,6 +199,7 @@ function toProviders(
         baseUrl: p.baseUrl,
         ...(p.apiKeyEnv ? { apiKeyEnv: p.apiKeyEnv } : {}),
         ...(p.effort ? { effort: p.effort } : {}),
+        ...(p.toolCalls ? { toolCalls: p.toolCalls } : {}),
         models: Object.fromEntries(
           Object.entries(p.models).map(([model, price]) => [
             model,

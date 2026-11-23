@@ -176,6 +176,12 @@ function checkProvider(id: string, provider: CustomProvider): void {
       `Provider "${id}" speaks Anthropic's Messages protocol, which the opencode runtime does not reach for a declared provider: use "runtime": "direct"`,
     );
   }
+  if (provider.toolCalls === "text") {
+    throw new OcraError(
+      "CONFIG_INVALID",
+      `Provider "${id}" takes tool calls as text, which the opencode runtime cannot send: use "runtime": "direct"`,
+    );
+  }
   const fields: [string, string][] = [
     ["id", id],
     ["baseUrl", provider.baseUrl],

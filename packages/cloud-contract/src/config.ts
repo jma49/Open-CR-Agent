@@ -117,10 +117,18 @@ const providerSchema = z
     // sends reasoning_effort (the default), "openrouter" sends
     // reasoning.effort.
     effort: z.enum(["openai", "openrouter"]).optional(),
+    // How the endpoint's models call tools: "api" through the protocol's
+    // tools parameter (the default), "text" as blocks in the answer, for an
+    // endpoint that takes no tools.
+    toolCalls: z.enum(["api", "text"]).optional(),
   })
   .strict()
   .refine((p) => p.type !== "anthropic" || p.effort === undefined, {
     path: ["effort"],
+    message: "applies to an openai-compatible provider only",
+  })
+  .refine((p) => p.type !== "anthropic" || p.toolCalls === undefined, {
+    path: ["toolCalls"],
     message: "applies to an openai-compatible provider only",
   });
 

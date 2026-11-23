@@ -52,6 +52,7 @@ const SECTIONS = [
   "question",
   "merge_checks",
   "check",
+  "tool_result",
 ] as const;
 export type SectionName = (typeof SECTIONS)[number];
 

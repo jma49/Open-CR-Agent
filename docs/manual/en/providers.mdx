@@ -54,10 +54,37 @@ A self-hosted server (vLLM, Ollama, LM Studio) or a company gateway that speaks 
 - **`baseUrl`** must be `https`, or plain `http` on this machine: `localhost`, `127.0.0.1` or `::1`. For Ollama, for example, `http://127.0.0.1:11434/v1`. It may not contain `{` or `}`, which OpenCode would replace with a variable or a file's content.
 - **`apiKeyEnv`** names the variable holding the key; the key never goes in the file, and only this variable reaches the runtime. Platform tokens and cloud credentials (`GITHUB_`, `GITLAB_`, `CI_`, `AWS_`, `AZURE_` and similar) are refused. Omit it for a server without keys.
 - **`effort`** (optional) says how the endpoint takes a [reasoning effort](./configuration#effort), on either runtime: `openai` (default; OpenAI, Gemini's OpenAI-compatible endpoint and OpenRouter accept it) sends `reasoning_effort`, `openrouter` sends `reasoning: { effort }`.
+- **`toolCalls`** (optional) says how the endpoint's models call the review tools, on the `direct` runtime: `api` (default) through the protocol's `tools` parameter, `text` for an endpoint that takes none (see [An endpoint without function calling](#an-endpoint-without-function-calling)). The `opencode` runtime refuses `text`.
 - **Every model has a price** in US dollars per million tokens: `input`, `output`, optionally `cachedInput`, used for the reported cost and `--max-cost-usd`. A price of 0 (your own hardware) makes the run warn that the spend limit does not count the model.
 - A shared configuration (`extends`) may declare providers only when pinned with `#sha256=`; otherwise whoever serves it could redirect your code. ocra ignores an unpinned one that declares providers, with a warning giving the pin to add once you have checked it. The repository's declaration of the same id wins. In pull and merge requests, providers come from the base commit.
 
 Tested in CI against a fake OpenAI-compatible server with the real OpenCode binary (the key goes where it should, the price is counted, nothing else is reached), and live on OpenRouter (a free model, 2026-10-02).
+
+### An endpoint without function calling
+
+A reviewer works by calling tools: it reads files, searches the code, and reports each finding with one. Some servers take no `tools` parameter: vLLM started without `--enable-auto-tool-choice` and `--tool-call-parser`, an Ollama model without a tool template, a company gateway that only forwards messages. On the [`direct` runtime](#choosing-the-runtime) ocra still reviews with them:
+
+- **When the endpoint refuses the tools** (HTTP 400 or 422 naming them), the request is sent again with the tools described in the system prompt. The model writes each call as a `<tool_call>` block holding JSON, the form open models such as Qwen and Hermes are trained on, and gets the results in the next message. The run remembers the model, so only its first requests pay for a refusal.
+- **When the endpoint drops the tools without saying so**, the model never sees them, and the review ends as partly reviewed with no tool calls. Declare `"toolCalls": "text"` on the provider and every request goes that way from the start.
+
+```json
+{
+  "runtime": "direct",
+  "providers": {
+    "gateway": {
+      "type": "openai-compatible",
+      "baseUrl": "https://llm.example.com/v1",
+      "apiKeyEnv": "GATEWAY_API_KEY",
+      "toolCalls": "text",
+      "models": { "qwen3-coder": { "input": 0, "output": 0 } }
+    }
+  }
+}
+```
+
+The steps, the step cap, the checks on each finding and what a tool may read are the same either way. How well a model keeps to the form is the model's: one that writes a call ocra cannot read is told so and may correct it, and one that never writes a call reviews nothing, which the report says. Where the server can parse tool calls itself, turn that on instead: it is the more reliable of the two.
+
+Tested against a scripted endpoint (a refused `tools` parameter, a declared provider, a malformed call); not yet run against a live model.
 
 ### An endpoint that speaks Anthropic's API
 

@@ -552,6 +552,13 @@
               "openai",
               "openrouter"
             ]
+          },
+          "toolCalls": {
+            "type": "string",
+            "enum": [
+              "api",
+              "text"
+            ]
           }
         },
         "required": [

@@ -99,6 +99,8 @@ describe("loadConfig", () => {
     [{ models: { m: { input: 1 } } }, "output"],
     [{ type: "gemini" }, "type"],
     [{ type: "anthropic", effort: "openrouter" }, "openai-compatible provider only"],
+    [{ type: "anthropic", toolCalls: "text" }, "openai-compatible provider only"],
+    [{ toolCalls: "inline" }, "toolCalls"],
   ])("refuses a provider with %j", async (change, message) => {
     const provider = {
       type: "openai-compatible",

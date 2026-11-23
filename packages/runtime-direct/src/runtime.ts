@@ -66,6 +66,9 @@ export class DirectRuntime implements AgentRuntime {
   private readonly tools: readonly ToolDefinition[];
   private readonly fetch: typeof fetch;
   private readonly efforts: EffortLedger;
+  // Models whose endpoint refused the tools: their later calls start with
+  // the tools as text instead of paying for another refusal (ADR-0070).
+  private readonly toolsAsText = new Set<string>();
 
   private readonly options: DirectRuntimeOptions;
 
@@ -186,13 +189,16 @@ export class DirectRuntime implements AgentRuntime {
   }
 
   // What one attempt sends besides the conversation, and where a refused
-  // effort is recorded.
+  // effort or refused tools are recorded.
   private call({ agent, effort, model }: Call) {
     const { providerID } = parseModel(model);
-    const takesSampling = this.options.providers?.[providerID]?.api !== "anthropic";
+    const provider = this.options.providers?.[providerID];
+    const takesSampling = provider?.api !== "anthropic";
     return {
       settings: this.efforts.params(agent, effort, model, takesSampling),
       onEffortRefused: () => this.efforts.refuse(agent, model),
+      textTools: provider?.toolCalls === "text" || this.toolsAsText.has(model),
+      onToolsRefused: () => void this.toolsAsText.add(model),
     };
   }
 

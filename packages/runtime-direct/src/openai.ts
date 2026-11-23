@@ -3,7 +3,10 @@ import {
   fetchFailure,
   type ModelPrice,
   parseQuotaError,
+  parseTextToolCalls,
   type ToolDefinition,
+  textToolInstructions,
+  textToolResults,
   type Usage,
   withoutSecrets,
 } from "@open-cr-agent/core";
@@ -90,28 +93,52 @@ type ChatResponse = (
 
 // How an endpoint names the effort parameters in a 400 that refuses them.
 const EFFORT_PARAMETER = /\breasoning(?:_effort)?\b/i;
+// How one names the tools in a refusal of them: vLLM's "auto" tool choice
+// requires --enable-auto-tool-choice, Ollama's "does not support tools", a
+// gateway's "function calling is not supported".
+const TOOLS_PARAMETER = /\btools?\b|function[_ -]?call/i;
+const REFUSED_PARAMETER = new Set([400, 422]);
 
 // A conversation in OpenAI's chat completions protocol, with the effort sent
 // the way the provider declares.
 export function openaiWire(style: EffortStyle = "openai"): Wire {
-  return ({ endpoint, model, price, system }) => {
+  return ({ endpoint, model, price, system, textTools }) => {
     const messages: ChatMessage[] = [{ role: "system", content: system }];
+    // The model calls tools as text (ADR-0070): declared so, or from the
+    // request on whose tools the endpoint refused.
+    let textual = textTools ?? false;
+    const request = (tools: readonly ToolDefinition[], settings: CallSettings): ChatRequest => {
+      const base = { model, ...params(settings, style) };
+      if (tools.length === 0) return { ...base, messages };
+      if (!textual) return { ...base, messages, tools: tools.map(toolSpec) };
+      const instructed = `${system}\n\n${textToolInstructions(tools)}`;
+      return { ...base, messages: [{ role: "system", content: instructed }, ...messages.slice(1)] };
+    };
     return {
       say: (text) => {
         messages.push({ role: "user", content: text });
       },
       ask: async (tools, settings, signal): Promise<Answer> => {
-        const specs = tools.map(toolSpec);
-        const request = {
-          model,
-          messages,
-          ...(specs.length > 0 ? { tools: specs } : {}),
-          ...params(settings, style),
-        };
-        const response = await chat(endpoint, request, price, signal);
-        const dropped = response.effortDropped ? { effortDropped: true as const } : {};
-        if (!response.ok) return { ...response, ...dropped };
+        let response = await chat(endpoint, request(tools, settings), price, signal);
+        let dropped: Pick<Answer, "effortDropped" | "toolsDropped"> = droppedBy(response);
+        // Before any call was made: a refusal later is about the conversation.
+        const refused = !response.ok && response.error.toolsRefused && !textual;
+        if (refused && !messages.some((message) => message.role === "tool")) {
+          textual = true;
+          response = await chat(endpoint, request(tools, settings), price, signal);
+          dropped = { ...dropped, ...droppedBy(response), toolsDropped: true };
+        }
+        if (!response.ok) return { ok: false, error: response.error, ...dropped };
         const { content, toolCalls, usage } = response;
+        if (textual && tools.length > 0) {
+          const { text, calls } = parseTextToolCalls(content);
+          messages.push({ role: "assistant", content: content || null });
+          const requests = calls.map((call, i) => ({
+            id: `text_${messages.length}_${i}`,
+            ...call,
+          }));
+          return { ok: true, text, calls: requests, usage, ...dropped };
+        }
         messages.push({
           role: "assistant",
           content: content || null,
@@ -120,6 +147,11 @@ export function openaiWire(style: EffortStyle = "openai"): Wire {
         return { ok: true, text: content, calls: toolCalls.map(toolRequest), usage, ...dropped };
       },
       answer: (outputs) => {
+        if (textual) {
+          const results = outputs.map(({ call, output }) => ({ name: call.name, output }));
+          messages.push({ role: "user", content: textToolResults(results) });
+          return;
+        }
         for (const { call, output } of outputs) {
           messages.push({ role: "tool", tool_call_id: call.id, content: output });
         }
@@ -127,6 +159,9 @@ export function openaiWire(style: EffortStyle = "openai"): Wire {
     };
   };
 }
+
+const droppedBy = (response: ChatResponse) =>
+  response.effortDropped ? { effortDropped: true as const } : {};
 
 function params(
   { effort, ...sampling }: CallSettings,
@@ -264,6 +299,7 @@ function failure(
     message,
     retryable: retryableStatus(status),
     ...(status === 400 && EFFORT_PARAMETER.test(body) ? { effortRefused: true } : {}),
+    ...(REFUSED_PARAMETER.has(status) && TOOLS_PARAMETER.test(body) ? { toolsRefused: true } : {}),
     ...(quota ? { quota } : {}),
     ...(!quota && transientStatus(status) ? { transient: true } : {}),
   };

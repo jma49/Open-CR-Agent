@@ -381,6 +381,10 @@ export const configSchema: z.ZodObject<{
             openai: "openai";
             openrouter: "openrouter";
         }>>;
+        toolCalls: z.ZodOptional<z.ZodEnum<{
+            api: "api";
+            text: "text";
+        }>>;
     }, z.core.$strict>>>;
     extends: z.ZodOptional<z.ZodString>;
 }, z.core.$strict>;

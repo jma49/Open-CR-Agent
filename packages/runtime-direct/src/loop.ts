@@ -48,6 +48,10 @@ export interface LoopInput {
   settings?: CallSettings;
   // The endpoint refused the effort; the rest of the attempt goes without it.
   onEffortRefused?: () => void;
+  // DialogueStart.textTools.
+  textTools?: boolean;
+  // The endpoint refused the tools; the rest of the attempt calls them as text.
+  onToolsRefused?: () => void;
   signal: AbortSignal;
   onUsage?: (spent: Usage) => void;
   // Review agents only: a rate-limited request waits and is sent again.
@@ -173,6 +177,7 @@ class Conversation {
         this.settings = withoutEffort(this.settings);
         this.input.onEffortRefused?.();
       }
+      if (response.toolsDropped) this.input.onToolsRefused?.();
       const quota = response.ok ? undefined : response.error.quota;
       if (!quota || this.signal.aborted || !(await this.input.limits?.waitOut(quota))) {
         return response;
