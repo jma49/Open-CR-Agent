@@ -106,6 +106,7 @@ class Conversation {
   };
   private readonly texts: string[] = [];
   private readonly uses: ToolUse[] = [];
+  private readonly refusals: { fields: string; file: string | undefined }[] = [];
   private settings: CallSettings;
 
   constructor(input: LoopInput) {
@@ -114,6 +115,13 @@ class Conversation {
     this.signal = AbortSignal.any([input.signal, this.timeout]);
     this.dialogue = input.wire(input);
     this.settings = input.settings ?? {};
+  }
+
+  // An accepted report answers a refused one for the same file, or one whose
+  // file could not be read; a refusal for another file stays on record.
+  private sentAgain(file: string | undefined): void {
+    const index = this.refusals.findIndex((r) => r.file === undefined || r.file === file);
+    if (index >= 0) this.refusals.splice(index, 1);
   }
 
   // Runs until the done tool, an answer without tools, or `maxSteps` steps
@@ -165,12 +173,15 @@ class Conversation {
       // arguments was lost without a word: the task goes on, so the model
       // reads why and can send it again.
       const reports = outputs.filter(({ call }) => call.name === REVIEW_TOOLS.reportFinding);
-      const refused = reports.flatMap((report) => report.refused ?? []);
-      // An accepted report after a refusal is taken as the finding sent again.
-      if (reports.length > refused.length) delete outcome.refusedFindings;
-      if (refused.length > 0) {
-        outcome.refusedFindings = [...(outcome.refusedFindings ?? []), ...refused];
+      const refused = reports.filter((report) => report.refused !== undefined);
+      for (const report of reports) {
+        if (report.refused === undefined) this.sentAgain(reportedFile(report.call));
       }
+      for (const { call, refused: fields = "" } of refused) {
+        this.refusals.push({ fields, file: reportedFile(call) });
+      }
+      if (this.refusals.length > 0) outcome.refusedFindings = this.refusals.map((r) => r.fields);
+      else delete outcome.refusedFindings;
       done =
         outputs.some(({ call }) => call.name === REVIEW_TOOLS.taskDone) && refused.length === 0;
       if (done) break;
@@ -204,6 +215,11 @@ class Conversation {
 // it was.
 function snapshot(outcome: AttemptOutcome): AttemptOutcome {
   return { ...outcome, findings: [...outcome.findings], toolCalls: [...outcome.toolCalls] };
+}
+
+function reportedFile(call: ToolRequest): string | undefined {
+  const file = (call.input as { file?: unknown } | null | undefined)?.file;
+  return typeof file === "string" ? file : undefined;
 }
 
 // A tool's answer, or why it gave none: a wrong call is told to the model,
