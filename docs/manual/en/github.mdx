@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@b0416a1b03acee5f70d6d3a7e95f3b3169e1ae5e # v0.15.0
+      - uses: jma49/Open-CR-Agent@418d488e69f4e753ae7f9b976553196775e30322 # v0.16.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
@@ -72,7 +72,7 @@ Give the step an `id` to read its outputs. They are set whenever ocra ran, also 
 
 ```yaml
       - id: ocra
-        uses: jma49/Open-CR-Agent@b0416a1b03acee5f70d6d3a7e95f3b3169e1ae5e # v0.15.0
+        uses: jma49/Open-CR-Agent@418d488e69f4e753ae7f9b976553196775e30322 # v0.16.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       - if: ${{ !cancelled() && steps.ocra.outputs.report != '' }}
@@ -99,7 +99,7 @@ On `pull_request`, pull requests from forks get no secrets, so the `if:` skips t
 OpenCode, the default runtime, with its native binary is 97 of the 108 packages the Action installs and about 165 MB of 175 MB. When every model in the base branch's configuration is on an endpoint you declare and it sets `"runtime": "direct"` ([Choosing the runtime](./providers#choosing-the-runtime)), set `opencode: false` (new in v0.3.0) to install 11 packages. If the configuration then selects `opencode`, the review stops before any model call with exit code `2`, naming the missing package.
 
 ```yaml
-      - uses: jma49/Open-CR-Agent@<commit> # v0.15.0
+      - uses: jma49/Open-CR-Agent@<commit> # v0.16.0
         with:
           opencode: false
         env:
@@ -149,7 +149,7 @@ jobs:
         with:
           fetch-depth: 0
       - id: ocra
-        uses: jma49/Open-CR-Agent@b0416a1b03acee5f70d6d3a7e95f3b3169e1ae5e # v0.15.0
+        uses: jma49/Open-CR-Agent@418d488e69f4e753ae7f9b976553196775e30322 # v0.16.0
         with:
           sarif: true
         env:
@@ -173,7 +173,7 @@ Run Semgrep, CodeQL or another SARIF-writing analyzer first and pass its log wit
 
 ```yaml
       - run: pipx run semgrep scan --config p/default --metrics=off --sarif --output semgrep.sarif
-      - uses: jma49/Open-CR-Agent@b0416a1b03acee5f70d6d3a7e95f3b3169e1ae5e # v0.15.0
+      - uses: jma49/Open-CR-Agent@418d488e69f4e753ae7f9b976553196775e30322 # v0.16.0
         with:
           args: --import-sarif semgrep.sarif
         env:
@@ -243,7 +243,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@b0416a1b03acee5f70d6d3a7e95f3b3169e1ae5e # v0.15.0
+      - uses: jma49/Open-CR-Agent@418d488e69f4e753ae7f9b976553196775e30322 # v0.16.0
         with:
           learn: ${{ github.event_name == 'schedule' && 'mine' || 'remember' }}
         env:
@@ -293,7 +293,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@b0416a1b03acee5f70d6d3a7e95f3b3169e1ae5e # v0.15.0
+      - uses: jma49/Open-CR-Agent@418d488e69f4e753ae7f9b976553196775e30322 # v0.16.0
         with:
           reply: true
         env:
@@ -346,7 +346,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@b0416a1b03acee5f70d6d3a7e95f3b3169e1ae5e # v0.15.0
+      - uses: jma49/Open-CR-Agent@418d488e69f4e753ae7f9b976553196775e30322 # v0.16.0
         with:
           args: --max-cost-usd 2
         env:
@@ -402,7 +402,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@b0416a1b03acee5f70d6d3a7e95f3b3169e1ae5e # v0.15.0
+      - uses: jma49/Open-CR-Agent@418d488e69f4e753ae7f9b976553196775e30322 # v0.16.0
         with:
           args: --max-cost-usd 2
         env:
@@ -467,7 +467,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jma49/Open-CR-Agent@b0416a1b03acee5f70d6d3a7e95f3b3169e1ae5e # v0.15.0
+      - uses: jma49/Open-CR-Agent@418d488e69f4e753ae7f9b976553196775e30322 # v0.16.0
         with:
           github-token: ${{ steps.app.outputs.token }}
           args: --max-cost-usd 2
