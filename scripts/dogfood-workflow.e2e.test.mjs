@@ -322,7 +322,7 @@ describe("dogfood workflow contract", () => {
     );
     const caller = readFileSync(callerPath, "utf8");
     expect(caller).toMatch(
-      /^ {4}uses: jma49\/Open-CR-Agent\/\.github\/workflows\/ocra-dogfood\.yml@main$/m,
+      /^ {4}uses: ocrahq\/Open-CR-Agent\/\.github\/workflows\/ocra-dogfood\.yml@main$/m,
     );
     expect(caller).toMatch(/^ {4}with:\n {6}model-source: openrouter\n {4}secrets:/m);
   });
@@ -331,7 +331,7 @@ describe("dogfood workflow contract", () => {
     for (const step of ["guard", "free-outcome", "cost"]) {
       expect(workflow).toMatch(
         new RegExp(
-          `uses: jma49/Open-CR-Agent/\\.github/actions/dogfood@main\n(?: {8}.*\n)*? {8}with:\n {10}step: ${step}\n`,
+          `uses: ocrahq/Open-CR-Agent/\\.github/actions/dogfood@main\n(?: {8}.*\n)*? {8}with:\n {10}step: ${step}\n`,
         ),
       );
     }
@@ -342,7 +342,7 @@ describe("dogfood workflow contract", () => {
     // The job has no checkout of this repository; the action brings its
     // script, and a pull request's copy of either never runs here.
     expect(workflow).toMatch(
-      /^ {8}uses: jma49\/Open-CR-Agent\/\.github\/actions\/free-quota@main$/m,
+      /^ {8}uses: ocrahq\/Open-CR-Agent\/\.github\/actions\/free-quota@main$/m,
     );
   });
 

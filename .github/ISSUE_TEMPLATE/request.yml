@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        The [roadmap](https://github.com/jma49/Open-CR-Agent/blob/main/docs/roadmap.md) says what is planned and what is deliberately not being built now.
+        The [roadmap](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/roadmap.md) says what is planned and what is deliberately not being built now.
   - type: textarea
     id: problem
     attributes:

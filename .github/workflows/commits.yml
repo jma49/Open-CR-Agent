@@ -9,7 +9,7 @@ name: Commits
 #   jobs:
 #     commits:
 #       if: github.event_name == 'pull_request'
-#       uses: jma49/Open-CR-Agent/.github/workflows/commits.yml@<commit SHA>
+#       uses: ocrahq/Open-CR-Agent/.github/workflows/commits.yml@<commit SHA>
 on:
   workflow_call:
 
@@ -28,7 +28,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: jma49/Open-CR-Agent
+          repository: ocrahq/Open-CR-Agent
           ref: ${{ job.workflow_sha }}
           path: .ocra-engine
           persist-credentials: false

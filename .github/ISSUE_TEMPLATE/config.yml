@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: Report a security vulnerability
-    url: https://github.com/jma49/Open-CR-Agent/security/advisories/new
+    url: https://github.com/ocrahq/Open-CR-Agent/security/advisories/new
     about: Report it privately, never in a public issue. See SECURITY.md.
   - name: Read the manual
     url: https://ocracloud.com/docs
