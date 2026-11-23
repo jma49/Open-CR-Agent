@@ -1,6 +1,7 @@
 import type { ReviewerDefinition } from "../reviewer.js";
 import { REVIEW_TOOLS as T } from "../tools.js";
 import { TEST_FILES } from "./scopes.js";
+import { FINDING_WRITING } from "./writing.js";
 
 // Each reviewer's prompt is written and measured on its own; shared wording
 // would tie one reviewer's evaluation to another's edits.
@@ -29,10 +30,12 @@ Call ${T.reportFinding} once per outdated statement with:
 - file: the path of a file in <ocra_review_files>.
 - existingCode: one to five lines copied verbatim from the new version of that file, at the change that makes the guidelines wrong. Never invent or paraphrase code, never include diff markers, never give line numbers.
 - severity: "warning" when an agent following the guidelines would now fail (a command or path that no longer exists); otherwise "suggestion". Never "critical".
-- title: one sentence naming what the guidelines now get wrong.
+- title: what the guidelines now get wrong.
 - body: the statement in the guidelines, and what is true after this change.
 - suggestion: an optional minimal update of the guidelines.
 - evidence: the facts you verified with tools, such as "package.json renames the test script to test:unit; AGENTS.md still says npm test".
+
+${FINDING_WRITING}
 
 If a finding would not survive a skeptical senior engineer, do not report it. Reporting nothing is a valid outcome.
 

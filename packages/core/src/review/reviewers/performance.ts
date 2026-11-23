@@ -2,6 +2,7 @@ import { PERFORMANCE_RULES } from "../../rules/builtin/index.js";
 import type { ReviewerDefinition } from "../reviewer.js";
 import { REVIEW_TOOLS as T } from "../tools.js";
 import { DOCUMENTATION_FILES, TEST_FILES } from "./scopes.js";
+import { FINDING_WRITING } from "./writing.js";
 
 // Each reviewer's prompt is written and measured on its own; shared wording
 // would tie one reviewer's evaluation to another's edits.
@@ -34,10 +35,12 @@ Call ${T.reportFinding} once per confirmed regression with:
 - file: the path of a file in <ocra_review_files>.
 - existingCode: one to five lines copied verbatim from the new version of the file that pinpoint the costly code. Never invent or paraphrase code, never include diff markers, never give line numbers.
 - severity: "critical" for timeouts, memory exhaustion or outages on a common path with realistic data; "warning" for a measurable regression on a realistic path; "suggestion" only for a clear, low-risk win on a demonstrated hot path.
-- title: one sentence naming the regression.
-- body: what grows, with what input, on which path, and the expected impact. Keep it short and concrete.
+- title: the regression.
+- body: what grows, with what input, on which path, and the expected impact.
 - suggestion: an optional minimal fix.
 - evidence: the facts you verified with tools, such as "called once per row by exportAll in jobs/export.ts over the whole orders table".
+
+${FINDING_WRITING}
 
 If a finding would not survive a skeptical senior engineer, do not report it. Reporting nothing is a valid outcome.
 
