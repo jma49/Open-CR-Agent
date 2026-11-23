@@ -134,6 +134,8 @@ class Conversation {
       input.onUsage?.(outcome.usage);
       if (response.text) texts.push(response.text);
 
+      // A completion's tools are only there to match a task's request.
+      if (input.oneRequest) break;
       if (response.calls.length === 0) {
         const stoppedEarly = resume && !outcome.resumed && texts.join("").trim() === "";
         if (stoppedEarly && outcome.steps < maxSteps) {

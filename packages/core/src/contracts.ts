@@ -81,8 +81,9 @@ export interface AgentTaskSpec {
   systemPrompt: string;
   userPrompt: string;
   // Where in userPrompt a start that other tasks of the run are given too
-  // ends, shortest first (ADR-0064). A runtime whose provider caches the
-  // prefixes it is shown marks them; any other leaves them alone.
+  // ends, shortest first (ADR-0064), then where the start the task's plan
+  // call sent ends (ADR-0066). A runtime whose provider caches the prefixes
+  // it is shown marks them; any other leaves them alone.
   sharedPrefixes?: readonly number[];
   context: ReviewContext;
   timeoutMs: number;
@@ -151,6 +152,12 @@ export interface CompletionRequest {
   models?: readonly string[];
   system: string;
   user: string;
+  // Set when a task of this agent follows under the same system prompt:
+  // where in `user` the starts end that the task's prompt opens with too,
+  // shortest first. A runtime whose provider stores prompts then sends the
+  // request as it would that task's first, tools included, and stores those
+  // starts for the task to read; the tools are offered, never run.
+  sharedPrefixes?: readonly number[];
   timeoutMs: number;
 }
 

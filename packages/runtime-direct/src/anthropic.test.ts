@@ -150,6 +150,49 @@ describe("DirectRuntime on a Messages endpoint", () => {
     ]);
   });
 
+  it("only ends a block at a start past the two a task can mark", async () => {
+    const server = await endpoint([
+      { text: "Reviewed.", toolCalls: [{ name: "task_done", input: {} }] },
+    ]);
+    const spec = {
+      ...task(),
+      userPrompt: "change guidelines files plan",
+      sharedPrefixes: [6, 17, 23],
+    };
+    await collect(runtime(server.url).runTask(spec, signal()));
+
+    const mark = { cache_control: { type: "ephemeral" } };
+    expect(server.seen[0]?.body.messages[0]?.content).toEqual([
+      { type: "text", text: "change", ...mark },
+      { type: "text", text: " guidelines", ...mark },
+      { type: "text", text: " files" },
+      { type: "text", text: " plan", ...mark },
+    ]);
+  });
+
+  it("sends a completion a task follows as that task opens, and stores its starts", async () => {
+    const server = await endpoint([
+      { text: "- check it", toolCalls: [{ name: "read_file", input: { path: "src/a.ts" } }] },
+    ]);
+    const request = {
+      ...call(),
+      user: "change guidelines files list",
+      sharedPrefixes: [6, 17, 23],
+    };
+    const result = await runtime(server.url).complete(request, signal());
+
+    const mark = { cache_control: { type: "ephemeral" } };
+    expect(server.seen).toHaveLength(1);
+    expect(server.seen[0]?.body.tools?.map((t) => t.name)).toContain("report_finding");
+    expect(server.seen[0]?.body.messages[0]?.content).toEqual([
+      { type: "text", text: "change", ...mark },
+      { type: "text", text: " guidelines", ...mark },
+      { type: "text", text: " files", ...mark },
+      { type: "text", text: " list" },
+    ]);
+    expect(result.text).toBe("- check it");
+  });
+
   it("stores no conversation a completion would never read again", async () => {
     const server = await endpoint([{ text: "ok" }]);
     await runtime(server.url).complete(call(), signal());
