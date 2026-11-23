@@ -422,7 +422,7 @@ ocra mend --from main --findings accepted.json                             # 本
 | `--max-cost-usd <n>` | 这个变更各轮合计的花费上限，包含状态里已花的；否则用配置里的 `maxCostUsd` |
 | `--json` | 在 stdout 打印一行 JSON，说明结果 |
 
-**一轮做什么。** 它取前 5 条仍未关闭的问题。每条在 `fixer` 角色上得到一次调用，规则同 [`ocra fix`](#ocra-fix)：在 head 上重新找到问题的代码，回答只能改这些行，要小，语法错误不能增加。然后修改要通过代码里的闸门，以及 `verifier` 角色上的一次调用：它读问题、被替换的行、替换内容和周围的文件，必须回答这个修改解决了问题且没有带来新的缺陷；回答"不确定"、调用失败，或回答不是约定的 JSON，都会拒绝这个修改。通过的修改按问题的顺序合在一起；与前面的修改碰到同样的行，或会让这一轮超过 10 个文件或新增 200 行的，留到下一轮。提交只写在这一轮读到的 head 之上，从不强制推送，提交信息列出它修复的问题。
+**一轮做什么。** 它取前 5 条仍未关闭的问题。每条在 `fixer` 角色上得到一次调用，规则同 [`ocra fix`](#ocra-fix)：在 head 上重新找到问题的代码，回答只能改这些行，要小，语法错误不能增加。这条通道写不了的问题（它的代码在文件里出现不止一次或不在变更的行里，跨度超过 30 行，或 fixer 回答没有局部修改能修复它），在 `direct` 运行时上改由 `fixer` 角色的一个任务处理：一个 agent，带着审查的只读工具，外加一个 `edit` 工具，用来替换内存里那份 head 副本中某个文件的整行。它没有 shell，不写磁盘，不访问网络；只有以完成工具结束时它的修改才算数，修改可以跨变更内的多行和多个文件。在 `opencode` 运行时上，这样的问题交给人处理（`not_candidate`）。无论哪条通道，修改之后都要通过代码里的闸门，以及 `verifier` 角色上的一次调用：它读问题、被替换的行、替换内容和周围的文件，必须回答这个修改解决了问题且没有带来新的缺陷；回答"不确定"、调用失败，或回答不是约定的 JSON，都会拒绝这个修改。通过的修改按问题的顺序合在一起；与前面的修改碰到同样的行，或会让这一轮超过 10 个文件或新增 200 行的，留到下一轮。提交只写在这一轮读到的 head 之上，从不强制推送，提交信息列出它修复的问题。
 
 **闸门。** 一轮只修改变更里审查会读的普通文件。它从不修改 CI 配置（`.github/`、`.gitlab/`、`.gitlab-ci.yml`、`.circleci/`、`.buildkite/`、`Jenkinsfile`、Azure 和 Bitbucket 的流水线）、`.ocra/`、`AGENTS.md`、`CODEOWNERS`、依赖清单（`package.json`、`pyproject.toml`、`requirements*.txt`、`Pipfile`、`go.mod`、`Cargo.toml`、`pom.xml`、Gradle 的构建和设置文件、`Gemfile`、`composer.json`）、`Dockerfile`、`Makefile`、生成的文件、迁移文件，以及 `--protect` 指定的路径。在测试文件里，修改不能新增关掉测试的调用（`.skip`、`.only`、`.todo`、`xit`、`@Ignore`、`@Disabled`、`pytest.mark.skip`、`skipif`、`xfail`、`unittest.skip`、`t.Skip`、`#[ignore]`）。修改不含控制字符或双向文本字符。被闸门拒绝的问题交给人处理。
 
@@ -454,7 +454,7 @@ ocra mend --from main --findings accepted.json                             # 本
 | `needs_human` | 已关闭，交给人决定 | `not_candidate`、`no_parser`、`out_of_scope`、`protected`、`too_large`、`tamper`，或两次尝试都用完时的 `attempts` |
 | `gone` | 它的代码已不在 head 上 | `stale` |
 
-`edits` 替换 `headSha` 上 `path` 的第 `startLine` 到 `endLine` 整行；只有 `fixed` 或 `proposed` 的条目才有。用法、输入和配置错误，以及无法启动的运行时，退出码为 `2`。结构是 `@open-cr-agent/cloud-contract` 里的 `mendResultSchema`、`mendStateSchema` 和 `mendFindingsSchema`（[ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)）。这是修复循环的第一步：失败的检查、合并冲突和评审者的要求仍在计划中。v0.20.0 新增。
+`edits` 替换 `headSha` 上 `path` 的第 `startLine` 到 `endLine` 整行；只有 `fixed` 或 `proposed` 的条目才有。用法、输入和配置错误，以及无法启动的运行时，退出码为 `2`。结构是 `@open-cr-agent/cloud-contract` 里的 `mendResultSchema`、`mendStateSchema` 和 `mendFindingsSchema`（[ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)）。这是修复循环的第一步：失败的检查、合并冲突和评审者的要求仍在计划中。v0.20.0 新增；带 `edit` 工具的任务是 v0.21.0 新增。
 
 ## ocra metrics
 
