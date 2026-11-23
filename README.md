@@ -130,7 +130,7 @@ CI must never read an incomplete review (`3`) as a pass. The verdict is advice f
     "standard": ["google/gemini-3.5-flash", "google/gemini-flash-lite-latest"],
     "light": "google/gemini-flash-lite-latest"
   },
-  "concurrency": 4,
+  "concurrency": 8,
   "taskTimeoutMinutes": 10,
   "runTimeoutMinutes": 25,
   "include": [],
