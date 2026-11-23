@@ -26,7 +26,7 @@ Measured with `ocra-eval perf --latency-ms 1000` (the direct runtime, a scripted
 
 ## Consequences
 
-- A review takes a little over half as long where the provider's limit allows eight tasks: 42% less on both measured changes.
+- A review of many tasks takes a little over half as long where the provider's limit allows eight at once: 42% less on both measured changes. A change of four tasks or fewer, which is most small pull requests, takes as long as before.
 - A provider that refuses the wider burst costs a wait, not the work: ocra Cloud's gateway allows 120 calls a minute and states a wait of 60 seconds, well inside what a run waits out. Where a limit keeps pausing a run, `concurrency` lowers the burst.
 - An attempt's timeout keeps running while it waits, where a restarted attempt got a new one. A task that waits long enough to reach it fails over to the next model, as any timed-out attempt does.
 - More tasks start before the first task of a reviewer has stored the prompt start they share (ADR-0064), so a few more of them store it instead of reading it: a handful of tasks' shared start a run, small beside the steps that follow.
