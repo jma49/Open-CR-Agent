@@ -43,5 +43,5 @@ export const agentsMdReviewer: ReviewerDefinition = {
   category: "guidelines",
   modelTier: "light",
   systemPrompt: SYSTEM_PROMPT,
-  scope: { minTier: "lite", ignore: [...TEST_FILES], requiresGuidelines: true },
+  scope: { minTier: "lite", ignore: [...TEST_FILES], requiresGuidelines: true, span: "change" },
 };

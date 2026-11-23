@@ -10,6 +10,11 @@ export interface ReviewerScope {
   ignore?: readonly string[];
   // Runs only when the repository has guidelines (AGENTS.md) to check against.
   requiresGuidelines?: boolean;
+  // "change": the reviewer compares the change with something outside it
+  // (documentation, guidelines), so bundle boundaries mean nothing to it and
+  // it gets the change in as few tasks as its size allows (default: a task
+  // per bundle).
+  span?: "bundle" | "change";
 }
 
 export interface ReviewerDefinition {
