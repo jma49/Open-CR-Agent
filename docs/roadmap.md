@@ -106,7 +106,7 @@ The milestones below keep their lists; the order of work is the one above.
 **Review experience** (from a comparison with CodeRabbit; anything touching quality waits for M11).
 
 1. A public run of the Martian Code Review Bench on free models, precision first (part of M11).
-2. Committable suggestions. The plumbing landed ([ADR-0029](adr/0029-committable-suggestions.md)); a checked fix stage produces them behind `fixes` ([ADR-0058](adr/0058-checked-fix-proposals.md)), off by default until the golden smoke tier run with `--fixes` shows they are right often enough.
+2. Committable suggestions. The plumbing landed ([ADR-0029](adr/0029-committable-suggestions.md)); a checked fix stage produces them behind `fixes` ([ADR-0058](adr/0058-checked-fix-proposals.md)), off by default until the golden smoke tier run with `--fixes` shows they are right often enough. `ocra fix` writes one for a stored finding ([ADR-0077](adr/0077-fix-one-finding.md)), and `ocra mend` runs one round of a fix loop over accepted findings, with a gate in code, a verifier call and one unforced commit ([ADR-0078](adr/0078-fix-loop.md)); its later steps (failed checks, conflicts, reviewers' requests) are planned.
 3. Pull request commands: a maintainer's reply asking for a re-review or dismissing a finding is acted on, within `vcs-platform`'s trust rules. Landed: `/ocra dismiss`, `/ocra remember`, `/ocra override`, and `/ocra review` for a full re-review through the Action on `issue_comment`.
 4. Semgrep as the first bundled analyzer behind SARIF in, off unless configured. Landed: analyzer results as reviewer evidence (`--sarif-evidence`, [ADR-0042](adr/0042-analyzer-evidence.md)); whether they help is for the per-source ablation.
 5. A pull request summary from the judged findings and the change, not a second free-text pass.
@@ -149,7 +149,7 @@ What a company checks before adopting a code review tool, and where ocra is.
 - **A code graph, AST or call-graph context** before one provider is shown to raise recall.
 - **An embedding store for memory** before fingerprint matching is shown to be the limit.
 - **MCP inside the trust boundary** (ADR-0005).
-- **Demo features**: chat commands, auto-fix, IDE plugins, issue-tracker checks, full-repository scans. None helps until review quality is proven; memory, dismissals and replies cover the "learning" peers advertise.
+- **Demo features**: chat commands, fixes nobody accepted a finding for, IDE plugins, issue-tracker checks, full-repository scans. None helps until review quality is proven; memory, dismissals and replies cover the "learning" peers advertise.
 - **Five platforms or seven runtimes at once.** One maintainer cannot keep them alive; each is added on demand through a conformance suite.
 - Any prompt, rule or reviewer change until M11.
 
