@@ -3,6 +3,7 @@ import {
   type CustomProvider,
   MAX_AGENT_STEPS,
   OcraError,
+  REVIEW_TOOLS,
   type Sampling,
   WRAP_UP_STEPS,
   WRAP_UP_TOOLS,
@@ -10,6 +11,8 @@ import {
 import type { ToolServer } from "./tool-server.js";
 
 export const MCP_SERVER = "ocra";
+// As OpenCode names it: the permission it asks for, too (done-tool.ts).
+export const DONE_TOOL = `${MCP_SERVER}_${REVIEW_TOOLS.taskDone}`;
 export const REVIEW_AGENT = "ocra-reviewer";
 export const HELPER_AGENT = "ocra-helper";
 // A review's wrap-up turn (WRAP_UP_MESSAGE): its own agent, since OpenCode
@@ -47,12 +50,13 @@ export const OPENCODE_BUILTIN_TOOLS = [
 ] as const;
 export const DISABLED_BUILTINS = Object.fromEntries(OPENCODE_BUILTIN_TOOLS.map((t) => [t, false]));
 
-// The helper's tools (every one off) with only the reporting tools on.
+// The helper's tools (every one off) with only the reporting tools on. The
+// done tool is neither on nor off: a prompt's tools become the session's
+// permissions, and "on" would allow what the agent must ask for.
 export function wrapUpTools(helperTools: Record<string, boolean>): Record<string, boolean> {
-  return {
-    ...helperTools,
-    ...Object.fromEntries(WRAP_UP_TOOLS.map((t) => [`${MCP_SERVER}_${t}`, true])),
-  };
+  const { [DONE_TOOL]: _asks, ...off } = helperTools;
+  const on = WRAP_UP_TOOLS.map((t) => `${MCP_SERVER}_${t}`).filter((t) => t !== DONE_TOOL);
+  return { ...off, ...Object.fromEntries(on.map((t) => [t, true])) };
 }
 
 // OpenCode 1.18.32 takes a temperature per agent and sends it when the
@@ -73,6 +77,7 @@ export function openCodeConfig(
   sampling: Sampling = {},
 ) {
   const permission = { edit: "deny", bash: "deny", webfetch: "deny", skill: "deny" };
+  const reviewing = { ...permission, [DONE_TOOL]: "ask" };
   const { temperature } = sampling;
   const agents = {
     [REVIEW_AGENT]: {
@@ -80,7 +85,7 @@ export function openCodeConfig(
       prompt: REVIEW_AGENT_PROMPT,
       steps: MAX_AGENT_STEPS,
       tools: DISABLED_BUILTINS,
-      permission,
+      permission: reviewing,
     },
     [HELPER_AGENT]: {
       mode: "primary",
@@ -94,7 +99,7 @@ export function openCodeConfig(
       prompt: REVIEW_AGENT_PROMPT,
       steps: WRAP_UP_STEPS,
       tools: wrapUpTools(helperTools),
-      permission,
+      permission: reviewing,
     },
   };
   return {

@@ -28,10 +28,12 @@ import {
 } from "@open-cr-agent/core";
 import { createOpencodeClient, type OpencodeClient } from "@opencode-ai/sdk/v2";
 import { resolveOpencodeBinary } from "./binary.js";
+import { endSessionsAtDoneTool } from "./done-tool.js";
 import { AppliedEfforts, type EffortRoutes } from "./effort.js";
 import { setUpEfforts } from "./effort-setup.js";
 import {
   DISABLED_BUILTINS,
+  DONE_TOOL,
   HELPER_AGENT,
   MCP_SERVER,
   openCodeConfig,
@@ -68,6 +70,7 @@ interface Infra {
   client: OpencodeClient;
   efforts: EffortRoutes;
   dispatcher: ReturnType<typeof createUntimedDispatcher>;
+  doneTool: AbortController;
 }
 
 export class OpenCodeRuntime implements AgentRuntime {
@@ -121,6 +124,7 @@ export class OpenCodeRuntime implements AgentRuntime {
     this.infra = undefined;
     if (!infra) return;
     process.off("exit", infra.onExit);
+    infra.doneTool.abort();
     await Promise.allSettled([infra.server.close(), infra.tools.close(), infra.dispatcher.close()]);
     await rm(infra.root, { recursive: true, force: true });
   }
@@ -312,7 +316,9 @@ export class OpenCodeRuntime implements AgentRuntime {
         file: join(dirs.config, "opencode.json"),
         secrets,
       });
-      return { root, tools, server, client, efforts, dispatcher, onExit, secrets };
+      const doneTool = new AbortController();
+      void endSessionsAtDoneTool(client, DONE_TOOL, doneTool.signal);
+      return { root, tools, server, client, efforts, dispatcher, doneTool, onExit, secrets };
     } catch (error) {
       await Promise.allSettled([tools.close(), started?.close()]);
       await rm(root, { recursive: true, force: true });
