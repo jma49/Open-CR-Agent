@@ -254,6 +254,17 @@ Plans every case as `run` reviews it (`ocra review --plan`, no model call) and r
 
 To measure what a source is worth, review with and without it, then compare: `run --label baseline` and `run --label without-learnings --without learnings` on the same cases, then `verdict baseline without-learnings` (both are paid). For the guidelines, the three runs are `--guidelines all` (the default), `--guidelines matched` and `--guidelines reviewer`.
 
+## What a review costs around the model (free)
+
+```bash
+node packages/eval/dist/main.js perf --from main~10 --to main
+node packages/eval/dist/main.js perf --repo-dir ../big-repository --from v1.2.0 --latency-ms 300 --budget budget.json
+```
+
+Reviews a local range with the real CLI against a scripted model on this machine (no network, no key), and reports what ocra itself costs: wall time, the ocra process's CPU time and peak memory, the git processes it starts by command, and for each kind of model call (review, plan, grouping, verify, judge) the requests, their input tokens at four characters per token, the largest request, and the share of tokens that repeat the start of an earlier request, which is what a provider's prompt cache can serve. The scripted model reviews every task the same way (it reads the first files of its bundle, searches for the functions the added lines call, reads a diff, reports one finding and finishes), so two runs of the same change differ only where ocra does; it says nothing about quality.
+
+`--latency-ms` makes each request wait, to see the run as it is paced by a model; `--runtime opencode` measures the default runtime instead of `direct`. `--budget` names a JSON file of ceilings (`wallMs`, `cpuMs`, `peakMemoryMb`, `gitProcesses`, `modelRequests`, `inputTokens`, each optional); the command exits 1 when a measure is over its ceiling. Written to `perf.json` under `--out`/`--label` (default `perf`), with the report and git's trace. CI holds a synthetic change to `evals/perf-budget.json` (`packages/eval/src/perf/measure.e2e.test.ts`).
+
 ## Scoring
 
 A port of the benchmark's official matching: same file, same diff side, line ranges at most one line apart, then an LLM judge decides whether two comments express the same concern. Each generated comment counts once.
