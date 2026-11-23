@@ -6,6 +6,24 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-23
+
+A large review needs fewer tasks and requests, runs eight tasks at once, keeps its progress through a rate limit, and on Anthropic's protocol reads more of its prompts from the cache. The Action's new tag is `jma49/Open-CR-Agent@v0.16.0`.
+
+### Added
+
+- `RateLimits`, handed to `ModelAttempts.task`: a runtime plugin's attempt can wait a rate limit out with `waitOut(quota)` and send its request again.
+- `ReviewerScope.span`: a reviewer with `span: "change"` reviews the change as a whole, in as few tasks as its size allows, instead of once per bundle.
+
+### Changed
+
+- `ocra init` pins the Action to v0.15.0.
+- A review on the `opencode` runtime sends one model request fewer per task: the done tool ends the session, and its result is no longer sent back to the model. A review of 20 files in 41 tasks sent 193 requests and 2.34 million input tokens instead of 234 and 2.91 million; findings are the same ([#699](https://github.com/jma49/Open-CR-Agent/pull/699)).
+- A task's plan call is asked as its reviewer and shares the start of the task's prompt, so on Anthropic's protocol the task reads its files from the prompt cache instead of storing them again. `CompletionRequest.sharedPrefixes` is new.
+- Eight review tasks run at once by default instead of four (`concurrency`): a review of more than four tasks takes up to 42% less time where the provider's rate limit allows it (measured on changes of 26 and 49 tasks), with the same tasks and prompts; a small change of four tasks or fewer takes as long as before. Set `concurrency` to 4 for the old pace.
+- On the `direct` runtime a rate limit no longer costs a task its progress: the refused request waits for the model's pause and is sent again, where the task used to start over and ask for every step a second time.
+- The docs and agents-md reviewers review the change as a whole: one task each, or a few for a change of more than 20 files or 120,000 characters of diff. A large change needs about a third fewer review tasks and reaches the task limit later.
+
 ## [0.15.0] - 2026-11-23
 
 A review on an `anthropic` provider sends fewer tokens and pays less for the ones it repeats, and a review that reviewed nothing says why instead of passing. The Action's new tag is `jma49/Open-CR-Agent@v0.15.0`.
@@ -616,7 +634,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.12.0...v0.13.0
