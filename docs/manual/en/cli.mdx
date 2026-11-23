@@ -416,7 +416,7 @@ ocra logout                                   # ends the session on the server a
 { "runtime": "direct", "models": { "standard": "ocra-openrouter/qwen/qwen3.8-27b:free" } }
 ```
 
-- Unpriced: the reported cost and `--max-cost-usd` do not count them, with a warning.
+- Priced as ocra Cloud lists the model (input, output and cached input, per million tokens), so the reported cost and `--max-cost-usd` count it. A model ocra Cloud lists no price for is unpriced: they do not count it, with a warning naming the model.
 - Prompts and quoted code pass through ocra Cloud, which records each call's model, status, token counts and duration, never the bodies.
 - A review naming no `ocra-` model reads no session and never contacts ocra Cloud; a provider your configuration declares under an `ocra-` name keeps its declaration.
 - [Effort](./configuration#effort) is sent the way ocra Cloud lists for the provider (`openai`: `reasoning_effort`; `openrouter`: `reasoning.effort`), `openai` when unlisted; an unknown style is ignored with a warning. An answer that is not a provider list stops the review.

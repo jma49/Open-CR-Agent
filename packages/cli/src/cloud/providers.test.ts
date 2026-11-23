@@ -260,6 +260,56 @@ describe("models through ocra Cloud", () => {
     expect(out.providers["ocra-deepseek"]).not.toHaveProperty("api");
   });
 
+  it("prices a model as ocra Cloud lists it and warns only about the ones it does not", async () => {
+    const priced = () =>
+      Response.json({
+        providers: [
+          {
+            name: "anthropic",
+            paths: ["/v1/messages"],
+            prices: {
+              sonnet: { input: 2, output: 10, cachedInput: 0.1 },
+              haiku: { input: 0.1, output: 0.5 },
+              free: { input: -1, output: 0 },
+              text: "2",
+            },
+          },
+        ],
+      });
+    const t = setup({}, {}, priced);
+    const out = await withCloudProviders(
+      [["ocra-anthropic/sonnet", "ocra-anthropic/haiku", "ocra-anthropic/free"]],
+      {},
+      {},
+      t.deps,
+      t.warn,
+    );
+    expect(out.providers["ocra-anthropic"]?.models).toEqual({
+      sonnet: { input: 2, output: 10, cachedInput: 0.1 },
+      haiku: { input: 0.1, output: 0.5 },
+      free: { input: 0, output: 0 },
+    });
+    expect(t.warnings).toEqual([
+      "ocra-anthropic/free: not priced by ocra Cloud, so reported cost and --max-cost-usd do not count it",
+    ]);
+
+    const inherited = setup({}, {}, priced);
+    const other = await withCloudProviders(
+      [["ocra-anthropic/text", "ocra-anthropic/constructor"]],
+      {},
+      {},
+      inherited.deps,
+      inherited.warn,
+    );
+    expect(other.providers["ocra-anthropic"]?.models).toEqual({
+      text: { input: 0, output: 0 },
+      constructor: { input: 0, output: 0 },
+    });
+    expect(inherited.warnings.join("")).toContain(
+      "ocra-anthropic/text, ocra-anthropic/constructor: not priced",
+    );
+  });
+
   it("refuses a providers answer that is not a list, with an ocra error, not a crash", async () => {
     for (const answer of [
       () => new Response("<html>"),
