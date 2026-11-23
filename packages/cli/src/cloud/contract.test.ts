@@ -113,6 +113,7 @@ const report = reviewReport({
   findings: [
     finding({
       fix: { startLine: 10, endLine: 12, replacement: "const q = db.query(sql, [id]);" },
+      evidence: ["`id` comes from `req.params` in `src/routes.ts`"],
     }),
     fileLevel,
     unchecked,

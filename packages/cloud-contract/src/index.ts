@@ -96,6 +96,8 @@ export {
 } from "./learnings.js";
 export {
   MAX_CHAIN,
+  MAX_EVIDENCE,
+  MAX_EVIDENCE_FIELD,
   MAX_FIELD,
   MAX_FINDINGS,
   MAX_MEMORY_PER_REPO,

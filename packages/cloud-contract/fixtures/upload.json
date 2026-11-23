@@ -116,7 +116,8 @@
         "startLine": 10,
         "endLine": 12,
         "replacement": "const q = db.query(sql, [id]);"
-      }
+      },
+      "evidence": ["`id` comes from `req.params` in `src/routes.ts`"]
     },
     {
       "fingerprint": "fedcba9876543210",
