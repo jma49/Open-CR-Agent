@@ -36,21 +36,27 @@ describe("checkBudgets", () => {
       name: "verify",
       waiting: 40,
       setup: 5,
-      running: 20,
+      running: 15,
       budget: 30,
       over: [],
     });
   });
 
   it("fails a job that ran longer than its ceiling, matched without the matrix suffix", () => {
-    const [row] = checkBudgets([job("node-matrix (24)", { end: 95 })], BUDGETS);
+    const [row] = checkBudgets([job("node-matrix (24)", { end: 98 })], BUDGETS);
     expect(row?.budget).toBe(90);
-    expect(row?.over).toEqual(["running 93 s > 90 s"]);
+    expect(row?.over).toEqual(["running 91 s > 90 s"]);
   });
 
   it("fails a job whose setup took longer than the setup ceiling", () => {
     const [row] = checkBudgets([job("commits", { end: 22, setup: 16 })], BUDGETS);
     expect(row?.over).toEqual(["setup 16 s > 15 s"]);
+  });
+
+  it("leaves the setup's time out of running", () => {
+    const [row] = checkBudgets([job("verify", { end: 45, setup: 14 })], BUDGETS);
+    expect(row?.running).toBe(29);
+    expect(row?.over).toEqual([]);
   });
 
   it("counts a plain npm ci step as setup", () => {
@@ -89,9 +95,9 @@ describe("ceiling", () => {
 
 describe("renderBudgets", () => {
   it("is a Markdown table with one row per job", () => {
-    const table = renderBudgets(checkBudgets([job("node-matrix (24)", { end: 95 })], BUDGETS));
+    const table = renderBudgets(checkBudgets([job("node-matrix (24)", { end: 98 })], BUDGETS));
     expect(table).toContain(
-      "| node-matrix (24) | 2 s | 5 s | 93 s | 90 s | over: running 93 s > 90 s |",
+      "| node-matrix (24) | 2 s | 5 s | 91 s | 90 s | over: running 91 s > 90 s |",
     );
   });
 });
