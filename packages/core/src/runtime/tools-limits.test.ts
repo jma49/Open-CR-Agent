@@ -34,6 +34,21 @@ describe("review tool limits", () => {
     expect(result).toContain(`call again with startLine=${shown + 1}]`);
   });
 
+  it("reads only the lines between startLine and endLine", async () => {
+    const content = Array.from({ length: 1_000 }, (_, i) => `line ${i + 1}`).join("\n");
+    const read = (args: Record<string, unknown>) =>
+      run("read_file", { path: "a.ts", ...args }, { readFile: async () => content });
+
+    expect(await read({ startLine: 40, endLine: 42 })).toBe(
+      "40: line 40\n41: line 41\n42: line 42",
+    );
+    expect(await read({ startLine: 999, endLine: 5_000 })).toBe("999: line 999\n1000: line 1000");
+    expect(await read({ startLine: 10, endLine: 9 })).toBe("endLine 9 is before startLine 10.");
+    expect(await read({ startLine: 1, endLine: 500 })).toContain(
+      "[truncated: 100 more lines; call again with startLine=401]",
+    );
+  });
+
   it("caps diffs and search results", async () => {
     const huge = Array.from({ length: 1_000 }, () => `+${"z".repeat(500)}`).join("\n");
     const diff = await run("read_diff", { path: "a.ts" }, { readDiff: () => huge });

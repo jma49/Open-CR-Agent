@@ -10,25 +10,6 @@
       {
         "role": "user",
         "content": "Review <ocra_review_files>src/a.ts</ocra_review_files>."
-      },
-      {
-        "role": "assistant",
-        "content": null,
-        "tool_calls": [
-          {
-            "id": "call-1-0",
-            "function": {
-              "name": "read_file",
-              "arguments": "{\"path\":\"src/a.ts\"}"
-            },
-            "type": "function"
-          }
-        ]
-      },
-      {
-        "role": "tool",
-        "tool_call_id": "call-1-0",
-        "content": "1: const a = 1;\n2: export { a };\n3: "
       }
     ],
     "tools": [
@@ -36,7 +17,7 @@
         "type": "function",
         "function": {
           "name": "read_file",
-          "description": "Read a file at the revision under review, with line numbers. Returns at most 400 lines; use startLine to page.",
+          "description": "Read a file at the revision under review, with line numbers. Give startLine and endLine to read only the lines you need, such as a function a diff hunk sits in. Returns at most 400 lines; use startLine to page.",
           "parameters": {
             "type": "object",
             "properties": {
@@ -45,6 +26,11 @@
                 "minLength": 1
               },
               "startLine": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "endLine": {
                 "type": "integer",
                 "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
@@ -189,7 +175,7 @@
   "answers": [
     {
       "status": 200,
-      "body": "{\"id\":\"call-2\",\"object\":\"chat.completion\",\"created\":1,\"model\":\"m1\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"The change looks correct; nothing to report.\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":100,\"completion_tokens\":10,\"total_tokens\":110,\"prompt_tokens_details\":{\"cached_tokens\":0},\"completion_tokens_details\":{\"reasoning_tokens\":0}}}"
+      "body": "{\"id\":\"call-1\",\"object\":\"chat.completion\",\"created\":1,\"model\":\"m1\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":null,\"tool_calls\":[{\"id\":\"call-1-0\",\"type\":\"function\",\"function\":{\"name\":\"read_file\",\"arguments\":\"{\\\"path\\\":\\\"src/a.ts\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}],\"usage\":{\"prompt_tokens\":100,\"completion_tokens\":10,\"total_tokens\":110,\"prompt_tokens_details\":{\"cached_tokens\":0},\"completion_tokens_details\":{\"reasoning_tokens\":0}}}"
     }
   ]
 }

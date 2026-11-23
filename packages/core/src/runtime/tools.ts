@@ -44,25 +44,36 @@ const reportFindingInput = z.object({
 // like every prompt section: they cannot form one of ocra's tags.
 const readFile: ToolDefinition = {
   name: REVIEW_TOOLS.readFile,
-  description: `Read a file at the revision under review, with line numbers. Returns at most ${MAX_READ_LINES} lines; use startLine to page.`,
+  description: `Read a file at the revision under review, with line numbers. Give startLine and endLine to read only the lines you need, such as a function a diff hunk sits in. Returns at most ${MAX_READ_LINES} lines; use startLine to page.`,
   inputSchema: z.object({
     path: z.string().min(1),
     startLine: z.number().int().positive().optional(),
+    endLine: z.number().int().positive().optional(),
   }),
   async execute(args, context) {
-    const { path, startLine = 1 } = args as { path: string; startLine?: number };
+    const {
+      path,
+      startLine = 1,
+      endLine,
+    } = args as {
+      path: string;
+      startLine?: number;
+      endLine?: number;
+    };
+    if (endLine !== undefined && endLine < startLine) {
+      return promptData(`endLine ${endLine} is before startLine ${startLine}.`);
+    }
     const content = await context.readFile(path);
     if (content === undefined) return promptData(`File not found: ${path}`);
     const lines = content.split("\n");
-    const end = Math.min(lines.length, startLine + MAX_READ_LINES - 1);
+    const asked = Math.min(lines.length, endLine ?? lines.length);
+    const end = Math.min(asked, startLine + MAX_READ_LINES - 1);
     const body = fitting(
       lines.slice(startLine - 1, end).map((line, i) => `${startLine + i}: ${clip(line)}`),
     );
     const next = startLine + body.length;
-    if (next <= lines.length) {
-      body.push(
-        `[truncated: ${lines.length - next + 1} more lines; call again with startLine=${next}]`,
-      );
+    if (next <= asked) {
+      body.push(`[truncated: ${asked - next + 1} more lines; call again with startLine=${next}]`);
     }
     return promptData(body.join("\n"));
   },
