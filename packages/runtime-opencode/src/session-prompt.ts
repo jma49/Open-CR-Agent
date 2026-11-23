@@ -15,6 +15,7 @@ import {
   parseSessionMessages,
   readSession,
   type SessionMessage,
+  sessionSteps,
   sessionUsage,
 } from "./session-outcome.js";
 
@@ -32,6 +33,11 @@ const INACTIVITY_MS = 5 * 60_000;
 // stops running tasks on those reports: this bounds how far past the limit a
 // task can get before it is stopped.
 const ACTIVITY_POLL_MS = 10_000;
+// OpenCode's step cap is a request to the model: on the last step it says to
+// answer in text and still offers the tools, so a model that keeps calling
+// them, or an endpoint whose answers OpenCode reads as empty, goes on until
+// the task's timeout. A turn seen this far past its cap is stopped.
+const STEP_OVERRUN = 2;
 
 export interface ActivityOptions {
   inactivityMs?: number;
@@ -49,6 +55,8 @@ export interface PromptInput {
   system: string;
   user: string;
   tools: Record<string, boolean>;
+  // The steps the agent's configuration allows one turn.
+  maxSteps: number;
   // What OpenCode prefixes the review tools' names with (the MCP server).
   toolPrefix?: string;
   // Review agents only: when the agent stops early (no done tool, no answer,
@@ -61,7 +69,6 @@ export interface PromptInput {
 
 interface ResumeOptions {
   doneTool: string;
-  maxSteps: number;
   message: string;
 }
 
@@ -71,6 +78,7 @@ interface Turn {
   agent: string;
   variant?: string;
   tools: Record<string, boolean>;
+  maxSteps: number;
   message: string;
 }
 
@@ -78,21 +86,25 @@ interface Turn {
 // with no text, no done tool and steps to spare (2026-09-28), and the task
 // counted as completed with its files unread. Continuing the same session
 // keeps what it read and is cheaper than starting over.
-function stoppedEarly(outcome: AttemptOutcome, resume: ResumeOptions): boolean {
+function stoppedEarly(outcome: AttemptOutcome, resume: ResumeOptions, maxSteps: number): boolean {
   return (
+    !outcome.atStepCap &&
     !outcome.toolCalls.includes(resume.doneTool) &&
-    outcome.steps < resume.maxSteps &&
+    outcome.steps < maxSteps &&
     outcome.text.trim() === ""
   );
 }
 
 // OpenCode caps each prompt's steps, so the cap ended an attempt when its
 // last turn alone used them all.
-function capped(outcome: AttemptOutcome, lastTurnSteps: number, resume: ResumeOptions) {
+function capped(
+  outcome: AttemptOutcome,
+  lastTurnSteps: number,
+  resume: ResumeOptions,
+  maxSteps: number,
+) {
   const atCap =
-    !outcome.error &&
-    !outcome.toolCalls.includes(resume.doneTool) &&
-    lastTurnSteps >= resume.maxSteps;
+    !outcome.error && !outcome.toolCalls.includes(resume.doneTool) && lastTurnSteps >= maxSteps;
   return atCap ? { ...outcome, atStepCap: true as const } : outcome;
 }
 
@@ -123,26 +135,33 @@ export async function promptSession(
     signal,
     activity,
   };
-  const turn = (t: Turn) => runTurn(opened, t);
+  const turn = (t: Turn, stepsBefore: number) => runTurn(opened, t, stepsBefore);
+  const { maxSteps } = input;
   const review = {
     agent: input.agent,
     ...(input.variant ? { variant: input.variant } : {}),
     tools: input.tools,
+    maxSteps,
   };
-  let outcome = await turn({ ...review, message: input.user });
+  let outcome = await turn({ ...review, message: input.user }, 0);
   let lastTurnFrom = 0;
-  if (!outcome.error && input.resume && stoppedEarly(outcome, input.resume)) {
+  if (!outcome.error && input.resume && stoppedEarly(outcome, input.resume, maxSteps)) {
     lastTurnFrom = outcome.steps;
     // Both turns are in the session: their findings and their spend.
-    outcome = { ...(await turn({ ...review, message: input.resume.message })), resumed: true };
+    outcome = {
+      ...(await turn({ ...review, message: input.resume.message }, lastTurnFrom)),
+      resumed: true,
+    };
   }
-  if (input.resume) outcome = capped(outcome, outcome.steps - lastTurnFrom, input.resume);
+  if (input.resume) {
+    outcome = capped(outcome, outcome.steps - lastTurnFrom, input.resume, maxSteps);
+  }
   const { wrapUp } = input;
   if (!wrapUp) return outcome;
-  const resumed = outcome.resumed;
+  const { resumed, steps } = outcome;
   return {
     ...outcome,
-    wrapUp: async () => ({ ...(await turn(wrapUp)), ...(resumed ? { resumed } : {}) }),
+    wrapUp: async () => ({ ...(await turn(wrapUp, steps)), ...(resumed ? { resumed } : {}) }),
   };
 }
 
@@ -156,10 +175,11 @@ interface OpenSession {
 }
 
 // Sends one turn and returns what the whole session has come to, every
-// earlier turn included.
+// earlier turn included. stepsBefore: the session's steps when it starts.
 async function runTurn(
   { session, sessionID, input, reportTool, signal, activity }: OpenSession,
   turn: Turn,
+  stepsBefore: number,
 ): Promise<AttemptOutcome> {
   const stop = () => void session.abort({ sessionID }).catch(() => {});
   if (signal.aborted) {
@@ -169,7 +189,10 @@ async function runTurn(
     };
   }
   signal.addEventListener("abort", stop, { once: true });
-  const silence = watchActivity(session, sessionID, activity);
+  const silence = watchActivity(session, sessionID, {
+    ...activity,
+    stepLimit: stepsBefore + turn.maxSteps + STEP_OVERRUN,
+  });
   const attempt = AbortSignal.any([signal, silence.signal]);
   try {
     const response = await session.prompt(
@@ -184,10 +207,13 @@ async function runTurn(
       },
       { signal: attempt },
     );
-    // The request was cut off, but OpenCode would keep retrying the session.
-    if (silence.refused) stop();
+    // The request was cut off, but OpenCode would keep running the session.
+    if (silence.refused || silence.overran) stop();
     // The session ran even when the answer is an error, and it may have
     // spent tokens and reported findings: keep them.
+    if (silence.overran) {
+      return atStepCap(await harvest(session, sessionID, reportTool, input.toolPrefix));
+    }
     if (response.error) {
       return {
         ...(await harvest(session, sessionID, reportTool, input.toolPrefix)),
@@ -216,6 +242,7 @@ async function runTurn(
     // session, spending tokens, so stop it and keep what it already did.
     stop();
     const partial = await harvest(session, sessionID, reportTool, input.toolPrefix);
+    if (silence.overran && !signal.aborted) return atStepCap(partial);
     const seconds = Math.round((activity.inactivityMs ?? INACTIVITY_MS) / 1000);
     return {
       ...partial,
@@ -232,6 +259,12 @@ async function runTurn(
   }
 }
 
+// A turn stopped past its cap used its steps like one OpenCode ended at it;
+// the session's error is only the stop.
+function atStepCap({ error: _, ...outcome }: AttemptOutcome): AttemptOutcome {
+  return { ...outcome, atStepCap: true };
+}
+
 type Refusal = { message: string; quota: QuotaError };
 
 const refusal = (refused: Refusal | undefined) =>
@@ -242,13 +275,14 @@ const refusal = (refused: Refusal | undefined) =>
 // Also aborts when OpenCode holds the session in a retry it was told to wait
 // longer for than a run waits on a rate limit: it would sleep out a daily
 // limit's wait until the task's timeout, where the model chain can stop at once.
+// And when the session has more steps than `stepLimit`.
 function watchActivity(
   session: SessionApi,
   sessionID: string,
-  options: ActivityOptions,
-): { signal: AbortSignal; refused?: Refusal; stop(): void } {
+  options: ActivityOptions & { stepLimit: number },
+): ActivityWatch {
   const controller = new AbortController();
-  const watch: { signal: AbortSignal; refused?: Refusal; stop(): void } = {
+  const watch: ActivityWatch = {
     signal: controller.signal,
     stop: () => clearInterval(timer),
   };
@@ -272,6 +306,11 @@ function watchActivity(
         { signal: AbortSignal.timeout(HARVEST_TIMEOUT_MS) },
       );
       const list = parseSessionMessages(messages.data).messages;
+      if (sessionSteps(list) > options.stepLimit) {
+        watch.overran = true;
+        controller.abort();
+        return;
+      }
       if (options.onUsage) {
         const spent = sessionUsage(list);
         if (spent.costUsd > reported.costUsd || spent.inputTokens > reported.inputTokens) {
@@ -294,6 +333,13 @@ function watchActivity(
   }, options.pollMs ?? ACTIVITY_POLL_MS);
   timer.unref?.();
   return watch;
+}
+
+interface ActivityWatch {
+  signal: AbortSignal;
+  refused?: Refusal;
+  overran?: true;
+  stop(): void;
 }
 
 async function longRetry(session: SessionApi, sessionID: string): Promise<Refusal | undefined> {

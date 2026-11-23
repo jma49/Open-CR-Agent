@@ -66,6 +66,13 @@ export function readSession(data: unknown, reportTool: string, toolPrefix = ""):
   return unread > 0 ? { ...outcome, unreadMessages: unread } : outcome;
 }
 
+// Model requests the session made, one per agent step.
+export function sessionSteps(messages: readonly SessionMessage[]): number {
+  return messages
+    .filter((m) => m.info.role === "assistant")
+    .reduce((n, m) => n + m.parts.filter((p) => p.type === "step-start").length, 0);
+}
+
 const AUTH_STATUS = new Set([401, 403]);
 const AUTH_MESSAGE = /api key|unauthori[sz]ed|permission denied|forbidden/i;
 
@@ -83,7 +90,7 @@ export function summarizeSession(
     findings: tools
       .filter((p) => p.tool === reportTool && p.state?.status === "completed")
       .map((p) => p.state?.input),
-    steps: assistant.reduce((n, m) => n + m.parts.filter((p) => p.type === "step-start").length, 0),
+    steps: sessionSteps(messages),
     toolCalls: names,
     // A call that did not complete never showed the reviewer anything.
     ...exploredBy(
