@@ -4,6 +4,7 @@ import type { Usage } from "../contracts.js";
 import { projectDocUses } from "../docs/project-docs.js";
 import type { Finding, Severity } from "../domain.js";
 import type { LearningUse } from "../knowledge/learning.js";
+import { selectInline } from "../report/inline.js";
 import { nothingReviewedSummary, type ReviewReport, summarizeAnchoring } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { evidenceUses } from "../sarif/evidence.js";
@@ -40,6 +41,8 @@ export function assembleReport(run: RunFacts, stages: Stages, context: StageCont
   if (options.mergeChecks?.length) report.mergeChecks = stages.mergeChecks.results;
   const limit = spendLimit.status();
   if (limit) report.spendLimit = limit;
+  const inline = options.inline && selectInline(report.findings, options.inline);
+  if (inline) report.inline = inline;
   report.anchoring = summarizeAnchoring(report.findings, executed.relocations.length);
   const agents = resolveAgents(run.reviewers, options);
   report.warnings.push(...effortWarnings(agents, options.runtime));

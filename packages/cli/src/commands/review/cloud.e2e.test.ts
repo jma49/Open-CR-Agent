@@ -275,5 +275,8 @@ describe("ultra as an account default", () => {
     expect(fromFlag.err).not.toMatch(/From your ocra Cloud settings: .*\bultra\b/);
     expect(fromAccount.hash).toBe(fromFlag.hash);
     expect(fromAccount.hash).not.toBe(off.hash);
+    const refused = await hash(ULTRA, ["--no-ultra"]);
+    expect(refused.err).not.toMatch(/From your ocra Cloud settings: .*\bultra\b/);
+    expect(refused.hash).toBe(off.hash);
   });
 });

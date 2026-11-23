@@ -29,6 +29,18 @@ describe("parseAccountSettings", () => {
     expect(warnings.join("\n")).toContain("settings.ultra");
   });
 
+  it("takes the inline comment policy, and refuses one a configuration could not hold", () => {
+    expect(
+      parseAccountSettings({ settings: { minInlineSeverity: "warning", maxInlineComments: 0 } })
+        .settings,
+    ).toEqual({ version: null, minInlineSeverity: "warning", maxInlineComments: 0 });
+    const { settings, warnings } = parseAccountSettings({
+      settings: { minInlineSeverity: "major", maxInlineComments: 1.5 },
+    });
+    expect(settings).toEqual({ version: null });
+    expect(warnings.join("\n")).toMatch(/settings\.minInlineSeverity.*settings\.maxInlineComments/);
+  });
+
   it("refuses what a configuration could not hold", () => {
     const cases: [unknown, string][] = [
       [{ agents: { reviewers: { security: { plugins: ["x"] } } } }, "agents.reviewers"],

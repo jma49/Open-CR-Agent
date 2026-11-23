@@ -41,6 +41,7 @@ export function configuredOptions(run: ResolvedRun, args: ReviewArgs): Configure
     ...(config.mergeChecks?.length ? { mergeChecks: config.mergeChecks } : {}),
     ...(run.sarifEvidence.length > 0 ? { sarifEvidence: run.sarifEvidence } : {}),
     limits,
+    ...inlineOf(config),
     stages: {
       ...(config.verify !== undefined ? { verify: config.verify } : {}),
       ...(config.judge !== undefined ? { judge: config.judge } : {}),
@@ -53,6 +54,17 @@ export function configuredOptions(run: ResolvedRun, args: ReviewArgs): Configure
       ...(run.ultra ? { ultra: true } : {}),
       ...(args.full ? { full: true } : {}),
       ...(args.without ? { without: args.without } : {}),
+    },
+  };
+}
+
+function inlineOf(config: ResolvedRun["config"]): Pick<ConfiguredOptions, "inline"> {
+  const { minInlineSeverity: minSeverity, maxInlineComments: maxComments } = config;
+  if (minSeverity === undefined && maxComments === undefined) return {};
+  return {
+    inline: {
+      ...(minSeverity !== undefined ? { minSeverity } : {}),
+      ...(maxComments !== undefined ? { maxComments } : {}),
     },
   };
 }

@@ -123,6 +123,22 @@
     "showPreExisting": {
       "type": "boolean"
     },
+    "ultra": {
+      "type": "boolean"
+    },
+    "minInlineSeverity": {
+      "type": "string",
+      "enum": [
+        "critical",
+        "warning",
+        "suggestion"
+      ]
+    },
+    "maxInlineComments": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000
+    },
     "walkthrough": {
       "type": "boolean"
     },

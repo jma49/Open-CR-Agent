@@ -65,7 +65,7 @@ export async function fetchAccountSettings(
  * list only when it sets none.
  */
 export function accountLayer(account: AccountSettings): SettingsLayer {
-  const { version: _, rules, ultra, ...settings } = account;
+  const { version: _, rules, ...settings } = account;
   return {
     source: "account",
     under: true,
@@ -74,8 +74,6 @@ export function accountLayer(account: AccountSettings): SettingsLayer {
       ...(rules
         ? { rules: rules.map((rule): SourcedRule => ({ ...rule, source: "account" })) }
         : {}),
-      // The account's default for --ultra; there is no --no-ultra to refuse it.
-      ...(ultra === true ? { ultra } : {}),
     },
   };
 }

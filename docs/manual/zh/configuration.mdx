@@ -104,6 +104,7 @@ agent 运行时只拿到 `PATH`、`HOME`、语言区域、代理和 CA 设置，
 | `maxCostUsd` | 无 | 本次运行的花费上限：审查任务最多用到 80%，剩下的留给核查和裁决（见 `--max-cost-usd`） |
 | `maxTasks` | `60` | 一次运行最多启动的审查任务数。超出时先去掉 `--ultra` 的第二遍，再去掉排在后面的审查员，尽量让每个文件至少保留第一个审查员，敏感路径上的文件保留得最久；被跳过的文件报告为未审查（退出码 `3`） |
 | `judge` | `true` | 跨审查员合并、过滤并校准问题（每次有问题的运行调用一次 top 档位模型） |
+| `ultra` | `false` | 以成本换召回率，同 [`--ultra`](./how-it-works#模式)；设为 `false` 时，即使你的 ocra Cloud 账户开启了 `ultra`，审查也保持默认模式。`--ultra` 和 `--no-ultra` 会覆盖它 |
 | `showPreExisting` | `true` | 报告 Verify 判断为改动之前就已存在的问题，标为*已有问题*。它们从不计入结论；设为 `false` 则不显示，只在警告里给出数量 |
 | `verify` | `true` | 报告前逐条核查问题（每个有问题的文件调用一次 standard 档位模型） |
 | `walkthrough` | `--pr` 和 `--mr` 时开启 | 把[改动导读](./how-it-works#改动导读)写进摘要评论和报告（每次运行一次 standard 档位的调用）；`false` 不写，`true` 在本地审查时也写 |
@@ -114,6 +115,15 @@ agent 运行时只拿到 `PATH`、`HOME`、语言区域、代理和 CA 设置，
 | `sampling` | 无 | `{ "temperature": 0–2, "seed": n }`，用于每次模型调用，两项都可省略（不设置时用供应商默认值）；`--temperature` 和 `--seed` 会覆盖它。`direct` 两项都发送，但用 `"type": "anthropic"` 声明的供应商两项都不接受。`opencode` 只把温度传给目录标明接受温度的模型（[声明的模型](./providers#你自己的端点)都标明了），种子报告为未应用。`provenance.sampling` 写明实际应用了什么。种子只有在供应商遵守时才能让运行可重复 |
 
 某个任务失败或超时不会导致整次运行失败，它负责的文件会被标记为 `failed`。
+
+## 行内评论
+
+在 Pull Request 或 Merge Request 上，没有设置策略时，每条落在 diff 行上的问题都会成为一条行内评论。下面的键可以少发一些；没发出的问题会列在摘要评论里一个折叠的 *not posted inline* 小节中并注明原因，仍保留在 [JSON 报告](./cli#json-输出)里（`inline.held` 列出它们），也照旧计入结论。
+
+| 键 | 默认值 | 含义 |
+|---|---|---|
+| `minInlineSeverity` | 无 | 只把严重程度不低于此值的问题发成行内评论：`critical`、`warning` 或 `suggestion`。`--min-inline-severity` 会覆盖它 |
+| `maxInlineComments` | 无 | 本次审查的问题最多发这么多条行内评论（0 到 1000；0 表示一条都不发）。最严重的优先，其次是 Verify 确认过的，再次是它拿不准的，然后是未核查的，低置信度问题排最后；相同时按文件、行号和 fingerprint 排序，所以每次留下的都是同样的问题。上限按每次审查自己的问题计算（之前审查已评论过、这次又报告的问题占一个名额，但不会重复发），所以经过多次 push 的改动累计的行内评论可能超过上限。`--max-inline-comments` 会覆盖它 |
 
 git 及其启动的程序（ssh、凭据助手、代理）只拿到 ocra 环境变量的一部分，永远拿不到模型 key 或平台 token：所有 `GIT_*` 和 `SSH_*` 变量、`PATH`、`HOME`、`XDG_CONFIG_HOME`、`TMPDIR`、代理变量（`HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY`、`NO_PROXY`）、`SSL_CERT_FILE`、`SSL_CERT_DIR`、`CURL_CA_BUNDLE`，以及 Windows 上 git 需要的系统变量（`PATHEXT`、`SYSTEMROOT`、`TEMP`、`USERPROFILE`、`APPDATA` 等）。fetch 还会拿到凭据助手读取的变量：`GH_*`、`GLAB_*`、`GITLAB_*`、`GCM_*`、`GITHUB_TOKEN` 和 `GITHUB_ENTERPRISE_TOKEN`。如果你的环境需要给 git 传其他变量（Kerberos、Nix 的证书包），可以通过 git 自身的配置传入，例如 `GIT_SSH_COMMAND` 或 `GIT_CONFIG_*`。
 
@@ -190,7 +200,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`showPreExisting`、`walkthrough`、`fixes`、`mergeChecks`、`linkedTasks`、`guidelineScope`、`trackers`、`projectDocs`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`effort`、`reviewers`、`roles`、`github`、`providers`（仅在固定内容时）和 `rules`（格式同 `.ocra/rules.json` 的条目）。它不能列出插件或选择运行时，因为它不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 合并，`models`、`effort`、`reviewers`、`roles`、`github` 和 `providers` 按键合并。
+共享文件可以设置 `models`、`concurrency`、超时、`verify`、`judge`、`showPreExisting`、`ultra`、`minInlineSeverity`、`maxInlineComments`、`walkthrough`、`fixes`、`mergeChecks`、`linkedTasks`、`guidelineScope`、`trackers`、`projectDocs`、`maxCostUsd`、`maxTasks`、`include`、`exclude`、`effort`、`reviewers`、`roles`、`github`、`providers`（仅在固定内容时）和 `rules`（格式同 `.ocra/rules.json` 的条目）。它不能列出插件或选择运行时，因为它不能执行代码。仓库自己的设置优先；`include`、`exclude` 和 `rules` 合并，`models`、`effort`、`reviewers`、`roles`、`github` 和 `providers` 按键合并。
 
 只接受 `https` 地址，不跟随重定向，最大 256 KB。`#sha256=` 固定文件内容；声明了 `providers` 的文件必须固定，因为供应商决定了你的代码发往哪里（见[模型供应商](./providers#你自己的端点)）。文件无法加载或无效时，ocra 警告后只用仓库自己的设置，只写在共享文件里的限制（例如 `maxCostUsd`）就不生效；必须始终生效的限制请在仓库里也写一份。
 
@@ -201,7 +211,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 | 账户中的键 | 如何生效 |
 |---|---|
 | `runtime`（`opencode` 或 `direct`）、`models.<tier>`、`effort.<tier>`、`reviewers.<id>`、`roles.<role>` | 只补充配置没有写的部分；配置中某个审查员或角色的条目整体优先 |
-| `concurrency`、`taskTimeoutMinutes`、`runTimeoutMinutes`、`maxCostUsd`、`maxTasks`、`verify`、`judge`、`fixes`、`linkedTasks`、`sampling` | 只在配置没有设置时生效（`sampling` 算一个整体）：账户可以给没有上限的运行加上限，但不能放宽限制 |
+| `concurrency`、`taskTimeoutMinutes`、`runTimeoutMinutes`、`maxCostUsd`、`maxTasks`、`verify`、`judge`、`fixes`、`linkedTasks`、`sampling`、`ultra`、`minInlineSeverity`、`maxInlineComments` | 只在配置没有设置时生效（`sampling` 算一个整体）：账户可以给没有上限的运行加上限，但不能放宽限制 |
 | `include` | 合并：先是配置中的模式，再是账户的 |
 | `exclude` | 只在配置没有设置时生效：账户排除的文件既不审查，也不算作未审查，所以配置里写了 `exclude`（哪怕是 `[]`）就不再采用账户的 |
 | `rules` | 追加在仓库规则和共享规则之后：最多 50 条，格式与 [`.ocra/rules.json`](./rules) 的条目相同，每条规则最多 2,000 个字符，以同样的方式嵌入提示词 |

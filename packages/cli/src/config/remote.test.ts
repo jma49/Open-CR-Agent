@@ -23,6 +23,7 @@ const shared = {
   include: ["gen/keep/**"],
   reviewers: { performance: { enabled: false } },
   maxCostUsd: 2,
+  maxInlineComments: 15,
   rules: [{ path: "services/**", rule: "Org rule." }],
 };
 
@@ -54,6 +55,7 @@ describe("extends", () => {
       security: { minTier: "full" },
     });
     expect(config.maxCostUsd).toBe(2);
+    expect(config.maxInlineComments).toBe(15);
     expect(config.rules).toEqual([{ path: "services/**", rule: "Org rule.", source: "shared" }]);
   });
 

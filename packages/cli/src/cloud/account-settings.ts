@@ -31,15 +31,16 @@ const SETTINGS = {
   maxTasks: shape.maxTasks,
   verify: shape.verify,
   judge: shape.judge,
+  minInlineSeverity: shape.minInlineSeverity,
+  maxInlineComments: shape.maxInlineComments,
   linkedTasks: shape.linkedTasks,
   fixes: shape.fixes,
   sampling: shape.sampling,
   include: shape.include,
   exclude: shape.exclude,
   rules: accountRules,
-  // A flag, not a configuration key: the account's default for --ultra,
-  // which the review command applies when the command line leaves it out.
-  ultra: z.boolean(),
+  // Under the configuration's ultra and the command's --ultra or --no-ultra.
+  ultra: shape.ultra,
 } as const;
 
 const AGENTS = {

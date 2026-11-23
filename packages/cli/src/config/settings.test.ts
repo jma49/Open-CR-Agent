@@ -186,6 +186,24 @@ describe("listSettings", () => {
     expect(ultra([account, flag]).listed?.key).toBe("rules");
     expect(ultra([]).on).toBe(false);
   });
+
+  it("turns ultra off from a file over the account, and from --no-ultra over both", () => {
+    const account = { source: "account", under: true, settings: { ultra: true } } as const;
+    const off = (source: "file" | "flag") => ({ source, settings: { ultra: false } }) as const;
+    const on = { source: "file", settings: { ultra: true } } as const;
+    expect(resolveSettings([off("file"), account]).settings.ultra).toBe(false);
+    expect(resolveSettings([on, account, off("flag")]).settings.ultra).toBe(false);
+  });
+
+  it("takes the inline comment policy from the flags over the file and the account", () => {
+    const { settings, sources } = resolveSettings([
+      { source: "file", settings: { minInlineSeverity: "warning", maxInlineComments: 10 } },
+      { source: "account", under: true, settings: { minInlineSeverity: "critical" } },
+      { source: "flag", settings: { maxInlineComments: 3 } },
+    ]);
+    expect(settings).toMatchObject({ minInlineSeverity: "warning", maxInlineComments: 3 });
+    expect(sources).toMatchObject({ minInlineSeverity: ["file"], maxInlineComments: ["flag"] });
+  });
 });
 
 describe("layerSchema", () => {

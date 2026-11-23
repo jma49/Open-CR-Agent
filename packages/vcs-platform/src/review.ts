@@ -304,8 +304,10 @@ export class PlatformReview implements VcsAdapter {
       ...(await this.ownThreads()),
     ]);
 
+    const held = new Set(report.inline?.held.map((h) => h.fingerprint));
     const fresh: InlineFinding[] = report.findings.flatMap((f) => {
-      if (alreadyCommented.has(f.fingerprint) || !f.lineRange || !f.anchor.inDiff) return [];
+      if (alreadyCommented.has(f.fingerprint) || held.has(f.fingerprint)) return [];
+      if (!f.lineRange || !f.anchor.inDiff) return [];
       return [
         {
           finding: { ...f, lineRange: f.lineRange },

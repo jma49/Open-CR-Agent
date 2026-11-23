@@ -111,6 +111,21 @@ describe("the reports of the end-to-end fixtures", () => {
     await record("local-ultra", json, []);
   });
 
+  it("a review with an inline comment policy, which keeps every finding", async () => {
+    const policy = ["--min-inline-severity", "critical", "--max-inline-comments", "0"];
+    const plain = await review(["review"], deps(repoWithChange(), critical, {}, true));
+    const held = await review(["review", ...policy], deps(repoWithChange(), critical, {}, true));
+    const report = JSON.parse(held.json);
+    expect(report.findings).toEqual(JSON.parse(plain.json).findings);
+    expect(report.inline).toMatchObject({ minSeverity: "critical", maxComments: 0 });
+    expect(report.inline.held.length).toBeGreaterThan(0);
+    expect(report.inline.held.map((h: { reason: string }) => h.reason)).toEqual(
+      report.findings
+        .filter((f: { lines?: unknown; inDiff: boolean }) => f.lines !== undefined && f.inDiff)
+        .map(() => "over_cap"),
+    );
+  });
+
   it("a published pull request review", async () => {
     const { clone, base, head } = changeRequestFixture();
     const github = fakeGitHub(base, head);

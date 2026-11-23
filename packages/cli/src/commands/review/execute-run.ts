@@ -201,7 +201,7 @@ function prepareReview(
       runId: run.session.id,
       provenance: {
         ocraVersion: VERSION,
-        configHash: configHash(config, ultra ? { ...args, ultra: true } : args, accountSettings),
+        configHash: configHash(config, ultraOf(args, ultra), accountSettings),
         sampling,
         ...accountOf(accountSettings),
       },
@@ -221,4 +221,11 @@ function referencesOf(
     ...(args.graph ? [graphFileReferences(resolve(cwd, args.graph), warn)] : []),
   ]);
   return references ? { references } : {};
+}
+
+// The hash records whether the run used --ultra, from whichever layer, and
+// not a --no-ultra that changed nothing.
+function ultraOf(args: ReviewArgs, ultra: boolean): ReviewArgs {
+  const { ultra: _flag, ...rest } = args;
+  return ultra ? { ...rest, ultra: true } : rest;
 }

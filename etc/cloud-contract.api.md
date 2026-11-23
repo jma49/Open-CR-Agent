@@ -273,6 +273,13 @@ export const configSchema: z.ZodObject<{
     verify: z.ZodOptional<z.ZodBoolean>;
     judge: z.ZodOptional<z.ZodBoolean>;
     showPreExisting: z.ZodOptional<z.ZodBoolean>;
+    ultra: z.ZodOptional<z.ZodBoolean>;
+    minInlineSeverity: z.ZodOptional<z.ZodEnum<{
+        critical: "critical";
+        suggestion: "suggestion";
+        warning: "warning";
+    }>>;
+    maxInlineComments: z.ZodOptional<z.ZodNumber>;
     walkthrough: z.ZodOptional<z.ZodBoolean>;
     fixes: z.ZodOptional<z.ZodBoolean>;
     linkedTasks: z.ZodOptional<z.ZodBoolean>;
@@ -1125,6 +1132,12 @@ export const preferencesUpdateSchema: z.ZodObject<{
         maxTasks: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
         verify: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
         judge: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+        minInlineSeverity: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
+            critical: "critical";
+            suggestion: "suggestion";
+            warning: "warning";
+        }>>>;
+        maxInlineComments: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
         linkedTasks: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
         fixes: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
         sampling: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
@@ -1154,6 +1167,8 @@ export const preferencesUpdateSchema: z.ZodObject<{
         maxTasks?: number;
         verify?: NonNullable<boolean | null | undefined>;
         judge?: NonNullable<boolean | null | undefined>;
+        minInlineSeverity?: NonNullable<"critical" | "suggestion" | "warning" | null | undefined>;
+        maxInlineComments?: number;
         linkedTasks?: NonNullable<boolean | null | undefined>;
         fixes?: NonNullable<boolean | null | undefined>;
         sampling?: {
@@ -1177,6 +1192,8 @@ export const preferencesUpdateSchema: z.ZodObject<{
         maxTasks?: number | null | undefined;
         verify?: boolean | null | undefined;
         judge?: boolean | null | undefined;
+        minInlineSeverity?: "critical" | "suggestion" | "warning" | null | undefined;
+        maxInlineComments?: number | null | undefined;
         linkedTasks?: boolean | null | undefined;
         fixes?: boolean | null | undefined;
         sampling: {
@@ -1448,6 +1465,12 @@ export const reviewSettingsSchema: z.ZodPipe<z.ZodObject<{
     maxTasks: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     verify: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     judge: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+    minInlineSeverity: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
+        critical: "critical";
+        suggestion: "suggestion";
+        warning: "warning";
+    }>>>;
+    maxInlineComments: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     linkedTasks: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     fixes: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     sampling: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
@@ -1477,6 +1500,8 @@ export const reviewSettingsSchema: z.ZodPipe<z.ZodObject<{
     maxTasks?: number;
     verify?: NonNullable<boolean | null | undefined>;
     judge?: NonNullable<boolean | null | undefined>;
+    minInlineSeverity?: NonNullable<"critical" | "suggestion" | "warning" | null | undefined>;
+    maxInlineComments?: number;
     linkedTasks?: NonNullable<boolean | null | undefined>;
     fixes?: NonNullable<boolean | null | undefined>;
     sampling?: {
@@ -1500,6 +1525,8 @@ export const reviewSettingsSchema: z.ZodPipe<z.ZodObject<{
     maxTasks?: number | null | undefined;
     verify?: boolean | null | undefined;
     judge?: boolean | null | undefined;
+    minInlineSeverity?: "critical" | "suggestion" | "warning" | null | undefined;
+    maxInlineComments?: number | null | undefined;
     linkedTasks?: boolean | null | undefined;
     fixes?: boolean | null | undefined;
     sampling: {

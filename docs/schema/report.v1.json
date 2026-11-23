@@ -1253,6 +1253,51 @@
       ],
       "additionalProperties": false
     },
+    "inline": {
+      "type": "object",
+      "properties": {
+        "minSeverity": {
+          "type": "string",
+          "enum": [
+            "critical",
+            "warning",
+            "suggestion"
+          ]
+        },
+        "maxComments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "held": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "fingerprint": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "below_floor",
+                  "over_cap"
+                ]
+              }
+            },
+            "required": [
+              "fingerprint",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "held"
+      ],
+      "additionalProperties": false
+    },
     "provenance": {
       "type": "object",
       "properties": {

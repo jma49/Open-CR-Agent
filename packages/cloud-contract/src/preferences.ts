@@ -7,6 +7,7 @@ import {
   effortSchema,
   REVIEWER_ID,
   runtimeSchema,
+  severitySchema,
 } from "./vocabulary.js";
 
 // The account's settings (ADR-0025, ADR-0027): what the web saves with
@@ -123,6 +124,9 @@ export const reviewSettingsSchema = z
     maxTasks: z.number().int().min(1).max(1000).nullish(),
     verify: z.boolean().nullish(),
     judge: z.boolean().nullish(),
+    // Which findings reviews post as inline comments (ADR-0076).
+    minInlineSeverity: severitySchema.nullish(),
+    maxInlineComments: z.number().int().min(0).max(1_000).nullish(),
     // Whether reviews are given the tasks the change is linked to (ADR-0052).
     linkedTasks: z.boolean().nullish(),
     // Whether reviews propose checked fixes for their findings (ADR-0058).

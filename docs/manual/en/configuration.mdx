@@ -104,6 +104,7 @@ For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Gro
 | `maxCostUsd` | none | Spend limit for the run: review tasks use up to 80% of it, verification and judging the rest (see `--max-cost-usd`) |
 | `maxTasks` | `60` | Most review tasks one run starts. Past it, `--ultra`'s second passes go first, then later reviewers, so every file keeps its first reviewer as long as possible, files on sensitive paths longest; skipped files are reported as not reviewed (exit code `3`) |
 | `judge` | `true` | Merge, filter and recalibrate findings across reviewers (one top-tier call per run with findings) |
+| `ultra` | `false` | Favor recall over cost, as [`--ultra`](./how-it-works#modes) does; `false` keeps a review in the default mode even when your ocra Cloud account turns `ultra` on. `--ultra` and `--no-ultra` override it |
 | `showPreExisting` | `true` | Report findings Verify traced to code from before the change, marked *pre-existing*. They never count towards the verdict; `false` leaves them out, with a warning giving their number |
 | `verify` | `true` | Fact-check findings before reporting them (one standard-tier call per file with findings) |
 | `walkthrough` | on for `--pr` and `--mr` | Write the [walkthrough](./how-it-works#walkthrough) of the change into the summary comment and the report (one standard-tier call per run); `false` leaves it out, `true` writes it for local reviews too |
@@ -114,6 +115,15 @@ For providers that always need a key (Google, Anthropic, OpenAI, OpenRouter, Gro
 | `sampling` | none | `{ "temperature": 0–2, "seed": n }` for every model call, each optional (unset: the provider's default); `--temperature` and `--seed` override it. `direct` sends both, except to a provider declared with `"type": "anthropic"`, which takes neither. `opencode` passes the temperature only to models its catalog says accept one ([declared models](./providers#your-own-endpoint) do) and reports a seed as not applied. `provenance.sampling` says what was applied. A seed makes runs repeatable only where the provider honors it |
 
 A task that fails or times out never fails the run; its files are reported as `failed`.
+
+## Inline comments
+
+On a pull or merge request, every finding anchored to lines in the diff becomes an inline comment unless you set a policy. These keys choose fewer; the findings left out are listed in a folded *not posted inline* section of the summary comment with the reason, stay in the [JSON report](./cli#json-output) (whose `inline.held` names them) and count towards the verdict as before.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `minInlineSeverity` | none | Post only findings at least this severe inline: `critical`, `warning` or `suggestion`. `--min-inline-severity` overrides it |
+| `maxInlineComments` | none | Post at most this many of the review's findings inline (0 to 1000; 0 posts none). The most severe go first, then those Verify confirmed, then those it was unsure of, then unchecked ones, low-confidence findings last; ties go by file, line and fingerprint, so the same findings always win. The cap applies to each review on its own findings (a finding it already commented on in an earlier review and reports again takes a place but is not posted twice), so a change reviewed after several pushes can collect more inline comments than the cap. `--max-inline-comments` overrides it |
 
 git, and what it starts (ssh, credential helpers, proxies), gets only part of ocra's environment, never its model keys or platform tokens: every `GIT_*` and `SSH_*` variable, `PATH`, `HOME`, `XDG_CONFIG_HOME`, `TMPDIR`, the proxy variables (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`), `SSL_CERT_FILE`, `SSL_CERT_DIR`, `CURL_CA_BUNDLE`, and on Windows the system variables git needs (`PATHEXT`, `SYSTEMROOT`, `TEMP`, `USERPROFILE`, `APPDATA` and the like). A fetch also gets what credential helpers read: `GH_*`, `GLAB_*`, `GITLAB_*`, `GCM_*`, `GITHUB_TOKEN` and `GITHUB_ENTERPRISE_TOKEN`. A setup that needs another variable for git (Kerberos, a Nix certificate bundle) can pass it through git's own configuration, such as `GIT_SSH_COMMAND` or `GIT_CONFIG_*`.
 
@@ -190,7 +200,7 @@ Repositories can extend an organization's common settings:
 { "extends": "https://config.example.com/ocra.json#sha256=<hex>" }
 ```
 
-The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `showPreExisting`, `walkthrough`, `fixes`, `mergeChecks`, `linkedTasks`, `guidelineScope`, `trackers`, `projectDocs`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned) and `rules` (shaped like `.ocra/rules.json` entries). It cannot list plugins or choose a runtime, since it must not run code. The repository's values win; `include`, `exclude` and `rules` combine, and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` merge key by key.
+The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`, `showPreExisting`, `ultra`, `minInlineSeverity`, `maxInlineComments`, `walkthrough`, `fixes`, `mergeChecks`, `linkedTasks`, `guidelineScope`, `trackers`, `projectDocs`, `maxCostUsd`, `maxTasks`, `include`, `exclude`, `effort`, `reviewers`, `roles`, `github`, `providers` (only when pinned) and `rules` (shaped like `.ocra/rules.json` entries). It cannot list plugins or choose a runtime, since it must not run code. The repository's values win; `include`, `exclude` and `rules` combine, and `models`, `effort`, `reviewers`, `roles`, `github` and `providers` merge key by key.
 
 Only `https` URLs, without redirects, up to 256 KB. `#sha256=` pins the exact content; a file declaring `providers` must be pinned, since a provider decides where your code goes ([Model providers](./providers#your-own-endpoint)). If the file cannot be loaded or is invalid, ocra warns and uses the repository's settings alone, so limits set only there (such as `maxCostUsd`) do not apply; set must-hold limits in the repository too.
 
@@ -201,7 +211,7 @@ Signed in to [ocra Cloud](./cli#ocra-login-ocra-logout-ocra-whoami), `ocra revie
 | Account key | How it applies |
 |---|---|
 | `runtime` (`opencode` or `direct`), `models.<tier>`, `effort.<tier>`, `reviewers.<id>`, `roles.<role>` | Only where the configuration leaves it out; a reviewer's or role's entry in the configuration wins whole |
-| `concurrency`, `taskTimeoutMinutes`, `runTimeoutMinutes`, `maxCostUsd`, `maxTasks`, `verify`, `judge`, `fixes`, `linkedTasks`, `sampling` | Only when the configuration does not set it (`sampling` as one setting): the account can bound an unbounded run, never loosen a limit |
+| `concurrency`, `taskTimeoutMinutes`, `runTimeoutMinutes`, `maxCostUsd`, `maxTasks`, `verify`, `judge`, `fixes`, `linkedTasks`, `sampling`, `ultra`, `minInlineSeverity`, `maxInlineComments` | Only when the configuration does not set it (`sampling` as one setting): the account can bound an unbounded run, never loosen a limit |
 | `include` | Combined: the configuration's patterns, then the account's |
 | `exclude` | Only when the configuration sets none: a file the account excludes is neither reviewed nor counted as unreviewed, so an `exclude` in the configuration, even `[]`, keeps the account's out |
 | `rules` | Added after the repository's and the shared ones: at most 50, each like an [`.ocra/rules.json`](./rules) entry with a rule of at most 2,000 characters, embedded in the prompt the same way |

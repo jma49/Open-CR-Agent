@@ -1,4 +1,5 @@
 import { parseArgs } from "node:util";
+import { configSchema, SEVERITIES } from "@open-cr-agent/cloud-contract";
 import {
   errorMessage,
   GUIDELINE_SCOPES,
@@ -6,6 +7,7 @@ import {
   isOptionalContext,
   OPTIONAL_CONTEXT,
   type OptionalContext,
+  type Severity,
 } from "@open-cr-agent/core";
 import type { LocalTarget } from "@open-cr-agent/vcs-local";
 import { UsageError } from "../../io/usage-error.js";
@@ -34,7 +36,11 @@ export interface ReviewArgs {
   ignoreRepoConfig?: true;
   reviewers?: string[];
   maxCostUsd?: number;
-  ultra?: true;
+  // --ultra or --no-ultra, over the configuration's and the account's.
+  ultra?: boolean;
+  // Override minInlineSeverity and maxInlineComments.
+  minInlineSeverity?: Severity;
+  maxInlineComments?: number;
   // Propose checked fixes for findings, whatever the configuration says.
   fixes?: true;
   full?: true;
@@ -91,6 +97,13 @@ Options:
                      after --scip and before searching; not with --plan
   --plan             Show files, bundles, review tasks and prompt sizes; call no model
   --ultra            Favor recall: all reviewers at every tier, two samples each (about 2x cost)
+  --no-ultra         Do not use --ultra, even where the configuration or the
+                     ocra Cloud account turns it on (ultra in config)
+  --min-inline-severity <severity>  With --publish: post only critical, warning
+                     or suggestion findings and above as inline comments; the
+                     rest are listed in the summary (minInlineSeverity)
+  --max-inline-comments <n>  With --publish: post at most n findings inline, the
+                     most severe and best verified first (maxInlineComments)
   --fixes            Propose a checked fix for findings a local edit fixes
                      (fixes in config)
   --temperature <n>  Sampling temperature, 0 to 2 (default: the provider's, or sampling in config)
@@ -144,7 +157,28 @@ export function parseReviewArgs(argv: string[]): ReviewArgs | "help" {
   if (values["no-repo-config"]) args.ignoreRepoConfig = true;
   if (values["no-upload"]) args.noUpload = true;
   if (values["no-linked-tasks"]) args.noLinkedTasks = true;
+  if (values.ultra && values["no-ultra"]) {
+    throw new UsageError("--ultra cannot be combined with --no-ultra");
+  }
   if (values.ultra) args.ultra = true;
+  if (values["no-ultra"]) args.ultra = false;
+  if (values["min-inline-severity"] !== undefined) {
+    const floor = values["min-inline-severity"];
+    if (!(SEVERITIES as readonly string[]).includes(floor)) {
+      throw new UsageError(`--min-inline-severity must be ${SEVERITIES.join(", ")}, got ${floor}`);
+    }
+    args.minInlineSeverity = floor as Severity;
+  }
+  if (values["max-inline-comments"] !== undefined) {
+    const raw = values["max-inline-comments"];
+    const max = configSchema.shape.maxInlineComments.safeParse(Number(raw));
+    if (!/^\d+$/.test(raw) || !max.success || max.data === undefined) {
+      throw new UsageError(
+        `--max-inline-comments must be a whole number from 0 to 1000, got ${raw}`,
+      );
+    }
+    args.maxInlineComments = max.data;
+  }
   if (values.fixes) args.fixes = true;
   if (values.full) {
     if (!pullRequest && !mergeRequest) throw new UsageError("--full needs --pr or --mr");
@@ -263,6 +297,9 @@ function parse(argv: string[]) {
       scip: { type: "string" },
       graph: { type: "string" },
       ultra: { type: "boolean" },
+      "no-ultra": { type: "boolean" },
+      "min-inline-severity": { type: "string" },
+      "max-inline-comments": { type: "string" },
       fixes: { type: "boolean" },
       temperature: { type: "string" },
       seed: { type: "string" },
