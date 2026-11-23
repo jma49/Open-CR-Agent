@@ -19,6 +19,9 @@ on:
         default: smoke
         type: choice
         options: [smoke, full]
+      ids:
+        description: Golden case ids, comma separated, instead of a tier
+        default: ""
       repeat:
         description: Repeats per side
         default: "3"
@@ -49,6 +52,7 @@ jobs:
     env:
       BASE: ${{ inputs.base }}
       TIER: ${{ inputs.tier }}
+      IDS: ${{ inputs.ids }}
       REPEAT: ${{ inputs.repeat }}
       MAX_COST: ${{ inputs.max_cost_usd }}
       MODEL: ${{ inputs.model }}
@@ -68,9 +72,9 @@ jobs:
           cd "$RUNNER_TEMP/base"
           npm ci
           npm run build
-      # Outside the reviewed tree: the reviews run with --no-repo-config. An
-      # effort on every tier means no sampling is sent, which Anthropic's API
-      # refuses since 2026-10-21.
+      # Outside the reviewed tree: the reviews run with --no-repo-config. In
+      # Anthropic's own protocol, so the prompt cache a review reads and
+      # stores is in the cost compared.
       - name: Write the configuration
         shell: bash
         run: |
@@ -86,8 +90,8 @@ jobs:
             "effort": { "top": "medium", "standard": "medium", "light": "low" },
             "providers": {
               "claude": {
-                "type": "openai-compatible",
-                "baseUrl": "https://api.anthropic.com/v1",
+                "type": "anthropic",
+                "baseUrl": "https://api.anthropic.com",
                 "apiKeyEnv": "ANTHROPIC_API_KEY",
                 "models": { "$MODEL": { $PRICE } }
               }
@@ -105,7 +109,8 @@ jobs:
             echo "::error::ANTHROPIC_API_KEY is not set as a repository secret"
             exit 1
           fi
-          node packages/eval/dist/main.js run --dataset golden --tier "$TIER" \
+          if [ -n "$IDS" ]; then selection=(--ids "$IDS"); else selection=(--tier "$TIER"); fi
+          node packages/eval/dist/main.js run --dataset golden "${selection[@]}" \
             --label base --repeat "$REPEAT" --max-cost-usd "$MAX_COST" \
             --config "$RUNNER_TEMP/eval.json" --out "$GITHUB_WORKSPACE/.ocra/eval"
       - name: Review with the change
@@ -114,7 +119,8 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           JUDGE_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          node packages/eval/dist/main.js run --dataset golden --tier "$TIER" \
+          if [ -n "$IDS" ]; then selection=(--ids "$IDS"); else selection=(--tier "$TIER"); fi
+          node packages/eval/dist/main.js run --dataset golden "${selection[@]}" \
             --label change --repeat "$REPEAT" --max-cost-usd "$MAX_COST" \
             --config "$RUNNER_TEMP/eval.json"
       - name: Compare
