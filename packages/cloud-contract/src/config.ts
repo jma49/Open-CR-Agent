@@ -95,7 +95,10 @@ const price = z.number().min(0).max(10_000);
 
 const providerSchema = z
   .object({
-    type: z.literal("openai-compatible"),
+    // The protocol the endpoint speaks: OpenAI's chat completions under
+    // baseUrl/chat/completions, or Anthropic's Messages under
+    // baseUrl/v1/messages.
+    type: z.enum(["openai-compatible", "anthropic"]),
     baseUrl: endpoint,
     apiKeyEnv: z
       .string()
@@ -109,11 +112,16 @@ const providerSchema = z
         z.object({ input: price, output: price, cachedInput: price.optional() }).strict(),
       )
       .refine((models) => Object.keys(models).length > 0, "must list at least one model"),
-    // How the endpoint takes a reasoning effort: "openai" sends
-    // reasoning_effort (the default), "openrouter" sends reasoning.effort.
+    // How an OpenAI-compatible endpoint takes a reasoning effort: "openai"
+    // sends reasoning_effort (the default), "openrouter" sends
+    // reasoning.effort.
     effort: z.enum(["openai", "openrouter"]).optional(),
   })
-  .strict();
+  .strict()
+  .refine((p) => p.type !== "anthropic" || p.effort === undefined, {
+    path: ["effort"],
+    message: "applies to an openai-compatible provider only",
+  });
 
 // The runtimes ocra ships; a plugin may register another name, so the
 // schema lists these for editors and still accepts any other string.

@@ -176,6 +176,19 @@ describe("openCodeConfig", () => {
       openCodeConfig({ url: "http://127.0.0.1:1/mcp", headers: {} }, {}, custom),
     ).toThrow(/must not contain \{ or \}/);
   });
+
+  it("refuses a declared provider that speaks Anthropic's Messages protocol", () => {
+    const custom = {
+      claude: {
+        api: "anthropic" as const,
+        baseUrl: "https://api.anthropic.com",
+        models: { m1: { input: 0, output: 0 } },
+      },
+    };
+    expect(() =>
+      openCodeConfig({ url: "http://127.0.0.1:1/mcp", headers: {} }, {}, custom),
+    ).toThrow(/use "runtime": "direct"/);
+  });
 });
 
 describe("sampling on OpenCode", () => {

@@ -13,16 +13,16 @@ import {
   type Usage,
 } from "@open-cr-agent/core";
 import {
-  type CallParams,
-  type ChatMessage,
-  chat,
+  type CallSettings,
+  type Dialogue,
   type Endpoint,
-  type ToolCall,
-  toolSpec,
+  type ToolRequest,
+  type Wire,
   withoutEffort,
-} from "./openai.js";
+} from "./wire.js";
 
 export interface LoopInput {
+  wire: Wire;
   endpoint: Endpoint;
   model: string;
   price: ModelPrice;
@@ -39,7 +39,7 @@ export interface LoopInput {
   wrapUp?: WrapUpTurn;
   timeoutMs: number;
   // Sent with every request, until the endpoint refuses the effort in them.
-  params?: CallParams;
+  settings?: CallSettings;
   // The endpoint refused the effort; the rest of the attempt goes without it.
   onEffortRefused?: () => void;
   signal: AbortSignal;
@@ -70,13 +70,13 @@ export async function runLoop(input: LoopInput): Promise<TaskAttempt> {
   };
 }
 
-// One attempt's messages and outcome, which a later turn continues under the
+// One attempt's dialogue and outcome, which a later turn continues under the
 // attempt's signal and timeout.
 class Conversation {
   private readonly input: LoopInput;
   private readonly timeout: AbortSignal;
   private readonly signal: AbortSignal;
-  private readonly messages: ChatMessage[];
+  private readonly dialogue: Dialogue;
   private readonly outcome: AttemptOutcome = {
     findings: [],
     steps: 0,
@@ -86,14 +86,14 @@ class Conversation {
   };
   private readonly texts: string[] = [];
   private readonly uses: ToolUse[] = [];
-  private params: CallParams;
+  private settings: CallSettings;
 
   constructor(input: LoopInput) {
     this.input = input;
     this.timeout = AbortSignal.timeout(input.timeoutMs);
     this.signal = AbortSignal.any([input.signal, this.timeout]);
-    this.messages = [{ role: "system", content: input.system }];
-    this.params = input.params ?? {};
+    this.dialogue = input.wire(input);
+    this.settings = input.settings ?? {};
   }
 
   // Runs until the done tool, an answer without tools, or `maxSteps` steps
@@ -104,26 +104,15 @@ class Conversation {
     maxSteps: number,
     resume?: string,
   ): Promise<AttemptOutcome> {
-    const { input, messages, outcome, texts, uses } = this;
+    const { input, dialogue, outcome, texts, uses } = this;
     const tools = new Map(offered.map((t) => [t.name, t]));
-    const specs = offered.map(toolSpec);
     let done = false;
-    messages.push({ role: "user", content: message });
+    dialogue.say(message);
     while (outcome.steps < maxSteps) {
-      const response = await chat(
-        input.endpoint,
-        {
-          model: input.model,
-          messages,
-          ...(specs.length > 0 ? { tools: specs } : {}),
-          ...this.params,
-        },
-        input.price,
-        this.signal,
-      );
+      const response = await dialogue.ask(offered, this.settings, this.signal);
       outcome.steps += 1;
       if (response.effortDropped) {
-        this.params = withoutEffort(this.params);
+        this.settings = withoutEffort(this.settings);
         input.onEffortRefused?.();
       }
       if (!response.ok) {
@@ -134,36 +123,27 @@ class Conversation {
       }
       outcome.usage = addUsage(outcome.usage, response.usage);
       input.onUsage?.(outcome.usage);
-      if (response.content) texts.push(response.content);
-      messages.push({
-        role: "assistant",
-        content: response.content || null,
-        ...(response.toolCalls.length > 0 ? { tool_calls: response.toolCalls } : {}),
-      });
+      if (response.text) texts.push(response.text);
 
-      if (response.toolCalls.length === 0) {
+      if (response.calls.length === 0) {
         const stoppedEarly = resume && !outcome.resumed && texts.join("").trim() === "";
         if (stoppedEarly && outcome.steps < maxSteps) {
           outcome.resumed = true;
-          messages.push({ role: "user", content: resume });
+          dialogue.say(resume);
           continue;
         }
         break;
       }
       // Together, as OpenCode runs a step's calls, so its searches share one
       // grep; each call is recorded as it starts, in the order given.
-      const answers = await Promise.all(
-        response.toolCalls.map(async (call): Promise<ChatMessage> => {
-          outcome.toolCalls.push(call.function.name);
-          if (call.function.name === REVIEW_TOOLS.taskDone) done = true;
-          return {
-            role: "tool",
-            tool_call_id: call.id,
-            content: await runTool(tools, call, input.context, outcome, uses),
-          };
+      const outputs = await Promise.all(
+        response.calls.map(async (call) => {
+          outcome.toolCalls.push(call.name);
+          if (call.name === REVIEW_TOOLS.taskDone) done = true;
+          return { call, output: await runTool(tools, call, input.context, outcome, uses) };
         }),
       );
-      messages.push(...answers);
+      dialogue.answer(outputs);
       if (done) break;
     }
     outcome.text = texts.join("\n").trim();
@@ -183,20 +163,15 @@ function snapshot(outcome: AttemptOutcome): AttemptOutcome {
 // which may correct it, and never ends the attempt.
 async function runTool(
   tools: ReadonlyMap<string, ToolDefinition>,
-  call: ToolCall,
+  call: ToolRequest,
   context: ReviewContext,
   outcome: AttemptOutcome,
   uses: ToolUse[],
 ): Promise<string> {
-  const tool = tools.get(call.function.name);
-  if (!tool) return `Unknown tool: ${call.function.name}`;
-  let args: unknown;
-  try {
-    args = JSON.parse(call.function.arguments || "{}");
-  } catch {
-    return "Invalid arguments: not JSON";
-  }
-  const parsed = tool.inputSchema.safeParse(args);
+  const tool = tools.get(call.name);
+  if (!tool) return `Unknown tool: ${call.name}`;
+  if (call.malformed) return "Invalid arguments: not JSON";
+  const parsed = tool.inputSchema.safeParse(call.input);
   if (!parsed.success) {
     return `Invalid arguments: ${parsed.error.issues.map((i) => `${i.path.join(".") || "input"}: ${i.message}`).join("; ")}`;
   }

@@ -170,6 +170,12 @@ function providerConfig(custom: Readonly<Record<string, CustomProvider>>, temper
 // Checked here once, whatever declared the provider: a configuration file,
 // ocra Cloud or another caller of this package.
 function checkProvider(id: string, provider: CustomProvider): void {
+  if (provider.api === "anthropic") {
+    throw new OcraError(
+      "CONFIG_INVALID",
+      `Provider "${id}" speaks Anthropic's Messages protocol, which the opencode runtime does not reach for a declared provider: use "runtime": "direct"`,
+    );
+  }
   const fields: [string, string][] = [
     ["id", id],
     ["baseUrl", provider.baseUrl],

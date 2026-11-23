@@ -22,9 +22,13 @@ export interface RuntimeOptions {
   sampling?: Sampling;
 }
 
-// A model provider reached through an OpenAI-compatible API: a self-hosted
-// server or a company gateway.
+// A model provider declared in configuration: a self-hosted server, a
+// company gateway or a model maker's own API.
 export interface CustomProvider {
+  // The protocol the endpoint speaks: OpenAI's chat completions (default),
+  // under `baseUrl`/chat/completions, or Anthropic's Messages, under
+  // `baseUrl`/v1/messages.
+  api?: "openai" | "anthropic";
   baseUrl: string;
   // The environment variable that holds the key; the key itself never
   // appears in configuration.
@@ -32,8 +36,8 @@ export interface CustomProvider {
   // Prices in US dollars per million tokens, by model id, so reported cost
   // and the spend limit count its use.
   models: Readonly<Record<string, ModelPrice>>;
-  // How the endpoint takes a reasoning effort: OpenAI's `reasoning_effort`
-  // (default), or OpenRouter's `reasoning: { effort }`.
+  // How a chat completions endpoint takes a reasoning effort: OpenAI's
+  // `reasoning_effort` (default), or OpenRouter's `reasoning: { effort }`.
   effort?: "openai" | "openrouter";
 }
 

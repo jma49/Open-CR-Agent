@@ -1,15 +1,26 @@
-import { setTimeout } from "node:timers/promises";
 import {
   type Effort,
   errorMessage,
   type ModelPrice,
   parseQuotaError,
-  type QuotaError,
   type ToolDefinition,
   type Usage,
   withoutSecrets,
 } from "@open-cr-agent/core";
 import { z } from "zod";
+import {
+  type Answer,
+  type CallError,
+  type CallSettings,
+  type Endpoint,
+  excerpt,
+  onceMore,
+  pricedUsage,
+  retryableStatus,
+  type ToolRequest,
+  transientStatus,
+  type Wire,
+} from "./wire.js";
 
 // The subset of the OpenAI chat completions protocol the loop needs: one
 // choice, its text and tool calls, and the token counts. Anything else an
@@ -47,25 +58,19 @@ const errorBodySchema = z.object({
   error: z.object({ message: z.string(), code: z.number().optional() }),
 });
 
-export type ToolCall = z.output<typeof toolCallSchema>;
+type ToolCall = z.output<typeof toolCallSchema>;
 
-export type ChatMessage =
+type ChatMessage =
   | { role: "system" | "user"; content: string }
   | { role: "assistant"; content: string | null; tool_calls?: ToolCall[] }
   | { role: "tool"; tool_call_id: string; content: string };
 
-export interface ToolSpec {
+interface ToolSpec {
   type: "function";
   function: { name: string; description: string; parameters: Record<string, unknown> };
 }
 
-export interface Endpoint {
-  baseUrl: string;
-  apiKey?: string;
-  fetch?: typeof fetch;
-}
-
-export interface ChatRequest {
+interface ChatRequest {
   model: string;
   messages: readonly ChatMessage[];
   tools?: readonly ToolSpec[];
@@ -76,42 +81,75 @@ export interface ChatRequest {
   reasoning?: { effort: Effort };
 }
 
-// What a request sends besides the conversation.
-export type CallParams = Pick<
-  ChatRequest,
-  "temperature" | "seed" | "reasoning_effort" | "reasoning"
->;
+export type EffortStyle = "openai" | "openrouter";
 
-interface ChatError {
-  message: string;
-  retryable: boolean;
-  quota?: QuotaError;
-  // A failure the next request may not repeat: a dropped connection, a 5xx,
-  // an answer that is not a completion.
-  transient?: boolean;
-  // A 400 that names the effort parameter: the endpoint or model does not
-  // take it.
-  effortRefused?: boolean;
-}
-
-// effortDropped: the endpoint refused the effort parameter, and the answer
-// is that of the same request sent again without it.
-export type ChatResponse = (
+type ChatResponse = (
   | { ok: true; content: string; toolCalls: ToolCall[]; usage: Usage }
-  | { ok: false; error: ChatError }
+  | { ok: false; error: CallError }
 ) & { effortDropped?: true };
 
-const AUTH_STATUS = new Set([401, 403]);
 // How an endpoint names the effort parameters in a 400 that refuses them.
 const EFFORT_PARAMETER = /\breasoning(?:_effort)?\b/i;
-// How much of an error body an error message keeps: enough to diagnose, not
-// a page of HTML.
-const BODY_EXCERPT = 300;
-// A transient failure is sent once more after this pause; a second failure
-// goes to the failback, which decides what it means for the model.
-const TRANSIENT_RETRY_MS = 1_000;
 
-export function toolSpec(tool: ToolDefinition): ToolSpec {
+// A conversation in OpenAI's chat completions protocol, with the effort sent
+// the way the provider declares.
+export function openaiWire(style: EffortStyle = "openai"): Wire {
+  return ({ endpoint, model, price, system }) => {
+    const messages: ChatMessage[] = [{ role: "system", content: system }];
+    return {
+      say: (text) => {
+        messages.push({ role: "user", content: text });
+      },
+      ask: async (tools, settings, signal): Promise<Answer> => {
+        const specs = tools.map(toolSpec);
+        const request = {
+          model,
+          messages,
+          ...(specs.length > 0 ? { tools: specs } : {}),
+          ...params(settings, style),
+        };
+        const response = await chat(endpoint, request, price, signal);
+        const dropped = response.effortDropped ? { effortDropped: true as const } : {};
+        if (!response.ok) return { ...response, ...dropped };
+        const { content, toolCalls, usage } = response;
+        messages.push({
+          role: "assistant",
+          content: content || null,
+          ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : {}),
+        });
+        return { ok: true, text: content, calls: toolCalls.map(toolRequest), usage, ...dropped };
+      },
+      answer: (outputs) => {
+        for (const { call, output } of outputs) {
+          messages.push({ role: "tool", tool_call_id: call.id, content: output });
+        }
+      },
+    };
+  };
+}
+
+function params(
+  { effort, ...sampling }: CallSettings,
+  style: EffortStyle,
+): Pick<ChatRequest, "temperature" | "seed" | "reasoning_effort" | "reasoning"> {
+  if (effort === undefined) return sampling;
+  return {
+    ...sampling,
+    ...(style === "openrouter" ? { reasoning: { effort } } : { reasoning_effort: effort }),
+  };
+}
+
+function toolRequest(call: ToolCall): ToolRequest {
+  const { id } = call;
+  const { name } = call.function;
+  try {
+    return { id, name, input: JSON.parse(call.function.arguments || "{}") };
+  } catch {
+    return { id, name, input: undefined, malformed: true };
+  }
+}
+
+function toolSpec(tool: ToolDefinition): ToolSpec {
   const { $schema: _, ...parameters } = z.toJSONSchema(tool.inputSchema) as Record<string, unknown>;
   return {
     type: "function",
@@ -122,44 +160,28 @@ export function toolSpec(tool: ToolDefinition): ToolSpec {
 // One request to the endpoint. A refused effort parameter is not the model's
 // failure: the request goes once more without it, so the review still runs
 // and the failback chain does not move.
-export async function chat(
+async function chat(
   endpoint: Endpoint,
   request: ChatRequest,
   price: ModelPrice,
   signal: AbortSignal,
 ): Promise<ChatResponse> {
-  const first = await sendRetrying(endpoint, request, price, signal);
+  const sent = (body: ChatRequest) => onceMore(() => send(endpoint, body, price, signal), signal);
+  const first = await sent(request);
   if (first.ok || !first.error.effortRefused || !hasEffort(request)) return first;
-  return {
-    ...(await sendRetrying(endpoint, withoutEffort(request), price, signal)),
-    effortDropped: true,
-  };
+  return { ...(await sent(withoutEffort(request))), effortDropped: true };
 }
 
-function hasEffort(params: CallParams): boolean {
-  return params.reasoning_effort !== undefined || params.reasoning !== undefined;
+function hasEffort(request: ChatRequest): boolean {
+  return request.reasoning_effort !== undefined || request.reasoning !== undefined;
 }
 
-export function withoutEffort<T extends CallParams>(params: T): T {
-  const { reasoning_effort: _effort, reasoning: _reasoning, ...rest } = params;
-  return rest as T;
+function withoutEffort(request: ChatRequest): ChatRequest {
+  const { reasoning_effort: _effort, reasoning: _reasoning, ...rest } = request;
+  return rest;
 }
 
-// Sent a second time when the first failed in a way a moment may cure. Only
-// the key named for this provider goes out, and only to its base URL.
-async function sendRetrying(
-  endpoint: Endpoint,
-  request: ChatRequest,
-  price: ModelPrice,
-  signal: AbortSignal,
-): Promise<ChatResponse> {
-  const first = await send(endpoint, request, price, signal);
-  if (first.ok || !first.error.transient) return first;
-  await setTimeout(TRANSIENT_RETRY_MS, undefined, { signal }).catch(() => undefined);
-  if (signal.aborted) return first;
-  return send(endpoint, request, price, signal);
-}
-
+// Only the key named for this provider goes out, and only to its base URL.
 async function send(
   endpoint: Endpoint,
   request: ChatRequest,
@@ -223,7 +245,7 @@ function failure(
   body: string,
   secrets: readonly string[],
   reportedCode?: number,
-): ChatError {
+): CallError {
   const inBody = response.ok;
   const status = inBody
     ? reportedCode && reportedCode >= 400
@@ -240,14 +262,14 @@ function failure(
   }
   return {
     message,
-    retryable: !AUTH_STATUS.has(status),
+    retryable: retryableStatus(status),
     ...(status === 400 && EFFORT_PARAMETER.test(body) ? { effortRefused: true } : {}),
     ...(quota ? { quota } : {}),
-    ...(!quota && (status >= 500 || status === 408) ? { transient: true } : {}),
+    ...(!quota && transientStatus(status) ? { transient: true } : {}),
   };
 }
 
-function malformed(what: string, body: string, secrets: readonly string[]): ChatError {
+function malformed(what: string, body: string, secrets: readonly string[]): CallError {
   return {
     message: `the endpoint ${what}: ${excerpt(withoutSecrets(body, secrets))}`,
     retryable: true,
@@ -255,29 +277,17 @@ function malformed(what: string, body: string, secrets: readonly string[]): Chat
   };
 }
 
-// Cached tokens are counted inside the prompt tokens, as OpenAI does; they
-// are priced at the cached rate when the provider declares one.
+// Cached tokens are counted inside the prompt tokens, as OpenAI does.
 function usageOf(usage: z.infer<typeof completionSchema>["usage"], price: ModelPrice): Usage {
   const prompt = usage?.prompt_tokens ?? 0;
   const cached = Math.min(prompt, usage?.prompt_tokens_details?.cached_tokens ?? 0);
-  const input = prompt - cached;
-  const output = usage?.completion_tokens ?? 0;
-  const reasoning = usage?.completion_tokens_details?.reasoning_tokens ?? 0;
-  const perToken = (perMillion: number) => perMillion / 1_000_000;
-  return {
-    inputTokens: input,
-    outputTokens: output,
-    reasoningTokens: reasoning,
-    cachedTokens: cached,
-    costUsd:
-      input * perToken(price.input) +
-      cached * perToken(price.cachedInput ?? price.input) +
-      output * perToken(price.output),
-  };
-}
-
-function excerpt(body: string): string {
-  const text = body.replace(/\s+/g, " ").trim();
-  if (text.length === 0) return "(empty body)";
-  return text.length > BODY_EXCERPT ? `${text.slice(0, BODY_EXCERPT)}…` : text;
+  return pricedUsage(
+    {
+      input: prompt - cached,
+      cached,
+      output: usage?.completion_tokens ?? 0,
+      reasoning: usage?.completion_tokens_details?.reasoning_tokens ?? 0,
+    },
+    price,
+  );
 }
