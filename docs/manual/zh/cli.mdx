@@ -454,7 +454,7 @@ ocra mend --from main --findings accepted.json                             # 本
 | `needs_human` | 已关闭，交给人决定 | `not_candidate`、`no_parser`、`out_of_scope`、`protected`、`too_large`、`tamper`，或两次尝试都用完时的 `attempts` |
 | `gone` | 它的代码已不在 head 上 | `stale` |
 
-`edits` 替换 `headSha` 上 `path` 的第 `startLine` 到 `endLine` 整行；只有 `fixed` 或 `proposed` 的条目才有。用法、输入和配置错误，以及无法启动的运行时，退出码为 `2`。结构是 `@open-cr-agent/cloud-contract` 里的 `mendResultSchema`、`mendStateSchema` 和 `mendFindingsSchema`（[ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)）。这是修复循环的第一步：失败的检查、合并冲突和评审者的要求仍在计划中。v0.19.0 新增。
+`edits` 替换 `headSha` 上 `path` 的第 `startLine` 到 `endLine` 整行；只有 `fixed` 或 `proposed` 的条目才有。用法、输入和配置错误，以及无法启动的运行时，退出码为 `2`。结构是 `@open-cr-agent/cloud-contract` 里的 `mendResultSchema`、`mendStateSchema` 和 `mendFindingsSchema`（[ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)）。这是修复循环的第一步：失败的检查、合并冲突和评审者的要求仍在计划中。v0.20.0 新增。
 
 ## ocra metrics
 
