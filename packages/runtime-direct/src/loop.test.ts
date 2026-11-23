@@ -58,4 +58,52 @@ describe("runLoop", () => {
     const answers = server.seen.at(-1)?.messages.filter((m) => m.role === "tool") ?? [];
     expect(answers.map((m) => m.content)).toEqual(["src/a.ts:1: first", "src/a.ts:1: second"]);
   });
+
+  it("keeps a task going when a finding sent with task_done was refused", async () => {
+    const finding = {
+      file: "src/a.ts",
+      existingCode: "const a = 1;",
+      severity: "warning",
+      title: "t",
+      body: "b",
+    };
+    const server = await scriptedEndpoint([
+      {
+        toolCalls: [
+          { name: "report_finding", args: { ...finding, existingCode: "" } },
+          { name: "task_done", args: {} },
+        ],
+      },
+      {
+        toolCalls: [
+          { name: "report_finding", args: finding },
+          { name: "task_done", args: {} },
+        ],
+      },
+    ]);
+    endpoints.push(server);
+
+    const attempt = await runLoop({
+      wire: openaiWire(),
+      endpoint: { baseUrl: server.url },
+      model: "m1",
+      price: { input: 1, output: 1 },
+      system: "system",
+      user: "user",
+      tools: reviewTools,
+      context: {
+        readFile: async () => undefined,
+        readDiff: () => undefined,
+        searchCode: async () => [],
+      },
+      maxSteps: 5,
+      timeoutMs: 10_000,
+      signal: new AbortController().signal,
+    });
+
+    expect(attempt.findings).toHaveLength(1);
+    expect(attempt.steps).toBe(2);
+    const refusal = server.seen.at(-1)?.messages.find((m) => m.role === "tool");
+    expect(refusal?.content).toContain("Invalid arguments: existingCode");
+  });
 });
