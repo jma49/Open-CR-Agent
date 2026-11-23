@@ -4,6 +4,7 @@ import type { FileDiff } from "../domain.js";
 import {
   ENV_TEMPLATE_PATTERNS,
   GENERATED_PATTERNS,
+  MIGRATION_METADATA_PATTERNS,
   MIGRATION_PATTERNS,
   NON_REVIEWABLE_EXTENSIONS,
   SECRET_PATTERNS,
@@ -41,6 +42,7 @@ const globOptions = { dot: true, nocase: true };
 const isSecret = picomatch(SECRET_PATTERNS, { ...globOptions, ignore: ENV_TEMPLATE_PATTERNS });
 const isGenerated = picomatch(GENERATED_PATTERNS, globOptions);
 const isMigration = picomatch(MIGRATION_PATTERNS, globOptions);
+const isMigrationMetadata = picomatch(MIGRATION_METADATA_PATTERNS, globOptions);
 const nonReviewableExtensions = new Set(NON_REVIEWABLE_EXTENSIONS);
 const textExtensions = new Set(TEXT_EXTENSIONS);
 const NAMED_FILES = 3;
@@ -92,6 +94,7 @@ function exclusionReason(
 
   if (!isUserIncluded(path)) {
     if (nonReviewableExtensions.has(extension(path))) return "extension";
+    if (isMigrationMetadata(path)) return "generated";
     if (isGenerated(path) && !isMigration(path)) return "generated";
   }
 

@@ -84,6 +84,14 @@ describe("selectFiles", () => {
     ["src/__snapshots__/a.test.ts.snap", "generated"],
     ["db/migrations/0001_init.sql", "selected"],
     ["app/migrations/vendor/0002.py", "selected"],
+    ["migrations/meta/0067_snapshot.json", "generated"],
+    ["migrations-pg/meta/_journal.json", "generated"],
+    ["prisma/migrations/migration_lock.toml", "generated"],
+    ["Data/Migrations/20260101_Init.Designer.cs", "generated"],
+    ["Data/Migrations/AppDbContextModelSnapshot.cs", "generated"],
+    ["Data/Migrations/20260101_Init.cs", "selected"],
+    ["src/meta/user_snapshot.json", "selected"],
+    ["deno.lock", "generated"],
   ])("%s → %s", (path, expected) => {
     expect(reasonFor(diff(path))).toBe(expected);
   });
