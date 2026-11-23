@@ -1,6 +1,6 @@
 # ADR-0078: The fix loop: one checked commit per round, verified by the change request's own CI
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-11-23
 
 ## Context
