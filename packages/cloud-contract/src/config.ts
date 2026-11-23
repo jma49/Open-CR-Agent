@@ -5,6 +5,7 @@ import {
   effortSchema as effort,
   GUIDELINE_SCOPES,
   RISK_TIERS,
+  reviewDepthSchema,
   severitySchema,
 } from "./vocabulary.js";
 
@@ -163,6 +164,9 @@ export const configSchema = z
     showPreExisting: z.boolean().optional(),
     // Recall over cost (--ultra, --no-ultra); unset, the account's or off.
     ultra: z.boolean().optional(),
+    // A preset of ultra, effort, reviewers and the inline policy, under what
+    // the layers set themselves (--depth).
+    depth: reviewDepthSchema.optional(),
     // Which findings are posted as inline comments; the rest are listed in
     // the summary and kept in the report (ADR-0076).
     minInlineSeverity: severitySchema.optional(),

@@ -256,6 +256,7 @@ function reviewerOverrides(
 // What the command line sets over every other layer.
 function flagSettings(args: ReviewArgs) {
   return {
+    ...(args.depth ? { depth: args.depth } : {}),
     ...(args.ultra !== undefined ? { ultra: args.ultra } : {}),
     ...(args.minInlineSeverity ? { minInlineSeverity: args.minInlineSeverity } : {}),
     ...(args.maxInlineComments !== undefined ? { maxInlineComments: args.maxInlineComments } : {}),

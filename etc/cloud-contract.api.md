@@ -274,6 +274,11 @@ export const configSchema: z.ZodObject<{
     judge: z.ZodOptional<z.ZodBoolean>;
     showPreExisting: z.ZodOptional<z.ZodBoolean>;
     ultra: z.ZodOptional<z.ZodBoolean>;
+    depth: z.ZodOptional<z.ZodEnum<{
+        deep: "deep";
+        quick: "quick";
+        standard: "standard";
+    }>>;
     minInlineSeverity: z.ZodOptional<z.ZodEnum<{
         critical: "critical";
         suggestion: "suggestion";
@@ -1345,6 +1350,11 @@ export const preferencesUpdateSchema: z.ZodObject<{
     }>>>>;
     settings: z.ZodOptional<z.ZodNullable<z.ZodPipe<z.ZodObject<{
         ultra: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+        depth: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
+            deep: "deep";
+            quick: "quick";
+            standard: "standard";
+        }>>>;
         concurrency: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
         taskTimeoutMinutes: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
         runTimeoutMinutes: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
@@ -1380,6 +1390,7 @@ export const preferencesUpdateSchema: z.ZodObject<{
         pluginSettings: z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodUnknown>>>;
     }, z.core.$strict>, z.ZodTransform<{
         ultra?: NonNullable<boolean | null | undefined>;
+        depth?: NonNullable<"deep" | "quick" | "standard" | null | undefined>;
         concurrency?: number;
         taskTimeoutMinutes?: number;
         runTimeoutMinutes?: number;
@@ -1405,6 +1416,7 @@ export const preferencesUpdateSchema: z.ZodObject<{
         pluginSettings?: Record<string, unknown>;
     }, {
         ultra?: boolean | null | undefined;
+        depth?: "deep" | "quick" | "standard" | null | undefined;
         concurrency?: number | null | undefined;
         taskTimeoutMinutes?: number | null | undefined;
         runTimeoutMinutes?: number | null | undefined;
@@ -1496,11 +1508,24 @@ export const REPO_HASH: RegExp;
 // @public
 export const REPOSITORY_URL: RegExp;
 
+// @public
+export const REVIEW_DEPTHS: readonly ["quick", "standard", "deep"];
+
 // @public (undocumented)
 export const REVIEW_EVENT_VERSION = 1;
 
 // @public
 export const REVIEW_SOURCES: readonly ["local", "github", "gitlab"];
+
+// @public (undocumented)
+export type ReviewDepth = z.infer<typeof reviewDepthSchema>;
+
+// @public (undocumented)
+export const reviewDepthSchema: z.ZodEnum<{
+    deep: "deep";
+    quick: "quick";
+    standard: "standard";
+}>;
 
 // @public
 export const REVIEWER_ID: RegExp;
@@ -1678,6 +1703,11 @@ export type ReviewSettings = z.output<typeof reviewSettingsSchema>;
 // @public
 export const reviewSettingsSchema: z.ZodPipe<z.ZodObject<{
     ultra: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+    depth: z.ZodOptional<z.ZodNullable<z.ZodEnum<{
+        deep: "deep";
+        quick: "quick";
+        standard: "standard";
+    }>>>;
     concurrency: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     taskTimeoutMinutes: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     runTimeoutMinutes: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
@@ -1713,6 +1743,7 @@ export const reviewSettingsSchema: z.ZodPipe<z.ZodObject<{
     pluginSettings: z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodUnknown>>>;
 }, z.core.$strict>, z.ZodTransform<{
     ultra?: NonNullable<boolean | null | undefined>;
+    depth?: NonNullable<"deep" | "quick" | "standard" | null | undefined>;
     concurrency?: number;
     taskTimeoutMinutes?: number;
     runTimeoutMinutes?: number;
@@ -1738,6 +1769,7 @@ export const reviewSettingsSchema: z.ZodPipe<z.ZodObject<{
     pluginSettings?: Record<string, unknown>;
 }, {
     ultra?: boolean | null | undefined;
+    depth?: "deep" | "quick" | "standard" | null | undefined;
     concurrency?: number | null | undefined;
     taskTimeoutMinutes?: number | null | undefined;
     runTimeoutMinutes?: number | null | undefined;
