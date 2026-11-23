@@ -1,9 +1,13 @@
 import type { CodeMatch } from "@open-cr-agent/core";
-import { git } from "./git.js";
+import { gitLines } from "./git.js";
 
 const RESULT_LIMIT = 100;
 const MATCHES_PER_FILE = 20;
-const OUTPUT_BYTES = 4 * 1024 * 1024;
+// What one search may read of git's output: a line of a minified bundle or
+// a fixture can be megabytes.
+const OUTPUT_CHARS = 4 * 1024 * 1024;
+// A line that long in bytes is longer in characters than a search may read.
+const MAX_LINE_BYTES = 3 * OUTPUT_CHARS;
 const BATCH_SIZE = 32;
 
 export interface SearchScope {
@@ -14,12 +18,15 @@ export interface SearchScope {
 }
 
 /**
- * `git grep` at a revision reads every blob of the tree, so each search
- * costs the same however small; searches asked for in the same turn (an
- * agent's tool calls, the callers of a bundle's symbols) share one grep.
+ * `git grep` at a revision reads every blob of the tree on every core, so
+ * each search costs the same however small and two at once only take turns.
+ * One grep runs at a time: searches asked for in the same turn (an agent's
+ * tool calls, the callers of a bundle's symbols) or while another runs
+ * share the next, and it is stopped once each has all it returns.
  */
 export class CodeSearch {
   private queue: { literal: string; done: (r: Promise<CodeMatch[]>) => void }[] = [];
+  private draining = false;
   private readonly scope: () => Promise<SearchScope>;
 
   constructor(scope: () => Promise<SearchScope>) {
@@ -29,21 +36,22 @@ export class CodeSearch {
   search(literal: string): Promise<CodeMatch[]> {
     if (!batchable(literal)) return this.scope().then((s) => grepOne(s, literal));
     return new Promise((resolve) => {
-      if (this.queue.length === 0) queueMicrotask(() => this.flush());
+      if (this.queue.length === 0 && !this.draining) queueMicrotask(() => void this.drain());
       this.queue.push({ literal, done: resolve });
     });
   }
 
-  private flush(): void {
-    const queued = this.queue;
-    this.queue = [];
-    for (let i = 0; i < queued.length; i += BATCH_SIZE) {
-      const batch = queued.slice(i, i + BATCH_SIZE);
+  private async drain(): Promise<void> {
+    this.draining = true;
+    while (this.queue.length > 0) {
+      const batch = this.queue.splice(0, BATCH_SIZE);
       const results = this.scope().then((s) =>
         grepMany(s, [...new Set(batch.map((q) => q.literal))]),
       );
       for (const q of batch) q.done(results.then((r) => r.get(q.literal) ?? []));
+      await results.catch(() => undefined);
     }
+    this.draining = false;
   }
 }
 
@@ -52,21 +60,62 @@ function batchable(literal: string): boolean {
   return literal !== "" && !/[\r\n]/.test(literal);
 }
 
+// What a search of one literal returns of the lines git lists for it: at
+// most MATCHES_PER_FILE a file and RESULT_LIMIT in all, within OUTPUT_CHARS
+// of output.
+class Matches {
+  readonly kept: CodeMatch[] = [];
+  full = false;
+  private chars = 0;
+  private path: string | undefined;
+  private inFile = 0;
+
+  // git lists a file's lines together.
+  add(match: CodeMatch, lineChars: number): void {
+    if (this.full) return;
+    if (match.path !== this.path) {
+      this.path = match.path;
+      this.inFile = 0;
+    }
+    if (this.inFile === MATCHES_PER_FILE) return;
+    this.inFile += 1;
+    this.chars += lineChars + 1;
+    if (this.chars > OUTPUT_CHARS) {
+      this.full = true;
+      return;
+    }
+    this.kept.push(match);
+    if (this.kept.length === RESULT_LIMIT) this.full = true;
+  }
+}
+
 async function grepMany(scope: SearchScope, literals: string[]): Promise<Map<string, CodeMatch[]>> {
   if (literals.length === 1) {
     const [literal = ""] = literals;
     return new Map([[literal, await grepOne(scope, literal)]]);
   }
+  const found = new Map(literals.map((literal) => [literal, new Matches()]));
   // One alternation, not one -e per literal: git scans the rest of the file
   // for each -F pattern at every matching line, quadratic in a large file.
-  const out = await grep(scope, ["-E", "-e", literals.map(ereLiteral).join("|")], OUTPUT_BYTES);
-  // Cut at the cap, one literal's lines may have crowded out another's.
-  if (Buffer.byteLength(out) >= OUTPUT_BYTES || (out !== "" && !out.endsWith("\n"))) {
-    const each = await Promise.all(literals.map((l) => grepOne(scope, l)));
-    return new Map(literals.map((l, i) => [l, each[i] ?? []]));
+  const outcome = await grep(
+    scope,
+    ["-E", "-e", literals.map(ereLiteral).join("|")],
+    (match, lineChars) => {
+      let open = false;
+      for (const [literal, matches] of found) {
+        if (match.text.includes(literal)) matches.add(match, lineChars);
+        open ||= !matches.full;
+      }
+      return open;
+    },
+  );
+  // Which literals a line that was not read holds is unknown.
+  if (outcome === "line_too_long") {
+    const each = new Map<string, CodeMatch[]>();
+    for (const literal of literals) each.set(literal, await grepOne(scope, literal));
+    return each;
   }
-  const lines = parse(scope, out);
-  return new Map(literals.map((l) => [l, limited(lines.filter((m) => m.text.includes(l)))]));
+  return new Map([...found].map(([literal, matches]) => [literal, matches.kept]));
 }
 
 function ereLiteral(literal: string): string {
@@ -74,46 +123,37 @@ function ereLiteral(literal: string): string {
 }
 
 async function grepOne(scope: SearchScope, literal: string): Promise<CodeMatch[]> {
-  const out = await grep(
-    scope,
-    ["-F", "-m", String(MATCHES_PER_FILE), "-e", literal],
-    OUTPUT_BYTES,
-  );
-  const lines = out.split("\n");
-  // Output cut at the byte cap ends inside a line.
-  if (!out.endsWith("\n")) lines.pop();
-  return parse(scope, lines.join("\n")).slice(0, RESULT_LIMIT);
+  const matches = new Matches();
+  await grep(scope, ["-F", "-m", String(MATCHES_PER_FILE), "-e", literal], (match, lineChars) => {
+    matches.add(match, lineChars);
+    return !matches.full;
+  });
+  return matches.kept;
 }
 
-// What `-m` does for one literal: at most so many lines per file.
-function limited(matches: CodeMatch[]): CodeMatch[] {
-  const perFile = new Map<string, number>();
-  const kept: CodeMatch[] = [];
-  for (const m of matches) {
-    const n = perFile.get(m.path) ?? 0;
-    if (n >= MATCHES_PER_FILE) continue;
-    perFile.set(m.path, n + 1);
-    kept.push(m);
-    if (kept.length === RESULT_LIMIT) break;
-  }
-  return kept;
-}
-
-function grep(scope: SearchScope, patterns: string[], cap: number): Promise<string> {
+// Each matching line to `onMatch`, until it returns false.
+function grep(
+  scope: SearchScope,
+  patterns: string[],
+  onMatch: (match: CodeMatch, lineChars: number) => boolean,
+): Promise<"ended" | "stopped" | "line_too_long"> {
   const args = [...scope.attributes, "grep", "-n", "-z", "-I", "--no-color", "--full-name"];
   if (scope.head === undefined) args.push("--untracked");
   args.push(...patterns);
   if (scope.head !== undefined) args.push(scope.head);
-  return git([...args, "--"], { cwd: scope.root, okExitCodes: [0, 1], truncateAt: cap });
-}
-
-function parse(scope: SearchScope, out: string): CodeMatch[] {
   const prefix = scope.head === undefined ? "" : `${scope.head}:`;
-  return out
-    .split("\n")
-    .filter((line) => line !== "")
-    .map((line) => {
+  return gitLines(
+    [...args, "--"],
+    { cwd: scope.root, okExitCodes: [0, 1], maxLineBytes: MAX_LINE_BYTES },
+    (line) => {
+      if (line === "") return true;
       const [path = "", lineNumber = "0", ...text] = line.split("\0");
-      return { path: path.slice(prefix.length), line: Number(lineNumber), text: text.join("\0") };
-    });
+      const match = {
+        path: path.slice(prefix.length),
+        line: Number(lineNumber),
+        text: text.join("\0"),
+      };
+      return onMatch(match, line.length);
+    },
+  );
 }
