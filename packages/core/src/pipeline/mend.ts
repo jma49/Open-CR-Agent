@@ -23,6 +23,7 @@ import { oneLine } from "../review/prompt-text.js";
 import type { ChangeCommit, VcsAdapter } from "../vcs.js";
 import { reviewContext } from "./context.js";
 import { fixAtHead, type StoredFinding } from "./fix-finding.js";
+import { agentPatch } from "./mend-agent.js";
 import type { ReviewOptions } from "./options.js";
 
 const CONCURRENCY = 3;
@@ -128,10 +129,18 @@ const FOR_A_PERSON: ReadonlySet<ItemReason> = new Set<ItemReason>([
   "tamper",
 ]);
 
+// Why the local lane wrote nothing for a finding an edit may still fix: it
+// spans more than the lane takes, or needs lines elsewhere.
+const NOT_LOCAL: ReadonlySet<ItemReason> = new Set<ItemReason>([
+  "not_candidate",
+  "declined",
+  "too_large",
+]);
+
 // One round of the fix loop (ADR-0078) over accepted findings: each open
-// finding gets a patch from the fix stage's checked completion, the gate and
-// the verifier decide what is kept, and the kept patches become one commit
-// from the head they were made at. Nothing from the change runs.
+// finding gets a patch from its lane, the gate and the verifier decide what
+// is kept, and the kept patches become one commit from the head they were
+// made at. Nothing from the change runs.
 export async function mendRound(options: MendOptions): Promise<MendRound> {
   const { vcs } = options;
   const before = options.state ?? EMPTY_STATE;
@@ -257,16 +266,13 @@ async function attempt(
   });
   const outside = head.scope.refusal(finding.file);
   if (outside) return refuse(outside);
-  const fixed = await fixAtHead(finding, { ...deps, diffs: head.diffs, context: head.context });
-  for (const warning of fixed.warnings) deps.onWarning(warning);
-  if (!("fix" in fixed)) return refuse(fixed.reason);
-  const content = await head.context.readFile(finding.file);
-  if (content === undefined) return refuse("stale");
-  head.contents.set(finding.file, content);
-  const patch: ItemPatch = {
-    item: finding.fingerprint,
-    hunks: [{ path: finding.file, ...fixed.fix }],
-  };
+  const written = await write(finding, head, deps);
+  if (!("patch" in written)) {
+    return written.reason === "no_room"
+      ? { outcome: "deferred", reason: "no_room" }
+      : refuse(written.reason);
+  }
+  const { patch } = written;
   const gated = await gate(patch, head.contents, head.scope, deps.syntax, MEND_LIMITS);
   if (gated) return refuse(gated);
   for (const step of steps) {
@@ -278,6 +284,44 @@ async function attempt(
     if (refused) return refuse(refused);
   }
   return { patch };
+}
+
+// The patch for one finding, by the smallest lane that can write it: the fix
+// stage's completion for a local edit, else a task with the edit tool, where
+// the runtime runs one.
+async function write(
+  finding: StoredFinding,
+  head: Head,
+  deps: AttemptDeps,
+): Promise<{ patch: ItemPatch } | { reason: ItemReason }> {
+  const fixed = await fixAtHead(finding, { ...deps, diffs: head.diffs, context: head.context });
+  for (const warning of fixed.warnings) deps.onWarning(warning);
+  if ("fix" in fixed) {
+    const content = await head.context.readFile(finding.file);
+    if (content === undefined) return { reason: "stale" };
+    head.contents.set(finding.file, content);
+    return {
+      patch: { item: finding.fingerprint, hunks: [{ path: finding.file, ...fixed.fix }] },
+    };
+  }
+  if (!deps.runtime.toolsets || !NOT_LOCAL.has(fixed.reason)) return fixed;
+  const edited = await agentPatch(
+    {
+      id: finding.fingerprint,
+      file: finding.file,
+      title: finding.title,
+      body: finding.body,
+      code: finding.existingCode,
+      suggestion: finding.suggestion,
+    },
+    { ...deps, context: head.context, scope: head.scope },
+  );
+  if (!("patch" in edited)) {
+    if (edited.warning) deps.onWarning(edited.warning);
+    return edited;
+  }
+  for (const [path, content] of edited.heads) head.contents.set(path, content);
+  return edited;
 }
 
 async function commit(

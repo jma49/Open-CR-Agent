@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { AgentRuntime, ModelChains, ReviewContext, Sampling } from "../contracts.js";
+import type { AgentRuntime, ModelChains, Sampling, ToolDefinition } from "../contracts.js";
 import type { ReviewEvent } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { RepoRule } from "../rules/repo-rules.js";
@@ -53,13 +53,6 @@ export interface ModelPrice {
 
 export type VcsFactory = (options: unknown) => VcsAdapter;
 export type RuntimeFactory = (options: RuntimeOptions) => AgentRuntime;
-
-export interface ToolDefinition<Shape extends z.ZodRawShape = z.ZodRawShape> {
-  name: string;
-  description: string;
-  inputSchema: z.ZodObject<Shape>;
-  execute(args: z.infer<z.ZodObject<Shape>>, context: ReviewContext): Promise<string>;
-}
 
 export interface BootstrapContext<Settings = unknown> {
   settings: Settings;

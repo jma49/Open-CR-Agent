@@ -38,6 +38,8 @@ export type {
   SymbolKind,
   SymbolReference,
   SyntaxChecker,
+  TaskToolset,
+  ToolDefinition,
   Usage,
 } from "./contracts.js";
 export { MODEL_TIERS, SYMBOL_KINDS } from "./contracts.js";
@@ -123,7 +125,6 @@ export type {
   PostConfigureContext,
   RuntimeFactory,
   RuntimeOptions,
-  ToolDefinition,
   VcsFactory,
 } from "./plugin/types.js";
 export {
@@ -194,7 +195,7 @@ export {
   textToolInstructions,
   textToolResults,
 } from "./runtime/text-tools.js";
-export { reviewTools } from "./runtime/tools.js";
+export { readTools, reviewTools } from "./runtime/tools.js";
 export type { AnalyzerEvidenceUse } from "./sarif/evidence.js";
 export { parseSarifLog, SarifError, type SarifLog } from "./sarif/schema.js";
 export type { ExclusionReason, SelectionPolicy } from "./select/select.js";

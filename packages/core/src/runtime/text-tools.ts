@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ToolDefinition } from "../plugin/types.js";
+import type { ToolDefinition } from "../contracts.js";
 import { data, join, type PromptText, section } from "../review/prompt-text.js";
 
 // Tool calls as text, for a model endpoint that takes no `tools` parameter
