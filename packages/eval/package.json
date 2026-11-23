@@ -9,10 +9,10 @@
   },
   "type": "module",
   "dependencies": {
-    "@open-cr-agent/cli": "0.16.0",
-    "@open-cr-agent/cloud-contract": "0.16.0",
-    "@open-cr-agent/core": "0.16.0",
-    "@open-cr-agent/vcs-local": "0.16.0",
+    "@open-cr-agent/cli": "0.17.0",
+    "@open-cr-agent/cloud-contract": "0.17.0",
+    "@open-cr-agent/core": "0.17.0",
+    "@open-cr-agent/vcs-local": "0.17.0",
     "zod": "^4.6.6"
   },
   "bin": {
