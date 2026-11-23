@@ -3,7 +3,15 @@ import type { SessionMessage } from "./session-outcome.js";
 import { promptSession } from "./session-prompt.js";
 
 const REPORT_TOOL = "ocra_report_finding";
-const input = { title: "t", agent: "a", model: "google/m", system: "s", user: "u", tools: {} };
+const input = {
+  title: "t",
+  agent: "a",
+  model: "google/m",
+  system: "s",
+  user: "u",
+  tools: {},
+  maxSteps: 30,
+};
 
 // What OpenCode holds for a session that reported one finding before it was
 // cut off.
@@ -89,6 +97,51 @@ describe("promptSession", () => {
     expect(aborted).toContain("s1");
     // What the session did before it went silent is kept.
     expect(outcome.usage.costUsd).toBe(0.25);
+  });
+
+  it("stops a turn that runs past its step cap, as one that used every step", async () => {
+    const aborted: string[] = [];
+    const step: SessionMessage = {
+      info: { role: "assistant", cost: 0.01, tokens: { input: 100, output: 10 } },
+      parts: [
+        { type: "step-start" },
+        { type: "tool", tool: "ocra_read_file", state: { status: "completed" } },
+      ],
+    };
+    const steps: SessionMessage[] = [];
+    const api = {
+      create: async () => ({ data: { id: "s1" } }),
+      // A model that calls a tool again whatever OpenCode tells it.
+      prompt: (_: unknown, options: { signal: AbortSignal }) =>
+        new Promise((_, reject) =>
+          options.signal.addEventListener("abort", () => reject(new Error("aborted")), {
+            once: true,
+          }),
+        ),
+      messages: async () => {
+        steps.push(step, step);
+        // As OpenCode records the stop in the session.
+        const stopped = { ...step, info: { ...step.info, error: { name: "MessageAbortedError" } } };
+        return { data: aborted.length > 0 ? [...steps, stopped] : steps };
+      },
+      abort: async ({ sessionID }: { sessionID: string }) => {
+        aborted.push(sessionID);
+        return { data: true };
+      },
+    } as never;
+    const outcome = await promptSession(
+      api,
+      { ...input, maxSteps: 4, resume: { doneTool: "ocra_task_done", message: "Finish." } },
+      REPORT_TOOL,
+      AbortSignal.timeout(2_000),
+      { inactivityMs: 60_000, pollMs: 20 },
+    );
+    expect(aborted).toContain("s1");
+    expect(outcome.error).toBeUndefined();
+    expect(outcome.atStepCap).toBe(true);
+    expect(outcome.resumed).toBeUndefined();
+    expect(outcome.steps).toBeGreaterThan(4);
+    expect(outcome.steps).toBeLessThan(20);
   });
 
   it("stops a session OpenCode holds in a long retry, as a quota refusal", async () => {
@@ -264,7 +317,7 @@ describe("promptSession", () => {
 
   describe("an agent that stops before finishing", () => {
     const DONE = "ocra_task_done";
-    const resume = { doneTool: DONE, maxSteps: 30, message: "Finish the review." };
+    const resume = { doneTool: DONE, message: "Finish the review." };
     const step = (parts: SessionMessage["parts"], cost = 0.1): SessionMessage => ({
       info: { role: "assistant", cost, tokens: { input: 100, output: 10 } },
       parts: [{ type: "step-start" }, ...parts],
@@ -369,6 +422,7 @@ describe("promptSession", () => {
       const wrapUp = {
         agent: "wrap",
         tools: { ocra_read_file: false, ocra_report_finding: true },
+        maxSteps: 2,
         message: "Report what you confirmed.",
       };
 
