@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AgentEvent } from "../contracts.js";
 import type { AttemptOutcome } from "./attempt.js";
-import { completeWithFailback, withFailback } from "./failback.js";
+import { completeWithFailback, type RateLimits, withFailback } from "./failback.js";
 import { ModelHealth } from "./models.js";
 import { MAX_QUOTA_WAIT_MS, parseQuotaError, QUOTA_RETRIES, sleep } from "./quota.js";
 
@@ -134,6 +134,7 @@ describe("withFailback on rate limits", () => {
     chain: string[],
     health: ModelHealth,
     onEvent: (event: AgentEvent) => void = () => {},
+    inAttempt?: (limits: RateLimits) => Promise<AttemptOutcome | undefined>,
   ) {
     const attempted: string[] = [];
     const events: AgentEvent[] = [];
@@ -143,9 +144,9 @@ describe("withFailback on rate limits", () => {
       chain,
       health,
       signal: new AbortController().signal,
-      attempt: async (model) => {
+      attempt: async (model, _onUsage, limits) => {
         attempted.push(model);
-        return outcomes[model]?.shift() ?? ok;
+        return (await inAttempt?.(limits)) ?? outcomes[model]?.shift() ?? ok;
       },
     })) {
       events.push(event);
@@ -153,6 +154,34 @@ describe("withFailback on rate limits", () => {
     }
     return { attempted, events };
   }
+
+  it("lets an attempt wait a rate limit out, and says so while it runs", async () => {
+    const health = new ModelHealth();
+    const waited: boolean[] = [];
+    const result = await run({}, ["a"], health, undefined, async (limits) => {
+      waited.push(await limits.waitOut({ retryAfterMs: 20, daily: false }));
+      return undefined;
+    });
+    expect(waited).toEqual([true]);
+    expect(result.attempted).toEqual(["a"]);
+    const messages = result.events.flatMap((e) => (e.type === "progress" ? [e.message] : []));
+    expect(messages.slice(0, 2)).toEqual(["reviewing with a", "a is rate limited; waiting 1s"]);
+    expect(health.pausedFor("a")).toBe(0);
+  });
+
+  it("tells an attempt not to wait once the model is out of quota", async () => {
+    const health = new ModelHealth();
+    const waited: boolean[] = [];
+    const quota = { daily: true };
+    const result = await run({}, ["a", "b"], health, undefined, async (limits) => {
+      if (waited.length > 0) return undefined;
+      waited.push(await limits.waitOut(quota));
+      return { ...ok, error: { message: "daily limit", retryable: true, quota } };
+    });
+    expect(waited).toEqual([false]);
+    expect(result.attempted).toEqual(["a", "b"]);
+    expect(health.isOutOfQuota("a")).toBe(true);
+  });
 
   it("waits and retries the same model", async () => {
     const health = new ModelHealth();

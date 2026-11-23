@@ -826,7 +826,7 @@ export interface ModelAttempts {
     // (undocumented)
     refuse?(chain: readonly string[], own: boolean): OcraError | undefined;
     // (undocumented)
-    task(model: string, spec: AgentTaskSpec, signal: AbortSignal, onUsage: (spent: Usage) => void): Promise<TaskAttempt>;
+    task(model: string, spec: AgentTaskSpec, signal: AbortSignal, onUsage: (spent: Usage) => void, limits: RateLimits): Promise<TaskAttempt>;
 }
 
 // @public (undocumented)
@@ -1095,6 +1095,12 @@ export interface QuoteSignature {
     hash: string;
     // (undocumented)
     lines: number;
+}
+
+// @public (undocumented)
+export interface RateLimits {
+    // (undocumented)
+    waitOut(quota: QuotaError): Promise<boolean>;
 }
 
 // @public (undocumented)

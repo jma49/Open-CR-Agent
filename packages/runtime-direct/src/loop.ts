@@ -5,6 +5,7 @@ import {
   errorMessage,
   exploredBy,
   type ModelPrice,
+  type RateLimits,
   REVIEW_TOOLS,
   type ReviewContext,
   type TaskAttempt,
@@ -13,6 +14,7 @@ import {
   type Usage,
 } from "@open-cr-agent/core";
 import {
+  type Answer,
   type CallSettings,
   type Dialogue,
   type Endpoint,
@@ -48,6 +50,8 @@ export interface LoopInput {
   onEffortRefused?: () => void;
   signal: AbortSignal;
   onUsage?: (spent: Usage) => void;
+  // Review agents only: a rate-limited request waits and is sent again.
+  limits?: RateLimits;
 }
 
 interface WrapUpTurn {
@@ -118,12 +122,8 @@ class Conversation {
     let done = false;
     dialogue.say(message.text, message.shared);
     while (outcome.steps < maxSteps) {
-      const response = await dialogue.ask(offered, this.settings, this.signal);
+      const response = await this.ask(offered);
       outcome.steps += 1;
-      if (response.effortDropped) {
-        this.settings = withoutEffort(this.settings);
-        input.onEffortRefused?.();
-      }
       if (!response.ok) {
         outcome.error = this.timeout.aborted
           ? { message: `timed out after ${Math.round(input.timeoutMs / 1000)}s`, retryable: true }
@@ -159,6 +159,23 @@ class Conversation {
     if (!done && !outcome.error && outcome.steps >= maxSteps) outcome.atStepCap = true;
     else delete outcome.atStepCap;
     return { ...snapshot(outcome), ...exploredBy(uses) };
+  }
+
+  // One step's answer. A request the endpoint rate-limits is sent again once
+  // the model's pause is over: the conversation is kept, where a new attempt
+  // would ask and pay for every step before it again.
+  private async ask(offered: readonly ToolDefinition[]): Promise<Answer> {
+    for (;;) {
+      const response = await this.dialogue.ask(offered, this.settings, this.signal);
+      if (response.effortDropped) {
+        this.settings = withoutEffort(this.settings);
+        this.input.onEffortRefused?.();
+      }
+      const quota = response.ok ? undefined : response.error.quota;
+      if (!quota || this.signal.aborted || !(await this.input.limits?.waitOut(quota))) {
+        return response;
+      }
+    }
   }
 }
 

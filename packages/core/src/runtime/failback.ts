@@ -11,7 +11,7 @@ import {
   type WrapUpOutcome,
 } from "./attempt.js";
 import type { ModelHealth } from "./models.js";
-import { sleep } from "./quota.js";
+import { type QuotaError, sleep } from "./quota.js";
 import { outcomeOf, pendingWrapUp, wrapUp } from "./wrap-up.js";
 
 export interface FailbackOptions {
@@ -23,7 +23,17 @@ export interface FailbackOptions {
   health: ModelHealth;
   signal: AbortSignal;
   // onUsage receives what the attempt has spent so far, as it grows.
-  attempt(model: string, onUsage: (spent: Usage) => void): Promise<TaskAttempt>;
+  attempt(model: string, onUsage: (spent: Usage) => void, limits: RateLimits): Promise<TaskAttempt>;
+}
+
+// What an attempt that can send a request again does with a rate limit
+// instead of ending: the steps it has taken are not asked and paid for twice.
+export interface RateLimits {
+  // Resolves true once the model's pause, shared by every task, is over and
+  // the refused request may be sent again; false when the model is out of
+  // quota for this run or the task was stopped, and the attempt ends with
+  // the refusal.
+  waitOut(quota: QuotaError): Promise<boolean>;
 }
 
 // Findings from a failed attempt are still emitted: the pipeline deduplicates
@@ -36,11 +46,7 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
       if (signal.aborted) return;
       const pause = health.pausedFor(model);
       if (pause > 0) {
-        yield {
-          type: "progress",
-          taskId,
-          message: `${model} is rate limited; waiting ${Math.ceil(pause / 1000)}s`,
-        };
+        yield { type: "progress", taskId, message: rateLimited(model, pause) };
         await pauseOver(health, model, signal);
         if (signal.aborted) return;
       }
@@ -53,7 +59,14 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
       const attempt = yield* whileRunning(
         taskId,
         live,
-        options.attempt(model, (spent) => live.observe(spent)),
+        options.attempt(model, (spent) => live.observe(spent), {
+          waitOut: async (quota) => {
+            if (health.recordQuota(model, quota) !== "wait") return false;
+            live.note(rateLimited(model, health.pausedFor(model)));
+            await pauseOver(health, model, signal);
+            return !signal.aborted && !health.isOutOfQuota(model);
+          },
+        }),
       );
       yield { type: "usage", taskId, ...live.rest(attempt.usage) };
       let outcome = outcomeOf(attempt);
@@ -128,7 +141,12 @@ function doneEvent(
   };
 }
 
-// Yields the spend that grows while `running` runs, then returns its result.
+function rateLimited(model: string, pauseMs: number): string {
+  return `${model} is rate limited; waiting ${Math.ceil(pauseMs / 1000)}s`;
+}
+
+// Yields the spend that grows and the notes left while `running` runs, then
+// returns its result.
 async function* whileRunning<T>(
   taskId: string,
   live: LiveUsage,
@@ -139,33 +157,51 @@ async function* whileRunning<T>(
     () => false,
   );
   while (await Promise.race([finished, live.changed().then(() => true)])) {
-    yield { type: "usage", taskId, ...live.take() };
+    for (const message of live.notes()) yield { type: "progress", taskId, message };
+    if (live.spentMore()) yield { type: "usage", taskId, ...live.take() };
   }
   return await running;
 }
 
 // Hands out what an attempt has spent in increments, each what grew since the
 // last one; `rest` settles the finished attempt's total, so the increments
-// add up to it and nothing is counted twice.
+// add up to it and nothing is counted twice. Also what the attempt has to
+// say while it runs.
 class LiveUsage {
   private seen = emptyUsage();
   private given = emptyUsage();
+  private said: string[] = [];
   private wake: (() => void) | undefined;
 
   observe(spent: Usage): void {
     this.seen = larger(this.seen, spent);
-    if (ahead(this.seen, this.given)) {
-      this.wake?.();
-      this.wake = undefined;
-    }
+    if (this.spentMore()) this.woken();
   }
 
-  // Resolves once more has been seen than handed out.
+  note(message: string): void {
+    this.said.push(message);
+    this.woken();
+  }
+
+  notes(): string[] {
+    return this.said.splice(0);
+  }
+
+  spentMore(): boolean {
+    return ahead(this.seen, this.given);
+  }
+
+  // Resolves once there is a note, or more has been seen than handed out.
   changed(): Promise<void> {
-    if (ahead(this.seen, this.given)) return Promise.resolve();
+    if (this.said.length > 0 || this.spentMore()) return Promise.resolve();
     return new Promise((resolve) => {
       this.wake = resolve;
     });
+  }
+
+  private woken(): void {
+    this.wake?.();
+    this.wake = undefined;
   }
 
   take(): Usage {

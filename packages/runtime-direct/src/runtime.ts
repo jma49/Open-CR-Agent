@@ -15,6 +15,7 @@ import {
   OcraError,
   parseModel,
   proxiedFetch,
+  type RateLimits,
   RESUME_MESSAGE,
   type RuntimeOptions,
   reviewTools,
@@ -80,7 +81,8 @@ export class DirectRuntime implements AgentRuntime {
     this.efforts = new EffortLedger(this.sampling);
     this.chains = new ChainRunner(options.models, {
       refuse: (chain) => this.unreachable(chain),
-      task: (model, spec, signal, onUsage) => this.attemptTask(model, spec, signal, onUsage),
+      task: (model, spec, signal, onUsage, limits) =>
+        this.attemptTask(model, spec, signal, onUsage, limits),
       complete: (model, request, signal) => this.attemptCompletion(model, request, signal),
     });
   }
@@ -124,6 +126,7 @@ export class DirectRuntime implements AgentRuntime {
     spec: AgentTaskSpec,
     signal: AbortSignal,
     onUsage: (spent: Usage) => void,
+    limits: RateLimits,
   ): Promise<TaskAttempt> {
     return runLoop({
       ...this.target(model),
@@ -139,6 +142,7 @@ export class DirectRuntime implements AgentRuntime {
       timeoutMs: spec.timeoutMs,
       signal,
       onUsage,
+      limits,
     });
   }
 
