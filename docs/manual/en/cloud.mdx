@@ -1,11 +1,14 @@
 ---
 title: ocra Cloud
-description: "The web console on top of the CLI: your pull requests and their reviews, merging, learnings, checks, automations, notifications, insights and running your own server."
+description: "The web console on top of the CLI: your pull requests and their reviews, merging, auto review, learnings, checks, automations, notifications, insights and running your own server."
 ---
 
 ocra Cloud is a web console and a model gateway on top of the same engine. It lives at https://app.ocracloud.com and is free during early access; you bring the model keys. A company can run its own server instead ([self-hosting](https://github.com/jma49/ocra-cloud/blob/main/docs/self-hosting.md)). The CLI uses it only while you are [signed in](./cli#ocra-login-ocra-logout-ocra-whoami); what it receives is in the [threat model](./threat-model#ocra-cloud).
 
-Some pages need a server with a bot account, which reviews and writes on the platform as ocra: the hosted console has none yet, so they are marked *self-hosted* below ([running your own server](#running-your-own-server)).
+Some pages need a bot: an account of the server's own, which reviews and writes on the platform as ocra. They are marked *with the bot* below.
+
+- **The hosted console** has one on GitHub: the GitHub App named Ocra Cloud, which posts as `ocra-cloud[bot]` in the repositories you install it on. It has none on GitLab.
+- **A server of your own** has one on GitHub, GitLab or both ([running your own server](#running-your-own-server)). What only such a server does is marked *self-hosted*.
 
 ## Pull requests
 
@@ -20,14 +23,14 @@ The Inbox sorts your pull and merge requests on GitHub and GitLab into sections:
 - **Issues from findings.** A finding can be opened as an issue in the reviewed repository, from a draft you edit first.
 - **Ready to merge.** One checklist of what still stands between the pull request and its merge, read live: draft, conflicts, approvals, code owners, required checks, unresolved threads and ocra's pre-merge checks.
 - **Merging.** Merge, squash or rebase, or put it in the platform's own merge queue (GitHub's merge queue, GitLab's merge trains) and take it out again; the page shows where it is in the queue. A merge names the commit you read: one that moved since is refused. "Merge when ready" arms the platform's own auto-merge as you; where it is off, a self-hosted server keeps the request and merges once the checklist above is met.
-- **Review now and generate.** *Self-hosted.* For a repository enrolled in [auto review](#auto-review-and-ocra), ask for a review of the current head, or for tests or doc comments ([`ocra generate`](./cli#ocra-generate)) committed to the branch by the bot.
-- **Stacks.** A pull request in a stack made with [`ocra stack`](./cli#ocra-stack) shows the stack and merges it from the bottom up to the one you choose.
+- **Review now and generate.** *With the bot.* For a repository enrolled in [auto review](#auto-review-and-ocra), ask for a review of the current head, or for tests or doc comments ([`ocra generate`](./cli#ocra-generate)) committed to the branch by the bot.
+- **Stacks.** A pull request in a stack made with [`ocra stack`](./cli#ocra-stack) shows the stack and merges it from the bottom up to the one you choose. The server runs the merge as a job, so you can close the page: it merges the bottom layer as you, moves the next one onto the trunk, brings its branch up to date where the repository requires that, waits for its checks, merges it, and so on. A failed check, conflicts, a refusal, or a layer that gained commits or was closed stops it with the reason, and so do three days; the page of any layer shows how far it is and can cancel it.
 - **Impact.** Where the server keeps a [code graph](#code-graphs) of the repository, a rail beside the findings lists the changed symbols and where the rest of the code uses them, matched by name.
 - **Pre-merge checks.** The [checks](#pre-merge-checks) the repository sets, with each one's outcome on the current head.
 
 ## Reviews
 
-Every review uploaded by a signed-in CLI, with its findings, its walkthrough and the [linked tasks](./how-it-works#linked-tasks) it was given, when your account shares findings.
+Every review uploaded by a signed-in CLI, with its findings, its walkthrough and the [linked tasks](./how-it-works#linked-tasks) it was given, when your account shares findings. A review the server ran itself is listed with its findings whether or not you share them ([auto review](#auto-review-and-ocra)). A finding a later review of the same pull request saw fixed is marked fixed (CLI 0.14.0 and later).
 
 - **Ask ocra.** A review's page answers questions about it and its pull request ("why is this finding critical?"), with your own model key. The change is data to the model, never instructions.
 - **Live.** A review run by CLI 0.11.0 or later relays its progress while it runs; the Live page shows the run, and you can let named people, or anyone signed in to the server, watch it and comment on findings. Nothing is shared until you say so.
@@ -38,25 +41,40 @@ The Learnings page lists a repository's [learnings](./configuration#learnings) (
 
 ## Pre-merge checks
 
-Each repository can carry up to 20 checks, each off, a warning or blocking: a linked issue (open, or with a label), a title prefix or pattern, a filled-in description with given headings, a size limit, no unresolved critical finding of ocra's on the head, and a check written in plain words. A plain-language check is judged by the server's own review of the pull request (*self-hosted*), as [`mergeChecks`](./how-it-works#pre-merge-checks) are in a review you run; an edited check waits for the next review. The linked issue check waits for a review by CLI 0.11.0 or later, which uploads the linked issues. A check that cannot tell says so instead of passing.
+Each repository can carry up to 20 checks, each off, a warning or blocking: a linked issue (open, or with a label), a title prefix or pattern, a filled-in description with given headings, a size limit, no unresolved critical finding of ocra's on the head, and a check written in plain words. A plain-language check is judged by the server's own review of the pull request (*with the bot*), as [`mergeChecks`](./how-it-works#pre-merge-checks) are in a review you run; an edited check waits for the next review. The linked issue check waits for a review by CLI 0.11.0 or later, which uploads the linked issues. A check that cannot tell says so instead of passing.
 
-The pull request's page shows the result. On a self-hosted server the bot also posts it, as the `ocra / pre-merge` check run on GitHub or commit status on GitLab, and a failing blocking check fails it.
+The pull request's page shows the result. The bot also posts it, as the `ocra / pre-merge` check run on GitHub or commit status on GitLab, and a failing blocking check fails it.
 
 ## Automations
 
-*Self-hosted.* Up to 50 rules, each a set of conditions and the actions taken when they all hold. A rule runs when a pull request is queued for review (matching its repository, author, base branch, title or labels) or when its review is uploaded (matching a critical finding or the verdict). Actions add labels, request reviewers, post a comment as the bot, notify a channel, or skip the review. A dry run says which rules match a pull request you describe, and every run is listed for 30 days.
+*With the bot.* Up to 50 rules, each a set of conditions and the actions taken when they all hold. A rule runs when a pull request is queued for review (matching its repository, author, base branch, title or labels) or when its review is uploaded (matching a critical finding or the verdict). Actions add labels, request reviewers, post a comment as the bot, notify a channel, or skip the review. A dry run says which rules match a pull request you describe, and every run is listed for 30 days.
 
 ## Auto review and @ocra
 
-*Self-hosted.* An enrolled repository's pull requests are reviewed by the server as they open or gain commits, with the enrolling account's models, keys, budget and rules, and nothing from the pull request runs. A comment that mentions `@ocra` there gets an answer in its thread ([`ocra reply`](./cli#ocra-reply)). Without a server, the [Action](./github#asking-ocra-about-the-change) does the same in your own workflow.
+*With the bot.* You enroll a repository on the Auto review page, and the server reviews its pull requests with your account's models, keys, budget and rules. Nothing from the pull request runs.
+
+- **Automatic.** Each enrolled repository has an Automatic switch. On, a pull request is reviewed as it opens, leaves draft or gains commits. Off, only the reviews you ask for on a pull request's page run.
+- **Profile.** Balanced (the default) reviews as your settings say. Quiet posts only correctness and security findings on changed lines. Thorough runs every reviewer twice, at about twice the cost.
+- **The daily limit.** A review's model calls pass the gateway, which the hosted console caps at 500 calls per account each UTC day; a server of your own sets its cap. Once the calls are used, queued reviews wait until midnight UTC, a review the limit cut short runs again then, and the Auto review page says "Daily limit reached".
+- **Findings are kept.** From the first review the server runs for you, it keeps those reviews' findings with the code each one quotes, redacted like any upload, so that the pull request's page, the Reviews page and your notifications can show them. This does not turn on sharing for reviews from your own machine. Account and privacy switches it off and can delete what is kept; a later review does not switch it back on.
+- **@ocra.** A person's comment that mentions `@ocra` on an enrolled repository's pull request gets an answer in its thread ([`ocra reply`](./cli#ocra-reply)).
+
+On the hosted console the reviews run on remote runners: machines that ask the server for the next job, clone the repository and run the released CLI. A runner holds no model key and gets a token for one repository per job. A server of your own runs reviews itself, on [runners](https://github.com/jma49/ocra-cloud/blob/main/docs/runner.md), or both. Without a server, the [Action](./github#asking-ocra-about-the-change) does the same in your own workflow.
 
 ## Review settings
 
-Settings that apply where the repository's [`.ocra/config.json`](./configuration) leaves them out: the models of each tier, rules, plugins, the spend limit, fixes (`fixes`) and linked tasks (`linkedTasks`, v0.12.0). The Review config page edits a repository's `.ocra/config.json` itself, checked against its schema, as a pull request or a commit as you. Account and privacy lists the signed-in browsers and terminals and an audit log of the account's key changes, kept 90 days.
+Settings that apply where the repository's [`.ocra/config.json`](./configuration) leaves them out: the models of each tier, rules, plugins, the spend limit, fixes (`fixes`) and linked tasks (`linkedTasks`, v0.12.0). The Review config page edits a repository's `.ocra/config.json` itself, checked against its schema, as a pull request or a commit as you. Account and privacy holds whether findings are shared and whether a server-run review's are kept, the signed-in browsers and terminals, and an audit log of the account's key changes, kept 90 days.
 
 ## Notifications
 
-Reviews are announced in Slack or WeCom group chats, or by email on a server with a mail account: every review, reviews with findings, or only critical ones. A channel can also get a daily digest of the day before and a weekly report at a weekday and hour you choose: reviews, findings by severity, findings later runs saw fixed or dismissed, merged pull requests with the median time to merge, and the most reviewed repositories. A day or week with nothing to report sends nothing. Finding titles appear only when your account shares findings.
+A channel is a Slack or WeCom group chat, a webhook of your own, or an email address on a server with a mail account (*self-hosted*); an account has up to 10.
+
+- **Reviews.** Every review, reviews with findings, or only critical ones. Finding titles appear only when the findings are kept.
+- **Your pull requests.** *With the bot.* On enrolled repositories a channel can also hear when a review is asked of you, when someone reviews, comments on, merges or closes a pull request you wrote, when its pre-merge checks fail, when you are mentioned and when someone replies in a thread you started.
+- **Reviews asked of a team.** A review asked of a GitHub team you are on reaches you once per pull request and shows in the Inbox under the team's name; one member's review ends it. The App needs the organization permission Members: Read. GitLab's reviewers are users only.
+- **Reminders.** A channel can remind you of a review you still owe, or of a pull request of yours nobody has reviewed, after 4, 8, 24 or 48 hours. Quiet hours in your time zone hold reminders and comment notices, then send them as one message.
+- **Digest and report.** A daily digest of the day before, and a weekly report at a weekday and hour you choose: reviews, findings by severity, findings later runs saw fixed or dismissed, merged pull requests with the median time to merge, and the most reviewed repositories. A day or week with nothing to report sends nothing.
+- **Deliveries.** Every message is a delivery. One that fails for a reason that may pass (no answer, a rate limit, a server error) is tried again with a growing wait; one the receiver refuses for good is given up at once. A channel's last message opens its deliveries: each message in words, whether it arrived, and when a pending one is tried next. Deliveries are kept 30 days.
 
 ## Insights
 
@@ -72,8 +90,10 @@ A company can run ocra Cloud on its own machines, for example next to an interna
 
 - **Database.** Postgres by default (13 or later; the compose file runs Postgres 17 beside the server); a SQLite file for a trial.
 - **Sign-in.** A GitHub App, or OpenID Connect: the company's SSO (Keycloak, Azure AD, Okta) or a self-hosted GitLab. With GitLab as the provider, the same sign-in connects GitLab.
+- **Who may sign in.** Anyone the sign-in vouches for, unless `SIGN_IN_ALLOW` lists who may: `org:` (members of a GitHub organization), `user:` (a GitHub login), `domain:` (a verified email address at that domain) and `group:` (a group the SSO names), for example `org:acme,domain:acme.com`. A sign-in that matches no entry is refused before an account is made. Sessions and API tokens are checked again within the hour, and at once when the list changes, so leaving the organization ends access.
 - **Code platforms.** GitLab.com or a self-hosted GitLab (`GITLAB_URL`, also one installed under a relative URL root such as `https://example.com/gitlab`); github.com or one GitHub Enterprise Server (`GITHUB_URL`), whose API, sign-in, bot and links then all go to that server. One server has one GitHub.
 - **Company models.** `MODEL_ENDPOINTS` declares the company's OpenAI-compatible endpoints, `BUILTIN_PROVIDERS=off` hides the public ones, and `DEFAULT_MODELS` gives every new account its models; one model is enough, since a tier left out takes the nearest named one.
+- **Reviews.** The server runs reviews in its own process, or leaves them to remote runners on other machines (`RUNNER_TOKEN`).
 - **Email.** `SMTP_URL` and `SMTP_FROM` turn on email notifications.
 
-The pages marked *self-hosted* above need such a server with its bot.
+What is marked *self-hosted* above needs such a server.

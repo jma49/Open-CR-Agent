@@ -91,7 +91,7 @@ Anthropic's own API, or a gateway in its Messages protocol, is declared with `"t
 - **`temperature` and `seed` are not sent**: the API takes no seed and its newer models no temperature. The report lists them as not applied.
 - The `opencode` runtime refuses such a declaration; it reaches Anthropic as the catalog provider `anthropic/<model>` instead.
 
-Tested against a scripted Messages endpoint (the key goes only where it should, the cache marks, the price, a refused effort); not yet run live.
+Tested against a scripted Messages endpoint (the key goes only where it should, the cache marks, the price, a refused effort). Run live on Anthropic's API through ocra Cloud (`ocra-anthropic/<model>`); a declaration of your own has not been run live yet.
 
 ## Free models through OpenRouter
 

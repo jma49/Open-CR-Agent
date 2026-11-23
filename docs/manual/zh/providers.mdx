@@ -91,7 +91,7 @@ Anthropic 官方 API，或者使用其 Messages 协议的网关，用 `"type": "
 - **不发送 `temperature` 和 `seed`**：该 API 没有 seed，新模型也不接受 temperature。报告里会把它们列为未生效。
 - `opencode` 运行时拒绝这样的声明；它通过目录里的供应商 `anthropic/<model>` 访问 Anthropic。
 
-已对模拟的 Messages 端点测试过（密钥只发往该去的地方、缓存标记、价格、被拒绝的推理强度）；还没有真实运行过。
+已对模拟的 Messages 端点测试过（密钥只发往该去的地方、缓存标记、价格、被拒绝的推理强度）。已经通过 ocra Cloud（`ocra-anthropic/<model>`）在 Anthropic 的 API 上真实运行过；你自己声明的端点还没有真实运行过。
 
 ## OpenRouter 上的免费模型
 
