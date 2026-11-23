@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { AgentRuntime, AgentTaskSpec, SymbolExtractor } from "../contracts.js";
+import type {
+  AgentRuntime,
+  AgentTaskSpec,
+  CompletionRequest,
+  SymbolExtractor,
+} from "../contracts.js";
+import { PLAN_INSTRUCTIONS } from "../review/plan-phase.js";
 import { previewReview } from "./preview.js";
 import { patch, vcs } from "./run.fakes.js";
 import { review, reviewWithHooks } from "./run.js";
@@ -22,8 +28,7 @@ function runtime(plan: () => Promise<string>): AgentRuntime & { prompts: AgentTa
       yield { type: "done", taskId: spec.taskId };
     },
     complete: async (request) => {
-      if (request.system.includes("prepare one reviewer's pass"))
-        return { text: await plan(), usage };
+      if (request.user.endsWith(PLAN_INSTRUCTIONS)) return { text: await plan(), usage };
       return { text: "{}", usage };
     },
   };
@@ -164,18 +169,26 @@ describe("review --ultra", () => {
     expect(prompt).not.toContain("<ocra_callers>");
   });
 
-  it("sends the planner the bundle without the instruction to report findings", async () => {
-    const planPrompts: string[] = [];
+  it("asks for the plan as the reviewer, in the words its review opens with", async () => {
+    const plans: CompletionRequest[] = [];
     const rt = runtime(async () => "- check it");
     const complete = rt.complete?.bind(rt);
     rt.complete = async (request, signal) => {
-      if (request.system.includes("prepare one reviewer's pass")) planPrompts.push(request.user);
+      if (request.user.endsWith(PLAN_INSTRUCTIONS)) plans.push(request);
       return complete ? complete(request, signal) : { text: "", usage };
     };
     await review({ vcs: change(), runtime: rt, stages: { verify: false }, mode: { ultra: true } });
-    expect(planPrompts).toHaveLength(1);
-    expect(planPrompts[0]).toContain("<ocra_review_files>");
-    expect(planPrompts[0]).not.toContain("report_finding");
+
+    expect(plans).toHaveLength(1);
+    const [plan] = plans;
+    const [task] = rt.prompts;
+    const filesEnd = plan?.sharedPrefixes?.at(-1) ?? 0;
+    expect(plan?.system).toBe(task?.systemPrompt);
+    expect(plan?.user.slice(0, filesEnd)).toMatch(/<\/ocra_review_files>$/);
+    expect(task?.userPrompt.slice(0, filesEnd)).toBe(plan?.user.slice(0, filesEnd));
+    expect(task?.sharedPrefixes?.at(-1)).toBe(filesEnd);
+    // The planner is not told to report findings.
+    expect(plan?.user.slice(filesEnd)).not.toContain("report_finding");
   });
 
   it("counts plan calls in --plan, once per cell under --ultra", async () => {

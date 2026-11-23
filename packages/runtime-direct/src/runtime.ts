@@ -152,7 +152,9 @@ export class DirectRuntime implements AgentRuntime {
       ...this.call({ agent: request.agent ?? request.tier, effort: request.effort, model }),
       system: request.system,
       user: request.user,
-      tools: [],
+      ...(request.sharedPrefixes ? { shared: request.sharedPrefixes } : {}),
+      // As the task that follows opens, so that it reads what this stores.
+      tools: request.sharedPrefixes ? this.tools : [],
       context: NO_CONTEXT,
       maxSteps: 1,
       oneRequest: true,

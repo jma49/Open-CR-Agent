@@ -11,6 +11,8 @@ interface OneShotRequest {
   call?: AgentCallSettings | undefined;
   system: string;
   user: string;
+  // CompletionRequest.sharedPrefixes.
+  sharedPrefixes?: readonly number[];
   timeoutMs: number;
 }
 
@@ -28,9 +30,16 @@ export function oneShot(
 ): OneShot | undefined {
   const complete = runtime.complete?.bind(runtime);
   if (!complete) return undefined;
-  return async ({ tier, agent, call, system, user, timeoutMs }, signal) => {
+  return async ({ tier, agent, call, system, user, sharedPrefixes, timeoutMs }, signal) => {
     const answer = await complete(
-      { tier, ...agentCall(agent, call), system, user, timeoutMs },
+      {
+        tier,
+        ...agentCall(agent, call),
+        system,
+        user,
+        ...(sharedPrefixes ? { sharedPrefixes } : {}),
+        timeoutMs,
+      },
       AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]),
     ).catch((error: unknown) => {
       const spent = usageSpent(error);

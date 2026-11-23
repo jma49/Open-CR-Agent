@@ -29,7 +29,8 @@ const MAX_OUTPUT_TOKENS = 32_000;
 const CACHE_WRITE_FACTOR = 1.25;
 const CACHED = { cache_control: { type: "ephemeral" } } as const;
 // The API takes four cache marks a request: the system prompt's, the newest
-// block's, and these.
+// block's, and these. A dialogue of one request leaves its newest block
+// unmarked and has that mark for a shared start.
 const MAX_SHARED_MARKS = 2;
 // How the API names the effort parameters in a 400 that refuses them.
 const EFFORT_PARAMETER = /\b(?:effort|output_config|thinking)\b/i;
@@ -64,7 +65,8 @@ export const anthropicWire: Wire = ({ endpoint, model, price, system, oneRequest
 
   return {
     say: (text, shared = []) => {
-      messages.push({ role: "user", content: textBlocks(text, shared) });
+      const marks = oneRequest ? MAX_SHARED_MARKS + 1 : MAX_SHARED_MARKS;
+      messages.push({ role: "user", content: textBlocks(text, shared, marks) });
     },
     ask: async (tools, settings, signal): Promise<Answer> => {
       const request = (sent: CallSettings): Request => ({
@@ -140,14 +142,19 @@ function effortParams(effort: Effort | undefined): Pick<Request, "output_config"
   };
 }
 
-// The text as blocks that end where a shared start does, each marked but the
-// last: together they read as the text does.
-function textBlocks(text: string, shared: readonly number[]): Anthropic.TextBlockParam[] {
-  const ends = shared.filter((end) => end > 0 && end < text.length).slice(-MAX_SHARED_MARKS);
+// The text as blocks that end where a shared start does: together they read
+// as the text does. The first `marks` are stored; a later one only ends a
+// block, which is where a request looks for what another stored.
+function textBlocks(
+  text: string,
+  shared: readonly number[],
+  marks: number,
+): Anthropic.TextBlockParam[] {
+  const ends = shared.filter((end) => end > 0 && end < text.length);
   const blocks: Anthropic.TextBlockParam[] = [];
   let from = 0;
-  for (const end of ends) {
-    blocks.push({ type: "text", text: text.slice(from, end), ...CACHED });
+  for (const [i, end] of ends.entries()) {
+    blocks.push({ type: "text", text: text.slice(from, end), ...(i < marks ? CACHED : {}) });
     from = end;
   }
   return [...blocks, { type: "text", text: text.slice(from) }];

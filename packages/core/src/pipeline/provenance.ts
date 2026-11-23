@@ -5,7 +5,7 @@ import type { AgentRuntime, AppliedSampling, Sampling } from "../contracts.js";
 import { shortHash } from "../hash.js";
 import { JUDGE_SYSTEM_PROMPT } from "../judge/prompt.js";
 import type { AgentProvenance, RuleProvenance, RunProvenance } from "../report/provenance.js";
-import { PLAN_SYSTEM_PROMPT } from "../review/plan-phase.js";
+import { PLAN_INSTRUCTIONS } from "../review/plan-phase.js";
 import { buildReviewPrompt } from "../review/prompt.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { SourcedRule } from "../rules/repo-rules.js";
@@ -55,7 +55,7 @@ export function promptHash(
     reviewers: Object.fromEntries(reviewerPrompts),
     helpers: {
       grouping: GROUPING_SYSTEM_PROMPT,
-      plan: PLAN_SYSTEM_PROMPT,
+      plan: PLAN_INSTRUCTIONS,
       relocate: RELOCATE_SYSTEM_PROMPT,
       verify: VERIFY_SYSTEM_PROMPT,
       judge: JUDGE_SYSTEM_PROMPT,

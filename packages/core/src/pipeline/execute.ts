@@ -249,7 +249,12 @@ async function preparePrompt(
     shared ?? planBundle(options.runtime, job.reviewer, planCall.prompt(), options.signal, call);
   if (!shared) options.plans?.set(planCall.key, planning);
   const planned = await planning;
-  const prompt = buildReviewPrompt({ ...task.input, callers, plan: planned.plan });
+  const prompt = buildReviewPrompt({
+    ...task.input,
+    callers,
+    plan: planned.plan,
+    planPhase: "after",
+  });
   // The sample that made the call pays for it and reports its warning.
   if (shared) return { prompt, usage: [], warnings: [] };
   for (const usage of planned.usage) options.onUsage?.(usage);
