@@ -875,6 +875,9 @@ export const MAX_MERGE_CHECKS = 20;
 export const MAX_REVIEWERS = 40;
 
 // @public
+export const MAX_RULES_MARKDOWN_CHARS = 20000;
+
+// @public
 export const MAX_TIMEOUT_MINUTES = 35791;
 
 // @public
@@ -1769,6 +1772,9 @@ export const riskTierSchema: z.ZodEnum<{
     lite: "lite";
     trivial: "trivial";
 }>;
+
+// @public
+export const RULES_MARKDOWN_PATH = ".ocra/rules.md";
 
 // @public (undocumented)
 export type Runtime = z.infer<typeof runtimeSchema>;

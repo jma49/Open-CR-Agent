@@ -15,6 +15,8 @@ import {
 } from "@open-cr-agent/core";
 import {
   AGENT_ROLES,
+  MARKDOWN_RULES_PATH,
+  MAX_MARKDOWN_RULES_CHARS,
   MAX_TIMER_MS,
   RISK_TIERS,
   severitySchema,
@@ -57,6 +59,8 @@ describe("the contract's vocabulary", () => {
     expect(contract.GUIDELINE_SCOPES).toEqual(GUIDELINE_SCOPES);
     expect(contract.FIX_REJECTIONS).toEqual(FIX_REJECTIONS);
     expect(contract.MAX_TIMEOUT_MINUTES).toBe(Math.floor(MAX_TIMER_MS / 60_000));
+    expect(contract.RULES_MARKDOWN_PATH).toBe(MARKDOWN_RULES_PATH);
+    expect(contract.MAX_RULES_MARKDOWN_CHARS).toBe(MAX_MARKDOWN_RULES_CHARS);
   });
 });
 
