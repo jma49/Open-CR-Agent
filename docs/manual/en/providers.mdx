@@ -86,7 +86,7 @@ Anthropic's own API, or a gateway in its Messages protocol, is declared with `"t
 ```
 
 - **`baseUrl`** is the address `/v1/messages` sits under, so it has no `/v1` of its own.
-- **The prompt cache is used at every step**: an agent's next request reads the conversation so far at the `cachedInput` price. Input the provider stores is counted at a quarter above `input`, as Anthropic charges it. A call that is one request (a plan phase, Verify, Judge, grouping) stores only its system prompt, which the calls of its kind share: nothing would read the rest again.
+- **The prompt cache is used at every step**: an agent's next request reads the conversation so far at the `cachedInput` price. Input the provider stores is counted at a quarter above `input`, as Anthropic charges it. A call that is one request (a plan phase, Verify, Judge, grouping) stores only its system prompt, which the calls of its kind share: nothing would read the rest again. Review tasks also mark the start of the prompt they share (the change request, the changed files, the guidelines), so each reviewer's later tasks read it instead of storing it again.
 - **An [effort](./configuration#effort)** goes as `output_config.effort` with adaptive thinking; `minimal` and `none` go as `low`, the API's lowest level. A model that refuses the parameters is asked again without them. `effort` in the declaration does not apply and is refused.
 - **`temperature` and `seed` are not sent**: the API takes no seed and its newer models no temperature. The report lists them as not applied.
 - The `opencode` runtime refuses such a declaration; it reaches Anthropic as the catalog provider `anthropic/<model>` instead.
