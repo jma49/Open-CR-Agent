@@ -58,6 +58,11 @@ What that field has learned does carry over, and none of it needs a shell: a pro
 
 12. **It lands in three steps, each off until measured:** findings and requests first (the agent lane), then checks, then conflicts. The measure for findings is the golden cases mined from fix commits, where the author's fix is the reference; for checks, pairs of a failed and a passing head from ocra's own history.
 
+13. **Three seams keep a later executor a change of two parts, not of the loop.**
+    - *Edits leave a lane as a patch.* The gate, the verifier and the commit take a patch and never ask how it was made, so a lane that works in a sandbox hands over the same thing.
+    - *Verification is a list of steps between the gate and the commit.* Today it holds the verifier call; a step that runs a team's declared commands in an executor goes in the same list.
+    - *A lane reads and writes through a workspace.* Today it is the overlay over the head; a checkout inside a sandbox is another one behind the same tools.
+
 ## Consequences
 
 - A round costs at most one light call per request, one fixer task per item and one verifier call per item; the caps bound a change request's total.
@@ -68,7 +73,7 @@ What that field has learned does carry over, and none of it needs a shell: a pro
 - GitHub starts no workflow for a push made with a workflow's own token, so the loop needs the deployment's App token (ocra Cloud's bot has one) or a personal token.
 - GitLab's commits API takes no second parent, so conflict rounds there need a push from the runner's clone; that is decided with step three.
 - `VcsAdapter` gains `checks`; `ChangeCommit` gains `mergeParent`; the configuration gains `mend`; the manual gains a page, in both languages, with the implementation.
-- An optional executor that runs a team's declared commands in a process with no key, token or network, taking a patch in and giving a log out, would shorten the loop. It is a separate record, and nothing here depends on it.
+- An optional executor that runs a team's declared commands in a process with no key, token or network, taking a patch in and giving a log out, would shorten the loop, and a lane with a shell inside that executor would fix more. Each is a separate record that changes the threat model; point 13 is what they build on, and nothing here depends on them.
 
 ## Alternatives considered
 
