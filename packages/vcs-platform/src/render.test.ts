@@ -232,6 +232,26 @@ describe("the pre-merge checks in the summary", () => {
   });
 });
 
+describe("findings outside the diff", () => {
+  it("lists the title first and the finding's text on the next line", () => {
+    const body = renderSummary({
+      report: report([
+        finding("a".repeat(16), {
+          title: "Stale cache",
+          body: "Keeps\nold rows.",
+          preExisting: true,
+        }),
+      ]),
+      commented: new Set(),
+      state: { findings: [] },
+      text: gitlab,
+    });
+    expect(body).toContain(
+      "- 🟠 **Stale cache** · `src/login.ts:3` · not verified · pre-existing\\\n  Keeps old rows.",
+    );
+  });
+});
+
 describe("inlineBody", () => {
   it("neutralizes commands in every part a model wrote", () => {
     const body = inlineBody(
@@ -246,9 +266,39 @@ describe("inlineBody", () => {
       inlineBody(
         finding("d".repeat(16), preExisting ? { preExisting: true } : {}),
         githubSuggestion,
-      ).split("\n")[1];
+      ).split("\n")[2];
     expect(header(true)).toMatch(/ · pre-existing$/);
     expect(header(false)).not.toContain("pre-existing");
+  });
+
+  it("gives the title its own line, with the severity and notes under it", () => {
+    const lines = inlineBody(
+      finding("e".repeat(16), { title: "Retry count can go negative", severity: "critical" }),
+      githubSuggestion,
+    ).split("\n");
+    expect(lines[1]).toBe("🔴 **Retry count can go negative**\\");
+    expect(lines[2]).toMatch(/^Critical · \S+ · not verified$/);
+    expect(lines[3]).toBe("");
+  });
+
+  it("folds the facts behind a finding under it, each on its own line", () => {
+    const body = inlineBody(
+      finding("f".repeat(16), {
+        evidence: ["caller passes null\n/close", " ", ...Array(6).fill("x".repeat(400))],
+      }),
+      githubSuggestion,
+    );
+    const folded = body.slice(body.indexOf("<details><summary>Evidence</summary>"));
+    const facts = folded.split("\n").filter((line) => line.startsWith("- "));
+    expect(facts).toHaveLength(5);
+    expect(facts[0]).toContain("caller passes null");
+    expect(facts[1]).toHaveLength(2 + 300);
+    expect(folded).not.toMatch(/^[ \t]*\//m);
+    expect(folded.endsWith("\n\n</details>")).toBe(true);
+  });
+
+  it("has no evidence section for a finding without evidence", () => {
+    expect(inlineBody(finding("a".repeat(16)), githubSuggestion)).not.toContain("<details>");
   });
 
   it("posts a suggestion only from ocra's own block, not from the model's text", () => {

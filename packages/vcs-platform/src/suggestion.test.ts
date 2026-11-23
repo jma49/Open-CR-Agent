@@ -25,7 +25,7 @@ describe("committable suggestions", () => {
   it("puts GitHub's suggestion block under the explanation", () => {
     const body = inlineBody(withFix("for (let i = 0; i <= n; i++) {"), githubSuggestion);
     expect(body).toMatch(
-      /\*\*Suggestion:\*\* Count up to n\.\n\n```suggestion\nfor \(let i = 0; i <= n; i\+\+\) \{\n```$/,
+      /\*\*Suggested fix:\*\* Count up to n\.\n\n```suggestion\nfor \(let i = 0; i <= n; i\+\+\) \{\n```$/,
     );
   });
 
@@ -112,7 +112,7 @@ describe("committable suggestions", () => {
     for (const replacement of refused) {
       const body = inlineBody(withFix(replacement), githubSuggestion);
       expect(block(body)).toBeUndefined();
-      expect(body).toContain("**Suggestion:** Count up to n.");
+      expect(body).toContain("**Suggested fix:** Count up to n.");
     }
   });
 });

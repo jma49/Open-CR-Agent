@@ -1,5 +1,6 @@
 <!-- ocra:finding b491fb26b470419c -->
-🟠 **Negative retries** · warning · verified · correctness
+🟠 **Negative retries**\
+Warning · correctness · verified
 
 Never retries.
 ​/merge
