@@ -29,6 +29,7 @@ export interface SkippedCell {
 }
 
 const WHOLE_CHANGE_LABEL = "whole change";
+const PACKED_LABEL_SEPARATOR = " + ";
 const WHOLE_CHANGE_MAX_FILES = 20;
 
 export interface ReviewMatrix {
@@ -42,7 +43,8 @@ export interface ReviewMatrix {
 // risk of the change instead of bundles × reviewers. Cells come in run order:
 // bundles on sensitive paths first, so a spend limit that ends the run early
 // has spent itself on them (ADR-0049); task ids keep the bundle's position.
-// A reviewer that spans the change comes last, its files in the same order.
+// A packed reviewer's task comes once its pack is full; a reviewer
+// that spans the change comes last, its files in the same order.
 export function planMatrix(
   bundles: readonly Bundle[],
   reviewers: readonly ReviewerDefinition[],
@@ -55,8 +57,14 @@ export function planMatrix(
   const ignores = new Map(reviewers.map((r) => [r.id, ignoreMatcher(r)]));
 
   const whole = new Map<ReviewerDefinition, { files: FileDiff[]; from: Set<Bundle> }>();
+  const packs = new Map<ReviewerDefinition, Pack>();
+  const closePack = (reviewer: ReviewerDefinition) => {
+    const pack = packs.get(reviewer);
+    if (pack) cells.push(packedCell(reviewer, pack));
+    packs.delete(reviewer);
+  };
 
-  for (const { bundle, i } of riskOrder(bundles)) {
+  for (const { bundle, i, sensitive } of riskOrder(bundles)) {
     for (const reviewer of reviewers) {
       const override = overrides[reviewer.id] ?? {};
       const skip = (reason: SkipReason) =>
@@ -90,13 +98,21 @@ export function planMatrix(
         whole.set(reviewer, gathered);
         continue;
       }
-      cells.push({
-        taskId: `${reviewer.id}-${i + 1}`,
-        reviewer,
-        bundle: files.length === bundle.files.length ? bundle : { ...bundle, files },
-      });
+      const narrowed = files.length === bundle.files.length ? bundle : { ...bundle, files };
+      if (reviewer.scope?.span === "packed") {
+        const pack = packs.get(reviewer);
+        if (pack && fitsPack(pack, narrowed, sensitive)) {
+          pack.bundles.push(narrowed);
+          continue;
+        }
+        closePack(reviewer);
+        packs.set(reviewer, { first: i, sensitive, bundles: [narrowed] });
+        continue;
+      }
+      cells.push({ taskId: `${reviewer.id}-${i + 1}`, reviewer, bundle: narrowed });
     }
   }
+  for (const reviewer of [...packs.keys()]) closePack(reviewer);
   for (const [reviewer, { files, from }] of whole) {
     const [only] = from;
     const parts = from.size === 1 && only ? [{ ...only, files }] : wholeChange(files);
@@ -105,6 +121,37 @@ export function planMatrix(
     );
   }
   return { cells, skipped };
+}
+
+interface Pack {
+  // The run position of its first bundle, which names the task.
+  first: number;
+  sensitive: boolean;
+  bundles: Bundle[];
+}
+
+// A pack keeps bundles whole and within the bundle limits, and never mixes
+// sensitive bundles with the rest, so they still run first (ADR-0049).
+function fitsPack(pack: Pack, bundle: Bundle, sensitive: boolean): boolean {
+  const files = pack.bundles.flatMap((b) => b.files);
+  const chars = (list: readonly FileDiff[]) => list.reduce((sum, f) => sum + f.patch.length, 0);
+  return (
+    pack.sensitive === sensitive &&
+    files.length + bundle.files.length <= defaultBundlePolicy.maxFilesPerBundle &&
+    chars(files) + chars(bundle.files) <= defaultBundlePolicy.maxBundleChars
+  );
+}
+
+function packedCell(reviewer: ReviewerDefinition, pack: Pack): MatrixCell {
+  const [only] = pack.bundles;
+  const bundle =
+    pack.bundles.length === 1 && only
+      ? only
+      : {
+          label: pack.bundles.map((b) => b.label).join(PACKED_LABEL_SEPARATOR),
+          files: pack.bundles.flatMap((b) => b.files),
+        };
+  return { taskId: `${reviewer.id}-${pack.first + 1}`, reviewer, bundle };
 }
 
 // The change as one bundle, or as few as keep a task within what one
@@ -131,7 +178,9 @@ function wholeChange(files: readonly FileDiff[]): Bundle[] {
   }));
 }
 
-function riskOrder(bundles: readonly Bundle[]): { bundle: Bundle; i: number }[] {
+function riskOrder(
+  bundles: readonly Bundle[],
+): { bundle: Bundle; i: number; sensitive: boolean }[] {
   const indexed = bundles.map((bundle, i) => ({
     bundle,
     i,

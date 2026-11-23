@@ -1685,7 +1685,7 @@ export interface ReviewerScope {
     // (undocumented)
     requiresGuidelines?: boolean;
     // (undocumented)
-    span?: "bundle" | "change";
+    span?: "bundle" | "packed" | "change";
 }
 
 // @public (undocumented)

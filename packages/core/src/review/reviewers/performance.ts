@@ -50,6 +50,7 @@ export const performanceReviewer: ReviewerDefinition = {
   systemPrompt: SYSTEM_PROMPT,
   scope: {
     minTier: "lite",
+    span: "packed",
     ignore: [
       ...DOCUMENTATION_FILES,
       ...TEST_FILES,
