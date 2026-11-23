@@ -10,7 +10,7 @@
   },
   "tier": "trivial",
   "verdict": "approved",
-  "summary": "Nothing was reviewed: no reviewer covered or finished any selected file.",
+  "summary": "Nothing was reviewed: no reviewer covered or finished any selected file. 1 review task(s) failed with: model unavailable",
   "coverage": [
     {
       "path": "a.ts",

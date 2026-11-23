@@ -34,6 +34,16 @@ describe("parseQuotaError", () => {
 });
 
 describe("ModelHealth quota", () => {
+  it("keeps the refusal that put a model out of quota, and when it may be retried", () => {
+    const health = new ModelHealth({ now: () => 0 });
+    expect(health.quotaRefusal(["a", "b"])).toBeUndefined();
+    const refusal = 'HTTP 429 {"error":"daily_limit","limit":500}';
+    health.recordQuota("b", { daily: true, retryAfterMs: 3_600_000 }, refusal);
+    expect(health.quotaRefusal(["a", "b"])).toBe(
+      `b: ${refusal}; it asks to retry after 1970-01-01T01:00:00.000Z`,
+    );
+  });
+
   it("pauses a model for every task, then gives up on it for the run", () => {
     let now = 0;
     const health = new ModelHealth({ now: () => now });
@@ -179,7 +189,8 @@ describe("withFailback on rate limits", () => {
     expect(second.attempted).toEqual([]);
     expect(second.events.at(-1)).toMatchObject({
       type: "error",
-      error: "every standard model is out of quota for this run",
+      error:
+        "every standard model is out of quota for this run (a: Quota exceeded for metric: requests per day)",
     });
 
     const fallback = await run({}, ["a", "b"], health);

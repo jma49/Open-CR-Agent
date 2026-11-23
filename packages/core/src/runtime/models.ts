@@ -61,7 +61,8 @@ interface Quota {
 export class ModelHealth {
   private readonly circuits = new Map<string, Circuit>();
   private readonly quotas = new Map<string, Quota>();
-  private readonly outOfQuota = new Set<string>();
+  // Each model out of quota for the run, with the refusal that put it there.
+  private readonly outOfQuota = new Map<string, string>();
   private readonly threshold: number;
   private readonly cooldownMs: number;
   private readonly maxCooldownMs: number;
@@ -121,6 +122,15 @@ export class ModelHealth {
     return this.outOfQuota.has(model);
   }
 
+  // Why a chain has no model left with quota: its first model's refusal.
+  quotaRefusal(chain: readonly string[]): string | undefined {
+    for (const model of chain) {
+      const refusal = this.outOfQuota.get(model);
+      if (refusal !== undefined) return refusal;
+    }
+    return undefined;
+  }
+
   // A rate limit with a short wait pauses the model for every task; a daily
   // limit, a long stated wait, or too many waits in a row mean the model is
   // out of quota for the rest of the run. Vertex AI's shared quota answers
@@ -128,14 +138,19 @@ export class ModelHealth {
   // Tasks running at once are refused together: a limit that arrives while
   // the model is paused joins that pause rather than counting another wait,
   // and only a wait it states can lengthen the pause.
-  recordQuota(model: string, quota: QuotaError): "wait" | "out_of_quota" {
+  // `refusal` is the provider's answer, kept to say why the model is out.
+  recordQuota(model: string, quota: QuotaError, refusal = "refused"): "wait" | "out_of_quota" {
     const now = this.now();
     const state = this.quotas.get(model) ?? { waits: 0, pausedUntil: 0 };
     const joins = state.pausedUntil > now;
     const waits = joins ? state.waits : state.waits + 1;
     const wait = quota.retryAfterMs ?? (joins ? 0 : UNSTATED_QUOTA_WAIT_MS * 2 ** (waits - 1));
     if (quota.daily || wait > MAX_QUOTA_WAIT_MS || waits > QUOTA_RETRIES) {
-      this.outOfQuota.add(model);
+      const retry =
+        quota.retryAfterMs === undefined
+          ? ""
+          : `; it asks to retry after ${new Date(now + quota.retryAfterMs).toISOString()}`;
+      this.outOfQuota.set(model, `${model}: ${refusal}${retry}`);
       return "out_of_quota";
     }
     this.quotas.set(model, { waits, pausedUntil: Math.max(state.pausedUntil, now + wait) });

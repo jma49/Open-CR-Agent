@@ -177,21 +177,24 @@ describe("renderText", () => {
     expect(text).not.toContain("ocra Cloud memory");
   });
 
-  it("never claims a clean result when nothing was reviewed", () => {
+  it("never claims a clean result when nothing was reviewed, and says why", () => {
     const failed: ReviewReport = {
       ...base,
+      summary:
+        "Nothing was reviewed: no reviewer covered or finished any selected file. 1 review task(s) failed with: HTTP 429 daily limit",
       coverage: [{ path: "src/a.ts", status: "failed" }],
       tasks: [{ ...at(base.tasks, 0), status: "failed" }],
     };
     // The matrix skipped every reviewer: no task ran at all.
     const skipped: ReviewReport = {
       ...base,
+      summary: "Nothing was reviewed: no reviewer covered or finished any selected file.",
       coverage: [{ path: "src/a.ts", status: "unreviewed" }],
       tasks: [],
     };
     for (const report of [failed, skipped]) {
       expect(renderText(report)).toContain("Verdict: not reached (nothing was reviewed)");
-      expect(renderText(report)).toContain("Nothing was reviewed.");
+      expect(renderText(report)).toContain(`\n${report.summary}\n`);
       expect(renderText(report)).not.toContain("No issues found");
       expect(renderText(report)).not.toContain("Verdict: approved");
     }

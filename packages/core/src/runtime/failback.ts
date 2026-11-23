@@ -94,7 +94,10 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
         };
         return;
       }
-      if (outcome.error.quota && health.recordQuota(model, outcome.error.quota) === "wait") {
+      if (
+        outcome.error.quota &&
+        health.recordQuota(model, outcome.error.quota, outcome.error.message) === "wait"
+      ) {
         continue;
       }
       if (!outcome.error.quota) health.recordFailure(model);
@@ -106,9 +109,7 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
   yield {
     type: "error",
     taskId,
-    error: lastError
-      ? `every ${chainName(options)} failed (${lastError})`
-      : `every ${chainName(options)} is out of quota for this run`,
+    error: lastError ? `every ${chainName(options)} failed (${lastError})` : outOfQuota(options),
     retryable: true,
   };
 }
@@ -241,7 +242,10 @@ export async function completeWithFailback(options: CompleteOptions): Promise<Co
       if (!outcome.error.retryable) {
         throw new CompletionError(`${model}: ${outcome.error.message}`, usage);
       }
-      if (outcome.error.quota && health.recordQuota(model, outcome.error.quota) === "wait") {
+      if (
+        outcome.error.quota &&
+        health.recordQuota(model, outcome.error.quota, outcome.error.message) === "wait"
+      ) {
         continue;
       }
       if (!outcome.error.quota) health.recordFailure(model);
@@ -250,9 +254,18 @@ export async function completeWithFailback(options: CompleteOptions): Promise<Co
     }
   }
   if (!lastError) {
-    throw new CompletionError(`every ${chainName(options)} is out of quota for this run`, usage);
+    throw new CompletionError(outOfQuota(options), usage);
   }
   throw new CompletionError(`every ${chainName(options)} failed (${lastError})`, usage);
+}
+
+// Every task after the first that found the chain out of quota fails here
+// without a request, so the refusal that used the quota up is repeated: a
+// run whose tasks all failed must still say why.
+function outOfQuota(options: Pick<FailbackOptions, "tier" | "agent" | "chain" | "health">): string {
+  const refusal = options.health.quotaRefusal(options.chain);
+  const why = refusal === undefined ? "" : ` (${refusal})`;
+  return `every ${chainName(options)} is out of quota for this run${why}`;
 }
 
 // Waits until the model's pause ends as it stands on waking, not as it stood

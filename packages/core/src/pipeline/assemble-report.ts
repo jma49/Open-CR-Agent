@@ -4,7 +4,7 @@ import type { Usage } from "../contracts.js";
 import { projectDocUses } from "../docs/project-docs.js";
 import type { Finding, Severity } from "../domain.js";
 import type { LearningUse } from "../knowledge/learning.js";
-import { type ReviewReport, summarizeAnchoring } from "../report/report.js";
+import { type ReviewReport, summarizeAnchoring, type TaskOutcome } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { evidenceUses } from "../sarif/evidence.js";
 import type { CheckStage } from "./check-stage.js";
@@ -93,7 +93,7 @@ function reportBody(
     tier: plan.tier,
     verdict: judged.verdict,
     summary: filtered.nothingReviewed
-      ? "Nothing was reviewed: no reviewer covered or finished any selected file."
+      ? nothingReviewed(executed.results.map((r) => r.outcome))
       : judged.summary,
     coverage: filtered.coverage,
     bundles: plan.bundles.map((b) => ({ label: b.label, files: b.files.map((f) => f.newPath) })),
@@ -117,6 +117,23 @@ function reportBody(
       ...fixed.warnings,
     ],
   };
+}
+
+// A run that reviewed nothing says why when its tasks failed: a spent quota
+// or a refused key fails every task the same way, and the summary is all a
+// pull request shows.
+function nothingReviewed(tasks: readonly TaskOutcome[]): string {
+  const said = "Nothing was reviewed: no reviewer covered or finished any selected file.";
+  const errors = new Map<string, number>();
+  for (const t of tasks) {
+    if (t.status === "failed" && t.error) errors.set(t.error, (errors.get(t.error) ?? 0) + 1);
+  }
+  let common: [string, number] | undefined;
+  for (const entry of errors) if (!common || entry[1] > common[1]) common = entry;
+  if (!common) return said;
+  const failed = [...errors.values()].reduce((n, c) => n + c, 0);
+  const most = common[1] === failed ? "" : `, ${common[1]} of them`;
+  return `${said} ${failed} review task(s) failed${most} with: ${common[0]}`;
 }
 
 const SEVERITY_ORDER: Record<Severity, number> = { critical: 0, warning: 1, suggestion: 2 };

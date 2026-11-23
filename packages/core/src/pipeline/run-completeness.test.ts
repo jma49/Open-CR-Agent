@@ -53,6 +53,22 @@ describe("review completeness", () => {
     expect(report.summary).not.toContain("Nothing was reviewed");
   });
 
+  it("says why nothing was reviewed when every task failed", async () => {
+    const refusal = 'every standard model failed (m: HTTP 429 {"error":"daily_limit","limit":500})';
+    const report = await review({
+      vcs: vcs({}, patch("src/a.ts", "const a = 1;")),
+      runtime: runtime(async function* (spec) {
+        const error = spec.reviewer === "security" ? "boom" : refusal;
+        yield { type: "error", taskId: spec.taskId, error, retryable: true };
+      }),
+      reviewers: [reviewer("correctness"), reviewer("performance"), reviewer("security")],
+    });
+    expect(report.coverage.map((c) => c.status)).toEqual(["failed"]);
+    expect(report.summary).toBe(
+      `Nothing was reviewed: no reviewer covered or finished any selected file. 3 review task(s) failed, 2 of them with: ${refusal}`,
+    );
+  });
+
   it("counts a critical Verify could not check even when the judge drops it", async () => {
     const dropping: AgentRuntime = {
       ...runtime(async function* (spec) {

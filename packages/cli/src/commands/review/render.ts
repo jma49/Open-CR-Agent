@@ -129,7 +129,7 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
 }
 
 function emptyMessage(report: ReviewReport, nothingReviewed: boolean, notReviewed: number): string {
-  if (nothingReviewed) return "Nothing was reviewed.";
+  if (nothingReviewed) return report.summary;
   if (notReviewed > 0) return "No issues found in the files that were reviewed.";
   const open = report.rereview
     ? report.rereview.notReproduced.length +
