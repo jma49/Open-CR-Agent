@@ -1,6 +1,7 @@
 ---
 title: GitLab merge requests
 description: Review merge requests on GitLab.com or self-managed GitLab with ocra review --mr.
+icon: GitMerge
 ---
 
 `ocra review --mr <iid>` reviews a GitLab merge request on GitLab.com or a self-managed instance; `--publish` posts a summary note, updated in place, and a thread on each finding in the diff. Later pipelines review only what changed. Who may override or dismiss, which earlier state counts and what text may be posted follow the rules for [GitHub pull requests](./github), checked by the same tests on both platforms.

@@ -1,6 +1,7 @@
 ---
 title: GitLab Merge Request
 description: 用 ocra review --mr 审查 GitLab.com 或自建 GitLab 上的 Merge Request。
+icon: GitMerge
 ---
 
 `ocra review --mr <iid>` 审查 GitLab.com 或自建实例上的 Merge Request；`--publish` 会发出一条原地更新的摘要评论，并给 diff 中每个问题开一个讨论串。之后的流水线只审查有改动的部分。谁能放行或驳回、之前的哪些状态可信、哪些文字可以发出，都遵循 [GitHub Pull Request](./github) 的规则，两个平台由同一套测试检验。

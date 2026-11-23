@@ -1,9 +1,17 @@
 ---
-title: Introduction
+title: Overview
 description: ocra is open-source AI code review built for pull requests you do not trust, and it stays quiet unless a finding holds up.
+icon: BookOpen
 ---
 
 **ocra** reviews local changes, GitHub pull requests and GitLab merge requests in your CI with your own model key. It assumes the change it reads may be written by an attacker, and it stays quiet unless a finding quotes the code it means and holds up on a second read.
+
+<Cards>
+  <Card icon="Play" title="Quickstart" href="/docs/quickstart">Install ocra and review your first change in five minutes.</Card>
+  <Card icon="GitPullRequest" title="GitHub pull requests" href="/docs/github">Review every pull request in CI, safe for forks.</Card>
+  <Card icon="GitMerge" title="GitLab merge requests" href="/docs/gitlab">Threads and a summary note, on GitLab.com or self-managed.</Card>
+  <Card icon="Cloud" title="ocra Cloud" href="/docs/cloud">Your pull requests, their reviews and merging in one console.</Card>
+</Cards>
 
 ## Why ocra
 
@@ -18,12 +26,13 @@ description: ocra is open-source AI code review built for pull requests you do n
 
 ocra is an early 0.x release. CLI flags, configuration keys, exit codes and the report format are [contracts](/docs/stability) and change only with notice; prompts and review quality still move.
 
-## Where to next
+## Go further
 
 <Cards>
-  <Card title="Quickstart" href="/docs/quickstart">Your first review in five minutes.</Card>
-  <Card title="How it works" href="/docs/how-it-works">The review pipeline, stage by stage.</Card>
-  <Card title="GitHub pull requests" href="/docs/github">Inline comments and re-reviews on every push.</Card>
-  <Card title="GitLab merge requests" href="/docs/gitlab">Threads and a summary note, on GitLab.com or self-managed.</Card>
-  <Card title="Plugins" href="/docs/plugins">Extend ocra with your team's rules.</Card>
+  <Card icon="Workflow" title="How it works" href="/docs/how-it-works">The review pipeline, stage by stage.</Card>
+  <Card icon="ListChecks" title="Review rules" href="/docs/rules">Teach reviewers your project's conventions.</Card>
+  <Card icon="Cpu" title="Model providers" href="/docs/providers">Which models ocra can use, and your own endpoint.</Card>
+  <Card icon="SquareTerminal" title="CLI reference" href="/docs/cli">Every command, option and exit code.</Card>
+  <Card icon="ShieldCheck" title="Security and privacy" href="/docs/security">What leaves your machine, and how ocra is isolated.</Card>
+  <Card icon="Puzzle" title="Plugins" href="/docs/plugins">Extend ocra with your team's own reviewers and rules.</Card>
 </Cards>
