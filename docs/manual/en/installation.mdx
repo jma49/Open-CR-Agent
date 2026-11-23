@@ -50,11 +50,11 @@ In the GitHub Action, the input `opencode: false` does the same ([GitHub](./gith
 
 ## Container image
 
-Each release since 0.2.0 is also a container image for amd64 and arm64, `ghcr.io/jma49/ocra:<version>`: the just-published packages installed as the GitHub Action installs them (pinned dependencies, signatures and provenance checked), with git, running as the unprivileged `node` user.
+Each release since 0.2.0 is also a container image for amd64 and arm64, `ghcr.io/ocrahq/ocra:<version>`: the just-published packages installed as the GitHub Action installs them (pinned dependencies, signatures and provenance checked), with git, running as the unprivileged `node` user.
 
 ```bash
 docker run --rm --user "$(id -u):$(id -g)" --volume "$PWD:/repo" \
-  --env GEMINI_API_KEY ghcr.io/jma49/ocra:0.17.0 ocra review --from main
+  --env GEMINI_API_KEY ghcr.io/ocrahq/ocra:0.18.0 ocra review --from main
 ```
 
 Images after 0.2.0 have `ocra` as entrypoint, so `docker run <image> review --from main` works; a leading `ocra` works with every image. Run as your own user so it can write `.ocra/sessions/`, and pass the model key and `OCRA_*` variables with `--env`. To check an image's origin, see [Verifying a release](./stability#verifying-a-release).

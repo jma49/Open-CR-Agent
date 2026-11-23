@@ -6,6 +6,30 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-23
+
+A critical finding the verifier confirms is known while the review still runs, and the `direct` runtime reviews on endpoints that take no `tools` parameter. The Action's new tag is `ocrahq/Open-CR-Agent@v0.18.0`.
+
+### Added
+
+- `fetchFailure(error)` in `@open-cr-agent/core`: that message, for runtime plugins.
+- Verify starts while review tasks still run: a file's findings are checked once every task reviewing it has ended, and a critical finding the verifier confirms is settled, so it is known before the review ends. `ocra review` prints a `Confirmed:` line for each, `ocra serve` and the live relay send it with `settled: true`, and core emits `findings_verified` ([ADR-0074](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0074-early-findings.md)).
+- `ocra-eval perf` reports when the verifier answered for the first file, and takes `firstVerifiedMs` as a budget.
+- The `direct` runtime reviews on a chat completions endpoint that takes no `tools` parameter (vLLM without a tool call parser, an Ollama model without a tool template): when the endpoint refuses the tools, the request goes again with the tools in the system prompt and the model's `<tool_call>` blocks run as calls. `providers.<id>.toolCalls: "text"` sends every request that way, for a gateway that drops the parameter silently.
+- `textToolInstructions`, `parseTextToolCalls` and `textToolResults` in `@open-cr-agent/core`, and `CustomProvider.toolCalls`, for runtime plugins.
+
+### Changed
+
+- The Action runs ocra 0.17.0.
+- The judge no longer merges a settled finding into another: two confirmed critical findings on different lines that it calls duplicates both stay in the report.
+- On an endpoint that speaks Anthropic's Messages protocol, review tasks that start together no longer each pay to store the prompt start they share: the first stores it and the others wait until its answer begins, then read it from the provider's cache.
+- The repository moved to `ocrahq/Open-CR-Agent`. `ocra init` writes the Action as `ocrahq/Open-CR-Agent@<commit>` and links there; workflows that name `jma49/Open-CR-Agent` keep working through GitHub's redirect. Container images from the next release on are `ghcr.io/ocrahq/ocra`; images up to 0.17.0 stay at `ghcr.io/jma49/ocra`.
+
+### Fixed
+
+- On the `direct` runtime a request that could not be sent names its cause instead of only `fetch failed`: the DNS, connection or TLS error, and for a certificate authority Node does not trust, that `NODE_EXTRA_CA_CERTS` fixes it.
+- On the `opencode` runtime a turn that runs past its step cap is stopped and counts as one that used every step. OpenCode's cap only asks the model to stop, so a model that kept calling tools, or an endpoint that answered a streamed request without a stream, made requests until the task's timeout.
+
 ## [0.17.0] - 2026-11-23
 
 `ocra learn feedback` turns the findings a pull request's reviewers declined into proposed learnings, and the security and performance reviewers need about a third fewer tasks on a change of many small bundles. The Action's new tag is `jma49/Open-CR-Agent@v0.17.0`.
@@ -654,7 +678,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.14.0...v0.15.0

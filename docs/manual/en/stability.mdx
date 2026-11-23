@@ -49,6 +49,6 @@ Releases are published by this repository's release workflow through npm trusted
 npm audit signatures --include-attestations
 ```
 
-The container image carries build provenance too: `gh attestation verify oci://ghcr.io/jma49/ocra:<version> --repo jma49/Open-CR-Agent`.
+The container image carries build provenance too: `gh attestation verify oci://ghcr.io/ocrahq/ocra:<version> --repo ocrahq/Open-CR-Agent`.
 
 The GitHub Action installs the published CLI with its tested dependency versions, verifies signatures and ocra's provenance, and builds from source when a version is not on npm or lacks provenance ([GitHub pull requests](./github)).
