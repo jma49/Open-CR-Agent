@@ -72,7 +72,7 @@ Decided on 2026-10-05: for six weeks the project is judged on two numbers, **ext
 
 - **Users (M13):** offer setup pull requests to 20 open-source repositories with outside contributors and no AI reviewer, and watch each through its first ten reviews. Target: three external repositories running ocra for two weeks or more. First settle who pays for their model calls: the free model's shared daily pool cannot carry three busy repositories.
 - **Recall (M11):** measure the golden score's run-to-run noise (one configuration three times), find from saved runs where expected issues are lost (never raised, or dropped by Verify, Judge or a severity filter), grow the golden set from AACR-Bench's in-scope issues; then one change at a time, measured against that noise. The tools for each landed in `ocra-eval` (`trend`, the recall funnel, `compare` that says what it can detect, `golden-import`); the first imported cases wait for review (#490).
-- **Paused:** the rest of M10 and M12. **ocra Cloud (M14) is frozen**: running, security fixes only, no new features, no paid plan.
+- **Paused:** the rest of M10 and M12. ocra Cloud (M14) was frozen under this decision at first and is in active development again; it still has no paid plan.
 - **Week-six checkpoint:** with users and better recall, decide what Cloud becomes (candidate: a hosted GitHub App for fork pull requests); with no takers, find out why before building more.
 
 The milestones below keep their lists; the order of work is the one above.
@@ -96,11 +96,11 @@ The milestones below keep their lists; the order of work is the one above.
 
 **M13 — Use** (the focus). Three external teams on the Action or the GitLab job, their dismissals and replies feeding the golden set; the M8 maintainer conversations. If no team will run it, the next phase starts with the product layer, not the control plane. Landed in 0.7.0: `ocra init`.
 
-**M14 — ocra Cloud** ([ADR-0024](adr/0024-ocra-cloud.md); frozen). Open core plus an optional hosted service on the published packages, in a private repository.
+**M14 — ocra Cloud** ([ADR-0024](adr/0024-ocra-cloud.md); in active development). Open core plus an optional hosted service on the published packages, in [its own repository](https://github.com/jma49/ocra-cloud). The manual's [ocra Cloud](manual/en/cloud.mdx) page says what it does today.
 
 1. **Phase 1:** built, live at https://app.ocracloud.com (0.4.0, 0.5.0; hardened in 0.6.0, with the wire contract published as `@open-cr-agent/cloud-contract`): `ocra login`, the user's key behind a model gateway, metadata-only upload, account configuration ([ADR-0027](adr/0027-account-configuration.md)), opt-in findings and account memory ([ADR-0028](adr/0028-findings-upload-and-cloud-memory.md)), a web view. Left: external users (M13).
 2. **Models and effort per agent** ([ADR-0025](adr/0025-per-agent-models-and-effort.md)): landed on both runtimes, with a per-agent cost estimate in `--plan` and the web's Agents page. Next: a policy cap on effort.
-3. **Phase 2:** a hosted GitHub App with organizations ([ADR-0026](adr/0026-hosted-review-compute.md), proposed; deferred).
+3. **Phase 2:** reviews the service runs itself through a GitHub App are live, per account, on remote runners; organizations ([ADR-0026](adr/0026-hosted-review-compute.md), proposed) are deferred.
 4. **Phase 3:** models ocra provides, a free allowance and paid plans, once there is a model budget.
 
 **Review experience** (from a comparison with CodeRabbit; anything touching quality waits for M11).
