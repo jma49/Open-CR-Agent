@@ -6,7 +6,7 @@ import { safeMarkdown } from "./neutralize.js";
 // CommonMark parser the way GitHub and GitLab read the comment.
 function posted(text: string, startsLine: boolean): string {
   const safe = safeMarkdown(text, { startsLine });
-  return startsLine ? safe : `**Suggestion:** ${safe}`;
+  return startsLine ? safe : `**Suggested fix:** ${safe}`;
 }
 
 describe("safeMarkdown finds code where CommonMark does", () => {

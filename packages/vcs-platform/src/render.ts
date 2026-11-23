@@ -29,6 +29,11 @@ export interface PlatformText {
   authority: string;
 }
 const ICON: Record<Severity, string> = { critical: "🔴", warning: "🟠", suggestion: "🔵" };
+const SEVERITY_LABEL: Record<Severity, string> = {
+  critical: "Critical",
+  warning: "Warning",
+  suggestion: "Suggestion",
+};
 const VERIFICATION: Record<Verification, string> = {
   confirmed: "verified",
   uncertain: "unverified (verifier unsure)",
@@ -109,19 +114,55 @@ const TILDE_FENCE = /^ {0,3}~{3,}/m;
 
 export const FINDING_MARKER = /<!-- ocra:finding ([0-9a-f]{16}) -->/;
 
+const MAX_EVIDENCE_ITEMS = 5;
+const MAX_EVIDENCE_CHARS = 300;
+
+function clip(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+// What a finding is and how far to trust it, least surprising first.
+function notes(f: Finding): string {
+  return [
+    SEVERITY_LABEL[f.severity],
+    f.reviewer,
+    verification(f),
+    ...(f.lowConfidence ? ["low confidence"] : []),
+    ...(f.preExisting ? ["pre-existing"] : []),
+  ].join(" · ");
+}
+
+// Folded: the facts behind a finding are for whoever doubts it.
+function evidenceSection(evidence: readonly string[]): string[] {
+  const facts = evidence.filter((e) => e.trim() !== "").slice(0, MAX_EVIDENCE_ITEMS);
+  if (facts.length === 0) return [];
+  return [
+    "",
+    "<details><summary>Evidence</summary>",
+    "",
+    ...facts.map((e) => `- ${safeLine(clip(e, MAX_EVIDENCE_CHARS))}`),
+    "",
+    "</details>",
+  ];
+}
+
+// The title stands alone on the first line, the notes under it in the same
+// paragraph: a backslash breaks the line on GitHub and on GitLab alike.
 export function inlineBody(f: Finding, fence: SuggestionFence): string {
   const parts = [
     `<!-- ocra:finding ${f.fingerprint} -->`,
-    `${ICON[f.severity]} **${safeLine(f.title)}** · ${f.severity} · ${verification(f)} · ${f.reviewer}${f.lowConfidence ? " · low confidence" : ""}${f.preExisting ? " · pre-existing" : ""}`,
+    `${ICON[f.severity]} **${safeLine(f.title)}**\\`,
+    notes(f),
     "",
     safeMarkdown(f.body, { startsLine: true }),
   ];
-  if (f.suggestion) parts.push("", `**Suggestion:** ${safeMarkdown(f.suggestion)}`);
+  if (f.suggestion) parts.push("", `**Suggested fix:** ${safeMarkdown(f.suggestion)}`);
   // A `~~~` fence in model text keeps its fence through safeMarkdown, and one
   // left open would run to the end of the comment and swallow ocra's
   // suggestion block, so the fence is why the block is left out.
   const block = TILDE_FENCE.test(parts.join("\n")) ? undefined : suggestionBlock(f, fence);
   if (block) parts.push("", block);
+  parts.push(...evidenceSection(f.evidence));
   return parts.join("\n");
 }
 
@@ -300,7 +341,7 @@ function unattributedNote(unattributed: number): string[] {
 }
 
 function summaryLine(f: Finding): string {
-  return `- ${ICON[f.severity]} ${location(f)} **${safeLine(f.title)}** _(${verification(f)}${f.lowConfidence ? ", low confidence" : ""}${f.preExisting ? ", pre-existing" : ""})_: ${safeLine(f.body)}`;
+  return `- ${ICON[f.severity]} **${safeLine(f.title)}** · ${location(f)} · ${verification(f)}${f.lowConfidence ? " · low confidence" : ""}${f.preExisting ? " · pre-existing" : ""}\\\n  ${safeLine(f.body)}`;
 }
 
 function heldFingerprints(report: ReviewReport): Set<string> {

@@ -200,7 +200,9 @@ describe("GitHubAdapter", () => {
     const review = calls.find((c) => c.path === "/pulls/7/reviews")?.body as {
       comments: { body: string }[];
     };
-    expect(review.comments[0]?.body).toContain("· critical · unverified (verifier unsure) ·");
+    expect(review.comments[0]?.body).toContain(
+      "Critical · security · unverified (verifier unsure)",
+    );
     const body = postedSummary(calls);
     expect(body).toContain("1 critical finding(s) are not verified");
     expect(body).toContain("Do not use it as a security gate.");
