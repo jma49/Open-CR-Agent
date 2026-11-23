@@ -37,7 +37,11 @@ const reportFindingInput = z.object({
   title: z.string().min(1),
   body: z.string().min(1),
   suggestion: z.string().optional(),
-  evidence: z.array(z.string()).optional(),
+  // Reviewers send one sentence of evidence as a bare string often enough
+  // that refusing it lost more than a quarter of the reports.
+  evidence: z
+    .preprocess((value) => (typeof value === "string" ? [value] : value), z.array(z.string()))
+    .optional(),
 });
 
 // Tool results carry repository text back to the model, so they are data
