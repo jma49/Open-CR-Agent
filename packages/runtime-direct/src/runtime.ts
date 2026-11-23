@@ -18,6 +18,7 @@ import {
   type RateLimits,
   RESUME_MESSAGE,
   type RuntimeOptions,
+  readTools,
   reviewTools,
   type TaskAttempt,
   type ToolDefinition,
@@ -61,6 +62,7 @@ interface Call {
 // runtime knows no other address to send code to.
 export class DirectRuntime implements AgentRuntime {
   readonly name = "direct";
+  readonly toolsets = true;
   // The chat completions protocol takes both settings; an agent on a
   // Messages endpoint reports them as not applied.
   readonly sampling: AppliedSampling;
@@ -140,11 +142,15 @@ export class DirectRuntime implements AgentRuntime {
       system: spec.systemPrompt,
       user: spec.userPrompt,
       ...(spec.sharedPrefixes ? { shared: spec.sharedPrefixes } : {}),
-      tools: this.tools,
+      tools: spec.toolset ? [...readTools, ...spec.toolset.tools] : this.tools,
       context: spec.context,
       maxSteps: MAX_AGENT_STEPS,
-      resume: RESUME_MESSAGE,
-      wrapUp: { message: WRAP_UP_MESSAGE, tools: WRAP_UP_TOOLS, steps: WRAP_UP_STEPS },
+      resume: spec.toolset?.resume ?? RESUME_MESSAGE,
+      wrapUp: {
+        message: spec.toolset?.wrapUp.message ?? WRAP_UP_MESSAGE,
+        tools: spec.toolset?.wrapUp.tools ?? WRAP_UP_TOOLS,
+        steps: WRAP_UP_STEPS,
+      },
       timeoutMs: spec.timeoutMs,
       signal,
       onUsage,

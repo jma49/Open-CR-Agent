@@ -1,6 +1,6 @@
 import { z } from "zod";
+import type { ToolDefinition } from "../contracts.js";
 import { severitySchema } from "../domain.js";
-import type { ToolDefinition } from "../plugin/types.js";
 import { data as promptData } from "../review/prompt-text.js";
 import { REVIEW_TOOLS } from "../review/tools.js";
 
@@ -131,6 +131,9 @@ const taskDone: ToolDefinition = {
   inputSchema: z.object({}),
   execute: async () => "Done.",
 };
+
+// What a task with its own toolset (TaskToolset) reads the change with.
+export const readTools: readonly ToolDefinition[] = [readFile, readDiff, codeSearch];
 
 export const reviewTools: readonly ToolDefinition[] = [
   readFile,

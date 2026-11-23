@@ -1,17 +1,11 @@
 import { AGENT_ROLES } from "../agent/settings.js";
-import type { AgentRuntime } from "../contracts.js";
+import type { AgentRuntime, ToolDefinition } from "../contracts.js";
 import { errorMessage, OcraError } from "../errors.js";
 import type { ReviewEvent } from "../report/report.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { RepoRule } from "../rules/repo-rules.js";
 import type { VcsAdapter } from "../vcs.js";
-import type {
-  PluginSummary,
-  RuntimeFactory,
-  RuntimeOptions,
-  ToolDefinition,
-  VcsFactory,
-} from "./types.js";
+import type { PluginSummary, RuntimeFactory, RuntimeOptions, VcsFactory } from "./types.js";
 
 export class PluginError extends OcraError {
   constructor(message: string, options?: { cause?: unknown }) {
