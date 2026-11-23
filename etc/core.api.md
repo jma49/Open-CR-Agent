@@ -75,6 +75,8 @@ export interface AgentRuntime {
     runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent>;
     // (undocumented)
     readonly sampling?: AppliedSampling;
+    // (undocumented)
+    readonly toolsets?: true;
 }
 
 // @public (undocumented)
@@ -100,6 +102,8 @@ export interface AgentTaskSpec {
     taskId: string;
     // (undocumented)
     timeoutMs: number;
+    // (undocumented)
+    toolset?: TaskToolset;
     // (undocumented)
     userPrompt: string;
 }
@@ -1160,6 +1164,9 @@ export interface RateLimits {
     // (undocumented)
     waitOut(quota: QuotaError): Promise<boolean>;
 }
+
+// @public (undocumented)
+export const readTools: readonly ToolDefinition[];
 
 // @public (undocumented)
 export interface ReferenceIndex {
@@ -2372,6 +2379,19 @@ const taskStatusSchema: z.ZodEnum<{
     failed: "failed";
     timed_out: "timed_out";
 }>;
+
+// @public (undocumented)
+export interface TaskToolset {
+    // (undocumented)
+    resume: string;
+    // (undocumented)
+    tools: readonly ToolDefinition[];
+    // (undocumented)
+    wrapUp: {
+        message: string;
+        tools: readonly string[];
+    };
+}
 
 // @public (undocumented)
 export type TaskTracker = (typeof TASK_TRACKERS)[number];

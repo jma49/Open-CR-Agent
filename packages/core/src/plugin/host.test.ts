@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import type { AgentRuntime } from "../contracts.js";
+import type { AgentRuntime, ToolDefinition } from "../contracts.js";
 import type { ReviewEvent } from "../report/report.js";
 import { correctnessReviewer } from "../review/reviewers/correctness.js";
 import type { VcsAdapter } from "../vcs.js";
 import { correctnessReviewerPlugin } from "./builtin.js";
 import { startPlugins } from "./host.js";
 import { PluginError } from "./registry.js";
-import type { OcraPlugin, ToolDefinition } from "./types.js";
+import type { OcraPlugin } from "./types.js";
 
 const runtime: AgentRuntime = { name: "fake", runTask: async function* () {} };
 const vcs = { name: "fake" } as VcsAdapter;

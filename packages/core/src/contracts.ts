@@ -1,3 +1,4 @@
+import type { z } from "zod";
 export interface CodeMatch {
   path: string;
   line: number;
@@ -86,7 +87,30 @@ export interface AgentTaskSpec {
   // it is shown marks them; any other leaves them alone.
   sharedPrefixes?: readonly number[];
   context: ReviewContext;
+  // The task's own tools in place of the review's. Only a runtime that
+  // declares `toolsets` reads it.
+  toolset?: TaskToolset;
   timeoutMs: number;
+}
+
+export interface ToolDefinition<Shape extends z.ZodRawShape = z.ZodRawShape> {
+  name: string;
+  description: string;
+  inputSchema: z.ZodObject<Shape>;
+  execute(args: z.infer<z.ZodObject<Shape>>, context: ReviewContext): Promise<string>;
+}
+
+// What a task that is not a review works with (ADR-0078): the review's tools
+// that read the change (file, diff, search), and these. They include the
+// done tool under the review's name for it. No tool that reports a finding
+// and no plugin's tool joins them.
+export interface TaskToolset {
+  tools: readonly ToolDefinition[];
+  // Sent once to an agent that stops with steps left, no done call and no answer.
+  resume: string;
+  // The one more turn an attempt gets when it ends without the done tool,
+  // and the names of the tools it offers.
+  wrapUp: { message: string; tools: readonly string[] };
 }
 
 export interface ReviewContext {
@@ -212,6 +236,9 @@ export interface AgentRuntime {
   // when that agent made no such call. Absent: the runtime sends no effort.
   appliedTo?(agent: string): AppliedSettings | undefined;
   runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent>;
+  // The runtime runs a task with AgentTaskSpec.toolset. Absent: it offers
+  // every task the review's tools, so no task that needs others is given to it.
+  readonly toolsets?: true;
   // Throws a CompletionError carrying the usage of failed attempts.
   complete?(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult>;
   dispose?(): Promise<void>;
