@@ -3,8 +3,9 @@ import {
   EFFORT_STYLES,
   GATEWAY_PATH,
   isCloudModel,
+  modelPriceSchema,
 } from "@open-cr-agent/cloud-contract";
-import type { CustomProvider } from "@open-cr-agent/core";
+import type { CustomProvider, ModelPrice } from "@open-cr-agent/core";
 import { errorMessage, OcraError } from "@open-cr-agent/core";
 import { REVIEW_DEFAULTS } from "@open-cr-agent/core/internal";
 import { CloudClient, sessionLostReason } from "./client.js";
@@ -13,9 +14,9 @@ import { GatewayToken } from "./gateway-token.js";
 
 // Models named ocra-<provider>/<model> go through the ocra Cloud gateway with
 // the key stored there for <provider> (ADR-0024). Each such provider becomes
-// an OpenAI-compatible endpoint declared for this run, authorized by the
-// signed-in session's access token. Without such a model nothing here reads
-// the session or touches the network.
+// an endpoint declared for this run, authorized by the signed-in session's
+// access token and priced as ocra Cloud lists its models. Without such a
+// model nothing here reads the session or touches the network.
 
 /** Where the access token travels to the runtime; never a user's variable (OCRA_ is refused in config). */
 export const CLOUD_TOKEN_ENV = "OCRA_CLOUD_ACCESS_TOKEN";
@@ -119,6 +120,7 @@ export async function withCloudProviders(
   const listed = answer.value;
 
   const declared: Record<string, CustomProvider> = { ...providers };
+  const unpriced: string[] = [];
   for (const [id, modelIds] of wanted) {
     const name = id.slice(CLOUD_PREFIX.length);
     const entry = listed.find((p) => p.name === name);
@@ -142,13 +144,21 @@ export async function withCloudProviders(
       ...(route.api === "anthropic" ? { api: route.api } : {}),
       baseUrl: `${session.server}/api/gateway/${name}${route.prefix}`,
       apiKeyEnv: CLOUD_TOKEN_ENV,
-      models: Object.fromEntries([...modelIds].map((m) => [m, { input: 0, output: 0 }])),
+      models: Object.fromEntries(
+        [...modelIds].map((m) => {
+          const price = priceOf(entry?.prices, m);
+          if (!price) unpriced.push(`${id}/${m}`);
+          return [m, price ?? { input: 0, output: 0 }];
+        }),
+      ),
       ...(route.api === "openai" ? effortStyleOf(entry?.effort, name, warn) : {}),
     };
   }
-  warn(
-    `${names}: models through ocra Cloud are not priced, so reported cost and --max-cost-usd do not count them`,
-  );
+  if (unpriced.length > 0) {
+    warn(
+      `${unpriced.join(", ")}: not priced by ocra Cloud, so reported cost and --max-cost-usd do not count ${unpriced.length === 1 ? "it" : "them"}`,
+    );
+  }
   if (!run.keyReadPerCall) {
     const left = session.expires_at - deps.now();
     if (left < needed) {
@@ -190,6 +200,19 @@ function gatewayRoute(
 
 function minutes(ms: number): number {
   return Math.floor(ms / 60_000);
+}
+
+// A model's price as ocra Cloud lists it; a model it does not list, or lists
+// with something that is not a price, counts as unpriced.
+function priceOf(
+  prices: Readonly<Record<string, unknown>> | undefined,
+  model: string,
+): ModelPrice | undefined {
+  if (!prices || !Object.hasOwn(prices, model)) return undefined;
+  const parsed = modelPriceSchema.safeParse(prices[model]);
+  if (!parsed.success) return undefined;
+  const { cachedInput, ...price } = parsed.data;
+  return cachedInput === undefined ? price : { ...price, cachedInput };
 }
 
 // How the gateway's provider takes a reasoning effort, as ocra Cloud lists

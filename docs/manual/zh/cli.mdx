@@ -416,7 +416,7 @@ ocra logout                                   # 在服务器上结束会话，�
 { "runtime": "direct", "models": { "standard": "ocra-openrouter/qwen/qwen3.8-27b:free" } }
 ```
 
-- 没有价格：报告中的费用和 `--max-cost-usd` 不计入它们，并给出警告。
+- 按 ocra Cloud 列出的模型价格计费（输入、输出和缓存输入，每百万 token），报告中的费用和 `--max-cost-usd` 都会计入。ocra Cloud 没有列出价格的模型没有价格：两者都不计入它，并给出点名该模型的警告。
 - 提示词及其中引用的代码经过 ocra Cloud，它只记录每次调用的模型、状态码、token 数和耗时，从不记录内容。
 - 没有使用 `ocra-` 模型的审查不读取会话，也不连接 ocra Cloud；配置中以 `ocra-` 名称自行声明的 provider 保持原有声明。
 - [推理强度](./configuration#推理强度)按 ocra Cloud 为该 provider 列出的方式发送（`openai`：`reasoning_effort`；`openrouter`：`reasoning.effort`），没有列出时用 `openai`；不认识的方式会被忽略并给出警告。回答不是 provider 列表时审查停止。
