@@ -264,9 +264,9 @@ node packages/eval/dist/main.js perf --from main~10 --to main
 node packages/eval/dist/main.js perf --repo-dir ../big-repository --from v1.2.0 --latency-ms 300 --budget budget.json
 ```
 
-用真实的 CLI 审查一段本地提交范围，模型换成本机上按脚本作答的端点（不联网，不需要 key），报告 ocra 自身的开销：总耗时、ocra 进程的 CPU 时间和内存峰值、它启动的 git 进程（按命令统计），以及每一类模型调用（review、plan、grouping、verify、judge）的请求数、输入 token 数（按四个字符一个 token 估算）、最大的一次请求，和与更早请求开头重复的 token 占比，也就是服务商的提示词缓存能命中的部分。脚本模型对每个任务的做法都一样（读它那组文件里的前几个，搜索新增行调用的函数，读一个 diff，报告一个问题然后结束），所以同一个变更跑两次，差别只来自 ocra；它不说明审查质量。
+用真实的 CLI 审查一段本地提交范围，模型换成本机上按脚本作答的端点（不联网，不需要 key），报告 ocra 自身的开销：总耗时、验证器答完第一个文件的时间（最早能展示已核实发现的时刻，此时其他审查任务还在运行）、ocra 进程的 CPU 时间和内存峰值、它启动的 git 进程（按命令统计），以及每一类模型调用（review、plan、grouping、verify、judge）的请求数、输入 token 数（按四个字符一个 token 估算）、最大的一次请求，和与更早请求开头重复的 token 占比，也就是服务商的提示词缓存能命中的部分。脚本模型对每个任务的做法都一样（读它那组文件里的前几个，搜索新增行调用的函数，读一个 diff，报告一个问题然后结束），所以同一个变更跑两次，差别只来自 ocra；它不说明审查质量。
 
-`--latency-ms` 让每个请求等待一段时间，看在模型节奏下的运行情况；`--runtime opencode` 测默认运行时而不是 `direct`。`--budget` 指向一个 JSON 上限文件（`wallMs`、`cpuMs`、`peakMemoryMb`、`gitProcesses`、`modelRequests`、`inputTokens`，都可省略）；有指标超过上限时命令以 1 退出。结果写入 `--out`/`--label`（默认 `perf`）下的 `perf.json`，同时保留报告和 git 的跟踪日志。CI 用一个合成变更对照 `evals/perf-budget.json`（`packages/eval/src/perf/measure.e2e.test.ts`）。
+`--latency-ms` 让每个请求等待一段时间，看在模型节奏下的运行情况；`--runtime opencode` 测默认运行时而不是 `direct`。`--budget` 指向一个 JSON 上限文件（`wallMs`、`firstVerifiedMs`、`cpuMs`、`peakMemoryMb`、`gitProcesses`、`modelRequests`、`inputTokens`，都可省略）；有指标超过上限时命令以 1 退出。结果写入 `--out`/`--label`（默认 `perf`）下的 `perf.json`，同时保留报告和 git 的跟踪日志。CI 用一个合成变更对照 `evals/perf-budget.json`（`packages/eval/src/perf/measure.e2e.test.ts`）。
 
 ## 评分方式
 

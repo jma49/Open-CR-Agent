@@ -47,6 +47,6 @@ ocra serve --port 7420  # 固定端口
   "kind": "file.finished", "data": { "path": "src/auth/session.ts", "status": "reviewed" } }
 ```
 
-`seq` 从 1 开始连续递增，也是事件的 SSE id。每次审查恰好以一条 `finished`（结论、审查是否完整、总用量）或 `failed`（`cancelled`、`budget` 或 `error`）结束。事件种类有 `started`、`stage`、`task.started`、`task.finished`、`file.finished`、`finding`、`warning`、`usage`（目前为止的花费）、`finished` 和 `failed`。发现会在任务报告时发一次，审查结束时（Verify 和判官之后）再发一次；后来的会替换同一 `id` 的先前那条，`dropped` 表示判官没有保留它。新版本的 ocra 可能增加种类和字段而不改 `version`：遇到不认识的种类直接跳过。
+`seq` 从 1 开始连续递增，也是事件的 SSE id。每次审查恰好以一条 `finished`（结论、审查是否完整、总用量）或 `failed`（`cancelled`、`budget` 或 `error`）结束。事件种类有 `started`、`stage`、`task.started`、`task.finished`、`file.finished`、`finding`、`warning`、`usage`（目前为止的花费）、`finished` 和 `failed`。发现会在任务报告时发一次，Verify 核查之后再发一次（核查在其他任务还在运行时就开始），审查结束时（判官之后）再发一次；后来的会替换同一 `id` 的先前那条。`dropped` 表示 Verify 否定了它，或判官没有保留它。`settled` 表示报告会原样带上它：Verify 确认的 critical 发现一经核查就是 settled，因为判官不能丢弃、降级或把它合并掉；结束时发送的发现全部是 settled。请把 settled 的发现当作结果展示，其余的还可能变化或消失。新版本的 ocra 可能增加种类和字段而不改 `version`：遇到不认识的种类直接跳过。
 
 文本字段经过与共享给 ocra Cloud 的发现相同的脱敏处理，事件里从不包含密钥、token 或模型的请求与回答。
