@@ -1,3 +1,4 @@
+import type { VcsAdapter } from "@open-cr-agent/core";
 import { MEMORY_PATH, parseMemory } from "@open-cr-agent/core/internal";
 import type { TrustedTree } from "../review/target.js";
 import { unchanged } from "./evidence.js";
@@ -27,4 +28,34 @@ export async function acceptedFindingCandidates(tree: TrustedTree): Promise<Cand
         };
       },
     }));
+}
+
+// The same source on a pull or merge request (ADR-0069): the findings
+// someone with write access declined in their thread, with what they said,
+// and the file as the change has it, else as the trusted revision does.
+export async function declinedFindingCandidates(
+  vcs: VcsAdapter,
+  tree: TrustedTree,
+): Promise<Candidate[]> {
+  const declined = (await vcs.getChangeRequest()).declined ?? [];
+  if (declined.length === 0) return [];
+  const diff = (await vcs.getDiff()).filter((f) => !f.isBinary);
+  return declined.map((d) => ({
+    ref: d.fingerprint,
+    evidence: async () => {
+      const changed = diff.find((f) => f.newPath === d.file);
+      const content = changed ? undefined : await tree.readFile(d.file);
+      return {
+        kind: "accepted-finding",
+        source: { kind: "review-feedback", ref: d.fingerprint },
+        subject: d.title,
+        message: d.reason,
+        files: changed
+          ? [changed]
+          : content === undefined
+            ? []
+            : [unchanged(d.file, content, MAX_FILE_CHARS)],
+      };
+    },
+  }));
 }

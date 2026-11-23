@@ -10,8 +10,9 @@ import {
   report,
   type Scenario,
 } from "./conformance.fakes.js";
+import { declinesFinding } from "./declined.js";
 import type { ReviewPlatform } from "./platform.js";
-import { declinesFinding, PlatformReview } from "./review.js";
+import { PlatformReview } from "./review.js";
 import { githubSuggestion } from "./suggestion.js";
 
 const BOT = "ocra-bot";

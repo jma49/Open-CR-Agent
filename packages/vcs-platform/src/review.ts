@@ -15,6 +15,7 @@ import type {
 import { errorMessage, isUnfinished } from "@open-cr-agent/core";
 import { commitToChangeRequest } from "./commit.js";
 import { mentionOf } from "./conversation.js";
+import { declinedFindings, declinesFinding, findingOf } from "./declined.js";
 import type {
   Bot,
   InlineFinding,
@@ -23,7 +24,7 @@ import type {
   PlatformThread,
   ReviewPlatform,
 } from "./platform.js";
-import { FINDING_MARKER, inlineBody, renderSummary } from "./render.js";
+import { inlineBody, renderSummary } from "./render.js";
 import { lostProgress, type ReviewState, readState, SUMMARY_MARKER } from "./state.js";
 
 // Where the code under review is read from: the CLI passes the local git
@@ -51,25 +52,6 @@ const MAX_NOTES = 20;
 const MAX_REPLIES = 3;
 const MAX_REPLY_CHARS = 1_000;
 
-const DECLINE =
-  /^(won['’]?t fix|wontfix|will not fix|by design|false positive|not a bug|working as intended|intended behaviou?r)(?=$|[\s.,;:!—–-])/i;
-const COMMAND = /^\/ocra dismiss\b/im;
-
-// A dismissal takes a clear decline: an explicit `/ocra dismiss`, or a reply
-// that opens with a decline and does not ask. Words anywhere else in a reply
-// ("this is not intended", "is this by design?", "acknowledged, will fix")
-// do not dismiss, since a dismissed finding leaves the verdict. Disagreement
-// ("I disagree") keeps the finding reported.
-export function declinesFinding(reply: string): boolean {
-  if (COMMAND.test(reply)) return true;
-  const opening =
-    reply
-      .trim()
-      .split(/(?<=[.!?])\s|\n/)[0]
-      ?.trim() ?? "";
-  return DECLINE.test(opening) && !opening.endsWith("?");
-}
-
 // The review conversation on a code review platform, the same on every one:
 // which earlier state and which comments count, who may override or dismiss,
 // and what gets posted. The platform only maps its API (ReviewPlatform).
@@ -91,6 +73,7 @@ export class PlatformReview implements VcsAdapter {
     const cr = await this.changeRequest();
     const override = await this.override(cr);
     const remember = await this.remembered(cr);
+    const declined = await this.declined();
     return {
       id: cr.id,
       title: cr.title,
@@ -100,6 +83,7 @@ export class PlatformReview implements VcsAdapter {
       ...(cr.branch ? { branch: cr.branch } : {}),
       ...(override ? { override } : {}),
       ...(remember.length > 0 ? { remember } : {}),
+      ...(declined.length > 0 ? { declined } : {}),
     };
   }
 
@@ -122,6 +106,15 @@ export class PlatformReview implements VcsAdapter {
       notes.push({ by: login, note: note.slice(0, MAX_NOTE), ref: `${cr.id}/${c.id}` });
     }
     return notes;
+  }
+
+  // Best effort, like every read of threads: without them none is declined.
+  private async declined(): Promise<NonNullable<ChangeRequest["declined"]>> {
+    const prior = await this.priorState();
+    if (!("state" in prior) || !prior.state) return [];
+    const threads = await this.threads().catch(() => []);
+    const canWrite = (login: string) => this.canWrite(login);
+    return declinedFindings(threads, prior.state.findings, await this.bot(), canWrite);
   }
 
   // "Break glass": `/ocra override <commit> <reason>` from someone with
@@ -469,14 +462,4 @@ export class PlatformReview implements VcsAdapter {
     }
     return value;
   }
-}
-
-// The finding a thread of ocra's is about: its first comment is ocra's, with
-// a marker, and nobody else edited it. An edited marker could point a
-// reviewer's resolution or reply at another finding, or hide one.
-function findingOf(thread: PlatformThread, bot: Bot): string | undefined {
-  const first = thread.comments[0];
-  const fingerprint = first && FINDING_MARKER.exec(first.body)?.[1];
-  if (!first || !fingerprint || !bot.is(first.author)) return undefined;
-  return first.editor === undefined || bot.is(first.editor) ? fingerprint : undefined;
 }

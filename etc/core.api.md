@@ -246,6 +246,14 @@ export interface ChangeRequest {
     // (undocumented)
     branch?: string;
     // (undocumented)
+    declined?: {
+        by: string;
+        fingerprint: string;
+        title: string;
+        file: string;
+        reason: string;
+    }[];
+    // (undocumented)
     description: string;
     // (undocumented)
     headSha: string;
