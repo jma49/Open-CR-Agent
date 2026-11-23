@@ -150,7 +150,7 @@ The pipeline owns orchestration; a runtime executes one isolated task. `runtime-
 packages/
   core/              domain types, stages, contracts
   runtime-opencode/  AgentRuntime on @opencode-ai/sdk
-  runtime-direct/    AgentRuntime over declared OpenAI-compatible endpoints
+  runtime-direct/    AgentRuntime over declared endpoints (OpenAI or Anthropic protocol)
   vcs-platform/      the review conversation every platform shares
   vcs-github/        VcsAdapter for GitHub, over vcs-platform
   vcs-gitlab/        VcsAdapter for GitLab merge requests, over vcs-platform

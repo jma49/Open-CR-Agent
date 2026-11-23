@@ -80,7 +80,7 @@ export OCRA_MODEL_TOP="google/gemini-3.1-pro-preview"
 
 `OCRA_EFFORT_TOP`、`OCRA_EFFORT_STANDARD` 和 `OCRA_EFFORT_LIGHT` 会覆盖对应层级的设置。
 
-- **`direct`** 发送 `reasoning_effort`；对声明了 `"effort": "openrouter"` 的供应商发送 `reasoning: { effort }`（见[模型供应商](./providers#你自己的端点)）；`none` 按 `none` 发送。带其他级别的调用不发送 `temperature` 和 `seed`，推理模型会拒绝或忽略它们。端点返回 HTTP 400 并点名该参数时，去掉它重试一次（不算失败），这个模型之后的调用都不再带它，并给出警告。
+- **`direct`** 发送 `reasoning_effort`；对声明了 `"effort": "openrouter"` 的供应商发送 `reasoning: { effort }`（见[模型供应商](./providers#你自己的端点)）；`none` 按 `none` 发送。带其他级别的调用不发送 `temperature` 和 `seed`，推理模型会拒绝或忽略它们。端点返回 HTTP 400 并点名该参数时，去掉它重试一次（不算失败），这个模型之后的调用都不再带它，并给出警告。用 `"type": "anthropic"` 声明的供应商则收到 `output_config.effort` 加自适应思考，`minimal` 和 `none` 按 `low` 发送（见[模型供应商](./providers#使用-anthropic-api-的端点)）。
 - **`opencode`** 把级别写进模型的供应商参数：OpenAI 推理模型（GPT-5、o 系列）用 `reasoningEffort`，Claude 4 及以后和 Gemini 2.5 用思考预算（thinking budget），Gemini 3 用 `thinkingLevel`；OpenRouter 模型和[声明的供应商](./providers#你自己的端点)按各自的 `effort` 接收。思考预算取 OpenCode 目录中该模型输出上限的一定比例（`minimal` 1/32、`low` 1/16、`medium` 1/4、`high` 1/2；Claude 至少 1,024 个 token，Gemini 不超出它自己的范围），没有上限时按 32,000 个 token 计算；`none` 关闭思考（Claude 不思考，Gemini 2.5 Flash 预算为 0）。每个模型的每个级别是独立的 OpenCode variant，共用一个模型的 agent 可以用不同级别。和 `direct` 一样，`none` 以外的级别不带配置的 `temperature`。其他供应商（Azure、Bedrock、Groq 等）不发送推理强度。
 - 模型接受哪些级别来自 ocra 内置的一张表（`@open-cr-agent/core` 的 `effortCapability`），可能跟不上新模型：在 `opencode` 上，表里没为某模型列出的级别（例如 o3 的 `minimal`、Gemini 3 的 `medium`）或不认识的模型不带推理强度，每个 agent 警告一次。审查不会因此失败。启动时读不到 OpenCode 的模型目录时，不发送任何级别，警告里会给出原因。
 - JSON 报告的 `provenance.agents` 列出每个 agent 的层级、推理强度、`applied` 和 `notApplied`；`--plan` 显示每个任务的推理强度；配置哈希也覆盖它。
@@ -110,7 +110,7 @@ agent 运行时只拿到 `PATH`、`HOME`、语言区域、代理和 CA 设置，
 | `fixes` | `false` | 为局部改动这些行就能修好的问题给出经过检查的[修复](./how-it-works)（每个有候选的文件最多一次 standard 档位的调用）；`--fixes` 只在本次运行开启 |
 | `guidelineScope` | `"all"` | 每个审查任务拿到 `AGENTS.md` 的哪些章节；总是按文件顺序给出完整章节，最多 20,000 个字符，其余章节列出标题供审查员自行读取：`all`（所有章节给所有审查员）、`matched`（标题里写了路径的章节，如 `## web/`，连同其下的子章节，只给改动涉及该路径的任务；其余章节给所有任务）或 `reviewer`（只给 `agents-md` 审查员）。`agents-md` 审查员总是拿到所有章节。`--guidelines` 会覆盖它 |
 | `linkedTasks` | `true` | 把 Pull Request 或 Merge Request [关联的 issue](./how-it-works#关联的任务) 交给审查员，每个都裁到固定大小；`false`（或 `--no-linked-tasks`）让提示词保持原样 |
-| `sampling` | 无 | `{ "temperature": 0–2, "seed": n }`，用于每次模型调用，两项都可省略（不设置时用供应商默认值）；`--temperature` 和 `--seed` 会覆盖它。`direct` 两项都发送。`opencode` 只把温度传给目录标明接受温度的模型（[声明的模型](./providers#你自己的端点)都标明了），种子报告为未应用。`provenance.sampling` 写明实际应用了什么。种子只有在供应商遵守时才能让运行可重复 |
+| `sampling` | 无 | `{ "temperature": 0–2, "seed": n }`，用于每次模型调用，两项都可省略（不设置时用供应商默认值）；`--temperature` 和 `--seed` 会覆盖它。`direct` 两项都发送，但用 `"type": "anthropic"` 声明的供应商两项都不接受。`opencode` 只把温度传给目录标明接受温度的模型（[声明的模型](./providers#你自己的端点)都标明了），种子报告为未应用。`provenance.sampling` 写明实际应用了什么。种子只有在供应商遵守时才能让运行可重复 |
 
 某个任务失败或超时不会导致整次运行失败，它负责的文件会被标记为 `failed`。
 

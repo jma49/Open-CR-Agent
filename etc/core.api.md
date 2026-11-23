@@ -364,6 +364,8 @@ export function coverageGaps(run: {
 // @public (undocumented)
 export interface CustomProvider {
     // (undocumented)
+    api?: "openai" | "anthropic";
+    // (undocumented)
     apiKeyEnv?: string;
     // (undocumented)
     baseUrl: string;

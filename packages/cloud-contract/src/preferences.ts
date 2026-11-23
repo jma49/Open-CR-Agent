@@ -15,7 +15,7 @@ import {
 // or keys, and only a configuration file may set them.
 //
 // A value of null, "" or [] sets nothing. ocra Cloud also refuses a model
-// whose provider has no OpenAI-compatible chat route, which it alone knows.
+// whose provider has no route a review can take, which it alone knows.
 
 // Drops the keys that set nothing.
 function present<T extends Record<string, unknown>>(

@@ -20,16 +20,22 @@ export const recordingSchema = z.object({
 export type Recording = z.infer<typeof recordingSchema>;
 
 // What makes two requests the same exchange: the conversation and the tools
-// offered. The model and sampling settings are recorded but do not count, so
-// a replay of a run does not depend on which model of the chain served it.
-export function exchangeKey(request: { messages?: unknown; tools?: unknown }): string {
+// offered, with the system prompt where the protocol keeps it apart from the
+// messages. The model and sampling settings are recorded but do not count,
+// so a replay of a run does not depend on which model of the chain served it.
+export function exchangeKey(request: {
+  messages?: unknown;
+  tools?: unknown;
+  system?: unknown;
+}): string {
+  const { messages = [], tools = [], system } = request;
   return createHash("sha256")
-    .update(JSON.stringify([request.messages ?? [], request.tools ?? []]))
+    .update(JSON.stringify(system === undefined ? [messages, tools] : [messages, tools, system]))
     .digest("hex")
     .slice(0, 32);
 }
 
-// Wraps fetch so every chat completion it sends is recorded in `dir`. The
+// Wraps fetch so every model request it sends is recorded in `dir`. The
 // directory is created, private to its owner, before any request, so a path
 // that cannot be one fails the run at once rather than every request.
 // `secrets` is asked when each request is sent and again at its write, and

@@ -57,6 +57,12 @@ describe("loadConfig", () => {
             baseUrl: "http://127.0.0.1:8000/v1",
             models: { free: { input: 0, output: 0 } },
           },
+          claude: {
+            type: "anthropic",
+            baseUrl: "https://api.anthropic.com",
+            apiKeyEnv: "ANTHROPIC_API_KEY",
+            models: { "claude-opus-5-5": { input: 4, output: 20, cachedInput: 0.2 } },
+          },
         },
       }),
     );
@@ -68,6 +74,12 @@ describe("loadConfig", () => {
         models: { "qwen3-coder": { input: 0.5, output: 2, cachedInput: 0.1 } },
       },
       local: { baseUrl: "http://127.0.0.1:8000/v1", models: { free: { input: 0, output: 0 } } },
+      claude: {
+        api: "anthropic",
+        baseUrl: "https://api.anthropic.com",
+        apiKeyEnv: "ANTHROPIC_API_KEY",
+        models: { "claude-opus-5-5": { input: 4, output: 20, cachedInput: 0.2 } },
+      },
     });
     expect(warnings).toEqual([
       "local/free has a price of 0: reported cost and --max-cost-usd do not count its tokens",
@@ -85,7 +97,8 @@ describe("loadConfig", () => {
     [{ baseUrl: "https://llm.example.com/{env:GEMINI_API_KEY}/v1" }, "must not contain { or }"],
     [{ models: {} }, "must list at least one model"],
     [{ models: { m: { input: 1 } } }, "output"],
-    [{ type: "anthropic" }, "type"],
+    [{ type: "gemini" }, "type"],
+    [{ type: "anthropic", effort: "openrouter" }, "openai-compatible provider only"],
   ])("refuses a provider with %j", async (change, message) => {
     const provider = {
       type: "openai-compatible",

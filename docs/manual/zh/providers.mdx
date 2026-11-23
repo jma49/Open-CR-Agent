@@ -58,6 +58,41 @@ description: ocra 能用哪些模型供应商、各自需要什么，以及如�
 
 已在 CI 里用真实的 OpenCode 二进制文件对模拟的 OpenAI 兼容服务测试过（密钥发往该去的地方，价格被计入，不访问其他地址），也在 OpenRouter 上真实运行过（一个免费模型，2026-10-02）。
 
+### 使用 Anthropic API 的端点
+
+Anthropic 官方 API，或者使用其 Messages 协议的网关，用 `"type": "anthropic"` 声明，并在 [`direct` 运行时](#选择运行时)上运行：
+
+```json
+{
+  "runtime": "direct",
+  "models": {
+    "top": "claude/claude-opus-5-5",
+    "standard": "claude/claude-sonnet-5-5",
+    "light": "claude/claude-haiku-5-5"
+  },
+  "providers": {
+    "claude": {
+      "type": "anthropic",
+      "baseUrl": "https://api.anthropic.com",
+      "apiKeyEnv": "ANTHROPIC_API_KEY",
+      "models": {
+        "claude-opus-5-5": { "input": 4, "output": 20, "cachedInput": 0.2 },
+        "claude-sonnet-5-5": { "input": 2, "output": 10, "cachedInput": 0.1 },
+        "claude-haiku-5-5": { "input": 0.1, "output": 0.5, "cachedInput": 0.01 }
+      }
+    }
+  }
+}
+```
+
+- **`baseUrl`** 是 `/v1/messages` 所在的地址，本身不带 `/v1`。
+- **每一步都使用提示缓存**：代理的下一次请求按 `cachedInput` 的价格读取此前的对话。供应商写入缓存的输入按 `input` 加四分之一计费，与 Anthropic 的收费一致。
+- **[推理强度](./configuration#推理强度)**以 `output_config.effort` 加自适应思考发送；`minimal` 和 `none` 按该 API 的最低档 `low` 发送。模型拒绝这些参数时，会不带它们重发一次。声明里的 `effort` 不适用，写了会被拒绝。
+- **不发送 `temperature` 和 `seed`**：该 API 没有 seed，新模型也不接受 temperature。报告里会把它们列为未生效。
+- `opencode` 运行时拒绝这样的声明；它通过目录里的供应商 `anthropic/<model>` 访问 Anthropic。
+
+已对模拟的 Messages 端点测试过（密钥只发往该去的地方、缓存标记、价格、被拒绝的推理强度）；还没有真实运行过。
+
 ## OpenRouter 上的免费模型
 
 [OpenRouter](https://openrouter.ai) 上的免费模型和任何端点一样声明：按 OpenRouter 的模型 id 写，价格为 0，以 `<端点 id>/<模型 id>` 引用。对 OpenRouter 的 key，[`ocra init`](./cli#ocra-init) 写的就是这样的配置，模型是 `openrouter/free`，即把每次请求交给某个免费模型的路由：
@@ -96,7 +131,7 @@ description: ocra 能用哪些模型供应商、各自需要什么，以及如�
 | 运行时 | 会访问 | 适用场景 |
 |---|---|---|
 | `opencode`（默认） | OpenCode 目录里的所有供应商和你声明的端点，外加价格目录 `models.opencode.ai` | 你的模型是 Gemini、Vertex AI、Anthropic、Bedrock 或目录里的其他供应商 |
-| `direct` | 只访问 `providers` 下声明的端点，不访问网络上的其他任何地址 | 模型链里的每个模型都在声明的端点上，而且你希望除此之外什么都不访问 |
+| `direct` | 只访问 `providers` 下声明的端点（OpenAI 或 Anthropic 协议），不访问网络上的其他任何地址 | 模型链里的每个模型都在声明的端点上，而且你希望除此之外什么都不访问 |
 
 两者跑同一套审查：工具、步数上限、降级和价格都相同。`direct` 会在发出任何请求前拒绝写了未声明供应商的模型链，并读取 `HTTP_PROXY`、`HTTPS_PROXY` 和 `NO_PROXY`。[质量数字](./quality)是在 `opencode` 上测得的；`direct` 通过同一套一致性测试，但还没有在黄金用例集上评测过。
 

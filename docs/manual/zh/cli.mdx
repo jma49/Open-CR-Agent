@@ -410,7 +410,7 @@ ocra logout                                   # 在服务器上结束会话，�
 - 连不上 ocra Cloud（网络错误、5xx、429）时会话保留；审查只警告一次，然后在没有你账户的规则、限额（含 `maxCostUsd`）、模型和 memory 的情况下运行，也不上传；指定了 `ocra-` 模型的审查则以错误停止，`ocra whoami` 以 2 退出。账户设置返回 404 视为没有设置，不警告。
 - `ocra login` 拿到令牌却读不到你的登录名时，仍保存会话，并说明登录名未知。
 
-**经由 ocra Cloud 的模型。** 登录后，`ocra-<provider>/<model>` 会经由 ocra Cloud、使用服务器上为 `<provider>` 保存的 key 调用（服务器列出的 OpenAI 兼容对话接口）：
+**经由 ocra Cloud 的模型。** 登录后，`ocra-<provider>/<model>` 会经由 ocra Cloud、使用服务器上为 `<provider>` 保存的 key 调用（服务器列出的 chat completions 接口；供应商只有 Messages 接口时用它，例如 `ocra-anthropic/<model>`）：
 
 ```json
 { "runtime": "direct", "models": { "standard": "ocra-openrouter/qwen/qwen3.8-27b:free" } }
