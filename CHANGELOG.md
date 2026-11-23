@@ -6,6 +6,17 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-23
+
+### Added
+
+- A model through ocra Cloud is priced as ocra Cloud lists it, so the reported cost and `--max-cost-usd` count it; a model it lists no price for stays unpriced, with a warning naming it.
+- `@open-cr-agent/cloud-contract` exports `modelPriceSchema`, and a provider entry carries `prices`.
+
+### Changed
+
+- `ocra init` pins the Action to v0.13.0.
+
 ## [0.13.0] - 2026-11-23
 
 ### Added
@@ -589,7 +600,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.10.0...v0.11.0
