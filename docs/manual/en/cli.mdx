@@ -396,7 +396,7 @@ With `--json`, stdout is one line:
 | `stale` | The finding's code is not in the file at the head, or the file is gone. Review the change again | `stale` | `3` |
 | `head_moved` | The head is not `--head` | `null` | `3` |
 
-A finding whose stored text was redacted or cut (`redacted`, `truncated`) and whose code is not found is `not_candidate`, not `stale`: its stored code may not be the file's. Usage, input, configuration and model errors exit `2`. The shape is `fixResultSchema` in `@open-cr-agent/cloud-contract` ([ADR-0077](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0077-fix-one-finding.md)). New in v0.19.0.
+A finding whose stored text was redacted or cut (`redacted`, `truncated`) and whose code is not found is `not_candidate`, not `stale`: its stored code may not be the file's. Usage, input and configuration errors, and a runtime that cannot start, exit `2`; a failed model call is `rejected` with `failed`. The shape is `fixResultSchema` in `@open-cr-agent/cloud-contract` ([ADR-0077](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0077-fix-one-finding.md)). New in v0.19.0.
 
 ## ocra metrics
 
