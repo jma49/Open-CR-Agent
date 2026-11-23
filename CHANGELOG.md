@@ -6,6 +6,26 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-23
+
+`ocra learn feedback` turns the findings a pull request's reviewers declined into proposed learnings, and the security and performance reviewers need about a third fewer tasks on a change of many small bundles. The Action's new tag is `jma49/Open-CR-Agent@v0.17.0`.
+
+### Added
+
+- `ocra learn feedback --pr <n>` (or `--mr <iid>`) also drafts learnings from the findings of the pull or merge request's review that someone with write access declined in their thread, with what they said (`ChangeRequest.declined`).
+- `ocra learn --config <file>` reads that configuration file instead of the repository's, as `ocra review` does.
+- `MAX_QUOTA_WAIT_MS` in `@open-cr-agent/core`: the longest rate limit wait a run sits out, for runtime plugins that see a provider's stated wait.
+- `ReviewerScope.span: "packed"`: the reviewer takes bundles that follow each other in run order in one task, up to the bundle size limits.
+
+### Changed
+
+- `ocra init` pins the Action to v0.16.0.
+- The security and performance reviewers pack neighbouring bundles, keeping sensitive paths apart: a change of many small bundles needs about a third fewer review tasks and model requests.
+
+### Fixed
+
+- On the `opencode` runtime a task no longer waits out a long retry OpenCode holds a session in, such as a daily limit's wait until midnight: the session is stopped within seconds and the refusal counts as a quota limit, so the run moves on or stops as it does on `direct`.
+
 ## [0.16.0] - 2026-11-23
 
 A large review needs fewer tasks and requests, runs eight tasks at once, keeps its progress through a rate limit, and on Anthropic's protocol reads more of its prompts from the cache. The Action's new tag is `jma49/Open-CR-Agent@v0.16.0`.
@@ -634,7 +654,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.13.0...v0.14.0
