@@ -83,13 +83,23 @@ export function isCloudModel(model: string): boolean {
 export const EFFORT_STYLES = ["openai", "openrouter"] as const;
 export type EffortStyle = (typeof EFFORT_STYLES)[number];
 
+/** What a model costs, in US dollars per million tokens; cached input at the input price unless given. */
+export const modelPriceSchema = z.object({
+  input: z.number().finite().nonnegative(),
+  output: z.number().finite().nonnegative(),
+  cachedInput: z.number().finite().nonnegative().optional(),
+});
+export type ModelPrice = z.infer<typeof modelPriceSchema>;
+
 // GET /api/providers. An entry that does not fit is left out on its own;
-// paths are checked one by one where they are used, and an effort style a
-// client does not know is refused there.
+// paths and prices are checked one by one where they are used, and an effort
+// style a client does not know is refused there.
 export const providersAnswerSchema = z.object({ providers: z.array(z.unknown()) });
 export const providerEntrySchema = z.object({
   name: z.string(),
   paths: z.array(z.unknown()),
   effort: z.unknown().optional(),
+  /** The prices ocra Cloud knows, by model id; a model it does not list is not priced. */
+  prices: z.record(z.string(), z.unknown()).optional(),
 });
 export type ProviderEntry = z.infer<typeof providerEntrySchema>;

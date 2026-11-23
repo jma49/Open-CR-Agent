@@ -880,6 +880,16 @@ export const modelChainsSchema: z.ZodPipe<z.ZodObject<{
 }>>;
 
 // @public (undocumented)
+export type ModelPrice = z.infer<typeof modelPriceSchema>;
+
+// @public
+export const modelPriceSchema: z.ZodObject<{
+    input: z.ZodNumber;
+    output: z.ZodNumber;
+    cachedInput: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strip>;
+
+// @public (undocumented)
 export type ModelTier = z.infer<typeof modelTierSchema>;
 
 // @public (undocumented)
@@ -1194,6 +1204,7 @@ export const providerEntrySchema: z.ZodObject<{
     name: z.ZodString;
     paths: z.ZodArray<z.ZodUnknown>;
     effort: z.ZodOptional<z.ZodUnknown>;
+    prices: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, z.core.$strip>;
 
 // @public (undocumented)
