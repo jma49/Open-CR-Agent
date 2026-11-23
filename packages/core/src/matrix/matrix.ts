@@ -1,8 +1,8 @@
 import picomatch from "picomatch";
 import { z } from "zod";
 import type { ReviewerOverrides } from "../agent/settings.js";
-import type { Bundle } from "../bundle/bundle.js";
-import { RISK_TIERS, type RiskTier } from "../domain.js";
+import { type Bundle, defaultBundlePolicy } from "../bundle/bundle.js";
+import { type FileDiff, RISK_TIERS, type RiskTier } from "../domain.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { touchesSensitivePath } from "../triage.js";
 
@@ -28,6 +28,9 @@ export interface SkippedCell {
   reason: SkipReason;
 }
 
+const WHOLE_CHANGE_LABEL = "whole change";
+const WHOLE_CHANGE_MAX_FILES = 20;
+
 export interface ReviewMatrix {
   cells: MatrixCell[];
   skipped: SkippedCell[];
@@ -39,6 +42,7 @@ export interface ReviewMatrix {
 // risk of the change instead of bundles × reviewers. Cells come in run order:
 // bundles on sensitive paths first, so a spend limit that ends the run early
 // has spent itself on them (ADR-0049); task ids keep the bundle's position.
+// A reviewer that spans the change comes last, its files in the same order.
 export function planMatrix(
   bundles: readonly Bundle[],
   reviewers: readonly ReviewerDefinition[],
@@ -49,6 +53,8 @@ export function planMatrix(
   const cells: MatrixCell[] = [];
   const skipped: SkippedCell[] = [];
   const ignores = new Map(reviewers.map((r) => [r.id, ignoreMatcher(r)]));
+
+  const whole = new Map<ReviewerDefinition, { files: FileDiff[]; from: Set<Bundle> }>();
 
   for (const { bundle, i } of riskOrder(bundles)) {
     for (const reviewer of reviewers) {
@@ -77,6 +83,13 @@ export function planMatrix(
         skip("no_matching_files");
         continue;
       }
+      if (reviewer.scope?.span === "change") {
+        const gathered = whole.get(reviewer) ?? { files: [], from: new Set<Bundle>() };
+        gathered.files.push(...files);
+        gathered.from.add(bundle);
+        whole.set(reviewer, gathered);
+        continue;
+      }
       cells.push({
         taskId: `${reviewer.id}-${i + 1}`,
         reviewer,
@@ -84,7 +97,38 @@ export function planMatrix(
       });
     }
   }
+  for (const [reviewer, { files, from }] of whole) {
+    const [only] = from;
+    const parts = from.size === 1 && only ? [{ ...only, files }] : wholeChange(files);
+    cells.push(
+      ...parts.map((bundle, n) => ({ taskId: `${reviewer.id}-${n + 1}`, reviewer, bundle })),
+    );
+  }
   return { cells, skipped };
+}
+
+// The change as one bundle, or as few as keep a task within what one
+// conversation reviews well.
+function wholeChange(files: readonly FileDiff[]): Bundle[] {
+  const parts: FileDiff[][] = [];
+  let chars = 0;
+  for (const file of files) {
+    const part = parts.at(-1);
+    const fits =
+      part !== undefined &&
+      part.length < WHOLE_CHANGE_MAX_FILES &&
+      chars + file.patch.length <= defaultBundlePolicy.maxBundleChars;
+    if (fits) part.push(file);
+    else parts.push([file]);
+    chars = fits ? chars + file.patch.length : file.patch.length;
+  }
+  return parts.map((part, n) => ({
+    label:
+      parts.length === 1
+        ? WHOLE_CHANGE_LABEL
+        : `${WHOLE_CHANGE_LABEL} (${n + 1} of ${parts.length})`,
+    files: part,
+  }));
 }
 
 function riskOrder(bundles: readonly Bundle[]): { bundle: Bundle; i: number }[] {
