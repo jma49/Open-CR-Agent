@@ -130,6 +130,7 @@ export class DirectRuntime implements AgentRuntime {
       ...this.call({ agent: spec.reviewer, effort: spec.effort, model }),
       system: spec.systemPrompt,
       user: spec.userPrompt,
+      ...(spec.sharedPrefixes ? { shared: spec.sharedPrefixes } : {}),
       tools: this.tools,
       context: spec.context,
       maxSteps: MAX_AGENT_STEPS,

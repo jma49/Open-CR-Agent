@@ -80,6 +80,10 @@ export interface AgentTaskSpec {
   models?: readonly string[];
   systemPrompt: string;
   userPrompt: string;
+  // Where in userPrompt a start that other tasks of the run are given too
+  // ends, shortest first (ADR-0064). A runtime whose provider caches the
+  // prefixes it is shown marks them; any other leaves them alone.
+  sharedPrefixes?: readonly number[];
   context: ReviewContext;
   timeoutMs: number;
 }

@@ -91,6 +91,8 @@ export interface AgentTaskSpec {
     // (undocumented)
     reviewer: string;
     // (undocumented)
+    sharedPrefixes?: readonly number[];
+    // (undocumented)
     systemPrompt: string;
     // (undocumented)
     taskId: string;

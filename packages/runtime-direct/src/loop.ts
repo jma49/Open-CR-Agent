@@ -28,6 +28,8 @@ export interface LoopInput {
   price: ModelPrice;
   system: string;
   user: string;
+  // AgentTaskSpec.sharedPrefixes of `user`.
+  shared?: readonly number[];
   tools: readonly ToolDefinition[];
   context: ReviewContext;
   // Model requests the attempt may make.
@@ -60,13 +62,18 @@ interface WrapUpTurn {
 // for the pipeline to validate.
 export async function runLoop(input: LoopInput): Promise<TaskAttempt> {
   const conversation = new Conversation(input);
-  const outcome = await conversation.turn(input.user, input.tools, input.maxSteps, input.resume);
+  const outcome = await conversation.turn(
+    { text: input.user, ...(input.shared ? { shared: input.shared } : {}) },
+    input.tools,
+    input.maxSteps,
+    input.resume,
+  );
   const { wrapUp } = input;
   if (!wrapUp) return outcome;
   const tools = input.tools.filter((t) => wrapUp.tools.includes(t.name));
   return {
     ...outcome,
-    wrapUp: () => conversation.turn(wrapUp.message, tools, outcome.steps + wrapUp.steps),
+    wrapUp: () => conversation.turn({ text: wrapUp.message }, tools, outcome.steps + wrapUp.steps),
   };
 }
 
@@ -99,7 +106,7 @@ class Conversation {
   // Runs until the done tool, an answer without tools, or `maxSteps` steps
   // in the whole attempt; returns the attempt's outcome so far.
   async turn(
-    message: string,
+    message: { text: string; shared?: readonly number[] },
     offered: readonly ToolDefinition[],
     maxSteps: number,
     resume?: string,
@@ -107,7 +114,7 @@ class Conversation {
     const { input, dialogue, outcome, texts, uses } = this;
     const tools = new Map(offered.map((t) => [t.name, t]));
     let done = false;
-    dialogue.say(message);
+    dialogue.say(message.text, message.shared);
     while (outcome.steps < maxSteps) {
       const response = await dialogue.ask(offered, this.settings, this.signal);
       outcome.steps += 1;

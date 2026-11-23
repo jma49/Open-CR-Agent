@@ -47,7 +47,9 @@ export type Answer = (
 ) & { effortDropped?: true };
 
 export interface Dialogue {
-  say(text: string): void;
+  // shared: where in the text a start that other conversations open with too
+  // ends, shortest first; a wire whose endpoint caches marked prefixes marks them.
+  say(text: string, shared?: readonly number[]): void;
   // One request with the conversation so far; an answer joins it.
   ask(
     tools: readonly ToolDefinition[],

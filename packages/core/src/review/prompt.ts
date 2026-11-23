@@ -61,6 +61,9 @@ export interface ReviewPromptInput {
 export interface ReviewPrompt {
   system: string;
   user: string;
+  // Where in `user` a start that other tasks of the run are given too ends,
+  // shortest first (AgentTaskSpec.sharedPrefixes).
+  shared: number[];
 }
 
 export interface PromptPart {
@@ -68,15 +71,30 @@ export interface PromptPart {
   text: PromptText;
 }
 
+// The parts every task of a run is given word for word, by the group they
+// end: the change itself, then the guidelines, which a guideline scope can
+// make differ between bundles (ADR-0059).
+const SHARED_GROUP: Partial<Record<ContextSource, number>> = {
+  change_request: 1,
+  changed_files: 1,
+  linked_tasks: 1,
+  guidelines: 2,
+};
+const PART_SEPARATOR = "\n\n";
+
 export function buildReviewPrompt(input: ReviewPromptInput): ReviewPrompt {
-  const [system, ...user] = reviewPromptParts(input);
-  return {
-    system: system?.text ?? "",
-    user: join(
-      user.map((p) => p.text),
-      "\n\n",
-    ),
-  };
+  const [system, ...parts] = reviewPromptParts(input);
+  const shared: number[] = [];
+  let user = "";
+  parts.forEach((part, i) => {
+    user += i > 0 ? `${PART_SEPARATOR}${part.text}` : part.text;
+    const group = SHARED_GROUP[part.source];
+    const next = parts[i + 1];
+    if (group !== undefined && next && SHARED_GROUP[next.source] !== group) {
+      shared.push(user.length);
+    }
+  });
+  return { system: system?.text ?? "", user, shared };
 }
 
 // The system prompt first, then the user prompt's parts in order. Parts
