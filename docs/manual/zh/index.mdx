@@ -1,9 +1,17 @@
 ---
-title: 简介
+title: 概览
 description: ocra 是一个专为不可信 PR 设计的开源 AI 代码审查工具，问题站不住脚就不开口。
+icon: BookOpen
 ---
 
 **ocra** 审查本地改动、GitHub Pull Request 和 GitLab Merge Request，用你自己的模型 key 在你的 CI 里运行。它假定所审的改动可能出自攻击者之手；一条问题只有引用了它所指的代码、并经得起第二遍核查，才会被说出来，否则它保持安静。
+
+<Cards>
+  <Card icon="Play" title="快速上手" href="/zh/docs/quickstart">安装 ocra，五分钟审完第一份改动。</Card>
+  <Card icon="GitPullRequest" title="GitHub Pull Request" href="/zh/docs/github">在 CI 里审查每个 PR，来自 fork 的也安全。</Card>
+  <Card icon="GitMerge" title="GitLab Merge Request" href="/zh/docs/gitlab">讨论串和一条摘要评论，GitLab.com 和自建实例都支持。</Card>
+  <Card icon="Cloud" title="ocra Cloud" href="/zh/docs/cloud">在一个控制台里看 PR、审查结果，并完成合并。</Card>
+</Cards>
 
 ## 为什么选择 ocra
 
@@ -18,12 +26,13 @@ description: ocra 是一个专为不可信 PR 设计的开源 AI 代码审查工
 
 ocra 目前是早期的 0.x 版本。CLI 参数、配置项、退出码和报告格式是[约定](/zh/docs/stability)，只会在预先告知后改变；提示词和审查质量仍在变动。
 
-## 接下来
+## 深入了解
 
 <Cards>
-  <Card title="快速上手" href="/zh/docs/quickstart">五分钟完成第一次审查。</Card>
-  <Card title="工作原理" href="/zh/docs/how-it-works">逐个阶段看审查流水线。</Card>
-  <Card title="GitHub Pull Request" href="/zh/docs/github">行内评论，每次 push 自动复审。</Card>
-  <Card title="GitLab Merge Request" href="/zh/docs/gitlab">讨论串和一条摘要评论，GitLab.com 和自建实例都支持。</Card>
-  <Card title="插件" href="/zh/docs/plugins">用插件加入团队自己的规则。</Card>
+  <Card icon="Workflow" title="工作原理" href="/zh/docs/how-it-works">逐个阶段看审查流水线。</Card>
+  <Card icon="ListChecks" title="审查规则" href="/zh/docs/rules">让审查员学会项目自己的约定。</Card>
+  <Card icon="Cpu" title="模型供应商" href="/zh/docs/providers">ocra 能用哪些模型，以及如何接入自己的端点。</Card>
+  <Card icon="SquareTerminal" title="CLI 参考" href="/zh/docs/cli">所有命令、选项和退出码。</Card>
+  <Card icon="ShieldCheck" title="安全与隐私" href="/zh/docs/security">哪些数据会离开你的机器，ocra 如何隔离。</Card>
+  <Card icon="Puzzle" title="插件" href="/zh/docs/plugins">用插件加入团队自己的审查员和规则。</Card>
 </Cards>

@@ -1,6 +1,7 @@
 ---
 title: ocra mcp
 description: 让 Claude Code、Cursor、Codex 这类编码 agent 通过 Model Context Protocol 请 ocra 审查。
+icon: Cable
 ---
 
 `ocra mcp` 以 [Model Context Protocol](https://modelcontextprotocol.io) 服务器的方式运行 ocra，走标准输入和输出，这样你使用的编码 agent 可以在你提交之前审查它自己的改动。它只有一个工具：`review`。这样运行的审查与 `ocra review` 相同：ocra 的只读 agent、核查和裁决，用你配置里的模型，同样的信任规则、花费上限、会话记录和 ocra Cloud 上传。审查用的是你配置的 key，而不是 agent 的模型。v0.11.0 新增。
