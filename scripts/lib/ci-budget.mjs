@@ -57,7 +57,8 @@ export function checkBudgets(jobs, budgets) {
       const setup = (job.steps ?? [])
         .filter((step) => SETUP_STEP.test(step.name))
         .reduce((sum, step) => sum + seconds(step.started_at, step.completed_at), 0);
-      const running = seconds(job.started_at, job.completed_at);
+      // A slow cache restore is the runner's, and setup has its own ceiling.
+      const running = seconds(job.started_at, job.completed_at) - setup;
       const setupBudget = ceiling(budgets.setup, job.name);
       const budget = ceiling(budgets.running, job.name);
       const over = [];
