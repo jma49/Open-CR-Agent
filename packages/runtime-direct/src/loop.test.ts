@@ -141,4 +141,47 @@ describe("runLoop", () => {
     expect(attempt.findings).toEqual([]);
     expect(attempt.refusedFindings).toEqual(["existingCode, body"]);
   });
+
+  it("takes one sentence of evidence sent as a string", async () => {
+    const server = await scriptedEndpoint([
+      {
+        toolCalls: [
+          {
+            name: "report_finding",
+            args: {
+              file: "src/a.ts",
+              existingCode: "const a = 1;",
+              severity: "warning",
+              title: "t",
+              body: "b",
+              evidence: "code_search found no writer",
+            },
+          },
+        ],
+      },
+      { toolCalls: [{ name: "task_done", args: {} }] },
+    ]);
+    endpoints.push(server);
+
+    const attempt = await runLoop({
+      wire: openaiWire(),
+      endpoint: { baseUrl: server.url },
+      model: "m1",
+      price: { input: 1, output: 1 },
+      system: "system",
+      user: "user",
+      tools: reviewTools,
+      context: {
+        readFile: async () => undefined,
+        readDiff: () => undefined,
+        searchCode: async () => [],
+      },
+      maxSteps: 5,
+      timeoutMs: 10_000,
+      signal: new AbortController().signal,
+    });
+
+    expect(attempt.findings).toMatchObject([{ evidence: ["code_search found no writer"] }]);
+    expect(attempt.refusedFindings).toBeUndefined();
+  });
 });
