@@ -68,10 +68,10 @@ describe("searchCode asked several times in one turn", () => {
     const trace = join(r.dir, "..", `${process.pid}-waiting-trace.log`);
     process.env.GIT_TRACE = trace;
     const asked = [shared.searchCode("limit")];
-    for (const literal of ["retries", "missing", "x[0].y"]) {
-      await new Promise((resolve) => setImmediate(resolve));
-      asked.push(shared.searchCode(literal));
-    }
+    // One turn of the event loop starts the first grep; a second turn could
+    // outlast it on a fast machine, and the later searches would not share.
+    await new Promise((resolve) => setImmediate(resolve));
+    for (const literal of ["retries", "missing", "x[0].y"]) asked.push(shared.searchCode(literal));
     const answers = await Promise.all(asked);
     delete process.env.GIT_TRACE;
     expect(readFileSync(trace, "utf8").match(/built-in: git .*grep/g)).toHaveLength(2);
