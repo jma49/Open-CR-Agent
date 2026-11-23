@@ -37,7 +37,7 @@ jobs:
     # At main, not at this pull request's ref, as for every caller. The
     # called job asks for id-token: write for its Vertex path, so the grant
     # stays; without a Google credential step nothing uses it here.
-    uses: jma49/Open-CR-Agent/.github/workflows/ocra-dogfood.yml@main
+    uses: ocrahq/Open-CR-Agent/.github/workflows/ocra-dogfood.yml@main
     with:
       model-source: openrouter
     secrets:

@@ -93,12 +93,12 @@ jobs:
       # shows in its report.
       - id: free
         if: inputs.model-source == 'openrouter'
-        uses: jma49/Open-CR-Agent/.github/actions/free-quota@main
+        uses: ocrahq/Open-CR-Agent/.github/actions/free-quota@main
         with:
           model: ${{ env.FREE_MODEL }}
           api-key: ${{ secrets.OPENROUTER_API_KEY }}
       - id: guard
-        uses: jma49/Open-CR-Agent/.github/actions/dogfood@main
+        uses: ocrahq/Open-CR-Agent/.github/actions/dogfood@main
         env:
           FREE_LEFT: ${{ steps.free.outputs.left }}
           GH_TOKEN: ${{ github.token }}
@@ -156,7 +156,7 @@ jobs:
       # Advice only: a failed or incomplete review never fails the pull request.
       - id: review
         if: steps.guard.outputs.allowed == 'true' && env.SOURCE == 'vertex'
-        uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+        uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         continue-on-error: true
         env:
           GOOGLE_VERTEX_PROJECT: ${{ secrets.GOOGLE_VERTEX_PROJECT }}
@@ -194,7 +194,7 @@ jobs:
       # Advice only, as above.
       - id: review-free
         if: steps.guard.outputs.allowed == 'true' && env.SOURCE == 'openrouter'
-        uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+        uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         continue-on-error: true
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -209,7 +209,7 @@ jobs:
       - id: free-outcome
         name: Read the free model outcome
         if: always() && steps.review-free.outcome != '' && steps.review-free.outcome != 'skipped'
-        uses: jma49/Open-CR-Agent/.github/actions/dogfood@main
+        uses: ocrahq/Open-CR-Agent/.github/actions/dogfood@main
         env:
           EXIT_CODE: ${{ steps.review-free.outputs.exit-code }}
           REPORT: ${{ steps.review-free.outputs.report }}
@@ -221,7 +221,7 @@ jobs:
       # readable report is counted at its cap.
       - id: cost
         if: always() && steps.reserve.outputs.name != ''
-        uses: jma49/Open-CR-Agent/.github/actions/dogfood@main
+        uses: ocrahq/Open-CR-Agent/.github/actions/dogfood@main
         env:
           REVIEW_OUTCOME: ${{ steps.review.outcome }}
           RUN_ID: ${{ github.run_id }}

@@ -19,12 +19,12 @@ const root = fileURLToPath(new URL("../..", import.meta.url));
 
 const PAGE = `\`\`\`bash
 npm install -g --ignore-scripts @open-cr-agent/cli@0.5.0
-docker run ghcr.io/jma49/ocra:0.5.0 ocra review
-docker pull ghcr.io/jma49/ocra:0.5.0@sha256:<digest>
+docker run ghcr.io/ocrahq/ocra:0.5.0 ocra review
+docker pull ghcr.io/ocrahq/ocra:0.5.0@sha256:<digest>
 \`\`\`
 
-Since 0.2.0, images run as \`node\`. Use \`ghcr.io/jma49/ocra:<version>\` or \`@open-cr-agent/core\`.
-- uses: jma49/Open-CR-Agent@d3af4e2189007de77dcf17e736855d04be4a491c # v0.5.0
+Since 0.2.0, images run as \`node\`. Use \`ghcr.io/ocrahq/ocra:<version>\` or \`@open-cr-agent/core\`.
+- uses: ocrahq/Open-CR-Agent@d3af4e2189007de77dcf17e736855d04be4a491c # v0.5.0
 `;
 
 describe("bumpPins", () => {
@@ -36,6 +36,14 @@ describe("bumpPins", () => {
     expect(pinsIn(next).map((p) => p.version)).toEqual(["0.6.0", "0.6.0", "0.6.0"]);
     expect(next).toContain("Since 0.2.0");
     expect(next).toContain("# v0.5.0");
+  });
+
+  it("moves an image under the previous owner, and the repository that attests it, to ocrahq", () => {
+    const line =
+      "gh attestation verify oci://ghcr.io/jma49/ocra:0.5.0 --repo jma49/Open-CR-Agent\nby @jma49";
+    expect(bumpPins(line, "0.6.0")).toBe(
+      "gh attestation verify oci://ghcr.io/ocrahq/ocra:0.6.0 --repo ocrahq/Open-CR-Agent\nby @jma49",
+    );
   });
 
   it("leaves the manual on the last stable release for a prerelease", () => {
@@ -68,10 +76,10 @@ const NEW = "82a3f1183a3177e9efa401d87eb95dea495ef619";
 
 describe("bumpActionPins", () => {
   it("moves every Action pin and its version comment, and keeps a placeholder a placeholder", () => {
-    const text = `- uses: jma49/Open-CR-Agent@${OLD} # v0.5.0
-- uses: jma49/Open-CR-Agent@<commit> # v0.5.0
+    const text = `- uses: ocrahq/Open-CR-Agent@${OLD} # v0.5.0
+- uses: ocrahq/Open-CR-Agent@<commit> # v0.5.0
 - uses: actions/checkout@v7 # v0.5.0
-"jma49/Open-CR-Agent@${OLD} # v0.5.0";
+"ocrahq/Open-CR-Agent@${OLD} # v0.5.0";
 `;
     expect(bumpActionPins(text, NEW, "0.6.0")).toBe(
       text.replaceAll(OLD, NEW).replace(/(Open-CR-Agent@\S+) # v0\.5\.0/g, "$1 # v0.6.0"),
@@ -127,7 +135,7 @@ describe("unpinnedUses", () => {
       fetch-depth: 0
   - name: upload
     uses: actions/upload-artifact@main
-  - uses: jma49/Open-CR-Agent@<commit> # v0.6.0
+  - uses: ocrahq/Open-CR-Agent@<commit> # v0.6.0
   - uses: actions/cache@${NEW}
   - uses: ./.github/actions/setup
 `;

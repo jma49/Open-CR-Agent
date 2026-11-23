@@ -11,11 +11,17 @@ import { dirname, join } from "node:path";
 const VERSION = String.raw`\d+\.\d+\.\d+[\w.+-]*`;
 const PINS = [
   new RegExp(String.raw`(@open-cr-agent\/[a-z0-9-]+@)(${VERSION})`, "g"),
-  new RegExp(String.raw`(ghcr\.io\/jma49\/ocra:)(${VERSION})`, "g"),
+  new RegExp(String.raw`(ghcr\.io\/ocrahq\/ocra:)(${VERSION})`, "g"),
 ];
 
+// Images up to 0.17.0 were published under the repository's previous owner,
+// and the manual names them there, with the repository that attests them,
+// while they are the latest. The first release from ocrahq moves those lines
+// with bumpPins; delete this then.
+const PREVIOUS_IMAGE_LINE = /^.*ghcr\.io\/jma49\/ocra.*$/gm;
+
 const ACTION_PIN = new RegExp(
-  String.raw`(jma49\/Open-CR-Agent@)([0-9a-f]{40}|<commit>) # v(${VERSION})`,
+  String.raw`(ocrahq\/Open-CR-Agent@)([0-9a-f]{40}|<commit>) # v(${VERSION})`,
   "g",
 );
 
@@ -61,7 +67,10 @@ export function pinsIn(text) {
  */
 export function bumpPins(text, version) {
   if (version.includes("-")) return text;
-  return PINS.reduce((out, pattern) => out.replace(pattern, `$1${version}`), text);
+  return PINS.reduce(
+    (out, pattern) => out.replace(pattern, `$1${version}`),
+    text.replace(PREVIOUS_IMAGE_LINE, (line) => line.replaceAll("jma49/", "ocrahq/")),
+  );
 }
 
 /**

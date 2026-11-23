@@ -46,7 +46,7 @@ concurrency:
 
 jobs:
   compare:
-    if: github.repository == 'jma49/Open-CR-Agent'
+    if: github.repository == 'ocrahq/Open-CR-Agent'
     runs-on: ubuntu-latest
     timeout-minutes: 300
     env:
