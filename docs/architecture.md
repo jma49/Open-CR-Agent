@@ -23,7 +23,7 @@ This page is for contributors; anything marked **(planned)** is not implemented.
 | # | Stage | Kind | Responsibility |
 |---|---|---|---|
 | 1 | Ingest | code | Load the change set and metadata through a `VcsAdapter`. |
-| 2 | Select | code | Pure function: review each file, or exclude it with a reason (binary, secret path, user rule, extension, generated/vendored/lock file, too large). Migrations are never excluded as generated. |
+| 2 | Select | code | Pure function: review each file, or exclude it with a reason (binary, secret path, user rule, extension, generated/vendored/lock file, too large). Migrations are never excluded as generated; the metadata a migration tool writes next to them is (ADR-0064). |
 | 3 | Triage | code | Risk tier (`trivial` / `lite` / `full`) from churn, file count and sensitive paths; sensitive paths force `full`. |
 | 4 | Bundle | code + cheap LLM | Group related files. Small change sets without an LLM; larger ones by an LLM answering with file indices; oversized bundles fall back to per-file. |
 | 5 | Matrix | code | Choose reviewers per bundle from tier, file kinds, paths and rules, and resolve each (bundle, reviewer) cell's rule text. |
