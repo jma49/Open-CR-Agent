@@ -142,6 +142,8 @@ export {
   GATEWAY_PATH,
   isCloudModel,
   MODEL_ID,
+  type ModelPrice,
+  modelPriceSchema,
   PROVIDER_ID,
   PROVIDER_IDS,
   type ProviderEntry,
