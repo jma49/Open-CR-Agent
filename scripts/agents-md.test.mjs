@@ -9,7 +9,7 @@ const agents = readFileSync(join(root, "AGENTS.md"), "utf8");
 const scripts = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).scripts;
 const MAX_LINES = 150;
 // The same constant sits in ocra-cloud and ocra-site: change all three together.
-const SHARED_SECTION_SHA256 = "ee6d49ce0c2492effb1328fbea319f8ed19cc2a12c7fa798f20201c491535485";
+const SHARED_SECTION_SHA256 = "a0cb9987ca1c3ccfd149af2cd93d64ba43a3a8801461ad23c30551eb1978d01c";
 
 // AGENTS.md is read by every agent session: it stays short, and what it says
 // about the checks stays true as the checks change.

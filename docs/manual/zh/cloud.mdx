@@ -4,7 +4,7 @@ description: "CLI 之上的网页控制台：你的 PR 和它们的审查、合�
 icon: Cloud
 ---
 
-ocra Cloud 是建立在同一个引擎之上的网页控制台和模型网关。它在 https://app.ocracloud.com ，早期体验期间免费，模型 key 由你自带。公司也可以自己运行服务器（[自托管](https://github.com/jma49/ocra-cloud/blob/main/docs/self-hosting.md)）。CLI 只有在你[登录](./cli#ocra-loginocra-logoutocra-whoami)后才会使用它；它会收到什么，见[威胁模型](./threat-model#ocra-cloud)。
+ocra Cloud 是建立在同一个引擎之上的网页控制台和模型网关。它在 https://app.ocracloud.com ，早期体验期间免费，模型 key 由你自带。公司也可以自己运行服务器（[自托管](https://github.com/ocrahq/ocra-cloud/blob/main/docs/self-hosting.md)）。CLI 只有在你[登录](./cli#ocra-loginocra-logoutocra-whoami)后才会使用它；它会收到什么，见[威胁模型](./threat-model#ocra-cloud)。
 
 有些页面需要 bot：服务器自己的一个账号，以 ocra 的身份在平台上审查和写入。下面把这些页面标为*需要 bot*。
 
@@ -60,7 +60,7 @@ PR 页面会显示结果。bot 还会把它发布出来：GitHub 上是名为 `o
 - **发现会保留。** 从服务器为你运行的第一次审查起，它会保留这些审查的发现和每条发现引用的代码（和其他上传一样先脱敏），这样 PR 页面、审查页面和通知才能显示它们。这不会为你自己机器上的审查开启共享。可以在“账户与隐私”里关闭，并删除已保留的内容；之后的审查不会把它重新打开。
 - **@ocra。** 有人在已登记仓库的 PR 上发表提到 `@ocra` 的评论，会在原讨论里得到回答（[`ocra reply`](./cli#ocra-reply)）。
 
-在托管的控制台上，审查在远程 runner 上运行：这些机器向服务器领取下一个任务，克隆仓库，运行已发布的 CLI。runner 不持有模型 key，每个任务只拿到一个仓库的令牌。你自己的服务器可以自己运行审查，交给 [runner](https://github.com/jma49/ocra-cloud/blob/main/docs/runner.md)，或两者都用。没有服务器时，[Action](./github#向-ocra-提问) 可以在你自己的 workflow 里做同样的事。
+在托管的控制台上，审查在远程 runner 上运行：这些机器向服务器领取下一个任务，克隆仓库，运行已发布的 CLI。runner 不持有模型 key，每个任务只拿到一个仓库的令牌。你自己的服务器可以自己运行审查，交给 [runner](https://github.com/ocrahq/ocra-cloud/blob/main/docs/runner.md)，或两者都用。没有服务器时，[Action](./github#向-ocra-提问) 可以在你自己的 workflow 里做同样的事。
 
 ## 审查设置
 
@@ -87,7 +87,7 @@ PR 页面会显示结果。bot 还会把它发布出来：GitHub 上是名为 `o
 
 ## 自己运行服务器
 
-公司可以在自己的机器上运行 ocra Cloud，比如放在内部 GitLab 和内部模型旁边；[自托管指南](https://github.com/jma49/ocra-cloud/blob/main/docs/self-hosting.md)列出了所有变量。它是 Docker 里的一个 Node 服务器，不依赖任何 Cloudflare 服务。
+公司可以在自己的机器上运行 ocra Cloud，比如放在内部 GitLab 和内部模型旁边；[自托管指南](https://github.com/ocrahq/ocra-cloud/blob/main/docs/self-hosting.md)列出了所有变量。它是 Docker 里的一个 Node 服务器，不依赖任何 Cloudflare 服务。
 
 - **数据库。** 默认 Postgres（13 及以上；compose 文件会在服务器旁边运行 Postgres 17）；试用时可以用一个 SQLite 文件。
 - **登录。** GitHub App，或 OpenID Connect：公司的 SSO（Keycloak、Azure AD、Okta）或自托管的 GitLab。用 GitLab 作为登录提供方时，同一次登录也会连接 GitLab。

@@ -1,6 +1,6 @@
 # @open-cr-agent/cli
 
-`ocra` is the command line of [Open-CR-Agent](https://github.com/jma49/Open-CR-Agent), open-source AI code review built for pull requests you do not trust. It reviews local changes, GitHub pull requests and GitLab merge requests with your own model key; a verifier and a judge check every finding before it is posted, and comments are anchored by the code they quote.
+`ocra` is the command line of [Open-CR-Agent](https://github.com/ocrahq/Open-CR-Agent), open-source AI code review built for pull requests you do not trust. It reviews local changes, GitHub pull requests and GitLab merge requests with your own model key; a verifier and a judge check every finding before it is posted, and comments are anchored by the code they quote.
 
 Early 0.x: options and output may change between minor versions. What reviews find and miss is on the [quality page](https://ocracloud.com/en/docs/quality).
 
@@ -36,7 +36,7 @@ The GitHub Action reviews pull requests: inline comments, one summary, and re-re
 
 - [Quickstart](https://ocracloud.com/en/docs/quickstart) and the manual, in [English](https://ocracloud.com/en/docs) and [中文](https://ocracloud.com/zh/docs)
 - [GitHub pull requests](https://ocracloud.com/en/docs/github) and [GitLab merge requests](https://ocracloud.com/en/docs/gitlab)
-- [Changelog](https://github.com/jma49/Open-CR-Agent/blob/main/CHANGELOG.md) and [issues](https://github.com/jma49/Open-CR-Agent/issues)
+- [Changelog](https://github.com/ocrahq/Open-CR-Agent/blob/main/CHANGELOG.md) and [issues](https://github.com/ocrahq/Open-CR-Agent/issues)
 
 ## License
 

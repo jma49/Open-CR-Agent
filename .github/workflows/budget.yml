@@ -11,7 +11,7 @@ name: Budget
 #       permissions:
 #         actions: read
 #         contents: read
-#       uses: jma49/Open-CR-Agent/.github/workflows/budget.yml@<commit SHA>
+#       uses: ocrahq/Open-CR-Agent/.github/workflows/budget.yml@<commit SHA>
 on:
   workflow_call:
 
@@ -31,7 +31,7 @@ jobs:
           sparse-checkout-cone-mode: false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: jma49/Open-CR-Agent
+          repository: ocrahq/Open-CR-Agent
           ref: ${{ job.workflow_sha }}
           path: .ocra-engine
           persist-credentials: false

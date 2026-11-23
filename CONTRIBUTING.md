@@ -18,7 +18,7 @@ Open an issue first for anything larger than a small fix, so we can agree on the
 Requires Node.js 22.19 or newer and Git.
 
 ```bash
-git clone https://github.com/jma49/Open-CR-Agent.git
+git clone https://github.com/ocrahq/Open-CR-Agent.git
 cd Open-CR-Agent && npm install && npm run build
 npm run verify   # Biome, type check and tests; no model or network calls
 ```

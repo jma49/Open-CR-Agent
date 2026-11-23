@@ -20,13 +20,13 @@ function recipe(heading: string): string {
 const ADDED: Record<WorkflowKind, string[]> = {
   "fork-safe": [
     "# Written by ocra init. What it does and how to change it:",
-    "# https://github.com/jma49/Open-CR-Agent/blob/main/docs/manual/en/github.mdx",
+    "# https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/manual/en/github.mdx",
     "          # In a private repository, remove this line: ocra fetches the",
     "          # pull request's commits with the checkout's credentials.",
   ],
   "same-repo": [
     "# Written by ocra init. What it does and how to change it:",
-    "# https://github.com/jma49/Open-CR-Agent/blob/main/docs/manual/en/github.mdx",
+    "# https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/manual/en/github.mdx",
     "        with:",
     "          args: --max-cost-usd 2",
   ],
@@ -119,7 +119,7 @@ describe("workflowFor", () => {
       const workflow = workflowFor({ kind, keyEnv: "GEMINI_API_KEY", direct: true });
       expect(workflow).toContain(`      - uses: ${ACTION_USES}\n`);
     }
-    expect(ACTION_USES).toMatch(/^jma49\/Open-CR-Agent@[0-9a-f]{40} # v\d+\.\d+\.\d+$/);
+    expect(ACTION_USES).toMatch(/^ocrahq\/Open-CR-Agent@[0-9a-f]{40} # v\d+\.\d+\.\d+$/);
   });
 
   it("passes the chosen provider's key, and leaves OpenCode out on the direct runtime", () => {

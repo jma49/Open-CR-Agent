@@ -4,7 +4,7 @@ rules:
       policies:
         # ocra-review.yml calls the dogfood workflow at main on purpose: Google
         # Cloud trusts only ocra-dogfood.yml@refs/heads/main (the maintainers' pitfalls notes).
-        jma49/Open-CR-Agent/*: ref-pin
+        ocrahq/Open-CR-Agent/*: ref-pin
         "*": hash-pin
   # The pinned actionlint (ci.yml) does not know GitHub's "$/" form for an
   # action in this repository yet; the jobs use "./.github/actions/setup".

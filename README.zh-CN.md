@@ -5,7 +5,7 @@
 **ocra** 是一个开源的 AI 代码审查工具，专为你不信任的 PR 而设计。它审查本地改动、GitHub Pull Request 和 GitLab Merge Request，用你自己的模型 key 在你的 CI 里运行；一条问题只有引用了它所指的代码、并经得起第二遍核查，才会被说出来，否则它保持安静。
 
 [![npm](https://img.shields.io/npm/v/@open-cr-agent/cli?label=npm)](https://www.npmjs.com/package/@open-cr-agent/cli)
-[![CI](https://github.com/jma49/Open-CR-Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/jma49/Open-CR-Agent/actions/workflows/ci.yml)
+[![CI](https://github.com/ocrahq/Open-CR-Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ocrahq/Open-CR-Agent/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 > **状态：**早期 0.x 版本。CLI 参数、配置项、退出码和报告格式是[约定](docs/manual/zh/stability.mdx)，只会在预先告知后改变；提示词和审查质量仍在变动（[质量实测](docs/manual/zh/quality.mdx)）。手册：[ocracloud.com](https://ocracloud.com)（[English](docs/manual/en/index.mdx) · [中文](docs/manual/zh/index.mdx)）。
@@ -94,14 +94,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: jma49/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
+      - uses: ocrahq/Open-CR-Agent@0e642496db6dfb7bb1773c63e5522a3cd44a6599 # v0.17.0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
 把 Action 固定到提交：tag 可以被移动。输出：`verdict`、`exit-code`、`run-id`、`findings`、`report`，以及 `sarif: true` 时的 `sarif`。设了 `"runtime": "direct"` 时，`opencode: false` 跳过 OpenCode 的安装。来自 fork 的 PR 需要 [GitHub 指南](docs/manual/zh/github.mdx)里带门禁的 `pull_request_target` 配置。
 
-**GitLab Merge Request**（GitLab.com 或自建实例），在 CI job 里运行：[GitLab 指南](docs/manual/zh/gitlab.mdx)。**其他任何 runner**：容器镜像 `ghcr.io/jma49/ocra:<version>`（amd64 和 arm64，带 provenance 声明和 SBOM），见[安装](docs/manual/zh/installation.mdx)。
+**GitLab Merge Request**（GitLab.com 或自建实例），在 CI job 里运行：[GitLab 指南](docs/manual/zh/gitlab.mdx)。**其他任何 runner**：容器镜像（amd64 和 arm64，带 provenance 声明和 SBOM），见[安装](docs/manual/zh/installation.mdx#容器镜像)。
 
 ## 输出与退出码
 
@@ -230,7 +230,7 @@ ocra 的目标是成为其他审查 agent 赖以构建的引擎：一个共享�
 ## 开发
 
 ```bash
-git clone https://github.com/jma49/Open-CR-Agent.git
+git clone https://github.com/ocrahq/Open-CR-Agent.git
 cd Open-CR-Agent && npm install && npm run build
 npm link --workspace @open-cr-agent/cli   # 让 ocra 指向这个检出目录
 npm run verify                            # Biome、类型检查和测试（不调用模型，不访问网络）

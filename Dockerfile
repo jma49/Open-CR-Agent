@@ -58,7 +58,7 @@ RUN set -eu; \
     /opt/ocra/bin/ocra --version
 
 FROM base
-LABEL org.opencontainers.image.source="https://github.com/jma49/Open-CR-Agent" \
+LABEL org.opencontainers.image.source="https://github.com/ocrahq/Open-CR-Agent" \
       org.opencontainers.image.description="ocra, the multi-agent code reviewer" \
       org.opencontainers.image.licenses="Apache-2.0"
 RUN apt-get update \

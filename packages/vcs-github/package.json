@@ -14,7 +14,7 @@
     "url": "git+https://github.com/jma49/Open-CR-Agent.git",
     "directory": "packages/vcs-github"
   },
-  "bugs": "https://github.com/jma49/Open-CR-Agent/issues",
+  "bugs": "https://github.com/ocrahq/Open-CR-Agent/issues",
   "engines": {
     "node": ">=22.19"
   },

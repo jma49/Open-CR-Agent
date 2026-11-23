@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Remove secrets and code you cannot share from everything you paste. Security problems go to a [private report](https://github.com/jma49/Open-CR-Agent/security/advisories/new), not here.
+        Remove secrets and code you cannot share from everything you paste. Security problems go to a [private report](https://github.com/ocrahq/Open-CR-Agent/security/advisories/new), not here.
   - type: input
     id: version
     attributes:
