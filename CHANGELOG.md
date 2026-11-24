@@ -6,6 +6,17 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-11-24
+
+### Added
+
+- An account's rules take an optional `id`, as `.ocra/rules.json`'s do.
+- A review uploaded with its findings carries the text of each rule they name, redacted and cut at 2,000 characters.
+
+### Changed
+
+- `ocra init` writes a workflow that pins the Action to v0.25.0.
+
 ## [0.25.0] - 2026-11-24
 
 ### Added
@@ -819,7 +830,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.25.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.26.0...HEAD
+[0.26.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.24.1...v0.25.0
 [0.24.1]: https://github.com/jma49/Open-CR-Agent/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.23.1...v0.24.0
