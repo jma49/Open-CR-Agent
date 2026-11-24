@@ -2149,6 +2149,8 @@ export interface RoundNote {
         outcome: string;
         reason?: string;
     })[];
+    // (undocumented)
+    merge?: boolean;
 }
 
 // @public (undocumented)

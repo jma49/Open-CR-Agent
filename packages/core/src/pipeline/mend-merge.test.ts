@@ -84,6 +84,7 @@ describe("mendRound over merge conflicts", () => {
     expect(commits[0]?.message.split("\n")[0]).toBe(
       "Merge dddddddddddd of the base branch, conflicts resolved by ocra",
     );
+    expect(notes[0]?.merge).toBe(true);
     expect(notes[0]?.fixed).toEqual([{ title: "merge conflict", file: "src/a.ts" }]);
     expect(result.state.items).toEqual({ [id]: { attempts: 1 } });
   });
