@@ -21,6 +21,45 @@ describe("logTail", () => {
     expect(wide).toHaveLength(CHECK_LIMITS.logChars);
     expect(wide.endsWith("the end")).toBe(true);
   });
+
+  it("reads the step that failed on GitHub Actions, not the steps that ran after it", () => {
+    const after = Array.from({ length: 300 }, (_, n) => `2026-11-23T10:00:09Z cleaning ${n}`);
+    const log = [
+      "2026-11-23T10:00:01Z ##[group]Run npm ci",
+      "2026-11-23T10:00:02Z added 900 packages",
+      "2026-11-23T10:00:03Z ##[group]Run npm run typecheck",
+      "2026-11-23T10:00:03Z ##[endgroup]",
+      "2026-11-23T10:00:04Z src/total.ts(7,3): error TS2322: Type 'string' is not assignable",
+      "2026-11-23T10:00:05Z ##[error]Process completed with exit code 2.",
+      "2026-11-23T10:00:06Z ##[group]Run actions/upload-artifact@v4",
+      "2026-11-23T10:00:07Z Post job cleanup.",
+      ...after,
+    ].join("\n");
+    expect(logTail(log)).toBe(
+      [
+        "##[group]Run npm run typecheck",
+        "##[endgroup]",
+        "src/total.ts(7,3): error TS2322: Type 'string' is not assignable",
+        "##[error]Process completed with exit code 2.",
+      ].join("\n"),
+    );
+  });
+
+  it("reads the script of a GitLab job, not its after-script", () => {
+    const after = Array.from({ length: 300 }, (_, n) => `uploading ${n}`);
+    const log = [
+      "section_start:1795400000:get_sources\r\u001b[0KFetching changes",
+      "section_end:1795400001:get_sources\r\u001b[0K",
+      "section_start:1795400002:step_script\r\u001b[0K\u001b[36;1mExecuting the script\u001b[0;m",
+      "$ npm test",
+      "FAIL src/total.test.ts",
+      "section_end:1795400003:step_script\r\u001b[0K",
+      "section_start:1795400004:after_script\r\u001b[0K",
+      ...after,
+      "ERROR: Job failed: exit code 1",
+    ].join("\n");
+    expect(logTail(log)).toBe("Executing the script\n$ npm test\nFAIL src/total.test.ts");
+  });
 });
 
 describe("a failed check as a work item", () => {

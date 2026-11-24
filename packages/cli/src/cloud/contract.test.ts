@@ -86,6 +86,8 @@ describe("the contract's vocabulary", () => {
         "\n",
       ),
       `${"x".repeat(50_000)}\nthe end`,
+      "##[group]Run npm ci\nok\n##[group]Run npm test\nFAIL a.test.ts\n##[error]Process completed with exit code 1.\nPost job cleanup.",
+      "section_start:1:step_script\r\u001b[0K$ npm test\nFAIL a\nsection_end:2:step_script\r\u001b[0K\nsection_start:3:after_script\r\u001b[0Kupload",
     ];
     for (const log of logs) expect(contract.checkLogTail(log)).toBe(logTail(log));
     expect(contract.MAX_TIMEOUT_MINUTES).toBe(Math.floor(MAX_TIMER_MS / 60_000));
