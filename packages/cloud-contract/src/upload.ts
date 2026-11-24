@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { LEARNING_ID, MAX_LEARNINGS } from "./learnings.js";
-import { MAX_EVIDENCE, MAX_EVIDENCE_FIELD, MAX_FIELD, MAX_FINDINGS } from "./limits.js";
+import {
+  MAX_EVIDENCE,
+  MAX_EVIDENCE_FIELD,
+  MAX_FIELD,
+  MAX_FINDINGS,
+  MAX_RULE_TEXT,
+} from "./limits.js";
 import { MAX_MERGE_CHECKS, sharedMergeCheckSchema } from "./merge-checks.js";
 import { REPOSITORY_URL } from "./repository.js";
 import { sharedTraceSchema } from "./trace.js";
@@ -236,6 +242,16 @@ export const reviewUploadSchema = z.object({
     .catch(undefined),
   // How the review came to its findings (ADR-0081): only with the findings.
   trace: sharedTraceSchema.optional().catch(undefined),
+  // The text of each rule the shared findings name, by id (ADR-0080),
+  // redacted and cut like a finding's fields: only with the findings.
+  provenance: z
+    .object({
+      rules: z
+        .record(z.string().regex(FINDING_RULE_ID), z.string().max(MAX_RULE_TEXT))
+        .refine((rules) => Object.keys(rules).length <= MAX_FINDINGS),
+    })
+    .optional()
+    .catch(undefined),
 });
 export type ReviewUpload = z.input<typeof reviewUploadSchema>;
 

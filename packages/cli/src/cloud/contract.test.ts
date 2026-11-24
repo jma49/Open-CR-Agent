@@ -153,6 +153,7 @@ const report = reviewReport({
     finding({
       fix: { startLine: 10, endLine: 12, replacement: "const q = db.query(sql, [id]);" },
       evidence: ["`id` comes from `req.params` in `src/routes.ts`"],
+      rule: { kind: "rule", id: "parameterized-sql" },
     }),
     fileLevel,
     unchecked,
@@ -189,6 +190,21 @@ const report = reviewReport({
     unchanged: [],
   },
   unverifiedCriticals: 0,
+  provenance: {
+    ocraVersion: "0.0.0",
+    promptHash: "0123456789abcdef",
+    configHash: "fedcba9876543210",
+    sampling: {},
+    rules: [
+      {
+        id: "parameterized-sql",
+        path: ["src/db/**"],
+        rule: "Queries take parameters, never strings built from input.",
+        source: "account",
+      },
+      { id: "no-inline-styles", path: ["web/**"], rule: "No inline styles.", source: "repository" },
+    ],
+  },
   linkedTasks: [
     {
       tracker: "github",
