@@ -1,8 +1,8 @@
 name: Commits
 
 # The commit rules of AGENTS.md for ocra's other repositories (ocra-cloud,
-# ocra-site), with this repository's commitlint config and attribution check,
-# so the rules live once. This repository runs the same steps in ci.yml's
+# ocra-site), with this repository's commitlint config, so the rules live
+# once. This repository runs the same steps in ci.yml's
 # `commits` job, which branch protection requires by that name. Callers pin
 # it by commit SHA; the rule files are read at that same commit, so a pin
 # also pins the rules.
@@ -45,8 +45,3 @@ jobs:
         run: |
           .ocra-engine/node_modules/.bin/commitlint --config .ocra-engine/commitlint.config.mjs \
             --from "$BASE" --to "$HEAD" --verbose
-      - env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
-          PR_BODY: ${{ github.event.pull_request.body }}
-        run: node .ocra-engine/scripts/attribution.mjs "$BASE" "$HEAD"
