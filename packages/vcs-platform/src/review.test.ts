@@ -96,6 +96,8 @@ function inMemory(scenario: Scenario) {
       commits.push(commit);
       return { committed: true, sha: "c".repeat(40) };
     },
+    checks: async () => [],
+    failingOnBase: async () => [],
   };
   return {
     review: new PlatformReview({ name: "memory", platform, code }),

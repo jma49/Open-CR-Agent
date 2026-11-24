@@ -16,6 +16,7 @@ import {
 } from "@open-cr-agent/core";
 import {
   AGENT_ROLES,
+  CHECK_LIMITS,
   MARKDOWN_RULES_PATH,
   MAX_MARKDOWN_RULES_CHARS,
   MAX_TIMER_MS,
@@ -72,6 +73,7 @@ describe("the contract's vocabulary", () => {
     expect(contract.MEND_STOPS).toEqual(ROUND_STOPS);
     expect(contract.MEND_ITEM_OUTCOMES).toEqual(MEND_ITEM_OUTCOMES);
     expect(contract.MEND_ITEM_REASONS).toEqual(MEND_ITEM_REASONS);
+    expect(contract.MAX_MEND_CHECKS).toBe(CHECK_LIMITS.checks);
     expect(contract.MAX_TIMEOUT_MINUTES).toBe(Math.floor(MAX_TIMER_MS / 60_000));
     expect(contract.RULES_MARKDOWN_PATH).toBe(MARKDOWN_RULES_PATH);
     expect(contract.MAX_RULES_MARKDOWN_CHARS).toBe(MAX_MARKDOWN_RULES_CHARS);

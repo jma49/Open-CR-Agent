@@ -15,6 +15,7 @@ import {
   type History,
   type InlineFinding,
   type PlatformChangeRequest,
+  type PlatformCheck,
   type PlatformComment,
   type PlatformDiscussion,
   PlatformReview,
@@ -22,6 +23,7 @@ import {
   type PublishedFindings,
   type ReviewPlatform,
 } from "@open-cr-agent/vcs-platform";
+import { githubChecks, githubFailingOnBase } from "./checks.js";
 import {
   type GitHubApi,
   GitHubApiError,
@@ -165,6 +167,15 @@ class GitHubPlatform implements ReviewPlatform {
 
   commit(commit: ChangeCommit): Promise<CommitResult> {
     return githubCommit(this.options.api, this.options.pullRequest, commit);
+  }
+
+  // The sha is the pull request's head as the adapter's own read gave it.
+  checks(sha: string): Promise<PlatformCheck[]> {
+    return githubChecks(this.options.api, encodeURIComponent(sha));
+  }
+
+  failingOnBase(): Promise<string[]> {
+    return githubFailingOnBase(this.options.api, this.options.pullRequest.number);
   }
 
   // With requestChanges on, ocra's "changes requested" follows the verdict:

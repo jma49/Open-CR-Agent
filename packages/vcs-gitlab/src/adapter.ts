@@ -15,6 +15,7 @@ import {
   type History,
   type InlineFinding,
   type PlatformChangeRequest,
+  type PlatformCheck,
   type PlatformComment,
   type PlatformDiscussion,
   PlatformReview,
@@ -22,6 +23,7 @@ import {
   type PublishedFindings,
   type ReviewPlatform,
 } from "@open-cr-agent/vcs-platform";
+import { gitlabChecks, gitlabFailingOnBase } from "./checks.js";
 import {
   DEVELOPER,
   type GitLabApi,
@@ -210,6 +212,14 @@ class GitLabPlatform implements ReviewPlatform {
 
   commit(commit: ChangeCommit): Promise<CommitResult> {
     return gitlabCommit(this.options.api, this.options.iid, commit);
+  }
+
+  checks(sha: string): Promise<PlatformCheck[]> {
+    return gitlabChecks(this.options.api, this.options.iid, sha);
+  }
+
+  failingOnBase(): Promise<string[]> {
+    return gitlabFailingOnBase(this.options.api, this.options.iid);
   }
 
   private remember(note: Note): void {

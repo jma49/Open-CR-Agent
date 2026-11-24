@@ -21,7 +21,7 @@ import { startRuntime } from "./review/execute-run.js";
 import { type ReviewIo, resolveRun } from "./review/resolve-run.js";
 
 export const MEND_USAGE = `Usage: ocra mend (--pr <n> | --mr <n> | --from <ref> [--to <ref>] | --commit <sha>)
-                 --findings <file|-> [options]
+                 (--findings <file|-> | --checks) [options]
 
 Runs one round of the fix loop over findings a person accepted: each open
 finding gets one fixer model call, as ocra fix makes it, or, when that
@@ -34,14 +34,24 @@ printed for a person to commit. Nothing from the repository runs: the
 change's own checks test the commit. ocra never force-pushes, approves or
 merges.
 
-A round works on at most 5 findings, 10 files and 200 added lines. A
-finding gets 2 attempts and a change 6 rounds; --state carries the counts
-from one round to the next.
+With --checks the round also works on the checks that failed on the head
+of a pull or merge request and do not fail on its base branch: at most 3,
+each as a fixer task that reads the last 200 lines of the failed job's log
+as data. ocra reads the log and runs nothing. While checks are still
+running and nothing else is open, the round does nothing and counts as
+none (outcome "waiting").
+
+A round works on at most 5 items, 10 files and 200 added lines. An item
+gets 2 attempts and a change 6 rounds; --state carries the counts from one
+round to the next. A failed check is the same item while it fails the same
+way.
 
 Options:
   --findings <file|-> The accepted findings as a JSON array, the most
                       important first, as ocra Cloud stores them
                       (sharedFindingSchema); - reads it from stdin
+  --checks            Also work on the head's failed checks (on GitHub the
+                      token needs actions: read for a job's log)
   --level <level>     propose (default): print the checked edits, commit
                       nothing; commit: write them to the branch
   --state <file>      The state the last round printed (omit for the first)
@@ -64,14 +74,15 @@ Options:
   --json              Print one line of JSON with the outcome on stdout
   -h, --help          Show help
 
-Exit codes: 0 a commit, proposed edits, nothing to write, or a cap reached
-(the output says which); 3 the head moved or the branch cannot be written
+Exit codes: 0 a commit, proposed edits, nothing to write, checks still
+running, or a cap reached (the output says which); 3 the head moved or the branch cannot be written
 to; 2 usage, input or configuration errors, or a runtime that cannot start.
 `;
 
 const MAX_FINDINGS_BYTES = 2 * 1024 * 1024;
 const MAX_STATE_BYTES = 256 * 1024;
 const MAX_PROTECTED = 100;
+const MAX_CHECK_NAME_CHARS = 200;
 
 export async function mendCommand(argv: string[], io: ReviewIo, deps: ReviewDeps): Promise<number> {
   const { values } = parseArgs({
@@ -80,6 +91,7 @@ export async function mendCommand(argv: string[], io: ReviewIo, deps: ReviewDeps
     allowPositionals: false,
     options: {
       findings: { type: "string" },
+      checks: { type: "boolean" },
       level: { type: "string" },
       state: { type: "string" },
       head: { type: "string" },
@@ -109,7 +121,10 @@ export async function mendCommand(argv: string[], io: ReviewIo, deps: ReviewDeps
   if (!change && target.mode === "workspace") {
     throw new UsageError("ocra mend needs --pr, --mr, --from or --commit");
   }
-  if (!values.findings) throw new UsageError("ocra mend needs --findings <file|->");
+  if (!values.findings && !values.checks) {
+    throw new UsageError("ocra mend needs --findings <file|->, --checks or both");
+  }
+  if (values.checks && !change) throw new UsageError("--checks needs --pr or --mr");
   const level = levelOf(values.level);
   const head = expectedHead(values.head);
   const protectedPaths = values.protect ?? [];
@@ -119,14 +134,16 @@ export async function mendCommand(argv: string[], io: ReviewIo, deps: ReviewDeps
   if (values.config === "") throw new UsageError("--config needs a file");
   if (values.state === "" || values.state === "-") throw new UsageError("--state needs a file");
   const maxCostUsd = maxCost(values["max-cost-usd"]);
-  const findings = (
-    await readJsonInput(values.findings, deps, {
-      flag: "--findings",
-      what: "a list of findings",
-      schema: mendFindingsSchema,
-      maxBytes: MAX_FINDINGS_BYTES,
-    })
-  ).map(storedFinding);
+  const findings = values.findings
+    ? (
+        await readJsonInput(values.findings, deps, {
+          flag: "--findings",
+          what: "a list of findings",
+          schema: mendFindingsSchema,
+          maxBytes: MAX_FINDINGS_BYTES,
+        })
+      ).map(storedFinding)
+    : [];
   const state =
     values.state === undefined
       ? undefined
@@ -151,6 +168,7 @@ export async function mendCommand(argv: string[], io: ReviewIo, deps: ReviewDeps
     const limit = maxCostUsd ?? run.config.maxCostUsd;
     const round = await mendRound({
       findings,
+      ...(values.checks ? { checks: true } : {}),
       vcs: run.vcs,
       runtime,
       syntax: treeSitterSyntax(),
@@ -195,6 +213,7 @@ function resultOf(round: MendRound, usage: Usage): MendResult {
     commitSha: round.sha ?? null,
     items: round.items.map((item) => ({
       fingerprint: item.id,
+      check: item.check?.slice(0, MAX_CHECK_NAME_CHARS) ?? null,
       outcome: item.outcome,
       reason: item.reason ?? null,
       cause: item.cause ?? null,
@@ -212,14 +231,17 @@ function itemLines(result: MendResult, findings: readonly StoredFinding[]): stri
       ? `${item.edits[0].path}:${item.edits[0].startLine}-${item.edits[0].endLine}`
       : (file.get(item.fingerprint) ?? "");
     const why = item.reason ? ` (${item.reason}${item.cause ? `: ${item.cause}` : ""})` : "";
-    return `${item.outcome}${why}  ${forTerminal(where)}  ${item.fingerprint}`;
+    const what =
+      item.check === null ? where : `check ${item.check.replace(/\s+/g, " ")} ${where}`.trimEnd();
+    return `${item.outcome}${why}  ${forTerminal(what)}  ${item.fingerprint}`;
   });
 }
 
 function said(result: MendResult): string {
   const count = (...outcomes: string[]) =>
     result.items.filter((i) => outcomes.includes(i.outcome)).length;
-  const of = (n: number) => `${n} finding${n === 1 ? "" : "s"}`;
+  const noun = result.items.some((i) => i.check !== null) ? "item" : "finding";
+  const of = (n: number) => `${n} ${noun}${n === 1 ? "" : "s"}`;
   switch (result.outcome) {
     case "committed":
       return `Committed ${result.commitSha?.slice(0, 12)} with fixes for ${of(count("fixed"))}`;
@@ -233,5 +255,7 @@ function said(result: MendResult): string {
       return "Nothing committed: the head moved";
     case "not_writable":
       return "Nothing committed: the branch cannot be written to";
+    case "waiting":
+      return "No round: the head's checks are still running";
   }
 }

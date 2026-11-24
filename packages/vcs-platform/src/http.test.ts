@@ -45,6 +45,14 @@ describe("sendWithRetry", () => {
     });
   });
 
+  it("answers the end of a text answer when asked for its tail", async () => {
+    const log = `${"x".repeat(5_000)}\nthe last line\n`;
+    const { send } = request([new Response(log)], { tailBytes: 14 });
+    expect(await send()).toBe("the last line\n");
+    const short = request([new Response("short")], { tailBytes: 1_000 });
+    expect(await short.send()).toBe("short");
+  });
+
   it("answers undefined for a 204", async () => {
     const { send } = request([new Response(null, { status: 204 })]);
     expect(await send()).toBeUndefined();

@@ -407,12 +407,14 @@ ocra 通过审查的访问策略读取变更和问题所在文件在 head 上的
 ocra mend --pr 7 --findings accepted.json --head <sha> --json              # propose：打印检查过的修改
 ocra mend --pr 7 --findings accepted.json --level commit --state state.json --json
 ocra mend --mr 12 --findings - --level commit --json < accepted.json       # GitLab 合并请求
+ocra mend --pr 7 --checks --level commit --state state.json --json         # head 上失败的检查
 ocra mend --from main --findings accepted.json                             # 本地范围；只能 propose
 ```
 
 | 选项 | 含义 |
 |---|---|
 | `--findings <file\|->` | 已接受的问题，JSON 数组，最重要的在前，每条的格式与 ocra Cloud 存储的一致（`sharedFindingSchema`）；`-` 从 stdin 读取。最多 200 条、2 MiB |
+| `--checks` | 同时处理拉取请求或合并请求的 head 上失败的检查（见下文）。带上它时可以不给 `--findings`。需要 `--pr` 或 `--mr`（v0.22.0） |
 | `--level <level>` | `propose`（默认）：检查过的修改写在结果里，不提交。`commit`：在分支上写一个提交 |
 | `--state <file>` | 上一轮打印的 `state`。变更的第一轮不用给 |
 | `--head <sha>` | 审查这些问题时的完整提交 id。变更的 head 不是它时，ocra 不调用模型，回答 `head_moved` |
@@ -427,12 +429,14 @@ ocra mend --from main --findings accepted.json                             # 本
 
 **闸门。** 一轮只修改变更里审查会读的普通文件。它从不修改 CI 配置（`.github/`、`.gitlab/`、`.gitlab-ci.yml`、`.circleci/`、`.buildkite/`、`Jenkinsfile`、Azure 和 Bitbucket 的流水线）、`.ocra/`、`AGENTS.md`、`CODEOWNERS`、依赖清单（`package.json`、`pyproject.toml`、`requirements*.txt`、`Pipfile`、`go.mod`、`Cargo.toml`、`pom.xml`、Gradle 的构建和设置文件、`Gemfile`、`composer.json`）、`Dockerfile`、`Makefile`、生成的文件、迁移文件，以及 `--protect` 指定的路径。在测试文件里，修改不能新增关掉测试的调用（`.skip`、`.only`、`.todo`、`xit`、`@Ignore`、`@Disabled`、`pytest.mark.skip`、`skipif`、`xfail`、`unittest.skip`、`t.Skip`、`#[ignore]`）。修改不含控制字符或双向文本字符。被闸门拒绝的问题交给人处理。
 
+**失败的检查。** 带 `--checks` 时，一轮还会读取 head 的检查：在 GitHub 上是它的 check run，在 GitLab 上是合并请求在这个提交上最新流水线的作业。一个检查要被处理，须是失败的（GitHub 上是失败或超时，不含被取消或跳过的；GitLab 上是不允许失败的作业失败了），并且在目标分支的 head 上没有以同样的名字失败：那里本来就坏的不归这个变更修。一轮最多处理 3 个，排在问题之后，同在 5 个条目的限额内。每个检查交给上文那样的 fixer 任务，给它检查的名字、失败作业日志的最后 200 行（最多 20,000 个字符，去掉时间戳和终端控制序列）以及变更涉及的路径；日志对它只是数据，ocra 什么都不运行。在 GitHub 上读取 Actions 作业的日志需要令牌有 `actions: read`；没有时，以及其他应用的检查，任务拿到的是检查自己报告的内容；两者都没有的检查交给人（`not_candidate`），在 `opencode` 运行时上所有检查都是如此。任务被要求修代码，只有变更有意改了行为时才改测试，失败不是变更造成时（服务故障、超时、缺少机密）不做修改；闸门仍然拒绝关掉测试的修改，verifier 仍然读每一处修改。一个失败的检查只要失败的方式不变，就是同一个条目，尝试次数也延续：按它的名字和日志里第一行指出失败的内容来认，数字和 id 除外。检查还在运行且没有别的条目可处理时，这一轮什么都不做，不计轮数，回答 `waiting`：等它们结束后再启动下一轮。平台的检查读不到时，这一轮只处理问题，并给出警告。
+
 **上限。** 一条问题有 2 次尝试，一个变更有 6 轮，各轮合计受花费上限约束。状态记录这些计数：每一轮都传入上一轮打印的状态。没有尝试过的问题，或修改没有写入的问题（这一轮已满、head 变了），不消耗尝试次数。
 
 加 `--json` 时，stdout 是一行：
 
 ```json
-{"headSha":"<40 hex>","outcome":"committed","stopped":null,"commitSha":"<40 hex>","items":[{"fingerprint":"b491fb26b470419c","outcome":"fixed","reason":null,"cause":null,"edits":[{"path":"src/total.ts","startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"}]}],"state":{"rounds":1,"costUsd":0.06,"items":{"b491fb26b470419c":{"attempts":1}}},"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
+{"headSha":"<40 hex>","outcome":"committed","stopped":null,"commitSha":"<40 hex>","items":[{"fingerprint":"b491fb26b470419c","check":null,"outcome":"fixed","reason":null,"cause":null,"edits":[{"path":"src/total.ts","startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"}]}],"state":{"rounds":1,"costUsd":0.06,"items":{"b491fb26b470419c":{"attempts":1}}},"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
 ```
 
 | `outcome` | 含义 | 退出码 |
@@ -443,8 +447,9 @@ ocra mend --from main --findings accepted.json                             # 本
 | `stopped` | 没有运行：变更达到了 `stopped` 指出的上限（`rounds` 或 `spend`） | `0` |
 | `head_moved` | head 不是 `--head`，或 ocra 读取之后分支有了新提交；没有提交 | `3` |
 | `not_writable` | 令牌不能写这个分支，或变更是本地的 | `3` |
+| `waiting` | `--checks`：head 的检查还在运行，且没有别的条目可处理；不计轮数 | `0` |
 
-`items` 的每一项是一条问题，顺序与输入相同：
+`items` 的每一项是一条问题，顺序与输入相同，之后是每个失败的检查各一项：它的 `check` 是检查的名字（问题为 `null`），`fingerprint` 是循环用来记录它尝试次数的 id：
 
 | 条目的 `outcome` | 含义 | `reason` |
 |---|---|---|
@@ -455,7 +460,7 @@ ocra mend --from main --findings accepted.json                             # 本
 | `needs_human` | 已关闭，交给人决定 | `not_candidate`、`no_parser`、`out_of_scope`、`protected`、`too_large`、`tamper`，或两次尝试都用完时的 `attempts` |
 | `gone` | 它的代码已不在 head 上 | `stale` |
 
-`edits` 替换 `headSha` 上 `path` 的第 `startLine` 到 `endLine` 整行；只有 `fixed` 或 `proposed` 的条目才有。条目的 `reason` 为 `failed` 时，`cause` 说明失败的是什么，取值与 [`ocra fix`](#ocra-fix) 相同，否则为 `null`（v0.21.0）。用法、输入和配置错误，以及无法启动的运行时，退出码为 `2`。结构是 `@open-cr-agent/cloud-contract` 里的 `mendResultSchema`、`mendStateSchema` 和 `mendFindingsSchema`（[ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)）。这是修复循环的第一步：失败的检查、合并冲突和评审者的要求仍在计划中。v0.20.0 新增；带 `edit` 工具的任务是 v0.21.0 新增。
+`edits` 替换 `headSha` 上 `path` 的第 `startLine` 到 `endLine` 整行；只有 `fixed` 或 `proposed` 的条目才有。条目的 `reason` 为 `failed` 时，`cause` 说明失败的是什么，取值与 [`ocra fix`](#ocra-fix) 相同，否则为 `null`（v0.21.0）。用法、输入和配置错误，以及无法启动的运行时，退出码为 `2`。结构是 `@open-cr-agent/cloud-contract` 里的 `mendResultSchema`、`mendStateSchema` 和 `mendFindingsSchema`（[ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)）。合并冲突和评审者的要求仍在计划中。v0.20.0 新增；带 `edit` 工具的任务是 v0.21.0 新增；失败的检查是 v0.22.0 新增。
 
 ## ocra metrics
 

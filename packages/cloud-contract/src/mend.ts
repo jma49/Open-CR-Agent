@@ -18,7 +18,9 @@ export type MendLevel = (typeof MEND_LEVELS)[number];
  * made and printed, nothing committed; `nothing` no finding got an edit;
  * `stopped` a cap of the loop was reached before the round; `head_moved`
  * the head is not `--head`, or moved while the round worked;
- * `not_writable` the token cannot write to the branch.
+ * `not_writable` the token cannot write to the branch; `waiting` the head's
+ * checks have not finished and nothing else was open: no round was counted,
+ * ask again when they have.
  */
 export const MEND_OUTCOMES = [
   "committed",
@@ -27,6 +29,7 @@ export const MEND_OUTCOMES = [
   "stopped",
   "head_moved",
   "not_writable",
+  "waiting",
 ] as const;
 export type MendOutcome = (typeof MEND_OUTCOMES)[number];
 
@@ -34,7 +37,7 @@ export type MendOutcome = (typeof MEND_OUTCOMES)[number];
 export const MEND_STOPS = ["rounds", "spend"] as const;
 
 /**
- * What a round did with one finding: `fixed` its edit is in the round's
+ * What a round did with one finding or failed check: `fixed` its edit is in the round's
  * commit; `proposed` its edit is in what the round proposes; `rejected` no
  * edit of this round passed, another round may try; `deferred` not tried,
  * or tried and not written, and no attempt counted; `needs_human` closed
@@ -78,6 +81,9 @@ export type MendItemReason = (typeof MEND_ITEM_REASONS)[number];
 /** The most findings one round is given; it works on fewer. */
 export const MAX_MEND_FINDINGS = MAX_FINDINGS;
 
+/** The most failed checks one round works on, with `--checks`. */
+export const MAX_MEND_CHECKS = 3;
+
 /** What `ocra mend --findings` reads: the accepted findings, the most important first. */
 export const mendFindingsSchema = z.array(sharedFindingSchema).max(MAX_MEND_FINDINGS);
 
@@ -113,7 +119,11 @@ const mendEditSchema = z
 
 const itemSchema = z
   .object({
+    // A finding's fingerprint, or the id the round gives a failed check: the
+    // same while the check fails the same way.
     fingerprint: z.string().regex(FINGERPRINT),
+    // The failed check's name, for an item that is one; null for a finding.
+    check: z.string().max(MAX_FIELD).nullable().default(null),
     outcome: z.enum(MEND_ITEM_OUTCOMES),
     reason: z.enum(MEND_ITEM_REASONS).nullable(),
     // What failed, for the reason `failed`; null otherwise, and in the answer of a version that gave none.
@@ -138,7 +148,7 @@ export const mendResultSchema = z
     outcome: z.enum(MEND_OUTCOMES),
     stopped: z.enum(MEND_STOPS).nullable(),
     commitSha: commitId.nullable(),
-    items: z.array(itemSchema).max(MAX_MEND_FINDINGS),
+    items: z.array(itemSchema).max(MAX_MEND_FINDINGS + MAX_MEND_CHECKS),
     state: mendStateSchema,
     usage: usageSchema,
   })

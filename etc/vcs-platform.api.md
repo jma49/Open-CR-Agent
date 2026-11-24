@@ -4,6 +4,7 @@
 
 ```ts
 
+import type { ChangeChecks } from '@open-cr-agent/core';
 import type { ChangeCommit } from '@open-cr-agent/core';
 import type { ChangeRequest } from '@open-cr-agent/core';
 import type { CodeMatch } from '@open-cr-agent/core';
@@ -139,6 +140,16 @@ export interface PlatformChangeRequest {
 }
 
 // @public (undocumented)
+export interface PlatformCheck {
+    // (undocumented)
+    log(): Promise<string>;
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    state: "passed" | "failed" | "pending";
+}
+
+// @public (undocumented)
 export interface PlatformComment {
     // (undocumented)
     author?: string;
@@ -176,6 +187,8 @@ export interface PlatformDiscussion {
 // @public (undocumented)
 export class PlatformReview implements VcsAdapter {
     constructor(options: PlatformReviewOptions);
+    // (undocumented)
+    checks(headSha: string): Promise<ChangeChecks>;
     // (undocumented)
     commit(commit: ChangeCommit): Promise<CommitResult>;
     // (undocumented)
@@ -330,6 +343,8 @@ export interface ReviewPlatform {
     // (undocumented)
     changeRequest(): Promise<PlatformChangeRequest>;
     // (undocumented)
+    checks(sha: string): Promise<PlatformCheck[]>;
+    // (undocumented)
     comments(): Promise<PlatformComment[]>;
     // (undocumented)
     commit(commit: ChangeCommit): Promise<CommitResult>;
@@ -337,6 +352,8 @@ export interface ReviewPlatform {
     discussion(ref: MentionRef): Promise<PlatformDiscussion | undefined>;
     // (undocumented)
     editor(comment: PlatformComment): Promise<string | undefined>;
+    // (undocumented)
+    failingOnBase(): Promise<string[]>;
     // (undocumented)
     linkedTasks(): Promise<LinkedTask[]>;
     // (undocumented)

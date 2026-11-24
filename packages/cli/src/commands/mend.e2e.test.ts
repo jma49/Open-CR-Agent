@@ -119,6 +119,7 @@ describe("ocra mend", () => {
       items: [
         {
           fingerprint: finding.fingerprint,
+          check: null,
           outcome: "proposed",
           reason: null,
           cause: null,
@@ -185,6 +186,12 @@ describe("ocra mend", () => {
     expect(level.err).toContain("--level must be one of propose, commit");
     const none = await mend(dir, ["--findings", "@findings"]);
     expect(none.err).toContain("ocra mend needs --pr, --mr, --from or --commit");
-    expect([one, state, level, none].map((r) => r.code)).toEqual([2, 2, 2, 2]);
+    const neither = await mend(dir, ["--commit", head]);
+    expect(neither.err).toContain("ocra mend needs --findings <file|->, --checks or both");
+    const local = await mend(dir, ["--commit", head, "--checks"]);
+    expect(local.err).toContain("--checks needs --pr or --mr");
+    expect([one, state, level, none, neither, local].map((r) => r.code)).toEqual([
+      2, 2, 2, 2, 2, 2,
+    ]);
   });
 });

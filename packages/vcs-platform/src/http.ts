@@ -7,6 +7,9 @@ const USER_AGENT = "open-cr-agent";
 // it is read: enough for the rate-limit message retryDecision looks for.
 const MAX_DETAIL_CHARS = 500;
 const MAX_REFUSAL_BYTES = 64 * 1024;
+// The most of a text answer that is downloaded to find its end: a job's log
+// has no size limit, and one longer than this is read as empty.
+const MAX_TAIL_SOURCE_BYTES = 32 * 1024 * 1024;
 
 // One platform's API, as a client sets it up once.
 export interface PlatformApi {
@@ -31,11 +34,14 @@ export interface PlatformCall {
   // Whether repeating the request after the platform may have acted on it is
   // safe (retryDecision); by default everything but a POST.
   idempotent?: boolean;
+  // The answer is text (a job's log), and only its last bytes are wanted:
+  // the call resolves to them as a string instead of parsed JSON.
+  tailBytes?: number;
 }
 
 // Sends a JSON request to a platform's API, retrying rate limits, outages
 // and lost connections a bounded number of times; resolves to the parsed
-// answer, or undefined for a 204.
+// answer, undefined for a 204, or the end of a text answer for `tailBytes`.
 export async function sendWithRetry(api: PlatformApi, call: PlatformCall): Promise<unknown> {
   const { method, url, path, body } = call;
   const { signal } = api;
@@ -70,7 +76,10 @@ export async function sendWithRetry(api: PlatformApi, call: PlatformCall): Promi
       await sleep(next.waitMs);
       continue;
     }
-    if (response.ok) return response.status === 204 ? undefined : response.json();
+    if (response.ok) {
+      if (call.tailBytes !== undefined) return readTail(response, call.tailBytes);
+      return response.status === 204 ? undefined : response.json();
+    }
     const answer = await readCapped(response, MAX_REFUSAL_BYTES).catch(() => "");
     const detail = answer.slice(0, MAX_DETAIL_CHARS);
     const next = retryDecision(
@@ -106,6 +115,33 @@ async function readCapped(response: Response, maxBytes: number): Promise<string>
   } finally {
     await reader.cancel().catch(() => {});
   }
+}
+
+// The answer's last `keepBytes` bytes as text, holding no more than about
+// that in memory; "" for an answer too long to read to its end.
+async function readTail(response: Response, keepBytes: number): Promise<string> {
+  const reader = response.body?.getReader();
+  if (!reader) return "";
+  const kept: Uint8Array[] = [];
+  let held = 0;
+  let read = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      read += value.byteLength;
+      if (read > MAX_TAIL_SOURCE_BYTES) return "";
+      kept.push(value);
+      held += value.byteLength;
+      while (kept.length > 1 && held - (kept[0]?.byteLength ?? 0) >= keepBytes) {
+        held -= kept.shift()?.byteLength ?? 0;
+      }
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+  const bytes = Buffer.concat(kept);
+  return new TextDecoder().decode(bytes.subarray(Math.max(0, bytes.byteLength - keepBytes)));
 }
 
 // Both platforms' GraphQL APIs page connections the same way.

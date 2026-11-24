@@ -42,6 +42,22 @@ export type CommitResult =
   // token cannot write to it (a fork, a protected branch, a read-only token).
   | { committed: false; outcome: "head_moved" | "not_writable"; reason: string };
 
+// A check that failed on the change request's head and does not fail under
+// the same name on the base branch's head (ADR-0078 point 3). `log`: the end
+// of its failed job's output, cut by logTail, or what the check reported of
+// itself; empty when the platform gives neither.
+export interface FailedCheck {
+  name: string;
+  log: string;
+}
+
+export interface ChangeChecks {
+  // Some check of the head has not finished: more may fail yet.
+  pending: boolean;
+  // At most CHECK_LIMITS.checks of them, in the platform's order.
+  failed: FailedCheck[];
+}
+
 export interface VcsAdapter {
   readonly name: string;
   getChangeRequest(): Promise<ChangeRequest>;
@@ -60,6 +76,9 @@ export interface VcsAdapter {
   listFiles?(dir: string): Promise<string[]>;
   // Absent: the adapter cannot commit to the change request.
   commit?(commit: ChangeCommit): Promise<CommitResult>;
+  // The checks of the commit `headSha`, the change request's head as the
+  // caller read it. Absent: the adapter cannot read them.
+  checks?(headSha: string): Promise<ChangeChecks>;
   // The tasks the platform links to the change, in its order (ADR-0052).
   // Absent: the adapter cannot tell.
   linkedTasks?(): Promise<LinkedTask[]>;
