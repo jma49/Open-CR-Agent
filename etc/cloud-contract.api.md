@@ -930,6 +930,9 @@ export const MAX_RESOLVED_CHARS = 400000;
 export const MAX_REVIEWERS = 40;
 
 // @public
+export const MAX_RULE_TEXT = 2000;
+
+// @public
 export const MAX_RULES_MARKDOWN_CHARS = 20000;
 
 // @public
@@ -1478,6 +1481,7 @@ export const preferencesUpdateSchema: z.ZodObject<{
         include: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
         exclude: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
         rules: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
+            id: z.ZodOptional<z.ZodString>;
             path: z.ZodUnion<readonly [z.ZodString, z.ZodArray<z.ZodString>]>;
             rule: z.ZodPipe<z.ZodPipe<z.ZodString, z.ZodTransform<string, string>>, z.ZodString>;
         }, z.core.$strict>>>>;
@@ -1504,6 +1508,7 @@ export const preferencesUpdateSchema: z.ZodObject<{
         include?: string[];
         exclude?: string[];
         rules?: {
+            id?: string | undefined;
             path: string | string[];
             rule: string;
         }[];
@@ -1530,6 +1535,7 @@ export const preferencesUpdateSchema: z.ZodObject<{
         include?: string[] | null | undefined;
         exclude?: string[] | null | undefined;
         rules?: {
+            id?: string | undefined;
             path: string | string[];
             rule: string;
         }[] | null | undefined;
@@ -1831,6 +1837,7 @@ export const reviewSettingsSchema: z.ZodPipe<z.ZodObject<{
     include: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
     exclude: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
     rules: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
+        id: z.ZodOptional<z.ZodString>;
         path: z.ZodUnion<readonly [z.ZodString, z.ZodArray<z.ZodString>]>;
         rule: z.ZodPipe<z.ZodPipe<z.ZodString, z.ZodTransform<string, string>>, z.ZodString>;
     }, z.core.$strict>>>>;
@@ -1857,6 +1864,7 @@ export const reviewSettingsSchema: z.ZodPipe<z.ZodObject<{
     include?: string[];
     exclude?: string[];
     rules?: {
+        id?: string | undefined;
         path: string | string[];
         rule: string;
     }[];
@@ -1883,6 +1891,7 @@ export const reviewSettingsSchema: z.ZodPipe<z.ZodObject<{
     include?: string[] | null | undefined;
     exclude?: string[] | null | undefined;
     rules?: {
+        id?: string | undefined;
         path: string | string[];
         rule: string;
     }[] | null | undefined;

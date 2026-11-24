@@ -105,6 +105,7 @@ export {
   MAX_FINDINGS,
   MAX_MEMORY_PER_REPO,
   MAX_REVIEWERS,
+  MAX_RULE_TEXT,
   MAX_TOTAL_BYTES,
 } from "./limits.js";
 export {

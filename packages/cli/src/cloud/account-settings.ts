@@ -1,4 +1,9 @@
-import { CLOUD_PREFIX, configSchema, isCloudModel } from "@open-cr-agent/cloud-contract";
+import {
+  CLOUD_PREFIX,
+  configSchema,
+  isCloudModel,
+  MAX_RULE_TEXT,
+} from "@open-cr-agent/cloud-contract";
 import { repoRuleSchema } from "@open-cr-agent/core/internal";
 import { z } from "zod";
 
@@ -13,7 +18,7 @@ const FORBIDDEN = new Set(["providers", "extends", "github", "botLogin", "$schem
 
 // The account's rules are bounded (ADR-0027); the repository's are its own.
 const accountRules = z
-  .array(repoRuleSchema.extend({ rule: z.string().min(1).max(2_000) }).strict())
+  .array(repoRuleSchema.extend({ rule: z.string().min(1).max(MAX_RULE_TEXT) }).strict())
   .max(50);
 
 // Account models go through the gateway with the account's stored keys

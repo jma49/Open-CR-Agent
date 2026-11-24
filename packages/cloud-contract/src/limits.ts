@@ -12,6 +12,8 @@ export const MAX_EVIDENCE = 5;
 export const MAX_EVIDENCE_FIELD = 300;
 /** The text of one review's shared findings: title, body, suggestion, code, fix and evidence. */
 export const MAX_TOTAL_BYTES = 262_144;
+/** Characters of a rule's text: an account's rule, and a rule's text in an upload. */
+export const MAX_RULE_TEXT = 2_000;
 /** Reviewers whose counts one upload carries. */
 export const MAX_REVIEWERS = 40;
 /** Findings an account remembers per repository (ADR-0028, 4). */

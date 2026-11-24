@@ -32,7 +32,11 @@
       "include": ["src/**"],
       "exclude": ["**/*.snap"],
       "rules": [
-        { "path": "src/db/**", "rule": "Queries go through the scoped() helper." },
+        {
+          "id": "scoped-queries",
+          "path": "src/db/**",
+          "rule": "Queries go through the scoped() helper."
+        },
         { "path": ["web/**/*.tsx", "web/**/*.ts"], "rule": "No inline styles." }
       ],
       "plugins": ["@acme/ocra-plugin-sql"],

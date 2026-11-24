@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_CHAIN } from "./limits.js";
+import { MAX_CHAIN, MAX_RULE_TEXT } from "./limits.js";
 import { CLOUD_PREFIX, isCloudModel } from "./providers.js";
 import {
   AGENT_ROLES,
@@ -105,11 +105,16 @@ const MAX_PLUGIN_SETTINGS_JSON = 16_384;
 const globs = z.array(z.string().regex(GLOB)).max(100);
 const minutes = z.number().gt(0).max(600);
 
+// A rule's id as a configuration file may write it, which a finding then
+// names (FINDING_RULE_ID, ADR-0080).
+const RULE_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
 const ruleSchema = z.strictObject({
+  id: z.string().regex(RULE_ID).optional(),
   path: z.union([z.string().regex(GLOB), z.array(z.string().regex(GLOB)).min(1).max(20)]),
   rule: z
     .string()
-    .max(2_000)
+    .max(MAX_RULE_TEXT)
     .transform((r) => r.trim())
     .pipe(z.string().min(1)),
 });

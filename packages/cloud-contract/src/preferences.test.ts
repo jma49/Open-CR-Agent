@@ -99,12 +99,19 @@ describe("review settings", () => {
       { rules: [{ path: [], rule: "r" }] },
       { rules: [{ path: "x", rule: "   " }] },
       { rules: [{ path: "x", rule: "r", severity: "high" }] },
+      { rules: [{ id: "Tenant Scope", path: "x", rule: "r" }] },
+      { rules: [{ id: "x".repeat(65), path: "x", rule: "r" }] },
       { plugins: ["Not A Package"] },
       { pluginSettings: { a: {} } },
       { plugins: ["a"], pluginSettings: { a: { blob: "x".repeat(16_384) } } },
     ]) {
       expect(ok(reviewSettingsSchema, bad), JSON.stringify(bad).slice(0, 80)).toBe(false);
     }
+  });
+
+  it("keep a rule's id, which findings name it by", () => {
+    const rules = [{ id: "tenant-scope", path: "src/**", rule: "Scope by tenant." }];
+    expect(reviewSettingsSchema.parse({ rules })).toEqual({ rules });
   });
 
   it("name the plugin whose settings it refuses", () => {
