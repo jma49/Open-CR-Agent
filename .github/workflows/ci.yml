@@ -30,16 +30,16 @@ jobs:
       - run: npm run check:api
       # Unused files, exports and dependencies (knip.jsonc).
       - run: npm run knip
-      # The Codex CLI the codex runtime's end-to-end test runs, outside the
-      # workspace: its platform binary is several hundred megabytes, too much
-      # for every install. Pinned, like the runtime's oldest supported Codex.
+      # The Codex CLI the codex runtime's end-to-end test runs, from its own
+      # lockfile outside the workspace: its platform binary is several
+      # hundred megabytes, too much for every install.
       - run: >-
-          npm install --prefix "$RUNNER_TEMP/codex" --no-save --ignore-scripts
-          --no-audit --no-fund --loglevel=error @openai/codex@0.172.0
+          npm ci --prefix packages/runtime-codex/codex-cli --ignore-scripts
+          --no-audit --no-fund --loglevel=error
       # Coverage is reported, not gated.
       - run: npm run test:coverage
         env:
-          OCRA_CODEX_E2E_BIN: ${{ runner.temp }}/codex/node_modules/@openai/codex/bin/codex.js
+          OCRA_CODEX_E2E_BIN: ${{ github.workspace }}/packages/runtime-codex/codex-cli/node_modules/@openai/codex/bin/codex.js
       - run: node scripts/coverage-summary.mjs >> "$GITHUB_STEP_SUMMARY"
 
   # The supported range: the engines floor exactly, the Node the release
