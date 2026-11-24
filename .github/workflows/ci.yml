@@ -34,12 +34,12 @@ jobs:
       # lockfile outside the workspace: its platform binary is several
       # hundred megabytes, too much for every install.
       - run: >-
-          npm ci --prefix packages/runtime-codex/codex-cli --ignore-scripts
+          npm ci --prefix packages/cli/codex-cli --ignore-scripts
           --no-audit --no-fund --loglevel=error
       # Coverage is reported, not gated.
       - run: npm run test:coverage
         env:
-          OCRA_CODEX_E2E_BIN: ${{ github.workspace }}/packages/runtime-codex/codex-cli/node_modules/@openai/codex/bin/codex.js
+          OCRA_CODEX_E2E_BIN: ${{ github.workspace }}/packages/cli/codex-cli/node_modules/@openai/codex/bin/codex.js
       - run: node scripts/coverage-summary.mjs >> "$GITHUB_STEP_SUMMARY"
 
   # The supported range: the engines floor exactly, the Node the release

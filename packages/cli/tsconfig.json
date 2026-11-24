@@ -11,9 +11,6 @@
       "path": "../core"
     },
     {
-      "path": "../runtime-codex"
-    },
-    {
       "path": "../runtime-direct"
     },
     {
