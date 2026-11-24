@@ -14,8 +14,8 @@ import { CodexRuntime } from "./runtime.js";
 // The Codex CLI this package is tested on, against a scripted endpoint
 // declared as a model provider of its own, so no sign-in is needed. Its
 // platform binary is several hundred megabytes, so it is not a dependency of
-// the workspace: CI's verify job installs the pinned version and names it
-// here, and elsewhere the test runs when OCRA_CODEX_E2E_BIN names one.
+// the workspace: CI's verify job installs the pinned one in codex-cli/ and
+// names it here, and elsewhere the test runs when OCRA_CODEX_E2E_BIN names one.
 const CODEX = process.env.OCRA_CODEX_E2E_BIN;
 const KEY = "sk-scripted-secret";
 const TIMEOUT_MS = 120_000;
