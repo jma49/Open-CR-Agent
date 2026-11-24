@@ -1,6 +1,6 @@
 import { scratchRepos } from "@open-cr-agent/test-support";
 import { afterEach, describe, expect, it } from "vitest";
-import { mergeConflicts } from "./merge.js";
+import { mergeConflicts, pushMerge } from "./merge.js";
 
 const repos = scratchRepos("ocra-merge-");
 afterEach(repos.removeAll);
@@ -91,5 +91,85 @@ describe("mergeConflicts", () => {
     const r = repos.create();
     const one = r.commit("c", { "a.ts": "1" });
     await expect(mergeConflicts(r.dir, "--output=x", one)).rejects.toThrow("two commit ids");
+  });
+});
+
+describe("pushMerge", () => {
+  const author = { name: "ocra[bot]", email: "ocra@example.com" };
+  const RESOLVED = text(["const LIMIT = 10;", ...FILE.slice(1)]);
+
+  // The change request's branch and its target on a remote, both fetched
+  // into the clone the merge is made in.
+  function remoteWith() {
+    const {
+      r: remote,
+      ours,
+      theirs,
+    } = diverged(
+      { "a.ts": text(FILE), "b.ts": "1\n" },
+      { "a.ts": text(["const limit = 10;", ...FILE.slice(1)]) },
+      { "a.ts": text(["const LIMIT = 5;", ...FILE.slice(1)]), "b.ts": "2\n" },
+    );
+    remote.git("branch", "feature", ours);
+    remote.git("config", "receive.denyCurrentBranch", "ignore");
+    const clone = repos.create({ origin: remote.dir });
+    clone.git("fetch", "-q", "origin");
+    const merge = {
+      ours,
+      theirs,
+      message: "Merge the base branch\n\n- a.ts\n",
+      files: [{ path: "a.ts", content: RESOLVED }],
+      branch: "feature",
+      author,
+    };
+    return { remote, clone, merge };
+  }
+
+  it("pushes one commit with both parents, git's merge and the resolved file", async () => {
+    const { remote, clone, merge } = remoteWith();
+    const result = await pushMerge(clone.dir, merge);
+    if (!result.committed) throw new Error(result.reason);
+    expect(remote.git("rev-parse", "feature")).toBe(result.sha);
+    expect(remote.git("log", "-1", "--format=%P", "feature")).toBe(`${merge.ours} ${merge.theirs}`);
+    expect(remote.git("log", "-1", "--format=%an <%ae>|%cn|%s", "feature")).toBe(
+      "ocra[bot] <ocra@example.com>|ocra[bot]|Merge the base branch",
+    );
+    expect(remote.git("show", "feature:a.ts")).toBe(RESOLVED.trimEnd());
+    expect(remote.git("show", "feature:b.ts")).toBe("2");
+    expect(clone.git("status", "--porcelain")).toBe("");
+    expect(clone.git("branch", "--list")).toBe("");
+  });
+
+  it("writes nothing when the branch moved, and never forces", async () => {
+    const { remote, clone, merge } = remoteWith();
+    remote.git("checkout", "-q", "feature");
+    const pushed = remote.commit("a push in between", { "c.ts": "new\n" });
+    expect(await pushMerge(clone.dir, merge)).toEqual({
+      committed: false,
+      outcome: "head_moved",
+      reason: "the branch moved after ocra read it",
+    });
+    expect(remote.git("rev-parse", "feature")).toBe(pushed);
+  });
+
+  it("answers not_writable when the remote refuses, without the remote's address", async () => {
+    const { remote, clone, merge } = remoteWith();
+    clone.git("remote", "set-url", "origin", `${remote.dir}-gone`);
+    const result = await pushMerge(clone.dir, merge);
+    expect(result).toMatchObject({ committed: false, outcome: "not_writable" });
+  });
+
+  it("refuses a merge that leaves a conflicted file out, adds another, or names no branch", async () => {
+    const { clone, merge } = remoteWith();
+    await expect(pushMerge(clone.dir, { ...merge, files: [] })).rejects.toThrow(
+      "every conflicted file",
+    );
+    const extra = [...merge.files, { path: "b.ts", content: "3\n" }];
+    await expect(pushMerge(clone.dir, { ...merge, files: extra })).rejects.toThrow(
+      "every conflicted file",
+    );
+    for (const branch of ["--force", "a..b", "+feature", "x y"]) {
+      await expect(pushMerge(clone.dir, { ...merge, branch })).rejects.toThrow("not a branch name");
+    }
   });
 });
