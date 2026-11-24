@@ -113,6 +113,11 @@ jobs:
           node packages/eval/dist/main.js run --dataset golden "${selection[@]}" \
             --label base --repeat "$REPEAT" --max-cost-usd "$MAX_COST" \
             --config "$RUNNER_TEMP/eval.json" --out "$GITHUB_WORKSPACE/.ocra/eval"
+      # The change's first reviews would read what the base's last ones stored
+      # (five minutes' life, renewed by each read), and so look cheaper than
+      # the base's own first reviews: both sides start with nothing stored.
+      - name: Let the base's prompt cache expire
+        run: sleep 330
       - name: Review with the change
         shell: bash
         env:
