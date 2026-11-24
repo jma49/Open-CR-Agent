@@ -3,7 +3,7 @@
 
 No new issues; 1 earlier finding(s) are still open.
 
-**0 finding(s)** (0 critical, 0 warning, 0 suggestion) · risk tier `trivial`
+Risk tier `trivial`
 
 Reviewed only what changed since `a3ed68a`.
 

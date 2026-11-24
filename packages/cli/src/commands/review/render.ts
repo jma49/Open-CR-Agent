@@ -38,7 +38,10 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
     coverageLine(report),
     ...(nothingReviewed
       ? ["Verdict: not reached (nothing was reviewed)"]
-      : [`Verdict: ${report.verdict.replaceAll("_", " ")}`, ...indented(report.summary, "  ")]),
+      : [
+          `Verdict: ${report.verdict.replaceAll("_", " ")}`,
+          ...(report.summary.trim() === "" ? [] : indented(report.summary, "  ")),
+        ]),
     "",
   ];
 

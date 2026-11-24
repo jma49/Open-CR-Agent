@@ -10,7 +10,7 @@
   },
   "tier": "trivial",
   "verdict": "significant_concerns",
-  "summary": "1 finding(s): 1 critical, 0 warning, 0 suggestion.",
+  "summary": "",
   "coverage": [
     {
       "path": "app.ts",

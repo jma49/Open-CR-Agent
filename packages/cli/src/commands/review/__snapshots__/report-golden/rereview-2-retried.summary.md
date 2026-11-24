@@ -1,9 +1,7 @@
 <!-- ocra:review -->
 ## ocra review · 💬 Approved with comments
 
-2 finding(s): 0 critical, 2 warning, 0 suggestion.
-
-**2 finding(s)** (0 critical, 2 warning, 0 suggestion) · risk tier `trivial`
+**2 warnings** · risk tier `trivial`
 
 Reviewed only what changed since `15533b5`.
 
