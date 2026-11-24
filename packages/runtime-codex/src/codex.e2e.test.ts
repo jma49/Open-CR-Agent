@@ -1,5 +1,4 @@
 import { mkdtempSync, rmSync } from "node:fs";
-import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type AgentTaskSpec, MAX_AGENT_STEPS } from "@open-cr-agent/core";
@@ -13,8 +12,11 @@ import {
 import { CodexRuntime } from "./runtime.js";
 
 // The Codex CLI this package is tested on, against a scripted endpoint
-// declared as a model provider of its own, so no sign-in is needed.
-const CODEX = createRequire(import.meta.url).resolve("@openai/codex/bin/codex.js");
+// declared as a model provider of its own, so no sign-in is needed. Its
+// platform binary is several hundred megabytes, so it is not a dependency of
+// the workspace: CI's verify job installs the pinned version and names it
+// here, and elsewhere the test runs when OCRA_CODEX_E2E_BIN names one.
+const CODEX = process.env.OCRA_CODEX_E2E_BIN;
 const KEY = "sk-scripted-secret";
 const TIMEOUT_MS = 120_000;
 
@@ -42,7 +44,7 @@ async function start(script: Parameters<typeof responsesEndpoint>[0]) {
   const home = mkdtempSync(join(tmpdir(), "ocra-codex-home-"));
   homes.push(home);
   const runtime = new CodexRuntime({
-    binary: CODEX,
+    ...(CODEX ? { binary: CODEX } : {}),
     models: { standard: ["codex/m1"], light: ["codex/m1"] },
     tools: [],
     env: {
@@ -78,7 +80,7 @@ function taskSpec(context = fakeContext()): AgentTaskSpec {
   };
 }
 
-describe("CodexRuntime with the Codex CLI", () => {
+describe.skipIf(!CODEX)("CodexRuntime with the Codex CLI", () => {
   it(
     "reviews through ocra's tools only and reports the finding, the usage and the end",
     async () => {

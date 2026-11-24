@@ -37,9 +37,6 @@
     "@open-cr-agent/core": "0.26.0",
     "zod": "^4.6.6"
   },
-  "devDependencies": {
-    "@openai/codex": "0.172.0"
-  },
   "publishConfig": {
     "access": "public"
   }
