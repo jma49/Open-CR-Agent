@@ -259,7 +259,7 @@ ocra learn mine --max-cost-usd 0.5 # 花费到上限就停止起草
 - 已有 learning 在 `source.ref` 里记录过的修复不会再起草；覆盖已有 learning 的某条路径、且标题用词大多相同的草稿会被丢弃；origin 上 `ocra/learnings-*` 分支（最新的 20 个）里的 learning 也同样对待，这些分支是打开或已关闭的提议留下的：等待审查的不会重复起草，被人关闭而没合并的，在删除它的分支之前不会再起草；
 - 只有选取会把草稿交给它来源的那个修复时，才保留它。
 
-保留的每条 learning 写进工作区的 `.ocra/learnings/<标题>.md`，带 `source: { kind: fix-commit, ref: <sha> }`，从不设 `critical`，并打印路径。像其他文件一样阅读、修改、提交。最后一行统计写入、没有经验、重复和因花费上限没起草的数量，以及调用的花费。`ocra learn` 使用 `.ocra/config.json` 的运行时和模型（helper 角色的），或者 `--config <file>` 指定的文件里的，不审查任何东西，也不写会话。
+保留的每条 learning 写进工作区的 `.ocra/learnings/<标题>.md`，带 `source: { kind: fix-commit, ref: <sha> }`，从不设 `critical`，并打印路径。文件名取标题的小写字母、数字和连字符，最多 60 个字符，并在完整的词处结束。像其他文件一样阅读、修改、提交。最后一行统计写入、没有经验、重复和因花费上限没起草的数量，以及调用的花费。`ocra learn` 使用 `.ocra/config.json` 的运行时和模型（helper 角色的），或者 `--config <file>` 指定的文件里的，不审查任何东西，也不写会话。
 
 ### 从已接受的问题
 

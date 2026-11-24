@@ -259,7 +259,7 @@ A fix is a commit whose subject says so (`fix:`, `revert`, "fixes", "bug") and t
 - a fix an existing learning records in `source.ref` is not drafted again, and a draft that covers a path of an existing learning with mostly the same title words is dropped; so are the learnings on origin's `ocra/learnings-*` branches (the 20 newest), which an open or closed proposal leaves there: what waits for review is not drafted twice, and what a person closed without merging is not drafted again until its branch is deleted;
 - the draft is kept only if the selection would give it to the fix it came from.
 
-Each kept learning is written to `.ocra/learnings/<title>.md` in the working tree, with `source: { kind: fix-commit, ref: <sha> }` and never `critical`, and its path printed. Read, edit and commit them like any file. The last line counts what was written, declined, duplicate or left by the spend limit, and what the calls cost. `ocra learn` uses the runtime and models of `.ocra/config.json` (the helper role's), or of the file `--config <file>` names in its place, reviews nothing and writes no session.
+Each kept learning is written to `.ocra/learnings/<title>.md` in the working tree, with `source: { kind: fix-commit, ref: <sha> }` and never `critical`, and its path printed. The name is the title in lowercase letters, digits and hyphens, at most 60 characters and ending at a whole word. Read, edit and commit them like any file. The last line counts what was written, declined, duplicate or left by the spend limit, and what the calls cost. `ocra learn` uses the runtime and models of `.ocra/config.json` (the helper role's), or of the file `--config <file>` names in its place, reviews nothing and writes no session.
 
 ### From accepted findings
 
