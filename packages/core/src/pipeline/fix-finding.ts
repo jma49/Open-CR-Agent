@@ -5,7 +5,7 @@ import { matchInContent, matchInHunks } from "../anchor/match.js";
 import { quoteSignature } from "../anchor/quote.js";
 import type { AgentRuntime, ReviewContext, SyntaxChecker, Usage } from "../contracts.js";
 import type { FileDiff, FindingFix, LineRange, Severity } from "../domain.js";
-import { OcraError } from "../errors.js";
+import { type CallFailure, OcraError } from "../errors.js";
 import type { FixRejection } from "../fix/check.js";
 import { proposeFixes } from "../fix/propose.js";
 import { type FixCandidate, MAX_FIX_SPAN_LINES } from "../fix/select.js";
@@ -38,6 +38,8 @@ export interface FixedFinding {
   outcome: FixFindingOutcome;
   fix?: FindingFix;
   reason?: FixFindingReason;
+  // What failed, for the reason `failed`.
+  cause?: CallFailure;
   warnings: string[];
 }
 
@@ -108,7 +110,7 @@ interface HeadFixOptions {
 
 type HeadFix =
   | { fix: FindingFix; warnings: string[] }
-  | { reason: FixFindingReason; warnings: string[] };
+  | { reason: FixFindingReason; cause?: CallFailure; warnings: string[] };
 
 // The fix for one stored finding in a change already read: the finding is
 // anchored again by its quote, asked for through proposeFixes and checked.
@@ -160,7 +162,12 @@ export async function fixAtHead(finding: StoredFinding, options: HeadFixOptions)
   for (const usage of result.usage) options.onUsage(usage);
   const fix = result.findings[0]?.fix;
   if (fix) return { fix, warnings: result.warnings };
-  return { reason: result.summary.rejected[0]?.reason ?? "failed", warnings: result.warnings };
+  const [rejected] = result.summary.rejected;
+  return {
+    reason: rejected?.reason ?? "failed",
+    ...(rejected?.cause ? { cause: rejected.cause } : {}),
+    warnings: result.warnings,
+  };
 }
 
 // Where the finding's quote is at the head. Only a quote that fits one place

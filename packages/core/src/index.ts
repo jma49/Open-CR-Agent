@@ -72,6 +72,8 @@ export type {
   Verification,
 } from "./domain.js";
 export {
+  CALL_FAILURES,
+  type CallFailure,
   CompletionError,
   errorMessage,
   isOcraError,

@@ -16,7 +16,10 @@ const committed = {
 
 describe("ocra mend's result", () => {
   it("names a commit only when one was written, and a stop only when stopped", () => {
-    expect(mendResultSchema.parse(committed)).toEqual(committed);
+    expect(mendResultSchema.parse(committed)).toEqual({
+      ...committed,
+      items: [{ ...committed.items[0], cause: null }],
+    });
     expect(mendResultSchema.safeParse({ ...committed, commitSha: null }).success).toBe(false);
     expect(mendResultSchema.safeParse({ ...committed, outcome: "proposed" }).success).toBe(false);
     const stopped = { ...committed, outcome: "stopped", commitSha: null, items: [] };
@@ -38,6 +41,16 @@ describe("ocra mend's result", () => {
     ).toBe(true);
     expect(
       mendResultSchema.safeParse(withItem({ edits: [{ ...edit, startLine: 4 }] })).success,
+    ).toBe(false);
+  });
+
+  it("says what failed only for a finding whose call failed", () => {
+    const failed = { ...committed.items[0], outcome: "rejected", reason: "failed", edits: [] };
+    const withItem = (changed: object) => ({ ...committed, items: [{ ...failed, ...changed }] });
+    expect(mendResultSchema.parse(withItem({ cause: "quota" })).items[0]?.cause).toBe("quota");
+    expect(mendResultSchema.parse(withItem({})).items[0]?.cause).toBeNull();
+    expect(
+      mendResultSchema.safeParse(withItem({ reason: "unresolved", cause: "quota" })).success,
     ).toBe(false);
   });
 

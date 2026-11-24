@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentRuntime, CompletionRequest, Usage } from "../contracts.js";
-import { CompletionError } from "../errors.js";
+import { CallTimeout, CompletionError, callFailure } from "../errors.js";
 import { oneShot } from "./model-call.js";
 
 const cost = (costUsd: number): Usage => ({
@@ -71,16 +71,21 @@ describe("oneShot", () => {
     expect(spent).toEqual([cost(0.2)]);
   });
 
-  it("stops a runtime that ignores the request's timeout through its signal", async () => {
-    const ask = oneShot(
-      runtime(
-        (_, signal) =>
-          new Promise((_, reject) => signal.addEventListener("abort", () => reject(signal.reason))),
-      ),
-      () => {},
+  it("stops a runtime that ignores the request's timeout through its signal, and says it timed out", async () => {
+    const hangs = runtime(
+      (_request, signal) =>
+        new Promise((_resolve, reject) =>
+          signal.addEventListener("abort", () => reject(new Error("aborted"))),
+        ),
     );
-    await expect(
-      ask?.({ ...request, timeoutMs: 10 }, new AbortController().signal),
-    ).rejects.toMatchObject({ name: "TimeoutError" });
+    const ask = oneShot(hangs, () => {});
+    const late = ask?.({ ...request, timeoutMs: 20 }, new AbortController().signal);
+    await expect(late).rejects.toBeInstanceOf(CallTimeout);
+    expect(callFailure(await late?.catch((e: unknown) => e))).toBe("timeout");
+
+    const stopped = new AbortController();
+    const cut = ask?.(request, stopped.signal);
+    stopped.abort();
+    await expect(cut).rejects.toThrow("aborted");
   });
 });

@@ -553,6 +553,9 @@ export const fileStatusSchema: z.ZodEnum<{
 export const FINGERPRINT: RegExp;
 
 // @public
+export const FIX_FAILURE_CAUSES: readonly ["timeout", "quota", "refused", "unavailable", "invalid_output", "unknown"];
+
+// @public
 export const FIX_OUTCOMES: readonly ["proposed", "rejected", "not_fixable", "stale", "head_moved"];
 
 // @public
@@ -560,6 +563,9 @@ export const FIX_REASONS: readonly ["declined", "failed", "stale", "unchanged", 
 
 // @public
 export const FIX_REJECTIONS: readonly ["declined", "failed", "stale", "unchanged", "unsafe", "too_large", "no_parser", "syntax"];
+
+// @public (undocumented)
+export type FixFailureCause = (typeof FIX_FAILURE_CAUSES)[number];
 
 // @public (undocumented)
 export type FixOutcome = (typeof FIX_OUTCOMES)[number];
@@ -597,6 +603,14 @@ export const fixResultSchema: z.ZodObject<{
         unchanged: "unchanged";
         unsafe: "unsafe";
     }>>;
+    cause: z.ZodDefault<z.ZodNullable<z.ZodEnum<{
+        invalid_output: "invalid_output";
+        quota: "quota";
+        refused: "refused";
+        timeout: "timeout";
+        unavailable: "unavailable";
+        unknown: "unknown";
+    }>>>;
     usage: z.ZodObject<{
         inputTokens: z.ZodNumber;
         cachedTokens: z.ZodNumber;
@@ -1028,6 +1042,14 @@ export const mendResultSchema: z.ZodObject<{
             unsafe: "unsafe";
             unsure: "unsure";
         }>>;
+        cause: z.ZodDefault<z.ZodNullable<z.ZodEnum<{
+            invalid_output: "invalid_output";
+            quota: "quota";
+            refused: "refused";
+            timeout: "timeout";
+            unavailable: "unavailable";
+            unknown: "unknown";
+        }>>>;
         edits: z.ZodArray<z.ZodObject<{
             path: z.ZodString;
             startLine: z.ZodNumber;

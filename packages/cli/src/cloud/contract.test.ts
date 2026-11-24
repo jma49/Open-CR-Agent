@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import * as contract from "@open-cr-agent/cloud-contract";
 import {
+  CALL_FAILURES,
   type CoverageEntry,
   EFFORT_LEVELS,
   type Effort,
@@ -65,6 +66,7 @@ describe("the contract's vocabulary", () => {
     expect(contract.STAGES).toEqual(REVIEW_STAGES);
     expect(contract.GUIDELINE_SCOPES).toEqual(GUIDELINE_SCOPES);
     expect(contract.FIX_REJECTIONS).toEqual(FIX_REJECTIONS);
+    expect(contract.FIX_FAILURE_CAUSES).toEqual(CALL_FAILURES);
     expect(contract.MEND_LEVELS).toEqual(MEND_LEVELS);
     expect(contract.MEND_OUTCOMES).toEqual(MEND_OUTCOMES);
     expect(contract.MEND_STOPS).toEqual(ROUND_STOPS);

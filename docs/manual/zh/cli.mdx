@@ -386,7 +386,7 @@ ocra 通过审查的访问策略读取变更和问题所在文件在 head 上的
 加 `--json` 时，stdout 是一行：
 
 ```json
-{"fingerprint":"b491fb26b470419c","headSha":"<40 hex>","outcome":"proposed","fix":{"startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"},"reason":null,"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
+{"fingerprint":"b491fb26b470419c","headSha":"<40 hex>","outcome":"proposed","fix":{"startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"},"reason":null,"cause":null,"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
 ```
 
 | `outcome` | 含义 | `reason` | 退出码 |
@@ -397,7 +397,7 @@ ocra 通过审查的访问策略读取变更和问题所在文件在 head 上的
 | `stale` | head 上的文件里已经没有问题的代码，或文件已不存在。请重新审查变更 | `stale` | `3` |
 | `head_moved` | head 不是 `--head` | `null` | `3` |
 
-存储的文本被脱敏或截断过（`redacted`、`truncated`）、而代码又找不到的问题，结果是 `not_candidate` 而不是 `stale`：它存储的代码可能不是文件里的样子。用法、输入和配置错误，以及运行时无法启动，退出码为 `2`；模型调用失败时结果是 `rejected`，理由为 `failed`。结构是 `@open-cr-agent/cloud-contract` 里的 `fixResultSchema`（[ADR-0077](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0077-fix-one-finding.md)）。v0.19.0 新增。
+存储的文本被脱敏或截断过（`redacted`、`truncated`）、而代码又找不到的问题，结果是 `not_candidate` 而不是 `stale`：它存储的代码可能不是文件里的样子。用法、输入和配置错误，以及运行时无法启动，退出码为 `2`；模型调用失败时结果是 `rejected`，理由为 `failed`，`cause` 说明失败的是什么（其他理由下为 `null`）：`timeout` 调用超过了自己的时限，`quota` 所有模型都用完配额或被限流，`refused` 端点拒绝了请求（密钥、模型名或某个参数），`unavailable` 端点出错或连不上，`invalid_output` 它回答了但 ocra 读不懂，或 `unknown`；端点自己的报错只写到 stderr（v0.21.0）。结构是 `@open-cr-agent/cloud-contract` 里的 `fixResultSchema`（[ADR-0077](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0077-fix-one-finding.md)）。v0.19.0 新增。
 
 ## ocra mend
 
@@ -432,7 +432,7 @@ ocra mend --from main --findings accepted.json                             # 本
 加 `--json` 时，stdout 是一行：
 
 ```json
-{"headSha":"<40 hex>","outcome":"committed","stopped":null,"commitSha":"<40 hex>","items":[{"fingerprint":"b491fb26b470419c","outcome":"fixed","reason":null,"edits":[{"path":"src/total.ts","startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"}]}],"state":{"rounds":1,"costUsd":0.06,"items":{"b491fb26b470419c":{"attempts":1}}},"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
+{"headSha":"<40 hex>","outcome":"committed","stopped":null,"commitSha":"<40 hex>","items":[{"fingerprint":"b491fb26b470419c","outcome":"fixed","reason":null,"cause":null,"edits":[{"path":"src/total.ts","startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"}]}],"state":{"rounds":1,"costUsd":0.06,"items":{"b491fb26b470419c":{"attempts":1}}},"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
 ```
 
 | `outcome` | 含义 | 退出码 |
@@ -455,7 +455,7 @@ ocra mend --from main --findings accepted.json                             # 本
 | `needs_human` | 已关闭，交给人决定 | `not_candidate`、`no_parser`、`out_of_scope`、`protected`、`too_large`、`tamper`，或两次尝试都用完时的 `attempts` |
 | `gone` | 它的代码已不在 head 上 | `stale` |
 
-`edits` 替换 `headSha` 上 `path` 的第 `startLine` 到 `endLine` 整行；只有 `fixed` 或 `proposed` 的条目才有。用法、输入和配置错误，以及无法启动的运行时，退出码为 `2`。结构是 `@open-cr-agent/cloud-contract` 里的 `mendResultSchema`、`mendStateSchema` 和 `mendFindingsSchema`（[ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)）。这是修复循环的第一步：失败的检查、合并冲突和评审者的要求仍在计划中。v0.20.0 新增；带 `edit` 工具的任务是 v0.21.0 新增。
+`edits` 替换 `headSha` 上 `path` 的第 `startLine` 到 `endLine` 整行；只有 `fixed` 或 `proposed` 的条目才有。条目的 `reason` 为 `failed` 时，`cause` 说明失败的是什么，取值与 [`ocra fix`](#ocra-fix) 相同，否则为 `null`（v0.21.0）。用法、输入和配置错误，以及无法启动的运行时，退出码为 `2`。结构是 `@open-cr-agent/cloud-contract` 里的 `mendResultSchema`、`mendStateSchema` 和 `mendFindingsSchema`（[ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)）。这是修复循环的第一步：失败的检查、合并冲突和评审者的要求仍在计划中。v0.20.0 新增；带 `edit` 工具的任务是 v0.21.0 新增。
 
 ## ocra metrics
 

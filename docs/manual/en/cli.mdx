@@ -386,7 +386,7 @@ ocra reads the change and the finding's file at the head through the review's ac
 With `--json`, stdout is one line:
 
 ```json
-{"fingerprint":"b491fb26b470419c","headSha":"<40 hex>","outcome":"proposed","fix":{"startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"},"reason":null,"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
+{"fingerprint":"b491fb26b470419c","headSha":"<40 hex>","outcome":"proposed","fix":{"startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"},"reason":null,"cause":null,"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
 ```
 
 | `outcome` | Meaning | `reason` | Exit |
@@ -397,7 +397,7 @@ With `--json`, stdout is one line:
 | `stale` | The finding's code is not in the file at the head, or the file is gone. Review the change again | `stale` | `3` |
 | `head_moved` | The head is not `--head` | `null` | `3` |
 
-A finding whose stored text was redacted or cut (`redacted`, `truncated`) and whose code is not found is `not_candidate`, not `stale`: its stored code may not be the file's. Usage, input and configuration errors, and a runtime that cannot start, exit `2`; a failed model call is `rejected` with `failed`. The shape is `fixResultSchema` in `@open-cr-agent/cloud-contract` ([ADR-0077](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0077-fix-one-finding.md)). New in v0.19.0.
+A finding whose stored text was redacted or cut (`redacted`, `truncated`) and whose code is not found is `not_candidate`, not `stale`: its stored code may not be the file's. Usage, input and configuration errors, and a runtime that cannot start, exit `2`; a failed model call is `rejected` with `failed`, and `cause` says what failed (`null` for every other reason): `timeout` the call's deadline passed, `quota` every model is out of quota or rate limited, `refused` the endpoint refused the request (the key, the model's name, a parameter), `unavailable` it failed or could not be reached, `invalid_output` it answered in a form ocra could not read, or `unknown`; the endpoint's own message goes to stderr only (v0.21.0). The shape is `fixResultSchema` in `@open-cr-agent/cloud-contract` ([ADR-0077](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0077-fix-one-finding.md)). New in v0.19.0.
 
 ## ocra mend
 
@@ -432,7 +432,7 @@ ocra mend --from main --findings accepted.json                             # a l
 With `--json`, stdout is one line:
 
 ```json
-{"headSha":"<40 hex>","outcome":"committed","stopped":null,"commitSha":"<40 hex>","items":[{"fingerprint":"b491fb26b470419c","outcome":"fixed","reason":null,"edits":[{"path":"src/total.ts","startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"}]}],"state":{"rounds":1,"costUsd":0.06,"items":{"b491fb26b470419c":{"attempts":1}}},"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
+{"headSha":"<40 hex>","outcome":"committed","stopped":null,"commitSha":"<40 hex>","items":[{"fingerprint":"b491fb26b470419c","outcome":"fixed","reason":null,"cause":null,"edits":[{"path":"src/total.ts","startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"}]}],"state":{"rounds":1,"costUsd":0.06,"items":{"b491fb26b470419c":{"attempts":1}}},"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
 ```
 
 | `outcome` | Meaning | Exit |
@@ -455,7 +455,7 @@ Each entry of `items` is one finding, in the order given:
 | `needs_human` | Closed for a person to decide | `not_candidate`, `no_parser`, `out_of_scope`, `protected`, `too_large`, `tamper`, or `attempts` when both attempts are used |
 | `gone` | Its code is not at the head any more | `stale` |
 
-`edits` replace whole lines `startLine` to `endLine` of `path` at `headSha`; it is empty unless the item is `fixed` or `proposed`. Usage, input and configuration errors, and a runtime that cannot start, exit `2`. The shapes are `mendResultSchema`, `mendStateSchema` and `mendFindingsSchema` in `@open-cr-agent/cloud-contract` ([ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)). This is the loop's first step: failed checks, merge conflicts and reviewers' requests are planned. New in v0.20.0; the task with the `edit` tool in v0.21.0.
+`edits` replace whole lines `startLine` to `endLine` of `path` at `headSha`; it is empty unless the item is `fixed` or `proposed`. An item's `cause` says what failed when its `reason` is `failed`, with the values [`ocra fix`](#ocra-fix) gives, and is `null` otherwise (v0.21.0). Usage, input and configuration errors, and a runtime that cannot start, exit `2`. The shapes are `mendResultSchema`, `mendStateSchema` and `mendFindingsSchema` in `@open-cr-agent/cloud-contract` ([ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)). This is the loop's first step: failed checks, merge conflicts and reviewers' requests are planned. New in v0.20.0; the task with the `edit` tool in v0.21.0.
 
 ## ocra metrics
 

@@ -5,7 +5,7 @@ import type { AgentCallSettings } from "../agent/settings.js";
 import type { SpendLimit } from "../agent/spend-limit.js";
 import type { AgentRuntime, ReviewContext, SyntaxChecker, Usage } from "../contracts.js";
 import type { FileDiff, Finding, FindingFix } from "../domain.js";
-import { errorMessage, OcraError } from "../errors.js";
+import { type CallFailure, callFailure, errorMessage, OcraError } from "../errors.js";
 import { checkFix, type FixRejection } from "./check.js";
 import { buildFixPrompt, fixResponseSchema } from "./prompt.js";
 import { type FixCandidate, fixCandidates } from "./select.js";
@@ -16,7 +16,8 @@ export interface FixSummary {
   // Findings a fix was asked for.
   asked: number;
   proposed: number;
-  rejected: { fingerprint: string; reason: FixRejection }[];
+  // cause: what failed, for a fix whose call did (`failed`).
+  rejected: { fingerprint: string; reason: FixRejection; cause?: CallFailure }[];
 }
 
 export interface FixResult {
@@ -56,8 +57,10 @@ export async function proposeFixes(
 
   const byFile = new Map<string, FixCandidate[]>();
   for (const c of candidates) byFile.set(c.file, [...(byFile.get(c.file) ?? []), c]);
-  const reject = (group: readonly FixCandidate[], reason: FixRejection) => {
-    for (const f of group) summary.rejected.push({ fingerprint: f.fingerprint, reason });
+  const reject = (group: readonly FixCandidate[], reason: FixRejection, cause?: CallFailure) => {
+    for (const f of group) {
+      summary.rejected.push({ fingerprint: f.fingerprint, reason, ...(cause ? { cause } : {}) });
+    }
   };
   const fixes = new Map<string, FindingFix>();
   let unaffordable = 0;
@@ -91,7 +94,7 @@ export async function proposeFixes(
       answers = indexedAnswers(text);
     } catch (error) {
       result.warnings.push(`proposing fixes for ${file} failed: ${errorMessage(error)}`);
-      return reject(group, "failed");
+      return reject(group, "failed", callFailure(error));
     }
     for (const [i, finding] of group.entries()) {
       const proposed = answers.get(i);

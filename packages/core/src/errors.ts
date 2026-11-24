@@ -45,16 +45,49 @@ export function isOcraError(error: unknown, code?: OcraErrorCode): error is Ocra
   return error instanceof OcraError && (code === undefined || error.code === code);
 }
 
+// Why a call to a model gave no usable answer, as a caller may show it: no
+// message of an endpoint, which may echo anything, is among them. timeout:
+// the call's own deadline passed. quota: every model of the chain is out of
+// quota or rate limited. refused: the endpoint refused the request (the key,
+// the model's name, a parameter). unavailable: it failed or could not be
+// reached. invalid_output: it answered, and not in the form asked for.
+export const CALL_FAILURES = [
+  "timeout",
+  "quota",
+  "refused",
+  "unavailable",
+  "invalid_output",
+  "unknown",
+] as const;
+export type CallFailure = (typeof CALL_FAILURES)[number];
+
 // A helper completion that failed on every model has still spent tokens on
 // the attempts; callers record them so reports and spend limits stay true.
 export class CompletionError extends OcraError {
   readonly usage: Usage;
+  readonly failure: CallFailure;
 
-  constructor(message: string, usage: Usage, options?: { cause?: unknown }) {
+  constructor(message: string, usage: Usage, options?: { cause?: unknown; failure?: CallFailure }) {
     super("RUNTIME_FAILED", message, options);
     this.usage = usage;
+    this.failure = options?.failure ?? "unknown";
     this.name = "CompletionError";
   }
+}
+
+// A helper completion stopped at its own deadline; what it had spent was
+// reported where it was made.
+export class CallTimeout extends OcraError {
+  constructor(timeoutMs: number, options?: { cause?: unknown }) {
+    super("RUNTIME_FAILED", `the call gave no answer within ${timeoutMs} ms`, options);
+    this.name = "CallTimeout";
+  }
+}
+
+export function callFailure(error: unknown): CallFailure {
+  if (error instanceof CallTimeout) return "timeout";
+  if (error instanceof CompletionError) return error.failure;
+  return isOcraError(error, "RUNTIME_INVALID_OUTPUT") ? "invalid_output" : "unknown";
 }
 
 export function usageSpent(error: unknown): Usage | undefined {

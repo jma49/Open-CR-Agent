@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentEvent } from "../contracts.js";
+import { callFailure } from "../errors.js";
 import type { AttemptOutcome } from "./attempt.js";
 import { completeWithFailback, type RateLimits, withFailback } from "./failback.js";
 import { ModelHealth } from "./models.js";
@@ -296,6 +297,22 @@ describe("withFailback on rate limits", () => {
     health.recordQuota("a", { daily: true });
     expect((await answer).text).toBe("b");
     expect(attempted).toEqual(["b"]);
+  });
+
+  it("says whether a call failed on a refusal, on quota, or on an endpoint that gave no answer", async () => {
+    const failed = (error: NonNullable<AttemptOutcome["error"]>) =>
+      completeWithFailback({
+        tier: "light",
+        chain: ["a"],
+        health: new ModelHealth(),
+        signal: new AbortController().signal,
+        attempt: async () => ({ ...ok, error }),
+      }).catch(callFailure);
+    expect(await failed({ message: "HTTP 401", retryable: false })).toBe("refused");
+    expect(await failed({ message: "HTTP 503", retryable: true })).toBe("unavailable");
+    expect(await failed({ message: "HTTP 429", retryable: true, quota: { daily: true } })).toBe(
+      "quota",
+    );
   });
 });
 

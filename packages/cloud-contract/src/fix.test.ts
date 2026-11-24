@@ -14,11 +14,20 @@ const proposed = {
 
 describe("ocra fix's result", () => {
   it("holds a fix only when one was proposed", () => {
-    expect(fixResultSchema.parse(proposed)).toEqual(proposed);
+    expect(fixResultSchema.parse(proposed)).toEqual({ ...proposed, cause: null });
     expect(fixResultSchema.safeParse({ ...proposed, fix: null }).success).toBe(false);
     expect(
       fixResultSchema.safeParse({ ...proposed, outcome: "rejected", reason: "syntax" }).success,
     ).toBe(false);
+  });
+
+  it("says what failed only for a fix whose call failed", () => {
+    const rejected = { ...proposed, fix: null, outcome: "rejected" };
+    const failed = { ...rejected, reason: "failed", cause: "timeout" };
+    expect(fixResultSchema.parse(failed).cause).toBe("timeout");
+    expect(fixResultSchema.parse({ ...rejected, reason: "failed" }).cause).toBeNull();
+    expect(fixResultSchema.safeParse({ ...failed, reason: "syntax" }).success).toBe(false);
+    expect(fixResultSchema.safeParse({ ...failed, cause: "HTTP 401 sk-live" }).success).toBe(false);
   });
 
   it("gives a reason for every outcome but proposed and head_moved", () => {
