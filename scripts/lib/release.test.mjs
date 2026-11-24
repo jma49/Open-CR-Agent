@@ -174,7 +174,8 @@ describe("readWorkspaces", () => {
       "@open-cr-agent/vcs-github",
       "@open-cr-agent/vcs-gitlab",
       "@open-cr-agent/vcs-local",
-      // An optional dependency of the CLI, still published before it.
+      // Optional dependencies of the CLI, still published before it.
+      "@open-cr-agent/runtime-codex",
       "@open-cr-agent/runtime-opencode",
       "@open-cr-agent/cli",
     ]);

@@ -27,6 +27,14 @@
         "src/index.ts": ["exports", "types"]
       }
     },
+    "packages/runtime-codex": {
+      "entry": ["src/**/*.test.ts"],
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["@openai/codex"],
+      "ignoreIssues": {
+        "src/index.ts": ["exports", "types"]
+      }
+    },
     "packages/cloud-contract": {
       "entry": ["src/**/*.test.ts"],
       "project": ["src/**/*.ts"],

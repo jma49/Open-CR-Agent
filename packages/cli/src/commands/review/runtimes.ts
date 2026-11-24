@@ -2,8 +2,9 @@ import { OcraError, type OcraPlugin } from "@open-cr-agent/core";
 import { VERSION } from "../../version.js";
 
 // The plugin of each built-in runtime, by the name a configuration gives it,
-// imported only when a review uses it: @open-cr-agent/runtime-opencode is an
-// optional dependency and may not be installed (ADR-0023).
+// imported only when a review uses it: @open-cr-agent/runtime-opencode and
+// @open-cr-agent/runtime-codex are optional dependencies and may not be
+// installed (ADR-0023).
 export type RuntimeLoaders = Readonly<Record<string, () => Promise<OcraPlugin>>>;
 
 export const BUILTIN_RUNTIMES: RuntimeLoaders = {
@@ -12,6 +13,12 @@ export const BUILTIN_RUNTIMES: RuntimeLoaders = {
       "opencode",
       "@open-cr-agent/runtime-opencode",
       async () => (await import("@open-cr-agent/runtime-opencode")).opencodeRuntimePlugin,
+    ),
+  codex: () =>
+    loadRuntime(
+      "codex",
+      "@open-cr-agent/runtime-codex",
+      async () => (await import("@open-cr-agent/runtime-codex")).codexRuntimePlugin,
     ),
   direct: () =>
     loadRuntime(
