@@ -326,9 +326,19 @@ export class GitLabApi {
     return result.data;
   }
 
-  request(method: string, path: string, body?: unknown): Promise<unknown> {
+  // The end of a text answer, a job's log.
+  async tail(path: string, tailBytes: number): Promise<string> {
+    return String(await this.request("GET", path, undefined, { tailBytes }));
+  }
+
+  request(
+    method: string,
+    path: string,
+    body?: unknown,
+    tail: { tailBytes?: number } = {},
+  ): Promise<unknown> {
     const project = encodeURIComponent(String(this.project));
     const url = `${this.baseUrl}/projects/${project}${path}`;
-    return sendWithRetry(this.api, { method, url, path, body });
+    return sendWithRetry(this.api, { method, url, path, body, ...tail });
   }
 }

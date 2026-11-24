@@ -241,6 +241,14 @@ export class ChainRunner {
 }
 
 // @public (undocumented)
+export interface ChangeChecks {
+    // (undocumented)
+    failed: FailedCheck[];
+    // (undocumented)
+    pending: boolean;
+}
+
+// @public (undocumented)
 export interface ChangeCommit {
     // (undocumented)
     files: readonly {
@@ -481,6 +489,14 @@ export function exploredBy(uses: readonly ToolUse[]): {
     read: string[];
     searched: string[];
 };
+
+// @public (undocumented)
+export interface FailedCheck {
+    // (undocumented)
+    log: string;
+    // (undocumented)
+    name: string;
+}
 
 // @public (undocumented)
 export function fetchFailure(error: unknown): string;
@@ -2472,6 +2488,8 @@ export interface Usage {
 
 // @public (undocumented)
 export interface VcsAdapter {
+    // (undocumented)
+    checks?(headSha: string): Promise<ChangeChecks>;
     // (undocumented)
     commit?(commit: ChangeCommit): Promise<CommitResult>;
     // (undocumented)

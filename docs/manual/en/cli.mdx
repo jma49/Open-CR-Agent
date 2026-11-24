@@ -407,12 +407,14 @@ Runs one round of the fix loop over findings a person accepted: it writes a chec
 ocra mend --pr 7 --findings accepted.json --head <sha> --json              # propose: print the checked edits
 ocra mend --pr 7 --findings accepted.json --level commit --state state.json --json
 ocra mend --mr 12 --findings - --level commit --json < accepted.json       # a GitLab merge request
+ocra mend --pr 7 --checks --level commit --state state.json --json         # the head's failed checks
 ocra mend --from main --findings accepted.json                             # a local range; propose only
 ```
 
 | Option | Meaning |
 |---|---|
 | `--findings <file\|->` | The accepted findings as a JSON array, the most important first, each in the shape ocra Cloud stores (`sharedFindingSchema`); `-` reads stdin. At most 200 findings and 2 MiB |
+| `--checks` | Also work on the checks that failed on the head of the pull or merge request (see below). With it, `--findings` may be left out. Needs `--pr` or `--mr` (v0.22.0) |
 | `--level <level>` | `propose` (default): the checked edits are in the result and nothing is committed. `commit`: one commit on the branch |
 | `--state <file>` | The `state` the last round printed. Omit it for a change's first round |
 | `--head <sha>` | The full commit id the findings were reviewed at. When the change's head is another, ocra calls no model and answers `head_moved` |
@@ -427,12 +429,14 @@ ocra mend --from main --findings accepted.json                             # a l
 
 **The gate.** A round edits only regular files of the change that a review would read. It never edits CI configuration (`.github/`, `.gitlab/`, `.gitlab-ci.yml`, `.circleci/`, `.buildkite/`, `Jenkinsfile`, Azure and Bitbucket pipelines), `.ocra/`, `AGENTS.md`, `CODEOWNERS`, dependency manifests (`package.json`, `pyproject.toml`, `requirements*.txt`, `Pipfile`, `go.mod`, `Cargo.toml`, `pom.xml`, Gradle build and settings files, `Gemfile`, `composer.json`), `Dockerfile`, `Makefile`, generated files, migrations, or a path `--protect` names. In a test file, an edit may not add a call that turns a test off (`.skip`, `.only`, `.todo`, `xit`, `@Ignore`, `@Disabled`, `pytest.mark.skip`, `skipif`, `xfail`, `unittest.skip`, `t.Skip`, `#[ignore]`). An edit holds no control or bidirectional characters. A finding the gate refuses goes to a person.
 
+**Failed checks.** With `--checks`, a round also reads the checks of the head: on GitHub its check runs, on GitLab the jobs of the merge request's newest pipeline on that commit. A check is worked on when it failed (on GitHub a failure or a timeout, not a cancelled or skipped run; on GitLab a failed job that is not allowed to fail) and does not fail under the same name on the head of the base branch: what is already broken there is not this change's to fix. A round takes at most 3 of them, after the findings, within the same 5 items. Each goes to a fixer task as above, given the check's name, the last 200 lines of the failed job's log (at most 20,000 characters, without timestamps and terminal sequences) and the paths the change touches; the log is data to it, and ocra runs nothing. On GitHub the log of an Actions job needs a token with `actions: read`; without it, and for a check of another app, the task gets what the check reported of itself, and a check with neither goes to a person (`not_candidate`), as every check does on the `opencode` runtime. The task is told to fix the code, to change a test only when the change altered the behaviour on purpose, and to make no edit when the failure is not the change's (an outage, a timeout, a missing secret); the gate still refuses an edit that turns a test off, and the verifier reads each edit. A failed check is the same item, with the same attempts, while it fails the same way: its name and the first line of its log that names a failure, numbers and ids aside. When checks are still running and nothing else is open, the round does nothing, counts as none and answers `waiting`: start the next one when they finish. A platform whose checks cannot be read leaves the round to its findings, with a warning.
+
 **The caps.** A finding gets 2 attempts, a change 6 rounds, and the rounds together the spend limit. The state counts them: pass each round the state the last one printed. A finding that was not tried, or whose edit was not written (the round was full, the head moved), uses no attempt.
 
 With `--json`, stdout is one line:
 
 ```json
-{"headSha":"<40 hex>","outcome":"committed","stopped":null,"commitSha":"<40 hex>","items":[{"fingerprint":"b491fb26b470419c","outcome":"fixed","reason":null,"cause":null,"edits":[{"path":"src/total.ts","startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"}]}],"state":{"rounds":1,"costUsd":0.06,"items":{"b491fb26b470419c":{"attempts":1}}},"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
+{"headSha":"<40 hex>","outcome":"committed","stopped":null,"commitSha":"<40 hex>","items":[{"fingerprint":"b491fb26b470419c","check":null,"outcome":"fixed","reason":null,"cause":null,"edits":[{"path":"src/total.ts","startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"}]}],"state":{"rounds":1,"costUsd":0.06,"items":{"b491fb26b470419c":{"attempts":1}}},"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
 ```
 
 | `outcome` | Meaning | Exit |
@@ -443,8 +447,9 @@ With `--json`, stdout is one line:
 | `stopped` | No round ran: the change reached the cap `stopped` names (`rounds` or `spend`) | `0` |
 | `head_moved` | The head is not `--head`, or the branch moved after ocra read it; nothing committed | `3` |
 | `not_writable` | The token cannot write to the branch, or the change is a local one | `3` |
+| `waiting` | `--checks`: the head's checks are still running and nothing else was open; no round was counted | `0` |
 
-Each entry of `items` is one finding, in the order given:
+Each entry of `items` is one finding, in the order given, then one failed check each, whose `check` is its name (`null` for a finding) and whose `fingerprint` is the id the loop keeps its attempts under:
 
 | Item `outcome` | Meaning | `reason` |
 |---|---|---|
@@ -455,7 +460,7 @@ Each entry of `items` is one finding, in the order given:
 | `needs_human` | Closed for a person to decide | `not_candidate`, `no_parser`, `out_of_scope`, `protected`, `too_large`, `tamper`, or `attempts` when both attempts are used |
 | `gone` | Its code is not at the head any more | `stale` |
 
-`edits` replace whole lines `startLine` to `endLine` of `path` at `headSha`; it is empty unless the item is `fixed` or `proposed`. An item's `cause` says what failed when its `reason` is `failed`, with the values [`ocra fix`](#ocra-fix) gives, and is `null` otherwise (v0.21.0). Usage, input and configuration errors, and a runtime that cannot start, exit `2`. The shapes are `mendResultSchema`, `mendStateSchema` and `mendFindingsSchema` in `@open-cr-agent/cloud-contract` ([ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)). This is the loop's first step: failed checks, merge conflicts and reviewers' requests are planned. New in v0.20.0; the task with the `edit` tool in v0.21.0.
+`edits` replace whole lines `startLine` to `endLine` of `path` at `headSha`; it is empty unless the item is `fixed` or `proposed`. An item's `cause` says what failed when its `reason` is `failed`, with the values [`ocra fix`](#ocra-fix) gives, and is `null` otherwise (v0.21.0). Usage, input and configuration errors, and a runtime that cannot start, exit `2`. The shapes are `mendResultSchema`, `mendStateSchema` and `mendFindingsSchema` in `@open-cr-agent/cloud-contract` ([ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)). Merge conflicts and reviewers' requests are planned. New in v0.20.0; the task with the `edit` tool in v0.21.0; failed checks in v0.22.0.
 
 ## ocra metrics
 

@@ -18,7 +18,7 @@ describe("ocra mend's result", () => {
   it("names a commit only when one was written, and a stop only when stopped", () => {
     expect(mendResultSchema.parse(committed)).toEqual({
       ...committed,
-      items: [{ ...committed.items[0], cause: null }],
+      items: [{ ...committed.items[0], cause: null, check: null }],
     });
     expect(mendResultSchema.safeParse({ ...committed, commitSha: null }).success).toBe(false);
     expect(mendResultSchema.safeParse({ ...committed, outcome: "proposed" }).success).toBe(false);
@@ -26,6 +26,15 @@ describe("ocra mend's result", () => {
     expect(mendResultSchema.safeParse({ ...stopped, stopped: "rounds" }).success).toBe(true);
     expect(mendResultSchema.safeParse(stopped).success).toBe(false);
     expect(mendResultSchema.safeParse({ ...committed, stopped: "spend" }).success).toBe(false);
+  });
+
+  it("takes a failed check as an item, and a round that waits for the checks", () => {
+    const check = { ...committed.items[0], check: "test (node 22)" };
+    expect(mendResultSchema.parse({ ...committed, items: [check] }).items[0]?.check).toBe(
+      "test (node 22)",
+    );
+    const waiting = { ...committed, outcome: "waiting", commitSha: null, items: [] };
+    expect(mendResultSchema.safeParse(waiting).success).toBe(true);
   });
 
   it("holds edits for a fixed or proposed finding, and for no other", () => {

@@ -52,6 +52,19 @@ export interface ReviewPlatform {
   // or a branch the token may not write to (a fork's) is an outcome, not an
   // error.
   commit(commit: ChangeCommit): Promise<CommitResult>;
+  // The checks the platform ran on a commit, each under its latest run.
+  checks(sha: string): Promise<PlatformCheck[]>;
+  // The names of the checks that fail on the head of the branch the change
+  // request merges into.
+  failingOnBase(): Promise<string[]>;
+}
+
+export interface PlatformCheck {
+  name: string;
+  state: "passed" | "failed" | "pending";
+  // The end of its failed job's output, else what the check reported of
+  // itself; "" when the platform gives neither or the token may not read it.
+  log(): Promise<string>;
 }
 
 export interface PlatformDiscussion {

@@ -23,6 +23,7 @@ export {
   parseMemory,
   serializeMemory,
 } from "./memory/memory.js";
+export { CHECK_LIMITS, logTail } from "./mend/checks.js";
 export { type MendState, ROUND_STOPS } from "./mend/state.js";
 export { answerMention } from "./pipeline/answer.js";
 export { reviewContext } from "./pipeline/context.js";

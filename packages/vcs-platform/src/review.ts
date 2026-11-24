@@ -1,4 +1,5 @@
 import type {
+  ChangeChecks,
   ChangeCommit,
   ChangeRequest,
   CodeMatch,
@@ -13,6 +14,7 @@ import type {
   VcsAdapter,
 } from "@open-cr-agent/core";
 import { errorMessage, isUnfinished } from "@open-cr-agent/core";
+import { checksOfChange } from "./checks.js";
 import { commitToChangeRequest } from "./commit.js";
 import { mentionOf } from "./conversation.js";
 import { declinedFindings, declinesFinding, findingOf } from "./declined.js";
@@ -190,6 +192,10 @@ export class PlatformReview implements VcsAdapter {
 
   async commit(commit: ChangeCommit): Promise<CommitResult> {
     return commitToChangeRequest(this.platform, await this.changeRequest(), commit);
+  }
+
+  checks(headSha: string): Promise<ChangeChecks> {
+    return checksOfChange(this.platform, headSha);
   }
 
   linkedTasks(): Promise<LinkedTask[]> {

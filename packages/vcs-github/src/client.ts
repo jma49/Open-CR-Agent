@@ -384,9 +384,19 @@ export class GitHubApi {
       : `${this.baseUrl}/graphql`;
   }
 
-  request(method: string, path: string, body?: unknown): Promise<unknown> {
+  // The end of a text answer, a job's log.
+  async tail(path: string, tailBytes: number): Promise<string> {
+    return String(await this.request("GET", path, undefined, { tailBytes }));
+  }
+
+  request(
+    method: string,
+    path: string,
+    body?: unknown,
+    tail: { tailBytes?: number } = {},
+  ): Promise<unknown> {
     const { owner, repo } = this.repository;
     const url = `${this.baseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}${path}`;
-    return sendWithRetry(this.api, { method, url, path, body });
+    return sendWithRetry(this.api, { method, url, path, body, ...tail });
   }
 }

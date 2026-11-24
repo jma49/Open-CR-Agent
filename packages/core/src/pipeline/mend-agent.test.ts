@@ -1,61 +1,20 @@
 import { describe, expect, it } from "vitest";
-import type {
-  AgentEvent,
-  AgentRuntime,
-  AgentTaskSpec,
-  CompletionRequest,
-  IncompleteEnding,
-} from "../contracts.js";
-import { braceSyntax, fixerRuntime, SOURCE, usage } from "../fix/fix.fakes.js";
-import { answers, fakeVcs, finding, LOOP, LOOP_FIXED, TRIM, TRIM_FIXED } from "./mend.fakes.js";
+import type { CompletionRequest } from "../contracts.js";
+import { braceSyntax, fixerRuntime, SOURCE } from "../fix/fix.fakes.js";
+import {
+  agentRuntime,
+  answers,
+  DONE,
+  edit,
+  fakeVcs,
+  finding,
+  LOOP,
+  LOOP_FIXED,
+  type Script,
+  TRIM,
+  TRIM_FIXED,
+} from "./mend.fakes.js";
 import { mendRound } from "./mend.js";
-
-interface Call {
-  tool: string;
-  args: Record<string, unknown>;
-}
-
-interface Script {
-  calls: readonly Call[];
-  ended?: IncompleteEnding;
-  error?: string;
-}
-
-// A runtime that takes a task's toolset and runs a scripted agent against
-// it: each call goes to the tool the task offers under that name.
-function agentRuntime(script: Script, verdict = "resolves") {
-  const completions = fixerRuntime(answers(verdict));
-  const tasks: AgentTaskSpec[] = [];
-  const outputs: string[] = [];
-  const runtime: AgentRuntime = {
-    ...completions,
-    toolsets: true,
-    async *runTask(spec): AsyncIterable<AgentEvent> {
-      tasks.push(spec);
-      for (const call of script.calls) {
-        const tool = spec.toolset?.tools.find((t) => t.name === call.tool);
-        outputs.push(tool ? await tool.execute(call.args, spec.context) : "unknown tool");
-      }
-      yield { type: "usage", taskId: spec.taskId, ...usage };
-      if (script.error) {
-        yield { type: "error", taskId: spec.taskId, error: script.error, retryable: false };
-      } else {
-        yield {
-          type: "done",
-          taskId: spec.taskId,
-          ...(script.ended ? { ended: script.ended } : {}),
-        };
-      }
-    },
-  };
-  return { runtime, tasks, outputs, requests: completions.requests };
-}
-
-const edit = (old: string, replacement: string, path = "src/a.ts"): Call => ({
-  tool: "edit",
-  args: { path, old, new: replacement },
-});
-const DONE: Call = { tool: "task_done", args: {} };
 
 // Quoted code that is in the file twice: no single place for the local lane.
 const both = finding("both", "}", { title: "Two unsafe reads" });

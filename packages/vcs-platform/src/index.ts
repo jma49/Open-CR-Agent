@@ -13,6 +13,7 @@ export type {
   Bot,
   InlineFinding,
   PlatformChangeRequest,
+  PlatformCheck,
   PlatformComment,
   PlatformDiscussion,
   PlatformThread,

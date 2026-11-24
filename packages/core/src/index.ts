@@ -210,6 +210,14 @@ export {
   type TaskState,
   type TaskTracker,
 } from "./task/linked-task.js";
-export type { ChangeCommit, CommitResult, Mention, MentionRef, VcsAdapter } from "./vcs.js";
+export type {
+  ChangeChecks,
+  ChangeCommit,
+  CommitResult,
+  FailedCheck,
+  Mention,
+  MentionRef,
+  VcsAdapter,
+} from "./vcs.js";
 export type { RefutedFinding } from "./verify/verify.js";
 export type { Walkthrough } from "./walkthrough/walkthrough.js";

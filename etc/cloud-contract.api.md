@@ -885,6 +885,9 @@ export const MAX_LIVE_EVENTS = 5000;
 export const MAX_MEMORY_PER_REPO = 500;
 
 // @public
+export const MAX_MEND_CHECKS = 3;
+
+// @public
 export const MAX_MEND_FINDINGS = 200;
 
 // @public
@@ -941,7 +944,7 @@ export const MEND_ITEM_REASONS: readonly ["declined", "failed", "stale", "unchan
 export const MEND_LEVELS: readonly ["propose", "commit"];
 
 // @public
-export const MEND_OUTCOMES: readonly ["committed", "proposed", "nothing", "stopped", "head_moved", "not_writable"];
+export const MEND_OUTCOMES: readonly ["committed", "proposed", "nothing", "stopped", "head_moved", "not_writable", "waiting"];
 
 // @public
 export const MEND_STOPS: readonly ["rounds", "spend"];
@@ -1004,6 +1007,7 @@ export const mendResultSchema: z.ZodObject<{
         nothing: "nothing";
         proposed: "proposed";
         stopped: "stopped";
+        waiting: "waiting";
     }>;
     stopped: z.ZodNullable<z.ZodEnum<{
         rounds: "rounds";
@@ -1012,6 +1016,7 @@ export const mendResultSchema: z.ZodObject<{
     commitSha: z.ZodNullable<z.ZodString>;
     items: z.ZodArray<z.ZodObject<{
         fingerprint: z.ZodString;
+        check: z.ZodDefault<z.ZodNullable<z.ZodString>>;
         outcome: z.ZodEnum<{
             deferred: "deferred";
             fixed: "fixed";

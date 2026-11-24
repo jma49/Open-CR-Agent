@@ -1,7 +1,13 @@
-import type { CompletionRequest } from "../contracts.js";
+import type {
+  AgentEvent,
+  AgentRuntime,
+  AgentTaskSpec,
+  CompletionRequest,
+  IncompleteEnding,
+} from "../contracts.js";
 import { parseUnifiedDiff } from "../diff/parse.js";
-import { SOURCE } from "../fix/fix.fakes.js";
-import type { ChangeCommit, CommitResult, VcsAdapter } from "../vcs.js";
+import { fixerRuntime, SOURCE, usage } from "../fix/fix.fakes.js";
+import type { ChangeChecks, ChangeCommit, CommitResult, VcsAdapter } from "../vcs.js";
 import type { StoredFinding } from "./fix-finding.js";
 
 export const HEAD = "a".repeat(40);
@@ -28,7 +34,10 @@ function added(path: string, lines: readonly string[]): string {
 
 const FILES: Record<string, string> = { "src/a.ts": SOURCE, ".github/scripts/a.ts": SOURCE };
 
-export function fakeVcs(commit?: (commit: ChangeCommit) => Promise<CommitResult>) {
+export function fakeVcs(
+  commit?: (commit: ChangeCommit) => Promise<CommitResult>,
+  checks?: () => Promise<ChangeChecks>,
+) {
   const commits: ChangeCommit[] = [];
   const vcs: VcsAdapter = {
     name: "fake",
@@ -53,6 +62,7 @@ export function fakeVcs(commit?: (commit: ChangeCommit) => Promise<CommitResult>
       commits.push(change);
       return commit ? commit(change) : { committed: true, sha: SHA };
     },
+    ...(checks ? { checks } : {}),
   };
   return { vcs, commits };
 }
@@ -88,3 +98,50 @@ export function answers(verdict = "resolves", fixes: Record<string, string | nul
     return JSON.stringify([{ index: 0, replacement }]);
   };
 }
+
+export interface Call {
+  tool: string;
+  args: Record<string, unknown>;
+}
+
+export interface Script {
+  calls: readonly Call[];
+  ended?: IncompleteEnding;
+  error?: string;
+}
+
+// A runtime that takes a task's toolset and runs a scripted agent against
+// it: each call goes to the tool the task offers under that name.
+export function agentRuntime(script: Script, verdict = "resolves") {
+  const completions = fixerRuntime(answers(verdict));
+  const tasks: AgentTaskSpec[] = [];
+  const outputs: string[] = [];
+  const runtime: AgentRuntime = {
+    ...completions,
+    toolsets: true,
+    async *runTask(spec): AsyncIterable<AgentEvent> {
+      tasks.push(spec);
+      for (const call of script.calls) {
+        const tool = spec.toolset?.tools.find((t) => t.name === call.tool);
+        outputs.push(tool ? await tool.execute(call.args, spec.context) : "unknown tool");
+      }
+      yield { type: "usage", taskId: spec.taskId, ...usage };
+      if (script.error) {
+        yield { type: "error", taskId: spec.taskId, error: script.error, retryable: false };
+      } else {
+        yield {
+          type: "done",
+          taskId: spec.taskId,
+          ...(script.ended ? { ended: script.ended } : {}),
+        };
+      }
+    },
+  };
+  return { runtime, tasks, outputs, requests: completions.requests };
+}
+
+export const edit = (old: string, replacement: string, path = "src/a.ts"): Call => ({
+  tool: "edit",
+  args: { path, old, new: replacement },
+});
+export const DONE: Call = { tool: "task_done", args: {} };
