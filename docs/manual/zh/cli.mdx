@@ -442,7 +442,7 @@ ocra mend --from main --findings accepted.json                             # 本
 加 `--json` 时，stdout 是一行：
 
 ```json
-{"headSha":"<40 hex>","outcome":"committed","stopped":null,"commitSha":"<40 hex>","mergeParent":null,"items":[{"fingerprint":"b491fb26b470419c","check":null,"conflict":null,"resolved":null,"outcome":"fixed","reason":null,"cause":null,"edits":[{"path":"src/total.ts","startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"}]}],"state":{"rounds":1,"costUsd":0.06,"items":{"b491fb26b470419c":{"attempts":1}}},"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
+{"headSha":"<40 hex>","outcome":"committed","stopped":null,"commitSha":"<40 hex>","mergeParent":null,"items":[{"fingerprint":"b491fb26b470419c","check":null,"conflict":null,"resolved":null,"regions":[],"outcome":"fixed","reason":null,"cause":null,"edits":[{"path":"src/total.ts","startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"}]}],"state":{"rounds":1,"costUsd":0.06,"items":{"b491fb26b470419c":{"attempts":1}}},"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
 ```
 
 | `outcome` | 含义 | 退出码 |
@@ -466,7 +466,7 @@ ocra mend --from main --findings accepted.json                             # 本
 | `needs_human` | 已关闭，交给人决定 | `not_candidate`、`no_parser`、`out_of_scope`、`protected`、`too_large`、`tamper`，或两次尝试都用完时的 `attempts` |
 | `gone` | 它的代码已不在 head 上 | `stale` |
 
-`edits` 替换 `headSha` 上 `path` 的第 `startLine` 到 `endLine` 整行；只有 `fixed` 或 `proposed` 的条目才有，冲突文件的条目始终为空：它是 `proposed` 时 `resolved` 是整个文件，否则为 `null`。条目的 `reason` 为 `failed` 时，`cause` 说明失败的是什么，取值与 [`ocra fix`](#ocra-fix) 相同，否则为 `null`（v0.21.0）。用法、输入和配置错误，以及无法启动的运行时，退出码为 `2`。结构是 `@open-cr-agent/cloud-contract` 里的 `mendResultSchema`、`mendStateSchema` 和 `mendFindingsSchema`（[ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)）。评审者的要求仍在计划中。v0.20.0 新增；带 `edit` 工具的任务是 v0.21.0 新增；失败的检查和合并冲突是 v0.22.0 新增。
+`edits` 替换 `headSha` 上 `path` 的第 `startLine` 到 `endLine` 整行；只有 `fixed` 或 `proposed` 的条目才有，冲突文件的条目始终为空：它是 `proposed` 时 `resolved` 是整个文件，否则为 `null`。这时它的 `regions` 列出每个冲突区域及其答案，方便人不看整个文件就能读：`line` 是答案在 `resolved` 里的起始行，`ours` 是变更请求一边的行，`theirs` 是基准分支一边的行，`resolved` 是写下的行，都用换行连接；其他条目的 `regions` 为空（v0.23.0）。条目的 `reason` 为 `failed` 时，`cause` 说明失败的是什么，取值与 [`ocra fix`](#ocra-fix) 相同，否则为 `null`（v0.21.0）。用法、输入和配置错误，以及无法启动的运行时，退出码为 `2`。结构是 `@open-cr-agent/cloud-contract` 里的 `mendResultSchema`、`mendStateSchema` 和 `mendFindingsSchema`（[ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)）。评审者的要求仍在计划中。v0.20.0 新增；带 `edit` 工具的任务是 v0.21.0 新增；失败的检查和合并冲突是 v0.22.0 新增。
 
 ## ocra metrics
 

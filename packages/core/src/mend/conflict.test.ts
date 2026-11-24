@@ -91,6 +91,10 @@ describe("resolveConflicts", () => {
     );
     expect(resolved).toMatchObject({
       resolutions: [["const LIMIT = 10;"], ["  return a(LIMIT) + 1;"]],
+      regions: [
+        { line: 2, lines: ["const LIMIT = 10;"] },
+        { line: 5, lines: ["  return a(LIMIT) + 1;"] },
+      ],
       file: [
         "import { a } from './a';",
         "const LIMIT = 10;",
@@ -105,7 +109,10 @@ describe("resolveConflicts", () => {
 
   it("removes a region answered with no lines", () => {
     const one = parseConflicts("a\n<<<<<<< o\nx\n=======\n>>>>>>> t\nb", 7) ?? [];
-    expect(resolveConflicts(one, answer([[1, ""]]))).toEqual({ file: "a\nb", resolutions: [[]] });
+    expect(resolveConflicts(one, answer([[1, ""]]))).toMatchObject({
+      file: "a\nb",
+      resolutions: [[]],
+    });
   });
 
   it("refuses an answer that is not one resolution for each region", () => {

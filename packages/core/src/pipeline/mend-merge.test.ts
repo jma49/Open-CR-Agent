@@ -99,6 +99,10 @@ describe("mendRound over merge conflicts", () => {
     expect(result.outcome).toBe("proposed");
     expect(result.items[0]).toMatchObject({ id, conflict: "src/a.ts", outcome: "proposed" });
     expect(result.items[0]?.resolved).toContain(RESOLVED);
+    expect(result.items[0]?.regions).toEqual([
+      { line: 6, ours: [OURS], theirs: [THEIRS], lines: [RESOLVED] },
+    ]);
+    expect(result.items[0]?.resolved?.split("\n")[5]).toBe(RESOLVED);
     expect(commits).toEqual([]);
   });
 

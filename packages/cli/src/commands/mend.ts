@@ -233,6 +233,12 @@ function resultOf(round: MendRound, usage: Usage): MendResult {
       check: item.check?.slice(0, MAX_CHECK_NAME_CHARS) ?? null,
       conflict: item.conflict ?? null,
       resolved: item.resolved ?? null,
+      regions: (item.regions ?? []).map((r) => ({
+        line: r.line,
+        ours: r.ours.join("\n"),
+        theirs: r.theirs.join("\n"),
+        resolved: r.lines.join("\n"),
+      })),
       outcome: item.outcome,
       reason: item.reason ?? null,
       cause: item.cause ?? null,

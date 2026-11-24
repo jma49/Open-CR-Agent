@@ -19,7 +19,16 @@ describe("ocra mend's result", () => {
     expect(mendResultSchema.parse(committed)).toEqual({
       ...committed,
       mergeParent: null,
-      items: [{ ...committed.items[0], cause: null, check: null, conflict: null, resolved: null }],
+      items: [
+        {
+          ...committed.items[0],
+          cause: null,
+          check: null,
+          conflict: null,
+          resolved: null,
+          regions: [],
+        },
+      ],
     });
     expect(mendResultSchema.safeParse({ ...committed, commitSha: null }).success).toBe(false);
     expect(mendResultSchema.safeParse({ ...committed, outcome: "proposed" }).success).toBe(false);
@@ -55,6 +64,12 @@ describe("ocra mend's result", () => {
     expect(withItem({ outcome: "proposed" }, proposed)).toBe(false);
     expect(withItem({ outcome: "deferred", reason: "conflicts" })).toBe(true);
     expect(withItem({ outcome: "deferred", reason: "conflicts", resolved: "x" })).toBe(false);
+    const regions = [{ line: 1, ours: "a", theirs: "b", resolved: "x" }];
+    expect(withItem({ outcome: "proposed", resolved: "x\n", regions }, proposed)).toBe(true);
+    expect(withItem({ outcome: "fixed", regions })).toBe(false);
+    expect(
+      withItem({ outcome: "proposed", resolved: "x\n", regions: [{ line: 0 }] }, proposed),
+    ).toBe(false);
   });
 
   it("holds edits for a fixed or proposed finding, and for no other", () => {

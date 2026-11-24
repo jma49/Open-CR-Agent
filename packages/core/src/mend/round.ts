@@ -1,4 +1,5 @@
 import type { CallFailure } from "../errors.js";
+import type { ResolvedRegion } from "./conflict.js";
 import type { ItemOutcome, ItemReason, MEND_OUTCOMES } from "./outcomes.js";
 import type { Hunk } from "./patch.js";
 import { closedAs, type ItemState, type MendState, type RoundStop } from "./state.js";
@@ -18,6 +19,8 @@ export interface MendItemResult {
   // A conflicted file's whole content with its conflicts answered: set for a
   // proposed one.
   resolved?: string;
+  // That file's answered regions, each with both sides: set with `resolved`.
+  regions?: readonly ResolvedRegion[];
 }
 
 export interface MendRound {

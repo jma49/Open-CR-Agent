@@ -125,6 +125,21 @@ const mendEditSchema = z
   })
   .refine((e) => e.endLine >= e.startLine, { message: "an edit ends at or after its first line" });
 
+/** The most conflicted regions of one file a round answers (the engine's `CONFLICT_LIMITS.regions`). */
+const MAX_MEND_REGIONS = 8;
+
+/**
+ * One conflicted region of a file as a round answered it: `line` is where
+ * `resolved` starts in the file's resolved content, `ours` the change
+ * request's lines and `theirs` the base branch's, each joined by newlines.
+ */
+const mendRegionSchema = z.object({
+  line,
+  ours: z.string().max(MAX_RESOLVED_CHARS),
+  theirs: z.string().max(MAX_RESOLVED_CHARS),
+  resolved: z.string().max(MAX_RESOLVED_CHARS),
+});
+
 const itemSchema = z
   .object({
     // A finding's fingerprint, or the id the round gives a failed check: the
@@ -136,6 +151,9 @@ const itemSchema = z
     conflict: z.string().max(1024).nullable().default(null),
     // That file's whole content with its conflicts resolved, for a proposed one.
     resolved: z.string().max(MAX_RESOLVED_CHARS).nullable().default(null),
+    // That file's conflicted regions and what each was resolved to, for a
+    // proposed one; empty otherwise, and in the answer of a version that gave none.
+    regions: z.array(mendRegionSchema).max(MAX_MEND_REGIONS).default([]),
     outcome: z.enum(MEND_ITEM_OUTCOMES),
     reason: z.enum(MEND_ITEM_REASONS).nullable(),
     // What failed, for the reason `failed`; null otherwise, and in the answer of a version that gave none.
@@ -154,6 +172,9 @@ const itemSchema = z
   )
   .refine((i) => (i.resolved !== null) === (i.conflict !== null && i.outcome === "proposed"), {
     message: "a resolved file comes with a proposed conflict, and only with it",
+  })
+  .refine((i) => i.regions.length === 0 || i.resolved !== null, {
+    message: "regions come only with a resolved file",
   })
   .refine((i) => i.cause === null || i.reason === "failed", {
     message: "a cause comes only with the failed reason",
