@@ -30,11 +30,13 @@ async function round(
     expectedHead?: string;
     commit?: (commit: ChangeCommit) => Promise<CommitResult>;
     readOnly?: boolean;
+    note?: () => Promise<void>;
   } = {},
 ) {
   const runtime = fixerRuntime(options.answer ?? answers());
-  const { vcs, commits } = fakeVcs(options.commit);
+  const { vcs, commits, notes } = fakeVcs(options.commit);
   if (options.readOnly) delete vcs.commit;
+  if (options.note) vcs.note = options.note;
   const spent: Usage[] = [];
   const result = await mendRound({
     findings,
@@ -48,7 +50,7 @@ async function round(
     ...(options.maxCostUsd === undefined ? {} : { maxCostUsd: options.maxCostUsd }),
     ...(options.expectedHead ? { expectedHead: options.expectedHead } : {}),
   });
-  return { result, commits, spent, requests: runtime.requests };
+  return { result, commits, notes, spent, requests: runtime.requests };
 }
 
 const TRIM_EDIT = { path: "src/a.ts", startLine: 2, endLine: 2, replacement: TRIM_FIXED };
@@ -99,12 +101,34 @@ describe("mendRound", () => {
       request.agent === "verifier" && request.user.includes(LOOP_AT)
         ? '{"verdict":"does_not_resolve"}'
         : answers()(request);
-    const { result, commits } = await round([trim, loop], { answer });
+    const { result, commits, notes } = await round([trim, loop], { answer });
     expect(result.items).toEqual([
       { id: "trim", outcome: "fixed", edits: [TRIM_EDIT] },
       { id: "loop", outcome: "rejected", reason: "unresolved" },
     ]);
     expect(commits[0]?.files[0]?.content).toBe(SOURCE.replace(TRIM, TRIM_FIXED));
+    expect(notes).toEqual([
+      {
+        commitSha: SHA,
+        fixed: [{ title: trim.title, file: "src/a.ts" }],
+        left: [{ title: loop.title, file: "src/a.ts", outcome: "rejected", reason: "unresolved" }],
+      },
+    ]);
+  });
+
+  it("leaves a note only with a commit, and a note that fails is a warning", async () => {
+    const proposed = await round([loop], { level: "propose" });
+    const none = await round([loop], { answer: answers("unsure") });
+    expect([proposed.notes, none.notes]).toEqual([[], []]);
+    const failing = await round([loop], {
+      note: async () => {
+        throw new Error("comments are locked");
+      },
+    });
+    expect(failing.result.outcome).toBe("committed");
+    expect(failing.result.warnings).toEqual([
+      "the round's note was not posted: comments are locked",
+    ]);
   });
 
   it("commits nothing when no fix passes", async () => {

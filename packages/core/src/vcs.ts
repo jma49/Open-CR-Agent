@@ -58,6 +58,23 @@ export interface ChangeChecks {
   failed: FailedCheck[];
 }
 
+// One item of a round of the fix loop as its note names it: a finding by
+// its title and file, a failed check by its name.
+export interface RoundNoteItem {
+  title: string;
+  file?: string;
+  check?: boolean;
+}
+
+// What a round of the fix loop committed and what it left (ADR-0078 point
+// 7), for the change request's readers. `outcome` and `reason` are the
+// loop's own words (MEND_ITEM_OUTCOMES, MEND_ITEM_REASONS).
+export interface RoundNote {
+  commitSha: string;
+  fixed: RoundNoteItem[];
+  left: (RoundNoteItem & { outcome: string; reason?: string })[];
+}
+
 export interface VcsAdapter {
   readonly name: string;
   getChangeRequest(): Promise<ChangeRequest>;
@@ -76,6 +93,9 @@ export interface VcsAdapter {
   listFiles?(dir: string): Promise<string[]>;
   // Absent: the adapter cannot commit to the change request.
   commit?(commit: ChangeCommit): Promise<CommitResult>;
+  // Says on the change request what a round of the fix loop committed.
+  // Absent: the adapter has nowhere to say it.
+  note?(round: RoundNote): Promise<void>;
   // The checks of the commit `headSha`, the change request's head as the
   // caller read it. Absent: the adapter cannot read them.
   checks?(headSha: string): Promise<ChangeChecks>;

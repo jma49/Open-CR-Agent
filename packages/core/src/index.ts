@@ -217,6 +217,8 @@ export type {
   FailedCheck,
   Mention,
   MentionRef,
+  RoundNote,
+  RoundNoteItem,
   VcsAdapter,
 } from "./vcs.js";
 export type { RefutedFinding } from "./verify/verify.js";

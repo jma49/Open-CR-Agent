@@ -18,6 +18,7 @@ import type { MentionRef } from '@open-cr-agent/core';
 import type { PluginRegistry } from '@open-cr-agent/core';
 import type { PriorReview } from '@open-cr-agent/core';
 import type { ReviewReport } from '@open-cr-agent/core';
+import type { RoundNote } from '@open-cr-agent/core';
 import type { VcsAdapter } from '@open-cr-agent/core';
 import { z } from 'zod';
 
@@ -205,6 +206,8 @@ export class PlatformReview implements VcsAdapter {
     mention(ref: MentionRef): Promise<Mention>;
     // (undocumented)
     readonly name: string;
+    // (undocumented)
+    note(round: RoundNote): Promise<void>;
     // (undocumented)
     publish(report: ReviewReport): Promise<{
         warnings: string[];
