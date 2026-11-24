@@ -4,6 +4,7 @@
     { "path": "packages/core" },
     { "path": "packages/runtime-direct" },
     { "path": "packages/runtime-opencode" },
+    { "path": "packages/runtime-codex" },
     { "path": "packages/vcs-platform" },
     { "path": "packages/vcs-github" },
     { "path": "packages/vcs-gitlab" },

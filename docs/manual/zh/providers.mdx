@@ -154,16 +154,19 @@ Anthropic 官方 API，或者使用其 Messages 协议的网关，用 `"type": "
 
 ## 选择运行时
 
-有两个运行时可以运行审查员，由配置里的 `runtime` 选择：
+有三个运行时可以运行审查员，由配置里的 `runtime` 选择：
 
 | 运行时 | 会访问 | 适用场景 |
 |---|---|---|
 | `opencode`（默认） | OpenCode 目录里的所有供应商和你声明的端点，外加价格目录 `models.opencode.ai` | 你的模型是 Gemini、Vertex AI、Anthropic、Bedrock 或目录里的其他供应商 |
 | `direct` | 只访问 `providers` 下声明的端点（OpenAI 或 Anthropic 协议），不访问网络上的其他任何地址 | 模型链里的每个模型都在声明的端点上，而且你希望除此之外什么都不访问 |
+| `codex`（新） | 通过你电脑上已登录的 [Codex CLI](https://github.com/openai/codex) 访问 OpenAI | 你想用自己的 ChatGPT 套餐审查，而不是 API key |
 
 两者跑同一套审查：工具、步数上限、降级和价格都相同。`direct` 会在发出任何请求前拒绝写了未声明供应商的模型链，并读取 `HTTP_PROXY`、`HTTPS_PROXY` 和 `NO_PROXY`。[质量数字](./quality)是在 `opencode` 上测得的；`direct` 通过同一套一致性测试，但还没有在黄金用例集上评测过。
 
 想看 `direct` 给模型发了什么、收到了什么，把 `OCRA_RECORD_DIR` 设成一个目录：每个请求连同回答写成一个 JSON 文件，只有你能读。密钥替换成 `<key>`（运行中续期的 ocra Cloud 令牌也一样），请求头和端点地址不写入，但文件里有代码和提示词，要像代码本身一样保护。写不进记录时会在 stderr 上警告，审查照常继续，不会重发请求。一份记录只能回放它记录的那段对话。`opencode` 不读这个变量。
+
+`codex` 把每个审查员作为一次 `codex exec`，跑在你电脑上已登录的 Codex 上（`codex login`；需要 Codex 0.172.0 或更新，在 `PATH` 上的 `codex` 或 `OCRA_CODEX_BIN` 指定的路径）。它的模型链写 `codex/default`（Codex 自己的默认模型）或 `codex/<model>`（你的 Codex 提供的模型）；其他供应商会在启动 Codex 前被拒绝。审查员只能通过 ocra 的工具读取改动：Codex 的 shell、文件、网页和插件工具都关闭，它在一个空目录里只读运行，不读你的 `config.toml`、规则和 MCP 服务器，审查也不会留在你的 Codex 会话列表里。环境里的 API key 不会传给它。会报告 token 数，费用记为 $0，因为由你的套餐支付；用量额度用完时，这个模型在本次运行中被停用。到步数上限还没完成的审查就此结束：Codex 不保留会话，没法再给它收尾的一轮。
 
 `opencode` 运行时是可选依赖，默认安装；使用 `direct` 时可以不装，少约 165 MB：见[不装 OpenCode](./installation#不装-opencode)和 Action 的 `opencode: false` [输入](./github#运行时)。
 
