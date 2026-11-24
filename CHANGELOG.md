@@ -6,6 +6,26 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-11-24
+
+`ocra mend` takes the head's failed checks (`--checks`) and the conflicts of merging the base branch (`--conflicts`) into the fix loop, and a round that commits leaves a note on the change request. The Action's new tag is `ocrahq/Open-CR-Agent@v0.22.0`.
+
+### Added
+
+- `ocra mend --conflicts` first resolves the conflicts of merging the base branch into the head of a pull or merge request: the fixer answers each conflicted region, code writes the file, and a verifier call checks it. All conflicted files are resolved or nothing is written.
+- At `--level propose` each conflicted file's resolved content is in the result (`resolved`, with `mergeParent`); at `--level commit` the round pushes one merge commit from the local clone, never forced and never a rebase.
+- The item reason `conflicts`, for findings that wait behind a conflict and for files left when the merge is not complete.
+- `VcsAdapter.conflicts`, `ChangeConflicts`, `ConflictedFile` and `ChangeCommit.mergeParent` in `@open-cr-agent/core`; `ReviewPlatform.baseHead`, `pushTarget` and `MergeSource` in `@open-cr-agent/vcs-platform`.
+- `ocra mend --checks` also works on the checks that failed on the head of a pull or merge request and do not fail on its base branch: at most 3 a round, each as a fixer task given the last 200 lines of the failed job's log as data. Nothing from the repository runs. `--findings` may be left out with it.
+- `ocra mend` answers the outcome `waiting` when the head's checks are still running and nothing else is open; an item of its result names its `check`.
+- `VcsAdapter.checks`, `ChangeChecks` and `FailedCheck` in `@open-cr-agent/core`, read by the GitHub and GitLab adapters; `ReviewPlatform.checks` and `failingOnBase` in `@open-cr-agent/vcs-platform`.
+- A round of `ocra mend --level commit` leaves one comment on the pull or merge request with its commit: what it fixed, what it left and why, and the `git revert` that undoes it.
+- `VcsAdapter.note` and `RoundNote` in `@open-cr-agent/core`.
+
+### Changed
+
+- `ocra init` writes a workflow that pins the Action to v0.21.0.
+
 ## [0.21.0] - 2026-11-24
 
 `ocra mend` fixes findings that need more than a local edit through a fixer task with one `edit` tool, and a failed fix says what failed. The Action's new tag is `ocrahq/Open-CR-Agent@v0.21.0`.
@@ -739,7 +759,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.21.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.18.0...v0.19.0
