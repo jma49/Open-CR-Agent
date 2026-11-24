@@ -64,6 +64,30 @@ export async function githubCommit(
   }
 }
 
+const refSchema = z.object({ object: shaSchema });
+const baseSchema = z.object({ base: z.object({ ref: z.string() }) });
+
+const encoded = (ref: string) => ref.split("/").map(encodeURIComponent).join("/");
+
+export async function githubBaseHead(api: GitHubApi, number: number): Promise<string> {
+  const { base } = baseSchema.parse(await api.request("GET", `/pulls/${number}`));
+  const ref = refSchema.parse(await api.request("GET", `/git/ref/heads/${encoded(base.ref)}`));
+  return ref.object.sha;
+}
+
+// The branch a merge of ocra's is pushed to; a fork's is not the token's to
+// write.
+export async function githubPushBranch(
+  api: GitHubApi,
+  pullRequest: { owner: string; repo: string; number: number },
+): Promise<{ branch: string } | { refused: string }> {
+  const { head } = headSchema.parse(await api.request("GET", `/pulls/${pullRequest.number}`));
+  const own = `${pullRequest.owner}/${pullRequest.repo}`.toLowerCase();
+  return head.repo?.full_name.toLowerCase() === own
+    ? { branch: head.ref }
+    : { refused: "the branch is on a fork, which ocra's token cannot write to" };
+}
+
 function refused(outcome: "head_moved" | "not_writable", reason: string): CommitResult {
   return { committed: false, outcome, reason };
 }

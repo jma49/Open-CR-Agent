@@ -54,7 +54,9 @@ export async function mergeConflicts(
     if (file) conflicts.files.push(file);
     else conflicts.other.push(path);
   }
-  conflicts.other.push(...[...staged.keys()].slice(MAX_CONFLICTED));
+  // Any path left to a person stops the merge, so one more name is enough.
+  const beyond = [...staged.keys()][MAX_CONFLICTED];
+  if (beyond !== undefined) conflicts.other.push(beyond);
   return conflicts;
 }
 

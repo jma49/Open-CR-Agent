@@ -4,6 +4,7 @@ import {
   codeSourceSchema,
   fetchSchema,
   historySchema,
+  mergeSourceSchema,
   signalSchema,
 } from "@open-cr-agent/vcs-platform";
 import { z } from "zod";
@@ -23,6 +24,7 @@ const optionsSchema = z.object({
   code: codeSourceSchema,
   snapshot: changeRequestSchema.optional(),
   history: historySchema.optional(),
+  merge: mergeSourceSchema.optional(),
 });
 
 export const githubPlugin: OcraPlugin = {
@@ -46,6 +48,7 @@ export const githubPlugin: OcraPlugin = {
         botLogin: options.botLogin,
         requestChanges: options.requestChanges,
         ...(options.history ? { history: options.history } : {}),
+        ...(options.merge ? { merge: options.merge } : {}),
         ...(options.snapshot ? { snapshot: options.snapshot } : {}),
       });
     });

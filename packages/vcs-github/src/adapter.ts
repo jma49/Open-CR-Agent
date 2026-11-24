@@ -14,6 +14,7 @@ import {
   githubSuggestion,
   type History,
   type InlineFinding,
+  type MergeSource,
   type PlatformChangeRequest,
   type PlatformCheck,
   type PlatformComment,
@@ -31,7 +32,7 @@ import {
   type PullRequest,
   type ReviewComment,
 } from "./client.js";
-import { githubCommit } from "./commit.js";
+import { githubBaseHead, githubCommit, githubPushBranch } from "./commit.js";
 import { githubDiscussion } from "./discussion.js";
 import { githubLinkedTasks } from "./tasks.js";
 
@@ -49,6 +50,7 @@ export interface GitHubAdapterOptions {
   botLogin: string;
   requestChanges?: boolean;
   history?: History;
+  merge?: MergeSource;
   // The pull request as the diff under review was built from it. Without it
   // the adapter fetches the pull request itself, and a push in between would
   // publish the new head for the old diff.
@@ -65,6 +67,7 @@ export class GitHubAdapter extends PlatformReview {
       platform: new GitHubPlatform(options),
       code: options.code,
       ...(options.history ? { history: options.history } : {}),
+      ...(options.merge ? { merge: options.merge } : {}),
     });
   }
 }
@@ -167,6 +170,18 @@ class GitHubPlatform implements ReviewPlatform {
 
   commit(commit: ChangeCommit): Promise<CommitResult> {
     return githubCommit(this.options.api, this.options.pullRequest, commit);
+  }
+
+  baseHead(): Promise<string> {
+    return githubBaseHead(this.options.api, this.options.pullRequest.number);
+  }
+
+  // The account's noreply address, which GitHub shows as the account.
+  async pushTarget() {
+    const target = await githubPushBranch(this.options.api, this.options.pullRequest);
+    if ("refused" in target) return target;
+    const name = this.options.botLogin;
+    return { ...target, author: { name, email: `${name}@users.noreply.github.com` } };
   }
 
   // The sha is the pull request's head as the adapter's own read gave it.

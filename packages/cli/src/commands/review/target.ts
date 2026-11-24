@@ -6,6 +6,8 @@ import {
   ensureCommits,
   filesChangedSince,
   LocalGitAdapter,
+  mergeConflicts,
+  pushMerge,
 } from "@open-cr-agent/vcs-local/internal";
 import type {
   ChangeRequestRef,
@@ -198,6 +200,13 @@ async function changeRequestTarget(
       target: { mode: "range", from: found.baseSha, to: found.headSha },
     }),
     history: { filesChangedSince: (from, to) => filesChangedSince(root, from, to) },
+    merge: {
+      conflicts: async (ours, theirs) => {
+        await ensureCommits(root, [theirs]);
+        return mergeConflicts(root, ours, theirs);
+      },
+      push: (merge) => pushMerge(root, merge),
+    },
   };
   const repository = repositoryOfWebUrl(found.webUrl);
   return {

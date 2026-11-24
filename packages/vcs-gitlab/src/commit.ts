@@ -68,6 +68,34 @@ export async function gitlabCommit(
   }
 }
 
+const targetSchema = z.object({ target_branch: z.string() });
+
+export async function gitlabBaseHead(api: GitLabApi, iid: number): Promise<string> {
+  const { target_branch } = targetSchema.parse(await api.request("GET", `/merge_requests/${iid}`));
+  const branch = branchSchema.parse(
+    await api.request("GET", `/repository/branches/${encodeURIComponent(target_branch)}`),
+  );
+  return branch.commit.id;
+}
+
+// The branch a merge of ocra's is pushed to: one of the project itself that
+// the token's account may push to.
+export async function gitlabPushBranch(
+  api: GitLabApi,
+  iid: number,
+): Promise<{ branch: string } | { refused: string }> {
+  const source = sourceSchema.parse(await api.request("GET", `/merge_requests/${iid}`));
+  if (source.source_project_id !== source.target_project_id) {
+    return { refused: "the branch is on a fork, which ocra's token cannot write to" };
+  }
+  const branch = branchSchema.parse(
+    await api.request("GET", `/repository/branches/${encodeURIComponent(source.source_branch)}`),
+  );
+  return branch.can_push === false
+    ? { refused: "ocra's token may not push to the branch" }
+    : { branch: source.source_branch };
+}
+
 function refused(outcome: "head_moved" | "not_writable", reason: string): CommitResult {
   return { committed: false, outcome, reason };
 }

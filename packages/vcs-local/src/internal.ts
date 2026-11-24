@@ -11,5 +11,6 @@ export {
 } from "./fixes.js";
 export { filesChangedSince } from "./history.js";
 export { LocalGitAdapter } from "./local-adapter.js";
+export { mergeConflicts, pushMerge } from "./merge.js";
 export { findRepositoryRoot } from "./plugin.js";
 export { blobReader, resolveCommit, revisionFiles } from "./tree.js";

@@ -126,6 +126,7 @@ export {
 } from "./memory.js";
 export {
   MAX_MEND_CHECKS,
+  MAX_MEND_CONFLICTS,
   MAX_MEND_FINDINGS,
   MEND_ITEM_OUTCOMES,
   MEND_ITEM_REASONS,

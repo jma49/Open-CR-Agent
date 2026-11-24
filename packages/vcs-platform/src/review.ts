@@ -1,6 +1,7 @@
 import type {
   ChangeChecks,
   ChangeCommit,
+  ChangeConflicts,
   ChangeRequest,
   CodeMatch,
   CommitResult,
@@ -14,9 +15,9 @@ import type {
   RoundNote,
   VcsAdapter,
 } from "@open-cr-agent/core";
-import { errorMessage, isUnfinished } from "@open-cr-agent/core";
+import { errorMessage, isUnfinished, OcraError } from "@open-cr-agent/core";
 import { checksOfChange } from "./checks.js";
-import { commitToChangeRequest } from "./commit.js";
+import { commitToChangeRequest, mergeToChangeRequest } from "./commit.js";
 import { mentionOf } from "./conversation.js";
 import { declinedFindings, declinesFinding, findingOf } from "./declined.js";
 import type {
@@ -41,11 +42,32 @@ export interface History {
   filesChangedSince(from: string, to: string): Promise<{ files: string[] } | { reason: string }>;
 }
 
+// Merges made in the local clone, where both branches' commits are: the
+// platforms' APIs neither show a merge's conflicts nor take a commit with
+// two parents and a tree of its own. `conflicts` answers undefined for a
+// clean merge; `push` writes the merge commit and updates the branch
+// without force.
+export interface MergeSource {
+  conflicts(
+    ours: string,
+    theirs: string,
+  ): Promise<Pick<ChangeConflicts, "files" | "other"> | undefined>;
+  push(merge: {
+    ours: string;
+    theirs: string;
+    message: string;
+    files: readonly { path: string; content: string }[];
+    branch: string;
+    author: { name: string; email: string };
+  }): Promise<CommitResult>;
+}
+
 export interface PlatformReviewOptions {
   name: string;
   platform: ReviewPlatform;
   code: CodeSource;
   history?: History;
+  merge?: MergeSource;
 }
 
 const OVERRIDE = /^\/ocra override ([0-9a-fA-F]{40}(?:[0-9a-fA-F]{24})?)\s+(\S.*)$/m;
@@ -193,7 +215,18 @@ export class PlatformReview implements VcsAdapter {
   }
 
   async commit(commit: ChangeCommit): Promise<CommitResult> {
-    return commitToChangeRequest(this.platform, await this.changeRequest(), commit);
+    const read = await this.changeRequest();
+    return commit.mergeParent === undefined
+      ? commitToChangeRequest(this.platform, read, commit)
+      : mergeToChangeRequest(this.platform, this.options.merge, read, commit);
+  }
+
+  async conflicts(headSha: string): Promise<ChangeConflicts | undefined> {
+    const { merge } = this.options;
+    if (!merge) throw new OcraError("VCS_API_FAILED", "no local clone to read a merge in");
+    const mergeParent = await this.platform.baseHead();
+    const found = await merge.conflicts(headSha, mergeParent);
+    return found && { mergeParent, ...found };
   }
 
   // A comment of its own: a round's note never replaces the review's summary.

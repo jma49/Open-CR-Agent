@@ -58,7 +58,8 @@ export type MendItemOutcome = (typeof MEND_ITEM_OUTCOMES)[number];
  * rejections, the gate's (`out_of_scope`, `protected`, `tamper`), the
  * verifier's (`unresolved`, `unsure`, `unchecked`), the round's (`overlap`
  * with an earlier edit, `no_room` under its caps, `attempts` used up) and
- * the write's. The engine's own list is `MEND_ITEM_REASONS` in
+ * the write's; `conflicts`: the item waits because the change's merge
+ * conflicts are worked on first, or are not all resolved. The engine's own list is `MEND_ITEM_REASONS` in
  * `@open-cr-agent/core`; a test keeps this one equal to it.
  */
 export const MEND_ITEM_REASONS = [
@@ -73,6 +74,7 @@ export const MEND_ITEM_REASONS = [
   "overlap",
   "no_room",
   "attempts",
+  "conflicts",
   "head_moved",
   "not_writable",
 ] as const;
@@ -83,6 +85,12 @@ export const MAX_MEND_FINDINGS = MAX_FINDINGS;
 
 /** The most failed checks one round works on, with `--checks`. */
 export const MAX_MEND_CHECKS = 3;
+
+/** The most conflicted files one round names, with `--conflicts`; it resolves fewer. */
+export const MAX_MEND_CONFLICTS = 50;
+
+/** The most characters of a conflicted file a round resolves. */
+export const MAX_RESOLVED_CHARS = 400_000;
 
 /** What `ocra mend --findings` reads: the accepted findings, the most important first. */
 export const mendFindingsSchema = z.array(sharedFindingSchema).max(MAX_MEND_FINDINGS);
@@ -124,14 +132,28 @@ const itemSchema = z
     fingerprint: z.string().regex(FINGERPRINT),
     // The failed check's name, for an item that is one; null for a finding.
     check: z.string().max(MAX_FIELD).nullable().default(null),
+    // The conflicted file's path, for an item that is a merge conflict.
+    conflict: z.string().max(1024).nullable().default(null),
+    // That file's whole content with its conflicts resolved, for a proposed one.
+    resolved: z.string().max(MAX_RESOLVED_CHARS).nullable().default(null),
     outcome: z.enum(MEND_ITEM_OUTCOMES),
     reason: z.enum(MEND_ITEM_REASONS).nullable(),
     // What failed, for the reason `failed`; null otherwise, and in the answer of a version that gave none.
     cause: z.enum(FIX_FAILURE_CAUSES).nullable().default(null),
     edits: z.array(mendEditSchema),
   })
-  .refine((i) => (i.outcome === "fixed" || i.outcome === "proposed") === i.edits.length > 0, {
-    message: "edits come with the fixed and proposed outcomes, and only with them",
+  .refine(
+    (i) =>
+      i.conflict === null
+        ? (i.outcome === "fixed" || i.outcome === "proposed") === i.edits.length > 0
+        : i.edits.length === 0,
+    {
+      message:
+        "edits come with a fixed or proposed finding or check, only with them, and never with a conflict",
+    },
+  )
+  .refine((i) => (i.resolved !== null) === (i.conflict !== null && i.outcome === "proposed"), {
+    message: "a resolved file comes with a proposed conflict, and only with it",
   })
   .refine((i) => i.cause === null || i.reason === "failed", {
     message: "a cause comes only with the failed reason",
@@ -148,7 +170,10 @@ export const mendResultSchema = z
     outcome: z.enum(MEND_OUTCOMES),
     stopped: z.enum(MEND_STOPS).nullable(),
     commitSha: commitId.nullable(),
-    items: z.array(itemSchema).max(MAX_MEND_FINDINGS + MAX_MEND_CHECKS),
+    // The base branch's commit a round over merge conflicts merged, or
+    // proposes to merge; null for any other round.
+    mergeParent: commitId.nullable().default(null),
+    items: z.array(itemSchema).max(MAX_MEND_FINDINGS + MAX_MEND_CHECKS + MAX_MEND_CONFLICTS),
     state: mendStateSchema,
     usage: usageSchema,
   })

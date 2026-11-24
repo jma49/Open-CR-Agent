@@ -21,7 +21,7 @@ import { startRuntime } from "./review/execute-run.js";
 import { type ReviewIo, resolveRun } from "./review/resolve-run.js";
 
 export const MEND_USAGE = `Usage: ocra mend (--pr <n> | --mr <n> | --from <ref> [--to <ref>] | --commit <sha>)
-                 (--findings <file|-> | --checks) [options]
+                 (--findings <file|-> | --checks | --conflicts) [options]
 
 Runs one round of the fix loop over findings a person accepted: each open
 finding gets one fixer model call, as ocra fix makes it, or, when that
@@ -41,6 +41,16 @@ as data. ocra reads the log and runs nothing. While checks are still
 running and nothing else is open, the round does nothing and counts as
 none (outcome "waiting").
 
+With --conflicts the round first reads, in the local clone, whether the
+base branch merges into the head of the pull or merge request. When it
+does not, the round works on the conflicts alone: one fixer call per
+conflicted file answers each conflicted region, code puts the file
+together, and one verifier call checks it. Only when every conflicted file
+is resolved is the merge written: printed at --level propose, or pushed as
+one merge commit with both parents at --level commit, without force. At
+most 5 files with text conflicts; a deleted, renamed or binary file leaves
+the merge to a person.
+
 A round works on at most 5 items, 10 files and 200 added lines. An item
 gets 2 attempts and a change 6 rounds; --state carries the counts from one
 round to the next. A failed check is the same item while it fails the same
@@ -52,6 +62,8 @@ Options:
                       (sharedFindingSchema); - reads it from stdin
   --checks            Also work on the head's failed checks (on GitHub the
                       token needs actions: read for a job's log)
+  --conflicts         First resolve the conflicts of merging the base branch
+                      (--level commit needs a clone that can push)
   --level <level>     propose (default): print the checked edits, commit
                       nothing; commit: write them to the branch
   --state <file>      The state the last round printed (omit for the first)
@@ -92,6 +104,7 @@ export async function mendCommand(argv: string[], io: ReviewIo, deps: ReviewDeps
     options: {
       findings: { type: "string" },
       checks: { type: "boolean" },
+      conflicts: { type: "boolean" },
       level: { type: "string" },
       state: { type: "string" },
       head: { type: "string" },
@@ -121,10 +134,12 @@ export async function mendCommand(argv: string[], io: ReviewIo, deps: ReviewDeps
   if (!change && target.mode === "workspace") {
     throw new UsageError("ocra mend needs --pr, --mr, --from or --commit");
   }
-  if (!values.findings && !values.checks) {
-    throw new UsageError("ocra mend needs --findings <file|->, --checks or both");
+  if (!values.findings && !values.checks && !values.conflicts) {
+    throw new UsageError("ocra mend needs --findings <file|->, --checks or --conflicts");
   }
-  if (values.checks && !change) throw new UsageError("--checks needs --pr or --mr");
+  if ((values.checks || values.conflicts) && !change) {
+    throw new UsageError("--checks and --conflicts need --pr or --mr");
+  }
   const level = levelOf(values.level);
   const head = expectedHead(values.head);
   const protectedPaths = values.protect ?? [];
@@ -169,6 +184,7 @@ export async function mendCommand(argv: string[], io: ReviewIo, deps: ReviewDeps
     const round = await mendRound({
       findings,
       ...(values.checks ? { checks: true } : {}),
+      ...(values.conflicts ? { conflicts: true } : {}),
       vcs: run.vcs,
       runtime,
       syntax: treeSitterSyntax(),
@@ -211,9 +227,12 @@ function resultOf(round: MendRound, usage: Usage): MendResult {
     outcome: round.outcome,
     stopped: round.stopped ?? null,
     commitSha: round.sha ?? null,
+    mergeParent: round.mergeParent ?? null,
     items: round.items.map((item) => ({
       fingerprint: item.id,
       check: item.check?.slice(0, MAX_CHECK_NAME_CHARS) ?? null,
+      conflict: item.conflict ?? null,
+      resolved: item.resolved ?? null,
       outcome: item.outcome,
       reason: item.reason ?? null,
       cause: item.cause ?? null,
@@ -229,7 +248,9 @@ function itemLines(result: MendResult, findings: readonly StoredFinding[]): stri
   return result.items.map((item) => {
     const where = item.edits[0]
       ? `${item.edits[0].path}:${item.edits[0].startLine}-${item.edits[0].endLine}`
-      : (file.get(item.fingerprint) ?? "");
+      : item.conflict !== null
+        ? `conflict ${item.conflict.replace(/\s+/g, " ")}`
+        : (file.get(item.fingerprint) ?? "");
     const why = item.reason ? ` (${item.reason}${item.cause ? `: ${item.cause}` : ""})` : "";
     const what =
       item.check === null ? where : `check ${item.check.replace(/\s+/g, " ")} ${where}`.trimEnd();
@@ -240,7 +261,9 @@ function itemLines(result: MendResult, findings: readonly StoredFinding[]): stri
 function said(result: MendResult): string {
   const count = (...outcomes: string[]) =>
     result.items.filter((i) => outcomes.includes(i.outcome)).length;
-  const noun = result.items.some((i) => i.check !== null) ? "item" : "finding";
+  const noun = result.items.some((i) => i.check !== null || i.conflict !== null)
+    ? "item"
+    : "finding";
   const of = (n: number) => `${n} ${noun}${n === 1 ? "" : "s"}`;
   switch (result.outcome) {
     case "committed":
