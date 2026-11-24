@@ -6,6 +6,17 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-11-24
+
+### Changed
+
+- `ocra init` writes a workflow that pins the Action to v0.24.0.
+
+### Fixed
+
+- `ocra mend --conflicts` authors its merge commit on GitHub with the bot's `<id>+<login>` noreply address, so GitHub links it to the account, also on GitHub Enterprise Server.
+- The comment after a merge round says it merged the base branch and gives `git revert -m 1` to undo it.
+
 ## [0.24.0] - 2026-11-24
 
 A finding names the repository rule or learning it applies, so ocra Cloud can count findings per rule. The Action's new tag is `ocrahq/Open-CR-Agent@v0.24.0`.
@@ -795,7 +806,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.24.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.24.1...HEAD
+[0.24.1]: https://github.com/jma49/Open-CR-Agent/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.23.1...v0.24.0
 [0.23.1]: https://github.com/jma49/Open-CR-Agent/compare/v0.23.0...v0.23.1
 [0.23.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.22.0...v0.23.0
