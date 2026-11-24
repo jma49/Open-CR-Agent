@@ -62,7 +62,7 @@ Options:
 const SOURCES = {
   mine: { what: "fix commits", candidates: (run: ResolvedRun) => fixCandidates(run.root) },
   feedback: {
-    what: "accepted findings",
+    what: "review feedback",
     candidates: (run: ResolvedRun) => feedbackCandidates(run),
   },
   remember: {

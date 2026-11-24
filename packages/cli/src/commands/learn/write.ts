@@ -51,11 +51,18 @@ function* learningPaths(title: string): Generator<string> {
 }
 
 function slugOf(title: string): string {
-  const slug = title
+  const whole = title
     .normalize("NFKD")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .slice(0, MAX_SLUG)
     .replace(/^-+|-+$/g, "");
+  const slug = whole.length > MAX_SLUG ? wholeWords(whole.slice(0, MAX_SLUG + 1)) : whole;
   return slug === "" ? "learning" : slug;
+}
+
+// Without the word the limit cut: "it-is-i" names nothing. A single word
+// longer than the limit is cut anyway.
+function wholeWords(cut: string): string {
+  const end = cut.lastIndexOf("-");
+  return end > 0 ? cut.slice(0, end) : cut.slice(0, MAX_SLUG);
 }
