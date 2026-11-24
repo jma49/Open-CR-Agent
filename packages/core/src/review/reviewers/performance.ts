@@ -46,13 +46,48 @@ If a finding would not survive a skeptical senior engineer, do not report it. Re
 
 When every file has been reviewed, call ${T.taskDone}.`;
 
+// Path words of code that runs per request, event or row, where a small cost
+// compounds, so a lite change there still gets a performance pass
+// (ADR-0082). "index" is left out: it names entry modules far more often.
+const HOT_PATH_WORDS = new Set([
+  "cache",
+  "caches",
+  "caching",
+  "cluster",
+  "clusters",
+  "indexes",
+  "indices",
+  "indexing",
+  "query",
+  "queries",
+  "scheduler",
+  "queue",
+  "queues",
+  "pool",
+  "pools",
+  "batch",
+  "stream",
+  "streams",
+  "buffer",
+  "buffers",
+  "storage",
+  "db",
+  "database",
+  "sql",
+  "render",
+  "renderer",
+  "perf",
+  "performance",
+]);
+
 export const performanceReviewer: ReviewerDefinition = {
   id: "performance",
   category: "performance",
   modelTier: "standard",
   systemPrompt: SYSTEM_PROMPT,
   scope: {
-    minTier: "lite",
+    minTier: "full",
+    focus: { words: HOT_PATH_WORDS, minTier: "lite" },
     span: "packed",
     ignore: [
       ...DOCUMENTATION_FILES,

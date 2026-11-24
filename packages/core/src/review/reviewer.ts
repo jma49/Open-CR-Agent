@@ -6,6 +6,10 @@ import type { RuleSet } from "../rules/rule-set.js";
 export interface ReviewerScope {
   // The lowest change risk tier the reviewer runs at (default: every tier).
   minTier?: RiskTier;
+  // A lower tier for bundles where the reviewer matters most: on a bundle
+  // with a file whose path has one of these whole words (as triage reads
+  // sensitive paths), the reviewer runs from this tier.
+  focus?: { words: ReadonlySet<string>; minTier: RiskTier };
   // Globs of files the reviewer never sees, such as documentation.
   ignore?: readonly string[];
   // Runs only when the repository has guidelines (AGENTS.md) to check against.

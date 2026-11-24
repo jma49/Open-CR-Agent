@@ -1,4 +1,4 @@
-# ADR-0082: A runtime on the user's own Codex sign-in
+# ADR-0083: A runtime on the user's own Codex sign-in
 
 - Status: accepted
 - Date: 2026-11-24

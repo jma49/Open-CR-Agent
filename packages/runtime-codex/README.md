@@ -9,4 +9,4 @@ The Codex agent runtime of [Open-CR-Agent](https://github.com/ocrahq/Open-CR-Age
 }
 ```
 
-Needs Codex 0.172.0 or later, signed in with `codex login`, found as `codex` on `PATH` or at `OCRA_CODEX_BIN`. See ADR-0082 for what the reviewer can and cannot reach.
+Needs Codex 0.172.0 or later, signed in with `codex login`, found as `codex` on `PATH` or at `OCRA_CODEX_BIN`. See ADR-0083 for what the reviewer can and cannot reach.

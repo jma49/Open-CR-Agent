@@ -4,6 +4,7 @@ import type { FileDiff } from "../domain.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { agentsMdReviewer } from "../review/reviewers/agents-md.js";
 import { docsReviewer } from "../review/reviewers/docs.js";
+import { performanceReviewer } from "../review/reviewers/performance.js";
 import { planMatrix, planTasks } from "./matrix.js";
 
 function bundle(label: string, ...paths: string[]): Bundle {
@@ -258,6 +259,68 @@ describe("the docs reviewer", () => {
       ["docs-1", ["src/args.ts", "README.md"]],
     ]);
     expect(docsReviewer.modelTier).toBe("light");
+  });
+});
+
+describe("a reviewer's focus paths", () => {
+  const focused = reviewer("focused", {
+    minTier: "full",
+    focus: { words: new Set(["cache"]), minTier: "lite" },
+    ignore: ["**/*.test.ts"],
+  });
+
+  it("bring it down to their tier on a bundle with a file on one", () => {
+    const b = [bundle("cache", "src/CacheStore.ts", "src/api.ts"), bundle("api", "src/api.ts")];
+    const lite = planMatrix(b, [focused], "lite");
+    expect(cells(lite)).toEqual([["focused-1", ["src/CacheStore.ts", "src/api.ts"]]]);
+    expect(lite.skipped).toEqual([{ reviewer: "focused", bundle: "api", reason: "below_tier" }]);
+    expect(planMatrix(b, [focused], "trivial").skipped).toHaveLength(2);
+  });
+
+  it("count a file's old path, but not a file the reviewer ignores", () => {
+    const renamed: Bundle = {
+      label: "moved",
+      files: [{ newPath: "src/store.ts", oldPath: "src/cache.ts", patch: "" } as FileDiff],
+    };
+    expect(cells(planMatrix([renamed], [focused], "lite"))).toEqual([
+      ["focused-1", ["src/store.ts"]],
+    ]);
+    expect(
+      planMatrix([bundle("tests", "src/cache.test.ts", "src/api.ts")], [focused], "lite").skipped,
+    ).toEqual([{ reviewer: "focused", bundle: "tests", reason: "below_tier" }]);
+  });
+
+  it("yield to a repository's own tier and to --all-tiers", () => {
+    const b = [bundle("cache", "src/cache.ts")];
+    expect(planMatrix(b, [focused], "lite", { focused: { minTier: "full" } }).cells).toEqual([]);
+    expect(cells(planMatrix(b, [focused], "trivial", {}, { allTiers: true }))).toEqual([
+      ["focused-1", ["src/cache.ts"]],
+    ]);
+  });
+});
+
+describe("the performance reviewer", () => {
+  it("runs from the lite tier on hot paths, and otherwise only at the full tier", () => {
+    const hot = [bundle("cluster", "server/cluster/ClusterChangedEvent.java")];
+    expect(cells(planMatrix(hot, [performanceReviewer], "lite"))).toEqual([
+      ["performance-1", ["server/cluster/ClusterChangedEvent.java"]],
+    ]);
+    expect(
+      planMatrix([bundle("entry", "src/index.ts")], [performanceReviewer], "lite").skipped,
+    ).toEqual([{ reviewer: "performance", bundle: "entry", reason: "below_tier" }]);
+  });
+
+  it("runs only at the full tier, and a repository can bring it back lower", () => {
+    const b = [bundle("api", "src/api.ts")];
+    expect(planMatrix(b, [performanceReviewer], "lite").skipped).toEqual([
+      { reviewer: "performance", bundle: "api", reason: "below_tier" },
+    ]);
+    expect(cells(planMatrix(b, [performanceReviewer], "full"))).toEqual([
+      ["performance-1", ["src/api.ts"]],
+    ]);
+    expect(
+      cells(planMatrix(b, [performanceReviewer], "lite", { performance: { minTier: "lite" } })),
+    ).toEqual([["performance-1", ["src/api.ts"]]]);
   });
 });
 
