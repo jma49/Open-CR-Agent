@@ -81,6 +81,7 @@ The `direct` runtime installs without OpenCode, the optional default: 11 MB inst
 on:
   pull_request:
 permissions:
+  checks: write
   contents: read
   issues: read
   pull-requests: write

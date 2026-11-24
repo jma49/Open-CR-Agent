@@ -13,6 +13,7 @@ export interface GitHubSettings {
 // A pull request on GitHub. GITHUB_TOKEN (or GH_TOKEN) is the credential,
 // GITHUB_API_URL the API of GitHub Enterprise Server; the repository is
 // --repo, else GITHUB_REPOSITORY, else origin's on github.com or that server.
+// OCRA_CHECK_RUN_ID names an "ocra review" check run ocra Cloud queued.
 export async function resolveGitHubTarget(
   options: ResolveTargetOptions,
 ): Promise<PlatformTarget<GitHubSettings>> {
@@ -21,6 +22,7 @@ export async function resolveGitHubTarget(
   const fetchImpl = options.fetch;
   const signal = options.signal ? { signal: options.signal } : {};
   const pull = await api.getPullRequest(ref.number);
+  const checkRunId = Number(options.env.OCRA_CHECK_RUN_ID);
   return {
     platform: "github",
     baseSha: pull.base.sha,
@@ -40,6 +42,7 @@ export async function resolveGitHubTarget(
         snapshot: pullRequestOf(pull, { owner, repo }),
         history: local.history,
         ...(local.merge ? { merge: local.merge } : {}),
+        ...(Number.isSafeInteger(checkRunId) && checkRunId > 0 ? { checkRunId } : {}),
         ...(fetchImpl ? { fetch: fetchImpl } : {}),
         ...signal,
       }),

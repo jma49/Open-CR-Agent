@@ -79,6 +79,7 @@ ocra review --mr 7 --publish                 # GitLab Merge Request
 on:
   pull_request:
 permissions:
+  checks: write
   contents: read
   issues: read
   pull-requests: write

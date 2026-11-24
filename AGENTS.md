@@ -137,7 +137,7 @@ The repository is public: anything committed stays readable in history even afte
   - Types: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
 - Subject: imperative mood, lowercase start, no trailing period, at most 72 characters.
 - Body (optional): wrap at 72 characters, explain *what* and *why*, not *how*. One logical change per commit.
-- **No AI attribution anywhere:** commits are authored and committed under a person's identity (never `noreply@anthropic.com`; set `user.name`/`user.email` in agent sessions), carry no `Co-authored-by` or other co-author metadata, and pull request titles, descriptions and comments carry no tool footer such as "Generated with Claude Code" (the `/triage` disclaimer on an issue is disclosure, not attribution). CI's `commits` job checks commits and the pull request description (`scripts/attribution.mjs`); titles and comments are on you.
+- CI's `commits` job checks the commits of a pull request against these rules (`commitlint.config.mjs`). AI authors, `Co-authored-by` trailers and tool footers are allowed.
 
 ## Agile practices
 

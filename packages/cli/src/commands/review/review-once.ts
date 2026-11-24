@@ -1,6 +1,6 @@
 import type { ReviewEvent, ReviewReport } from "@open-cr-agent/core";
 import type { ReviewArgs } from "./args.js";
-import { deliver } from "./deliver.js";
+import { deliver, executeShown } from "./deliver.js";
 import type { ReviewDeps } from "./deps.js";
 import { executeRun } from "./execute-run.js";
 import type { RunRequest } from "./request.js";
@@ -30,7 +30,7 @@ export async function reviewOnce(
     },
   };
   const run = await resolveRun(args, io, runDeps);
-  const executed = await executeRun(run, args, io, runDeps);
+  const executed = await executeShown(run, () => executeRun(run, args, io, runDeps));
   if (!executed.interrupted) await deliver(run, executed, args, io, runDeps);
   return executed.report;
 }

@@ -25,6 +25,7 @@ const optionsSchema = z.object({
   snapshot: changeRequestSchema.optional(),
   history: historySchema.optional(),
   merge: mergeSourceSchema.optional(),
+  checkRunId: z.number().int().positive().optional(),
 });
 
 export const githubPlugin: OcraPlugin = {
@@ -50,6 +51,7 @@ export const githubPlugin: OcraPlugin = {
         ...(options.history ? { history: options.history } : {}),
         ...(options.merge ? { merge: options.merge } : {}),
         ...(options.snapshot ? { snapshot: options.snapshot } : {}),
+        ...(options.checkRunId ? { checkRunId: options.checkRunId } : {}),
       });
     });
   },

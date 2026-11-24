@@ -61,6 +61,15 @@ export interface CreateReview {
   comments: ReviewComment[];
 }
 
+export interface CheckRun {
+  name: string;
+  status: "in_progress" | "completed";
+  conclusion?: "success" | "neutral" | "cancelled";
+  output: { title: string; summary: string };
+}
+
+const checkRunSchema = z.object({ id: z.number() });
+
 export class GitHubApiError extends OcraError {
   readonly status: number;
 
@@ -293,6 +302,14 @@ export class GitHubApi {
 
   async updateIssueComment(id: number, body: string): Promise<void> {
     await this.request("PATCH", `/issues/comments/${id}`, { body });
+  }
+
+  async createCheckRun(check: CheckRun & { head_sha: string }): Promise<number> {
+    return checkRunSchema.parse(await this.request("POST", "/check-runs", check)).id;
+  }
+
+  async updateCheckRun(id: number, check: CheckRun): Promise<void> {
+    await this.request("PATCH", `/check-runs/${id}`, check);
   }
 
   async createReview(number: number, review: CreateReview): Promise<void> {
