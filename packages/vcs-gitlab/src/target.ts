@@ -37,6 +37,7 @@ export async function resolveGitLabTarget(
         code: local.code,
         snapshot,
         history: local.history,
+        ...(local.merge ? { merge: local.merge } : {}),
         ...(fetchImpl ? { fetch: fetchImpl } : {}),
         ...signal,
       }),

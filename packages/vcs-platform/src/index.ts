@@ -7,6 +7,7 @@ export {
   commitIdSchema,
   fetchSchema,
   historySchema,
+  mergeSourceSchema,
   signalSchema,
 } from "./options.js";
 export type {
@@ -25,6 +26,7 @@ export { MAX_ATTEMPTS, type RetryDecision, retryDecision } from "./retry.js";
 export {
   type CodeSource,
   type History,
+  type MergeSource,
   PlatformReview,
   type PlatformReviewOptions,
 } from "./review.js";

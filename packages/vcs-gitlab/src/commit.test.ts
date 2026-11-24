@@ -1,7 +1,7 @@
 import type { ChangeCommit } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import { GitLabApi } from "./client.js";
-import { gitlabCommit } from "./commit.js";
+import { gitlabBaseHead, gitlabCommit, gitlabPushBranch } from "./commit.js";
 
 const API = "https://gitlab.example.com/api/v4/projects/g%2Fp";
 const HEAD = "a".repeat(40);
@@ -41,7 +41,9 @@ function gitlab(script: Script = {}) {
           source_branch: "feat/retry",
           source_project_id: script.sourceProject ?? 1,
           target_project_id: 1,
+          target_branch: "main",
         }),
+      "GET /repository/branches/main": () => json(200, { commit: { id: COMMIT } }),
       "GET /repository/branches/feat%2Fretry": () =>
         json(200, { commit: { id: script.branchHead ?? HEAD }, can_push: script.canPush ?? true }),
       [`GET /repository/files/src%2Fretry.ts?ref=${HEAD}`]: () =>
@@ -101,5 +103,21 @@ describe("gitlabCommit", () => {
     expect(await gitlabCommit(raced.api, 4, commit)).toMatchObject({ outcome: "head_moved" });
     const refused = gitlab({ commitStatus: 403, commitMessage: "403 Forbidden" });
     expect(await gitlabCommit(refused.api, 4, commit)).toMatchObject({ outcome: "not_writable" });
+  });
+});
+
+describe("a merge pushed from the clone", () => {
+  it("reads the target branch's head as it is now", async () => {
+    expect(await gitlabBaseHead(gitlab().api, 4)).toBe(COMMIT);
+  });
+
+  it("names the source branch, and refuses a fork's or one the token may not push to", async () => {
+    expect(await gitlabPushBranch(gitlab().api, 4)).toEqual({ branch: "feat/retry" });
+    expect(await gitlabPushBranch(gitlab({ sourceProject: 2 }).api, 4)).toEqual({
+      refused: "the branch is on a fork, which ocra's token cannot write to",
+    });
+    expect(await gitlabPushBranch(gitlab({ canPush: false }).api, 4)).toEqual({
+      refused: "ocra's token may not push to the branch",
+    });
   });
 });

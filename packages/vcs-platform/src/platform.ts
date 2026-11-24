@@ -52,6 +52,14 @@ export interface ReviewPlatform {
   // or a branch the token may not write to (a fork's) is an outcome, not an
   // error.
   commit(commit: ChangeCommit): Promise<CommitResult>;
+  // The head of the branch the change request merges into, as it is now.
+  baseHead(): Promise<string>;
+  // The change request's source branch and who ocra's commits are by, for
+  // a commit pushed from the local clone; `refused` when the token's
+  // account may not write to it (a fork's branch, a protected one).
+  pushTarget(): Promise<
+    { branch: string; author: { name: string; email: string } } | { refused: string }
+  >;
   // The checks the platform ran on a commit, each under its latest run.
   checks(sha: string): Promise<PlatformCheck[]>;
   // The names of the checks that fail on the head of the branch the change

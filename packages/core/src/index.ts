@@ -213,7 +213,9 @@ export {
 export type {
   ChangeChecks,
   ChangeCommit,
+  ChangeConflicts,
   CommitResult,
+  ConflictedFile,
   FailedCheck,
   Mention,
   MentionRef,

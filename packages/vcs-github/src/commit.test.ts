@@ -1,7 +1,7 @@
 import type { ChangeCommit } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
 import { GitHubApi } from "./client.js";
-import { githubCommit } from "./commit.js";
+import { githubBaseHead, githubCommit, githubPushBranch } from "./commit.js";
 
 const HEAD = "a".repeat(40);
 const COMMIT = "c".repeat(40);
@@ -38,7 +38,9 @@ function github(head: Record<string, unknown> = {}, refStatus = 200, refMessage 
       "GET /pulls/7": () =>
         json(200, {
           head: { sha: HEAD, ref: "feat/retry", repo: { full_name: "O/r" }, ...head },
+          base: { ref: "release/1.x" },
         }),
+      "GET /git/ref/heads/release/1.x": () => json(200, { object: { sha: COMMIT } }),
       [`GET /git/commits/${HEAD}`]: () => json(200, { tree: { sha: "t1" } }),
       "POST /git/trees": () => json(201, { sha: "t2" }),
       "POST /git/commits": () => json(201, { sha: COMMIT }),
@@ -100,6 +102,20 @@ describe("githubCommit", () => {
     const readOnly = github({}, 403, "Resource not accessible by integration");
     expect(await githubCommit(readOnly.api, PULL, commit)).toMatchObject({
       outcome: "not_writable",
+    });
+  });
+});
+
+describe("a merge pushed from the clone", () => {
+  it("reads the base branch's head as it is now", async () => {
+    expect(await githubBaseHead(github().api, 7)).toBe(COMMIT);
+  });
+
+  it("names the source branch, and refuses a fork's", async () => {
+    expect(await githubPushBranch(github().api, PULL)).toEqual({ branch: "feat/retry" });
+    const fork = github({ repo: { full_name: "someone/r" } });
+    expect(await githubPushBranch(fork.api, PULL)).toEqual({
+      refused: "the branch is on a fork, which ocra's token cannot write to",
     });
   });
 });

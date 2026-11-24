@@ -5,6 +5,7 @@ import {
   commitIdSchema,
   fetchSchema,
   historySchema,
+  mergeSourceSchema,
   signalSchema,
 } from "@open-cr-agent/vcs-platform";
 import { z } from "zod";
@@ -22,6 +23,7 @@ const optionsSchema = z.object({
   code: codeSourceSchema,
   snapshot: changeRequestSchema.extend({ mergeBaseSha: commitIdSchema }).optional(),
   history: historySchema.optional(),
+  merge: mergeSourceSchema.optional(),
 });
 
 export const gitlabPlugin: OcraPlugin = {
@@ -40,6 +42,7 @@ export const gitlabPlugin: OcraPlugin = {
         api,
         code: options.code,
         ...(options.history ? { history: options.history } : {}),
+        ...(options.merge ? { merge: options.merge } : {}),
         ...(options.snapshot ? { snapshot: options.snapshot } : {}),
       });
     });

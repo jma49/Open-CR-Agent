@@ -39,6 +39,7 @@ export async function resolveGitHubTarget(
         code: local.code,
         snapshot: pullRequestOf(pull, { owner, repo }),
         history: local.history,
+        ...(local.merge ? { merge: local.merge } : {}),
         ...(fetchImpl ? { fetch: fetchImpl } : {}),
         ...signal,
       }),

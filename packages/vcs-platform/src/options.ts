@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { PlatformChangeRequest } from "./platform.js";
-import type { CodeSource, History } from "./review.js";
+import type { CodeSource, History, MergeSource } from "./review.js";
 
 // What every platform adapter's registry options share. The code source and
 // the history are ports the caller implements, so only their shape can be
@@ -19,6 +19,11 @@ export const codeSourceSchema = z.custom<CodeSource>(
 export const historySchema = z.custom<History>(
   (value) => hasMethods(value, ["filesChangedSince"]),
   "history must provide filesChangedSince",
+);
+
+export const mergeSourceSchema = z.custom<MergeSource>(
+  (value) => hasMethods(value, ["conflicts", "push"]),
+  "merge must provide conflicts and push",
 );
 
 export const fetchSchema = z.custom<typeof fetch>((value) => typeof value === "function");

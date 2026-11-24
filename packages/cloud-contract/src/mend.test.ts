@@ -18,7 +18,8 @@ describe("ocra mend's result", () => {
   it("names a commit only when one was written, and a stop only when stopped", () => {
     expect(mendResultSchema.parse(committed)).toEqual({
       ...committed,
-      items: [{ ...committed.items[0], cause: null, check: null }],
+      mergeParent: null,
+      items: [{ ...committed.items[0], cause: null, check: null, conflict: null, resolved: null }],
     });
     expect(mendResultSchema.safeParse({ ...committed, commitSha: null }).success).toBe(false);
     expect(mendResultSchema.safeParse({ ...committed, outcome: "proposed" }).success).toBe(false);
@@ -35,6 +36,25 @@ describe("ocra mend's result", () => {
     );
     const waiting = { ...committed, outcome: "waiting", commitSha: null, items: [] };
     expect(mendResultSchema.safeParse(waiting).success).toBe(true);
+  });
+
+  it("takes a merge conflict as an item, with its file only when proposed", () => {
+    const conflict = {
+      fingerprint: "b491fb26b470419c",
+      conflict: "src/a.ts",
+      reason: null,
+      edits: [],
+    };
+    const merged = { ...committed, mergeParent: "d".repeat(40) };
+    const withItem = (item: object, more: object = {}) =>
+      mendResultSchema.safeParse({ ...merged, ...more, items: [{ ...conflict, ...item }] }).success;
+    expect(withItem({ outcome: "fixed" })).toBe(true);
+    expect(withItem({ outcome: "fixed", resolved: "x\n" })).toBe(false);
+    const proposed = { outcome: "proposed", commitSha: null };
+    expect(withItem({ outcome: "proposed", resolved: "x\n" }, proposed)).toBe(true);
+    expect(withItem({ outcome: "proposed" }, proposed)).toBe(false);
+    expect(withItem({ outcome: "deferred", reason: "conflicts" })).toBe(true);
+    expect(withItem({ outcome: "deferred", reason: "conflicts", resolved: "x" })).toBe(false);
   });
 
   it("holds edits for a fixed or proposed finding, and for no other", () => {

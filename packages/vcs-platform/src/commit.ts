@@ -2,6 +2,7 @@ import { posix } from "node:path";
 import type { ChangeCommit, CommitResult } from "@open-cr-agent/core";
 import { OcraError } from "@open-cr-agent/core";
 import type { PlatformChangeRequest, ReviewPlatform } from "./platform.js";
+import type { MergeSource } from "./review.js";
 
 // What holds for a commit of ocra's on every platform (ADR-0051): it is made
 // from the head ocra read, it names each file once by a plain path inside
@@ -12,6 +13,43 @@ export async function commitToChangeRequest(
   read: PlatformChangeRequest,
   commit: ChangeCommit,
 ): Promise<CommitResult> {
+  return refusedBefore(read, commit) ?? platform.commit(commit);
+}
+
+// A merge of the base branch into the head (ADR-0078 point 7) holds to the
+// same rules and is made in the local clone, which pushes it without force:
+// the remote takes it only while the branch is at the head ocra read.
+export async function mergeToChangeRequest(
+  platform: Pick<ReviewPlatform, "pushTarget">,
+  merge: MergeSource | undefined,
+  read: PlatformChangeRequest,
+  commit: ChangeCommit,
+): Promise<CommitResult> {
+  const refused = refusedBefore(read, commit);
+  if (refused) return refused;
+  const notWritable = (reason: string): CommitResult => ({
+    committed: false,
+    outcome: "not_writable",
+    reason,
+  });
+  if (!merge || commit.mergeParent === undefined) {
+    return notWritable("there is no local clone to make the merge in");
+  }
+  const target = await platform.pushTarget();
+  if ("refused" in target) return notWritable(target.refused);
+  return merge.push({
+    ours: commit.parent,
+    theirs: commit.mergeParent,
+    message: commit.message,
+    files: commit.files.map(({ path, content }) => ({ path, content })),
+    ...target,
+  });
+}
+
+function refusedBefore(
+  read: PlatformChangeRequest,
+  commit: ChangeCommit,
+): CommitResult | undefined {
   if (commit.parent !== read.headSha) {
     return {
       committed: false,
@@ -27,7 +65,7 @@ export async function commitToChangeRequest(
     }
     paths.add(path.toLowerCase());
   }
-  return platform.commit(commit);
+  return undefined;
 }
 
 // Compared after normalising, so no spelling of a path reaches outside the

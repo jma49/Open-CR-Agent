@@ -14,6 +14,7 @@ import {
   gitlabSuggestion,
   type History,
   type InlineFinding,
+  type MergeSource,
   type PlatformChangeRequest,
   type PlatformCheck,
   type PlatformComment,
@@ -32,7 +33,7 @@ import {
   type Note,
   type Position,
 } from "./client.js";
-import { gitlabCommit } from "./commit.js";
+import { gitlabBaseHead, gitlabCommit, gitlabPushBranch } from "./commit.js";
 import { gitlabDiscussion } from "./discussion.js";
 import { gitlabLinkedTasks } from "./tasks.js";
 
@@ -42,6 +43,7 @@ export interface GitLabAdapterOptions {
   api: GitLabApi;
   code: CodeSource;
   history?: History;
+  merge?: MergeSource;
   // The merge request as the diff under review was built from it. Without it
   // the adapter fetches the merge request itself, and a push in between would
   // publish the new head for the old diff.
@@ -63,6 +65,7 @@ export class GitLabAdapter extends PlatformReview {
       platform: new GitLabPlatform(options),
       code: options.code,
       ...(options.history ? { history: options.history } : {}),
+      ...(options.merge ? { merge: options.merge } : {}),
     });
   }
 }
@@ -212,6 +215,19 @@ class GitLabPlatform implements ReviewPlatform {
 
   commit(commit: ChangeCommit): Promise<CommitResult> {
     return gitlabCommit(this.options.api, this.options.iid, commit);
+  }
+
+  baseHead(): Promise<string> {
+    return gitlabBaseHead(this.options.api, this.options.iid);
+  }
+
+  // GitLab's private commit address of the token's account.
+  async pushTarget() {
+    const target = await gitlabPushBranch(this.options.api, this.options.iid);
+    if ("refused" in target) return target;
+    const { id, username } = await this.options.api.currentUser();
+    const email = `${id}-${username}@users.noreply.${this.options.api.host}`;
+    return { ...target, author: { name: username, email } };
   }
 
   checks(sha: string): Promise<PlatformCheck[]> {

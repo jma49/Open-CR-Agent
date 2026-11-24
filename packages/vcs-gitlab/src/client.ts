@@ -158,6 +158,11 @@ export class GitLabApi {
     };
   }
 
+  // The instance's host name, as its noreply addresses end.
+  get host(): string {
+    return new URL(this.baseUrl).hostname;
+  }
+
   async currentUser(): Promise<{ id: number; username: string }> {
     return user.parse(
       await sendWithRetry(this.api, { method: "GET", url: `${this.baseUrl}/user`, path: "/user" }),

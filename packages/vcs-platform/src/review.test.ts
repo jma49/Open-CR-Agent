@@ -12,7 +12,7 @@ import {
 } from "./conformance.fakes.js";
 import { declinesFinding } from "./declined.js";
 import type { ReviewPlatform } from "./platform.js";
-import { PlatformReview } from "./review.js";
+import { type MergeSource, PlatformReview } from "./review.js";
 import { SUMMARY_MARKER } from "./state.js";
 import { githubSuggestion } from "./suggestion.js";
 
@@ -24,7 +24,7 @@ const code = {
 };
 
 // The protocol on its own: a platform that holds the scenario in memory.
-function inMemory(scenario: Scenario) {
+function inMemory(scenario: Scenario, merge?: MergeSource) {
   const spell = (login: string) => (login === OCRA ? BOT : login);
   const comments = (scenario.comments ?? []).map((c, i) => ({
     id: String(i),
@@ -99,11 +99,13 @@ function inMemory(scenario: Scenario) {
       commits.push(commit);
       return { committed: true, sha: "c".repeat(40) };
     },
+    baseHead: async () => BASE,
+    pushTarget: async () => ({ branch: "feature", author: { name: "ocra", email: "o@x.test" } }),
     checks: async () => [],
     failingOnBase: async () => [],
   };
   return {
-    review: new PlatformReview({ name: "memory", platform, code }),
+    review: new PlatformReview({ name: "memory", platform, code, ...(merge ? { merge } : {}) }),
     commits: () => commits,
     inline: () => inline,
     summary: () => summary,
@@ -145,6 +147,69 @@ describe("resolving the threads of fixed findings", () => {
       },
     });
     expect(conversation.resolved()).toEqual(["T0"]);
+  });
+});
+
+describe("merging the base branch into the change request", () => {
+  const merged = { path: "src/a.ts", merged: "x", markerSize: 7, executable: false };
+  const file = { path: "src/a.ts", content: "x\n", created: false, executable: false };
+  const clone = () => {
+    const pushes: unknown[] = [];
+    const merge: MergeSource = {
+      conflicts: async (ours, theirs) =>
+        ours === HEAD && theirs === BASE ? { files: [merged], other: [] } : undefined,
+      push: async (pushed) => {
+        pushes.push(pushed);
+        return { committed: true, sha: "e".repeat(40) };
+      },
+    };
+    return { merge, pushes };
+  };
+
+  it("reads the conflicts against the base branch's head, in the local clone", async () => {
+    const { merge } = clone();
+    expect(await inMemory({}, merge).review.conflicts(HEAD)).toEqual({
+      mergeParent: BASE,
+      files: [merged],
+      other: [],
+    });
+    expect(await inMemory({}, merge).review.conflicts("f".repeat(40))).toBeUndefined();
+    await expect(inMemory({}).review.conflicts(HEAD)).rejects.toThrow("no local clone");
+  });
+
+  it("pushes a merge from the clone to the source branch, never through the platform's commit", async () => {
+    const { merge, pushes } = clone();
+    const conversation = inMemory({}, merge);
+    const commit = { parent: HEAD, mergeParent: BASE, message: "Merge", files: [file] };
+    expect(await conversation.review.commit(commit)).toEqual({
+      committed: true,
+      sha: "e".repeat(40),
+    });
+    expect(pushes).toEqual([
+      {
+        ours: HEAD,
+        theirs: BASE,
+        message: "Merge",
+        files: [{ path: "src/a.ts", content: "x\n" }],
+        branch: "feature",
+        author: { name: "ocra", email: "o@x.test" },
+      },
+    ]);
+    expect(conversation.commits()).toEqual([]);
+  });
+
+  it("writes no merge from another head, to a path outside the repository, or without a clone", async () => {
+    const { merge, pushes } = clone();
+    const conversation = inMemory({}, merge);
+    const commit = { parent: HEAD, mergeParent: BASE, message: "Merge", files: [file] };
+    expect(await conversation.review.commit({ ...commit, parent: BASE })).toMatchObject({
+      outcome: "head_moved",
+    });
+    await expect(
+      conversation.review.commit({ ...commit, files: [{ ...file, path: ".git/config" }] }),
+    ).rejects.toThrow("ocra does not commit to");
+    expect(await inMemory({}).review.commit(commit)).toMatchObject({ outcome: "not_writable" });
+    expect(pushes).toEqual([]);
   });
 });
 
