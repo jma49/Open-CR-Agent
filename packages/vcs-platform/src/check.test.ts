@@ -10,6 +10,11 @@ describe("checkOutcome", () => {
     expect(outcome.title).toBe("Approved with comments · 1 warning");
   });
 
+  it("names the coding agent that ran the review, after ocra", () => {
+    const byAgent = { ...report([finding("a".repeat(16))]), agent: "Codex" };
+    expect(checkOutcome(byAgent).title).toBe("ocra · Codex · Approved with comments · 1 warning");
+  });
+
   it("stays neutral on issues, so the check never blocks a merge", () => {
     const blocking: ReviewReport = {
       ...report([finding("a".repeat(16), { severity: "critical" })]),

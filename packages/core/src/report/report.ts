@@ -224,6 +224,9 @@ export interface ReviewReport {
   inline?: InlineSelection;
   // When the caller supplied its version and configuration hash.
   provenance?: RunProvenance;
+  // The coding agent that ran the review tasks, when it was not ocra's own
+  // engine (ADR-0083); what ocra posts names it.
+  agent?: string;
   // How the run came to its findings, in time (ADR-0081).
   trace?: ReviewTrace;
   usage: Usage;

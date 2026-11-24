@@ -64,6 +64,8 @@ export type AgentRole = "verifier" | "judge" | "helper" | "writer" | "fixer";
 // @public (undocumented)
 export interface AgentRuntime {
     // (undocumented)
+    readonly agent?: string;
+    // (undocumented)
     appliedTo?(agent: string): AppliedSettings | undefined;
     // (undocumented)
     complete?(request: CompletionRequest, signal: AbortSignal): Promise<CompletionResult>;
@@ -2044,6 +2046,8 @@ export interface ReviewOptions {
 
 // @public (undocumented)
 export interface ReviewReport {
+    // (undocumented)
+    agent?: string;
     // (undocumented)
     analyzerEvidence?: AnalyzerEvidenceUse[];
     // (undocumented)

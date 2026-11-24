@@ -3,6 +3,11 @@ import { collect, fakeContext } from "../../core/src/runtime/conformance.fakes.j
 import { CodexRuntime } from "./runtime.js";
 
 describe("CodexRuntime", () => {
+  it("names Codex as the agent behind its reviews", () => {
+    const runtime = new CodexRuntime({ models: { standard: [], light: [] }, tools: [], env: {} });
+    expect(runtime.agent).toBe("Codex");
+  });
+
   it("refuses a chain with a model Codex does not run, before starting Codex", async () => {
     const runtime = new CodexRuntime({
       binary: "/nonexistent/codex",
