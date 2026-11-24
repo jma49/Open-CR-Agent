@@ -400,6 +400,11 @@
     ],
     "redacted": true
   },
+  "provenance": {
+    "rules": {
+      "parameterized-sql": "Queries take parameters, never strings built from input."
+    }
+  },
   "findingList": [
     {
       "fingerprint": "0123456789abcdef",
@@ -419,7 +424,11 @@
         "endLine": 12,
         "replacement": "const q = db.query(sql, [id]);"
       },
-      "evidence": ["`id` comes from `req.params` in `src/routes.ts`"]
+      "evidence": ["`id` comes from `req.params` in `src/routes.ts`"],
+      "rule": {
+        "kind": "rule",
+        "id": "parameterized-sql"
+      }
     },
     {
       "fingerprint": "fedcba9876543210",

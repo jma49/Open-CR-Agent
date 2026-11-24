@@ -2183,6 +2183,9 @@ export const reviewUploadSchema: z.ZodObject<{
         redacted: z.ZodOptional<z.ZodLiteral<true>>;
         truncated: z.ZodOptional<z.ZodLiteral<true>>;
     }, z.core.$strip>>>;
+    provenance: z.ZodCatch<z.ZodOptional<z.ZodObject<{
+        rules: z.ZodRecord<z.ZodString, z.ZodString>;
+    }, z.core.$strip>>>;
 }, z.core.$strip>;
 
 // @public

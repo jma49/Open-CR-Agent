@@ -1,4 +1,5 @@
-import { priorFinding, reviewReport } from "@open-cr-agent/test-support";
+import { MAX_RULE_TEXT } from "@open-cr-agent/cloud-contract";
+import { finding, priorFinding, reviewReport } from "@open-cr-agent/test-support";
 import { describe, expect, it } from "vitest";
 import { cloudUpload } from "./review.js";
 
@@ -73,5 +74,43 @@ describe("cloudUpload", () => {
       fixedFingerprints: ["aaaabbbbccccdddd"],
       dismissedFingerprints: ["1111222233334444", "eeeeffff00001111"],
     });
+  });
+
+  it("sends the text of the rules the shared findings name, redacted and cut, only with the findings", () => {
+    const rule = (id: string, text: string) => ({ id, path: ["**"], rule: text });
+    const ruled = reviewReport({
+      findings: [
+        finding({ rule: { kind: "rule", id: "tenant-scope" } }),
+        finding({ fingerprint: "1111222233334444", rule: { kind: "rule", id: "long-rule" } }),
+        finding({
+          fingerprint: "5555666677778888",
+          rule: { kind: "learning", id: "retry-budget" },
+        }),
+      ],
+      provenance: {
+        ocraVersion: "0.0.0",
+        promptHash: "p",
+        configHash: "c",
+        sampling: {},
+        rules: [
+          rule(
+            "tenant-scope",
+            "Scope queries by tenant, never with api_key=sk-live-0123456789abcdef.",
+          ),
+          rule("long-rule", "x".repeat(MAX_RULE_TEXT + 500)),
+          rule("unnamed", "No finding applies this one."),
+          rule("retry-budget", "A rule that shares a learning's id."),
+        ],
+      },
+    });
+    expect(cloudUpload(ruled, cloud(false), pull).upload).not.toHaveProperty("provenance");
+    const rules = cloudUpload(ruled, cloud(true), pull).upload.provenance?.rules ?? {};
+    expect(Object.keys(rules).sort()).toEqual(["long-rule", "tenant-scope"]);
+    expect(rules["tenant-scope"]).toBe("Scope queries by tenant, never with api_key=[redacted].");
+    expect(rules["long-rule"]).toHaveLength(MAX_RULE_TEXT);
+  });
+
+  it("sends no rule text when no shared finding names a rule", () => {
+    expect(cloudUpload(report, cloud(true), pull).upload).not.toHaveProperty("provenance");
   });
 });

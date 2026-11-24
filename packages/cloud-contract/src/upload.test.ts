@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import upload from "../fixtures/upload.json" with { type: "json" };
-import { MAX_EVIDENCE, MAX_EVIDENCE_FIELD, MAX_FIELD } from "./limits.js";
+import {
+  MAX_EVIDENCE,
+  MAX_EVIDENCE_FIELD,
+  MAX_FIELD,
+  MAX_FINDINGS,
+  MAX_RULE_TEXT,
+} from "./limits.js";
 import { reviewUploadSchema, sharedFindingSchema, uploadAnswerSchema } from "./upload.js";
 
 const { about: _, ...body } = upload;
@@ -237,7 +243,8 @@ describe("a shared finding's rule", () => {
   it("is kept as sent, and absent from an older upload", () => {
     const rule = { kind: "learning", id: "retry-without-backoff" };
     expect(sharedFindingSchema.parse({ ...finding, rule }).rule).toEqual(rule);
-    expect(sharedFindingSchema.parse(finding)).not.toHaveProperty("rule");
+    const { rule: _r, ...older } = finding ?? {};
+    expect(sharedFindingSchema.parse(older)).not.toHaveProperty("rule");
   });
 
   it("reads as absent with an unknown kind or an id that is not one", () => {
@@ -250,6 +257,31 @@ describe("a shared finding's rule", () => {
       const parsed = sharedFindingSchema.parse({ ...finding, rule: bad });
       expect(parsed.rule, JSON.stringify(bad)).toBeUndefined();
       expect(parsed.title).toBe(finding?.title);
+    }
+  });
+});
+
+describe("the rules' text in an upload", () => {
+  it("is kept by id, and absent from an older upload", () => {
+    const provenance = { rules: { "tenant-scope": "Scope queries by tenant." } };
+    expect(reviewUploadSchema.parse({ ...body, provenance }).provenance).toEqual(provenance);
+    const { provenance: _p, ...older } = body;
+    expect(reviewUploadSchema.parse(older)).not.toHaveProperty("provenance");
+  });
+
+  it("reads as absent with an id that is not one, a text too long or too many rules", () => {
+    const many = Object.fromEntries(
+      Array.from({ length: MAX_FINDINGS + 1 }, (_, i) => [`rule-${i}`, "r"]),
+    );
+    for (const rules of [
+      { "Tenant Scope": "r" },
+      { "tenant-scope": "x".repeat(MAX_RULE_TEXT + 1) },
+      { "tenant-scope": 1 },
+      many,
+    ]) {
+      const parsed = reviewUploadSchema.parse({ ...body, provenance: { rules } });
+      expect(parsed.provenance, JSON.stringify(rules).slice(0, 60)).toBeUndefined();
+      expect(parsed.runId).toBe(body.runId);
     }
   });
 });

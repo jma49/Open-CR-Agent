@@ -35,6 +35,7 @@ Every review uploaded by a signed-in CLI, with its findings, its walkthrough and
 
 - **Ask ocra.** A review's page answers questions about it and its pull request ("why is this finding critical?"), with your own model key. The change is data to the model, never instructions.
 - **Trace.** A review uploaded with its findings by CLI 0.25.0 or later carries its trace (the CLI's `trace.json`, [Sessions](./cli#sessions)): its page draws the run as a timeline of stages, tasks, attempts and model calls, says where each reported finding ended up and why, and downloads the trace as JSON to hand a reviewer as evidence. Titles, reasons and paths go through the same redaction as the findings; no code, prompt, answer or searched text is sent.
+- **Rules.** A review uploaded with its findings by CLI 0.26.0 or later carries the text of each [rule](./rules) its findings name, through the same redaction and cut at 2,000 characters; a learning is named by its id alone. An account's rules take an `id` as those of `rules.json` do, and findings name them by it.
 - **Live.** A review run by CLI 0.11.0 or later relays its progress while it runs; the Live page shows the run, and you can let named people, or anyone signed in to the server, watch it and comment on findings. Nothing is shared until you say so.
 
 ## Learnings
