@@ -230,7 +230,7 @@ Signed in to [ocra Cloud](./cli#ocra-login-ocra-logout-ocra-whoami), `ocra revie
 
 | Account key | How it applies |
 |---|---|
-| `runtime` (`opencode` or `direct`), `models.<tier>`, `effort.<tier>`, `reviewers.<id>`, `roles.<role>` | Only where the configuration leaves it out; a reviewer's or role's entry in the configuration wins whole |
+| `runtime` (`opencode`, `direct` or `codex`), `models.<tier>`, `effort.<tier>`, `reviewers.<id>`, `roles.<role>` | Only where the configuration leaves it out; a reviewer's or role's entry in the configuration wins whole |
 | `concurrency`, `taskTimeoutMinutes`, `runTimeoutMinutes`, `maxCostUsd`, `maxTasks`, `verify`, `judge`, `fixes`, `linkedTasks`, `sampling`, `ultra`, `depth`, `minInlineSeverity`, `maxInlineComments` | Only when the configuration does not set it (`sampling` as one setting): the account can bound an unbounded run, never loosen a limit |
 | `include` | Combined: the configuration's patterns, then the account's |
 | `exclude` | Only when the configuration sets none: a file the account excludes is neither reviewed nor counted as unreviewed, so an `exclude` in the configuration, even `[]`, keeps the account's out |
@@ -242,4 +242,4 @@ Account settings apply to `--pr` and `--mr` runs too, under the base commit's co
 
 ## Plugins
 
-`runtime` picks the registered runtime: `opencode` (default) or `direct` ([Choosing the runtime](./providers#choosing-the-runtime)). `plugins` lists extra plugins by package name or path; `pluginSettings.<plugin-name>` holds each one's settings. See [Plugins](./plugins).
+`runtime` picks the registered runtime: `opencode` (default), `direct` or `codex` ([Choosing the runtime](./providers#choosing-the-runtime)). `plugins` lists extra plugins by package name or path; `pluginSettings.<plugin-name>` holds each one's settings. See [Plugins](./plugins).

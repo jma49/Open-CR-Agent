@@ -230,7 +230,7 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 
 | 账户中的键 | 如何生效 |
 |---|---|
-| `runtime`（`opencode` 或 `direct`）、`models.<tier>`、`effort.<tier>`、`reviewers.<id>`、`roles.<role>` | 只补充配置没有写的部分；配置中某个审查员或角色的条目整体优先 |
+| `runtime`（`opencode`、`direct` 或 `codex`）、`models.<tier>`、`effort.<tier>`、`reviewers.<id>`、`roles.<role>` | 只补充配置没有写的部分；配置中某个审查员或角色的条目整体优先 |
 | `concurrency`、`taskTimeoutMinutes`、`runTimeoutMinutes`、`maxCostUsd`、`maxTasks`、`verify`、`judge`、`fixes`、`linkedTasks`、`sampling`、`ultra`、`depth`、`minInlineSeverity`、`maxInlineComments` | 只在配置没有设置时生效（`sampling` 算一个整体）：账户可以给没有上限的运行加上限，但不能放宽限制 |
 | `include` | 合并：先是配置中的模式，再是账户的 |
 | `exclude` | 只在配置没有设置时生效：账户排除的文件既不审查，也不算作未审查，所以配置里写了 `exclude`（哪怕是 `[]`）就不再采用账户的 |
@@ -242,4 +242,4 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 
 ## 插件
 
-`runtime` 选择已注册的运行时：`opencode`（默认）或 `direct`（见[选择运行时](./providers#选择运行时)）。`plugins` 按包名或路径列出额外的插件，`pluginSettings.<插件名>` 存放各插件的设置。详见[插件](./plugins)。
+`runtime` 选择已注册的运行时：`opencode`（默认）、`direct` 或 `codex`（见[选择运行时](./providers#选择运行时)）。`plugins` 按包名或路径列出额外的插件，`pluginSettings.<插件名>` 存放各插件的设置。详见[插件](./plugins)。

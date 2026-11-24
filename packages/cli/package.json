@@ -56,6 +56,7 @@
   },
   "optionalDependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
+    "@open-cr-agent/runtime-codex": "0.26.0",
     "@open-cr-agent/runtime-opencode": "0.26.0"
   },
   "publishConfig": {

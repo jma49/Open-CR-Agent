@@ -10,8 +10,9 @@ const importMissing = () => loadRuntime("opencode", MISSING, () => import(MISSIN
 
 describe("BUILTIN_RUNTIMES", () => {
   it("imports the plugin of each built-in runtime by its configured name", async () => {
-    expect(Object.keys(BUILTIN_RUNTIMES)).toEqual(["opencode", "direct"]);
+    expect(Object.keys(BUILTIN_RUNTIMES)).toEqual(["opencode", "codex", "direct"]);
     expect((await BUILTIN_RUNTIMES.opencode?.())?.name).toBe("runtime-opencode");
+    expect((await BUILTIN_RUNTIMES.codex?.())?.name).toBe("runtime-codex");
     expect((await BUILTIN_RUNTIMES.direct?.())?.name).toBe("runtime-direct");
   });
 });
