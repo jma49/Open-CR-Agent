@@ -1,6 +1,6 @@
 {
   "name": "@open-cr-agent/cli",
-  "version": "0.25.0",
+  "version": "0.26.0",
   "description": "ocra: open-source AI code review built for pull requests you do not trust, for local changes, GitHub and GitLab",
   "keywords": [
     "code-review",
@@ -42,21 +42,21 @@
     "!dist/**/*.map"
   ],
   "dependencies": {
-    "@open-cr-agent/cloud-contract": "0.25.0",
-    "@open-cr-agent/code-graph": "0.25.0",
-    "@open-cr-agent/core": "0.25.0",
-    "@open-cr-agent/runtime-direct": "0.25.0",
-    "@open-cr-agent/vcs-github": "0.25.0",
-    "@open-cr-agent/vcs-gitlab": "0.25.0",
-    "@open-cr-agent/vcs-local": "0.25.0",
-    "@open-cr-agent/vcs-platform": "0.25.0",
+    "@open-cr-agent/cloud-contract": "0.26.0",
+    "@open-cr-agent/code-graph": "0.26.0",
+    "@open-cr-agent/core": "0.26.0",
+    "@open-cr-agent/runtime-direct": "0.26.0",
+    "@open-cr-agent/vcs-github": "0.26.0",
+    "@open-cr-agent/vcs-gitlab": "0.26.0",
+    "@open-cr-agent/vcs-local": "0.26.0",
+    "@open-cr-agent/vcs-platform": "0.26.0",
     "import-meta-resolve": "^4.2.0",
     "yaml": "^2.9.1",
     "zod": "^4.6.6"
   },
   "optionalDependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "@open-cr-agent/runtime-opencode": "0.25.0"
+    "@open-cr-agent/runtime-opencode": "0.26.0"
   },
   "publishConfig": {
     "access": "public"
