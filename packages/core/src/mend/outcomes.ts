@@ -30,6 +30,7 @@ export const MEND_ITEM_REASONS = [
     "overlap",
     "no_room",
     "attempts",
+    "conflicts",
     "head_moved",
     "not_writable",
   ] as const),

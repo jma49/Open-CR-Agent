@@ -28,8 +28,12 @@ export type Mention =
 
 // One commit ocra writes on the change request's own branch (ADR-0051).
 export interface ChangeCommit {
-  // The head the files were made from: the commit's only parent.
+  // The head the files were made from: the commit's first parent.
   parent: string;
+  // Set for a merge of the base branch into the head: the base branch's
+  // commit, the second parent. The commit's tree is then git's merge of the
+  // two, with `files` in place of the files that conflicted.
+  mergeParent?: string;
   message: string;
   // Each file's whole new content, a regular file; `created`: no file is at
   // its path in the parent.
@@ -56,6 +60,28 @@ export interface ChangeChecks {
   pending: boolean;
   // At most CHECK_LIMITS.checks of them, in the platform's order.
   failed: FailedCheck[];
+}
+
+// A file the change request and its base branch changed in the same lines,
+// as git merged it: diff3 style, the change request's side first, with
+// markers of `markerSize` characters, a size no line of the file starts
+// with.
+export interface ConflictedFile {
+  path: string;
+  merged: string;
+  markerSize: number;
+  executable: boolean;
+}
+
+// What stands between the change request's head and a merge of its base
+// branch (ADR-0078 point 3).
+export interface ChangeConflicts {
+  // The base branch's head that was merged in.
+  mergeParent: string;
+  files: ConflictedFile[];
+  // Conflicted paths that are not a text conflict of one regular file
+  // (deleted or renamed on a side, binary, too large): a person's.
+  other: string[];
 }
 
 // One item of a round of the fix loop as its note names it: a finding by
@@ -93,6 +119,9 @@ export interface VcsAdapter {
   listFiles?(dir: string): Promise<string[]>;
   // Absent: the adapter cannot commit to the change request.
   commit?(commit: ChangeCommit): Promise<CommitResult>;
+  // The conflicts of merging the base branch's head into `headSha`;
+  // undefined when they merge cleanly. Absent: the adapter cannot tell.
+  conflicts?(headSha: string): Promise<ChangeConflicts | undefined>;
   // Says on the change request what a round of the fix loop committed.
   // Absent: the adapter has nowhere to say it.
   note?(round: RoundNote): Promise<void>;
