@@ -258,9 +258,21 @@ export interface ChangeCommit {
         executable: boolean;
     }[];
     // (undocumented)
+    mergeParent?: string;
+    // (undocumented)
     message: string;
     // (undocumented)
     parent: string;
+}
+
+// @public (undocumented)
+export interface ChangeConflicts {
+    // (undocumented)
+    files: ConflictedFile[];
+    // (undocumented)
+    mergeParent: string;
+    // (undocumented)
+    other: string[];
 }
 
 // @public (undocumented)
@@ -372,6 +384,18 @@ export interface ConfigureContext<Settings = unknown> extends BootstrapContext<S
     registerTool(tool: ToolDefinition): void;
     // (undocumented)
     registerVcs(name: string, factory: VcsFactory): void;
+}
+
+// @public (undocumented)
+export interface ConflictedFile {
+    // (undocumented)
+    executable: boolean;
+    // (undocumented)
+    markerSize: number;
+    // (undocumented)
+    merged: string;
+    // (undocumented)
+    path: string;
 }
 
 // @public (undocumented)
@@ -2515,6 +2539,8 @@ export interface VcsAdapter {
     checks?(headSha: string): Promise<ChangeChecks>;
     // (undocumented)
     commit?(commit: ChangeCommit): Promise<CommitResult>;
+    // (undocumented)
+    conflicts?(headSha: string): Promise<ChangeConflicts | undefined>;
     // (undocumented)
     getChangeRequest(): Promise<ChangeRequest>;
     // (undocumented)

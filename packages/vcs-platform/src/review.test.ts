@@ -1,5 +1,6 @@
 import type { ChangeCommit } from "@open-cr-agent/core";
 import { describe, expect, it } from "vitest";
+import type { MergeSource } from "./commit.js";
 import {
   AUTHOR,
   BASE,
@@ -12,7 +13,7 @@ import {
 } from "./conformance.fakes.js";
 import { declinesFinding } from "./declined.js";
 import type { ReviewPlatform } from "./platform.js";
-import { type MergeSource, PlatformReview } from "./review.js";
+import { PlatformReview } from "./review.js";
 import { SUMMARY_MARKER } from "./state.js";
 import { githubSuggestion } from "./suggestion.js";
 

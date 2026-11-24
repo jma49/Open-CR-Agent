@@ -1,8 +1,27 @@
 import { posix } from "node:path";
-import type { ChangeCommit, CommitResult } from "@open-cr-agent/core";
+import type { ChangeCommit, ChangeConflicts, CommitResult } from "@open-cr-agent/core";
 import { OcraError } from "@open-cr-agent/core";
 import type { PlatformChangeRequest, ReviewPlatform } from "./platform.js";
-import type { MergeSource } from "./review.js";
+
+// Merges made in the local clone, where both branches' commits are: the
+// platforms' APIs neither show a merge's conflicts nor take a commit with
+// two parents and a tree of its own. `conflicts` answers undefined for a
+// clean merge; `push` writes the merge commit and updates the branch
+// without force.
+export interface MergeSource {
+  conflicts(
+    ours: string,
+    theirs: string,
+  ): Promise<Pick<ChangeConflicts, "files" | "other"> | undefined>;
+  push(merge: {
+    ours: string;
+    theirs: string;
+    message: string;
+    files: readonly { path: string; content: string }[];
+    branch: string;
+    author: { name: string; email: string };
+  }): Promise<CommitResult>;
+}
 
 // What holds for a commit of ocra's on every platform (ADR-0051): it is made
 // from the head ocra read, it names each file once by a plain path inside
@@ -16,7 +35,7 @@ export async function commitToChangeRequest(
   return refusedBefore(read, commit) ?? platform.commit(commit);
 }
 
-// A merge of the base branch into the head (ADR-0078 point 7) holds to the
+// A merge of the base branch into the head (ADR-0079) holds to the
 // same rules and is made in the local clone, which pushes it without force:
 // the remote takes it only while the branch is at the head ocra read.
 export async function mergeToChangeRequest(

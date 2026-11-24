@@ -17,7 +17,7 @@ import type {
 } from "@open-cr-agent/core";
 import { errorMessage, isUnfinished, OcraError } from "@open-cr-agent/core";
 import { checksOfChange } from "./checks.js";
-import { commitToChangeRequest, mergeToChangeRequest } from "./commit.js";
+import { commitToChangeRequest, type MergeSource, mergeToChangeRequest } from "./commit.js";
 import { mentionOf } from "./conversation.js";
 import { declinedFindings, declinesFinding, findingOf } from "./declined.js";
 import type {
@@ -40,26 +40,6 @@ export type CodeSource = Pick<VcsAdapter, "getDiff" | "readFile" | "searchCode" 
 // review. The CLI answers from the local clone.
 export interface History {
   filesChangedSince(from: string, to: string): Promise<{ files: string[] } | { reason: string }>;
-}
-
-// Merges made in the local clone, where both branches' commits are: the
-// platforms' APIs neither show a merge's conflicts nor take a commit with
-// two parents and a tree of its own. `conflicts` answers undefined for a
-// clean merge; `push` writes the merge commit and updates the branch
-// without force.
-export interface MergeSource {
-  conflicts(
-    ours: string,
-    theirs: string,
-  ): Promise<Pick<ChangeConflicts, "files" | "other"> | undefined>;
-  push(merge: {
-    ours: string;
-    theirs: string;
-    message: string;
-    files: readonly { path: string; content: string }[];
-    branch: string;
-    author: { name: string; email: string };
-  }): Promise<CommitResult>;
 }
 
 export interface PlatformReviewOptions {

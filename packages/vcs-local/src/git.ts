@@ -193,8 +193,8 @@ export function gitEnvironment(
   );
 }
 
-// Only a fetch reaches a remote, so only a fetch gets what credential
-// helpers read from the environment: gh's and glab's tokens and Git
+// Only a fetch and the push of a merge (ADR-0079) reach a remote, so only
+// they get what credential helpers read from the environment: gh's and glab's tokens and Git
 // Credential Manager's settings.
 const CREDENTIAL_PREFIXES = ["GH_", "GLAB_", "GITLAB_", "GCM_"];
 const CREDENTIAL_NAMES = new Set(["GITHUB_TOKEN", "GITHUB_ENTERPRISE_TOKEN"]);

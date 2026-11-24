@@ -888,6 +888,9 @@ export const MAX_MEMORY_PER_REPO = 500;
 export const MAX_MEND_CHECKS = 3;
 
 // @public
+export const MAX_MEND_CONFLICTS = 50;
+
+// @public
 export const MAX_MEND_FINDINGS = 200;
 
 // @public
@@ -895,6 +898,9 @@ export const MAX_MERGE_CHECK_INSTRUCTION = 500;
 
 // @public
 export const MAX_MERGE_CHECKS = 20;
+
+// @public
+export const MAX_RESOLVED_CHARS = 400000;
 
 // @public
 export const MAX_REVIEWERS = 40;
@@ -938,7 +944,7 @@ export const memoryEntrySchema: z.ZodObject<{
 export const MEND_ITEM_OUTCOMES: readonly ["fixed", "proposed", "rejected", "deferred", "needs_human", "gone"];
 
 // @public
-export const MEND_ITEM_REASONS: readonly ["declined", "failed", "stale", "unchanged", "unsafe", "too_large", "no_parser", "syntax", "not_candidate", "out_of_scope", "protected", "tamper", "unresolved", "unsure", "unchecked", "overlap", "no_room", "attempts", "head_moved", "not_writable"];
+export const MEND_ITEM_REASONS: readonly ["declined", "failed", "stale", "unchanged", "unsafe", "too_large", "no_parser", "syntax", "not_candidate", "out_of_scope", "protected", "tamper", "unresolved", "unsure", "unchecked", "overlap", "no_room", "attempts", "conflicts", "head_moved", "not_writable"];
 
 // @public
 export const MEND_LEVELS: readonly ["propose", "commit"];
@@ -1014,9 +1020,12 @@ export const mendResultSchema: z.ZodObject<{
         spend: "spend";
     }>>;
     commitSha: z.ZodNullable<z.ZodString>;
+    mergeParent: z.ZodDefault<z.ZodNullable<z.ZodString>>;
     items: z.ZodArray<z.ZodObject<{
         fingerprint: z.ZodString;
         check: z.ZodDefault<z.ZodNullable<z.ZodString>>;
+        conflict: z.ZodDefault<z.ZodNullable<z.ZodString>>;
+        resolved: z.ZodDefault<z.ZodNullable<z.ZodString>>;
         outcome: z.ZodEnum<{
             deferred: "deferred";
             fixed: "fixed";
@@ -1027,6 +1036,7 @@ export const mendResultSchema: z.ZodObject<{
         }>;
         reason: z.ZodNullable<z.ZodEnum<{
             attempts: "attempts";
+            conflicts: "conflicts";
             declined: "declined";
             failed: "failed";
             head_moved: "head_moved";
