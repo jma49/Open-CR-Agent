@@ -218,6 +218,15 @@ export const bodyIssueSchema: z.ZodObject<{
     message: z.ZodString;
 }, z.core.$strip>;
 
+// @public
+export const CHECK_LOG_LIMITS: {
+    readonly lines: 200;
+    readonly chars: 20000;
+};
+
+// @public
+export function checkLogTail(log: string): string;
+
 // @public (undocumented)
 export const CLOUD_PREFIX = "ocra-";
 

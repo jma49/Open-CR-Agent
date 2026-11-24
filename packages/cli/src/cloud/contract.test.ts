@@ -17,6 +17,7 @@ import {
 import {
   AGENT_ROLES,
   CHECK_LIMITS,
+  logTail,
   MARKDOWN_RULES_PATH,
   MAX_MARKDOWN_RULES_CHARS,
   MAX_TIMER_MS,
@@ -74,6 +75,19 @@ describe("the contract's vocabulary", () => {
     expect(contract.MEND_ITEM_OUTCOMES).toEqual(MEND_ITEM_OUTCOMES);
     expect(contract.MEND_ITEM_REASONS).toEqual(MEND_ITEM_REASONS);
     expect(contract.MAX_MEND_CHECKS).toBe(CHECK_LIMITS.checks);
+    expect(contract.CHECK_LOG_LIMITS).toEqual({
+      lines: CHECK_LIMITS.logLines,
+      chars: CHECK_LIMITS.logChars,
+    });
+    const logs = [
+      "",
+      "2026-11-23T10:00:01.1234567Z \u001b[32m✓\u001b[0m adds\n\n2026-11-23T10:00:02Z \u001b[31mFAIL\u001b[0m a.test.ts\r\n  expected 6 to be 5\u0007\u2028",
+      Array.from({ length: 500 }, (_, n) => `2026-11-23T10:00:02+08:00 line ${n}\t\u009b`).join(
+        "\n",
+      ),
+      `${"x".repeat(50_000)}\nthe end`,
+    ];
+    for (const log of logs) expect(contract.checkLogTail(log)).toBe(logTail(log));
     expect(contract.MAX_TIMEOUT_MINUTES).toBe(Math.floor(MAX_TIMER_MS / 60_000));
     expect(contract.RULES_MARKDOWN_PATH).toBe(MARKDOWN_RULES_PATH);
     expect(contract.MAX_RULES_MARKDOWN_CHARS).toBe(MAX_MARKDOWN_RULES_CHARS);

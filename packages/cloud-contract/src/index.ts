@@ -1,3 +1,4 @@
+export { CHECK_LOG_LIMITS, checkLogTail } from "./check-log.js";
 export {
   CONFIG_SCHEMA_ID,
   configJsonSchema,
