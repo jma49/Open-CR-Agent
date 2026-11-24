@@ -187,7 +187,7 @@ Prints each metric of both runs and the difference. For two repeated runs, preci
 
 Golden runs scored against the same cases and labels also get a paired section: for every required claim of the cases all runs reviewed, paired by its id, the share of each side's runs that found it, a table of those whose share differs, and a sign test over them (found more often, less often, and the two-sided exact binomial p; `better` or `worse` below 0.05). Using every repeat of every finding, it can show a shift the recall numbers hide. Runs scored against different cases or labels, or before claims had ids, get no paired test; rescore both sides.
 
-In ocra's own repository the `eval compare` workflow does this for a branch: started by hand on it, it reviews the tier, or the cases named by id, with the base's build and the branch's under one configuration in Anthropic's protocol, each side within its spend limit, and puts the comparison in the run's summary.
+In ocra's own repository the `eval compare` workflow does this for a branch: started by hand on it, it reviews the tier, or the cases named by id, with the base's build and the branch's under one configuration in Anthropic's protocol, each side within its spend limit, and puts the comparison in the run's summary. Between the sides it waits until the prompt cache the base stored has expired, so neither side's cost is helped by the other's reviews; each side's first repeat still costs more than its later ones, which read what it stored.
 
 For single runs, `--spread-of` (a second baseline run) reports a difference no larger than the gap between the two baseline runs as `no change`; without it the direction is not judged.
 
