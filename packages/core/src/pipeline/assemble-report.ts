@@ -44,6 +44,7 @@ export function assembleReport(run: RunFacts, stages: Stages, context: StageCont
   const inline = options.inline && selectInline(report.findings, options.inline);
   if (inline) report.inline = inline;
   report.anchoring = summarizeAnchoring(report.findings, executed.relocations.length);
+  if (options.runtime.agent) report.agent = options.runtime.agent;
   const agents = resolveAgents(run.reviewers, options);
   report.warnings.push(...effortWarnings(agents, options.runtime));
   if (options.identity?.provenance) {

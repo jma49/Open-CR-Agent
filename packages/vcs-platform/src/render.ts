@@ -10,6 +10,7 @@ import {
   type Severity,
   type Verification,
 } from "@open-cr-agent/core";
+import { byline } from "./byline.js";
 import { incompleteNotes } from "./incomplete-notes.js";
 import { safeMarkdown } from "./neutralize.js";
 import { type ReviewState, SUMMARY_MARKER, writeState } from "./state.js";
@@ -147,7 +148,7 @@ function evidenceSection(evidence: readonly string[]): string[] {
 
 // The title stands alone on the first line, the notes under it in the same
 // paragraph: a backslash breaks the line on GitHub and on GitLab alike.
-export function inlineBody(f: Finding, fence: SuggestionFence): string {
+export function inlineBody(f: Finding, fence: SuggestionFence, agent?: string): string {
   const parts = [
     `<!-- ocra:finding ${f.fingerprint} -->`,
     `${ICON[f.severity]} **${safeLine(f.title)}**\\`,
@@ -162,6 +163,7 @@ export function inlineBody(f: Finding, fence: SuggestionFence): string {
   const block = TILDE_FENCE.test(parts.join("\n")) ? undefined : suggestionBlock(f, fence);
   if (block) parts.push("", block);
   parts.push(...evidenceSection(f.evidence));
+  if (agent) parts.push("", `<sub>${byline(agent)}</sub>`);
   return parts.join("\n");
 }
 
@@ -209,7 +211,7 @@ function verdictSection(report: ReviewReport, text: PlatformText): string[] {
   const summary = report.summary.trim();
   return [
     SUMMARY_MARKER,
-    `## ocra review · ${headline(report)}`,
+    `## ${byline(report.agent)} review · ${headline(report)}`,
     ...(summary === "" ? [] : ["", safeMarkdown(summary, { startsLine: true })]),
     ...overrideNote(report, text),
     "",

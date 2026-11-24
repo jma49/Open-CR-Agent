@@ -257,6 +257,32 @@ describe("findings outside the diff", () => {
   });
 });
 
+describe("the coding agent that ran the review", () => {
+  it("is named after ocra in the summary's heading and under each inline comment", () => {
+    const byAgent: ReviewReport = { ...report([]), agent: "Codex" };
+    const summary = renderSummary({
+      report: byAgent,
+      commented: new Set(),
+      state: { findings: [] },
+      text: gitlab,
+    });
+    expect(summary.split("\n")[1]).toMatch(/^## ocra · Codex review · /);
+    const body = inlineBody(finding("c".repeat(16)), githubSuggestion, "Codex");
+    expect(body.endsWith("\n\n<sub>ocra · Codex</sub>")).toBe(true);
+  });
+
+  it("is not named when ocra's own engine ran the review", () => {
+    const summary = renderSummary({
+      report: report([]),
+      commented: new Set(),
+      state: { findings: [] },
+      text: gitlab,
+    });
+    expect(summary.split("\n")[1]).toMatch(/^## ocra review · /);
+    expect(inlineBody(finding("c".repeat(16)), githubSuggestion)).not.toContain("<sub>");
+  });
+});
+
 describe("inlineBody", () => {
   it("neutralizes commands in every part a model wrote", () => {
     const body = inlineBody(

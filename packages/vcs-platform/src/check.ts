@@ -6,6 +6,7 @@ import {
   type ReviewReport,
   type Severity,
 } from "@open-cr-agent/core";
+import { byline } from "./byline.js";
 import { codeSpan, safeLine } from "./render.js";
 
 // How a review ended, as a check on the change request's head commit: a
@@ -37,7 +38,7 @@ export function checkOutcome(report: ReviewReport): CheckOutcome {
   if (coverageGaps(report).nothingReviewed) {
     return {
       conclusion: "neutral",
-      title: "Not reviewed",
+      title: `${agentPrefix(report)}Not reviewed`,
       summary: "Nothing was reviewed. The summary comment on the pull request says why.",
     };
   }
@@ -45,7 +46,9 @@ export function checkOutcome(report: ReviewReport): CheckOutcome {
   const incomplete = isIncompleteReview(report) ? " · incomplete" : "";
   return {
     conclusion: passes ? "success" : "neutral",
-    title: clip(`${VERDICT[report.verdict]} · ${counts(findings)}${incomplete}`),
+    title: clip(
+      `${agentPrefix(report)}${VERDICT[report.verdict]} · ${counts(findings)}${incomplete}`,
+    ),
     summary: findings.length === 0 ? "No issues found." : table(findings),
   };
 }
@@ -59,6 +62,10 @@ export function runningOutcome(headSha: string): Pick<CheckOutcome, "title" | "s
 
 export function stoppedOutcome(reason: string): CheckOutcome {
   return { conclusion: "cancelled", title: "Stopped", summary: safeLine(reason) };
+}
+
+function agentPrefix(report: ReviewReport): string {
+  return report.agent ? `${byline(report.agent)} · ` : "";
 }
 
 function counts(findings: readonly Finding[]): string {

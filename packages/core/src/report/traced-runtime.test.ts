@@ -59,6 +59,11 @@ describe("tracedRuntime", () => {
     expect(events).toEqual([{ type: "model_called", agent: "light", ms: 40, usage, failed: true }]);
   });
 
+  it("keeps the coding agent the runtime names", () => {
+    const runtime: AgentRuntime = { name: "codex", agent: "Codex", runTask: async function* () {} };
+    expect(tracedRuntime(runtime, () => {}).agent).toBe("Codex");
+  });
+
   it("offers no completion when the runtime has none", () => {
     const traced = tracedRuntime({ name: "fake", runTask: async function* () {} }, () => {});
     expect(traced.complete).toBeUndefined();
