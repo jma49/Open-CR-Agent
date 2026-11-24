@@ -1,5 +1,6 @@
 import type { PluginRegistry, VcsAdapter } from "@open-cr-agent/core";
-import type { CodeSource, History, MergeSource } from "./review.js";
+import type { MergeSource } from "./commit.js";
+import type { CodeSource, History } from "./review.js";
 
 // A pull or merge request as the user named it.
 export interface ChangeRequestRef {

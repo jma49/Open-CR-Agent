@@ -16,7 +16,7 @@ const BRANCH = /^[A-Za-z0-9._/-]+$/;
 // A file both sides changed in the same lines, as text: `merged` is the
 // three-way merge in diff3 style, ours first, with markers of `markerSize`
 // characters, a size no line of the three versions starts with.
-export interface MergedFile {
+interface MergedFile {
   path: string;
   merged: string;
   markerSize: number;

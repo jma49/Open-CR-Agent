@@ -1,6 +1,7 @@
 import { z } from "zod";
+import type { MergeSource } from "./commit.js";
 import type { PlatformChangeRequest } from "./platform.js";
-import type { CodeSource, History, MergeSource } from "./review.js";
+import type { CodeSource, History } from "./review.js";
 
 // What every platform adapter's registry options share. The code source and
 // the history are ports the caller implements, so only their shape can be

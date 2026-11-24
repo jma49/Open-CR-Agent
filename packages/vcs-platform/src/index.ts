@@ -1,6 +1,7 @@
 // The review conversation every platform adapter shares (ADR-0016), for
 // ocra's own adapters. Not a contract yet: a minor release may change it.
 
+export type { MergeSource } from "./commit.js";
 export {
   changeRequestSchema,
   codeSourceSchema,
@@ -26,7 +27,6 @@ export { MAX_ATTEMPTS, type RetryDecision, retryDecision } from "./retry.js";
 export {
   type CodeSource,
   type History,
-  type MergeSource,
   PlatformReview,
   type PlatformReviewOptions,
 } from "./review.js";

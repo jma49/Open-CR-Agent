@@ -408,6 +408,7 @@ ocra mend --pr 7 --findings accepted.json --head <sha> --json              # pro
 ocra mend --pr 7 --findings accepted.json --level commit --state state.json --json
 ocra mend --mr 12 --findings - --level commit --json < accepted.json       # a GitLab merge request
 ocra mend --pr 7 --checks --level commit --state state.json --json         # the head's failed checks
+ocra mend --pr 7 --conflicts --state state.json --json                     # propose a resolution of its merge conflicts
 ocra mend --from main --findings accepted.json                             # a local range; propose only
 ```
 
@@ -415,6 +416,7 @@ ocra mend --from main --findings accepted.json                             # a l
 |---|---|
 | `--findings <file\|->` | The accepted findings as a JSON array, the most important first, each in the shape ocra Cloud stores (`sharedFindingSchema`); `-` reads stdin. At most 200 findings and 2 MiB |
 | `--checks` | Also work on the checks that failed on the head of the pull or merge request (see below). With it, `--findings` may be left out. Needs `--pr` or `--mr` (v0.22.0) |
+| `--conflicts` | First resolve the conflicts of merging the base branch into the head (see below). With it, `--findings` may be left out. Needs `--pr` or `--mr`, run in a clone of the repository (v0.22.0) |
 | `--level <level>` | `propose` (default): the checked edits are in the result and nothing is committed. `commit`: one commit on the branch |
 | `--state <file>` | The `state` the last round printed. Omit it for a change's first round |
 | `--head <sha>` | The full commit id the findings were reviewed at. When the change's head is another, ocra calls no model and answers `head_moved` |
@@ -431,36 +433,38 @@ ocra mend --from main --findings accepted.json                             # a l
 
 **Failed checks.** With `--checks`, a round also reads the checks of the head: on GitHub its check runs, on GitLab the jobs of the merge request's newest pipeline on that commit. A check is worked on when it failed (on GitHub a failure or a timeout, not a cancelled or skipped run; on GitLab a failed job that is not allowed to fail) and does not fail under the same name on the head of the base branch: what is already broken there is not this change's to fix. A round takes at most 3 of them, after the findings, within the same 5 items. Each goes to a fixer task as above, given the check's name, the last 200 lines of the failed job's log (at most 20,000 characters, without timestamps and terminal sequences) and the paths the change touches; the log is data to it, and ocra runs nothing. On GitHub the log of an Actions job needs a token with `actions: read`; without it, and for a check of another app, the task gets what the check reported of itself, and a check with neither goes to a person (`not_candidate`), as every check does on the `opencode` runtime. The task is told to fix the code, to change a test only when the change altered the behaviour on purpose, and to make no edit when the failure is not the change's (an outage, a timeout, a missing secret); the gate still refuses an edit that turns a test off, and the verifier reads each edit. A failed check is the same item, with the same attempts, while it fails the same way: its name and the first line of its log that names a failure, numbers and ids aside. When checks are still running and nothing else is open, the round does nothing, counts as none and answers `waiting`: start the next one when they finish. A platform whose checks cannot be read leaves the round to its findings, with a warning.
 
+**Merge conflicts.** With `--conflicts`, a round first reads, in the local clone, whether the base branch still merges into the head: `git merge-tree` over the two commits, with nothing checked out and no hook, merge driver or filter of the repository run. When it merges, the round goes on as without the option. When it does not, the round works on the conflicts alone, and every finding is `deferred` with the reason `conflicts` and uses no attempt. Each conflicted file is an item. One call on the `fixer` role reads its conflicted regions (the base text, both sides and 20 lines around each, as data) and answers each region or declines; code puts the answers between the lines git merged, so those cannot change. An answer that leaves a conflict marker, holds a control or bidirectional character or makes the file parse worse is refused, and one call on the `verifier` role must answer that each region keeps what both sides meant. A round resolves at most 5 files, 8 regions a file and 120 lines a region (`too_large` beyond); a file that was deleted, renamed, is binary or changed its mode on a side, and a file the gate protects, is a person's (`needs_human`). The merge is written only when every conflicted file is resolved; otherwise nothing is, and the files not yet tried are `deferred` with `conflicts`. At `--level propose` each item is `proposed` with the file's whole resolved content in `resolved`, and `mergeParent` is the base branch's commit to merge. At `--level commit` the round writes one merge commit, whose parents are the head and that commit, and pushes it from the clone to the change request's branch: an ordinary push, never forced, never a rebase, so a branch that moved answers `head_moved`, and a branch the token cannot push to (a fork, a protected branch) answers `not_writable`. Turn `--level commit` on for conflicts only where the repository's owners want ocra to add merge commits to their branches ([ADR-0079](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0079-merge-conflicts-as-a-merge-commit.md)).
+
 **The caps.** A finding gets 2 attempts, a change 6 rounds, and the rounds together the spend limit. The state counts them: pass each round the state the last one printed. A finding that was not tried, or whose edit was not written (the round was full, the head moved), uses no attempt.
 
 With `--json`, stdout is one line:
 
 ```json
-{"headSha":"<40 hex>","outcome":"committed","stopped":null,"commitSha":"<40 hex>","items":[{"fingerprint":"b491fb26b470419c","check":null,"outcome":"fixed","reason":null,"cause":null,"edits":[{"path":"src/total.ts","startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"}]}],"state":{"rounds":1,"costUsd":0.06,"items":{"b491fb26b470419c":{"attempts":1}}},"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
+{"headSha":"<40 hex>","outcome":"committed","stopped":null,"commitSha":"<40 hex>","mergeParent":null,"items":[{"fingerprint":"b491fb26b470419c","check":null,"conflict":null,"resolved":null,"outcome":"fixed","reason":null,"cause":null,"edits":[{"path":"src/total.ts","startLine":3,"endLine":3,"replacement":"  for (let i = 0; i < prices.length; i++) sum += prices[i];"}]}],"state":{"rounds":1,"costUsd":0.06,"items":{"b491fb26b470419c":{"attempts":1}}},"usage":{"inputTokens":0,"cachedTokens":0,"outputTokens":0,"reasoningTokens":0,"costUsd":0}}
 ```
 
 | `outcome` | Meaning | Exit |
 |---|---|---|
-| `committed` | One commit, `commitSha`, on the branch | `0` |
-| `proposed` | `--level propose`: the edits are in `items`, nothing committed | `0` |
+| `committed` | One commit, `commitSha`, on the branch; after a round over conflicts it is the merge commit, and `mergeParent` its second parent | `0` |
+| `proposed` | `--level propose`: the edits, or the resolved files, are in `items`, nothing committed | `0` |
 | `nothing` | No finding got an edit that passed; `items` says why | `0` |
 | `stopped` | No round ran: the change reached the cap `stopped` names (`rounds` or `spend`) | `0` |
 | `head_moved` | The head is not `--head`, or the branch moved after ocra read it; nothing committed | `3` |
 | `not_writable` | The token cannot write to the branch, or the change is a local one | `3` |
 | `waiting` | `--checks`: the head's checks are still running and nothing else was open; no round was counted | `0` |
 
-Each entry of `items` is one finding, in the order given, then one failed check each, whose `check` is its name (`null` for a finding) and whose `fingerprint` is the id the loop keeps its attempts under:
+Each entry of `items` is one finding, in the order given, then one failed check each, whose `check` is its name (`null` for a finding) and whose `fingerprint` is the id the loop keeps its attempts under. A round over merge conflicts lists one item per conflicted file instead, whose `conflict` is its path (`null` otherwise), after the findings it deferred:
 
 | Item `outcome` | Meaning | `reason` |
 |---|---|---|
-| `fixed` | Its edits are in the commit | `null` |
-| `proposed` | Its edits are in the result, for a person to commit | `null` |
+| `fixed` | Its edits are in the commit, or its file is resolved in the merge commit | `null` |
+| `proposed` | Its edits, or its resolved file (`resolved`), are in the result, for a person to commit | `null` |
 | `rejected` | No edit passed this round; another round may try | `failed`, `unchanged`, `unsafe`, `syntax`, `declined`, `unresolved`, `unsure` or `unchecked` |
-| `deferred` | Not tried, or not written; no attempt counted | `no_room`, `overlap`, `head_moved` or `not_writable` |
+| `deferred` | Not tried, or not written; no attempt counted | `no_room`, `overlap`, `conflicts`, `head_moved` or `not_writable` |
 | `needs_human` | Closed for a person to decide | `not_candidate`, `no_parser`, `out_of_scope`, `protected`, `too_large`, `tamper`, or `attempts` when both attempts are used |
 | `gone` | Its code is not at the head any more | `stale` |
 
-`edits` replace whole lines `startLine` to `endLine` of `path` at `headSha`; it is empty unless the item is `fixed` or `proposed`. An item's `cause` says what failed when its `reason` is `failed`, with the values [`ocra fix`](#ocra-fix) gives, and is `null` otherwise (v0.21.0). Usage, input and configuration errors, and a runtime that cannot start, exit `2`. The shapes are `mendResultSchema`, `mendStateSchema` and `mendFindingsSchema` in `@open-cr-agent/cloud-contract` ([ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)). Merge conflicts and reviewers' requests are planned. New in v0.20.0; the task with the `edit` tool in v0.21.0; failed checks in v0.22.0.
+`edits` replace whole lines `startLine` to `endLine` of `path` at `headSha`; it is empty unless the item is `fixed` or `proposed`, and always for a conflicted file, whose `resolved` holds the whole file when it is `proposed` (`null` otherwise). An item's `cause` says what failed when its `reason` is `failed`, with the values [`ocra fix`](#ocra-fix) gives, and is `null` otherwise (v0.21.0). Usage, input and configuration errors, and a runtime that cannot start, exit `2`. The shapes are `mendResultSchema`, `mendStateSchema` and `mendFindingsSchema` in `@open-cr-agent/cloud-contract` ([ADR-0078](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0078-fix-loop.md)). Reviewers' requests are planned. New in v0.20.0; the task with the `edit` tool in v0.21.0; failed checks and merge conflicts in v0.22.0.
 
 ## ocra metrics
 

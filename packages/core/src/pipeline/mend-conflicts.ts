@@ -24,7 +24,7 @@ import type { ChangeConflicts, ConflictedFile } from "../vcs.js";
 const CONCURRENCY = 3;
 const CALL_TIMEOUT_MS = 180_000;
 
-export interface ConflictResult {
+interface ConflictResult {
   id: string;
   // The conflicted file's path.
   conflict: string;

@@ -6,6 +6,7 @@
 
 import type { ChangeChecks } from '@open-cr-agent/core';
 import type { ChangeCommit } from '@open-cr-agent/core';
+import type { ChangeConflicts } from '@open-cr-agent/core';
 import type { ChangeRequest } from '@open-cr-agent/core';
 import type { CodeMatch } from '@open-cr-agent/core';
 import type { CommitResult } from '@open-cr-agent/core';
@@ -114,10 +115,36 @@ export interface LocalCode {
     code: CodeSource;
     // (undocumented)
     history: History;
+    // (undocumented)
+    merge?: MergeSource;
 }
 
 // @public (undocumented)
 export const MAX_ATTEMPTS = 3;
+
+// @public (undocumented)
+export interface MergeSource {
+    // (undocumented)
+    conflicts(ours: string, theirs: string): Promise<Pick<ChangeConflicts, "files" | "other"> | undefined>;
+    // (undocumented)
+    push(merge: {
+        ours: string;
+        theirs: string;
+        message: string;
+        files: readonly {
+            path: string;
+            content: string;
+        }[];
+        branch: string;
+        author: {
+            name: string;
+            email: string;
+        };
+    }): Promise<CommitResult>;
+}
+
+// @public (undocumented)
+export const mergeSourceSchema: z.ZodCustom<MergeSource, MergeSource>;
 
 // @public (undocumented)
 export function pickStacked(found: readonly StackedChangeRequest[]): StackedChangeRequest | undefined;
@@ -193,6 +220,8 @@ export class PlatformReview implements VcsAdapter {
     // (undocumented)
     commit(commit: ChangeCommit): Promise<CommitResult>;
     // (undocumented)
+    conflicts(headSha: string): Promise<ChangeConflicts | undefined>;
+    // (undocumented)
     getChangeRequest(): Promise<ChangeRequest>;
     // (undocumented)
     getDiff(): Promise<FileDiff[]>;
@@ -224,6 +253,8 @@ export interface PlatformReviewOptions {
     code: CodeSource;
     // (undocumented)
     history?: History;
+    // (undocumented)
+    merge?: MergeSource;
     // (undocumented)
     name: string;
     // (undocumented)
@@ -340,6 +371,8 @@ export function retryDecision(method: string, idempotent: boolean, outcome: {
 // @public (undocumented)
 export interface ReviewPlatform {
     // (undocumented)
+    baseHead(): Promise<string>;
+    // (undocumented)
     bot(): Promise<Bot>;
     // (undocumented)
     canWrite(login: string): Promise<boolean>;
@@ -361,6 +394,16 @@ export interface ReviewPlatform {
     linkedTasks(): Promise<LinkedTask[]>;
     // (undocumented)
     publishFindings(report: ReviewReport, fresh: readonly InlineFinding[]): Promise<PublishedFindings>;
+    // (undocumented)
+    pushTarget(): Promise<{
+        branch: string;
+        author: {
+            name: string;
+            email: string;
+        };
+    } | {
+        refused: string;
+    }>;
     // (undocumented)
     reply(discussion: PlatformDiscussion, body: string): Promise<void>;
     // (undocumented)
