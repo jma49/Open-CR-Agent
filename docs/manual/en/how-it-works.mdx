@@ -103,7 +103,7 @@ A reviewer is an agent with a focused prompt, its own rules, and a scope that te
 |---|---|---|---|
 | `correctness` | Logic errors, broken contracts, error handling | every tier | nothing |
 | `security` | Exploitable issues reachable from untrusted input: injection, authorization, secrets, crypto, unsafe parsing, CI | `lite` and `full` | documentation, tests |
-| `performance` | Measurable regressions on paths that matter: complexity, N+1, blocking work, memory | `full` | documentation, tests, config data, CI workflows |
+| `performance` | Measurable regressions on paths that matter: complexity, N+1, blocking work, memory | `full`; `lite` on a bundle with a file on a hot path, such as a cache, query, queue, pool, stream or cluster | documentation, tests, config data, CI workflows |
 | `docs` | Documentation the change makes wrong: a removed or renamed flag, key, endpoint or default that the README, docs or help text still describe (light model) | `lite` and `full` | tests |
 | `agents-md` | Statements in `AGENTS.md` the change makes false: commands, layout, module responsibilities, required tools and variables (light model; only when the repository has `AGENTS.md`) | `lite` and `full` | tests |
 

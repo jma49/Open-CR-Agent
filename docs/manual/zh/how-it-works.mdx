@@ -103,7 +103,7 @@ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Fi
 |---|---|---|---|
 | `correctness` | 逻辑错误、契约被破坏、错误处理 | 所有档位 | 无 |
 | `security` | 能被不可信输入触达、可被利用的问题：注入、授权、密钥、加密、不安全的解析、CI | `lite` 和 `full` | 文档、测试 |
-| `performance` | 重要路径上可度量的性能退化：复杂度、N+1、阻塞操作、内存 | `full` | 文档、测试、配置数据、CI workflow |
+| `performance` | 重要路径上可度量的性能退化：复杂度、N+1、阻塞操作、内存 | `full`；分组里有热路径上的文件（如 cache、query、queue、pool、stream、cluster）时从 `lite` 起 | 文档、测试、配置数据、CI workflow |
 | `docs` | 被这次改动弄错的文档：被删除或改名的参数、配置项、接口或默认值，而 README、文档或帮助文字还在描述旧的（用 light 模型） | `lite` 和 `full` | 测试 |
 | `agents-md` | `AGENTS.md` 里被这次改动弄错的内容：命令、目录结构、模块职责、需要的工具和环境变量（用 light 模型；仅当仓库有 `AGENTS.md` 时运行） | `lite` 和 `full` | 测试 |
 

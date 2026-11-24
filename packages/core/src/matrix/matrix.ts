@@ -4,7 +4,7 @@ import type { ReviewerOverrides } from "../agent/settings.js";
 import { type Bundle, defaultBundlePolicy } from "../bundle/bundle.js";
 import { type FileDiff, RISK_TIERS, type RiskTier } from "../domain.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
-import { touchesSensitivePath } from "../triage.js";
+import { hasPathWord, touchesSensitivePath } from "../triage.js";
 
 export interface MatrixCell {
   taskId: string;
@@ -74,9 +74,11 @@ export function planMatrix(
         skip("disabled");
         continue;
       }
+      const ignored = ignores.get(reviewer.id) ?? (() => false);
+      const files = bundle.files.filter((f) => !ignored(f.newPath));
       const minTier = options.allTiers
         ? "trivial"
-        : (override.minTier ?? reviewer.scope?.minTier ?? "trivial");
+        : (override.minTier ?? scopeTier(reviewer, files));
       if (rank(tier) < rank(minTier)) {
         skip("below_tier");
         continue;
@@ -85,8 +87,6 @@ export function planMatrix(
         skip("no_guidelines");
         continue;
       }
-      const ignored = ignores.get(reviewer.id) ?? (() => false);
-      const files = bundle.files.filter((f) => !ignored(f.newPath));
       if (files.length === 0) {
         skip("no_matching_files");
         continue;
@@ -248,6 +248,16 @@ export function planTasks(
 
 export function rank(tier: RiskTier): number {
   return RISK_TIERS.indexOf(tier);
+}
+
+// The reviewer's own lowest tier for these files: its focus tier when one
+// of them is on a focus path (ADR-0082).
+function scopeTier(reviewer: ReviewerDefinition, files: readonly FileDiff[]): RiskTier {
+  const { minTier = "trivial", focus } = reviewer.scope ?? {};
+  const focused =
+    focus !== undefined &&
+    files.some((f) => hasPathWord(f.newPath, focus.words) || hasPathWord(f.oldPath, focus.words));
+  return focused ? focus.minTier : minTier;
 }
 
 function ignoreMatcher(reviewer: ReviewerDefinition): (path: string) => boolean {

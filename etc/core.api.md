@@ -1853,6 +1853,11 @@ export type ReviewerOverrides = Readonly<Record<string, ReviewerOverride>>;
 // @public (undocumented)
 export interface ReviewerScope {
     // (undocumented)
+    focus?: {
+        words: ReadonlySet<string>;
+        minTier: RiskTier;
+    };
+    // (undocumented)
     ignore?: readonly string[];
     // (undocumented)
     minTier?: RiskTier;
