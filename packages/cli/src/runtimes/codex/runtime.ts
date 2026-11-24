@@ -61,6 +61,7 @@ interface ExecInput {
 
 export class CodexRuntime implements AgentRuntime {
   readonly name = "codex";
+  readonly agent = "Codex";
   private infra: Promise<Infra> | undefined;
   private context: ReviewContext | undefined;
   private calls = 0;

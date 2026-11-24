@@ -130,6 +130,8 @@ Maintainers stay in charge. A maintainer, someone with write access (admin, main
 
 An inline comment opens with the finding's title on a line of its own, with its severity, its reviewer and whether Verify confirmed it under it; then what goes wrong, a suggested fix, and the facts the reviewer checked, folded under **Evidence**.
 
+When a coding agent ran the review (the [`codex` runtime](./providers)), ocra names it after itself, as `ocra · Codex`: in the summary comment's heading, under each inline comment and at the start of the check's title. The comments are still posted by ocra's account.
+
 A finding can carry a fix: code that replaces the lines it is about. Its inline comment then carries a suggestion block that anyone with write access can commit (**Commit suggestion**, or in a batch). ocra offers one only when the comment sits on exactly the replaced lines, never in the summary, and posts the code exactly or not at all: a fix holding an HTML comment opener, `@ocra` or `/ocra`, a carriage return or a control or bidirectional character, or longer than 20,000 characters, gets no block; the finding is still posted. A suggestion is a model's proposal: read it before committing.
 
 Fixes come from the [Fix stage](./how-it-works), which is off unless [`fixes`](./configuration) or `--fixes` turns it on ([ADR-0058](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0058-checked-fix-proposals.md)); without it, comments give suggestions as text.

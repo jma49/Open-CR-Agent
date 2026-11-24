@@ -241,6 +241,9 @@ export interface AppliedSettings {
 
 export interface AgentRuntime {
   readonly name: string;
+  // The coding agent that runs each review task, as people know it
+  // ("Codex"); absent when ocra's own engine runs them.
+  readonly agent?: string;
   // Absent: the runtime applies none of the requested sampling settings.
   readonly sampling?: AppliedSampling;
   // What the runtime applied for an agent that asked for an effort; undefined

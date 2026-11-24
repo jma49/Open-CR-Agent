@@ -17,6 +17,7 @@ export function tracedRuntime(
     get name() {
       return runtime.name;
     },
+    ...(runtime.agent ? { agent: runtime.agent } : {}),
     ...(runtime.sampling ? { sampling: runtime.sampling } : {}),
     ...(runtime.toolsets ? { toolsets: true as const } : {}),
     ...(runtime.appliedTo ? { appliedTo: runtime.appliedTo.bind(runtime) } : {}),
