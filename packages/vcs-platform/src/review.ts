@@ -337,7 +337,7 @@ export class PlatformReview implements VcsAdapter {
       return [
         {
           finding: { ...f, lineRange: f.lineRange },
-          body: inlineBody(f, this.platform.suggestionFence),
+          body: inlineBody(f, this.platform.suggestionFence, report.agent),
         },
       ];
     });
