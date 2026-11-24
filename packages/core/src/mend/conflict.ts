@@ -200,15 +200,3 @@ function jsonOf(text: string): unknown {
     return undefined;
   }
 }
-
-// A marker size no line of the versions starts with, so the merge's markers
-// cannot be confused with the file's text.
-export function markerSizeFor(versions: readonly string[]): number {
-  let longest = 0;
-  for (const version of versions) {
-    for (const run of version.matchAll(/^(<+|\|+|=+|>+)/gm)) {
-      longest = Math.max(longest, run[0].length);
-    }
-  }
-  return Math.max(7, longest + 1);
-}

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   buildConflictPrompt,
   CONFLICT_LIMITS,
-  markerSizeFor,
   parseConflicts,
   regionsOf,
   resolveConflicts,
@@ -69,8 +68,6 @@ describe("parseConflicts", () => {
       { region: { ours: ["x"], base: [], theirs: ["y"] } },
       { lines: [] },
     ]);
-    expect(markerSizeFor(["<<<<<<< not a marker\n", "========\n", "plain"])).toBe(9);
-    expect(markerSizeFor(["plain"])).toBe(7);
   });
 
   it("refuses markers that do not pair up", () => {
