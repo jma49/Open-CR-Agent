@@ -30,7 +30,6 @@
     "packages/runtime-codex": {
       "entry": ["src/**/*.test.ts"],
       "project": ["src/**/*.ts"],
-      "ignoreDependencies": ["@openai/codex"],
       "ignoreIssues": {
         "src/index.ts": ["exports", "types"]
       }
