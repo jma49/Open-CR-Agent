@@ -2751,6 +2751,14 @@ export interface VcsAdapter {
     readFile(path: string): Promise<string | undefined>;
     // (undocumented)
     searchCode(literal: string): Promise<CodeMatch[]>;
+    // (undocumented)
+    started?(): Promise<{
+        warnings: string[];
+    }>;
+    // (undocumented)
+    stopped?(reason: string): Promise<{
+        warnings: string[];
+    }>;
 }
 
 // @public (undocumented)

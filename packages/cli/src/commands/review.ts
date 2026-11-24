@@ -14,7 +14,7 @@ import { localGitPlugin } from "@open-cr-agent/vcs-local";
 import { EXIT } from "../io/exit.js";
 import { refuseLinkedOutput } from "../io/output-file.js";
 import type { ReviewArgs } from "./review/args.js";
-import { deliver, writeReport } from "./review/deliver.js";
+import { deliver, executeShown, writeReport } from "./review/deliver.js";
 import type { ReviewDeps } from "./review/deps.js";
 import { executeRun } from "./review/execute-run.js";
 import { exitCode } from "./review/exit-code.js";
@@ -43,7 +43,7 @@ export async function reviewCommand(
   if (args.plan) return planRun(run, args, io, deps);
   // Checked again when writing; refused here, before any model is paid for.
   if (args.output !== undefined) await refuseLinkedOutput(run.root, resolve(deps.cwd, args.output));
-  const executed = await executeRun(run, args, io, deps);
+  const executed = await executeShown(run, () => executeRun(run, args, io, deps));
   await writeReport(run, executed, args, io, deps);
   if (executed.interrupted) return EXIT.interrupted;
   await deliver(run, executed, args, io, deps);
