@@ -31,6 +31,7 @@ icon: ListChecks
 {
   "rules": [
     {
+      "id": "idempotency-key",
       "path": "services/billing/**",
       "rule": "Every write must carry an idempotency key. Flag handlers that retry without one."
     },
@@ -44,6 +45,7 @@ icon: ListChecks
 
 - `path`：一个 glob，或一组 glob。
 - `rule`：交给审查员的规则文本。
+- `id`（可选）：小写字母、数字和 `-`，最多 64 个字符。依据这条规则的问题会在报告的 `rule` 里写出它，ocra Cloud 据此按规则统计问题。不写时规则以 `rule-` 加其文本的 8 个十六进制字符命名，文本改了它也会变。
 
 `rules.json` 不合法时审查会报错停止。审查 PR 时从 base 提交读取。
 
@@ -66,7 +68,7 @@ Migrations must be backward compatible with the previous release.
 ```
 
 - 标题里包含带斜杠的路径（`## services/billing/`、``### `web/src` ``）就算写了路径；子小节沿用上一级标题的路径。
-- 每个有正文的小节是一条规则（含标题），交给文件匹配的审查任务，排在 `rules.json` 的规则之后。报告里它的 `source` 是 `repository`。
+- 每个有正文的小节是一条规则（含标题），交给文件匹配的审查任务，排在 `rules.json` 的规则之后。报告里它的 `source` 是 `repository`，`id` 是标题转成小写、词之间用 `-` 连接（`services-billing`）；标题里没有拉丁字母或数字时，按文本得到 `rule-` 开头的 id。
 - glob（`**/*.sql`）仍写在 `rules.json` 里；一个仓库可以两个文件都有。
 
 文件超过 20,000 个字符时审查会报错停止。审查 PR 时和 `rules.json` 一样从 base 提交读取。
@@ -96,7 +98,7 @@ created: 2026-11-21
 - `critical`：路径匹配时一定交给审查员。
 - `source`：来源（`kind`：`fix-commit`、`review-feedback`、`document`、`remember`、`incident` 或 `manual`；`ref`：提交、PR 或链接）。
 
-每个审查任务拿到适用于它那些文件的 learning，在任何模型调用之前选好：路径匹配的 critical 条目排第一，其次是路径匹配且补丁中出现其符号或关键词的，再次是路径匹配且改动所在的函数或类中出现其符号或关键词的，接着是只有符号匹配的，然后是只有路径匹配的，最后是只有关键词匹配的。只有适用的条目多于能给出的数量时，ocra 才会读取被改动的函数。最多给 5 条，正文合计不超过 8,000 个字符；路径匹配的 critical 条目另外全部给出（最多 10 条）。适用但放不下的条目只列 id 和标题，最多 10 条，其余给出条数；审查员可以用 `read_learning` 读取其中一条，内容同样来自可信版本。审查员把它们当作数据读，只报告这次改动本身的问题。报告的 `learnings` 列出给过的每一条，以及它去了哪些分组。
+每个审查任务拿到适用于它那些文件的 learning，在任何模型调用之前选好：路径匹配的 critical 条目排第一，其次是路径匹配且补丁中出现其符号或关键词的，再次是路径匹配且改动所在的函数或类中出现其符号或关键词的，接着是只有符号匹配的，然后是只有路径匹配的，最后是只有关键词匹配的。只有适用的条目多于能给出的数量时，ocra 才会读取被改动的函数。最多给 5 条，正文合计不超过 8,000 个字符；路径匹配的 critical 条目另外全部给出（最多 10 条）。适用但放不下的条目只列 id 和标题，最多 10 条，其余给出条数；审查员可以用 `read_learning` 读取其中一条，内容同样来自可信版本。审查员把它们当作数据读，只报告这次改动本身的问题。报告的 `learnings` 列出给过的每一条，以及它去了哪些分组；依据其中一条（给出的或列出的）的问题会在 `rule` 里写出它的 id。
 
 learning 读取被审查的版本，审查 PR 时和 `rules.json` 一样从 base 提交读取，所以 PR 无法加一条来影响对它自己的审查。不合法的文件会被跳过并给出警告；最多读 500 个文件，每个不超过 16 KB。
 

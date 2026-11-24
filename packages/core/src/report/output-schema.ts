@@ -89,6 +89,7 @@ const outputFindingSchema = z.strictObject({
   suggestion: z.string().exactOptional(),
   fix: fixSchema.exactOptional(),
   evidence: z.array(z.string()),
+  rule: z.strictObject({ kind: z.enum(["rule", "learning"]), id: z.string() }).exactOptional(),
   code: z.string(),
   lowConfidence: z.literal(true).exactOptional(),
   preExisting: z.literal(true).exactOptional(),
@@ -194,6 +195,7 @@ const provenanceSchema = z.strictObject({
   rules: z
     .array(
       z.strictObject({
+        id: z.string().exactOptional(),
         path: z.array(z.string()),
         rule: z.string(),
         source: z.enum(["repository", "shared", "account", "plugin"]).exactOptional(),

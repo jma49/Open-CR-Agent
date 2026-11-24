@@ -14,6 +14,13 @@ const lineRangeSchema = z.object({
 });
 export type LineRange = z.infer<typeof lineRangeSchema>;
 
+// The repository rule or team learning a finding applies (ADR-0080).
+const findingRuleSchema = z.object({
+  kind: z.enum(["rule", "learning"]),
+  id: z.string().min(1),
+});
+export type FindingRule = z.infer<typeof findingRuleSchema>;
+
 export const reportedFindingSchema = z.object({
   category: z.string().min(1),
   severity: severitySchema,
@@ -23,6 +30,7 @@ export const reportedFindingSchema = z.object({
   body: z.string().min(1),
   suggestion: z.string().optional(),
   evidence: z.array(z.string()).default([]),
+  rule: findingRuleSchema.optional(),
 });
 export type ReportedFinding = z.infer<typeof reportedFindingSchema>;
 

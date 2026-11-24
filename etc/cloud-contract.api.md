@@ -559,6 +559,12 @@ export const fileStatusSchema: z.ZodEnum<{
 }>;
 
 // @public
+export const FINDING_RULE_ID: RegExp;
+
+// @public
+export const FINDING_RULE_KINDS: readonly ["rule", "learning"];
+
+// @public
 export const FINGERPRINT: RegExp;
 
 // @public
@@ -992,6 +998,13 @@ export const mendFindingsSchema: z.ZodArray<z.ZodObject<{
         replacement: z.ZodString;
     }, z.core.$strip>>>;
     evidence: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodString>>>;
+    rule: z.ZodCatch<z.ZodOptional<z.ZodObject<{
+        kind: z.ZodEnum<{
+            learning: "learning";
+            rule: "rule";
+        }>;
+        id: z.ZodString;
+    }, z.core.$strip>>>;
     lowConfidence: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
@@ -1951,6 +1964,13 @@ export const reviewUploadSchema: z.ZodObject<{
             replacement: z.ZodString;
         }, z.core.$strip>>>;
         evidence: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodString>>>;
+        rule: z.ZodCatch<z.ZodOptional<z.ZodObject<{
+            kind: z.ZodEnum<{
+                learning: "learning";
+                rule: "rule";
+            }>;
+            id: z.ZodString;
+        }, z.core.$strip>>>;
         lowConfidence: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
         redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
         truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
@@ -2085,6 +2105,13 @@ export const sharedFindingSchema: z.ZodObject<{
         replacement: z.ZodString;
     }, z.core.$strip>>>;
     evidence: z.ZodCatch<z.ZodOptional<z.ZodArray<z.ZodString>>>;
+    rule: z.ZodCatch<z.ZodOptional<z.ZodObject<{
+        kind: z.ZodEnum<{
+            learning: "learning";
+            rule: "rule";
+        }>;
+        id: z.ZodString;
+    }, z.core.$strip>>>;
     lowConfidence: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;

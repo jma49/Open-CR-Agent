@@ -18,6 +18,7 @@ import {
   type RepoRule,
   type SourcedRule,
 } from "../rules/repo-rules.js";
+import { type IdentifiedRule, identifyRules } from "../rules/rule-ids.js";
 import { type AnalyzerEvidence, analyzerEvidence } from "../sarif/evidence.js";
 import {
   binaryTextWarning,
@@ -55,7 +56,7 @@ export interface ReviewPlan {
   guidelines: string | undefined;
   // The guidelines' sections, which taskPrompt picks from per task.
   guidelineSections: GuidelineSection[];
-  repoRules: SourcedRule[];
+  repoRules: IdentifiedRule[];
   memory: RememberedEntry[];
   learnings: SelectLearnings;
   // Absent when none were looked up (ADR-0052).
@@ -190,10 +191,10 @@ export async function planReview(
     context,
     guidelines,
     guidelineSections: guidelines === undefined ? [] : guidelineSections(guidelines),
-    repoRules: [
+    repoRules: identifyRules([
       ...(options.rules ?? []),
       ...fileRules.map((rule): SourcedRule => ({ ...rule, source: "repository" })),
-    ],
+    ]),
     memory: mergeMemory(
       memoryText === undefined ? [] : parseMemory(memoryText),
       options.accountMemory ?? [],

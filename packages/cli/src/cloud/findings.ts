@@ -80,6 +80,7 @@ function share(f: Finding): SharedFinding {
   if (facts.length > 0) {
     shared.evidence = facts.slice(0, MAX_EVIDENCE).map((e) => text(e, MAX_EVIDENCE_FIELD));
   }
+  if (f.rule) shared.rule = { kind: f.rule.kind, id: f.rule.id };
   if (f.lowConfidence) shared.lowConfidence = true;
   if (redacted) shared.redacted = true;
   if (truncated) shared.truncated = true;

@@ -1,11 +1,12 @@
 import type { Bundle } from "../bundle/bundle.js";
 import { type GuidelineScope, guidelinesForTask, type TaskGuidelines } from "../docs/guidelines.js";
 import { sectionsFor } from "../docs/project-docs.js";
+import type { FindingRule } from "../domain.js";
 import type { MatrixCell } from "../matrix/matrix.js";
 import { memoryFor } from "../memory/memory.js";
 import type { OptionalContext } from "../review/context-sources.js";
 import { buildReviewPrompt, type ReviewPrompt, type ReviewPromptInput } from "../review/prompt.js";
-import { resolveRules } from "../rules/resolve.js";
+import { resolveRepoRules, resolveRules } from "../rules/resolve.js";
 import { evidenceForReviewer } from "../sarif/evidence.js";
 import type { ReviewPlan } from "./plan.js";
 
@@ -25,6 +26,9 @@ export interface TaskPrompt {
   // enough to get every reviewer is most likely to break a caller the
   // reviewer would otherwise have to find with its own steps.
   callers: boolean;
+  // What a finding of the task may name as the rule it applies: the
+  // repository rules and the learnings, read or listed, it was given.
+  citable: ReadonlyMap<string, FindingRule["kind"]>;
   // The plan phase's call, when the task has one: one per reviewer and
   // bundle (key), shared by --ultra's two samples, so its prompt is built
   // only by the call that runs it.
@@ -50,6 +54,7 @@ export function taskPrompt(
 ): TaskPrompt {
   const files = cell.bundle.files.map((f) => f.newPath);
   const learnings = plan.learnings(cell.bundle.files);
+  const repoRules = resolveRepoRules(files, plan.repoRules);
   const docs = sectionsFor(plan.docSections, files);
   const analyzerResults = evidenceForReviewer(
     plan.evidence.forBundle(cell.bundle),
@@ -61,8 +66,8 @@ export function taskPrompt(
     changeRequest: plan.changeRequest,
     changedFiles: plan.selected,
     bundle: cell.bundle.files,
-    rules: resolveRules(files, [], cell.reviewer.rules),
-    repoRules: resolveRules(files, plan.repoRules),
+    rules: resolveRules(files, cell.reviewer.rules),
+    repoRules: repoRules.text,
     ...guidelinesInput(
       guidelinesForTask(
         plan.guidelineSections,
@@ -83,11 +88,16 @@ export function taskPrompt(
   };
   const prompt = buildReviewPrompt(input);
   const callers = (ultra || plan.tier === "full") && !without?.has("callers");
-  if (!ultra && !plansFirst(cell)) return { input, prompt, callers };
+  const citable = citableRules(
+    without?.has("rules") ? [] : repoRules.ids,
+    without?.has("learnings") ? [] : [...learnings.selected, ...learnings.left],
+  );
+  if (!ultra && !plansFirst(cell)) return { input, prompt, callers, citable };
   return {
     input,
     prompt,
     callers,
+    citable,
     planCall: {
       key: `${cell.reviewer.id}\0${cell.bundle.label}`,
       prompt: () => buildReviewPrompt({ ...input, planPhase: "call" }),
@@ -115,4 +125,14 @@ function plansFirst({ reviewer, bundle }: MatrixCell): boolean {
 function isLargeBundle({ files }: Bundle): boolean {
   const chars = files.reduce((sum, f) => sum + f.patch.length, 0);
   return files.length >= PLAN_MIN_FILES || chars >= PLAN_MIN_PATCH_CHARS;
+}
+
+function citableRules(
+  rules: readonly string[],
+  learnings: readonly { id: string }[],
+): ReadonlyMap<string, FindingRule["kind"]> {
+  const citable = new Map<string, FindingRule["kind"]>();
+  for (const l of learnings) citable.set(l.id, "learning");
+  for (const id of rules) citable.set(id, "rule");
+  return citable;
 }

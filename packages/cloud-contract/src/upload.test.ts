@@ -230,3 +230,26 @@ describe("a shared finding's evidence", () => {
     }
   });
 });
+
+describe("a shared finding's rule", () => {
+  const [finding] = body.findingList;
+
+  it("is kept as sent, and absent from an older upload", () => {
+    const rule = { kind: "learning", id: "retry-without-backoff" };
+    expect(sharedFindingSchema.parse({ ...finding, rule }).rule).toEqual(rule);
+    expect(sharedFindingSchema.parse(finding)).not.toHaveProperty("rule");
+  });
+
+  it("reads as absent with an unknown kind or an id that is not one", () => {
+    for (const bad of [
+      { kind: "guideline", id: "tenant" },
+      { kind: "rule", id: "Tenant Ids" },
+      { kind: "rule", id: "x".repeat(81) },
+      "tenant",
+    ]) {
+      const parsed = sharedFindingSchema.parse({ ...finding, rule: bad });
+      expect(parsed.rule, JSON.stringify(bad)).toBeUndefined();
+      expect(parsed.title).toBe(finding?.title);
+    }
+  });
+});

@@ -38,6 +38,11 @@ export const reviewerCountsSchema = z.object({
 });
 export type ReviewerCounts = z.input<typeof reviewerCountsSchema>;
 
+/** What a finding names as the rule it applies: a repository rule or a learning (ADR-0080). */
+export const FINDING_RULE_KINDS = ["rule", "learning"] as const;
+/** A rule's or a learning's id, as the review report gives it. */
+export const FINDING_RULE_ID = /^[a-z0-9][a-z0-9-]{0,79}$/;
+
 /** A finding's stable id across runs. */
 export const FINGERPRINT = /^[\w:.-]{4,128}$/;
 const line = z.number().int().min(0).lt(10_000_000).nullable().catch(null);
@@ -79,6 +84,11 @@ export const sharedFindingSchema = z.object({
   evidence: z
     .array(z.string().max(MAX_EVIDENCE_FIELD))
     .max(MAX_EVIDENCE)
+    .optional()
+    .catch(undefined),
+  // The rule or learning the finding applies; the report's provenance holds a rule's text.
+  rule: z
+    .object({ kind: z.enum(FINDING_RULE_KINDS), id: z.string().regex(FINDING_RULE_ID) })
     .optional()
     .catch(undefined),
   // Kept by --ultra though the judge would drop it; `ocra fix` asks no fix for it.

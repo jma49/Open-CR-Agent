@@ -98,6 +98,34 @@ describe("executeTask", () => {
     expect(result.findings[1]).not.toHaveProperty("model");
   });
 
+  it("keeps the rule a finding names only when the task was given it, and the finding always", async () => {
+    const rt: AgentRuntime = {
+      name: "fake",
+      async *runTask(task): AsyncIterable<AgentEvent> {
+        for (const rule of ["tenant", " retry-learning ", "made-up", 7]) {
+          yield { type: "finding", taskId: task.taskId, finding: { ...reported, rule } };
+        }
+        yield { type: "done", taskId: task.taskId };
+      },
+    };
+    const citable = new Map([
+      ["tenant", "rule" as const],
+      ["retry-learning", "learning" as const],
+    ]);
+    const result = await executeTask(rt, spec(1_000), new AbortController().signal, {
+      ...callbacks,
+      citable,
+    });
+    expect(result.findings.map((f) => f.reported.rule)).toEqual([
+      { kind: "rule", id: "tenant" },
+      { kind: "learning", id: "retry-learning" },
+      undefined,
+      undefined,
+    ]);
+    expect(result.findings[2]?.reported).not.toHaveProperty("rule");
+    expect(result.warnings).toEqual([]);
+  });
+
   it("keeps the usage and findings a timed-out task delivers while stopping", async () => {
     const result = await executeTask(
       stoppingRuntime(),

@@ -58,6 +58,7 @@ export type {
   Finding,
   FindingFix,
   FindingProvenance,
+  FindingRule,
   FindingStatus,
   Hunk,
   LineRange,

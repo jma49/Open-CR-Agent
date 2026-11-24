@@ -81,6 +81,7 @@ describe("review provenance", () => {
   });
 
   it("lists the rules with their source, and the account settings' version", async () => {
+    const hashed = expect.stringMatching(/^rule-[0-9a-f]{8}$/);
     const report = await review({
       vcs: vcs(
         { ".ocra/rules.json": JSON.stringify({ rules: [{ path: "src/**", rule: "File rule." }] }) },
@@ -98,9 +99,9 @@ describe("review provenance", () => {
       },
     });
     expect(report.provenance?.rules).toEqual([
-      { path: ["lib/**", "src/**"], rule: "Account rule.", source: "account" },
-      { path: ["**"], rule: "Unsourced rule." },
-      { path: ["src/**"], rule: "File rule.", source: "repository" },
+      { id: hashed, path: ["lib/**", "src/**"], rule: "Account rule.", source: "account" },
+      { id: hashed, path: ["**"], rule: "Unsourced rule." },
+      { id: hashed, path: ["src/**"], rule: "File rule.", source: "repository" },
     ]);
     expect(report.provenance?.accountSettings).toEqual({ version: null });
   });
@@ -117,11 +118,13 @@ describe("review provenance", () => {
     });
     expect(report.provenance?.rules).toEqual([
       {
+        id: "review-rules",
         path: ["**"],
         rule: "# Review rules\n\nName the failing input.",
         source: "repository",
       },
       {
+        id: "src",
         path: ["src", "src/**", "**/src", "**/src/**"],
         rule: "## src/\n\nCheck tenant ids.",
         source: "repository",
