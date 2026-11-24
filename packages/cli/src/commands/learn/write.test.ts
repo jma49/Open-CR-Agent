@@ -58,6 +58,19 @@ describe("writeLearning", () => {
     expect(readFileSync(join(dir, first), "utf8")).toBe(text);
   });
 
+  it("ends a long title's name at a whole word", async () => {
+    const dir = root();
+    const title = "Don't report retryCount's decrement as an off-by-one; it is intended";
+    const path = await writeLearning(dir, learningFile({ ...draft, title }, "2026-11-24"), title);
+    expect(path).toBe(
+      ".ocra/learnings/don-t-report-retrycount-s-decrement-as-an-off-by-one-it-is.md",
+    );
+    const word = "x".repeat(80);
+    expect(
+      await writeLearning(dir, learningFile({ ...draft, title: word }, "2026-11-24"), word),
+    ).toBe(`.ocra/learnings/${"x".repeat(60)}.md`);
+  });
+
   it("refuses to write through a planted link", async () => {
     const dir = root();
     const elsewhere = root();
