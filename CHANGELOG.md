@@ -6,6 +6,18 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-24
+
+A finding names the repository rule or learning it applies, so ocra Cloud can count findings per rule. The Action's new tag is `ocrahq/Open-CR-Agent@v0.24.0`.
+
+### Added
+
+- A finding names the repository rule or learning it applies in the report's `rule` (`{ kind, id }`) and in the Cloud upload; `.ocra/rules.json` rules take an optional `id`, and every rule's id is in the report's provenance (ADR-0080).
+
+### Changed
+
+- `ocra init` writes a workflow that pins the Action to v0.23.1.
+
 ## [0.23.1] - 2026-11-24
 
 ### Changed
@@ -783,7 +795,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.23.1...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.24.0...HEAD
+[0.24.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.23.1...v0.24.0
 [0.23.1]: https://github.com/jma49/Open-CR-Agent/compare/v0.23.0...v0.23.1
 [0.23.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.21.0...v0.22.0
