@@ -2087,6 +2087,29 @@ export type RoleSettings = {
 };
 
 // @public (undocumented)
+export interface RoundNote {
+    // (undocumented)
+    commitSha: string;
+    // (undocumented)
+    fixed: RoundNoteItem[];
+    // (undocumented)
+    left: (RoundNoteItem & {
+        outcome: string;
+        reason?: string;
+    })[];
+}
+
+// @public (undocumented)
+export interface RoundNoteItem {
+    // (undocumented)
+    check?: boolean;
+    // (undocumented)
+    file?: string;
+    // (undocumented)
+    title: string;
+}
+
+// @public (undocumented)
 export interface RuleProvenance {
     // (undocumented)
     path: string[];
@@ -2506,6 +2529,8 @@ export interface VcsAdapter {
     mention?(ref: MentionRef): Promise<Mention>;
     // (undocumented)
     readonly name: string;
+    // (undocumented)
+    note?(round: RoundNote): Promise<void>;
     // (undocumented)
     publish(report: ReviewReport): Promise<{
         warnings: string[];

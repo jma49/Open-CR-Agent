@@ -21,7 +21,7 @@ import {
 } from "../mend/state.js";
 import { type VerificationStep, verifierStep } from "../mend/verify.js";
 import { oneLine } from "../review/prompt-text.js";
-import type { ChangeChecks, ChangeCommit, VcsAdapter } from "../vcs.js";
+import type { ChangeChecks, ChangeCommit, RoundNote, RoundNoteItem, VcsAdapter } from "../vcs.js";
 import { reviewContext } from "./context.js";
 import type { StoredFinding } from "./fix-finding.js";
 import { type Attempt, attempt, type Head, type WorkItem } from "./mend-attempt.js";
@@ -206,7 +206,36 @@ export async function mendRound(options: MendOptions): Promise<MendRound> {
           : { id, outcome: "deferred", reason: round.outcome as "head_moved" | "not_writable" },
     );
   }
+  if (round.outcome === "committed" && round.sha) {
+    await vcs
+      .note?.(roundNote(round.sha, items, results))
+      .catch((error) => warnings.push(`the round's note was not posted: ${errorMessage(error)}`));
+  }
   return ended({ ...round, items: listed(), state: nextState(before, results, spent) });
+}
+
+function roundNote(
+  commitSha: string,
+  items: readonly WorkItem[],
+  results: ReadonlyMap<string, MendItemResult>,
+): RoundNote {
+  const note: RoundNote = { commitSha, fixed: [], left: [] };
+  for (const item of items) {
+    const named: RoundNoteItem =
+      "check" in item
+        ? { title: item.check.name, check: true }
+        : { title: item.finding.title, file: item.finding.file };
+    const result = results.get(item.id);
+    if (result?.outcome === "fixed") note.fixed.push(named);
+    else if (result) {
+      note.left.push({
+        ...named,
+        outcome: result.outcome,
+        ...(result.reason ? { reason: result.reason } : {}),
+      });
+    }
+  }
+  return note;
 }
 
 async function commit(

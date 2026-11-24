@@ -13,6 +13,7 @@ import {
 import { declinesFinding } from "./declined.js";
 import type { ReviewPlatform } from "./platform.js";
 import { PlatformReview } from "./review.js";
+import { SUMMARY_MARKER } from "./state.js";
 import { githubSuggestion } from "./suggestion.js";
 
 const BOT = "ocra-bot";
@@ -34,6 +35,7 @@ function inMemory(scenario: Scenario) {
   const inline: string[] = [];
   const resolved: string[] = [];
   const replies: string[] = [];
+  const written: string[] = [];
   const commits: ChangeCommit[] = [];
   let summary = "";
   const platform: ReviewPlatform = {
@@ -67,7 +69,8 @@ function inMemory(scenario: Scenario) {
       inline.push(...fresh.map((f) => f.body));
       return { posted: fresh.map((f) => f.finding.fingerprint), warnings: [] };
     },
-    writeSummary: async (_, body) => {
+    writeSummary: async (existing, body) => {
+      if (!existing) written.push(body);
       summary = body;
     },
     resolveThread: async (id) => {
@@ -106,6 +109,7 @@ function inMemory(scenario: Scenario) {
     summary: () => summary,
     replies: () => replies,
     resolved: () => resolved,
+    written: () => written,
   };
 }
 
@@ -141,6 +145,22 @@ describe("resolving the threads of fixed findings", () => {
       },
     });
     expect(conversation.resolved()).toEqual(["T0"]);
+  });
+});
+
+describe("a round's note", () => {
+  it("is a comment of its own, never the summary rewritten", async () => {
+    const conversation = inMemory({
+      comments: [{ author: OCRA, body: `${SUMMARY_MARKER}\nthe review's summary` }],
+    });
+    await conversation.review.note({
+      commitSha: "c".repeat(40),
+      fixed: [{ title: "Loop reads past the end", file: "src/total.ts" }],
+      left: [],
+    });
+    expect(conversation.written()).toHaveLength(1);
+    expect(conversation.written()[0]).toContain("ocra committed `cccccccccccc` with 1 fix");
+    expect(conversation.written()[0]).not.toContain(SUMMARY_MARKER);
   });
 });
 

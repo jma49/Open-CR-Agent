@@ -7,7 +7,7 @@ import type {
 } from "../contracts.js";
 import { parseUnifiedDiff } from "../diff/parse.js";
 import { fixerRuntime, SOURCE, usage } from "../fix/fix.fakes.js";
-import type { ChangeChecks, ChangeCommit, CommitResult, VcsAdapter } from "../vcs.js";
+import type { ChangeChecks, ChangeCommit, CommitResult, RoundNote, VcsAdapter } from "../vcs.js";
 import type { StoredFinding } from "./fix-finding.js";
 
 export const HEAD = "a".repeat(40);
@@ -39,6 +39,7 @@ export function fakeVcs(
   checks?: () => Promise<ChangeChecks>,
 ) {
   const commits: ChangeCommit[] = [];
+  const notes: RoundNote[] = [];
   const vcs: VcsAdapter = {
     name: "fake",
     getChangeRequest: async () => ({
@@ -62,9 +63,12 @@ export function fakeVcs(
       commits.push(change);
       return commit ? commit(change) : { committed: true, sha: SHA };
     },
+    note: async (round) => {
+      notes.push(round);
+    },
     ...(checks ? { checks } : {}),
   };
-  return { vcs, commits };
+  return { vcs, commits, notes };
 }
 
 export function finding(fingerprint: string, code: string, extra: Partial<StoredFinding> = {}) {

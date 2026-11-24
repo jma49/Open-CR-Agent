@@ -11,6 +11,7 @@ import type {
   PriorFinding,
   PriorReview,
   ReviewReport,
+  RoundNote,
   VcsAdapter,
 } from "@open-cr-agent/core";
 import { errorMessage, isUnfinished } from "@open-cr-agent/core";
@@ -27,6 +28,7 @@ import type {
   ReviewPlatform,
 } from "./platform.js";
 import { inlineBody, renderSummary } from "./render.js";
+import { renderRoundNote } from "./round-note.js";
 import { lostProgress, type ReviewState, readState, SUMMARY_MARKER } from "./state.js";
 
 // Where the code under review is read from: the CLI passes the local git
@@ -192,6 +194,12 @@ export class PlatformReview implements VcsAdapter {
 
   async commit(commit: ChangeCommit): Promise<CommitResult> {
     return commitToChangeRequest(this.platform, await this.changeRequest(), commit);
+  }
+
+  // A comment of its own: a round's note never replaces the review's summary.
+  async note(round: RoundNote): Promise<void> {
+    const body = renderRoundNote(round, this.platform.text.changeRequest);
+    await this.platform.writeSummary(undefined, body);
   }
 
   checks(headSha: string): Promise<ChangeChecks> {
