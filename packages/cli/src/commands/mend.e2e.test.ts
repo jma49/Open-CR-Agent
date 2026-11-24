@@ -121,6 +121,7 @@ describe("ocra mend", () => {
           fingerprint: finding.fingerprint,
           outcome: "proposed",
           reason: null,
+          cause: null,
           edits: [{ path: "src/total.ts", startLine: 3, endLine: 3, replacement: FIXED }],
         },
       ],

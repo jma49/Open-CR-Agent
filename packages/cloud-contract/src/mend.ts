@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { usageSchema } from "./events.js";
-import { FIX_REJECTIONS } from "./fix.js";
+import { FIX_FAILURE_CAUSES, FIX_REJECTIONS } from "./fix.js";
 import { commitId } from "./generate.js";
 import { MAX_FIELD, MAX_FINDINGS } from "./limits.js";
 import { FINGERPRINT, sharedFindingSchema } from "./upload.js";
@@ -116,10 +116,15 @@ const itemSchema = z
     fingerprint: z.string().regex(FINGERPRINT),
     outcome: z.enum(MEND_ITEM_OUTCOMES),
     reason: z.enum(MEND_ITEM_REASONS).nullable(),
+    // What failed, for the reason `failed`; null otherwise, and in the answer of a version that gave none.
+    cause: z.enum(FIX_FAILURE_CAUSES).nullable().default(null),
     edits: z.array(mendEditSchema),
   })
   .refine((i) => (i.outcome === "fixed" || i.outcome === "proposed") === i.edits.length > 0, {
     message: "edits come with the fixed and proposed outcomes, and only with them",
+  })
+  .refine((i) => i.cause === null || i.reason === "failed", {
+    message: "a cause comes only with the failed reason",
   });
 
 /**

@@ -146,6 +146,7 @@ function resultOf(fingerprint: string, fixed: FixedFinding, usage: Usage): FixRe
     outcome: fixed.outcome,
     fix: fixed.fix ?? null,
     reason: fixed.reason ?? null,
+    cause: fixed.cause ?? null,
     usage,
   };
 }
@@ -154,5 +155,6 @@ function said(file: string, result: FixResult): string {
   const where = forTerminal(file);
   if (result.fix) return `Fix for ${where}:${result.fix.startLine}-${result.fix.endLine}`;
   if (result.outcome === "head_moved") return "No fix: the head is not --head";
-  return `No fix for ${where}: ${result.outcome} (${result.reason})`;
+  const why = result.cause ? `${result.reason}: ${result.cause}` : result.reason;
+  return `No fix for ${where}: ${result.outcome} (${why})`;
 }

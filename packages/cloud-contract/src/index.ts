@@ -52,9 +52,11 @@ export {
   usageSchema,
 } from "./events.js";
 export {
+  FIX_FAILURE_CAUSES,
   FIX_OUTCOMES,
   FIX_REASONS,
   FIX_REJECTIONS,
+  type FixFailureCause,
   type FixOutcome,
   type FixReason,
   type FixResult,

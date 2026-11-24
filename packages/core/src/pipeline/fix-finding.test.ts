@@ -142,7 +142,11 @@ describe("fixFinding", () => {
     const broken = await fix({}, () => JSON.stringify([{ index: 0, replacement: "  for (;;) {" }]));
     expect(broken.result).toMatchObject({ outcome: "rejected", reason: "syntax" });
     const failed = await fix({}, () => "not json");
-    expect(failed.result).toMatchObject({ outcome: "rejected", reason: "failed" });
+    expect(failed.result).toMatchObject({
+      outcome: "rejected",
+      reason: "failed",
+      cause: "invalid_output",
+    });
     expect(failed.result.warnings[0]).toMatch(/proposing fixes for src\/a.ts failed/);
   });
 });

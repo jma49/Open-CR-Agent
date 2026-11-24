@@ -226,6 +226,12 @@ export interface BootstrapContext<Settings = unknown> {
 const brand: unique symbol;
 
 // @public (undocumented)
+export const CALL_FAILURES: readonly ["timeout", "quota", "refused", "unavailable", "invalid_output", "unknown"];
+
+// @public (undocumented)
+export type CallFailure = (typeof CALL_FAILURES)[number];
+
+// @public (undocumented)
 export class ChainRunner {
     constructor(models: ModelChains, attempts: ModelAttempts);
     // (undocumented)
@@ -308,7 +314,10 @@ export type CommitResult = {
 export class CompletionError extends OcraError {
     constructor(message: string, usage: Usage, options?: {
         cause?: unknown;
+        failure?: CallFailure;
     });
+    // (undocumented)
+    readonly failure: CallFailure;
     // (undocumented)
     readonly usage: Usage;
 }
@@ -584,6 +593,7 @@ export interface FixSummary {
     rejected: {
         fingerprint: string;
         reason: FixRejection;
+        cause?: CallFailure;
     }[];
 }
 

@@ -4,7 +4,7 @@ import { roleCall } from "../agent/settings.js";
 import { spendLimit } from "../agent/spend-limit.js";
 import type { AgentRuntime, ReviewContext, SyntaxChecker, Usage } from "../contracts.js";
 import type { FileDiff } from "../domain.js";
-import { OcraError } from "../errors.js";
+import { type CallFailure, OcraError } from "../errors.js";
 import { FIX_REJECTIONS } from "../fix/check.js";
 import { headMode } from "../generate/targets.js";
 import { GATE_REJECTIONS, gate, type MendScope, mendScope } from "../mend/gate.js";
@@ -76,6 +76,8 @@ interface MendItemResult {
   id: string;
   outcome: ItemOutcome;
   reason?: ItemReason;
+  // What failed, for the reason `failed`.
+  cause?: CallFailure;
   // What the round wrote for it, against the head: set for fixed and proposed.
   edits?: readonly Hunk[];
 }
@@ -117,7 +119,9 @@ interface Head {
   contents: Map<string, string>;
 }
 
-type Attempt = { patch: ItemPatch } | { outcome: ItemOutcome; reason: ItemReason };
+type Attempt =
+  | { patch: ItemPatch }
+  | { outcome: ItemOutcome; reason: ItemReason; cause?: CallFailure };
 
 // A person decides these: no later round at this head answers differently.
 const FOR_A_PERSON: ReadonlySet<ItemReason> = new Set<ItemReason>([
@@ -260,9 +264,10 @@ async function attempt(
   steps: readonly VerificationStep[],
   deps: AttemptDeps,
 ): Promise<Attempt> {
-  const refuse = (reason: ItemReason): Attempt => ({
+  const refuse = (reason: ItemReason, cause?: CallFailure): Attempt => ({
     outcome: reason === "stale" ? "gone" : FOR_A_PERSON.has(reason) ? "needs_human" : "rejected",
     reason,
+    ...(cause ? { cause } : {}),
   });
   const outside = head.scope.refusal(finding.file);
   if (outside) return refuse(outside);
@@ -270,7 +275,7 @@ async function attempt(
   if (!("patch" in written)) {
     return written.reason === "no_room"
       ? { outcome: "deferred", reason: "no_room" }
-      : refuse(written.reason);
+      : refuse(written.reason, written.cause);
   }
   const { patch } = written;
   const gated = await gate(patch, head.contents, head.scope, deps.syntax, MEND_LIMITS);
@@ -293,7 +298,7 @@ async function write(
   finding: StoredFinding,
   head: Head,
   deps: AttemptDeps,
-): Promise<{ patch: ItemPatch } | { reason: ItemReason }> {
+): Promise<{ patch: ItemPatch } | { reason: ItemReason; cause?: CallFailure }> {
   const fixed = await fixAtHead(finding, { ...deps, diffs: head.diffs, context: head.context });
   for (const warning of fixed.warnings) deps.onWarning(warning);
   if ("fix" in fixed) {

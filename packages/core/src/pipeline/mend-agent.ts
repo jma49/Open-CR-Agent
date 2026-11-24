@@ -1,5 +1,6 @@
 import type { SpendLimit } from "../agent/spend-limit.js";
 import type { AgentRuntime, Usage } from "../contracts.js";
+import type { CallFailure } from "../errors.js";
 import { type AgentItem, type AgentTaskDeps, agentTask } from "../mend/agent-lane.js";
 import type { ItemPatch } from "../mend/patch.js";
 import { executeTask } from "./task.js";
@@ -8,7 +9,7 @@ type AgentRejection = "failed" | "declined" | "no_room";
 
 type AgentAttempt =
   | { patch: ItemPatch; heads: ReadonlyMap<string, string> }
-  | { reason: AgentRejection; warning?: string };
+  | { reason: AgentRejection; cause?: CallFailure; warning?: string };
 
 interface AgentLaneDeps extends AgentTaskDeps {
   runtime: AgentRuntime;
@@ -43,6 +44,7 @@ export async function agentPatch(item: AgentItem, deps: AgentLaneDeps): Promise<
     if (overSpent.signal.aborted) return { reason: "no_room" };
     return {
       reason: "failed",
+      cause: result.status === "timed_out" ? "timeout" : "unknown",
       warning: `the fix task for ${item.id} ${result.status}: ${result.error ?? "no reason given"}`,
     };
   }

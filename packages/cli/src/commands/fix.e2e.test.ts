@@ -111,6 +111,7 @@ describe("ocra fix", () => {
       outcome: "proposed",
       fix: { startLine: 3, endLine: 3, replacement: FIXED },
       reason: null,
+      cause: null,
       usage: {
         inputTokens: 40,
         cachedTokens: 0,

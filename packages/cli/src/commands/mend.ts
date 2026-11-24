@@ -197,6 +197,7 @@ function resultOf(round: MendRound, usage: Usage): MendResult {
       fingerprint: item.id,
       outcome: item.outcome,
       reason: item.reason ?? null,
+      cause: item.cause ?? null,
       edits: (item.edits ?? []).map((e) => ({ ...e })),
     })),
     state: round.state,
@@ -210,7 +211,7 @@ function itemLines(result: MendResult, findings: readonly StoredFinding[]): stri
     const where = item.edits[0]
       ? `${item.edits[0].path}:${item.edits[0].startLine}-${item.edits[0].endLine}`
       : (file.get(item.fingerprint) ?? "");
-    const why = item.reason ? ` (${item.reason})` : "";
+    const why = item.reason ? ` (${item.reason}${item.cause ? `: ${item.cause}` : ""})` : "";
     return `${item.outcome}${why}  ${forTerminal(where)}  ${item.fingerprint}`;
   });
 }

@@ -1,5 +1,5 @@
 import type { AgentRuntime, ModelTier, Usage } from "../contracts.js";
-import { usageSpent } from "../errors.js";
+import { CallTimeout, usageSpent } from "../errors.js";
 import { type AgentCallSettings, agentCall } from "./settings.js";
 
 // One plain completion outside the review tasks: grouping, relocation, a
@@ -31,6 +31,7 @@ export function oneShot(
   const complete = runtime.complete?.bind(runtime);
   if (!complete) return undefined;
   return async ({ tier, agent, call, system, user, sharedPrefixes, timeoutMs }, signal) => {
+    const deadline = AbortSignal.timeout(timeoutMs);
     const answer = await complete(
       {
         tier,
@@ -40,10 +41,11 @@ export function oneShot(
         ...(sharedPrefixes ? { sharedPrefixes } : {}),
         timeoutMs,
       },
-      AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]),
+      AbortSignal.any([signal, deadline]),
     ).catch((error: unknown) => {
       const spent = usageSpent(error);
       if (spent) onUsage(spent);
+      if (deadline.aborted && !signal.aborted) throw new CallTimeout(timeoutMs, { cause: error });
       throw error;
     });
     onUsage(answer.usage);

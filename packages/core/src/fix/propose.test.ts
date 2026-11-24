@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { spendLimit } from "../agent/spend-limit.js";
 import type { FileDiff } from "../domain.js";
+import { CompletionError } from "../errors.js";
 import { anchored, braceSyntax, contextOf, fixerRuntime, SOURCE, usage } from "./fix.fakes.js";
 import { proposeFixes } from "./propose.js";
 
@@ -53,18 +54,27 @@ describe("proposeFixes", () => {
     ]);
   });
 
-  it("keeps the findings when the fixer fails or answers nonsense", async () => {
-    for (const answer of [
-      () => "not json",
-      () => {
-        throw new Error("boom");
-      },
-    ]) {
+  it("keeps the findings when the fixer fails or answers nonsense, and says what failed", async () => {
+    const failing = (error: Error) => () => {
+      throw error;
+    };
+    for (const [answer, cause] of [
+      [() => "not json", "invalid_output"],
+      [failing(new Error("boom")), "unknown"],
+      [
+        failing(new CompletionError("m1: HTTP 401 sk-secret", usage, { failure: "refused" })),
+        "refused",
+      ],
+      [
+        failing(new CompletionError("every model is out of quota", usage, { failure: "quota" })),
+        "quota",
+      ],
+    ] as const) {
       const runtime = fixerRuntime(answer);
       const findings = [anchored(7, 7)];
       const result = await proposeFixes(findings, { ...base, runtime });
       expect(result.findings).toEqual(findings);
-      expect(result.summary.rejected).toEqual([{ fingerprint: "fp-7", reason: "failed" }]);
+      expect(result.summary.rejected).toEqual([{ fingerprint: "fp-7", reason: "failed", cause }]);
       expect(result.warnings[0]).toMatch(/proposing fixes for src\/a.ts failed/);
     }
   });

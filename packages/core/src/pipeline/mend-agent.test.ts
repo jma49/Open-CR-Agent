@@ -148,7 +148,9 @@ describe("mendRound's agent lane", () => {
     const cut = await round({ calls: [edit(TRIM, TRIM_FIXED)], ended: "step_cap" });
     expect(cut.result.items).toEqual([{ id: "both", outcome: "rejected", reason: "failed" }]);
     const failed = await round({ calls: [edit(TRIM, TRIM_FIXED)], error: "endpoint down" });
-    expect(failed.result.items).toEqual([{ id: "both", outcome: "rejected", reason: "failed" }]);
+    expect(failed.result.items).toEqual([
+      { id: "both", outcome: "rejected", reason: "failed", cause: "unknown" },
+    ]);
     expect(failed.result.warnings).toEqual(["the fix task for both failed: endpoint down"]);
     expect([...cut.commits, ...failed.commits]).toEqual([]);
     expect(cut.result.state.items).toEqual({ both: { attempts: 1 } });

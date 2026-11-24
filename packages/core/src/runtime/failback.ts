@@ -1,6 +1,6 @@
 import { addUsage, emptyUsage } from "../agent/usage.js";
 import type { AgentEvent, CompletionResult, ModelTier, Usage } from "../contracts.js";
-import { CompletionError } from "../errors.js";
+import { type CallFailure, CompletionError } from "../errors.js";
 import {
   type AttemptEnding,
   type AttemptOutcome,
@@ -265,6 +265,7 @@ export async function completeWithFailback(options: CompleteOptions): Promise<Co
   const { health, signal } = options;
   let usage = emptyUsage();
   let lastError = "";
+  let failure: CallFailure = "unavailable";
   for (const model of health.order(options.chain)) {
     for (;;) {
       await pauseOver(health, model, signal);
@@ -277,20 +278,27 @@ export async function completeWithFailback(options: CompleteOptions): Promise<Co
         return { text: outcome.text, usage };
       }
       if (!outcome.error.retryable) {
-        throw new CompletionError(`${model}: ${outcome.error.message}`, usage);
+        throw new CompletionError(`${model}: ${outcome.error.message}`, usage, {
+          failure: "refused",
+        });
       }
       if (outcome.error.quota && health.recordQuota(model, outcome.error.quota) === "wait") {
         continue;
       }
       if (!outcome.error.quota) health.recordFailure(model);
+      failure = outcome.error.quota ? "quota" : "unavailable";
       lastError = `${model}: ${outcome.error.message}`;
       break;
     }
   }
   if (!lastError) {
-    throw new CompletionError(`every ${chainName(options)} is out of quota for this run`, usage);
+    throw new CompletionError(`every ${chainName(options)} is out of quota for this run`, usage, {
+      failure: "quota",
+    });
   }
-  throw new CompletionError(`every ${chainName(options)} failed (${lastError})`, usage);
+  throw new CompletionError(`every ${chainName(options)} failed (${lastError})`, usage, {
+    failure,
+  });
 }
 
 // Waits until the model's pause ends as it stands on waking, not as it stood
