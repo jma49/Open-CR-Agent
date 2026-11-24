@@ -38,7 +38,7 @@ jobs:
           # In a private repository, remove this line: ocra fetches the
           # pull request's commits with the checkout's credentials.
           persist-credentials: false
-      - uses: ocrahq/Open-CR-Agent@736ba631a1fdd7238e57e3c26a668b054aaa6ca5 # v0.22.0
+      - uses: ocrahq/Open-CR-Agent@84d993675d7ce01b718b80a291d1c2f4275b8d86 # v0.23.0
         with:
           opencode: false
           args: --max-cost-usd 2
