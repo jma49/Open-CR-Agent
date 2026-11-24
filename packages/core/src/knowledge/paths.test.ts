@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pathMatcher } from "./paths.js";
+import { pathMatcher, unmatchedPaths } from "./paths.js";
 
 describe("a learning's paths, read as .gitignore reads them", () => {
   it.each([
@@ -31,5 +31,19 @@ describe("a learning's paths, read as .gitignore reads them", () => {
     const matches = pathMatcher(["docs/**", "*.md"]);
     expect(matches("packages/core/README.md")).toBe(true);
     expect(matches("packages/core/src/a.ts")).toBe(false);
+  });
+});
+
+describe("a learning's paths that name no file", () => {
+  it("lists per learning only the paths no file matches, read as the selection reads them", () => {
+    const files = ["services/Billing/charge.ts", "db/001.sql", "Dockerfile"];
+    const learnings = [
+      { id: "kept", paths: ["*.sql", "services/billing/", "dockerfile"] },
+      { id: "moved", paths: ["/charge.ts", "services/payments/**", "*.sql"] },
+      { id: "keywords-only", paths: [] },
+    ];
+    expect(unmatchedPaths(learnings, files)).toEqual([
+      { id: "moved", paths: ["/charge.ts", "services/payments/**"] },
+    ]);
   });
 });

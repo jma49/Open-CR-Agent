@@ -17,3 +17,24 @@ function expand(pattern: string): string[] {
   const anywhere = rooted || path.includes("/") ? path : `**/${path}`;
   return anywhere.endsWith("**") ? [anywhere] : [anywhere, `${anywhere}/**`];
 }
+
+// A learning's paths that name no file of the tree: after a module moves or
+// is renamed, reviews no longer give the learning by those paths.
+export function unmatchedPaths(
+  learnings: readonly { id: string; paths: readonly string[] }[],
+  files: readonly string[],
+): { id: string; paths: string[] }[] {
+  const found = new Map<string, boolean>();
+  const matches = (path: string) => {
+    let hit = found.get(path);
+    if (hit === undefined) {
+      hit = files.some(pathMatcher([path]));
+      found.set(path, hit);
+    }
+    return hit;
+  };
+  return learnings.flatMap((l) => {
+    const paths = l.paths.filter((p) => !matches(p));
+    return paths.length > 0 ? [{ id: l.id, paths }] : [];
+  });
+}
