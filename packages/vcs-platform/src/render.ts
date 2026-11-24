@@ -63,7 +63,7 @@ function overrideNote(report: ReviewReport, text: PlatformText): string[] {
   }
   return [
     "",
-    `Someone with ${text.authority} other than the author can let this commit pass by commenting \`/ocra override ${report.changeRequest.headSha} <reason>\`.`,
+    `Someone with ${text.authority} other than the author can let this commit pass by commenting \`@ocra override ${report.changeRequest.headSha} <reason>\`.`,
   ];
 }
 
@@ -346,7 +346,7 @@ function unattributedNote(unattributed: number): string[] {
   if (unattributed <= 0) return [];
   return [
     "",
-    `${unattributed} resolved thread(s) of ocra's did not dismiss their finding: nothing says who resolved them, as when a push resolves outdated threads. To dismiss a finding, answer its thread with \`/ocra dismiss\` or "won't fix".`,
+    `${unattributed} resolved thread(s) of ocra's did not dismiss their finding: nothing says who resolved them, as when a push resolves outdated threads. To dismiss a finding, answer its thread with \`@ocra dismiss\` or "won't fix".`,
   ];
 }
 

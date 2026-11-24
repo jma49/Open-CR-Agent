@@ -7,11 +7,13 @@ import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
 import { writeRepositoryFile } from "../io/repository-file.js";
 import { UsageError } from "../io/usage-error.js";
+import { commandsWorkflowFor } from "./init/commands-workflow.js";
 import { type Choice, chooseProvider, configFor, PRESETS } from "./init/providers.js";
 import { REVIEW_LABEL, type WorkflowKind, workflowFor } from "./init/workflow.js";
 
 const CONFIG_PATH = ".ocra/config.json";
 const WORKFLOW_PATH = ".github/workflows/ocra.yml";
+const COMMANDS_PATH = ".github/workflows/ocra-commands.yml";
 
 export const INIT_USAGE = `Usage: ocra init [--github [--same-repo-only]] [--provider <name>] [--force]
 
@@ -21,7 +23,9 @@ provider whose key is in the environment. Files that exist are kept.
 Options:
   --github           Also write ${WORKFLOW_PATH}: members' pull requests
                      are reviewed on every push, anyone else's when a
-                     maintainer adds the ${REVIEW_LABEL} label
+                     maintainer adds the ${REVIEW_LABEL} label; and
+                     ${COMMANDS_PATH}: "@ocra review" reviews
+                     a pull request again, other @ocra mentions are answered
   --same-repo-only   With --github, a pull_request workflow instead: it
                      skips pull requests from forks
   --provider <name>  ${PRESETS.map((p) => p.name).join(", ")}; by default the first key found
@@ -65,21 +69,24 @@ export async function initCommand(
     config === "written"
       ? { direct: choice.preset.runtime === "direct", keys: [keyEnv] }
       : await existingConfig(join(root, CONFIG_PATH));
-  const workflow = await writeRepositoryFile(
-    root,
-    WORKFLOW_PATH,
-    workflowFor({ kind, keyEnv, direct: existing.direct }),
-    { replace },
-  );
-  if (workflow === "exists") {
-    out.write(kept(WORKFLOW_PATH));
-    return EXIT.ok;
+  const options = { kind, keyEnv, direct: existing.direct };
+  const written: string[] = [];
+  for (const [path, content, scope] of [
+    [WORKFLOW_PATH, workflowFor(options), WORKFLOW_SCOPE[kind]],
+    [COMMANDS_PATH, commandsWorkflowFor(options), COMMANDS_SCOPE],
+  ] as const) {
+    if ((await writeRepositoryFile(root, path, content, { replace })) === "exists") {
+      out.write(kept(path));
+      continue;
+    }
+    out.write(`Wrote ${path}: ${scope}\n`);
+    written.push(path);
   }
-  out.write(`Wrote ${WORKFLOW_PATH}: ${WORKFLOW_SCOPE[kind]}\n`);
+  if (written.length === 0) return EXIT.ok;
   if (!existing.keys.includes(keyEnv)) {
-    out.write(`  It passes ${keyEnv} to the review: check that ${CONFIG_PATH} uses it.\n`);
+    out.write(`  They pass ${keyEnv} to ocra: check that ${CONFIG_PATH} uses it.\n`);
   }
-  out.write(githubNext(kind, keyEnv));
+  out.write(githubNext(kind, keyEnv, written));
   return EXIT.ok;
 }
 
@@ -140,7 +147,10 @@ const WORKFLOW_SCOPE: Record<WorkflowKind, string> = {
     "pull requests from this repository's branches are reviewed; those from forks get no secrets and are skipped.",
 };
 
-function githubNext(kind: WorkflowKind, keyEnv: string): string {
+const COMMANDS_SCOPE =
+  "a comment @ocra review by someone who can write reviews the pull request again, and ocra answers any other @ocra mention in its thread.";
+
+function githubNext(kind: WorkflowKind, keyEnv: string, written: readonly string[]): string {
   const steps = [
     `Store the key as a repository secret (gh asks for its value):\n       gh secret set ${keyEnv}`,
     ...(kind === "fork-safe"
@@ -148,7 +158,7 @@ function githubNext(kind: WorkflowKind, keyEnv: string): string {
           `Create the label that starts a review of an outside pull request:\n       gh label create ${REVIEW_LABEL} --description "Review this pull request with ocra"`,
         ]
       : []),
-    `Commit ${CONFIG_PATH} and ${WORKFLOW_PATH}, and merge them into the default branch:\n       ocra reads its configuration from a pull request's base branch.`,
+    `Commit ${[CONFIG_PATH, ...written].join(", ")}, and merge them into the default branch:\n       ocra reads its configuration from a pull request's base branch,\n       and GitHub runs comment workflows from the default branch.`,
   ];
   return `\nNext:\n${steps.map((s, i) => `  ${i + 1}. ${s}`).join("\n")}\n`;
 }

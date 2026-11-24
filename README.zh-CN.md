@@ -50,7 +50,7 @@ export GEMINI_API_KEY="你的 key"     # 或 ANTHROPIC_API_KEY、OPENAI_API_KEY�
 cd your-repository
 ocra init                            # 写入 .ocra/config.json，模型按这个 key 来选
 ocra review                          # 未提交的改动，包括未跟踪的文件
-ocra init --github                   # 还会写入 .github/workflows/ocra.yml，可安全审查来自 fork 的 PR
+ocra init --github                   # 还会写入 .github/workflows/ocra.yml（可安全审查 fork 的 PR）和处理 @ocra 评论的 ocra-commands.yml
 ```
 
 `ocra init` 从不替换已有文件（`--force` 会），并打印后续步骤，比如 `gh secret set` 和 `gh label create ocra-review`（[ocra init](docs/manual/zh/cli.mdx#ocra-init)）。
@@ -72,7 +72,7 @@ ocra review --mr 7 --publish                 # GitLab Merge Request
 
 ## 在 CI 里
 
-**GitHub Pull Request**，用 [`action.yml`](action.yml) 里的 Action：行内评论、一条原地更新的摘要评论（附改动导读：按阅读顺序分组的文件，流程复杂时附时序图），把 PR 要关闭的 issue 作为改动所针对的任务交给审查员（GitLab 也支持），复审只看上次 push 以来的改动，评论 `/ocra review` 时完整重审；有写权限的人用 `@ocra` 提问时，在同一个讨论里回答（`ocra reply`，GitLab 也支持）。需要时，`ocra generate tests` 或 `ocra generate docstrings` 在分支上加一个提交（GitHub 和 GitLab 都支持）：在改动的源文件旁新建测试文件，或在改动的行里插入文档注释；从不修改已有的行，也从不运行仓库里的代码（[CLI](docs/manual/zh/cli.mdx#ocra-generate)）。
+**GitHub Pull Request**，用 [`action.yml`](action.yml) 里的 Action：行内评论、一条原地更新的摘要评论（附改动导读：按阅读顺序分组的文件，流程复杂时附时序图），把 PR 要关闭的 issue 作为改动所针对的任务交给审查员（GitLab 也支持），复审只看上次 push 以来的改动，评论 `@ocra review` 时完整重审；有写权限的人用 `@ocra` 提问时，在同一个讨论里回答（`ocra reply`，GitLab 也支持）。需要时，`ocra generate tests` 或 `ocra generate docstrings` 在分支上加一个提交（GitHub 和 GitLab 都支持）：在改动的源文件旁新建测试文件，或在改动的行里插入文档注释；从不修改已有的行，也从不运行仓库里的代码（[CLI](docs/manual/zh/cli.mdx#ocra-generate)）。
 
 ```yaml
 # .github/workflows/ocra.yml
@@ -146,7 +146,7 @@ CI 绝不能把不完整的审查（`3`）当成通过。结论是模型给出�
 { "rules": [{ "path": "api/**", "rule": "Handlers must check tenant ownership." }] }
 ```
 
-另外：`extends` 通过 https 共享配置；`--config <file>` 改为读取你自己的文件而不是仓库里的；`.ocra/learnings/*.md` 存放团队从以往改动中学到的东西，每个任务拿到适用于它那些文件的条目，选取不经过模型（[审查规则](docs/manual/zh/rules.mdx#ocralearnings)）；`ocra learn mine` 从历史里的修复提交、`ocra learn feedback` 从已接受的问题、`ocra learn import` 从事故复盘和规范、`ocra learn remember` 从 PR 上的 `/ocra remember` 备注起草它们，每条调用一次 helper 模型，`--propose` 把它们开成检查通过后自动合并的 GitHub pull request 或 GitLab Merge Request，设了 `learnings.requireReview` 则留给人合并，Action 的 `learn` 输入可以定时或在 `/ocra remember` 评论时运行它们（[CLI](docs/manual/zh/cli.mdx#ocra-learn)）；`ocra fix` 为审查已经报告的一条问题写一个经过检查的修复，只打印、从不提交，ocra Cloud 用它为存储的问题提供修复（[CLI](docs/manual/zh/cli.mdx#ocra-fix)）；`ocra memory` 让已接受的问题不再报告；`ocra metrics` 汇总运行、成本和问题。`ocra login` / `logout` / `whoami` 连接 ocra Cloud（开发中）：你的[账户设置](docs/manual/zh/configuration.mdx#账户设置)放在仓库配置之下生效，从不涉及供应商和插件；只有账户开启、且本机是在开启期间登录的，才上传问题，并先脱敏密钥（[CLI](docs/manual/zh/cli.mdx#ocra-loginocra-logoutocra-whoami)）。全部配置项：[配置](docs/manual/zh/configuration.mdx)、[审查规则](docs/manual/zh/rules.mdx)。
+另外：`extends` 通过 https 共享配置；`--config <file>` 改为读取你自己的文件而不是仓库里的；`.ocra/learnings/*.md` 存放团队从以往改动中学到的东西，每个任务拿到适用于它那些文件的条目，选取不经过模型（[审查规则](docs/manual/zh/rules.mdx#ocralearnings)）；`ocra learn mine` 从历史里的修复提交、`ocra learn feedback` 从已接受的问题、`ocra learn import` 从事故复盘和规范、`ocra learn remember` 从 PR 上的 `@ocra remember` 备注起草它们，每条调用一次 helper 模型，`--propose` 把它们开成检查通过后自动合并的 GitHub pull request 或 GitLab Merge Request，设了 `learnings.requireReview` 则留给人合并，Action 的 `learn` 输入可以定时或在 `@ocra remember` 评论时运行它们（[CLI](docs/manual/zh/cli.mdx#ocra-learn)）；`ocra fix` 为审查已经报告的一条问题写一个经过检查的修复，只打印、从不提交，ocra Cloud 用它为存储的问题提供修复（[CLI](docs/manual/zh/cli.mdx#ocra-fix)）；`ocra memory` 让已接受的问题不再报告；`ocra metrics` 汇总运行、成本和问题。`ocra login` / `logout` / `whoami` 连接 ocra Cloud（开发中）：你的[账户设置](docs/manual/zh/configuration.mdx#账户设置)放在仓库配置之下生效，从不涉及供应商和插件；只有账户开启、且本机是在开启期间登录的，才上传问题，并先脱敏密钥（[CLI](docs/manual/zh/cli.mdx#ocra-loginocra-logoutocra-whoami)）。全部配置项：[配置](docs/manual/zh/configuration.mdx)、[审查规则](docs/manual/zh/rules.mdx)。
 `ocra mcp` 让 Claude Code、Cursor、Codex 这类编码 agent 通过 Model Context Protocol 请求审查，审查方式与 `ocra review` 相同（[ocra mcp](docs/manual/zh/mcp.mdx)）；`ocra serve` 通过 HTTP 为编辑器和脚本做同样的事（[ocra serve](docs/manual/zh/serve.mdx)）。
 `ocra graph` 生成一个提交的代码图，按文件增量更新，`ocra review --graph` 从中查找调用方（[CLI](docs/manual/zh/cli.mdx#ocra-graph)）。
 

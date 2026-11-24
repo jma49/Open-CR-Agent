@@ -20,7 +20,7 @@ const MAX_REPLACEMENT_CHARS = 20_000;
 // comment: its markers and its commands. It also breaks a `suggestion` info
 // string, which cannot occur here: inside this block, longer than any
 // backtick run in it, no fence opens.
-const REWRITTEN_IN_CODE = /<!--|\/ocra/i;
+const REWRITTEN_IN_CODE = /<!--|[@/]ocra/i;
 
 // A finding's fix as a committable suggestion (ADR-0029): only for a fix of
 // exactly the lines its inline comment is on, and only when the replacement

@@ -6,7 +6,7 @@ icon: SquareTerminal
 
 ## ocra init
 
-为当前所在的仓库写入 `.ocra/config.json`（加 `--github` 时再写入 `.github/workflows/ocra.yml`），然后打印剩下要做的事。它不调用任何模型或网络服务，不会运行 `gh`，运行 `git` 也只是为了找到仓库根目录（`git rev-parse --show-toplevel`）。
+为当前所在的仓库写入 `.ocra/config.json`（加 `--github` 时再写入 `.github/workflows/ocra.yml` 和 `.github/workflows/ocra-commands.yml`），然后打印剩下要做的事。它不调用任何模型或网络服务，不会运行 `gh`，运行 `git` 也只是为了找到仓库根目录（`git rev-parse --show-toplevel`）。
 
 ```bash
 ocra init                          # 按环境里的 key 写 .ocra/config.json
@@ -17,7 +17,7 @@ ocra init --provider anthropic     # 当前 shell 里没有这个供应商的 ke
 
 | 参数 | 含义 |
 |---|---|
-| `--github` | 同时写入 `.github/workflows/ocra.yml`，即 `pull_request_target` 上的[fork 方案](./github#来自-fork-的-pr)：成员和协作者的 PR 每次推送都审查，其他人的 PR 在维护者每次加上 `ocra-review` 标签时审查；只检出 base 分支，不运行 PR 里的任何东西 |
+| `--github` | 同时写入 `.github/workflows/ocra.yml`，即 `pull_request_target` 上的[fork 方案](./github#来自-fork-的-pr)：成员和协作者的 PR 每次推送都审查，其他人的 PR 在维护者每次加上 `ocra-review` 标签时审查；只检出 base 分支，不运行 PR 里的任何东西；还会写入 `.github/workflows/ocra-commands.yml`，即[评论工作流](./github#评论工作流)：`@ocra review` 重新审查 PR，其他 `@ocra` 提及会得到回答 |
 | `--same-repo-only` | 与 `--github` 一起用，改写普通的 [`pull_request` workflow](./github#github-action)。它跳过来自 fork 的 PR，它们在那里拿不到 secret |
 | `--provider <name>` | `gemini`、`anthropic`、`openai` 或 `openrouter`，代替从环境里找到的 key |
 | `--force` | 替换已有文件。不加时保留已有文件，并说明保留了 |
@@ -56,14 +56,16 @@ key 本身从不写入文件；OpenCode 从 `GEMINI_API_KEY` 读取它。模型�
 Wrote .ocra/config.json: Gemini models through GEMINI_API_KEY, on the OpenCode runtime.
   OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime
 Wrote .github/workflows/ocra.yml: pull requests from members are reviewed on every push, anyone else's once each time a maintainer adds the ocra-review label.
+Wrote .github/workflows/ocra-commands.yml: a comment @ocra review by someone who can write reviews the pull request again, and ocra answers any other @ocra mention in its thread.
 
 Next:
   1. Store the key as a repository secret (gh asks for its value):
        gh secret set GEMINI_API_KEY
   2. Create the label that starts a review of an outside pull request:
        gh label create ocra-review --description "Review this pull request with ocra"
-  3. Commit .ocra/config.json and .github/workflows/ocra.yml, and merge them into the default branch:
-       ocra reads its configuration from a pull request's base branch.
+  3. Commit .ocra/config.json, .github/workflows/ocra.yml, .github/workflows/ocra-commands.yml, and merge them into the default branch:
+       ocra reads its configuration from a pull request's base branch,
+       and GitHub runs comment workflows from the default branch.
 ```
 
 私有仓库请按 workflow 里的注释删掉 `persist-credentials: false`。在任何子目录运行，ocra init 都写到仓库根目录，且从不经由符号链接写入。不在 Git 仓库里，或没找到 key 又没给 `--provider` 时，它以退出码 `2` 结束，什么也不写。
@@ -137,7 +139,7 @@ ocra review [options]
 | 退出码 | 含义 |
 |---|---|
 | `0` | 审查完成，结论为 `approved`、`approved_with_comments` 或 `minor_issues` |
-| `1` | 结论为 `significant_concerns`：至少有一个经核查确认的 critical 问题（未经确认的只会得到 `minor_issues` 和 `0`）。结论只是参考意见，可能受被审查改动的影响，见[工作原理](./how-it-works#结论verdict)。配合 `--pr` 时，维护者针对 head commit 的 `/ocra override` 会把它变成 `0`（[GitHub](./github#强制放行阻塞的结论)） |
+| `1` | 结论为 `significant_concerns`：至少有一个经核查确认的 critical 问题（未经确认的只会得到 `minor_issues` 和 `0`）。结论只是参考意见，可能受被审查改动的影响，见[工作原理](./how-it-works#结论verdict)。配合 `--pr` 时，维护者针对 head commit 的 `@ocra override` 会把它变成 `0`（[GitHub](./github#强制放行阻塞的结论)） |
 | `2` | 参数、Git 或配置错误，或者没有任何审查任务完成。错误行会写出错误代码，例如 `ocra [VCS_REF_UNKNOWN]: Unknown commit: nope`（[代码列表](./embedding#错误)） |
 | `3` | 审查不完整：有选中的文件没有被审查（任务失败、超时、触及花费或任务数上限，或者没有审查员覆盖它），或只审查了一部分（审查员在调用完成工具之前用完了全部 30 步，或自己停了下来；提示信息会说明该怎么做），或者有 critical 没能核查。它优先于 `1`，CI 不会放行不完整的审查 |
 | `130` | 被 Ctrl-C 或 SIGTERM 中断；仍会打印部分报告，不会发布任何内容 |
@@ -265,7 +267,7 @@ ocra learn mine --max-cost-usd 0.5 # 花费到上限就停止起草
 
 `ocra learn feedback` 从团队用 [`ocra memory add`](#ocra-memory) 接受的问题起草，最新的在前，和审查一样从同一个版本读取 `.ocra/memory.json`。每次调用拿到问题的标题、团队给出的理由和它所在的文件，只有理由不止适用于这一条问题时（这里有意这样写、风险在别处处理）才写成经验；这条 learning 随后告诉审查员在那里不要报告什么。路径取该文件所在目录，`source` 是 `{ kind: review-feedback, ref: <问题 id> }`，检查、限制和 `--propose` 都和 `mine` 相同。
 
-`ocra learn feedback --pr <n>`（或 `--mr <iid>`，`--repo`、`--project` 与审查时相同）还会从这个 PR 或 MR 的审查里、有写权限的人在讨论串中拒绝的问题起草：一条表示拒绝的回复（`/ocra dismiss`、"won't fix"、"by design"），或者有写权限的人把讨论串标记为已解决时他们的最后一条回复。每次调用拿到问题的标题、他们说的话和这次变更里的该文件。和 `/ocra remember` 一样，作者本人也可以在这里拒绝：这不会影响审查结论，而 `--propose` 会把 learning 交给一个 pull request。被他人编辑过的回复、没有写权限的人的回复、没人回复的讨论串都不产生候选。
+`ocra learn feedback --pr <n>`（或 `--mr <iid>`，`--repo`、`--project` 与审查时相同）还会从这个 PR 或 MR 的审查里、有写权限的人在讨论串中拒绝的问题起草：一条表示拒绝的回复（`@ocra dismiss`、"won't fix"、"by design"），或者有写权限的人把讨论串标记为已解决时他们的最后一条回复。每次调用拿到问题的标题、他们说的话和这次变更里的该文件。和 `@ocra remember` 一样，作者本人也可以在这里拒绝：这不会影响审查结论，而 `--propose` 会把 learning 交给一个 pull request。被他人编辑过的回复、没有写权限的人的回复、没人回复的讨论串都不产生候选。
 
 ### 从文档
 
@@ -273,7 +275,7 @@ ocra learn mine --max-cost-usd 0.5 # 花费到上限就停止起草
 
 ### 从 pull request 备注
 
-`ocra learn remember --pr <n>`（或 `--mr <iid>`，`--repo`、`--project` 与审查时相同）从 PR 或 MR 上有写权限的人留下、且没被他人编辑过的每条 [`/ocra remember <备注>`](./github#让-ocra-记住) 起草（最多 20 条）。每次调用拿到 PR 标题、备注，以及备注按路径提到的 diff 文件；没提到时，diff 不超过 5 个文件就用整个 diff，否则不起草。配置和审查一样从 base 读取。要求经验以外东西的备注（批准、改设置）会被拒绝。`source` 是 `{ kind: remember, ref: <仓库>#<编号>/<评论 id> }`。
+`ocra learn remember --pr <n>`（或 `--mr <iid>`，`--repo`、`--project` 与审查时相同）从 PR 或 MR 上有写权限的人留下、且没被他人编辑过的每条 [`@ocra remember <备注>`](./github#让-ocra-记住) 起草（最多 20 条）。每次调用拿到 PR 标题、备注，以及备注按路径提到的 diff 文件；没提到时，diff 不超过 5 个文件就用整个 diff，否则不起草。配置和审查一样从 base 读取。要求经验以外东西的备注（批准、改设置）会被拒绝。`source` 是 `{ kind: remember, ref: <仓库>#<编号>/<评论 id> }`。
 
 ### 通过 pull request 写回
 

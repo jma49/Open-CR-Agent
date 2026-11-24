@@ -20,6 +20,7 @@ afterEach(repos.removeAll);
 
 const CONFIG = ".ocra/config.json";
 const WORKFLOW = ".github/workflows/ocra.yml";
+const COMMANDS = ".github/workflows/ocra-commands.yml";
 
 async function init(dir: string, args: string[], env: Record<string, string> = {}) {
   const out = capture();
@@ -98,14 +99,16 @@ Next:
       out: `Wrote .ocra/config.json: Gemini models through GEMINI_API_KEY, on the OpenCode runtime.
   OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime
 Wrote .github/workflows/ocra.yml: pull requests from members are reviewed on every push, anyone else's once each time a maintainer adds the ocra-review label.
+Wrote .github/workflows/ocra-commands.yml: a comment @ocra review by someone who can write reviews the pull request again, and ocra answers any other @ocra mention in its thread.
 
 Next:
   1. Store the key as a repository secret (gh asks for its value):
        gh secret set GEMINI_API_KEY
   2. Create the label that starts a review of an outside pull request:
        gh label create ocra-review --description "Review this pull request with ocra"
-  3. Commit .ocra/config.json and .github/workflows/ocra.yml, and merge them into the default branch:
-       ocra reads its configuration from a pull request's base branch.
+  3. Commit .ocra/config.json, .github/workflows/ocra.yml, .github/workflows/ocra-commands.yml, and merge them into the default branch:
+       ocra reads its configuration from a pull request's base branch,
+       and GitHub runs comment workflows from the default branch.
 `,
     });
     const workflow = read(dir, WORKFLOW);
@@ -113,6 +116,7 @@ Next:
     // Gemini runs on OpenCode, so the Action installs it.
     expect(workflow).not.toContain("opencode:");
     expect(workflow).toContain(`GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}`);
+    expect(read(dir, COMMANDS)).toContain("name: ocra commands\n");
   });
 
   it("leaves OpenCode out of the workflow for OpenRouter's free model, on the direct runtime", async () => {
@@ -144,15 +148,16 @@ Next:
     const first = await init(dir, ["--github"], { GEMINI_API_KEY: "g" });
     expect(first.out).toContain("Kept .ocra/config.json: it exists (--force replaces it).\n");
     expect(first.out).toContain(
-      "  It passes GEMINI_API_KEY to the review: check that .ocra/config.json uses it.\n",
+      "  They pass GEMINI_API_KEY to ocra: check that .ocra/config.json uses it.\n",
     );
     // That configuration runs on OpenCode, so the install keeps it.
     expect(read(dir, WORKFLOW)).not.toContain("opencode:");
 
     writeFileSync(join(dir, WORKFLOW), "name: mine\n");
+    writeFileSync(join(dir, COMMANDS), "name: mine too\n");
     const second = await init(dir, ["--github", "--same-repo-only"], { GEMINI_API_KEY: "g" });
     expect(second.out).toBe(
-      "Kept .ocra/config.json: it exists (--force replaces it).\nKept .github/workflows/ocra.yml: it exists (--force replaces it).\n",
+      "Kept .ocra/config.json: it exists (--force replaces it).\nKept .github/workflows/ocra.yml: it exists (--force replaces it).\nKept .github/workflows/ocra-commands.yml: it exists (--force replaces it).\n",
     );
     expect(read(dir, WORKFLOW)).toBe("name: mine\n");
   });

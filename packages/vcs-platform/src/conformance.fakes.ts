@@ -131,6 +131,15 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
       expect((await review.getChangeRequest()).override).toBeUndefined();
     });
 
+    it("takes an override written as an @ocra command", async () => {
+      const body = `@ocra override ${HEAD} tested by hand`;
+      const { review } = fixture.conversation({ comments: [{ author: MAINTAINER, body }] });
+      expect((await review.getChangeRequest()).override).toEqual({
+        by: MAINTAINER,
+        reason: "tested by hand",
+      });
+    });
+
     it("takes what people with write access ask it to remember, the rest of their comment", async () => {
       const note = "/ocra remember Amounts are integer cents.\nNever parse them as floats.";
       const { review } = fixture.conversation({
@@ -140,11 +149,13 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
           { author: MAINTAINER, body: "/ocra remember edited", editedBy: AUTHOR },
           { author: OCRA, body: `${SUMMARY_MARKER}\n/ocra remember x` },
           { author: MAINTAINER, body: "/ocra remember" },
+          { author: MAINTAINER, body: "@ocra remember Retries back off." },
         ],
       });
       const remember = (await review.getChangeRequest()).remember;
       expect(remember?.map(({ by, note }) => ({ by, note }))).toEqual([
         { by: MAINTAINER, note: "Amounts are integer cents.\nNever parse them as floats." },
+        { by: MAINTAINER, note: "Retries back off." },
       ]);
       expect(remember?.[0]?.ref).toMatch(/\/[^/]+$/);
     });
@@ -318,7 +329,8 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
 
     it("posts no line a platform would run as a command", async () => {
       const conversation = fixture.conversation({});
-      const text = "Fix it.\n/approve\n  /merge\n/close\n/label ~bug\n/ocra dismiss";
+      const text =
+        "Fix it.\n/approve\n  /merge\n/close\n/label ~bug\n/ocra dismiss\n@ocra dismiss\n```\n@ocra dismiss\n```";
       await conversation.review.publish(
         report(
           [finding(A, { title: "/unapprove", body: text, suggestion: text })],
@@ -329,7 +341,7 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
       expect(conversation.inline()).toHaveLength(1);
       for (const body of posted) {
         expect(body).not.toMatch(/^[ \t]*\//m);
-        expect(body).not.toMatch(/\/ocra/);
+        expect(body).not.toMatch(/[@/]ocra/);
       }
     });
 
@@ -416,6 +428,7 @@ export function conformance(name: string, fixture: ConformanceFixture): void {
       ["an address", [ask("Mail me@ocra.dev about it.")]],
       ["a longer name", [ask("@ocra-bot explain")]],
       ["a mention that asks nothing", [ask("@ocra")]],
+      ["a command", [ask("@ocra review")]],
     ])("does not answer %s", async (_, comments) => {
       const { conversation, asked } = mention({ comments }, 0);
       expect((await asked).asked).toBe(false);

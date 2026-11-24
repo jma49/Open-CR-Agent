@@ -6,7 +6,7 @@ icon: SquareTerminal
 
 ## ocra init
 
-Writes `.ocra/config.json` for the repository you are in (with `--github`, also `.github/workflows/ocra.yml`) and prints what is left to do. It calls no model or network service, never runs `gh`, and runs `git` only to find the repository's root (`git rev-parse --show-toplevel`).
+Writes `.ocra/config.json` for the repository you are in (with `--github`, also `.github/workflows/ocra.yml` and `.github/workflows/ocra-commands.yml`) and prints what is left to do. It calls no model or network service, never runs `gh`, and runs `git` only to find the repository's root (`git rev-parse --show-toplevel`).
 
 ```bash
 ocra init                          # .ocra/config.json for the key in your environment
@@ -17,7 +17,7 @@ ocra init --provider anthropic     # a provider whose key is not in this shell
 
 | Option | Meaning |
 |---|---|
-| `--github` | Also write `.github/workflows/ocra.yml`, the [fork recipe](./github#pull-requests-from-forks) on `pull_request_target`: members' and collaborators' pull requests are reviewed on every push, others' each time a maintainer adds the `ocra-review` label; only the base branch is checked out, and nothing from the pull request runs |
+| `--github` | Also write `.github/workflows/ocra.yml`, the [fork recipe](./github#pull-requests-from-forks) on `pull_request_target`: members' and collaborators' pull requests are reviewed on every push, others' each time a maintainer adds the `ocra-review` label; only the base branch is checked out, and nothing from the pull request runs. And `.github/workflows/ocra-commands.yml`, the [comment workflow](./github#the-comment-workflow): `@ocra review` reviews a pull request again, any other `@ocra` mention is answered |
 | `--same-repo-only` | With `--github`, the plain [`pull_request` workflow](./github#github-action) instead. It skips pull requests from forks, which get no secrets there |
 | `--provider <name>` | `gemini`, `anthropic`, `openai` or `openrouter`, in place of the key found in the environment |
 | `--force` | Replace existing files. Without it, an existing file is kept, and ocra init says so |
@@ -50,20 +50,22 @@ For Gemini, the file is:
 
 The key is never written; OpenCode reads it from `GEMINI_API_KEY`. Change the models like any [configuration](./configuration).
 
-**The workflow** is the [GitHub](./github) recipe with the key as a secret, `--max-cost-usd 2` per review, `opencode: false` on the direct runtime, and the Action pinned to this release's commit (`actions/checkout` by commit too). `ocra init --github` then prints:
+**The workflows** are the [GitHub](./github) recipes with the key as a secret, `--max-cost-usd 2` per review, `opencode: false` on the direct runtime, and the Action pinned to this release's commit (`actions/checkout` by commit too). `ocra init --github` then prints:
 
 ```text
 Wrote .ocra/config.json: Gemini models through GEMINI_API_KEY, on the OpenCode runtime.
   OpenCode makes the install about 175 MB; to switch to the 11 MB direct runtime later, see https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/manual/en/providers.mdx#choosing-the-runtime
 Wrote .github/workflows/ocra.yml: pull requests from members are reviewed on every push, anyone else's once each time a maintainer adds the ocra-review label.
+Wrote .github/workflows/ocra-commands.yml: a comment @ocra review by someone who can write reviews the pull request again, and ocra answers any other @ocra mention in its thread.
 
 Next:
   1. Store the key as a repository secret (gh asks for its value):
        gh secret set GEMINI_API_KEY
   2. Create the label that starts a review of an outside pull request:
        gh label create ocra-review --description "Review this pull request with ocra"
-  3. Commit .ocra/config.json and .github/workflows/ocra.yml, and merge them into the default branch:
-       ocra reads its configuration from a pull request's base branch.
+  3. Commit .ocra/config.json, .github/workflows/ocra.yml, .github/workflows/ocra-commands.yml, and merge them into the default branch:
+       ocra reads its configuration from a pull request's base branch,
+       and GitHub runs comment workflows from the default branch.
 ```
 
 In a private repository, remove `persist-credentials: false`, as the workflow's comment says. ocra init writes to the repository root from any subdirectory and never through a symbolic link. Outside a Git repository, or with no key and no `--provider`, it exits `2` and writes nothing.
@@ -137,7 +139,7 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...`.
 | Code | Meaning |
 |---|---|
 | `0` | Review finished; verdict `approved`, `approved_with_comments` or `minor_issues` |
-| `1` | Verdict `significant_concerns`: at least one critical finding the verifier confirmed (unconfirmed ones give `minor_issues` and `0`). The verdict is advice and can be influenced by the change under review; see [How it works](./how-it-works#verdict). With `--pr`, a maintainer's `/ocra override` for the head commit turns this into `0` ([GitHub](./github#overriding-a-blocking-verdict)) |
+| `1` | Verdict `significant_concerns`: at least one critical finding the verifier confirmed (unconfirmed ones give `minor_issues` and `0`). The verdict is advice and can be influenced by the change under review; see [How it works](./how-it-works#verdict). With `--pr`, a maintainer's `@ocra override` for the head commit turns this into `0` ([GitHub](./github#overriding-a-blocking-verdict)) |
 | `2` | Usage, Git or configuration error, or no review task completed. The error line names its code, as in `ocra [VCS_REF_UNKNOWN]: Unknown commit: nope` ([codes](./embedding#errors)) |
 | `3` | Review incomplete: a selected file was not reviewed (task failed, timed out, hit the spend or task limit, or no reviewer covers it) or only partly (its reviewer used all 30 steps, or stopped, before the done tool; the message says what to do), or a critical finding could not be verified. Wins over `1`, so CI cannot pass an incomplete review |
 | `130` | Interrupted with Ctrl-C or SIGTERM; the partial report is still printed and nothing is published |
@@ -265,7 +267,7 @@ Each kept learning is written to `.ocra/learnings/<title>.md` in the working tre
 
 `ocra learn feedback` drafts from the findings the team accepted with [`ocra memory add`](#ocra-memory), newest first, read from `.ocra/memory.json` at the same revision a review reads it. Each call is given the finding's title, the reason the team gave and the file it is in, and writes a lesson only when the reason holds beyond that one finding (a pattern that is intended here, a risk handled elsewhere); the learning then tells reviewers what not to report there. Its paths are the file's directory, its `source` is `{ kind: review-feedback, ref: <finding id> }`, and the same checks, limits and `--propose` apply as for `mine`.
 
-`ocra learn feedback --pr <n>` (or `--mr <iid>`, with `--repo` or `--project` as for a review) also drafts from the findings of the pull or merge request's review that someone with write access declined in their thread: a reply that declines it (`/ocra dismiss`, "won't fix", "by design"), or their last reply in a thread someone with write access resolved. Each call is given the finding's title, what they said and the file as the change has it. The author may decline here too, as with `/ocra remember`: nothing leaves the verdict, and `--propose` leaves the learning to a pull request. A reply someone else edited, a reply by someone without write access, and a thread nobody answered give nothing.
+`ocra learn feedback --pr <n>` (or `--mr <iid>`, with `--repo` or `--project` as for a review) also drafts from the findings of the pull or merge request's review that someone with write access declined in their thread: a reply that declines it (`@ocra dismiss`, "won't fix", "by design"), or their last reply in a thread someone with write access resolved. Each call is given the finding's title, what they said and the file as the change has it. The author may decline here too, as with `@ocra remember`: nothing leaves the verdict, and `--propose` leaves the learning to a pull request. A reply someone else edited, a reply by someone without write access, and a thread nobody answered give nothing.
 
 ### From documents
 
@@ -273,7 +275,7 @@ Each kept learning is written to `.ocra/learnings/<title>.md` in the working tre
 
 ### From pull request notes
 
-`ocra learn remember --pr <n>` (or `--mr <iid>`, with `--repo` or `--project` as for a review) drafts from each [`/ocra remember <note>`](./github#asking-ocra-to-remember) on the pull or merge request by someone with write access, unedited by anyone else (at most 20). Each call is given the pull request's title, the note, and the files of its diff the note names by path, else the whole diff when it has at most 5 files; a note about neither is not drafted. Configuration comes from the base, as for a review. A note asking for anything but a lesson (to approve, to change settings) is declined. Its `source` is `{ kind: remember, ref: <repository>#<number>/<comment id> }`.
+`ocra learn remember --pr <n>` (or `--mr <iid>`, with `--repo` or `--project` as for a review) drafts from each [`@ocra remember <note>`](./github#asking-ocra-to-remember) on the pull or merge request by someone with write access, unedited by anyone else (at most 20). Each call is given the pull request's title, the note, and the files of its diff the note names by path, else the whole diff when it has at most 5 files; a note about neither is not drafted. Configuration comes from the base, as for a review. A note asking for anything but a lesson (to approve, to change settings) is declined. Its `source` is `{ kind: remember, ref: <repository>#<number>/<comment id> }`.
 
 ### Writing them back by pull request
 

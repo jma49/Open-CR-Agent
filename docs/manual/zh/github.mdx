@@ -124,13 +124,13 @@ jobs:
 - 这次没被报告、而代码没变的问题列为**本次未复现**：模型运行有波动，所以它保持打开，按原严重程度计入结论，直到代码被修改或被驳回。同样的代码得到同样的结论。
 - 所在文件这次没被审查的问题列为**未重新检查**，保持打开。
 
-由维护者来做主。维护者，即有写权限（admin、maintain 或 write）且不是 PR 作者的人，resolve 评论串、回复 `/ocra dismiss`，或者回复以明确的拒绝开头（"won't fix"、"will not fix"、"by design"、"false positive"、"not a bug"、"working as intended"、"intended behavior"）且不是问句，就驳回了这条问题。被驳回的问题在这个 PR 里不再计入，除非之后的运行以更高严重程度发现它。这些词出现在回复其他位置（"this is not intended, good catch"、"is this by design?"）不算，"I disagree" 也不算。这些人的其他回复会在问题再次出现时交给 Judge；Judge 可以凭具体理由丢弃它，但已确认的 critical 不行。作者的回复不会交给 Judge，也不能驳回；被别人编辑过的回复不算数。没有行内评论串的问题无法驳回，改用 [`ocra memory`](./cli#ocra-memory) 让它静默：`.ocra/memory.json` 进入 base 分支后，不论严重程度，每个 PR 都不再报告它。
+由维护者来做主。维护者，即有写权限（admin、maintain 或 write）且不是 PR 作者的人，resolve 评论串、回复 `@ocra dismiss`，或者回复以明确的拒绝开头（"won't fix"、"will not fix"、"by design"、"false positive"、"not a bug"、"working as intended"、"intended behavior"）且不是问句，就驳回了这条问题。被驳回的问题在这个 PR 里不再计入，除非之后的运行以更高严重程度发现它。这些词出现在回复其他位置（"this is not intended, good catch"、"is this by design?"）不算，"I disagree" 也不算。这些人的其他回复会在问题再次出现时交给 Judge；Judge 可以凭具体理由丢弃它，但已确认的 critical 不行。作者的回复不会交给 Judge，也不能驳回；被别人编辑过的回复不算数。没有行内评论串的问题无法驳回，改用 [`ocra memory`](./cli#ocra-memory) 让它静默：`.ocra/memory.json` 进入 base 分支后，不论严重程度，每个 PR 都不再报告它。
 
 ### 可提交的建议
 
 行内评论的第一行是问题的标题，下一行是严重程度、审查者以及 Verify 是否确认；然后是哪里出错、建议的修复，以及审查者核实过的事实（折叠在 **Evidence** 下）。
 
-一条问题可以带一个修复（fix）：替换它所指那几行的代码。这时它的行内评论里有一个建议块，有写权限的人可以一键提交（**Commit suggestion**，或批量提交）。只有评论正好落在被替换的行上时才给出，摘要里从不给；代码要么原样发布，要么不发：含有 HTML 注释开头、`/ocra`、回车符、控制字符或双向文本字符，或者超过 20,000 个字符时，不附建议块，问题照常发布。建议是模型的提议，提交前请先读一遍。
+一条问题可以带一个修复（fix）：替换它所指那几行的代码。这时它的行内评论里有一个建议块，有写权限的人可以一键提交（**Commit suggestion**，或批量提交）。只有评论正好落在被替换的行上时才给出，摘要里从不给；代码要么原样发布，要么不发：含有 HTML 注释开头、`@ocra` 或 `/ocra`、回车符、控制字符或双向文本字符，或者超过 20,000 个字符时，不附建议块，问题照常发布。建议是模型的提议，提交前请先读一遍。
 
 修复来自 [Fix 阶段](./how-it-works)，它默认关闭，由 [`fixes`](./configuration) 或 `--fixes` 开启（[ADR-0058](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0058-checked-fix-proposals.md)）；不开启时，评论以文字形式给出建议。
 
@@ -194,7 +194,7 @@ jobs:
 要合并被 ocra 拦下的改动，由作者以外、有写权限的人评论：
 
 ```
-/ocra override <完整的 head commit id> <理由>
+@ocra override <完整的 head commit id> <理由>
 ```
 
 对这个 commit，退出码从 `1` 变成 `0`，`fail-on-concerns` 通过，`requestChanges` 的请求撤回。结论仍是 `significant_concerns`；摘要写明谁、以什么理由放行，并给出带 commit id、可直接复制的命令。新的 push 需要重新放行。要求完整 id，是因为专门构造的 commit 能撞上短前缀。作者不能放行自己的 PR，被他人编辑进评论的命令不算数，审查不完整（退出码 `3`）绝不会被放行。
@@ -210,7 +210,7 @@ jobs:
 任何有写权限的人（包括作者）都可以在 PR 上评论：
 
 ```
-/ocra remember 金额一律用整数分，绝不解析成浮点数。
+@ocra remember 金额一律用整数分，绝不解析成浮点数。
 ```
 
 评论的其余部分就是这条备注。审查本身不处理它；[`ocra learn remember --pr <n>`](./cli#从-pull-request-备注) 用每条备注和它提到的 diff 文件起草 learning，`--propose` 通过 pull request 写回。没有写权限的人的备注、被他人编辑过的评论和 ocra 自己的摘要都不算数。
@@ -234,12 +234,13 @@ permissions:
 
 jobs:
   learn:
-    # 评论触发时，只处理有写权限的人在 PR 上发的 /ocra remember；
+    # 评论触发时，只处理有写权限的人在 PR 上发的 @ocra remember；
     # ocra 起草前会再检查一次。
     if: >-
       github.event_name == 'schedule' ||
       (github.event.issue.pull_request &&
-       startsWith(github.event.comment.body, '/ocra remember') &&
+       (startsWith(github.event.comment.body, '@ocra remember') ||
+        startsWith(github.event.comment.body, '/ocra remember')) &&
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
     concurrency:
       group: ocra-learn
@@ -267,10 +268,37 @@ jobs:
 @ocra 上限是负数时，这里为什么会一直重试？
 ```
 
-ocra 会在同一个讨论里回答（[`ocra reply`](./cli#ocra-reply)）：一次模型调用，依据描述、讨论和被评论的文件，不做审查。没有写权限的人的评论、被他人编辑过的评论、ocra 自己的评论和已经回答过的评论都不会得到回答。把下面的 workflow 加在审查的旁边；它不检出 PR 里的任何内容。v0.10.0 新增。
+ocra 会在同一个讨论里回答（[`ocra reply`](./cli#ocra-reply)）：一次模型调用，依据描述、讨论和被评论的文件，不做审查。没有写权限的人的评论、被他人编辑过的评论、ocra 自己的评论、已经回答过的评论和[命令](#评论里的命令)都不会得到回答。由[评论工作流](#评论工作流)运行。v0.10.0 新增。
+
+## 请 ocra 重新审查
+
+有写权限的人可以在 PR 上评论：
+
+```
+@ocra review
+```
+
+ocra 会像加了 `--full` 一样把整个 PR 重新审查一遍：所有文件，而不只是上次审查之后改过的部分。改了 `.ocra/config.json`、规则或审查员之后，或者上次审查没跑完时，这很有用。由[评论工作流](#评论工作流)运行；和[可以审查 fork 的工作流](#来自-fork-的-pr)一样，来自 fork 的 PR 也会审查。v0.10.0 新增。
+
+## 评论里的命令
+
+命令是有写权限的人发的评论里以 `@ocra` 开头的一行：
+
+| 命令 | 作用 |
+|---|---|
+| `@ocra review` | 把 PR 的所有文件重新审查一遍（[见上](#请-ocra-重新审查)） |
+| `@ocra override <commit> <理由>` | 让阻塞的结论对这个提交放行（[强制放行阻塞的结论](#强制放行阻塞的结论)） |
+| `@ocra dismiss` | 在某条问题的讨论里驳回它（[会发布什么](#会发布什么)） |
+| `@ocra remember <备注>` | 给 `ocra learn remember` 留一条备注（[让 ocra 记住](#让-ocra-记住)） |
+
+其他提到 `@ocra` 的评论都算[提问](#向-ocra-提问)。每个命令以前的写法 `/ocra` 仍然可用，但已弃用，会在之后的版本里移除。
+
+### 评论工作流
+
+`ocra init --github` 会把它写成 `.github/workflows/ocra-commands.yml`，放在审查的工作流旁边。手动添加时，放在[可以审查 fork 的工作流](#来自-fork-的-pr)旁边：
 
 ```yaml
-name: ocra reply
+name: ocra commands
 on:
   issue_comment:
     types: [created]
@@ -278,22 +306,54 @@ on:
     types: [created]
 
 permissions:
+  checks: write
   contents: read
   issues: read
   pull-requests: write
 
 jobs:
+  review:
+    # 有写权限的人在 PR 上发 @ocra review：像 --full 一样把所有文件重新审查一遍。
+    if: >-
+      github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+      (startsWith(github.event.comment.body, '@ocra review') ||
+       startsWith(github.event.comment.body, '/ocra review')) &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+    # 组名重复了 if: 的条件，所以其他评论各有自己的组，不会取消正在进行的审查。
+    concurrency:
+      group: >-
+        ${{
+          (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+           (startsWith(github.event.comment.body, '@ocra review') ||
+            startsWith(github.event.comment.body, '/ocra review')) &&
+           contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+          ) && format('ocra-{0}-review', github.event.issue.number) || github.run_id }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    steps:
+      # 检出基础分支，PR 里的任何东西都不检出。
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          # 私有仓库请删掉这一行：ocra 用检出时的凭据拉取 PR 的提交。
+          persist-credentials: false
+      - uses: ocrahq/Open-CR-Agent@c13507b6357ca73661d83f09a275d8aa49c4f688 # v0.26.0
+        with:
+          args: --max-cost-usd 2
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
   reply:
-    # 只处理有写权限的人的提及；ocra 会再检查一遍。
+    # 有写权限的人的其他 @ocra 提及，在同一个讨论里回答。ocra 会再检查一遍，每条评论只回答一次。
     if: >-
       (github.event_name == 'pull_request_review_comment' || github.event.issue.pull_request) &&
       contains(github.event.comment.body, '@ocra') &&
+      !startsWith(github.event.comment.body, '@ocra review') &&
       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
-    # 每条评论只跑一次：ocra 能找到已发出的回答，找不到正在进行中的。
     concurrency:
       group: ocra-reply-${{ github.event.comment.id }}
     runs-on: ubuntu-latest
     steps:
+      # 检出基础分支，PR 里的任何东西都不检出。
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -305,62 +365,10 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-## 请 ocra 重新审查
-
-有写权限的人可以在 PR 上评论：
-
-```
-/ocra review
-```
-
-ocra 会像加了 `--full` 一样把整个 PR 重新审查一遍：所有文件，而不只是上次审查之后改过的部分。改了 `.ocra/config.json`、规则或审查员之后，或者上次审查没跑完时，这很有用。把下面的工作流加在上面那个旁边；和[可以审查 fork 的工作流](#来自-fork-的-pr)一样，它也会审查来自 fork 的 PR。v0.10.0 新增。
-
-```yaml
-name: ocra review command
-on:
-  issue_comment:
-    types: [created]
-
-permissions:
-  checks: write
-  contents: read
-  issues: read
-  pull-requests: write
-
-jobs:
-  review:
-    # 只处理有写权限的人在 PR 上发的 /ocra review。
-    if: >-
-      github.event.issue.pull_request &&
-      startsWith(github.event.comment.body, '/ocra review') &&
-      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
-    # 用推送触发的审查的组，两者不会同时运行。组名重复了 if: 的条件，
-    # 所以其他评论各有自己的组，不会取消正在进行的审查。
-    concurrency:
-      group: >-
-        ocra-${{ github.event.issue.number }}-${{
-          (github.event.issue.pull_request &&
-           startsWith(github.event.comment.body, '/ocra review') &&
-           contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association))
-          && 'review' || github.run_id }}
-      cancel-in-progress: true
-    runs-on: ubuntu-latest
-    steps:
-      # 检出基础分支，PR 里的任何东西都不检出。
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: ocrahq/Open-CR-Agent@c13507b6357ca73661d83f09a275d8aa49c4f688 # v0.26.0
-        with:
-          args: --max-cost-usd 2
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-```
-
-- **保留 concurrency 组名里的条件**，和[可以审查 fork 的工作流](#来自-fork-的-pr)一样，这个工作流和它共用组 `ocra-<编号>-review`：如果只写 `ocra-<编号>`，PR 上的每条其他评论都会取消正在进行的审查。配合上面的 `pull_request` 工作流时，把它的组名改成 `ocra-${{ github.event.pull_request.number }}-review` 来共用。
-- **由工作流决定谁能触发。** `issue_comment` 运行的是默认分支上的工作流文件，带着你的密钥，所以 PR 改不了谁能触发；评论的文字不会传给 Action，它只知道要审查哪个 PR。
+- **保留审查 job 的 concurrency 组名里的条件**：它和可以审查 fork 的工作流共用组 `ocra-<编号>-review`，如果只写 `ocra-<编号>-review`，PR 上的每条其他评论都会取消正在进行的审查。配合上面组名为 `ocra-<编号>` 的 `pull_request` 工作流时，改用 `format('ocra-{0}', github.event.issue.number)`；`ocra init --github --same-repo-only` 就是这样写的。
+- **由工作流决定谁能触发。** `issue_comment` 运行的是默认分支上的工作流文件，带着你的密钥，所以 PR 改不了谁能触发；评论的文字不会传给 Action，它只知道要审查哪个 PR、回答哪条评论。
 - **PR 里的任何东西都不会运行**，和 `pull_request_target` 一样：检出的是你的默认分支，ocra 把 PR 的提交当作 git 对象读取。
+- **override、dismiss 和 remember 不需要单独的工作流**：下一次审查会读取它们，`ocra learn` 读取备注。发这些命令的评论会启动 reply job，但它什么也不回答。
 
 ## PR 能改变什么、不能改变什么
 
@@ -489,7 +497,7 @@ jobs:
 { "github": { "requestChanges": false, "botLogin": "github-actions[bot]" } }
 ```
 
-`botLogin` 是哪个账号发的摘要才算 ocra 之前的评审；用别的 token 发布时改成对应账号。即使 ocra 用某个人的 token 发布，它自己的摘要和模型文字里的 `/ocra override` 等命令也永远不算数。
+`botLogin` 是哪个账号发的摘要才算 ocra 之前的评审；用别的 token 发布时改成对应账号。即使 ocra 用某个人的 token 发布，它自己的摘要和模型文字里的 `@ocra override` 等命令也永远不算数。
 
 ## 在命令行里使用
 

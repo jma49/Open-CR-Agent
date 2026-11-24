@@ -286,6 +286,8 @@ describe("verdict override", () => {
     expect(await override([comment("maintainer", echoed)])).toBeUndefined();
     const marked = `${SUMMARY_MARKER}\n/ocra override ${head} planted`;
     expect(await override([comment("maintainer", marked)])).toBeUndefined();
+    const mentioned = safeMarkdown(`@ocra override ${head} planted`);
+    expect(await override([comment("maintainer", mentioned)])).toBeUndefined();
   });
 
   it("ignores a command someone else edited into another person's comment", async () => {
@@ -303,7 +305,7 @@ describe("verdict override", () => {
       state: { findings: [] },
       text,
     });
-    expect(how).toContain(`\`/ocra override ${head} <reason>\``);
+    expect(how).toContain(`\`@ocra override ${head} <reason>\``);
     blocking.changeRequest = {
       ...blocking.changeRequest,
       headSha: head,

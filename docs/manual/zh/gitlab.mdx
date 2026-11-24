@@ -66,7 +66,7 @@ ocra-review:
 - **解决讨论串**：问题引用的代码已经不在时。
 - **可以应用的建议**（开启 [`fixes`](./configuration) 或 `--fixes` 时，[ADR-0058](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0058-checked-fix-proposals.md)）：问题的修复会在讨论串里放一个 `suggestion:-N+0` 块，从讨论串所在行往上覆盖到第一行被修复的代码（**Apply suggestion**）；只在讨论串正好覆盖被修复的行、往上不超过 100 行时给出，代码要么原样发布，要么不发，和 [GitHub](./github#可提交的建议) 一样。
 
-维护者说了算。这里的维护者指 Developer 及以上角色、且不是作者的人，不限于 GitLab 的 Maintainer 角色；他们解决 ocra 的讨论串，或者用 `/ocra dismiss`、以"won't fix""by design""false positive"开头的回复答复它，就驳回了这个问题。他们的其他回复会在问题再次出现时交给 Judge。被别人编辑过的评论一律不算数。
+维护者说了算。这里的维护者指 Developer 及以上角色、且不是作者的人，不限于 GitLab 的 Maintainer 角色；他们解决 ocra 的讨论串，或者用 `@ocra dismiss`、以"won't fix""by design""false positive"开头的回复答复它，就驳回了这个问题。他们的其他回复会在问题再次出现时交给 Judge。被别人编辑过的评论一律不算数。
 
 如果项目开启了推送时自动解决过时的讨论串（Settings → Merge requests），GitLab 会把推送者记为解决者，于是任何一次推送都会被当成驳回。在这样的项目里，以及 GitLab 没有给出这项设置时，解决 ocra 的讨论串不会驳回任何问题，请改为回复它。ocra 每次运行都会读取这项设置，已解决的讨论串没有驳回问题时摘要会说明。
 
@@ -77,14 +77,14 @@ GitLab 没有"请求修改"，任务的退出码就是门禁。按上面那样�
 Developer 及以上角色、且不是作者的人，可以发一条评论放行某一个提交：
 
 ```
-/ocra override <完整的 head 提交 id> <原因>
+@ocra override <完整的 head 提交 id> <原因>
 ```
 
 效果与 [GitHub](./github#强制放行阻塞的结论) 相同：只对这个提交有效，只认没被别人编辑过的评论，也从不认 ocra 自己的摘要。
 
 ### 让 ocra 记住
 
-Developer 及以上角色的人发出的 `/ocra remember <备注>` 与 [GitHub](./github#让-ocra-记住) 上相同，用 `ocra learn remember --mr <iid>`。`ocra learn ... --propose` 把 learning 开成[Merge Request](./cli#通过-pull-request-写回)，流水线成功后合并。
+Developer 及以上角色的人发出的 `@ocra remember <备注>` 与 [GitHub](./github#让-ocra-记住) 上相同，用 `ocra learn remember --mr <iid>`。`ocra learn ... --propose` 把 learning 开成[Merge Request](./cli#通过-pull-request-写回)，流水线成功后合并。
 
 要在 GitLab CI 里起草 learning，为[定时流水线](https://docs.gitlab.com/ci/pipelines/schedules/)加一个 job；处理备注则在 Merge Request 上加一个手动 job：
 

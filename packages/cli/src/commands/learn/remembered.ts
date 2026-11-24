@@ -3,7 +3,7 @@ import { MAX_FIX_FILES } from "@open-cr-agent/vcs-local/internal";
 import { PATH_LIKE } from "./documents.js";
 import type { Candidate } from "./pipeline.js";
 
-// The remember source of ADR-0040: each `/ocra remember <note>` on the pull
+// The remember source of ADR-0040: each `@ocra remember <note>` on the pull
 // or merge request, with the files it is about: those of the diff the note
 // names, else the whole diff when it is as small as a fix.
 export async function rememberedCandidates(vcs: VcsAdapter): Promise<Candidate[]> {

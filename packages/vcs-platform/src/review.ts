@@ -17,6 +17,7 @@ import type {
 } from "@open-cr-agent/core";
 import { errorMessage, isUnfinished, OcraError } from "@open-cr-agent/core";
 import { checksOfChange } from "./checks.js";
+import { OVERRIDE, REMEMBER } from "./commands.js";
 import { commitToChangeRequest, type MergeSource, mergeToChangeRequest } from "./commit.js";
 import { mentionOf } from "./conversation.js";
 import { declinedFindings, declinesFinding, findingOf } from "./declined.js";
@@ -50,9 +51,7 @@ export interface PlatformReviewOptions {
   merge?: MergeSource;
 }
 
-const OVERRIDE = /^\/ocra override ([0-9a-fA-F]{40}(?:[0-9a-fA-F]{24})?)\s+(\S.*)$/m;
 const MAX_OVERRIDE_REASON = 300;
-const REMEMBER = /^\/ocra remember\s+(\S[\s\S]*)$/m;
 const MAX_NOTE = 2_000;
 const MAX_NOTES = 20;
 const MAX_REPLIES = 3;
@@ -93,7 +92,7 @@ export class PlatformReview implements VcsAdapter {
     };
   }
 
-  // `/ocra remember <note>`: the rest of the comment, from someone with
+  // `@ocra remember <note>`: the rest of the comment, from someone with
   // write access, unedited by anyone else. Any writer may, the author too:
   // the note only becomes a learning through `ocra learn remember`, whose
   // pull request the team can require a person to review.
@@ -123,7 +122,7 @@ export class PlatformReview implements VcsAdapter {
     return declinedFindings(threads, prior.state.findings, await this.bot(), canWrite);
   }
 
-  // "Break glass": `/ocra override <commit> <reason>` from someone with
+  // "Break glass": `@ocra override <commit> <reason>` from someone with
   // write access other than the author lets a blocking verdict pass for that
   // commit only, so a later push with new problems needs a new decision. The
   // author can never overrule the review of their own change. Comments are
