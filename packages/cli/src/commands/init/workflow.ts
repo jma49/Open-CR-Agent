@@ -6,7 +6,7 @@
 // `node scripts/changelog.mjs action-pin <version>` moves this line with the
 // manual's; scripts/lib/manual-pins.test.mjs fails when they differ.
 export const ACTION_USES =
-  "ocrahq/Open-CR-Agent@8f6e5aa80f82580a1c9706b317a2d6f416f22f9c # v0.24.1";
+  "ocrahq/Open-CR-Agent@318a78e2b7c8ef255cbf1fc60cb02981e308f6c2 # v0.25.0";
 
 // By commit like the Action, so a moved tag cannot change what runs with the
 // workflow's secrets; scripts/lib/manual-pins.test.mjs keeps every recipe pinned.
