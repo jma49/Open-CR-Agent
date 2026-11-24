@@ -21,8 +21,8 @@ export function requestedSampling(config: CliConfig, args: ReviewArgs): Sampling
 // unset it adds nothing, so configurations that set none keep their hash.
 // The ocra Cloud account settings (ADR-0027) add their version and rules
 // only when they were layered in, so a signed-out run keeps its hash.
-// `learnings` sets up `ocra learn`, not how anything is reviewed. Trackers,
-// like effort, add nothing when none is set.
+// `learnings` sets up `ocra learn` and `cloud` what is uploaded, not how
+// anything is reviewed. Trackers, like effort, add nothing when none is set.
 export function configHash(
   config: CliConfig,
   args: ReviewArgs,
@@ -31,6 +31,7 @@ export function configHash(
   const {
     sampling: _,
     learnings: _learn,
+    cloud: _cloud,
     providers,
     extends: shared,
     effort,

@@ -8,7 +8,7 @@ import {
   MAX_RULE_TEXT,
 } from "./limits.js";
 import { MAX_MERGE_CHECKS, sharedMergeCheckSchema } from "./merge-checks.js";
-import { REPOSITORY_URL } from "./repository.js";
+import { normaliseRemote, REPOSITORY_URL } from "./repository.js";
 import { sharedTraceSchema } from "./trace.js";
 import {
   FINGERPRINT,
@@ -161,6 +161,29 @@ export const sharedLinkedTaskSchema = z.object({
 });
 export type SharedLinkedTask = z.input<typeof sharedLinkedTaskSchema>;
 
+/** A repository's path on its host: `owner/name`, or more segments on GitLab. */
+const REPO_NAME = /^[\w.-]+(?:\/[\w.-]+)+$/;
+
+/**
+ * Which repository a review is of, sent only when the configuration opts
+ * in (`cloud.shareRepoName`): its path, and its address in the normalised
+ * form the hash is made from, so no user, password or port.
+ */
+export const sharedRepoSchema = z.object({
+  name: z
+    .string()
+    .max(200)
+    .regex(REPO_NAME)
+    .refine((name) => name.split("/").every((part) => !/^\.+$/.test(part))),
+  url: z
+    .string()
+    .regex(REPOSITORY_URL)
+    .refine((url) => normaliseRemote(url) === url)
+    .optional()
+    .catch(undefined),
+});
+export type SharedRepo = z.input<typeof sharedRepoSchema>;
+
 /**
  * The review's counts, and the shared findings in `findingList`. A finding
  * or a reviewer's counts that do not fit read as null; the server keeps
@@ -240,6 +263,8 @@ export const reviewUploadSchema = z.object({
     })
     .optional()
     .catch(undefined),
+  // Which repository it is, when the configuration shares its name.
+  repo: sharedRepoSchema.optional().catch(undefined),
   // How the review came to its findings (ADR-0081): only with the findings.
   trace: sharedTraceSchema.optional().catch(undefined),
   // The text of each rule the shared findings name, by id (ADR-0080),

@@ -285,3 +285,45 @@ describe("the rules' text in an upload", () => {
     }
   });
 });
+
+describe("a repository's name in an upload", () => {
+  const repo = { name: "octo/app", url: "https://github.com/octo/app" };
+
+  it("is kept as sent, with or without its address, and absent from an older upload", () => {
+    expect(reviewUploadSchema.parse({ ...body, repo }).repo).toEqual(repo);
+    const nested = { name: "group/sub/app" };
+    expect(reviewUploadSchema.parse({ ...body, repo: nested }).repo).toEqual(nested);
+    const { repo: _r, ...older } = { ...body, repo };
+    expect(reviewUploadSchema.parse(older)).not.toHaveProperty("repo");
+  });
+
+  it("reads as absent with a name that is not a path on a host", () => {
+    for (const name of [
+      "app",
+      "octo/",
+      "/octo/app",
+      "octo/../app",
+      "octo/a pp",
+      `o/${"a".repeat(200)}`,
+    ]) {
+      const parsed = reviewUploadSchema.parse({ ...body, repo: { ...repo, name } });
+      expect(parsed.repo, name).toBeUndefined();
+      expect(parsed.runId).toBe(body.runId);
+    }
+  });
+
+  it("keeps the name without an address that is not the normalised https one", () => {
+    for (const url of [
+      "http://github.com/octo/app",
+      "https://user:pass@github.com/octo/app",
+      "https://github.com:8443/octo/app",
+      "https://GitHub.com/Octo/App",
+      "https://github.com/octo/app.git",
+      "git@github.com:octo/app",
+    ]) {
+      expect(reviewUploadSchema.parse({ ...body, repo: { ...repo, url } }).repo, url).toEqual({
+        name: "octo/app",
+      });
+    }
+  });
+});

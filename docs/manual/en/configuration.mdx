@@ -218,6 +218,12 @@ The shared file may set `models`, `concurrency`, the timeouts, `verify`, `judge`
 
 Only `https` URLs, without redirects, up to 256 KB. `#sha256=` pins the exact content; a file declaring `providers` must be pinned, since a provider decides where your code goes ([Model providers](./providers#your-own-endpoint)). If the file cannot be loaded or is invalid, ocra warns and uses the repository's settings alone, so limits set only there (such as `maxCostUsd`) do not apply; set must-hold limits in the repository too.
 
+## ocra Cloud
+
+| Key | Default | Meaning |
+|---|---|---|
+| `cloud.shareRepoName` | `false` | When [signed in](./cli#ocra-login-ocra-logout-ocra-whoami), every upload also names the repository: its path (`owner/name`, or deeper on GitLab) and its address as normalised for the hash, so ocra Cloud can show which repository a review is of. A repository without a host (a path remote, or no origin) is never named, nor one whose address the redaction pass would change. Set it in the repository's file or the one `--config` names; a shared configuration and the account cannot |
+
 ## Account settings
 
 Signed in to [ocra Cloud](./cli#ocra-login-ocra-logout-ocra-whoami), `ocra review` layers your account's settings under the configuration. Highest first: command-line flags, the configuration (the repository's file or `--config`, what it `extends`, `OCRA_*` variables), account settings, ocra's defaults.

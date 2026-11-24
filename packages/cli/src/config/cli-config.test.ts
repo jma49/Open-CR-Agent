@@ -33,6 +33,7 @@ describe("loadConfig", () => {
       reviewers: {},
       github: {},
       learnings: {},
+      cloud: {},
       rules: [],
       pluginSettings: {},
       providers: {},
