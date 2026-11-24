@@ -346,6 +346,9 @@ export const configSchema: z.ZodObject<{
         requestChanges: z.ZodOptional<z.ZodBoolean>;
         botLogin: z.ZodOptional<z.ZodString>;
     }, z.core.$strict>>;
+    cloud: z.ZodDefault<z.ZodObject<{
+        shareRepoName: z.ZodOptional<z.ZodBoolean>;
+    }, z.core.$strict>>;
     learnings: z.ZodDefault<z.ZodObject<{
         requireReview: z.ZodOptional<z.ZodBoolean>;
     }, z.core.$strict>>;
@@ -2058,6 +2061,10 @@ export const reviewUploadSchema: z.ZodObject<{
         number: z.ZodNumber;
         headSha: z.ZodString;
     }, z.core.$strip>>>;
+    repo: z.ZodCatch<z.ZodOptional<z.ZodObject<{
+        name: z.ZodString;
+        url: z.ZodCatch<z.ZodOptional<z.ZodString>>;
+    }, z.core.$strip>>>;
     trace: z.ZodCatch<z.ZodOptional<z.ZodObject<{
         startedAt: z.ZodISODateTime;
         ms: z.ZodNumber;
@@ -2329,6 +2336,15 @@ export const sharedMergeCheckSchema: z.ZodObject<{
     reason: z.ZodCatch<z.ZodOptional<z.ZodString>>;
     redacted: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
     truncated: z.ZodCatch<z.ZodOptional<z.ZodLiteral<true>>>;
+}, z.core.$strip>;
+
+// @public (undocumented)
+export type SharedRepo = z.input<typeof sharedRepoSchema>;
+
+// @public
+export const sharedRepoSchema: z.ZodObject<{
+    name: z.ZodString;
+    url: z.ZodCatch<z.ZodOptional<z.ZodString>>;
 }, z.core.$strip>;
 
 // @public (undocumented)

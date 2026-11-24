@@ -208,6 +208,8 @@ export const configSchema = z
       .partial()
       .strict()
       .default({}),
+    // Whether an upload to ocra Cloud names the repository besides its hash.
+    cloud: z.object({ shareRepoName: z.boolean() }).partial().strict().default({}),
     // ADR-0040: whether a person merges what `ocra learn --propose` opens.
     learnings: z.object({ requireReview: z.boolean() }).partial().strict().default({}),
     include: z.array(z.string().min(1)).default([]),

@@ -69,6 +69,7 @@ export async function deliver(
       ...(target.changeRequestNumber === undefined
         ? {}
         : { changeRequestNumber: target.changeRequestNumber }),
+      shareRepoName: run.config.cloud.shareRepoName === true,
       err: io.err,
       warn: run.warn,
     });

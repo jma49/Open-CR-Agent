@@ -68,6 +68,10 @@
     "number": 42,
     "headSha": "2222222222222222222222222222222222222222"
   },
+  "repo": {
+    "name": "octo/app",
+    "url": "https://github.com/octo/app"
+  },
   "walkthrough": {
     "overview": "Retries failed queries once, with the token api_key=[redacted] in a log.",
     "groups": [

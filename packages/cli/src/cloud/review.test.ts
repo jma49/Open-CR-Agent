@@ -113,4 +113,30 @@ describe("cloudUpload", () => {
   it("sends no rule text when no shared finding names a rule", () => {
     expect(cloudUpload(report, cloud(true), pull).upload).not.toHaveProperty("provenance");
   });
+
+  it("names the repository only when the configuration shares its name", () => {
+    expect(cloudUpload(report, cloud(false), local).upload).not.toHaveProperty("repo");
+    const named = cloudUpload(report, cloud(false), { ...local, shareRepoName: true }).upload;
+    expect(named.repo).toEqual({ name: "octo/app", url: "https://github.com/octo/app" });
+    const nested = { ...cloud(false), repository: "https://gitlab.com/group/sub/app" };
+    expect(cloudUpload(report, nested, { ...pull, shareRepoName: true }).upload.repo).toEqual({
+      name: "group/sub/app",
+      url: "https://gitlab.com/group/sub/app",
+    });
+  });
+
+  it("names no repository without a host, or whose address the redaction pass would change", () => {
+    for (const repository of [
+      "/home/me/app",
+      "c:/work/app",
+      "https://github.com/octo/ghp_0123456789abcdefghijklmnopqrstuvwxyz",
+    ]) {
+      const upload = cloudUpload(
+        report,
+        { ...cloud(false), repository },
+        { ...local, shareRepoName: true },
+      ).upload;
+      expect(upload, repository).not.toHaveProperty("repo");
+    }
+  });
 });

@@ -362,6 +362,16 @@
       },
       "additionalProperties": false
     },
+    "cloud": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "shareRepoName": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
     "learnings": {
       "default": {},
       "type": "object",

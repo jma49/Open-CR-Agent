@@ -218,6 +218,12 @@ ocra 会跳过：二进制文件、疑似密钥文件（`.env`、私钥、证书
 
 只接受 `https` 地址，不跟随重定向，最大 256 KB。`#sha256=` 固定文件内容；声明了 `providers` 的文件必须固定，因为供应商决定了你的代码发往哪里（见[模型供应商](./providers#你自己的端点)）。文件无法加载或无效时，ocra 警告后只用仓库自己的设置，只写在共享文件里的限制（例如 `maxCostUsd`）就不生效；必须始终生效的限制请在仓库里也写一份。
 
+## ocra Cloud
+
+| 字段 | 默认值 | 含义 |
+|---|---|---|
+| `cloud.shareRepoName` | `false` | [登录](./cli#ocra-loginocra-logoutocra-whoami)后，每次上传还会说明是哪个仓库：它的路径（`owner/name`，GitLab 上可以有更多层）和为计算哈希而规范化后的地址，让 ocra Cloud 可以显示审查属于哪个仓库。没有主机的仓库（本地路径形式的远程，或没有 origin）从不说明，脱敏会改动其地址的仓库也不说明。只能在仓库的配置文件或 `--config` 指定的文件里设置；共享配置和账户都不能设置 |
+
 ## 账户设置
 
 登录 [ocra Cloud](./cli#ocra-loginocra-logoutocra-whoami) 后，`ocra review` 把账户设置放在配置之下。优先级从高到低：命令行参数、配置（仓库的文件或 `--config`、它 `extends` 的共享配置、`OCRA_*` 环境变量）、账户设置、ocra 的默认值。
