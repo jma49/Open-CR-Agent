@@ -204,19 +204,29 @@ export function renderSummary({
   );
 }
 
+// The heading, the judge's summary and one line of counts: what the review
+// found is said once, and the findings themselves are on the diff.
 function verdictSection(report: ReviewReport, text: PlatformText): string[] {
-  const counts = (["critical", "warning", "suggestion"] as const)
-    .map((s) => `${report.findings.filter((f) => f.severity === s).length} ${s}`)
-    .join(", ");
+  const summary = report.summary.trim();
   return [
     SUMMARY_MARKER,
     `## ocra review · ${headline(report)}`,
-    "",
-    safeMarkdown(report.summary, { startsLine: true }),
+    ...(summary === "" ? [] : ["", safeMarkdown(summary, { startsLine: true })]),
     ...overrideNote(report, text),
     "",
-    `**${report.findings.length} finding(s)** (${counts}) · risk tier \`${report.tier}\``,
+    countsLine(report),
   ];
+}
+
+function countsLine(report: ReviewReport): string {
+  const counts = (["critical", "warning", "suggestion"] as const).flatMap((severity) => {
+    const n = report.findings.filter((f) => f.severity === severity).length;
+    return n === 0 ? [] : [`${n} ${severity}${n === 1 ? "" : "s"}`];
+  });
+  const tier = `risk tier \`${report.tier}\``;
+  return counts.length === 0
+    ? `Risk tier \`${report.tier}\``
+    : `**${counts.join(", ")}** · ${tier}`;
 }
 
 const MAX_LISTED_FILES = 10;

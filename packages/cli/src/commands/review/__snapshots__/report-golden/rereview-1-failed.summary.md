@@ -3,7 +3,7 @@
 
 Nothing was reviewed: 1 review task(s) failed. The first error: model unavailable
 
-**0 finding(s)** (0 critical, 0 warning, 0 suggestion) · risk tier `trivial`
+Risk tier `trivial`
 
 **Incomplete:** 2 selected file(s) were not reviewed. They are listed under Coverage and cost, and the next review of this pull request includes them.
 

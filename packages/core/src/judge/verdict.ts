@@ -23,13 +23,10 @@ export function decideVerdict(all: readonly VerdictInput[]): Verdict {
   return all.length > 0 ? "approved_with_comments" : "approved";
 }
 
+// Without the judge's summary, only what the counts beside it cannot say.
 export function defaultSummary(findings: readonly Finding[], stillOpen = 0): string {
-  if (findings.length === 0) {
-    return stillOpen > 0
-      ? `No new issues; ${stillOpen} earlier finding(s) are still open.`
-      : "No issues found.";
-  }
-  const count = (severity: Finding["severity"]) =>
-    findings.filter((f) => f.severity === severity).length;
-  return `${findings.length} finding(s): ${count("critical")} critical, ${count("warning")} warning, ${count("suggestion")} suggestion.`;
+  if (findings.length > 0) return "";
+  return stillOpen > 0
+    ? `No new issues; ${stillOpen} earlier finding(s) are still open.`
+    : "No issues found.";
 }

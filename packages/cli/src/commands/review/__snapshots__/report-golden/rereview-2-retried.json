@@ -10,7 +10,7 @@
   },
   "tier": "trivial",
   "verdict": "approved_with_comments",
-  "summary": "2 finding(s): 0 critical, 2 warning, 0 suggestion.",
+  "summary": "",
   "coverage": [
     {
       "path": "a.ts",
