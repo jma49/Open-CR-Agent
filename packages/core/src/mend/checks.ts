@@ -19,15 +19,41 @@ const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]/g;
 // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what is removed
 const CONTROL = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u2028\u2029]/g;
 
-// The end of a job's log as a round reads it: its last lines, without the
-// runner's timestamps and terminal sequences, cut to the characters a prompt
-// takes.
+// GitHub Actions opens a step with this line and names what failed with the next.
+const STEP = /^##\[group\]Run /;
+const FAILED = /^##\[error\]/;
+// GitLab marks where the job's own script starts and ends, on the line of what follows.
+const SECTION_MARK = /(section_(?:start|end):\d+:[\w.-]+(?:\[[^\]]*\])?)\r/g;
+const SCRIPT_START = /section_start:\d+:step_script/;
+const SCRIPT_END = /section_end:\d+:step_script/;
+
+// The lines of the step that failed, where the runner marks its steps: what
+// ran after it (clean-up, steps that always run, a job's after-script) would
+// otherwise fill a log's end and push the failure out of it. On GitHub
+// Actions, from the failed step's first line to the last line that names an
+// error; on GitLab, the job's script section; else every line.
+function failedStep(lines: string[]): string[] {
+  const failed = lines.findLastIndex((line) => FAILED.test(line));
+  if (failed >= 0) {
+    const step = lines.findLastIndex((line, at) => at < failed && STEP.test(line));
+    return lines.slice(Math.max(step, 0), failed + 1);
+  }
+  const start = lines.findLastIndex((line) => SCRIPT_START.test(line));
+  if (start < 0) return lines;
+  const end = lines.findIndex((line, at) => at > start && SCRIPT_END.test(line));
+  return lines.slice(start + 1, end < 0 ? lines.length : end);
+}
+
+// The end of a job's log as a round reads it: the last lines of the step that
+// failed, without the runner's timestamps and terminal sequences, cut to the
+// characters a prompt takes.
 export function logTail(log: string): string {
   const lines = log
+    .replace(SECTION_MARK, "$1\n")
     .split(/\r?\n/)
     .map((line) => line.replace(ANSI, "").replace(CONTROL, "").replace(TIMESTAMP, "").trimEnd())
     .filter((line) => line !== "");
-  const tail = lines.slice(-CHECK_LIMITS.logLines).join("\n");
+  const tail = failedStep(lines).slice(-CHECK_LIMITS.logLines).join("\n");
   return tail.length > CHECK_LIMITS.logChars ? tail.slice(-CHECK_LIMITS.logChars) : tail;
 }
 
