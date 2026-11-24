@@ -52,7 +52,7 @@ export const performanceReviewer: ReviewerDefinition = {
   modelTier: "standard",
   systemPrompt: SYSTEM_PROMPT,
   scope: {
-    minTier: "lite",
+    minTier: "full",
     span: "packed",
     ignore: [
       ...DOCUMENTATION_FILES,

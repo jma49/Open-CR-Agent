@@ -4,6 +4,7 @@ import type { FileDiff } from "../domain.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { agentsMdReviewer } from "../review/reviewers/agents-md.js";
 import { docsReviewer } from "../review/reviewers/docs.js";
+import { performanceReviewer } from "../review/reviewers/performance.js";
 import { planMatrix, planTasks } from "./matrix.js";
 
 function bundle(label: string, ...paths: string[]): Bundle {
@@ -258,6 +259,21 @@ describe("the docs reviewer", () => {
       ["docs-1", ["src/args.ts", "README.md"]],
     ]);
     expect(docsReviewer.modelTier).toBe("light");
+  });
+});
+
+describe("the performance reviewer", () => {
+  it("runs only at the full tier, and a repository can bring it back lower", () => {
+    const b = [bundle("api", "src/api.ts")];
+    expect(planMatrix(b, [performanceReviewer], "lite").skipped).toEqual([
+      { reviewer: "performance", bundle: "api", reason: "below_tier" },
+    ]);
+    expect(cells(planMatrix(b, [performanceReviewer], "full"))).toEqual([
+      ["performance-1", ["src/api.ts"]],
+    ]);
+    expect(
+      cells(planMatrix(b, [performanceReviewer], "lite", { performance: { minTier: "lite" } })),
+    ).toEqual([["performance-1", ["src/api.ts"]]]);
   });
 });
 
