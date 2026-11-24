@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import type { FileDiff } from "../domain.js";
-import { type BundlePolicy, bundleFiles, defaultBundlePolicy, SMALL_SET_LABEL } from "./bundle.js";
+import {
+  type BundlePolicy,
+  bundleFiles,
+  bundlePolicyFor,
+  defaultBundlePolicy,
+  SMALL_SET_LABEL,
+} from "./bundle.js";
 import type { FileGrouper } from "./grouping.js";
 
 function file(path: string, patchChars = 10): FileDiff {
@@ -125,5 +131,18 @@ describe("bundleFiles", () => {
       ["(root)", 1],
     ]);
     expect((await bundleFiles(many)).strategy).toBe("per_directory");
+  });
+});
+
+describe("bundlePolicyFor", () => {
+  it("holds a bundle's diff to a quarter of a small context window", async () => {
+    expect(bundlePolicyFor(undefined)).toBe(defaultBundlePolicy);
+    expect(bundlePolicyFor(1_000_000)).toEqual(defaultBundlePolicy);
+    expect(bundlePolicyFor(16_000).maxBundleChars).toBe(16_000);
+
+    // 9,000 characters each: together within the default limit, past this one.
+    const split = await bundleFiles(files(3, 9_000), bundlePolicyFor(16_000));
+    expect(paths(split.bundles)).toEqual([["f0.ts"], ["f1.ts"], ["f2.ts"]]);
+    expect(paths((await bundleFiles(files(3, 9_000))).bundles)).toHaveLength(1);
   });
 });

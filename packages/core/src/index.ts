@@ -126,6 +126,7 @@ export type {
   OcraPlugin,
   PluginSummary,
   PostConfigureContext,
+  ProviderModel,
   RuntimeFactory,
   RuntimeOptions,
   VcsFactory,

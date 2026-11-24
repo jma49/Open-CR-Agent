@@ -15,7 +15,7 @@ describe("coverageGaps", () => {
     ).toEqual({
       notReviewed: 2,
       nothingReviewed: true,
-      incomplete: { step_cap: 0, stopped_early: 0 },
+      incomplete: { step_cap: 0, context_window: 0, stopped_early: 0 },
     });
     expect(
       coverageGaps({
@@ -56,14 +56,15 @@ describe("coverageGaps", () => {
           { path: "a.ts", status: "incomplete", ended: "step_cap" },
           { path: "b.ts", status: "incomplete", ended: "step_cap" },
           { path: "c.ts", status: "incomplete", ended: "stopped_early" },
+          { path: "e.ts", status: "incomplete", ended: "context_window" },
           { path: "d.ts", status: "reviewed" },
         ],
         tasks: [{ status: "completed" }],
       }),
     ).toEqual({
-      notReviewed: 3,
+      notReviewed: 4,
       nothingReviewed: false,
-      incomplete: { step_cap: 2, stopped_early: 1 },
+      incomplete: { step_cap: 2, context_window: 1, stopped_early: 1 },
     });
   });
 });

@@ -13,6 +13,7 @@ import {
   MAX_AGENT_STEPS,
   type ModelPrice,
   OcraError,
+  type ProviderModel,
   parseModel,
   proxiedFetch,
   type RateLimits,
@@ -47,6 +48,7 @@ interface Target {
   endpoint: Endpoint;
   model: string;
   price: ModelPrice;
+  contextWindow?: number;
 }
 
 interface Call {
@@ -214,7 +216,7 @@ export class DirectRuntime implements AgentRuntime {
   // A model's provider and price, from the configuration's declaration.
   private declared(
     model: string,
-  ): { provider: CustomProvider; modelID: string; price: ModelPrice } | OcraError {
+  ): { provider: CustomProvider; modelID: string; price: ProviderModel } | OcraError {
     const { providerID, modelID } = parseModel(model);
     const provider = this.options.providers?.[providerID];
     if (!provider) {
@@ -249,6 +251,7 @@ export class DirectRuntime implements AgentRuntime {
       },
       model: modelID,
       price,
+      ...(price.contextWindow === undefined ? {} : { contextWindow: price.contextWindow }),
     };
   }
 }

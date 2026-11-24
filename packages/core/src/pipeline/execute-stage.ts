@@ -61,6 +61,7 @@ export async function executeStage(
     ultra: settings.ultra,
     ...(settings.maxTasks !== undefined ? { maxTasks: settings.maxTasks } : {}),
     hasGuidelines: guidelinesShown(plan.guidelines, settings),
+    bundling: settings.bundling,
   });
   const warnings: string[] = [];
   const limited = matrix.skipped.filter((s) => s.reason === "task_limit").length;

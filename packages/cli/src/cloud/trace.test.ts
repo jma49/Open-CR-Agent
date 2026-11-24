@@ -76,6 +76,17 @@ describe("sharedTrace", () => {
     expect(shared?.redacted).toBe(true);
   });
 
+  it("sends an attempt that ended at its model's context window", () => {
+    const [attempt] = task("t1").attempts;
+    const cut = {
+      ...task("t1"),
+      attempts: attempt ? [{ ...attempt, ending: "context_window" as const }] : [],
+    };
+    expect(sharedTrace({ ...trace, tasks: [cut] })?.tasks[0]?.attempts[0]?.ending).toBe(
+      "context_window",
+    );
+  });
+
   it("keeps the contract's bounds, and leaves out what attempts read when the trace is too large", () => {
     const many = Array.from({ length: MAX_TRACE_TASKS + 5 }, (_, i) =>
       task(

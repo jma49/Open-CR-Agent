@@ -49,6 +49,9 @@ export interface AttemptOutcome {
   // the runtime knows: OpenCode caps each turn, so a resumed session's steps
   // add up past the cap without either turn reaching it.
   atStepCap?: true;
+  // Its last turn stopped because the next request would not fit the
+  // model's declared context window (ADR-0071).
+  atContextWindow?: true;
   // Distinct paths it passed to read_file and the literals it passed to
   // code_search, in order (exploredBy).
   read?: string[];
@@ -125,7 +128,8 @@ export type AttemptEnding = "done" | IncompleteEnding | "error";
 export function attemptEnding(outcome: AttemptOutcome): AttemptEnding {
   if (outcome.error) return "error";
   if (outcome.toolCalls.includes(REVIEW_TOOLS.taskDone)) return "done";
-  return outcome.atStepCap ? "step_cap" : "stopped_early";
+  if (outcome.atStepCap) return "step_cap";
+  return outcome.atContextWindow ? "context_window" : "stopped_early";
 }
 
 export interface ToolUse {

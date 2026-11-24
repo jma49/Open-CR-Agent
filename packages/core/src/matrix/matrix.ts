@@ -1,7 +1,7 @@
 import picomatch from "picomatch";
 import { z } from "zod";
 import type { ReviewerOverrides } from "../agent/settings.js";
-import { type Bundle, defaultBundlePolicy } from "../bundle/bundle.js";
+import { type Bundle, type BundlePolicy, defaultBundlePolicy } from "../bundle/bundle.js";
 import { type FileDiff, RISK_TIERS, type RiskTier } from "../domain.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { hasPathWord, touchesSensitivePath } from "../triage.js";
@@ -50,8 +50,9 @@ export function planMatrix(
   reviewers: readonly ReviewerDefinition[],
   tier: RiskTier,
   overrides: ReviewerOverrides = {},
-  options: { allTiers?: boolean; hasGuidelines?: boolean } = {},
+  options: { allTiers?: boolean; hasGuidelines?: boolean; bundling?: BundlePolicy } = {},
 ): ReviewMatrix {
+  const policy = options.bundling ?? defaultBundlePolicy;
   const cells: MatrixCell[] = [];
   const skipped: SkippedCell[] = [];
   const ignores = new Map(reviewers.map((r) => [r.id, ignoreMatcher(r)]));
@@ -101,7 +102,7 @@ export function planMatrix(
       const narrowed = files.length === bundle.files.length ? bundle : { ...bundle, files };
       if (reviewer.scope?.span === "packed") {
         const pack = packs.get(reviewer);
-        if (pack && fitsPack(pack, narrowed, sensitive)) {
+        if (pack && fitsPack(pack, narrowed, sensitive, policy)) {
           pack.bundles.push(narrowed);
           continue;
         }
@@ -115,7 +116,7 @@ export function planMatrix(
   for (const reviewer of [...packs.keys()]) closePack(reviewer);
   for (const [reviewer, { files, from }] of whole) {
     const [only] = from;
-    const parts = from.size === 1 && only ? [{ ...only, files }] : wholeChange(files);
+    const parts = from.size === 1 && only ? [{ ...only, files }] : wholeChange(files, policy);
     cells.push(
       ...parts.map((bundle, n) => ({ taskId: `${reviewer.id}-${n + 1}`, reviewer, bundle })),
     );
@@ -132,13 +133,13 @@ interface Pack {
 
 // A pack keeps bundles whole and within the bundle limits, and never mixes
 // sensitive bundles with the rest, so they still run first (ADR-0049).
-function fitsPack(pack: Pack, bundle: Bundle, sensitive: boolean): boolean {
+function fitsPack(pack: Pack, bundle: Bundle, sensitive: boolean, policy: BundlePolicy): boolean {
   const files = pack.bundles.flatMap((b) => b.files);
   const chars = (list: readonly FileDiff[]) => list.reduce((sum, f) => sum + f.patch.length, 0);
   return (
     pack.sensitive === sensitive &&
-    files.length + bundle.files.length <= defaultBundlePolicy.maxFilesPerBundle &&
-    chars(files) + chars(bundle.files) <= defaultBundlePolicy.maxBundleChars
+    files.length + bundle.files.length <= policy.maxFilesPerBundle &&
+    chars(files) + chars(bundle.files) <= policy.maxBundleChars
   );
 }
 
@@ -156,7 +157,7 @@ function packedCell(reviewer: ReviewerDefinition, pack: Pack): MatrixCell {
 
 // The change as one bundle, or as few as keep a task within what one
 // conversation reviews well.
-function wholeChange(files: readonly FileDiff[]): Bundle[] {
+function wholeChange(files: readonly FileDiff[], policy: BundlePolicy): Bundle[] {
   const parts: FileDiff[][] = [];
   let chars = 0;
   for (const file of files) {
@@ -164,7 +165,7 @@ function wholeChange(files: readonly FileDiff[]): Bundle[] {
     const fits =
       part !== undefined &&
       part.length < WHOLE_CHANGE_MAX_FILES &&
-      chars + file.patch.length <= defaultBundlePolicy.maxBundleChars;
+      chars + file.patch.length <= policy.maxBundleChars;
     if (fits) part.push(file);
     else parts.push([file]);
     chars = fits ? chars + file.patch.length : file.patch.length;
@@ -197,6 +198,7 @@ export interface TaskOptions {
   ultra?: boolean;
   maxTasks?: number;
   hasGuidelines?: boolean;
+  bundling?: BundlePolicy;
 }
 
 // The matrix as it runs: --ultra reviews every cell twice, and past
@@ -213,6 +215,7 @@ export function planTasks(
   const planned = planMatrix(bundles, reviewers, tier, overrides, {
     allTiers: options.ultra === true,
     hasGuidelines: options.hasGuidelines === true,
+    ...(options.bundling ? { bundling: options.bundling } : {}),
   });
   const cells = options.ultra
     ? planned.cells.flatMap((cell) => [cell, { ...cell, taskId: `${cell.taskId}b` }])

@@ -139,7 +139,7 @@ function doneEvent(
   return {
     type: "done",
     taskId,
-    ...(ended === "step_cap" || ended === "stopped_early" ? { ended } : {}),
+    ...(ended === "done" || ended === "error" ? {} : { ended }),
     ...(wrappedUp ? { wrapUp: { findings: wrappedUp.findings } } : {}),
     ...(refusedFindings?.length ? { refusedFindings } : {}),
   };

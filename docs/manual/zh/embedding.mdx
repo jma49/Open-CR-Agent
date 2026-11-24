@@ -88,6 +88,7 @@ try {
 | `mergeChecks` | 团队的[合并前检查](./how-it-works#合并前检查)（`{ id, instruction }[]`），在审查任务之外的一次 `judge` 调用中判断；报告的 `mergeChecks` 给出每条的结果 |
 | `stages.walkthrough` | 把[改动导读](./how-it-works#改动导读)写进 `report.walkthrough`（默认关闭；CLI 在 Pull Request 和 Merge Request 上开启） |
 | `stages.fixes`、`syntax` | 为问题给出经过检查的[修复](./how-it-works)（默认关闭）；`syntax` 是检查打补丁后的文件能否解析的 `SyntaxChecker`（`@open-cr-agent/code-graph` 的 `treeSitterSyntax()`），没有它就不给修复。报告的 `fixes` 列出为哪些问题请求了修复、修复为何没被保留 |
+| `limits.contextWindow` | 本次运行可能调用的模型中最小的[上下文窗口](./providers#上下文窗口较小的模型)（token 数）：一个任务的 diff 不超过它的四分之一。CLI 根据声明的供应商设置 |
 | `limits.maxCostUsd`、`limits.maxTasks` | 花费上限（[`--max-cost-usd`](./cli)）和任务数上限；负数或 `NaN` 的上限、不是整数的任务数上限以 `CONFIG_INVALID` 拒绝 |
 | `mode.full` | 即使平台报告了上次审查以来的改动，也审查所有文件 |
 | `mode.ultra` | 以成本换召回率（[模式](./how-it-works#模式)） |
@@ -105,7 +106,7 @@ try {
 一个 `ReviewReport`，内容与 [JSON 报告](./cli#json-输出)相同。
 
 - **对外发布的是 `toReportOutput(report)`**，不是报告本身：它是 CLI 写出的带版本号的 JSON，类型为 `ReportOutput`，由 `reportOutputSchema`（类型即由它推导）和 [JSON Schema](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/schema/report.v1.json) 校验。内部报告的字段可能会变。
-- **不完整的审查不算通过。** 审查留下了没审完的选中文件，或有没人能核查的 critical 时，`isIncompleteReview(report)` 为真，这正是 CLI 以 3 退出的情形；结论让运行失败（退出码 1）时，即 `significant_concerns` 且没人推翻，`isBlocking(report)` 为真。像 CLI 的[退出码](./cli#退出码)那样用它们做门禁，永远不要只看 `verdict`。要看细节：`coverageGaps(report)` 给出有多少选中的文件没被审查、是否什么都没审到，并在 `incomplete` 里按任务的结束方式（`step_cap`、`stopped_early`）给出只审查了一部分的文件数；`report.unverifiedCriticals` 是没人能核查的 critical 数量。
+- **不完整的审查不算通过。** 审查留下了没审完的选中文件，或有没人能核查的 critical 时，`isIncompleteReview(report)` 为真，这正是 CLI 以 3 退出的情形；结论让运行失败（退出码 1）时，即 `significant_concerns` 且没人推翻，`isBlocking(report)` 为真。像 CLI 的[退出码](./cli#退出码)那样用它们做门禁，永远不要只看 `verdict`。要看细节：`coverageGaps(report)` 给出有多少选中的文件没被审查、是否什么都没审到，并在 `incomplete` 里按任务的结束方式（`step_cap`、`context_window`、`stopped_early`）给出只审查了一部分的文件数；`report.unverifiedCriticals` 是没人能核查的 critical 数量。
 
 `vcs.publish(report)` 像 `--publish` 一样按平台的信任规则发布审查，没能发出去的部分以警告返回。
 

@@ -173,6 +173,8 @@ export interface AttemptError {
 // @public (undocumented)
 export interface AttemptOutcome {
     // (undocumented)
+    atContextWindow?: true;
+    // (undocumented)
     atStepCap?: true;
     // (undocumented)
     error?: AttemptError;
@@ -448,7 +450,7 @@ export interface CustomProvider {
     // (undocumented)
     effort?: "openai" | "openrouter";
     // (undocumented)
-    models: Readonly<Record<string, ModelPrice>>;
+    models: Readonly<Record<string, ProviderModel>>;
     // (undocumented)
     toolCalls?: "api" | "text";
 }
@@ -690,7 +692,7 @@ export interface Hunk {
 }
 
 // @public (undocumented)
-const INCOMPLETE_ENDINGS: readonly ["step_cap", "stopped_early"];
+const INCOMPLETE_ENDINGS: readonly ["step_cap", "context_window", "stopped_early"];
 
 // @public (undocumented)
 export type IncompleteEnding = (typeof INCOMPLETE_ENDINGS)[number];
@@ -1199,6 +1201,12 @@ export interface ProvenanceInput {
 }
 
 // @public (undocumented)
+export interface ProviderModel extends ModelPrice {
+    // (undocumented)
+    contextWindow?: number;
+}
+
+// @public (undocumented)
 export function proxiedFetch(env: ProxyEnv): typeof fetch;
 
 // @public (undocumented)
@@ -1352,6 +1360,7 @@ export const reportOutputSchema: z.ZodObject<{
         path: z.ZodString;
         status: z.ZodLiteral<"incomplete">;
         ended: z.ZodEnum<{
+            context_window: "context_window";
             step_cap: "step_cap";
             stopped_early: "stopped_early";
         }>;
@@ -1633,6 +1642,7 @@ export const reportOutputSchema: z.ZodObject<{
             rate_limit: "rate_limit";
         }>>;
         ended: z.ZodExactOptional<z.ZodEnum<{
+            context_window: "context_window";
             step_cap: "step_cap";
             stopped_early: "stopped_early";
         }>>;
@@ -1958,6 +1968,8 @@ export type ReviewEvent = {
 export interface ReviewLimits {
     // (undocumented)
     concurrency?: number;
+    // (undocumented)
+    contextWindow?: number;
     // (undocumented)
     maxCostUsd?: number;
     // (undocumented)

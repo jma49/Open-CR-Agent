@@ -31,6 +31,23 @@ export const defaultBundlePolicy: BundlePolicy = {
   maxBundleChars: 120_000,
 };
 
+// The share of a model's context window a task's diff may fill: the rest
+// holds the context around it, what the agent reads and its answers
+// (ADR-0071). Four characters per token, like the rest of the plan.
+const DIFF_SHARE = 0.25;
+const CHARS_PER_TOKEN = 4;
+
+// The policy for models whose smallest context window is `contextWindow`
+// tokens: the default one, with smaller bundles where the window asks for it.
+export function bundlePolicyFor(contextWindow: number | undefined): BundlePolicy {
+  if (contextWindow === undefined) return defaultBundlePolicy;
+  const fits = Math.floor(contextWindow * CHARS_PER_TOKEN * DIFF_SHARE);
+  return {
+    ...defaultBundlePolicy,
+    maxBundleChars: Math.min(defaultBundlePolicy.maxBundleChars, fits),
+  };
+}
+
 export const SMALL_SET_LABEL = "small change set";
 const PER_FILE_MAX_FILES = 20;
 

@@ -1,4 +1,5 @@
 import {
+  type AttemptError,
   type AttemptOutcome,
   addUsage,
   emptyUsage,
@@ -14,6 +15,7 @@ import {
   type Usage,
 } from "@open-cr-agent/core";
 import type { SharedStarts } from "./shared-starts.js";
+import { TURN_HEADROOM, WindowGauge } from "./window.js";
 import {
   type Answer,
   type CallSettings,
@@ -29,6 +31,8 @@ export interface LoopInput {
   endpoint: Endpoint;
   model: string;
   price: ModelPrice;
+  // The model's context window in tokens, when its declaration has one.
+  contextWindow?: number;
   system: string;
   user: string;
   // AgentTaskSpec.sharedPrefixes of `user`.
@@ -79,14 +83,17 @@ export async function runLoop(input: LoopInput): Promise<TaskAttempt> {
     { text: input.user, ...(input.shared ? { shared: input.shared } : {}) },
     input.tools,
     input.maxSteps,
-    input.resume,
+    { resume: input.resume, headroom: TURN_HEADROOM },
   );
   const { wrapUp } = input;
   if (!wrapUp) return outcome;
   const tools = input.tools.filter((t) => wrapUp.tools.includes(t.name));
   return {
     ...outcome,
-    wrapUp: () => conversation.turn({ text: wrapUp.message }, tools, outcome.steps + wrapUp.steps),
+    wrapUp: () =>
+      conversation.turn({ text: wrapUp.message }, tools, outcome.steps + wrapUp.steps, {
+        headroom: 0,
+      }),
   };
 }
 
@@ -108,9 +115,12 @@ class Conversation {
   private readonly uses: ToolUse[] = [];
   private readonly refusals: { fields: string; file: string | undefined }[] = [];
   private settings: CallSettings;
+  private readonly gauge: WindowGauge;
 
   constructor(input: LoopInput) {
     this.input = input;
+    this.gauge = new WindowGauge(input.contextWindow);
+    this.gauge.said(input.system);
     this.timeout = AbortSignal.timeout(input.timeoutMs);
     this.signal = AbortSignal.any([input.signal, this.timeout]);
     this.dialogue = input.wire(input);
@@ -124,19 +134,27 @@ class Conversation {
     if (index >= 0) this.refusals.splice(index, 1);
   }
 
-  // Runs until the done tool, an answer without tools, or `maxSteps` steps
-  // in the whole attempt; returns the attempt's outcome so far.
+  // Runs until the done tool, an answer without tools, `maxSteps` steps in
+  // the whole attempt, or a context window with less than `headroom` of it
+  // left; returns the attempt's outcome so far.
   async turn(
     message: { text: string; shared?: readonly number[] },
     offered: readonly ToolDefinition[],
     maxSteps: number,
-    resume?: string,
+    { resume, headroom }: { resume?: string | undefined; headroom: number },
   ): Promise<AttemptOutcome> {
-    const { input, dialogue, outcome, texts, uses } = this;
+    const { input, dialogue, outcome, texts, uses, gauge } = this;
     const tools = new Map(offered.map((t) => [t.name, t]));
     let done = false;
+    let windowFull = false;
     dialogue.say(message.text, message.shared);
+    gauge.said(message.text);
     while (outcome.steps < maxSteps) {
+      if (gauge.full(headroom)) {
+        if (outcome.steps === 0) outcome.error = this.tooLarge();
+        else windowFull = true;
+        break;
+      }
       const response = await this.ask(offered);
       outcome.steps += 1;
       if (!response.ok) {
@@ -147,6 +165,7 @@ class Conversation {
       }
       outcome.usage = addUsage(outcome.usage, response.usage);
       input.onUsage?.(outcome.usage);
+      gauge.answered(response.usage, response.text);
       if (response.text) texts.push(response.text);
 
       // A completion's tools are only there to match a task's request.
@@ -156,6 +175,7 @@ class Conversation {
         if (stoppedEarly && outcome.steps < maxSteps) {
           outcome.resumed = true;
           dialogue.say(resume);
+          gauge.said(resume);
           continue;
         }
         break;
@@ -169,6 +189,7 @@ class Conversation {
         }),
       );
       dialogue.answer(outputs);
+      for (const { output } of outputs) gauge.said(output);
       // A finding sent in the same answer as task_done and refused for its
       // arguments was lost without a word: the task goes on, so the model
       // reads why and can send it again.
@@ -187,9 +208,21 @@ class Conversation {
       if (done) break;
     }
     outcome.text = texts.join("\n").trim();
-    if (!done && !outcome.error && outcome.steps >= maxSteps) outcome.atStepCap = true;
+    const unfinished = !done && !outcome.error;
+    if (unfinished && outcome.steps >= maxSteps) outcome.atStepCap = true;
     else delete outcome.atStepCap;
+    if (unfinished && windowFull) outcome.atContextWindow = true;
+    else delete outcome.atContextWindow;
     return { ...snapshot(outcome), ...exploredBy(uses) };
+  }
+
+  // The first request would not fit: another model of the chain may hold it.
+  private tooLarge(): AttemptError {
+    const { model, contextWindow } = this.input;
+    return {
+      message: `the prompt, about ${this.gauge.tokens} tokens, does not fit ${model}'s context window of ${contextWindow} tokens`,
+      retryable: true,
+    };
   }
 
   // One step's answer. A request the endpoint rate-limits is sent again once

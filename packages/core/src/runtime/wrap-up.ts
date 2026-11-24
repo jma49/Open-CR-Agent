@@ -4,7 +4,8 @@ import type { AttemptEnding, AttemptOutcome, TaskAttempt } from "./attempt.js";
 type WrapUp = NonNullable<TaskAttempt["wrapUp"]>;
 
 // The wrap-up turn of an attempt that ended without an error and without the
-// done tool (at the step cap, or stopped early after the resume), unless the
+// done tool (at the step cap or the context window, or stopped early after
+// the resume), unless the
 // run no longer wants it: cancelled, timed out or past its spend limit, which
 // all abort the signal.
 export function pendingWrapUp(
@@ -13,7 +14,7 @@ export function pendingWrapUp(
   signal: AbortSignal,
 ): WrapUp | undefined {
   if (!attempt.wrapUp || signal.aborted) return undefined;
-  return ended === "step_cap" || ended === "stopped_early" ? attempt.wrapUp : undefined;
+  return ended === "done" || ended === "error" ? undefined : attempt.wrapUp;
 }
 
 // The attempt's outcome after the turn. The attempt had finished, so a turn

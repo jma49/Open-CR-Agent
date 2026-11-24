@@ -1,5 +1,4 @@
 import { chainOf, reviewerCall } from "../agent/settings.js";
-import { defaultBundlePolicy } from "../bundle/bundle.js";
 import type { Effort } from "../contracts.js";
 import type { ChangeRequest, RiskTier } from "../domain.js";
 import { planTasks, type SkippedCell } from "../matrix/matrix.js";
@@ -80,8 +79,9 @@ export type PreviewOptions = Omit<PlanOptions, "runtime" | "full"> &
 // files, which tasks, and how large each first prompt is.
 export async function previewReview(options: PreviewOptions): Promise<ReviewPreview> {
   const settings = runSettings(options);
+  const policy = options.bundling ?? settings.bundling;
   const plan = await planReview(
-    { ...options, full: settings.full },
+    { ...options, bundling: policy, full: settings.full },
     () => {},
     new AbortController().signal,
   );
@@ -90,6 +90,7 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
     ultra: settings.ultra,
     ...(settings.maxTasks !== undefined ? { maxTasks: settings.maxTasks } : {}),
     hasGuidelines: guidelinesShown(plan.guidelines, settings),
+    bundling: settings.bundling,
   });
   const { cells } = planned;
 
@@ -130,7 +131,6 @@ export async function previewReview(options: PreviewOptions): Promise<ReviewPrev
     return task;
   });
 
-  const policy = options.bundling ?? defaultBundlePolicy;
   return {
     changeRequest: plan.changeRequest,
     tier: plan.tier,

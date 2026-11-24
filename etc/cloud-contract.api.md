@@ -210,7 +210,7 @@ export const agentRoleSchema: z.ZodEnum<{
 }>;
 
 // @public (undocumented)
-export const ATTEMPT_ENDINGS: readonly ["done", "step_cap", "stopped_early", "error"];
+export const ATTEMPT_ENDINGS: readonly ["done", "step_cap", "context_window", "stopped_early", "error"];
 
 // @public (undocumented)
 export type BodyIssue = z.infer<typeof bodyIssueSchema>;
@@ -403,6 +403,7 @@ export const configSchema: z.ZodObject<{
             input: z.ZodNumber;
             output: z.ZodNumber;
             cachedInput: z.ZodOptional<z.ZodNumber>;
+            contextWindow: z.ZodOptional<z.ZodInt>;
         }, z.core.$strict>>;
         effort: z.ZodOptional<z.ZodEnum<{
             openai: "openai";
@@ -2110,6 +2111,7 @@ export const reviewUploadSchema: z.ZodObject<{
                 steps: z.ZodNumber;
                 tools: z.ZodRecord<z.ZodString, z.ZodNumber>;
                 ending: z.ZodEnum<{
+                    context_window: "context_window";
                     done: "done";
                     error: "error";
                     step_cap: "step_cap";
@@ -2396,6 +2398,7 @@ export const sharedTraceSchema: z.ZodObject<{
             steps: z.ZodNumber;
             tools: z.ZodRecord<z.ZodString, z.ZodNumber>;
             ending: z.ZodEnum<{
+                context_window: "context_window";
                 done: "done";
                 error: "error";
                 step_cap: "step_cap";

@@ -123,9 +123,10 @@ export interface ReviewContext {
 }
 
 // How a review task that finished without the done tool ended: its agent
-// used every step (step_cap), or stopped with steps left (stopped_early; one
-// that stopped silently was first told once to continue).
-export const INCOMPLETE_ENDINGS = ["step_cap", "stopped_early"] as const;
+// used every step (step_cap), filled its model's declared context window
+// (context_window), or stopped with steps left (stopped_early; one that
+// stopped silently was first told once to continue).
+export const INCOMPLETE_ENDINGS = ["step_cap", "context_window", "stopped_early"] as const;
 export type IncompleteEnding = (typeof INCOMPLETE_ENDINGS)[number];
 
 // Why every model a task could use refused it: a per-day limit, which a new

@@ -149,7 +149,7 @@ ocra review [options]
 `--format json` 输出完整报告，格式与会话里的 `report.json` 相同：
 
 - 变更信息、风险档位、结论、总结；
-- 每个改动文件的覆盖情况：已审查、失败、未审查（没有启动任务）、不完整（任务没有调用完成工具就结束；`ended` 为 `step_cap` 或 `stopped_early`）、自上次评审后未改动，或被排除及原因；审查 PR 时，本次是增量还是全量及原因（`scope`）；
+- 每个改动文件的覆盖情况：已审查、失败、未审查（没有启动任务）、不完整（任务没有调用完成工具就结束；`ended` 为 `step_cap`、`context_window` 或 `stopped_early`）、自上次评审后未改动，或被排除及原因；审查 PR 时，本次是增量还是全量及原因（`scope`）；
 - 分组、各任务结果、被 Matrix 跳过的（审查员，分组）组合；
 - `refuted`（被核查丢弃的问题及原因）、`unverifiedCriticals`（核查没能检查的 critical 数量）、`judgement`（Judge 合并、丢弃或重新定级的记录）、开启修复时的 `fixes`（`asked`、`proposed`，以及每条被拒绝问题的 `fingerprint` 和 `reason`：`declined`、`failed`、`stale`、`unchanged`、`unsafe`、`too_large`、`no_parser` 或 `syntax`）；
 - 问题列表，以及 `rereview`：已修复、未再报告、未重新检查、未改动或已驳回的旧问题，记录了报告者时各带 `reviewer`；
