@@ -2,7 +2,7 @@ import { parse, postprocess, preprocess } from "micromark";
 import { gfmTable } from "micromark-extension-gfm-table";
 
 // Model text is untrusted: it may not close our markup, embed HTML or images,
-// mention people, spell one of ocra's commands (`/ocra …`, which would count
+// mention people, spell one of ocra's commands (`@ocra …` or `/ocra …`, which would count
 // if ocra posted as a person with write access), start a line with a slash
 // (GitLab runs a line such as `/merge` or `/approve` in a comment as a quick
 // action, with the rights of the token that posted it), become a link at
@@ -25,8 +25,8 @@ import { gfmTable } from "micromark-extension-gfm-table";
 // posted). A `~~~` fence, a span across lines and an unclosed fence (which
 // would run on over ocra's own text) get the text rules. In code, three
 // things stay neutralized because ocra reads them from the raw body or they
-// post more than code: an HTML comment opener (ocra's markers), `/ocra` (its
-// commands) and a fence's `suggestion` info string.
+// post more than code: an HTML comment opener (ocra's markers), `@ocra` and
+// `/ocra` (its commands) and a fence's `suggestion` info string.
 //
 // The text rules leave no syntax that binds tighter than a code span, so the
 // code the parse found is the code in the posted comment. The parse leaves
@@ -237,5 +237,5 @@ function escapeSyntax(text: string): string {
 }
 
 function neutralizeCode(code: string): string {
-  return code.replaceAll("<!--", "<!\u200b--").replace(/\/(?=ocra)/gi, "/\u200b");
+  return code.replaceAll("<!--", "<!\u200b--").replace(/[@/](?=ocra)/gi, "$&\u200b");
 }

@@ -1,20 +1,20 @@
 import type { ChangeRequest, PriorFinding } from "@open-cr-agent/core";
+import { DISMISS } from "./commands.js";
 import type { Bot, PlatformThread } from "./platform.js";
 import { FINDING_MARKER } from "./render.js";
 
 const DECLINE =
   /^(won['’]?t fix|wontfix|will not fix|by design|false positive|not a bug|working as intended|intended behaviou?r)(?=$|[\s.,;:!—–-])/i;
-const COMMAND = /^\/ocra dismiss\b/im;
 const MAX_REASON = 2_000;
 const MAX_DECLINED = 50;
 
-// A dismissal takes a clear decline: an explicit `/ocra dismiss`, or a reply
+// A dismissal takes a clear decline: an explicit `@ocra dismiss`, or a reply
 // that opens with a decline and does not ask. Words anywhere else in a reply
 // ("this is not intended", "is this by design?", "acknowledged, will fix")
 // do not dismiss, since a dismissed finding leaves the verdict. Disagreement
 // ("I disagree") keeps the finding reported.
 export function declinesFinding(reply: string): boolean {
-  if (COMMAND.test(reply)) return true;
+  if (DISMISS.test(reply)) return true;
   const opening =
     reply
       .trim()
@@ -36,7 +36,7 @@ export function findingOf(thread: PlatformThread, bot: Bot): string | undefined 
 // What `ocra learn feedback` reads (ADR-0069): the findings someone with
 // write access declined in their thread, with what they said: their decline,
 // or their last reply in a thread a writer resolved. Any writer may, the
-// author too, as with `/ocra remember`: nothing leaves the verdict here, and
+// author too, as with `@ocra remember`: nothing leaves the verdict here, and
 // the words only become a learning through a pull request the team can
 // require a person to review.
 export async function declinedFindings(
@@ -57,7 +57,7 @@ export async function declinedFindings(
     const said: { by: string; text: string; declines: boolean }[] = [];
     for (const r of thread.comments.slice(1)) {
       const own = r.editor === undefined || r.editor === r.author;
-      const text = r.body.replace(COMMAND, "").trim();
+      const text = r.body.replace(DISMISS, "").trim();
       if (!own || text === "" || !(await writer(r.author))) continue;
       said.push({ by: r.author, text, declines: declinesFinding(r.body) });
     }

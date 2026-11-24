@@ -35,7 +35,7 @@ inputs:
     description: >-
       Draft learnings instead of reviewing, and open them as a pull request:
       mine drafts from the fix commits (on a schedule; check out with
-      fetch-depth 0), remember from the /ocra remember notes of the pull
+      fetch-depth 0), remember from the @ocra remember notes of the pull
       request a comment is on (on issue_comment). One opened with the
       workflow's own token starts no checks, so it is left for a person to
       merge; pass a GitHub App's token as github-token to merge it once its
@@ -130,7 +130,7 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
-        # On a comment (/ocra review), the pull request it is on, reviewed
+        # On a comment (@ocra review), the pull request it is on, reviewed
         # in full.
         OCRA_PR: ${{ github.event.pull_request.number || (github.event.issue.pull_request && github.event.issue.number) || '' }}
         OCRA_FULL: ${{ github.event_name == 'issue_comment' }}

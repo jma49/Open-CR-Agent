@@ -16,7 +16,7 @@ ocra init                            # writes .ocra/config.json and says what it
 ocra review                          # review your uncommitted changes
 ```
 
-For GitHub pull requests, `ocra init --github` also writes `.github/workflows/ocra.yml`, safe for forks, and prints the `gh` commands for the secret and the `ocra-review` label. It never replaces an existing file. See [ocra init](./cli#ocra-init).
+For GitHub pull requests, `ocra init --github` also writes `.github/workflows/ocra.yml`, safe for forks, and `.github/workflows/ocra-commands.yml` for `@ocra` comments, and prints the `gh` commands for the secret and the `ocra-review` label. It never replaces an existing file. See [ocra init](./cli#ocra-init).
 
 The steps below do the same by hand, with any provider OpenCode supports.
 

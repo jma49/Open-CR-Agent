@@ -21,7 +21,7 @@ describe("renderSummary", () => {
       text: gitlab,
     });
     expect(body).toContain(
-      `Someone with the Developer role or higher other than the author can let this commit pass by commenting \`/ocra override ${HEAD} <reason>\`.`,
+      `Someone with the Developer role or higher other than the author can let this commit pass by commenting \`@ocra override ${HEAD} <reason>\`.`,
     );
     expect(body).toContain("the next review of this merge request includes them");
   });

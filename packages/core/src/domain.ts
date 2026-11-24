@@ -135,7 +135,7 @@ export interface ChangeRequest {
   // Someone entitled to overrule the verdict did so for this head commit:
   // a blocking verdict then no longer fails the run. The verdict is kept.
   override?: { by: string; reason: string };
-  // `/ocra remember <note>` comments from people with write access: what
+  // `@ocra remember <note>` comments from people with write access: what
   // they want future reviews to know (ADR-0040). `ref` names the comment.
   remember?: { by: string; note: string; ref: string }[];
   // Findings of the earlier review that someone with write access declined

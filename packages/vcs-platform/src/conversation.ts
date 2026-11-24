@@ -1,5 +1,6 @@
 import type { Mention, MentionRef } from "@open-cr-agent/core";
 import { errorMessage } from "@open-cr-agent/core";
+import { givesCommand } from "./commands.js";
 import { safeMarkdown } from "./neutralize.js";
 import type { Bot, PlatformDiscussion, ReviewPlatform } from "./platform.js";
 import { safeLine } from "./render.js";
@@ -45,6 +46,7 @@ export async function mentionOf(ref: MentionRef, rules: ConversationRules): Prom
   }
   const prose = comment.body.replace(FENCE, "").replace(CODE_SPAN, "");
   if (!MENTION.test(prose)) return ignored("the comment does not mention @ocra");
+  if (givesCommand(prose)) return ignored("the comment gives ocra a command");
   if (comment.editor !== undefined && comment.editor !== by) {
     return ignored("someone other than its author edited the comment");
   }

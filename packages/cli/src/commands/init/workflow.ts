@@ -10,7 +10,7 @@ export const ACTION_USES =
 
 // By commit like the Action, so a moved tag cannot change what runs with the
 // workflow's secrets; scripts/lib/manual-pins.test.mjs keeps every recipe pinned.
-const CHECKOUT_USES = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1";
+export const CHECKOUT_USES = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1";
 
 export const REVIEW_LABEL = "ocra-review";
 
@@ -23,28 +23,37 @@ export interface WorkflowOptions {
   direct: boolean;
 }
 
-export function workflowFor({ kind, keyEnv, direct }: WorkflowOptions): string {
-  const header = [
-    "# Written by ocra init. What it does and how to change it:",
-    "# https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/manual/en/github.mdx",
-  ];
-  const action = [
+export const HEADER = [
+  "# Written by ocra init. What it does and how to change it:",
+  "# https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/manual/en/github.mdx",
+];
+
+// The Action's step: inputs first, then the provider's key.
+export function actionStep(
+  { keyEnv, direct }: Omit<WorkflowOptions, "kind">,
+  inputs: readonly string[],
+): string[] {
+  return [
     `uses: ${ACTION_USES}`,
     "with:",
     ...(direct ? ["  opencode: false"] : []),
-    "  args: --max-cost-usd 2",
+    ...inputs.map((input) => `  ${input}`),
     "env:",
     `  ${keyEnv}: ${expr(`secrets.${keyEnv}`)}`,
   ];
-  return `${[...header, ...(kind === "fork-safe" ? forkSafe(action) : sameRepo(action))].join("\n")}\n`;
+}
+
+export function workflowFor({ kind, keyEnv, direct }: WorkflowOptions): string {
+  const action = actionStep({ keyEnv, direct }, ["args: --max-cost-usd 2"]);
+  return `${[...HEADER, ...(kind === "fork-safe" ? forkSafe(action) : sameRepo(action))].join("\n")}\n`;
 }
 
 // A GitHub Actions expression, ${{ ... }}.
-function expr(expression: string): string {
+export function expr(expression: string): string {
   return `\${{ ${expression} }}`;
 }
 
-function step(lines: readonly string[], indent: string): string[] {
+export function step(lines: readonly string[], indent: string): string[] {
   const [first, ...rest] = lines;
   return [`${indent}- ${first}`, ...rest.map((line) => `${indent}  ${line}`)];
 }

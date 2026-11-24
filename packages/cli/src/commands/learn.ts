@@ -32,7 +32,7 @@ Drafts learnings for .ocra/learnings/, one helper model call each:
               access declined in their thread, with what they said
   import      from each ## section of the Markdown files named that names
               files of the repository
-  remember    from each "/ocra remember <note>" on --pr or --mr by someone
+  remember    from each "@ocra remember <note>" on --pr or --mr by someone
               with write access
 
   check       lists the learnings whose paths match no file at HEAD,

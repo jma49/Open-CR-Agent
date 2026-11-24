@@ -66,7 +66,7 @@ ocra-review:
 - **Resolved threads** when the code a finding quoted is gone.
 - **Suggestions you can apply** (with [`fixes`](./configuration) or `--fixes` on, [ADR-0058](https://github.com/ocrahq/Open-CR-Agent/blob/main/docs/adr/0058-checked-fix-proposals.md)): a finding's fix adds a `suggestion:-N+0` block to its thread from the thread's line back to the first fixed line (**Apply suggestion**), only when the thread covers exactly the fixed lines, at most 100 lines above it, and with the code exactly as written or not at all, as on [GitHub](./github#committable-suggestions).
 
-Maintainers stay in charge. A maintainer here is anyone with the Developer role or higher other than the author, not only GitLab's Maintainer role; they dismiss a finding by resolving its thread or answering with `/ocra dismiss` or a reply opening with "won't fix", "by design" or "false positive". Their other replies reach the judge when the finding comes back. A comment someone else edited counts for nothing.
+Maintainers stay in charge. A maintainer here is anyone with the Developer role or higher other than the author, not only GitLab's Maintainer role; they dismiss a finding by resolving its thread or answering with `@ocra dismiss` or a reply opening with "won't fix", "by design" or "false positive". Their other replies reach the judge when the finding comes back. A comment someone else edited counts for nothing.
 
 If the project resolves outdated threads on push (Settings → Merge requests), GitLab records whoever pushed as the resolver, so any push would count as a dismissal. There, and whenever GitLab does not report the setting, resolving ocra's thread dismisses nothing: answer it instead. ocra reads the setting on every run, and the summary says when a resolved thread did not dismiss its finding.
 
@@ -77,14 +77,14 @@ GitLab has no "request changes": the job's exit code is the gate. With `allow_fa
 Someone with the Developer role or higher, other than the author, can let one commit pass with a comment:
 
 ```
-/ocra override <full head commit id> <reason>
+@ocra override <full head commit id> <reason>
 ```
 
 It works as on [GitHub](./github#overriding-a-blocking-verdict): only for that commit, only from a comment nobody else edited, and never from ocra's own summary.
 
 ### Asking ocra to remember
 
-`/ocra remember <note>` from someone with the Developer role or higher works as on [GitHub](./github#asking-ocra-to-remember), with `ocra learn remember --mr <iid>`. `ocra learn ... --propose` opens its learnings as a [merge request](./cli#writing-them-back-by-pull-request) that merges when its pipeline succeeds.
+`@ocra remember <note>` from someone with the Developer role or higher works as on [GitHub](./github#asking-ocra-to-remember), with `ocra learn remember --mr <iid>`. `ocra learn ... --propose` opens its learnings as a [merge request](./cli#writing-them-back-by-pull-request) that merges when its pipeline succeeds.
 
 To draft learnings from GitLab CI, add a job for a [scheduled pipeline](https://docs.gitlab.com/ci/pipelines/schedules/) and, for notes, a manual job on merge requests:
 
