@@ -16,6 +16,6 @@
     }
   },
   "dependencies": {
-    "@open-cr-agent/core": "0.22.0"
+    "@open-cr-agent/core": "0.23.0"
   }
 }
