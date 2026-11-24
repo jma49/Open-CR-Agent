@@ -69,8 +69,13 @@ export function touchesSensitivePath(
 function isSensitivePath(path: string, policy: TriagePolicy): boolean {
   return (
     policy.sensitivePathPatterns.some((p) => p.test(path)) ||
-    pathWords(path).some((w) => policy.sensitivePathWords.has(w))
+    hasPathWord(path, policy.sensitivePathWords)
   );
+}
+
+// Whether a whole word of the path is one of `words`.
+export function hasPathWord(path: string, words: ReadonlySet<string>): boolean {
+  return pathWords(path).some((w) => words.has(w));
 }
 
 // "src/OAuth2/PasswordHasher.cs" -> o, auth, 2, password, hasher, cs
