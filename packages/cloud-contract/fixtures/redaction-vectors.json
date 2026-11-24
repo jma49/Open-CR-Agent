@@ -1,6 +1,10 @@
 {
   "about": "The redaction pass of @open-cr-agent/cloud-contract (packages/cloud-contract/src/redact.ts in Open-CR-Agent), which the ocra CLI and ocra Cloud both run. Each `redact` entry is a line whose `secret` must not survive; each `keep` line must come back unchanged. ocra Cloud tests its generated copy of this file.",
   "redact": [
+    {
+      "line": "jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+      "secret": "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+    },
     { "line": "const key = \"AKIAABCDEFGHIJKLMNOP\";", "secret": "AKIAABCDEFGHIJKLMNOP" },
     { "line": "token: ghp_abcdefghijklmnopqrstuvwxyz0123", "secret": "ghp_abcdefghijklmnop" },
     {
@@ -121,6 +125,8 @@
     "Run it with --token tokenName, or pass --password to be prompted.",
     "--private-key ./keys/deploy.pem --password-file /run/secrets/db",
     "This is a basic example of bearer authentication, over a basic int32Array.",
-    "password: |"
+    "password: |",
+    "<script src=\"/packages/web/dist/assets/ReviewPage-Bx92KqLmQ7zT.js\"></script>",
+    "dist/chunks/chunk-4f3c2a1b9d8e7f6a0b1c2d3e4f5a6b7c.mjs"
   ]
 }

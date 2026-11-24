@@ -132,6 +132,11 @@ const isPath = (s: string) =>
   s.includes("/") &&
   s.split("/").every((seg) => /^[a-z0-9_-]*$/.test(seg) || /^[A-Za-z]+$/.test(seg));
 const looksRandom = (s: string) => /\d/.test(s) && entropy(s) >= 4.3 && !isPath(s);
+// A run that ends in a file extension names a file, often a build asset
+// with a content hash (assets/index-Bx92KqLm.js). The extension is short
+// and then ends, so the parts of a dotted token (a JWT) still count.
+const FILE_EXTENSION = /^\.[A-Za-z][A-Za-z0-9]{0,7}(?![\w+/=-])/;
+const namesFile = (text: string, end: number) => FILE_EXTENSION.test(text.slice(end, end + 10));
 
 /** The text with secret-looking tokens replaced, and whether any was. */
 export function redact(text: string): { text: string; redacted: boolean } {
@@ -190,8 +195,12 @@ export function redact(text: string): { text: string; redacted: boolean } {
   out = out.replace(BARE_LINE, (m, head: string, value: string, at: number, all: string) =>
     isBareSecret(value) && !isReference(all, at) ? `${head}${REDACTED}` : m,
   );
-  out = out.replace(HEX, (m) => (isHexKey(m) ? REDACTED : m));
-  out = out.replace(LONG_RUN, (m) => (looksRandom(m) ? REDACTED : m));
+  out = out.replace(HEX, (m, at: number, all: string) =>
+    isHexKey(m) && !namesFile(all, at + m.length) ? REDACTED : m,
+  );
+  out = out.replace(LONG_RUN, (m, at: number, all: string) =>
+    looksRandom(m) && !namesFile(all, at + m.length) ? REDACTED : m,
+  );
   return { text: out, redacted: out !== text };
 }
 
