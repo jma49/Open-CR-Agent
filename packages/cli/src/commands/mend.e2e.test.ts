@@ -123,6 +123,7 @@ describe("ocra mend", () => {
           check: null,
           conflict: null,
           resolved: null,
+          regions: [],
           outcome: "proposed",
           reason: null,
           cause: null,

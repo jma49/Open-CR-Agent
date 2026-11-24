@@ -200,9 +200,18 @@ const MARKER = /^(<{7,}|\|{7,}|={7,}|>{7,})( |$)/;
 // merges two versions, it does not write new code.
 const GROWTH_LINES = 10;
 
+// One answered region, for a person to read: where its lines start in the
+// file put together, both sides as they were, and the lines written.
+export interface ResolvedRegion {
+  line: number;
+  ours: string[];
+  theirs: string[];
+  lines: string[];
+}
+
 export type ConflictAnswer =
   // The file put together, and the lines written for each region in order.
-  | { file: string; resolutions: string[][] }
+  | { file: string; resolutions: string[][]; regions: ResolvedRegion[] }
   // declined: the model answered that the changes cannot both hold;
   // invalid: the answer is not one resolution for each region, or one of
   // them holds a marker or far more lines than either side.
@@ -226,6 +235,7 @@ export function resolveConflicts(
   if (written.size !== regions.length) return { refused: "invalid" };
   const out: string[] = [];
   const resolutions: string[][] = [];
+  const answered: ResolvedRegion[] = [];
   let index = 0;
   for (const segment of segments) {
     if (!("region" in segment)) {
@@ -240,10 +250,12 @@ export function resolveConflicts(
     if (lines.some((line) => MARKER.test(line) || line.includes("\r"))) {
       return { refused: "invalid" };
     }
+    const { ours, theirs } = segment.region;
+    answered.push({ line: out.length + 1, ours, theirs, lines });
     out.push(...lines);
     resolutions.push(lines);
   }
-  return { file: out.join("\n"), resolutions };
+  return { file: out.join("\n"), resolutions, regions: answered };
 }
 
 function jsonOf(text: string): unknown {

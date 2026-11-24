@@ -12,6 +12,7 @@ import {
   type ConflictSegment,
   conflictVerdict,
   parseConflicts,
+  type ResolvedRegion,
   resolveConflicts,
   tooLargeToResolve,
 } from "../mend/conflict.js";
@@ -37,7 +38,7 @@ export interface ConflictRound {
   items: ConflictResult[];
   // Every conflicted file with its conflicts answered and checked; absent
   // unless all of them are, since a merge is committed whole or not at all.
-  resolved?: { path: string; content: string; executable: boolean }[];
+  resolved?: { path: string; content: string; executable: boolean; regions: ResolvedRegion[] }[];
 }
 
 interface ConflictDeps {
@@ -53,6 +54,7 @@ interface ConflictDeps {
 }
 
 type Refusal = Pick<ConflictResult, "outcome" | "reason" | "cause">;
+type Resolved = { content: string; regions: ResolvedRegion[] };
 
 // A conflicted file as the loop's work item: the same item, with the same
 // attempts, while git merges it to the same text (ADR-0078 point 8).
@@ -108,7 +110,7 @@ export async function conflictRound(
       : ({ outcome: "deferred", reason: "no_room" } satisfies Refusal),
   );
   const results = open.map(({ id, file }, i): ConflictResult => {
-    const answer = answers[i] as Refusal | { content: string };
+    const answer = answers[i] as Refusal | Resolved;
     return "content" in answer
       ? { id, conflict: file.path, outcome: "deferred", reason: "conflicts" }
       : { id, conflict: file.path, ...answer };
@@ -118,7 +120,7 @@ export async function conflictRound(
     items: open.map(({ id, file }) => ({ id, conflict: file.path, outcome: "fixed" })),
     resolved: open.map(({ file }, i) => ({
       path: file.path,
-      content: (answers[i] as { content: string }).content,
+      ...(answers[i] as Resolved),
       executable: file.executable,
     })),
   };
@@ -128,7 +130,7 @@ async function resolveFile(
   file: ConflictedFile,
   segments: readonly ConflictSegment[],
   deps: ConflictDeps,
-): Promise<Refusal | { content: string }> {
+): Promise<Refusal | Resolved> {
   const rejected = (reason: ItemReason, cause?: CallFailure): Refusal => ({
     outcome: "rejected",
     reason,
@@ -169,7 +171,7 @@ async function resolveFile(
     const verdict = conflictVerdict(
       await call("verifier", buildConflictCheckPrompt(file.path, segments, answer.resolutions)),
     );
-    if (verdict === "resolves") return { content: answer.file };
+    if (verdict === "resolves") return { content: answer.file, regions: answer.regions };
     return rejected(
       verdict === "does_not_resolve" ? "unresolved" : verdict === "unsure" ? "unsure" : "unchecked",
     );

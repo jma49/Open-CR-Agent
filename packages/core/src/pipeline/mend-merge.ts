@@ -91,14 +91,18 @@ export async function mergeRound(
   const { resolved } = answered;
   if (!resolved) return ended("nothing", answered.items);
   if (options.level === "propose") {
-    const content = new Map(resolved.map((file) => [file.path, file.content]));
+    const files = new Map(resolved.map((file) => [file.path, file]));
     return ended(
       "proposed",
-      answered.items.map((item) => ({
-        ...item,
-        outcome: "proposed",
-        resolved: content.get(item.conflict) as string,
-      })),
+      answered.items.map((item) => {
+        const file = files.get(item.conflict);
+        return {
+          ...item,
+          outcome: "proposed",
+          resolved: file?.content as string,
+          regions: file?.regions ?? [],
+        };
+      }),
     );
   }
   if (!vcs.commit) return ended("not_writable", deferred(answered.items, "not_writable"));
@@ -106,7 +110,12 @@ export async function mergeRound(
     parent: headSha,
     mergeParent: conflicts.mergeParent,
     message: mergeMessage(conflicts.mergeParent, resolved),
-    files: resolved.map((file) => ({ ...file, created: false })),
+    files: resolved.map(({ path, content, executable }) => ({
+      path,
+      content,
+      executable,
+      created: false,
+    })),
   });
   if (!result.committed) return ended(result.outcome, deferred(answered.items, result.outcome));
   await vcs

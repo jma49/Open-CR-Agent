@@ -1035,6 +1035,12 @@ export const mendResultSchema: z.ZodObject<{
         check: z.ZodDefault<z.ZodNullable<z.ZodString>>;
         conflict: z.ZodDefault<z.ZodNullable<z.ZodString>>;
         resolved: z.ZodDefault<z.ZodNullable<z.ZodString>>;
+        regions: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            line: z.ZodNumber;
+            ours: z.ZodString;
+            theirs: z.ZodString;
+            resolved: z.ZodString;
+        }, z.core.$strip>>>;
         outcome: z.ZodEnum<{
             deferred: "deferred";
             fixed: "fixed";
