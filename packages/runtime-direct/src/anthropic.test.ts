@@ -151,24 +151,28 @@ describe("DirectRuntime on a Messages endpoint", () => {
     ]);
   });
 
-  it("only ends a block at a start past the two a task can mark", async () => {
+  it("only ends a block at a start past the three a task can mark", async () => {
     const server = await endpoint([
       { text: "Reviewed.", toolCalls: [{ name: "task_done", input: {} }] },
     ]);
     const spec = {
       ...task(),
-      userPrompt: "change guidelines files plan",
-      sharedPrefixes: [6, 17, 23],
+      userPrompt: "change guidelines files reviewer plan",
+      sharedPrefixes: [6, 17, 23, 32],
     };
     await collect(runtime(server.url).runTask(spec, signal()));
 
     const mark = { cache_control: { type: "ephemeral" } };
-    expect(server.seen[0]?.body.messages[0]?.content).toEqual([
+    const body = server.seen[0]?.body;
+    expect(body?.messages[0]?.content).toEqual([
       { type: "text", text: "change", ...mark },
       { type: "text", text: " guidelines", ...mark },
-      { type: "text", text: " files" },
+      { type: "text", text: " files", ...mark },
+      { type: "text", text: " reviewer" },
       { type: "text", text: " plan", ...mark },
     ]);
+    // The first shared start holds the system prompt, so its mark goes to the starts.
+    expect(body?.system).toEqual([{ type: "text", text: spec.systemPrompt }]);
   });
 
   it("sends a completion a task follows as that task opens, and stores its starts", async () => {

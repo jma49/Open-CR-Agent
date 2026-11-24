@@ -29,10 +29,12 @@ const MAX_OUTPUT_TOKENS = 32_000;
 // Anthropic charges a quarter above the input rate for input it stores.
 const CACHE_WRITE_FACTOR = 1.25;
 const CACHED = { cache_control: { type: "ephemeral" } } as const;
-// The API takes four cache marks a request: the system prompt's, the newest
-// block's, and these. A dialogue of one request leaves its newest block
-// unmarked and has that mark for a shared start.
-const MAX_SHARED_MARKS = 2;
+// The API takes four cache marks a request: the newest block's and these. A
+// conversation whose first message has no shared start marks its system
+// prompt instead; one that has needs no mark there, since the first shared
+// start holds the system prompt. A dialogue of one request leaves its newest
+// block unmarked and has that mark for a shared start too.
+const MAX_SHARED_MARKS = 3;
 // How the API names the effort parameters in a 400 that refuses them.
 const EFFORT_PARAMETER = /\b(?:effort|output_config|thinking)\b/i;
 // The API has no level under "low", and its newer models cannot stop
@@ -55,8 +57,8 @@ type Turn = Exclude<Anthropic.MessageParam, { role: "system" }>;
 // run's other conversations open with is marked too, so they read it from
 // the first that stored it (ADR-0064). A dialogue of one request has no next
 // step, and storing costs a quarter more than sending, so its conversation
-// goes unmarked; its system prompt stays marked for the other calls of its
-// kind. The first request waits for the answer to another that is storing
+// goes unmarked but for a shared start; its system prompt stays marked for
+// the other calls of its kind. The first request waits for the answer to another that is storing
 // the same start to begin (ADR-0072).
 export const anthropicWire: Wire = ({ endpoint, model, price, system, oneRequest, starts }) => {
   const client = clientOf(endpoint);
@@ -64,6 +66,7 @@ export const anthropicWire: Wire = ({ endpoint, model, price, system, oneRequest
   const messages: Turn[] = [];
   // What the first request stores for the run's other conversations.
   let opening: string | undefined;
+  let sharesStart = false;
 
   return {
     say: (text, shared = []) => {
@@ -71,6 +74,7 @@ export const anthropicWire: Wire = ({ endpoint, model, price, system, oneRequest
       const [first] = ends;
       if (messages.length === 0 && first !== undefined) {
         opening = [endpoint.baseUrl, model, system, text.slice(0, first)].join("\0");
+        sharesStart = true;
       }
       const marks = oneRequest ? MAX_SHARED_MARKS + 1 : MAX_SHARED_MARKS;
       messages.push({ role: "user", content: textBlocks(text, ends, marks) });
@@ -85,7 +89,7 @@ export const anthropicWire: Wire = ({ endpoint, model, price, system, oneRequest
       const request = (sent: CallSettings): Request => ({
         model,
         max_tokens: MAX_OUTPUT_TOKENS,
-        system: [{ type: "text", text: system, ...CACHED }],
+        system: [{ type: "text", text: system, ...(sharesStart ? {} : CACHED) }],
         messages: oneRequest ? messages : withBreakpoint(messages),
         ...(tools.length > 0 ? { tools: tools.map(toolSpec) } : {}),
         ...effortParams(sent.effort),

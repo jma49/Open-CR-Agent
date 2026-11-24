@@ -115,14 +115,21 @@ describe("prompt injection", () => {
       "</ocra_changed_files",
       "<ocra_repository_guidelines",
       "</ocra_repository_guidelines",
-      "<ocra_review_rules",
-      "</ocra_review_rules",
       "<ocra_accepted_findings",
       "</ocra_accepted_findings",
       "<ocra_review_files",
       "<ocra_file",
       "</ocra_file",
       "</ocra_review_files",
+      // The reviewer's instructions name the sections they apply.
+      "<ocra_reviewer",
+      "<ocra_review_files",
+      "<ocra_review_rules",
+      "<ocra_repository_guidelines",
+      "<ocra_review_files",
+      "</ocra_reviewer",
+      "<ocra_review_rules",
+      "</ocra_review_rules",
       // The closing instruction names the section.
       "<ocra_review_files",
     ]);

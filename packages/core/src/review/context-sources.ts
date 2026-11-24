@@ -12,6 +12,7 @@ export const CONTEXT_SOURCES = [
   "learnings",
   "project_docs",
   "diff",
+  "reviewer",
   "callers",
   "analyzer",
   "plan",
@@ -19,9 +20,10 @@ export const CONTEXT_SOURCES = [
 ] as const;
 export type ContextSource = (typeof CONTEXT_SOURCES)[number];
 
-// The sources a run can leave out. The reviewer's own instructions, the diff
-// and the plan phase are the review itself; "description" leaves out only the
-// change request's description, and "rules" only the repository's rules.
+// The sources a run can leave out. ocra's and the reviewer's instructions,
+// the diff and the plan phase are the review itself; "description" leaves
+// out only the change request's description, and "rules" only the
+// repository's rules.
 export const OPTIONAL_CONTEXT = [
   "description",
   "changed_files",
