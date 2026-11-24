@@ -2,7 +2,11 @@ import { z } from "zod";
 import { guidelineSections } from "../docs/guidelines.js";
 import { errorMessage, OcraError } from "../errors.js";
 
+// A finding names the rule it applies by this id (ADR-0080).
+const RULE_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
 export const repoRuleSchema = z.object({
+  id: z.string().regex(RULE_ID).optional(),
   path: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
   rule: z.string().min(1),
 });
@@ -53,11 +57,25 @@ export function parseMarkdownRules(text: string): RepoRule[] {
   }
   return guidelineSections(text)
     .filter((section) => bodyOf(section.raw, section.heading) !== "")
-    .map((section) => ({
-      path: section.scope.length > 0 ? section.scope.flatMap(underPath) : "**",
-      rule: section.raw.trim(),
-    }));
+    .map((section) => {
+      const id = slug(section.heading);
+      return {
+        ...(id ? { id } : {}),
+        path: section.scope.length > 0 ? section.scope.flatMap(underPath) : "**",
+        rule: section.raw.trim(),
+      };
+    });
 }
+
+// A heading without a letter or digit of a-z (one in Chinese) names no id;
+// the rule is then named by its text.
+const slug = (heading: string) =>
+  heading
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+/, "")
+    .slice(0, 64)
+    .replace(/-+$/, "");
 
 const bodyOf = (raw: string, heading: string) =>
   (heading === "" ? raw : raw.slice(raw.indexOf("\n") + 1 || raw.length)).trim();

@@ -95,6 +95,14 @@ describe("sharedFindings", () => {
     expect(JSON.stringify(findings)).not.toContain(secret);
   });
 
+  it("sends the rule a finding applies, and none when it names none", () => {
+    const { findings } = sharedFindings({
+      findings: [finding({ rule: { kind: "rule", id: "tenant" } }), finding({})],
+    });
+    expect(findings[0]?.rule).toEqual({ kind: "rule", id: "tenant" });
+    expect(findings[1]).not.toHaveProperty("rule");
+  });
+
   it("sends the evidence a comment shows: one line each, redacted, at most five", () => {
     const secret = `ghp_${"Ab3dE5gH7jK9mN1pQ2rS4tU6vW8xY0z".repeat(2).slice(0, 36)}`;
     const { findings } = sharedFindings({

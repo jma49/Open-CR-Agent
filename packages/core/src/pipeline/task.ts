@@ -9,7 +9,12 @@ import type {
   QuotaStop,
   Usage,
 } from "../contracts.js";
-import { type ReportedFinding, reportedFindingSchema, type TaskFinding } from "../domain.js";
+import {
+  type FindingRule,
+  type ReportedFinding,
+  reportedFindingSchema,
+  type TaskFinding,
+} from "../domain.js";
 import { errorMessage } from "../errors.js";
 import type { TaskStatus } from "../report/report.js";
 import { oneLine } from "../review/prompt-text.js";
@@ -33,6 +38,9 @@ export interface TaskCallbacks {
   // while it runs.
   onUsage?: ((usage: Usage) => void) | undefined;
   category: string;
+  // The ids a finding may name as its rule (TaskPrompt.citable); a finding
+  // naming any other keeps no rule. Absent: none.
+  citable?: ReadonlyMap<string, FindingRule["kind"]> | undefined;
   abortGraceMs?: number | undefined;
 }
 
@@ -131,7 +139,7 @@ function handle(event: AgentEvent, result: TaskResult, callbacks: TaskCallbacks)
       return false;
     case "finding": {
       const parsed = reportedFindingSchema.safeParse(
-        withReviewerCategory(event.finding, callbacks.category),
+        asReported(event.finding, callbacks.category, callbacks.citable),
       );
       if (!parsed.success) {
         result.warnings.push("runtime reported a finding that failed validation");
@@ -191,10 +199,22 @@ export function boundFinding(f: ReportedFinding): ReportedFinding {
 
 // The category is part of the fingerprint, so it comes from the reviewer and
 // never from the model: a model choosing another word would make the same
-// issue look new, and its earlier report look fixed.
-function withReviewerCategory(finding: unknown, category: string): unknown {
+// issue look new, and its earlier report look fixed. The rule the model
+// names counts only when the task was given it; a made-up or misspelt id
+// is dropped, never the finding.
+function asReported(
+  finding: unknown,
+  category: string,
+  citable: TaskCallbacks["citable"],
+): unknown {
   if (typeof finding !== "object" || finding === null) return finding;
-  return { ...finding, category };
+  const { rule, ...rest } = finding as { rule?: unknown };
+  const kind = typeof rule === "string" ? citable?.get(rule.trim()) : undefined;
+  return {
+    ...rest,
+    category,
+    ...(kind && typeof rule === "string" ? { rule: { kind, id: rule.trim() } } : {}),
+  };
 }
 
 // Runtimes may ignore the abort signal, so waiting for their next event is

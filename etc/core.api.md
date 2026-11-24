@@ -609,6 +609,18 @@ export interface FindingProvenance {
 }
 
 // @public (undocumented)
+export type FindingRule = z.infer<typeof findingRuleSchema>;
+
+// @public (undocumented)
+const findingRuleSchema: z.ZodObject<{
+    kind: z.ZodEnum<{
+        learning: "learning";
+        rule: "rule";
+    }>;
+    id: z.ZodString;
+}, z.core.$strip>;
+
+// @public (undocumented)
 export type FindingStatus = z.infer<typeof findingStatusSchema>;
 
 // @public (undocumented)
@@ -1261,6 +1273,13 @@ const reportedFindingSchema: z.ZodObject<{
     body: z.ZodString;
     suggestion: z.ZodOptional<z.ZodString>;
     evidence: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    rule: z.ZodOptional<z.ZodObject<{
+        kind: z.ZodEnum<{
+            learning: "learning";
+            rule: "rule";
+        }>;
+        id: z.ZodString;
+    }, z.core.$strip>>;
 }, z.core.$strip>;
 
 // @public (undocumented)
@@ -1364,6 +1383,13 @@ export const reportOutputSchema: z.ZodObject<{
             replacement: z.ZodString;
         }, z.core.$strict>>;
         evidence: z.ZodArray<z.ZodString>;
+        rule: z.ZodExactOptional<z.ZodObject<{
+            kind: z.ZodEnum<{
+                learning: "learning";
+                rule: "rule";
+            }>;
+            id: z.ZodString;
+        }, z.core.$strict>>;
         code: z.ZodString;
         lowConfidence: z.ZodExactOptional<z.ZodLiteral<true>>;
         preExisting: z.ZodExactOptional<z.ZodLiteral<true>>;
@@ -1687,6 +1713,7 @@ export const reportOutputSchema: z.ZodObject<{
             }>>>;
         }, z.core.$strict>>>;
         rules: z.ZodExactOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodExactOptional<z.ZodString>;
             path: z.ZodArray<z.ZodString>;
             rule: z.ZodString;
             source: z.ZodExactOptional<z.ZodEnum<{
@@ -1715,6 +1742,7 @@ export type RepoRule = z.infer<typeof repoRuleSchema>;
 
 // @public (undocumented)
 const repoRuleSchema: z.ZodObject<{
+    id: z.ZodOptional<z.ZodString>;
     path: z.ZodUnion<readonly [z.ZodString, z.ZodArray<z.ZodString>]>;
     rule: z.ZodString;
 }, z.core.$strip>;
@@ -2135,6 +2163,8 @@ export interface RoundNoteItem {
 
 // @public (undocumented)
 export interface RuleProvenance {
+    // (undocumented)
+    id?: string;
     // (undocumented)
     path: string[];
     // (undocumented)

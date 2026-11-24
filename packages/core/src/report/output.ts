@@ -151,6 +151,7 @@ function outputFinding(f: Finding): OutputFinding {
   };
   if (f.lineRange) output.lines = { start: f.lineRange.start, end: f.lineRange.end };
   if (f.suggestion !== undefined) output.suggestion = f.suggestion;
+  if (f.rule) output.rule = { kind: f.rule.kind, id: f.rule.id };
   if (f.fix) {
     output.fix = {
       startLine: f.fix.startLine,
@@ -266,6 +267,7 @@ function outputProvenance(p: RunProvenance): Output<"provenance"> {
     ...(p.rules
       ? {
           rules: p.rules.map((r) => ({
+            ...(r.id ? { id: r.id } : {}),
             path: [...r.path],
             rule: r.rule,
             ...(r.source ? { source: r.source } : {}),

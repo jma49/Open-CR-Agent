@@ -31,6 +31,7 @@ Path-scoped rules apply only when a bundle contains a matching file:
 {
   "rules": [
     {
+      "id": "idempotency-key",
       "path": "services/billing/**",
       "rule": "Every write must carry an idempotency key. Flag handlers that retry without one."
     },
@@ -44,6 +45,7 @@ Path-scoped rules apply only when a bundle contains a matching file:
 
 - `path`: one glob or a list of globs.
 - `rule`: free text given to the reviewer.
+- `id` (optional): lowercase letters, digits and `-`, at most 64 characters. A finding that applies the rule names it in the report's `rule`, so ocra Cloud can count findings per rule. Without one, the rule is named `rule-` and 8 hex characters of its text, which change when the text does.
 
 An invalid `rules.json` stops the run with an error. For pull requests it is read from the base commit.
 
@@ -66,7 +68,7 @@ Migrations must be backward compatible with the previous release.
 ```
 
 - A heading names a path when it contains one with a slash (`## services/billing/`, ``### `web/src` ``); a subsection takes the path of the heading above it.
-- Each section that has text becomes one rule, heading included, and goes to the tasks whose files it applies to, after the rules of `rules.json`. The report lists it with `source: "repository"`.
+- Each section that has text becomes one rule, heading included, and goes to the tasks whose files it applies to, after the rules of `rules.json`. The report lists it with `source: "repository"`, and its `id` is its heading in lowercase with `-` between words (`services-billing`); a heading without Latin letters or digits gives the `rule-` id of its text.
 - Globs (`**/*.sql`) stay in `rules.json`; a repository can keep both files.
 
 A file over 20,000 characters stops the run with an error. For pull requests it is read from the base commit, like `rules.json`.
@@ -96,7 +98,7 @@ created: 2026-11-21
 - `critical`: always given when a path matches.
 - `source`: where it came from (`kind`: `fix-commit`, `review-feedback`, `document`, `remember`, `incident` or `manual`; `ref`: a commit, pull request or link).
 
-Each review task gets the learnings that apply to its files, chosen before any model runs: a critical learning whose path matches ranks first, then a path match with a symbol or keyword in the patch, then a path match whose symbol or keyword is in the function or class the change touches, then a symbol alone, then a path alone, then a keyword alone. ocra reads the touched functions only when more learnings apply than fit. At most 5 are given, within 8,000 characters of body, plus every critical one whose path matches (up to 10). Learnings that apply but do not fit are listed by id and title, up to 10, with a count of the rest; a reviewer reads one with `read_learning`, which answers from the same trusted revision. Reviewers read them as data and report only what the change itself gets wrong. The report's `learnings` lists each one given, with the bundles it went to.
+Each review task gets the learnings that apply to its files, chosen before any model runs: a critical learning whose path matches ranks first, then a path match with a symbol or keyword in the patch, then a path match whose symbol or keyword is in the function or class the change touches, then a symbol alone, then a path alone, then a keyword alone. ocra reads the touched functions only when more learnings apply than fit. At most 5 are given, within 8,000 characters of body, plus every critical one whose path matches (up to 10). Learnings that apply but do not fit are listed by id and title, up to 10, with a count of the rest; a reviewer reads one with `read_learning`, which answers from the same trusted revision. Reviewers read them as data and report only what the change itself gets wrong. The report's `learnings` lists each one given, with the bundles it went to, and a finding that applies one, given or listed, names its id in `rule`.
 
 Learnings are read at the revision under review, and for pull requests from the base commit, like `rules.json`, so a pull request cannot add one that steers its own review. A file that is not a valid learning is skipped with a warning; at most 500 files of up to 16 KB are read.
 

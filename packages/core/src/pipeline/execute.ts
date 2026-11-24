@@ -128,6 +128,7 @@ export async function runJob(
         }),
       onUsage: options.onUsage,
       category: job.reviewer.category,
+      citable: task.citable,
       abortGraceMs: options.abortGraceMs,
     },
   );

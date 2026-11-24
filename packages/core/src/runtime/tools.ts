@@ -42,6 +42,10 @@ const reportFindingInput = z.object({
   evidence: z
     .preprocess((value) => (typeof value === "string" ? [value] : value), z.array(z.string()))
     .optional(),
+  rule: z
+    .string()
+    .optional()
+    .describe("Id of the repository rule or team learning the finding applies, when one does"),
 });
 
 // Tool results carry repository text back to the model, so they are data

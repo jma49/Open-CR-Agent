@@ -24,6 +24,9 @@ export interface RunProvenance {
 }
 
 export interface RuleProvenance {
+  // What a finding names the rule by; absent from reports made before
+  // rules had ids.
+  id?: string;
   path: string[];
   rule: string;
   source?: RuleSource;

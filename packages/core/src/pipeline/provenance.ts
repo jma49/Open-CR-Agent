@@ -8,7 +8,7 @@ import type { AgentProvenance, RuleProvenance, RunProvenance } from "../report/p
 import { PLAN_INSTRUCTIONS } from "../review/plan-phase.js";
 import { buildReviewPrompt } from "../review/prompt.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
-import type { SourcedRule } from "../rules/repo-rules.js";
+import type { IdentifiedRule } from "../rules/rule-ids.js";
 import { VERIFY_SYSTEM_PROMPT } from "../verify/prompt.js";
 
 // Supplied by the caller; the review adds the prompt hash and what the
@@ -114,7 +114,7 @@ export function runProvenance(
   reviewers: readonly ReviewerDefinition[],
   agents: readonly ResolvedAgent[],
   overrides?: ReviewerOverrides,
-  rules: readonly SourcedRule[] = [],
+  rules: readonly IdentifiedRule[] = [],
 ): RunProvenance {
   return {
     ocraVersion: input.ocraVersion,
@@ -129,8 +129,9 @@ export function runProvenance(
   };
 }
 
-function ruleProvenance({ path, rule, source }: SourcedRule): RuleProvenance {
+function ruleProvenance({ id, path, rule, source }: IdentifiedRule): RuleProvenance {
   return {
+    id,
     path: typeof path === "string" ? [path] : [...path],
     rule,
     ...(source ? { source } : {}),

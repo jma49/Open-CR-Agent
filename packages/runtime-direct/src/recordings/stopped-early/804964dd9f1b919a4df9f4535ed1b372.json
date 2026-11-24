@@ -82,6 +82,10 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "rule": {
+                "description": "Id of the repository rule or team learning the finding applies, when one does",
+                "type": "string"
               }
             },
             "required": [

@@ -169,7 +169,12 @@ describe("account data settings (ADR-0027)", () => {
     const withRules = await report(ACCOUNT);
     expect(withRules.accountSettings).toEqual({ version: "v3" });
     expect(withRules.rules).toEqual([
-      { path: ["**/*.ts"], rule: "ACCOUNT RULE: check retries.", source: "account" },
+      {
+        id: expect.stringMatching(/^rule-[0-9a-f]{8}$/),
+        path: ["**/*.ts"],
+        rule: "ACCOUNT RULE: check retries.",
+        source: "account",
+      },
     ]);
     const other = await report({ ...ACCOUNT, version: "v4" });
     expect(other.accountSettings).toEqual({ version: "v4" });
