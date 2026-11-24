@@ -1,0 +1,8 @@
+{
+  "name": "ocra-codex-cli-for-tests",
+  "private": true,
+  "description": "The Codex CLI that the codex runtime's end-to-end test runs, outside the workspace (see codex.e2e.test.ts).",
+  "dependencies": {
+    "@openai/codex": "0.172.0"
+  }
+}

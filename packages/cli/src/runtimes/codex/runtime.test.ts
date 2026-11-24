@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collect, fakeContext } from "../../core/src/runtime/conformance.fakes.js";
+import { collect, fakeContext } from "../../../../core/src/runtime/conformance.fakes.js";
 import { CodexRuntime } from "./runtime.js";
 
 describe("CodexRuntime", () => {

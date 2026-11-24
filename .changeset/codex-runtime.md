@@ -1,5 +1,4 @@
 ---
-"@open-cr-agent/runtime-codex": minor
 "@open-cr-agent/cli": minor
 ---
 

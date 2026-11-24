@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type AgentTaskSpec, MAX_AGENT_STEPS } from "@open-cr-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { collect, fakeContext } from "../../core/src/runtime/conformance.fakes.js";
+import { collect, fakeContext } from "../../../../core/src/runtime/conformance.fakes.js";
 import {
   type FakeResponses,
   type ResponsesReply,
@@ -11,10 +11,10 @@ import {
 } from "./responses-endpoint.fakes.js";
 import { CodexRuntime } from "./runtime.js";
 
-// The Codex CLI this package is tested on, against a scripted endpoint
+// The Codex CLI this runtime is tested on, against a scripted endpoint
 // declared as a model provider of its own, so no sign-in is needed. Its
 // platform binary is several hundred megabytes, so it is not a dependency of
-// the workspace: CI's verify job installs the pinned one in codex-cli/ and
+// the workspace: CI's verify job installs the pinned one in packages/cli/codex-cli/ and
 // names it here, and elsewhere the test runs when OCRA_CODEX_E2E_BIN names one.
 const CODEX = process.env.OCRA_CODEX_E2E_BIN;
 const KEY = "sk-scripted-secret";

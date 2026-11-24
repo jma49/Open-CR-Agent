@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { capture, critical, deps, removeRepos, repoWithChange } from "../../run.fakes.js";
 import { run } from "../../run.js";
-import { BUILTIN_RUNTIMES, loadRuntime } from "./runtimes.js";
+import { BUILTIN_RUNTIMES, loadCodex, loadRuntime } from "./runtimes.js";
 
 afterEach(removeRepos);
 
@@ -32,6 +32,28 @@ describe("loadRuntime", () => {
       code: "ERR_MODULE_NOT_FOUND",
     });
     await expect(loadRuntime("opencode", MISSING, () => Promise.reject(inner))).rejects.toBe(inner);
+  });
+});
+
+describe("loadCodex", () => {
+  const missingSdk = () =>
+    Promise.reject(
+      Object.assign(
+        new Error("Cannot find package '@modelcontextprotocol/sdk' imported from tool-server.js"),
+        { code: "ERR_MODULE_NOT_FOUND" },
+      ),
+    );
+
+  it("says the MCP SDK left out with the optional dependencies is what it needs", async () => {
+    await expect(loadCodex(missingSdk)).rejects.toMatchObject({ code: "RUNTIME_START_FAILED" });
+    await expect(loadCodex(missingSdk)).rejects.toThrow(
+      /The codex runtime needs @modelcontextprotocol\/sdk.*without --omit=optional.*"runtime": "direct"/,
+    );
+  });
+
+  it("passes on any other failure unchanged", async () => {
+    const inner = new Error("boom");
+    await expect(loadCodex(() => Promise.reject(inner))).rejects.toBe(inner);
   });
 });
 
