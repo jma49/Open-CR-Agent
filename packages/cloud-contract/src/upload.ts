@@ -3,7 +3,9 @@ import { LEARNING_ID, MAX_LEARNINGS } from "./learnings.js";
 import { MAX_EVIDENCE, MAX_EVIDENCE_FIELD, MAX_FIELD, MAX_FINDINGS } from "./limits.js";
 import { MAX_MERGE_CHECKS, sharedMergeCheckSchema } from "./merge-checks.js";
 import { REPOSITORY_URL } from "./repository.js";
+import { sharedTraceSchema } from "./trace.js";
 import {
+  FINGERPRINT,
   REPO_HASH,
   REVIEWER_ID,
   reviewSourceSchema,
@@ -12,6 +14,8 @@ import {
   verdictSchema,
   verificationSchema,
 } from "./vocabulary.js";
+
+export { FINGERPRINT };
 
 // POST /api/reviews: what a signed-in CLI sends after a review (ADR-0024,
 // ADR-0028), and what ocra Cloud answers.
@@ -43,8 +47,6 @@ export const FINDING_RULE_KINDS = ["rule", "learning"] as const;
 /** A rule's or a learning's id, as the review report gives it. */
 export const FINDING_RULE_ID = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
-/** A finding's stable id across runs. */
-export const FINGERPRINT = /^[\w:.-]{4,128}$/;
 const line = z.number().int().min(0).lt(10_000_000).nullable().catch(null);
 const fixLine = z.number().int().positive().lt(10_000_000);
 
@@ -232,6 +234,8 @@ export const reviewUploadSchema = z.object({
     })
     .optional()
     .catch(undefined),
+  // How the review came to its findings (ADR-0081): only with the findings.
+  trace: sharedTraceSchema.optional().catch(undefined),
 });
 export type ReviewUpload = z.input<typeof reviewUploadSchema>;
 

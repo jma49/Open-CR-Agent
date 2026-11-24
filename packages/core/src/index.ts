@@ -159,6 +159,16 @@ export {
   type TaskStatus,
 } from "./report/report.js";
 export {
+  FINDING_FATES,
+  type FindingFate,
+  type ReviewTrace,
+  type TraceAttempt,
+  type TraceCall,
+  type TraceFinding,
+  type TraceStage,
+  type TraceTask,
+} from "./report/trace.js";
+export {
   isOptionalContext,
   OPTIONAL_CONTEXT,
   type OptionalContext,

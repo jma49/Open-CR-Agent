@@ -11,6 +11,7 @@ import { sharedLinkedTasks } from "./linked-tasks.js";
 import { accountHasMemory, fetchAccountMemory } from "./memory.js";
 import { sharedMergeChecks } from "./merge-checks.js";
 import { hasSharingConsent, saveSharingConsent } from "./sharing-consent.js";
+import { sharedTrace } from "./trace.js";
 import { repoHash, uploadOf, uploadReview } from "./upload.js";
 import { sharedWalkthrough } from "./walkthrough.js";
 
@@ -174,6 +175,8 @@ export function cloudUpload(
     cloud.shareFindings && counts.outcomes
       ? { outcomes: { ...counts.outcomes, ...sharedOutcomes(report) } }
       : {};
+  // The trace names files, findings and why each was dropped, like the findings.
+  const trace = cloud.shareFindings && report.trace ? sharedTrace(report.trace) : undefined;
   const upload = {
     ...counts,
     ...outcomes,
@@ -181,6 +184,7 @@ export function cloudUpload(
     ...(linkedTasks ? { linkedTasks } : {}),
     ...(learnings ? { learnings } : {}),
     ...(mergeChecks ? { mergeChecks } : {}),
+    ...(trace ? { trace } : {}),
   };
   return cloud.shareFindings ? { upload, shared: sharedFindings(report) } : { upload };
 }

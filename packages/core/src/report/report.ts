@@ -23,6 +23,7 @@ import type { RefutedFinding } from "../verify/verify.js";
 import type { Walkthrough } from "../walkthrough/walkthrough.js";
 import type { InlineSelection } from "./inline.js";
 import type { RunProvenance } from "./provenance.js";
+import type { ReviewTrace } from "./trace.js";
 
 // "unchanged": reviewed by an earlier run and not changed since, so not
 // reviewed again; its earlier findings carry over. "incomplete": a reviewer's
@@ -223,6 +224,8 @@ export interface ReviewReport {
   inline?: InlineSelection;
   // When the caller supplied its version and configuration hash.
   provenance?: RunProvenance;
+  // How the run came to its findings, in time (ADR-0081).
+  trace?: ReviewTrace;
   usage: Usage;
   warnings: string[];
 }
@@ -274,6 +277,16 @@ export type ReviewEvent =
   | { type: "coverage_settled"; coverage: CoverageEntry[] }
   // One per model call: together they are the run's usage.
   | { type: "usage_reported"; usage: Usage }
+  // One per plain completion, for the run's trace (ADR-0081): which agent
+  // asked, the model that answered, how long it took and what it spent.
+  | {
+      type: "model_called";
+      agent: string;
+      model?: string;
+      ms: number;
+      usage: Usage;
+      failed?: true;
+    }
   // One file's findings checked while tasks still run (ADR-0074). kept:
   // with the verifier's answer; refuted and settled: ids. A settled finding
   // is in the report as it is here, whatever the judge decides.

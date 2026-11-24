@@ -18,6 +18,7 @@ import { sealLine } from "./seal.js";
 
 export const EVENTS_FILE = "events.jsonl";
 export const REPORT_FILE = "report.json";
+const TRACE_FILE = "trace.json";
 
 // Events are appended synchronously, one JSON object per line, so the log
 // stays valid and ordered even if the process dies mid-run. With a seal key
@@ -58,6 +59,9 @@ export class JsonlSessionWriter {
     if (event.type === "run_finished") {
       const report = toReportOutput(event.report);
       writeFileSync(join(this.dir, REPORT_FILE), `${serializeOutput(report)}\n`);
+      if (event.report.trace) {
+        writeFileSync(join(this.dir, TRACE_FILE), `${serializeOutput(event.report.trace)}\n`);
+      }
     }
   }
 }

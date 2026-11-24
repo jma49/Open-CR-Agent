@@ -34,6 +34,7 @@ The Inbox sorts your pull and merge requests on GitHub and GitLab into sections:
 Every review uploaded by a signed-in CLI, with its findings, its walkthrough and the [linked tasks](./how-it-works#linked-tasks) it was given, when your account shares findings. A review the server ran itself is listed with its findings whether or not you share them ([auto review](#auto-review-and-ocra)). A finding a later review of the same pull request saw fixed is marked fixed (CLI 0.14.0 and later).
 
 - **Ask ocra.** A review's page answers questions about it and its pull request ("why is this finding critical?"), with your own model key. The change is data to the model, never instructions.
+- **Trace.** A review uploaded with its findings by CLI 0.25.0 or later carries its trace (the CLI's `trace.json`, [Sessions](./cli#sessions)): its page draws the run as a timeline of stages, tasks, attempts and model calls, says where each reported finding ended up and why, and downloads the trace as JSON to hand a reviewer as evidence. Titles, reasons and paths go through the same redaction as the findings; no code, prompt, answer or searched text is sent.
 - **Live.** A review run by CLI 0.11.0 or later relays its progress while it runs; the Live page shows the run, and you can let named people, or anyone signed in to the server, watch it and comment on findings. Nothing is shared until you say so.
 
 ## Learnings

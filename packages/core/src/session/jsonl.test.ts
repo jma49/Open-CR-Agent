@@ -43,6 +43,23 @@ describe("JsonlSessionWriter", () => {
     });
   });
 
+  it("writes the run's trace beside the report", () => {
+    const root = mkdtempSync(join(tmpdir(), "ocra-session-"));
+    dirs.push(root);
+    const writer = new JsonlSessionWriter(root, "s1");
+    const changeRequest = { id: "1", title: "t", description: "", baseSha: "b", headSha: "h" };
+    const trace = {
+      startedAt: "2026-11-24T08:00:00.000Z",
+      ms: 10,
+      stages: [{ stage: "review" as const, startMs: 0, ms: 10 }],
+      tasks: [],
+      calls: [],
+      findings: [],
+    };
+    writer.write({ type: "run_finished", report: { ...runReport(changeRequest), trace } });
+    expect(JSON.parse(readFileSync(join(root, "s1", "trace.json"), "utf8"))).toEqual(trace);
+  });
+
   it("ignores every file in the sessions directory for git", () => {
     const root = mkdtempSync(join(tmpdir(), "ocra-session-"));
     dirs.push(root);

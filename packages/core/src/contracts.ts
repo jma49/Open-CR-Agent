@@ -137,12 +137,20 @@ export type QuotaStop = (typeof QUOTA_STOPS)[number];
 // What one attempt of a review task looked at and answered: the files it
 // read, the literals it searched for and its final text. Kept in the session
 // log, never in the report, so an analysis can tell a file the reviewer never
-// read from one it read and reported nothing on.
+// read from one it read and reported nothing on. The rest is what the run's
+// trace shows of it (ADR-0081); absent from logs older than that.
 export interface AttemptRecord {
   model: string;
   read: string[];
   searched: string[];
   text: string;
+  // Model requests, one per agent step, the wrap-up turn's included.
+  steps?: number;
+  // Calls per tool, as the review tools name them.
+  tools?: Record<string, number>;
+  ending?: "done" | IncompleteEnding | "error";
+  usage?: Usage;
+  ms?: number;
 }
 
 export type AgentEvent =
@@ -196,6 +204,8 @@ export interface CompletionRequest {
 export interface CompletionResult {
   text: string;
   usage: Usage;
+  // The model that answered, when the runtime says.
+  model?: string;
 }
 
 // Sampling settings for model calls. Unset fields leave the provider's

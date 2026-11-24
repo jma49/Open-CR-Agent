@@ -189,6 +189,20 @@ export { REDACTED, redact, redactField } from "./redact.js";
 export { normaliseRemote, REPOSITORY_URL } from "./repository.js";
 export { MAX_RULES_MARKDOWN_CHARS, RULES_MARKDOWN_PATH } from "./rules.js";
 export {
+  ATTEMPT_ENDINGS,
+  FINDING_FATES,
+  type FindingFate,
+  MAX_TRACE_ATTEMPTS,
+  MAX_TRACE_BYTES,
+  MAX_TRACE_CALLS,
+  MAX_TRACE_FINDINGS,
+  MAX_TRACE_PATHS,
+  MAX_TRACE_TASKS,
+  MAX_TRACE_TEXT,
+  type SharedTrace,
+  sharedTraceSchema,
+} from "./trace.js";
+export {
   FINDING_RULE_ID,
   FINDING_RULE_KINDS,
   FINGERPRINT,

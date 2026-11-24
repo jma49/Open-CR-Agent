@@ -107,7 +107,7 @@ Pin the Action by commit: a tag can be moved. Outputs: `verdict`, `exit-code`, `
 
 ## Outputs and exit codes
 
-Each run writes `events.jsonl` and `report.json` under `.ocra/sessions/`. `--format json` prints the report; `--format sarif` prints SARIF 2.1.0.
+Each run writes `events.jsonl`, `report.json` and `trace.json` (the run in time: stages, tasks, model calls, each finding's fate, no code) under `.ocra/sessions/`. `--format json` prints the report; `--format sarif` prints SARIF 2.1.0.
 
 | Exit code | Meaning |
 |---|---|

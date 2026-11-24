@@ -55,6 +55,7 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
       // Spend is reported while the attempt runs, so a run's spend limit
       // can stop it; the finished attempt's total settles the rest.
       const live = new LiveUsage();
+      const started = performance.now();
       const attempt = yield* whileRunning(
         taskId,
         live,
@@ -83,7 +84,10 @@ export async function* withFailback(options: FailbackOptions): AsyncGenerator<Ag
         type: "progress",
         taskId,
         message: attemptSummary(model, outcome),
-        attempt: attemptRecord(model, outcome),
+        attempt: attemptRecord(model, outcome, {
+          ending: ended,
+          ms: Math.round(performance.now() - started),
+        }),
       };
       for (const finding of outcome.findings) yield { type: "finding", taskId, finding, model };
 
@@ -275,7 +279,7 @@ export async function completeWithFailback(options: CompleteOptions): Promise<Co
       usage = addUsage(usage, outcome.usage);
       if (!outcome.error) {
         health.recordSuccess(model);
-        return { text: outcome.text, usage };
+        return { text: outcome.text, usage, model };
       }
       if (!outcome.error.retryable) {
         throw new CompletionError(`${model}: ${outcome.error.message}`, usage, {

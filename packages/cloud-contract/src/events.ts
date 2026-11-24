@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { MAX_FIELD } from "./limits.js";
-import { FINGERPRINT } from "./upload.js";
 import {
+  FINGERPRINT,
   REVIEWER_ID,
   riskTierSchema,
   severitySchema,
