@@ -6,6 +6,17 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.23.1] - 2026-11-24
+
+### Changed
+
+- `ocra init` writes a workflow that pins the Action to v0.23.0.
+
+### Fixed
+
+- `ocra mend --checks` reads the last lines of the step that failed (GitHub Actions) or of the job's script (GitLab), not of the whole log, where steps that ran after the failure could push it out. `checkLogTail` in the contract does the same.
+- Redaction keeps a file name that ends in a content hash and an extension (`assets/index-Bx92KqLm.js`) instead of replacing it.
+
 ## [0.23.0] - 2026-11-24
 
 A proposed conflict of `ocra mend --conflicts` lists its regions with both sides, and the contract shares how a failed job's log is cut. The Action's new tag is `ocrahq/Open-CR-Agent@v0.23.0`.
@@ -772,7 +783,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.23.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.23.1...HEAD
+[0.23.1]: https://github.com/jma49/Open-CR-Agent/compare/v0.23.0...v0.23.1
 [0.23.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.20.0...v0.21.0
