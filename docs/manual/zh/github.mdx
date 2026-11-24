@@ -13,6 +13,7 @@ name: ocra
 on: pull_request
 
 permissions:
+  checks: write
   contents: read
   issues: read
   pull-requests: write
@@ -111,6 +112,7 @@ jobs:
 ## 会发布什么
 
 - **行内评论**：落在 diff 内的问题，标明已核实、未核实或未核查，放在同一个 `COMMENT` 评审里；[`minInlineSeverity` 和 `maxInlineComments`](./configuration#行内评论) 可以少发一些，其余列在摘要里。ocra 从不批准 PR。设置 `github.requestChanges` 后，结论为 `significant_concerns` 时请求修改一次；之后的结论不再阻塞或这个 commit 被放行时撤回（dismiss）。
+- **一个 `ocra review` 检查项**，挂在头提交上（v0.27.0 新增）：审查进行时显示进行中，结束后标题是结论和各级问题数，Details 里按严重程度从高到低列出全部问题的一张表。批准时为通过，其余为中性，所以它本身永远不会让必需检查失败；审查被中断或失败时以“已取消”结束并写明原因。工作流权限里需要 `checks: write`（GitHub App 则需要 Checks 读写）；没有这项权限时审查照常发布，只多一条警告。
 - **一条摘要评论**，在原处更新：结论、总结、[改动导读](./how-it-works#改动导读)、[合并前检查](./how-it-works#合并前检查)的结果、diff 之外的问题、已修复的问题、覆盖范围、花费和运行 id。它写明没审到的文件数、是否达到花费上限，并列出只审查了一部分的文件（审查员用完步数或停下）以及该怎么做。
 
 之后的 push **只审查有改动的部分**：自上次评审的提交以来改动过的文件，加上上次没审完的文件（任务失败、审查员用完步数、花费上限）。未改动文件里的问题原样沿用：保持打开、计入结论、不重复评论。以下情况会重新审查全部文件：上次的提交已不在分支上（force-push、rebase）、这次 push 让风险档位升高、摘要最后一次由 ocra 以外的人编辑（这时忽略它记录的状态，但 ocra 仍能认出自己没被编辑过的行内评论）、或者传了 `--full`。只改变运行哪些审查员（`reviewers`、`--reviewers`、`--ultra`）不会；请传一次 `--full`。摘要会写明本次属于哪种审查以及原因。
@@ -138,6 +140,7 @@ jobs:
 
 ```yaml
 permissions:
+  checks: write
   contents: read
   issues: read
   pull-requests: write
@@ -319,6 +322,7 @@ on:
     types: [created]
 
 permissions:
+  checks: write
   contents: read
   issues: read
   pull-requests: write
@@ -373,6 +377,7 @@ on:
     types: [opened, synchronize, reopened, labeled]
 
 permissions:
+  checks: write
   contents: read
   issues: read
   pull-requests: write
@@ -425,7 +430,7 @@ GitHub 提醒慎用 `pull_request_target`，是因为构建 PR 代码的 job 会
 有推送权限的人推送的 workflow 会拿到仓库的 secret，它的 `GITHUB_TOKEN` 以 ocra 默认信任的 `github-actions[bot]` 身份发言。要让审查不在他们手里，把三样东西放到只有默认分支才能触及的地方：
 
 1. **放 secret 的环境。**创建一个环境，比如 `ocra-review`（Settings → Environments），在 Deployment branches and tags 里只允许默认分支。把模型密钥移到这里，删掉仓库级的 secret。在默认分支上运行的 `pull_request_target` 任务能拿到它；其他分支上推送的 workflow 和 `on: pull_request` 都拿不到。
-2. **ocra 自己的账号。**创建一个 GitHub App，仓库权限给 Pull requests（读写）和 Contents（只读），并安装到仓库上。私钥存为环境 secret `OCRA_APP_KEY`，client ID 存为变量 `OCRA_APP_CLIENT_ID`。在默认分支上把 `github.botLogin` 设为这个 App 的账号，比如 `{ "github": { "botLogin": "my-ocra[bot]" } }`，于是以 `github-actions[bot]` 身份发的摘要一律不算数。
+2. **ocra 自己的账号。**创建一个 GitHub App，仓库权限给 Pull requests（读写）、Checks（读写）和 Contents（只读），并安装到仓库上。私钥存为环境 secret `OCRA_APP_KEY`，client ID 存为变量 `OCRA_APP_CLIENT_ID`。在默认分支上把 `github.botLogin` 设为这个 App 的账号，比如 `{ "github": { "botLogin": "my-ocra[bot]" } }`，于是以 `github-actions[bot]` 身份发的摘要一律不算数。
 3. **workflow 和配置需要审查。**保护默认分支，并要求 `.github/workflows/` 和 `.ocra/` 的改动经过代码负责人审查（CODEOWNERS）。
 
 ```yaml

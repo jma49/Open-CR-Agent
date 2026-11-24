@@ -1,6 +1,7 @@
 // "@open-cr-agent/vcs-platform/internal": what the platform adapters' tests
 // check against. Not a contract: any release may change it.
 
+export { type CheckOutcome, checkOutcome, runningOutcome, stoppedOutcome } from "./check.js";
 export { LOG_TAIL_BYTES } from "./checks.js";
 export { declinesFinding } from "./declined.js";
 export {

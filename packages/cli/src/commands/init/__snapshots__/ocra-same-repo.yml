@@ -4,6 +4,7 @@ name: ocra
 on: pull_request
 
 permissions:
+  checks: write
   contents: read
   issues: read
   pull-requests: write

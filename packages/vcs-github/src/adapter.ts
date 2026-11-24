@@ -24,6 +24,7 @@ import {
   type PublishedFindings,
   type ReviewPlatform,
 } from "@open-cr-agent/vcs-platform";
+import { checkOutcome, stoppedOutcome } from "@open-cr-agent/vcs-platform/internal";
 import { githubChecks, githubFailingOnBase } from "./checks.js";
 import {
   type GitHubApi,
@@ -34,6 +35,7 @@ import {
 } from "./client.js";
 import { githubBaseHead, githubCommit, githubPushBranch } from "./commit.js";
 import { githubDiscussion } from "./discussion.js";
+import { ReviewCheck } from "./review-check.js";
 import { githubLinkedTasks } from "./tasks.js";
 
 export interface GitHubPullRequest {
@@ -55,12 +57,17 @@ export interface GitHubAdapterOptions {
   // the adapter fetches the pull request itself, and a push in between would
   // publish the new head for the old diff.
   snapshot?: PlatformChangeRequest;
+  // The "ocra review" check run to take over, when ocra Cloud queued one.
+  checkRunId?: number;
 }
 
 export const DEFAULT_BOT_LOGIN = "github-actions[bot]";
 
 // A GitHub pull request as ocra's review conversation (vcs-platform).
 export class GitHubAdapter extends PlatformReview {
+  private readonly github: GitHubAdapterOptions;
+  private readonly check: ReviewCheck;
+
   constructor(options: GitHubAdapterOptions) {
     super({
       name: "github",
@@ -69,6 +76,31 @@ export class GitHubAdapter extends PlatformReview {
       ...(options.history ? { history: options.history } : {}),
       ...(options.merge ? { merge: options.merge } : {}),
     });
+    this.github = options;
+    this.check = new ReviewCheck(options.api, options.checkRunId);
+  }
+
+  async started(): Promise<{ warnings: string[] }> {
+    const { snapshot, api, pullRequest } = this.github;
+    const headSha = snapshot?.headSha ?? (await api.getPullRequest(pullRequest.number)).head.sha;
+    return { warnings: await this.check.start(headSha) };
+  }
+
+  async stopped(reason: string): Promise<{ warnings: string[] }> {
+    return { warnings: await this.check.finish(stoppedOutcome(reason)) };
+  }
+
+  override async publish(report: ReviewReport): Promise<{ warnings: string[] }> {
+    let published: { warnings: string[] };
+    try {
+      published = await super.publish(report);
+    } catch (error) {
+      await this.check.finish(stoppedOutcome(`Publishing failed: ${errorMessage(error)}`));
+      throw error;
+    }
+    return {
+      warnings: [...published.warnings, ...(await this.check.finish(checkOutcome(report)))],
+    };
   }
 }
 
