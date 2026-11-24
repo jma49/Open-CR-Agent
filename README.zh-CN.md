@@ -105,7 +105,7 @@ jobs:
 
 ## 输出与退出码
 
-每次运行都会在 `.ocra/sessions/` 下写入 `events.jsonl` 和 `report.json`。`--format json` 打印报告；`--format sarif` 打印 SARIF 2.1.0。
+每次运行都会在 `.ocra/sessions/` 下写入 `events.jsonl`、`report.json` 和 `trace.json`（按时间铺开的运行：阶段、任务、模型调用、每条发现的去向，不含代码）。`--format json` 打印报告；`--format sarif` 打印 SARIF 2.1.0。
 
 | 退出码 | 含义 |
 |---|---|

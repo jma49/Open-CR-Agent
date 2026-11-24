@@ -50,25 +50,33 @@ describe("exploredBy", () => {
     const { read } = exploredBy(uses);
     expect(read).toHaveLength(200);
     expect(read.every((p) => p.length <= 501)).toBe(true);
-    const record = attemptRecord("p/m", {
-      findings: [],
-      steps: 1,
-      toolCalls: [],
-      text: "x".repeat(10_000),
-      usage: { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 },
-    });
+    const record = attemptRecord(
+      "p/m",
+      {
+        findings: [],
+        steps: 1,
+        toolCalls: [],
+        text: "x".repeat(10_000),
+        usage: { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 },
+      },
+      { ending: "done", ms: 5 },
+    );
     expect(record).toMatchObject({ model: "p/m", read: [], searched: [] });
     expect(record.text.length).toBeLessThanOrEqual(4_001);
   });
 
   it("keeps the end of a long answer, where the reviewer concludes", () => {
-    const record = attemptRecord("p/m", {
-      findings: [],
-      steps: 1,
-      toolCalls: [],
-      text: `${"thinking ".repeat(1_000)}Conclusion: nothing to report.`,
-      usage: { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 },
-    });
+    const record = attemptRecord(
+      "p/m",
+      {
+        findings: [],
+        steps: 1,
+        toolCalls: [],
+        text: `${"thinking ".repeat(1_000)}Conclusion: nothing to report.`,
+        usage: { inputTokens: 0, outputTokens: 0, reasoningTokens: 0, cachedTokens: 0, costUsd: 0 },
+      },
+      { ending: "done", ms: 5 },
+    );
     expect(record.text.endsWith("Conclusion: nothing to report.")).toBe(true);
     expect(record.text.startsWith("…")).toBe(true);
   });

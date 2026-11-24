@@ -5,11 +5,13 @@ import {
   type CoverageEntry,
   EFFORT_LEVELS,
   type Effort,
+  FINDING_FATES,
   FIX_REJECTIONS,
   type Finding,
   GUIDELINE_SCOPES,
   MODEL_TIERS,
   REVIEW_STAGES,
+  type ReviewTrace,
   type RiskTier,
   type TaskStatus,
   type Verdict,
@@ -66,6 +68,7 @@ describe("the contract's vocabulary", () => {
     expect(contract.MODEL_TIERS).toEqual(MODEL_TIERS);
     expect(contract.AGENT_ROLES).toEqual(AGENT_ROLES);
     expect(contract.STAGES).toEqual(REVIEW_STAGES);
+    expect(contract.FINDING_FATES).toEqual(FINDING_FATES);
     expect(contract.GUIDELINE_SCOPES).toEqual(GUIDELINE_SCOPES);
     expect(contract.FIX_REJECTIONS).toEqual(FIX_REJECTIONS);
     expect(contract.FIX_FAILURE_CAUSES).toEqual(CALL_FAILURES);
@@ -225,8 +228,169 @@ const report = reviewReport({
       reason: "The description does not say how many times src/retry.ts retries a query.",
     },
   ],
+  trace: sampleTrace(),
   usage: usage({ inputTokens: 1200, outputTokens: 340, costUsd: 0.4375 }),
 });
+
+// A review of three tasks laid out in time, as the trace of the report above.
+function sampleTrace(): ReviewTrace {
+  const spent = (costUsd: number) => usage({ inputTokens: 400, outputTokens: 90, costUsd });
+  const attempt = (model: string, startMs: number, ms: number, read: string[]) => ({
+    model,
+    startMs,
+    ms,
+    steps: 6,
+    tools: { read_file: read.length, code_search: 2, report_finding: 1, task_done: 1 },
+    ending: "done" as const,
+    read,
+    searches: 2,
+    usage: spent(0.06),
+  });
+  return {
+    startedAt: "2026-10-04T09:12:03.000Z",
+    ms: 61_234,
+    stages: [
+      { stage: "select", startMs: 0, ms: 40 },
+      { stage: "bundle", startMs: 40, ms: 15 },
+      { stage: "plan", startMs: 55, ms: 2_900 },
+      { stage: "review", startMs: 2_955, ms: 41_000 },
+      { stage: "filter", startMs: 43_955, ms: 20 },
+      { stage: "verify", startMs: 43_975, ms: 9_800 },
+      { stage: "judge", startMs: 53_775, ms: 7_459 },
+    ],
+    tasks: [
+      {
+        id: "security-1",
+        reviewer: "security",
+        bundle: "src/db.ts",
+        files: ["src/db.ts"],
+        status: "completed",
+        startMs: 2_960,
+        ms: 24_100,
+        usage: spent(0.25),
+        attempts: [
+          attempt("anthropic/claude-sonnet-5-5", 2_961, 24_000, ["src/db.ts", "src/routes.ts"]),
+        ],
+      },
+      {
+        id: "logic-1",
+        reviewer: "logic",
+        bundle: "src/retry.ts",
+        files: ["src/retry.ts"],
+        status: "completed",
+        startMs: 2_962,
+        ms: 18_300,
+        usage: spent(0.125),
+        attempts: [attempt("anthropic/claude-sonnet-5-5", 2_963, 18_200, ["src/retry.ts"])],
+      },
+      {
+        id: "logic-2",
+        reviewer: "logic",
+        bundle: "src/huge.ts",
+        files: ["src/huge.ts"],
+        status: "timed_out",
+        startMs: 2_964,
+        ms: 40_990,
+        usage: spent(0.0625),
+        attempts: [
+          {
+            ...attempt("anthropic/claude-sonnet-5-5", 2_965, 12_000, ["src/huge.ts"]),
+            ending: "error",
+          },
+          { ...attempt("openai/gpt-5.2", 15_100, 28_850, ["src/huge.ts"]), ending: "step_cap" },
+        ],
+      },
+    ],
+    calls: [
+      {
+        agent: "logic",
+        stage: "plan",
+        model: "anthropic/claude-sonnet-5-5",
+        startMs: 60,
+        ms: 2_880,
+        usage: spent(0.02),
+      },
+      {
+        agent: "writer",
+        stage: "review",
+        model: "anthropic/claude-haiku-5-5",
+        startMs: 2_970,
+        ms: 6_400,
+        usage: spent(0.004),
+      },
+      {
+        agent: "verifier",
+        stage: "verify",
+        model: "anthropic/claude-sonnet-5-5",
+        startMs: 43_980,
+        ms: 9_790,
+        usage: spent(0.03),
+      },
+      {
+        agent: "judge",
+        stage: "judge",
+        model: "anthropic/claude-opus-5-5",
+        startMs: 53_780,
+        ms: 7_450,
+        usage: spent(0.09),
+      },
+    ],
+    findings: [
+      {
+        fingerprint: "0123456789abcdef",
+        taskId: "security-1",
+        reviewer: "security",
+        severity: "critical",
+        file: "src/db.ts",
+        line: 10,
+        title: "SQL built from request input",
+        atMs: 20_400,
+        fate: "kept",
+      },
+      {
+        fingerprint: "fedcba9876543210",
+        taskId: "logic-1",
+        reviewer: "logic",
+        severity: "warning",
+        file: "src/retry.ts",
+        title: "Retry without a limit",
+        atMs: 17_800,
+        fate: "kept",
+        recalibrated: { from: "critical", to: "warning", reason: "Only a background job retries." },
+      },
+      {
+        fingerprint: "5555666677778888",
+        taskId: "logic-1",
+        reviewer: "logic",
+        severity: "warning",
+        file: "src/retry.ts",
+        line: 4,
+        title: "Timeout not passed to the query",
+        atMs: 19_100,
+        fate: "refuted",
+        reason: "query() reads the timeout from the pool's options, set in src/db.ts.",
+      },
+      {
+        fingerprint: "9999aaaabbbbcccc",
+        taskId: "security-1",
+        reviewer: "security",
+        severity: "suggestion",
+        file: "src/db.ts",
+        title: "Log the token api_key=sk-live-0123456789abcdef less often",
+        atMs: 21_000,
+        fate: "dropped",
+        reason: "Restates the critical finding on the same line.",
+      },
+      {
+        taskId: "logic-1",
+        file: "src/queue.ts",
+        title: "Queue drains twice",
+        atMs: 18_000,
+        fate: "outside_review",
+      },
+    ],
+  };
+}
 
 describe("the contract's fixtures", () => {
   it("upload.json is what this CLI sends", () => {

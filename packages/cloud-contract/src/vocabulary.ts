@@ -65,5 +65,7 @@ export type Runtime = z.infer<typeof runtimeSchema>;
  * spaces or punctuation that could mean something else.
  */
 export const REVIEWER_ID = /^[A-Za-z0-9][\w.:@-]{0,99}$/;
+/** A finding's stable id across runs. */
+export const FINGERPRINT = /^[\w:.-]{4,128}$/;
 /** A repository as the CLI uploads it: a salted SHA-256, never its name (ADR-0028). */
 export const REPO_HASH = /^[0-9a-f]{64}$/;

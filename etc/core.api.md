@@ -203,13 +203,23 @@ export interface AttemptOutcome {
 // @public (undocumented)
 export interface AttemptRecord {
     // (undocumented)
+    ending?: "done" | IncompleteEnding | "error";
+    // (undocumented)
     model: string;
+    // (undocumented)
+    ms?: number;
     // (undocumented)
     read: string[];
     // (undocumented)
     searched: string[];
     // (undocumented)
+    steps?: number;
+    // (undocumented)
     text: string;
+    // (undocumented)
+    tools?: Record<string, number>;
+    // (undocumented)
+    usage?: Usage;
 }
 
 // @public (undocumented)
@@ -364,6 +374,8 @@ export interface CompletionRequest {
 
 // @public (undocumented)
 export interface CompletionResult {
+    // (undocumented)
+    model?: string;
     // (undocumented)
     text: string;
     // (undocumented)
@@ -589,6 +601,12 @@ export interface Finding extends ReportedFinding {
     // (undocumented)
     verification?: Verification;
 }
+
+// @public (undocumented)
+export const FINDING_FATES: readonly ["kept", "outside_review", "refuted", "merged", "dropped", "filtered"];
+
+// @public (undocumented)
+export type FindingFate = (typeof FINDING_FATES)[number];
 
 // @public (undocumented)
 export interface FindingFix {
@@ -1906,6 +1924,13 @@ export type ReviewEvent = {
     type: "usage_reported";
     usage: Usage;
 } | {
+    type: "model_called";
+    agent: string;
+    model?: string;
+    ms: number;
+    usage: Usage;
+    failed?: true;
+} | {
     type: "findings_verified";
     file: string;
     kept: Finding[];
@@ -2081,6 +2106,8 @@ export interface ReviewReport {
     // (undocumented)
     tier: RiskTier;
     // (undocumented)
+    trace?: ReviewTrace;
+    // (undocumented)
     unverifiedCriticals: number;
     // (undocumented)
     usage: Usage;
@@ -2114,6 +2141,22 @@ export type ReviewToolName = (typeof REVIEW_TOOLS)[keyof typeof REVIEW_TOOLS];
 
 // @public (undocumented)
 export const reviewTools: readonly ToolDefinition[];
+
+// @public (undocumented)
+export interface ReviewTrace {
+    // (undocumented)
+    calls: TraceCall[];
+    // (undocumented)
+    findings: TraceFinding[];
+    // (undocumented)
+    ms: number;
+    // (undocumented)
+    stages: TraceStage[];
+    // (undocumented)
+    startedAt: string;
+    // (undocumented)
+    tasks: TraceTask[];
+}
 
 // @public (undocumented)
 export type RiskTier = z.infer<typeof riskTierSchema>;
@@ -2550,6 +2593,112 @@ export interface ToolUse {
 
 // @public (undocumented)
 export function toReportOutput(report: ReviewReport): ReportOutput;
+
+// @public (undocumented)
+export interface TraceAttempt {
+    // (undocumented)
+    ending: NonNullable<AttemptRecord["ending"]>;
+    // (undocumented)
+    model: string;
+    // (undocumented)
+    ms: number;
+    // (undocumented)
+    read: string[];
+    // (undocumented)
+    searches: number;
+    // (undocumented)
+    startMs: number;
+    // (undocumented)
+    steps: number;
+    // (undocumented)
+    tools: Record<string, number>;
+    // (undocumented)
+    usage: Usage;
+}
+
+// @public (undocumented)
+export interface TraceCall {
+    // (undocumented)
+    agent: string;
+    // (undocumented)
+    failed?: true;
+    // (undocumented)
+    model?: string;
+    // (undocumented)
+    ms: number;
+    // (undocumented)
+    stage?: ReviewStage;
+    // (undocumented)
+    startMs: number;
+    // (undocumented)
+    usage: Usage;
+}
+
+// @public (undocumented)
+export interface TraceFinding {
+    // (undocumented)
+    atMs?: number;
+    // (undocumented)
+    fate: FindingFate;
+    // (undocumented)
+    file: string;
+    // (undocumented)
+    fingerprint?: string;
+    // (undocumented)
+    line?: number;
+    // (undocumented)
+    mergedInto?: string;
+    // (undocumented)
+    reason?: string;
+    // (undocumented)
+    recalibrated?: {
+        from: Severity;
+        to: Severity;
+        reason: string;
+    };
+    // (undocumented)
+    reviewer?: string;
+    // (undocumented)
+    severity?: Severity;
+    // (undocumented)
+    taskId?: string;
+    // (undocumented)
+    title: string;
+}
+
+// @public (undocumented)
+export interface TraceStage {
+    // (undocumented)
+    ms: number;
+    // (undocumented)
+    stage: ReviewStage;
+    // (undocumented)
+    startMs: number;
+}
+
+// @public (undocumented)
+export interface TraceTask {
+    // (undocumented)
+    attempts: TraceAttempt[];
+    // (undocumented)
+    bundle: string;
+    // (undocumented)
+    files: string[];
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    ms?: number;
+    // (undocumented)
+    reusedFrom?: string;
+    // (undocumented)
+    reviewer: string;
+    // (undocumented)
+    startMs?: number;
+    // (undocumented)
+    status: TaskStatus;
+    // (undocumented)
+    usage: Usage;
+}
 
 // @public (undocumented)
 export interface Usage {

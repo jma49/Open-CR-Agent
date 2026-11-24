@@ -257,12 +257,15 @@ export function runtimeConformance(name: string, fixture: RuntimeFixture): void 
           e.type === "progress" && e.attempt ? [e.attempt] : [],
         );
         expect(summaries).toEqual([
-          {
+          expect.objectContaining({
             model: "local/m1",
             read: [FILE],
             searched: ["const a"],
             text: "Nothing to report.",
-          },
+            ending: "done",
+            tools: expect.objectContaining({ read_file: 2, code_search: 1, task_done: 1 }),
+            ms: expect.any(Number),
+          }),
         ]);
       },
       timeout,
