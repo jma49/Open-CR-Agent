@@ -4,27 +4,21 @@ import { roleCall } from "../agent/settings.js";
 import { spendLimit } from "../agent/spend-limit.js";
 import type { AgentRuntime, SyntaxChecker, Usage } from "../contracts.js";
 import type { FileDiff } from "../domain.js";
-import { type CallFailure, errorMessage, OcraError } from "../errors.js";
+import { errorMessage, OcraError } from "../errors.js";
 import { headMode } from "../generate/targets.js";
 import { CHECK_LIMITS, checkItemId } from "../mend/checks.js";
 import { mendScope } from "../mend/gate.js";
-import type { ItemOutcome, ItemReason, MEND_OUTCOMES, MendLevel } from "../mend/outcomes.js";
-import { composePatches, type FileChange, type Hunk, type ItemPatch } from "../mend/patch.js";
-import {
-  closedAs,
-  EMPTY_STATE,
-  type ItemState,
-  MEND_LIMITS,
-  type MendState,
-  type RoundStop,
-  roundStop,
-} from "../mend/state.js";
+import type { MendLevel } from "../mend/outcomes.js";
+import { composePatches, type FileChange, type ItemPatch } from "../mend/patch.js";
+import { type MendItemResult, type MendRound, nextState } from "../mend/round.js";
+import { closedAs, EMPTY_STATE, MEND_LIMITS, type MendState, roundStop } from "../mend/state.js";
 import { type VerificationStep, verifierStep } from "../mend/verify.js";
 import { oneLine } from "../review/prompt-text.js";
 import type { ChangeChecks, ChangeCommit, RoundNote, RoundNoteItem, VcsAdapter } from "../vcs.js";
 import { reviewContext } from "./context.js";
 import type { StoredFinding } from "./fix-finding.js";
 import { type Attempt, attempt, type Head, type WorkItem } from "./mend-attempt.js";
+import { changeConflicts, mergeRound } from "./mend-merge.js";
 import type { ReviewOptions } from "./options.js";
 
 export {
@@ -34,40 +28,19 @@ export {
   MEND_OUTCOMES,
   type MendLevel,
 } from "../mend/outcomes.js";
+export type { MendRound } from "../mend/round.js";
 
 const CONCURRENCY = 3;
 const SUBJECT_TITLE_CHARS = 100;
-
-interface MendItemResult {
-  id: string;
-  // The failed check's name, for an item that is one; a finding has none.
-  check?: string;
-  outcome: ItemOutcome;
-  reason?: ItemReason;
-  // What failed, for the reason `failed`.
-  cause?: CallFailure;
-  // What the round wrote for it, against the head: set for fixed and proposed.
-  edits?: readonly Hunk[];
-}
-
-export interface MendRound {
-  headSha: string;
-  outcome: (typeof MEND_OUTCOMES)[number];
-  // Why no round ran, for `stopped`.
-  stopped?: RoundStop;
-  // The commit written, for `committed`.
-  sha?: string;
-  items: MendItemResult[];
-  // What to pass to the next round.
-  state: MendState;
-  warnings: string[];
-}
 
 interface MendOptions extends Pick<ReviewOptions, "effort" | "roles"> {
   // The findings a person accepted, the most important first.
   findings: readonly StoredFinding[];
   // Also work on the checks that failed on the head.
   checks?: boolean;
+  // Resolve the conflicts of merging the base branch first: a round that
+  // finds some works on them alone.
+  conflicts?: boolean;
   vcs: VcsAdapter;
   runtime: AgentRuntime;
   syntax: SyntaxChecker;
@@ -112,6 +85,13 @@ export async function mendRound(options: MendOptions): Promise<MendRound> {
   const stopped = roundStop(before, options.maxCostUsd);
   if (stopped) return ended({ outcome: "stopped", stopped });
 
+  const conflicts = options.conflicts ? await changeConflicts(vcs, headSha, warnings) : undefined;
+  if (conflicts) {
+    const waiting = unique(options.findings)
+      .filter((f) => !closedAs(before.items[f.fingerprint]))
+      .map((f) => ({ id: f.fingerprint, outcome: "deferred", reason: "conflicts" }) as const);
+    return mergeRound(options, conflicts, { headSha, before, warnings, waiting });
+  }
   const checks = options.checks ? await failedChecks(vcs, headSha, warnings) : undefined;
   const items: WorkItem[] = [
     ...unique(options.findings).map((finding) => ({ id: finding.fingerprint, finding })),
@@ -211,7 +191,7 @@ export async function mendRound(options: MendOptions): Promise<MendRound> {
       .note?.(roundNote(round.sha, items, results))
       .catch((error) => warnings.push(`the round's note was not posted: ${errorMessage(error)}`));
   }
-  return ended({ ...round, items: listed(), state: nextState(before, results, spent) });
+  return ended({ ...round, items: listed(), state: nextState(before, results.values(), spent) });
 }
 
 function roundNote(
@@ -314,24 +294,4 @@ async function failedChecks(
 function unique(findings: readonly StoredFinding[]): StoredFinding[] {
   const seen = new Set<string>();
   return findings.filter((f) => !seen.has(f.fingerprint) && seen.add(f.fingerprint));
-}
-
-// A deferred item was not tried, or its patch was not written: its attempt
-// is not counted, so a person's push or a full round costs it nothing.
-function nextState(
-  before: MendState,
-  results: ReadonlyMap<string, MendItemResult>,
-  spent: number,
-): MendState {
-  const items: Record<string, ItemState> = { ...before.items };
-  for (const { id, outcome } of results.values()) {
-    const was = items[id] ?? { attempts: 0 };
-    if (outcome === "deferred" || was.closed) continue;
-    const used = closedAs(was);
-    if (used) items[id] = { ...was, closed: used };
-    else if (outcome === "needs_human" || outcome === "gone") {
-      items[id] = { attempts: was.attempts + 1, closed: outcome };
-    } else items[id] = { attempts: was.attempts + 1 };
-  }
-  return { rounds: before.rounds + 1, costUsd: before.costUsd + spent, items };
 }
