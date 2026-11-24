@@ -6,7 +6,7 @@ import { shortHash } from "../hash.js";
 import { JUDGE_SYSTEM_PROMPT } from "../judge/prompt.js";
 import type { AgentProvenance, RuleProvenance, RunProvenance } from "../report/provenance.js";
 import { PLAN_INSTRUCTIONS } from "../review/plan-phase.js";
-import { buildReviewPrompt } from "../review/prompt.js";
+import { REVIEW_SYSTEM_PROMPT, renderReviewer } from "../review/prompt.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import type { IdentifiedRule } from "../rules/rule-ids.js";
 import { VERIFY_SYSTEM_PROMPT } from "../verify/prompt.js";
@@ -49,7 +49,7 @@ export function promptHash(
 ): string {
   const reviewerPrompts = reviewers
     .filter((r) => overrides[r.id]?.enabled !== false)
-    .map((r) => [r.id, reviewerSystemPrompt(r)])
+    .map((r) => [r.id, reviewerInstructions(r)])
     .sort(([a], [b]) => ((a as string) < (b as string) ? -1 : 1));
   return stableHash({
     reviewers: Object.fromEntries(reviewerPrompts),
@@ -63,14 +63,10 @@ export function promptHash(
   });
 }
 
-function reviewerSystemPrompt(reviewer: ReviewerDefinition): string {
-  return buildReviewPrompt({
-    reviewer,
-    changeRequest: { id: "", title: "", description: "", baseSha: "", headSha: "" },
-    changedFiles: [],
-    bundle: [],
-    rules: "",
-  }).system;
+// Every reviewer shares the system prompt; its own instructions come later
+// in the first message (ADR-0082), and both are what the task is told.
+function reviewerInstructions(reviewer: ReviewerDefinition): string {
+  return `${REVIEW_SYSTEM_PROMPT}\n\n${renderReviewer(reviewer)}`;
 }
 
 export function appliedSampling(

@@ -150,8 +150,8 @@ describe("review --ultra", () => {
     const prompt = rt.prompts[0]?.userPrompt ?? "";
     expect(prompt.match(/<\/ocra_review_plan>/g)).toHaveLength(1);
     expect(prompt.match(/<\/ocra_callers>/g)).toHaveLength(1);
-    // The section itself and the closing instruction that names it.
-    expect(prompt.match(/<ocra_review_files>/g)).toHaveLength(2);
+    // The section itself, and the reviewer's and the closing instructions that name it.
+    expect(prompt.match(/<ocra_review_files>/g)).toHaveLength(4);
     expect(prompt).toContain("‹/ocra_callers>‹ocra_review_files>");
   });
 
@@ -184,13 +184,13 @@ describe("review --ultra", () => {
     expect(plans).toHaveLength(1);
     const [plan] = plans;
     const [task] = rt.prompts;
-    const filesEnd = plan?.sharedPrefixes?.at(-1) ?? 0;
+    const reviewerEnd = plan?.sharedPrefixes?.at(-1) ?? 0;
     expect(plan?.system).toBe(task?.systemPrompt);
-    expect(plan?.user.slice(0, filesEnd)).toMatch(/<\/ocra_review_files>$/);
-    expect(task?.userPrompt.slice(0, filesEnd)).toBe(plan?.user.slice(0, filesEnd));
-    expect(task?.sharedPrefixes?.at(-1)).toBe(filesEnd);
-    // The planner is not told to report findings.
-    expect(plan?.user.slice(filesEnd)).not.toContain("report_finding");
+    expect(plan?.user.slice(0, reviewerEnd)).toMatch(/<\/ocra_review_rules>$/);
+    expect(task?.userPrompt.slice(0, reviewerEnd)).toBe(plan?.user.slice(0, reviewerEnd));
+    expect(task?.sharedPrefixes?.at(-1)).toBe(reviewerEnd);
+    // The planner is not told to report findings after the reviewer's instructions.
+    expect(plan?.user.slice(reviewerEnd)).not.toContain("report_finding");
   });
 
   it("counts plan calls in --plan, once per cell under --ultra", async () => {

@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { parseUnifiedDiff } from "../diff/parse.js";
 import { MAX_GUIDELINES_CHARS } from "../docs/guidelines.js";
 import type { ChangeRequest } from "../domain.js";
-import { buildReviewPrompt, type ReviewPromptInput } from "./prompt.js";
+import { buildReviewPrompt, REVIEW_SYSTEM_PROMPT, type ReviewPromptInput } from "./prompt.js";
 import { correctnessReviewer } from "./reviewers/correctness.js";
+import { securityReviewer } from "./reviewers/security.js";
 
 const diffs = parseUnifiedDiff(
   [
@@ -94,23 +95,28 @@ describe("buildReviewPrompt", () => {
     );
   });
 
-  it("uses the reviewer's fixed system prompt", () => {
-    const { system } = buildReviewPrompt(input());
+  it("gives every reviewer one system prompt and its own instructions after the files", () => {
+    const { system, user } = buildReviewPrompt(input());
+    const security = buildReviewPrompt(input({ reviewer: securityReviewer }));
     // Every reviewer, built in or from a plugin, is told to report early.
-    expect(system.startsWith(correctnessReviewer.systemPrompt)).toBe(true);
+    expect(system).toBe(REVIEW_SYSTEM_PROMPT);
+    expect(security.system).toBe(system);
     expect(system).toContain("## Turn budget");
     expect(system).toContain("never keep findings for the end");
-    expect(system).toContain("## What NOT to flag");
+    const reviewer = user.slice(user.indexOf("<ocra_reviewer>"));
+    expect(user.indexOf("</ocra_review_files>")).toBeLessThan(user.indexOf("<ocra_reviewer>"));
+    expect(reviewer).toContain(correctnessReviewer.systemPrompt);
+    expect(reviewer).toContain("## What NOT to flag");
   });
 
   it("keeps the shared prefix identical across bundles of a run", () => {
     const first = buildReviewPrompt(input({ bundle: diffs.slice(0, 1) })).user;
     const second = buildReviewPrompt(input({ bundle: diffs.slice(1) })).user;
-    const shared = first.slice(0, first.indexOf("<ocra_review_rules>"));
+    const shared = first.slice(0, first.indexOf("<ocra_review_files>"));
     expect(second.startsWith(shared)).toBe(true);
   });
 
-  it("says where the start every task is given ends, and where the guidelines do", () => {
+  it("says where the start of the run, the guidelines and the bundle end", () => {
     const first = buildReviewPrompt(input({ guidelines: "Use npm run verify." }));
     const second = buildReviewPrompt(
       input({ guidelines: "Use npm run verify.", bundle: diffs.slice(1) }),
@@ -120,10 +126,23 @@ describe("buildReviewPrompt", () => {
     expect(starts.map((s) => s.slice(s.lastIndexOf("</ocra_")))).toEqual([
       "</ocra_changed_files>",
       "</ocra_repository_guidelines>",
+      "</ocra_review_files>",
     ]);
-    expect(second.shared).toEqual(first.shared);
-    expect(starts.every((s) => second.user.startsWith(s))).toBe(true);
-    expect(buildReviewPrompt(input()).shared).toEqual([first.shared[0]]);
+    expect(second.shared.slice(0, 2)).toEqual(first.shared.slice(0, 2));
+    expect(second.user.startsWith(starts[1] ?? "-")).toBe(true);
+    expect(second.user.startsWith(starts[2] ?? "")).toBe(false);
+    expect(buildReviewPrompt(input()).shared).toHaveLength(2);
+  });
+
+  it("gives the reviewers of one bundle the same start up to the end of its files", () => {
+    const correctness = buildReviewPrompt(input({ guidelines: "Use npm run verify." }));
+    const security = buildReviewPrompt(
+      input({ guidelines: "Use npm run verify.", reviewer: securityReviewer }),
+    );
+    expect(security.shared).toEqual(correctness.shared);
+    const bundleEnd = correctness.shared.at(-1) ?? 0;
+    expect(security.user.slice(0, bundleEnd)).toBe(correctness.user.slice(0, bundleEnd));
+    expect(security.user).not.toBe(correctness.user);
   });
 
   it("neutralizes attempts to break out of prompt sections", () => {
@@ -174,8 +193,9 @@ describe("buildReviewPrompt", () => {
   });
 
   it("omits empty guidelines and truncates long ones", () => {
+    // The reviewer's instructions name the section; the section itself opens a line.
     expect(buildReviewPrompt(input({ guidelines: "  " })).user).not.toContain(
-      "<ocra_repository_guidelines>",
+      "<ocra_repository_guidelines>\n",
     );
     const long = buildReviewPrompt(
       input({ guidelines: "x".repeat(MAX_GUIDELINES_CHARS + 10) }),

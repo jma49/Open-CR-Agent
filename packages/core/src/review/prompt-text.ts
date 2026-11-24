@@ -31,6 +31,7 @@ const SECTIONS = [
   "doc",
   "doc_index",
   "repository_guidelines",
+  "reviewer",
   "review_rules",
   "accepted_findings",
   "team_learnings",
