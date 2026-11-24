@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Bundle } from "../bundle/bundle.js";
+import { type Bundle, bundlePolicyFor } from "../bundle/bundle.js";
 import type { FileDiff } from "../domain.js";
 import type { ReviewerDefinition } from "../review/reviewer.js";
 import { agentsMdReviewer } from "../review/reviewers/agents-md.js";
@@ -124,6 +124,10 @@ describe("a reviewer whose bundles are packed", () => {
       "a + b",
       "c",
     ]);
+    const small = { bundling: bundlePolicyFor(16_000) };
+    expect(planMatrix(large, [packed], "full", {}, small).cells.map((c) => c.bundle.label)).toEqual(
+      ["a", "b", "c"],
+    );
   });
 });
 

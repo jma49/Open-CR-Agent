@@ -13,6 +13,11 @@ export function partlyReviewed(incomplete: Record<IncompleteEnding, number>): st
       `${intro(incomplete.step_cap)}: a reviewer used all ${MAX_AGENT_STEPS} of its steps before it finished them. The step limit is fixed; review a smaller change to give each file more of them.`,
     );
   }
+  if (incomplete.context_window > 0) {
+    lines.push(
+      `${intro(incomplete.context_window)}: a reviewer filled its model's context window before it finished them. Review a smaller change, or use a model with a larger window.`,
+    );
+  }
   if (incomplete.stopped_early > 0) {
     lines.push(
       `${intro(incomplete.stopped_early)}: a reviewer stopped with steps left, without saying it had finished them. Run the review again, or use a stronger model if it keeps stopping.`,
@@ -22,5 +27,5 @@ export function partlyReviewed(incomplete: Record<IncompleteEnding, number>): st
 }
 
 export function partlyReviewedCount(incomplete: Record<IncompleteEnding, number>): number {
-  return incomplete.step_cap + incomplete.stopped_early;
+  return incomplete.step_cap + incomplete.context_window + incomplete.stopped_early;
 }

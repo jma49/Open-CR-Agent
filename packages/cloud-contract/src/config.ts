@@ -100,6 +100,8 @@ const docPath = z
   );
 
 const price = z.number().min(0).max(10_000);
+// A review's instructions and tools alone take a few thousand tokens.
+const MIN_CONTEXT_WINDOW = 8_000;
 
 const providerSchema = z
   .object({
@@ -114,10 +116,19 @@ const providerSchema = z
       .refine((name) => !PLATFORM_TOKENS.test(name), "must not name a platform or cloud credential")
       .optional(),
     // Prices in US dollars per million tokens; 0 means unpriced.
+    // contextWindow: the tokens one request may hold, for a model with a
+    // small window.
     models: z
       .record(
         z.string().regex(/^[\w./:@-]{1,200}$/),
-        z.object({ input: price, output: price, cachedInput: price.optional() }).strict(),
+        z
+          .object({
+            input: price,
+            output: price,
+            cachedInput: price.optional(),
+            contextWindow: z.int().min(MIN_CONTEXT_WINDOW).max(10_000_000).optional(),
+          })
+          .strict(),
       )
       .refine((models) => Object.keys(models).length > 0, "must list at least one model"),
     // How an OpenAI-compatible endpoint takes a reasoning effort: "openai"

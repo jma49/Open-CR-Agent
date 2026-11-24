@@ -33,6 +33,7 @@ describe("renderSummary", () => {
         coverage: [
           { path: "src/long.ts", status: "incomplete", ended: "step_cap" },
           { path: "src/odd.ts", status: "incomplete", ended: "stopped_early" },
+          { path: "src/big.ts", status: "incomplete", ended: "context_window" },
           { path: "src/ok.ts", status: "reviewed" },
         ],
       },
@@ -47,10 +48,14 @@ describe("renderSummary", () => {
     expect(body).toContain(
       "**Incomplete:** 1 selected file(s) were only partly reviewed: a reviewer stopped with steps left, without saying it had finished them.",
     );
+    expect(body).toContain(
+      "**Incomplete:** 1 selected file(s) were only partly reviewed: a reviewer filled its model's context window before it finished them. A smaller merge request, or a model with a larger window, leaves each file more room.",
+    );
+    expect(body).toContain("- partly reviewed (context window full): `src/big.ts`");
     expect(body).toContain("- partly reviewed (out of steps): `src/long.ts`");
     expect(body).toContain("- partly reviewed (stopped early): `src/odd.ts`");
     expect(body).toContain(
-      "1 reviewed · 2 partly reviewed · 0 unchanged since the last review · 0 not reviewed",
+      "1 reviewed · 3 partly reviewed · 0 unchanged since the last review · 0 not reviewed",
     );
   });
 

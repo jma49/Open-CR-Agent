@@ -40,7 +40,11 @@ export async function reviewWithHooks(given: ReviewOptions & ReviewHooks): Promi
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
   const runId = options.identity?.runId ?? newRunId();
 
-  const plan = await planReview({ ...options, runId, full: settings.full }, emit, signal);
+  const plan = await planReview(
+    { ...options, bundling: options.bundling ?? settings.bundling, runId, full: settings.full },
+    emit,
+    signal,
+  );
   for (const usage of plan.usage) emit({ type: "usage_reported", usage });
   const context: StageContext = {
     options,

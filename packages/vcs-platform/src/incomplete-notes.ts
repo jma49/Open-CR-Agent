@@ -22,7 +22,8 @@ export function incompleteNotes(report: ReviewReport, text: PlatformText): strin
   // the platform and points at the next review.
   const { notReviewed, incomplete } = coverageGaps(report);
   const gaps: string[] = [];
-  const missed = notReviewed - incomplete.step_cap - incomplete.stopped_early;
+  const missed =
+    notReviewed - incomplete.step_cap - incomplete.context_window - incomplete.stopped_early;
   if (missed > 0) {
     const limit = report.spendLimit?.reached
       ? `; the spend limit of $${report.spendLimit.usd} was reached`
@@ -32,6 +33,11 @@ export function incompleteNotes(report: ReviewReport, text: PlatformText): strin
   if (incomplete.step_cap > 0) {
     gaps.push(
       `**Incomplete:** ${incomplete.step_cap} selected file(s) were only partly reviewed: a reviewer used all ${MAX_AGENT_STEPS} of its steps before it finished them. The step limit is fixed; a smaller ${text.changeRequest} gives each file more of them.`,
+    );
+  }
+  if (incomplete.context_window > 0) {
+    gaps.push(
+      `**Incomplete:** ${incomplete.context_window} selected file(s) were only partly reviewed: a reviewer filled its model's context window before it finished them. A smaller ${text.changeRequest}, or a model with a larger window, leaves each file more room.`,
     );
   }
   if (incomplete.stopped_early > 0) {

@@ -55,7 +55,7 @@ export function coverageGaps(run: {
   incomplete: Record<IncompleteEnding, number>;
 } {
   const notReviewed = run.coverage.filter(isUnfinished).length;
-  const incomplete = { step_cap: 0, stopped_early: 0 };
+  const incomplete = { step_cap: 0, context_window: 0, stopped_early: 0 };
   for (const c of run.coverage) if (c.status === "incomplete") incomplete[c.ended] += 1;
   // Unchanged files were reviewed by an earlier run, and their findings and
   // verdict carry over: a re-review whose new files all failed still has them.

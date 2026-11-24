@@ -1,4 +1,5 @@
 import type { GuidelineScope, ReviewLimits, ReviewOptions } from "@open-cr-agent/core";
+import { agentChains, smallestContextWindow } from "../../config/cli-config.js";
 import type { ReviewArgs } from "./args.js";
 import type { ResolvedRun } from "./resolve-run.js";
 
@@ -13,6 +14,10 @@ export type ConfiguredOptions = Omit<
 export function configuredOptions(run: ResolvedRun, args: ReviewArgs): ConfiguredOptions {
   const { config } = run;
   const maxCostUsd = args.maxCostUsd ?? config.maxCostUsd;
+  const contextWindow = smallestContextWindow(config.providers, [
+    ...Object.values(config.models),
+    ...Object.values(agentChains({ reviewers: run.overrides, roles: config.roles })),
+  ]);
   const limits: ReviewLimits = {
     ...(config.concurrency !== undefined ? { concurrency: config.concurrency } : {}),
     ...(config.taskTimeoutMinutes !== undefined
@@ -23,6 +28,7 @@ export function configuredOptions(run: ResolvedRun, args: ReviewArgs): Configure
       : {}),
     ...(maxCostUsd !== undefined ? { maxCostUsd } : {}),
     ...(config.maxTasks !== undefined ? { maxTasks: config.maxTasks } : {}),
+    ...(contextWindow !== undefined ? { contextWindow } : {}),
   };
   return {
     reviewers: run.registry.reviewers,

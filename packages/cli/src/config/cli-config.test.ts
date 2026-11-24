@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CONFIG_SCHEMA_ID, configJsonSchema } from "@open-cr-agent/cloud-contract";
 import { afterEach, describe, expect, it } from "vitest";
-import { ConfigError, loadConfig } from "./cli-config.js";
+import { ConfigError, loadConfig, smallestContextWindow } from "./cli-config.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -51,7 +51,9 @@ describe("loadConfig", () => {
             type: "openai-compatible",
             baseUrl: "https://llm.example.com/v1",
             apiKeyEnv: "GATEWAY_API_KEY",
-            models: { "qwen3-coder": { input: 0.5, output: 2, cachedInput: 0.1 } },
+            models: {
+              "qwen3-coder": { input: 0.5, output: 2, cachedInput: 0.1, contextWindow: 32_000 },
+            },
           },
           local: {
             type: "openai-compatible",
@@ -72,7 +74,9 @@ describe("loadConfig", () => {
       gateway: {
         baseUrl: "https://llm.example.com/v1",
         apiKeyEnv: "GATEWAY_API_KEY",
-        models: { "qwen3-coder": { input: 0.5, output: 2, cachedInput: 0.1 } },
+        models: {
+          "qwen3-coder": { input: 0.5, output: 2, cachedInput: 0.1, contextWindow: 32_000 },
+        },
       },
       local: { baseUrl: "http://127.0.0.1:8000/v1", models: { free: { input: 0, output: 0 } } },
       claude: {
@@ -102,6 +106,7 @@ describe("loadConfig", () => {
     [{ type: "anthropic", effort: "openrouter" }, "openai-compatible provider only"],
     [{ type: "anthropic", toolCalls: "text" }, "openai-compatible provider only"],
     [{ toolCalls: "inline" }, "toolCalls"],
+    [{ models: { m: { input: 1, output: 2, contextWindow: 2_000 } } }, "contextWindow"],
   ])("refuses a provider with %j", async (change, message) => {
     const provider = {
       type: "openai-compatible",
@@ -239,5 +244,28 @@ describe("configJsonSchema", () => {
     await expect(loadConfig(root(JSON.stringify({ runtime: "" })), {})).rejects.toThrow(
       ConfigError,
     );
+  });
+});
+
+describe("smallestContextWindow", () => {
+  const providers = {
+    corp: {
+      baseUrl: "https://llm.example.com/v1",
+      models: {
+        small: { input: 0, output: 0, contextWindow: 16_000 },
+        large: { input: 0, output: 0, contextWindow: 128_000 },
+        plain: { input: 0, output: 0 },
+      },
+    },
+  };
+
+  it("is the smallest window declared for a model a chain names", () => {
+    const chains = [["corp/large", "corp/plain"], ["corp/small"], undefined];
+    expect(smallestContextWindow(providers, chains)).toBe(16_000);
+    expect(smallestContextWindow(providers, [["corp/large"]])).toBe(128_000);
+  });
+
+  it("is none when no named model declares one", () => {
+    expect(smallestContextWindow(providers, [["corp/plain", "openai/gpt"]])).toBeUndefined();
   });
 });

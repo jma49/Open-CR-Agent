@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ReviewerOverrides, RoleSettings, TierEfforts } from "../agent/settings.js";
 import type { AnchorContext } from "../anchor/anchor.js";
-import type { BundlePolicy } from "../bundle/bundle.js";
+import { type BundlePolicy, bundlePolicyFor } from "../bundle/bundle.js";
 import type { FileGrouper } from "../bundle/grouping.js";
 import type {
   AgentRuntime,
@@ -116,6 +116,10 @@ export interface ReviewLimits {
   // At most this many review tasks (DEFAULT_MAX_TASKS); the rest are skipped
   // and their files reported as not reviewed.
   maxTasks?: number;
+  // The smallest context window, in tokens, of the models the run may call:
+  // a task's diff is held to a share of it (ADR-0071). Unset, bundles are
+  // sized for the large windows of current hosted models.
+  contextWindow?: number;
 }
 
 // The stages after the review tasks: checking is on by default, the rest off.
@@ -192,6 +196,7 @@ const limitsSchema = z.object({
   runTimeoutMs: timeoutMs.optional(),
   maxCostUsd: atLeast(0, false, "a number of US dollars, 0 or more").optional(),
   maxTasks: z.int().nonnegative().optional(),
+  contextWindow: z.int().positive().optional(),
 });
 
 // What the stages read of ReviewOptions' limits, mode and stages: checked
@@ -205,6 +210,7 @@ export interface RunSettings {
   runTimeoutMs: number;
   maxCostUsd?: number;
   maxTasks?: number;
+  bundling: BundlePolicy;
   ultra: boolean;
   full: boolean;
   verify: boolean;
@@ -240,6 +246,7 @@ export function runSettings(
     runTimeoutMs: Math.min(limits.runTimeoutMs ?? REVIEW_DEFAULTS.runTimeoutMs, MAX_TIMER_MS),
     ...(limits.maxCostUsd === undefined ? {} : { maxCostUsd: limits.maxCostUsd }),
     ...(limits.maxTasks === undefined ? {} : { maxTasks: limits.maxTasks }),
+    bundling: bundlePolicyFor(limits.contextWindow),
     ultra: options.mode?.ultra === true,
     full: options.mode?.full === true,
     verify: options.stages?.verify !== false,

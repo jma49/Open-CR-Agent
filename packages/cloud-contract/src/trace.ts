@@ -33,7 +33,13 @@ export const FINDING_FATES = [
 const findingFateSchema = z.enum(FINDING_FATES);
 export type FindingFate = (typeof FINDING_FATES)[number];
 
-export const ATTEMPT_ENDINGS = ["done", "step_cap", "stopped_early", "error"] as const;
+export const ATTEMPT_ENDINGS = [
+  "done",
+  "step_cap",
+  "context_window",
+  "stopped_early",
+  "error",
+] as const;
 
 // A week: no review runs longer.
 const ms = z.number().int().min(0).lt(604_800_000);

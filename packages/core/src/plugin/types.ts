@@ -35,7 +35,7 @@ export interface CustomProvider {
   apiKeyEnv?: string;
   // Prices in US dollars per million tokens, by model id, so reported cost
   // and the spend limit count its use.
-  models: Readonly<Record<string, ModelPrice>>;
+  models: Readonly<Record<string, ProviderModel>>;
   // How a chat completions endpoint takes a reasoning effort: OpenAI's
   // `reasoning_effort` (default), or OpenRouter's `reasoning: { effort }`.
   effort?: "openai" | "openrouter";
@@ -49,6 +49,14 @@ export interface ModelPrice {
   input: number;
   output: number;
   cachedInput?: number;
+}
+
+// A model as a provider's declaration has it.
+export interface ProviderModel extends ModelPrice {
+  // Tokens one request may hold, the answer included. Declared for a model
+  // with a small window, so a review is planned and stopped within it
+  // (ADR-0071).
+  contextWindow?: number;
 }
 
 export type VcsFactory = (options: unknown) => VcsAdapter;

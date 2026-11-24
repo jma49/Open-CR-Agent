@@ -211,6 +211,7 @@ function toProviders(
               input: price.input,
               output: price.output,
               ...(price.cachedInput === undefined ? {} : { cachedInput: price.cachedInput }),
+              ...(price.contextWindow === undefined ? {} : { contextWindow: price.contextWindow }),
             },
           ]),
         ),
@@ -233,6 +234,23 @@ export function agentChains(config: {
     if (setting?.models) chains[role] = setting.models;
   }
   return chains;
+}
+
+// The smallest context window declared for a model a chain names: what a
+// task must fit whichever model of its chain takes it.
+export function smallestContextWindow(
+  providers: Readonly<Record<string, CustomProvider>>,
+  chains: readonly (readonly string[] | undefined)[],
+): number | undefined {
+  const windows = chains
+    .flatMap((chain) => chain ?? [])
+    .flatMap((model) => {
+      const slash = model.indexOf("/");
+      const window =
+        providers[model.slice(0, slash)]?.models[model.slice(slash + 1)]?.contextWindow;
+      return window === undefined ? [] : [window];
+    });
+  return windows.length > 0 ? Math.min(...windows) : undefined;
 }
 
 // Models of declared providers, named in a chain, priced at 0 per token.

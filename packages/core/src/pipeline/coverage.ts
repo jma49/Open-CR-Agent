@@ -7,8 +7,8 @@ import type { JobResult } from "./execute.js";
 
 // How far one reviewer got with a file, best first: under --ultra one sample
 // that called the done tool is enough. Ranked by how actionable it is, a cut-
-// off at the step cap above a stop with steps left.
-const PROGRESS = ["done", "step_cap", "stopped_early", "none"] as const;
+// off at the step cap or the context window above a stop with steps left.
+const PROGRESS = ["done", "step_cap", "context_window", "stopped_early", "none"] as const;
 type Progress = (typeof PROGRESS)[number];
 
 type FileStatus =

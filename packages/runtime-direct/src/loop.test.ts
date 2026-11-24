@@ -220,4 +220,62 @@ describe("runLoop", () => {
     expect(attempt.findings).toMatchObject([{ file: "src/b.ts" }]);
     expect(attempt.refusedFindings).toEqual(["existingCode, severity, body"]);
   });
+
+  const quiet: ReviewContext = {
+    readFile: async () => "const a = 1;\n",
+    readDiff: () => undefined,
+    searchCode: async () => [],
+  };
+  const windowed = (url: string, user: string) =>
+    runLoop({
+      wire: openaiWire(),
+      endpoint: { baseUrl: url },
+      model: "m1",
+      price: { input: 1, output: 1 },
+      contextWindow: 8_000,
+      system: "system",
+      user,
+      tools: reviewTools,
+      context: quiet,
+      maxSteps: 5,
+      wrapUp: { message: "report", tools: ["report_finding", "task_done"], steps: 2 },
+      timeoutMs: 10_000,
+      signal: new AbortController().signal,
+    });
+
+  it("ends a turn whose next request would not fit the context window, and still wraps up", async () => {
+    const server = await scriptedEndpoint([
+      {
+        toolCalls: [{ name: "read_file", args: { path: "src/a.ts" } }],
+        usage: { prompt_tokens: 7_000, completion_tokens: 50 },
+      },
+      { toolCalls: [{ name: "task_done", args: {} }] },
+    ]);
+    endpoints.push(server);
+
+    const attempt = await windowed(server.url, "user");
+
+    expect(server.seen).toHaveLength(1);
+    expect(attempt).toMatchObject({ steps: 1, atContextWindow: true });
+    expect(attempt.atStepCap).toBeUndefined();
+    expect(attempt.error).toBeUndefined();
+
+    const wrapped = await attempt.wrapUp?.();
+    expect(server.seen).toHaveLength(2);
+    expect(wrapped?.toolCalls).toEqual(["read_file", "task_done"]);
+    expect(wrapped?.atContextWindow).toBeUndefined();
+  });
+
+  it("fails an attempt whose prompt alone does not fit, without asking", async () => {
+    const server = await scriptedEndpoint([{ content: "never asked" }]);
+    endpoints.push(server);
+
+    const attempt = await windowed(server.url, "x".repeat(40_000));
+
+    expect(server.seen).toHaveLength(0);
+    expect(attempt.error).toEqual({
+      message: "the prompt, about 10002 tokens, does not fit m1's context window of 8000 tokens",
+      retryable: true,
+    });
+  });
 });

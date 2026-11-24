@@ -439,6 +439,7 @@ function coverageAndCost(report: ReviewReport): string[] {
 
 const PARTLY: Record<IncompleteEnding, string> = {
   step_cap: "partly reviewed (out of steps)",
+  context_window: "partly reviewed (context window full)",
   stopped_early: "partly reviewed (stopped early)",
 };
 

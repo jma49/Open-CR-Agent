@@ -571,6 +571,11 @@
                   "type": "number",
                   "minimum": 0,
                   "maximum": 10000
+                },
+                "contextWindow": {
+                  "type": "integer",
+                  "minimum": 8000,
+                  "maximum": 10000000
                 }
               },
               "required": [

@@ -149,7 +149,7 @@ When a model is quiet for 30 seconds, ocra prints `Model is thinking...`.
 `--format json` prints the full report, the same shape as a session's `report.json`:
 
 - change request, risk tier, verdict, summary;
-- coverage per changed file: reviewed, failed, unreviewed (no task started), incomplete (task ended without the done tool; `ended`: `step_cap` or `stopped_early`), unchanged since the previous review, or excluded with a reason; for pull requests, incremental or full and why (`scope`);
+- coverage per changed file: reviewed, failed, unreviewed (no task started), incomplete (task ended without the done tool; `ended`: `step_cap`, `context_window` or `stopped_early`), unchanged since the previous review, or excluded with a reason; for pull requests, incremental or full and why (`scope`);
 - bundles, task outcomes, reviewer/bundle pairs the matrix skipped;
 - `refuted` (findings verification dropped, with the reason), `unverifiedCriticals` (critical findings it failed to check), `judgement` (what the judge merged, dropped or recalibrated), `fixes` when fixes were on (`asked`, `proposed`, and each `rejected` finding's `fingerprint` and `reason`: `declined`, `failed`, `stale`, `unchanged`, `unsafe`, `too_large`, `no_parser` or `syntax`);
 - findings, and `rereview`: earlier findings fixed, not reproduced, not re-checked, unchanged or dismissed, each with its `reviewer` when recorded;

@@ -154,6 +154,7 @@
                 "type": "string",
                 "enum": [
                   "step_cap",
+                  "context_window",
                   "stopped_early"
                 ]
               }
@@ -1086,6 +1087,7 @@
             "type": "string",
             "enum": [
               "step_cap",
+              "context_window",
               "stopped_early"
             ]
           },
