@@ -55,6 +55,12 @@ const SECTIONS = [
   "merge_checks",
   "check",
   "check_log",
+  "conflict",
+  "lines_before",
+  "lines_after",
+  "ancestor",
+  "pull_request",
+  "target",
   "tool_result",
 ] as const;
 export type SectionName = (typeof SECTIONS)[number];
