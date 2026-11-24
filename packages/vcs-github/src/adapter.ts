@@ -176,12 +176,11 @@ class GitHubPlatform implements ReviewPlatform {
     return githubBaseHead(this.options.api, this.options.pullRequest.number);
   }
 
-  // The account's noreply address, which GitHub shows as the account.
   async pushTarget() {
     const target = await githubPushBranch(this.options.api, this.options.pullRequest);
     if ("refused" in target) return target;
     const name = this.options.botLogin;
-    return { ...target, author: { name, email: `${name}@users.noreply.github.com` } };
+    return { ...target, author: { name, email: await this.options.api.noreplyEmail(name) } };
   }
 
   // The sha is the pull request's head as the adapter's own read gave it.

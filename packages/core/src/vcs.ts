@@ -97,6 +97,8 @@ export interface RoundNoteItem {
 // loop's own words (MEND_ITEM_OUTCOMES, MEND_ITEM_REASONS).
 export interface RoundNote {
   commitSha: string;
+  // The commit merges the base branch, so undoing it names the parent kept.
+  merge?: boolean;
   fixed: RoundNoteItem[];
   left: (RoundNoteItem & { outcome: string; reason?: string })[];
 }

@@ -121,6 +121,7 @@ export async function mergeRound(
   await vcs
     .note?.({
       commitSha: result.sha,
+      merge: true,
       fixed: answered.items.map((item) => ({ title: "merge conflict", file: item.conflict })),
       left: [],
     })

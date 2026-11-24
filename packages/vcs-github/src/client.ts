@@ -384,6 +384,16 @@ export class GitHubApi {
       : `${this.baseUrl}/graphql`;
   }
 
+  // The address GitHub links a commit to an account by.
+  async noreplyEmail(login: string): Promise<string> {
+    const url = `${this.baseUrl}/users/${encodeURIComponent(login)}`;
+    const { id } = z
+      .object({ id: z.number() })
+      .parse(await sendWithRetry(this.api, { method: "GET", url, path: "/users/:login" }));
+    const host = new URL(this.baseUrl).hostname.replace(/^api\./, "");
+    return `${id}+${login}@users.noreply.${host}`;
+  }
+
   // The end of a text answer, a job's log.
   async tail(path: string, tailBytes: number): Promise<string> {
     return String(await this.request("GET", path, undefined, { tailBytes }));

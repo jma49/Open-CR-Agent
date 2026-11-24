@@ -59,6 +59,23 @@ describe("renderRoundNote", () => {
     expect(body).toContain("check `ci\u02cb @everyone`");
   });
 
+  it("says a merge of the base branch is one and undoes it against the change's own parent", () => {
+    const body = renderRoundNote(
+      {
+        commitSha: SHA,
+        merge: true,
+        fixed: [{ title: "merge conflict", file: "limits.ts" }],
+        left: [],
+      },
+      "pull request",
+    );
+    expect(body.split("\n")[0]).toBe(
+      "ocra committed `0123456789ab`, a merge of the base branch that resolves its conflicts in 1 file:",
+    );
+    expect(body).toContain("To undo the commit: `git revert -m 1 0123456789ab`.");
+    expect(body).not.toContain("accepted findings");
+  });
+
   it("names the first twenty of a long list and counts the rest", () => {
     const fixed = Array.from({ length: 23 }, (_, i) => ({ title: `t${i}`, file: "a.ts" }));
     const body = renderRoundNote({ commitSha: SHA, fixed, left: [] }, "pull request");

@@ -19,7 +19,9 @@ const LEFT: Record<string, string> = {
 export function renderRoundNote(note: RoundNote, changeRequest: string): string {
   const short = note.commitSha.slice(0, 12);
   const lines = [
-    `ocra committed ${codeSpan(short)} with ${counted(note.fixed)}:`,
+    note.merge
+      ? `ocra committed ${codeSpan(short)}, a merge of the base branch that resolves its conflicts in ${files(note.fixed.length)}:`
+      : `ocra committed ${codeSpan(short)} with ${counted(note.fixed)}:`,
     "",
     ...listed(note.fixed, item),
   ];
@@ -36,7 +38,7 @@ export function renderRoundNote(note: RoundNote, changeRequest: string): string 
   }
   lines.push(
     "",
-    `ocra ran nothing from the repository to check these edits: this ${changeRequest}'s own checks test them. To undo the commit: ${codeSpan(`git revert ${short}`)}.`,
+    `ocra ran nothing from the repository to check these edits: this ${changeRequest}'s own checks test them. To undo the commit: ${codeSpan(`git revert ${note.merge ? "-m 1 " : ""}${short}`)}.`,
   );
   return lines.join("\n");
 }
@@ -49,6 +51,10 @@ function counted(fixed: readonly RoundNoteItem[]): string {
     ...(findings > 0 ? [fixes(findings, "accepted findings")] : []),
     ...(checks > 0 ? [fixes(checks, "failed checks")] : []),
   ].join(" and ");
+}
+
+function files(n: number): string {
+  return `${n} ${n === 1 ? "file" : "files"}`;
 }
 
 function item(of: RoundNoteItem): string {

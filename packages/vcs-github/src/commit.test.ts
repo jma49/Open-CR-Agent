@@ -1,5 +1,8 @@
 import type { ChangeCommit } from "@open-cr-agent/core";
+import type { MergeSource } from "@open-cr-agent/vcs-platform";
 import { describe, expect, it } from "vitest";
+import { code } from "./adapter.fakes.js";
+import { GitHubAdapter } from "./adapter.js";
 import { GitHubApi } from "./client.js";
 import { githubBaseHead, githubCommit, githubPushBranch } from "./commit.js";
 
@@ -117,5 +120,54 @@ describe("a merge pushed from the clone", () => {
     expect(await githubPushBranch(fork.api, PULL)).toEqual({
       refused: "the branch is on a fork, which ocra's token cannot write to",
     });
+  });
+});
+
+describe("the author of a merge pushed from the clone", () => {
+  async function author(baseUrl: string, userId: number) {
+    const pull = {
+      number: 7,
+      title: "Retry",
+      body: null,
+      html_url: "https://github.com/o/r/pull/7",
+      user: { login: "author" },
+      base: { sha: COMMIT, ref: "main" },
+      head: { sha: HEAD, ref: "feat/retry", repo: { full_name: "o/r" } },
+    };
+    const fetchImpl = (async (url: string) =>
+      new Response(JSON.stringify(url.includes("/users/") ? { id: userId } : pull), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })) as typeof fetch;
+    const pushed: Parameters<MergeSource["push"]>[0][] = [];
+    const merge: MergeSource = {
+      conflicts: async () => undefined,
+      push: async (made) => {
+        pushed.push(made);
+        return { committed: true, sha: COMMIT };
+      },
+    };
+    await new GitHubAdapter({
+      pullRequest: PULL,
+      api: new GitHubApi({ owner: "o", repo: "r" }, { token: "t", fetch: fetchImpl, baseUrl }),
+      code,
+      botLogin: "ocra-cloud[bot]",
+      requestChanges: false,
+      merge,
+    }).commit({ ...commit, mergeParent: COMMIT });
+    return pushed[0]?.author;
+  }
+
+  it("is the bot's address with its account id, which GitHub links to the account", async () => {
+    expect(await author("https://api.github.com", 337575901)).toEqual({
+      name: "ocra-cloud[bot]",
+      email: "337575901+ocra-cloud[bot]@users.noreply.github.com",
+    });
+  });
+
+  it("is on a GitHub Enterprise server's own host", async () => {
+    expect((await author("https://git.corp.test/api/v3", 12))?.email).toBe(
+      "12+ocra-cloud[bot]@users.noreply.git.corp.test",
+    );
   });
 });
