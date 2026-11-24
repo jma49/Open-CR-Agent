@@ -15,6 +15,8 @@ function diverged(
   theirs: Record<string, string>,
 ) {
   const r = repos.create();
+  // Git for Windows would store a fixture's carriage returns as line feeds.
+  r.git("config", "core.autocrlf", "false");
   const root = r.commit("base", base);
   const mine = r.commit("ours", ours);
   r.git("checkout", "-q", "-b", "target", root);
@@ -53,6 +55,12 @@ describe("mergeConflicts", () => {
       "=======",
       "const LIMIT = 5;",
       ">>>>>>>",
+    ]);
+    // No temporary path of this machine reaches a prompt.
+    expect([lines[0], lines[2], lines[6]]).toEqual([
+      "<<<<<<< ours",
+      "||||||| base",
+      ">>>>>>> theirs",
     ]);
     expect(r.git("rev-parse", "HEAD").trim()).toBe(head);
     expect(r.git("status", "--porcelain")).toBe("");

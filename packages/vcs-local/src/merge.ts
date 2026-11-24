@@ -230,7 +230,14 @@ async function mergedText(
     await Promise.all(names.map((name, i) => writeFile(name, texts[i] ?? "")));
     // merge-file exits with the number of conflicts, and above 127 on an error.
     const merged = await git(
-      ["merge-file", "-p", "--diff3", `--marker-size=${markerSize}`, ...names],
+      [
+        "merge-file",
+        "-p",
+        "--diff3",
+        `--marker-size=${markerSize}`,
+        ...["ours", "base", "theirs"].flatMap((label) => ["-L", label]),
+        ...names,
+      ],
       { cwd: dir, okExitCodes: Array.from({ length: 128 }, (_, i) => i) },
     );
     return { path, merged, markerSize, executable: ours.mode === "100755" };
