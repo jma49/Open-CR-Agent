@@ -6,6 +6,25 @@ Entries come from the changesets in `.changeset/`, one per pull request that cha
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-11-24
+
+`ocra mend` fixes findings that need more than a local edit through a fixer task with one `edit` tool, and a failed fix says what failed. The Action's new tag is `ocrahq/Open-CR-Agent@v0.21.0`.
+
+### Added
+
+- `ocra fix --json` and each item of `ocra mend --json` carry `cause` when the reason is `failed`: `timeout`, `quota`, `refused`, `unavailable`, `invalid_output` or `unknown`, never the endpoint's own message (`FIX_FAILURE_CAUSES` in `@open-cr-agent/cloud-contract`, `CALL_FAILURES` in `@open-cr-agent/core`).
+- `ocra mend` fixes findings its local lane cannot place (code found more than once, a span over 30 lines, a fix that needs other lines or files) through a fixer task with the read tools and one `edit` tool over a copy of the head in memory, on the `direct` runtime; the gate and the verifier check its edits like any other.
+- `AgentTaskSpec.toolset` (`TaskToolset`), `AgentRuntime.toolsets` and `readTools` in `@open-cr-agent/core`: a task's own tools in place of the review's, for a runtime that declares it runs them.
+
+### Changed
+
+- `ocra init` writes a workflow that pins the Action to v0.20.0.
+
+### Fixed
+
+- A learning file named after a long title ends at a whole word instead of mid-word.
+- The pull request `ocra learn feedback --propose` opens says its learnings come from review feedback, since they are also drafted from declined findings.
+
 ## [0.20.0] - 2026-11-23
 
 `ocra mend` runs one round of the fix loop over the findings a person accepted, `.ocra/rules.md` holds review rules in plain language, and `--depth` picks how thorough a review is. The Action's new tag is `ocrahq/Open-CR-Agent@v0.20.0`.
@@ -720,7 +739,8 @@ Known limitations: recall is the weak point (the [quality page](https://ocra.maj
 
 - Agents cannot write files, run commands or browse; likely secret files cannot be read; configuration comes from the base branch; text from the change is fenced off in every prompt.
 
-[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.20.0...HEAD
+[Unreleased]: https://github.com/jma49/Open-CR-Agent/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/jma49/Open-CR-Agent/compare/v0.17.0...v0.18.0
