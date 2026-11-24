@@ -283,6 +283,8 @@ pull request 设为检查通过后自动合并（仓库允许 squash 就用 squa
 
 在 GitLab 上，Merge Request 设为流水线成功后合并，使用项目自己的合并方式，合并后删除分支。GitLab 会立即合并没有运行中流水线的 Merge Request，所以 ocra 先最多等约 15 秒，等新分支触发的流水线；到时仍没有，就说明它不需要任何检查，立即合并。项目要求流水线成功才能合并却没有流水线，或 GitLab 拒绝时，ocra 给出警告并让 Merge Request 保持打开。用 `GITLAB_TOKEN` 做的提交和任何 push 一样会触发项目的流水线。
 
+`ocra learn check` 不调用模型：它列出每条有路径匹配不到 HEAD 上任何文件的 learning，格式为 `<id>: no file matches <路径>`，只要有一条就以 1 退出。模块搬家或改名后，审查不再按这些路径选中这条 learning，只能靠它的 symbols 和 keywords；请改它的 paths。可以放进 CI 及早发现。ocra Cloud 的 Learnings 页对默认分支显示同样的结果。
+
 ## ocra reply
 
 在 PR 或 MR 上回答提到 `@ocra` 的评论，回复在同一个讨论里：

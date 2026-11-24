@@ -10,6 +10,7 @@ export { RISK_TIERS, severitySchema, verificationSchema } from "./domain.js";
 export { errnoCode, isNotFound } from "./errors.js";
 export type { FileEdit } from "./generate/edits.js";
 export { shortHash } from "./hash.js";
+export { unmatchedPaths } from "./knowledge/paths.js";
 export { learningSelector } from "./knowledge/select.js";
 export {
   type DraftLearning,

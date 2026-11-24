@@ -283,6 +283,8 @@ The pull request is set to merge once its checks pass (squash, else rebase, else
 
 On GitLab the merge request is set to merge when its pipeline succeeds, with the project's merge method, and deletes its branch when merged. GitLab merges at once a merge request with no running pipeline, so ocra first waits up to about 15 seconds for the pipeline the new branch starts; with none by then, nothing is required of it and it is merged at once. When the project allows no merge without a successful pipeline and has none, or GitLab refuses, ocra warns and leaves the merge request open. A commit made with `GITLAB_TOKEN` starts the project's pipelines as any push does.
 
+`ocra learn check` makes no model call: it lists each learning with a path that matches no file at HEAD, as `<id>: no file matches <paths>`, and exits 1 when there is one. After a module moves or is renamed, reviews no longer give such a learning by that path, only by its symbols and keywords; edit its paths. Run it in CI to catch that. ocra Cloud's Learnings page shows the same on the default branch.
+
 ## ocra reply
 
 Answers a comment that mentions `@ocra` on a pull or merge request, in its thread:

@@ -7,6 +7,7 @@ import { forTerminal } from "../io/terminal.js";
 import { UsageError } from "../io/usage-error.js";
 import { acceptedFindingCandidates, declinedFindingCandidates } from "./learn/accepted-findings.js";
 import { DEFAULT_MAX, parseLearnArgs } from "./learn/args.js";
+import { checkLearnings } from "./learn/check.js";
 import { documentCandidates } from "./learn/documents.js";
 import { fixCandidates } from "./learn/fix-commits.js";
 import { type Candidate, type LearnResult, learnFrom } from "./learn/pipeline.js";
@@ -21,7 +22,7 @@ import { type ResolvedRun, type ReviewIo, resolveRun } from "./review/resolve-ru
 
 const CONCURRENCY = 4;
 
-export const LEARN_USAGE = `Usage: ocra learn <mine|feedback|import <file.md>...|remember> [options]
+export const LEARN_USAGE = `Usage: ocra learn <mine|feedback|import <file.md>...|remember|check> [options]
 
 Drafts learnings for .ocra/learnings/, one helper model call each:
   mine        from the fix commits on HEAD's first-parent line, newest first
@@ -33,6 +34,10 @@ Drafts learnings for .ocra/learnings/, one helper model call each:
               files of the repository
   remember    from each "/ocra remember <note>" on --pr or --mr by someone
               with write access
+
+  check       lists the learnings whose paths match no file at HEAD,
+              which reviews no longer give by path; exits 1 when there are
+              any. Makes no model call
 
 A draft is kept when it is not a duplicate and the selection gives it to
 the change or file it came from. Kept learnings are written to the working
@@ -76,6 +81,7 @@ const SOURCES = {
   },
 } as const;
 type Source = keyof typeof SOURCES;
+const CHECK = "check";
 const READS_CHANGE: ReadonlySet<string> = new Set<Source>(["remember", "feedback"]);
 
 // The repository's accepted findings, then the pull or merge request's
@@ -93,7 +99,7 @@ export async function learnCommand(
   io: ReviewIo,
   deps: ReviewDeps,
 ): Promise<number> {
-  const args = parseLearnArgs(argv, Object.keys(SOURCES));
+  const args = parseLearnArgs(argv, [...Object.keys(SOURCES), CHECK]);
   if (args === "help") {
     io.out.write(LEARN_USAGE);
     return EXIT.ok;
@@ -104,6 +110,9 @@ export async function learnCommand(
   if (args.change !== undefined && !READS_CHANGE.has(args.source)) {
     throw new UsageError("--pr and --mr go with ocra learn remember and ocra learn feedback");
   }
+  if (args.source === CHECK && args.propose) {
+    throw new UsageError("--propose does not go with ocra learn check");
+  }
   const reviewArgs: ReviewArgs = {
     target: { mode: "workspace" },
     format: "text",
@@ -112,6 +121,7 @@ export async function learnCommand(
     ...(args.configFile !== undefined ? { configFile: args.configFile } : {}),
   };
   const run = await resolveRun(reviewArgs, io, deps, { logged: false });
+  if (args.source === CHECK) return checkLearnings(run, io);
   const maxCostUsd = args.maxCostUsd ?? run.config.maxCostUsd;
   const { runtime, stopCloud } = await startRuntime(run, deps, {});
   const stopListening = deps.onInterrupt?.(() => run.interrupt.abort());
