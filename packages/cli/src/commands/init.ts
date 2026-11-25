@@ -1,6 +1,7 @@
 import { lstat, readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
-import { errorMessage } from "@open-cr-agent/core";
+import { configSchema } from "@open-cr-agent/cloud-contract";
+import { errorMessage, parseModel } from "@open-cr-agent/core";
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
 import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
@@ -29,7 +30,7 @@ Options:
                      skips pull requests from forks
   --provider <name>  ${PRESETS.map((p) => p.name).join(", ")}; by default the first key found
                      of ${PRESETS.map((p) => p.keyEnv).join(", ")}. With --github, prefer
-                     a single supported key declared by a retained configuration.
+                     a single supported key used by the retained configuration's models.
   --force            Replace the files if they exist
   -h, --help         Show help
 `;
@@ -56,8 +57,7 @@ export async function initCommand(
     values.github && !replace && values.provider === undefined
       ? await existingConfig(root)
       : undefined;
-  const preset =
-    retained?.keys.length === 1 ? PRESETS.find((p) => p.keyEnv === retained.keys[0]) : undefined;
+  const preset = PRESETS.find((p) => p.keyEnv === retained?.inferredKey);
   const choice = chooseProvider(values.provider ?? preset?.name, env);
 
   const config = await writeRepositoryFile(root, CONFIG_PATH, configFor(choice.preset), {
@@ -173,22 +173,26 @@ function githubNext(kind: WorkflowKind, keyEnv: string, written: readonly string
 // runtime, and the variables its endpoints read their keys from. An
 // unreadable one counts as needing OpenCode, the safe side; the review then
 // says what is wrong with the file.
-async function existingConfig(root: string): Promise<{ direct: boolean; keys: string[] }> {
+async function existingConfig(
+  root: string,
+): Promise<{ direct: boolean; keys: string[]; inferredKey?: string }> {
   const path = await resolveRepositoryFile(root, CONFIG_PATH);
-  let parsed: unknown;
   try {
     if (!(await lstat(path)).isFile()) return { direct: false, keys: [] };
-    parsed = JSON.parse(await readFile(path, "utf8"));
+    const config = configSchema.parse(JSON.parse(await readFile(path, "utf8")));
+    const models = [
+      ...Object.values(config.models),
+      ...Object.values(config.reviewers).map((reviewer) => reviewer.models),
+      ...Object.values(config.roles).map((role) => role?.models),
+    ].flatMap((chain) => chain ?? []);
+    const usedKeys = new Set(
+      models.map((model) => config.providers[parseModel(model).providerID]?.apiKeyEnv),
+    );
+    const keys = [...usedKeys].filter((key) => key !== undefined);
+    // A catalog provider or inherited config can require credentials not declared here.
+    const inferredKey = config.extends === undefined && usedKeys.size === 1 ? keys[0] : undefined;
+    return { direct: config.runtime === "direct", keys, ...(inferredKey && { inferredKey }) };
   } catch {
     return { direct: false, keys: [] };
   }
-  if (typeof parsed !== "object" || parsed === null) return { direct: false, keys: [] };
-  const { runtime, providers } = parsed as { runtime?: unknown; providers?: unknown };
-  const keys =
-    typeof providers === "object" && providers !== null
-      ? Object.values(providers).flatMap((p: { apiKeyEnv?: unknown } | null) =>
-          typeof p?.apiKeyEnv === "string" ? [p.apiKeyEnv] : [],
-        )
-      : [];
-  return { direct: runtime === "direct", keys: [...new Set(keys)] };
 }
