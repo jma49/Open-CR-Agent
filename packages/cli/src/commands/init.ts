@@ -1,11 +1,10 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { lstat, readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { errorMessage } from "@open-cr-agent/core";
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
 import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
-import { writeRepositoryFile } from "../io/repository-file.js";
+import { resolveRepositoryFile, writeRepositoryFile } from "../io/repository-file.js";
 import { UsageError } from "../io/usage-error.js";
 import { commandsWorkflowFor } from "./init/commands-workflow.js";
 import { type Choice, chooseProvider, configFor, PRESETS } from "./init/providers.js";
@@ -29,7 +28,8 @@ Options:
   --same-repo-only   With --github, a pull_request workflow instead: it
                      skips pull requests from forks
   --provider <name>  ${PRESETS.map((p) => p.name).join(", ")}; by default the first key found
-                     of ${PRESETS.map((p) => p.keyEnv).join(", ")}
+                     of ${PRESETS.map((p) => p.keyEnv).join(", ")}. With --github, prefer
+                     a single supported key declared by a retained configuration.
   --force            Replace the files if they exist
   -h, --help         Show help
 `;
@@ -50,9 +50,15 @@ export async function initCommand(
   if (values["same-repo-only"] && !values.github) {
     throw new UsageError("--same-repo-only goes with --github");
   }
-  const choice = chooseProvider(values.provider, env);
   const root = await findRepositoryRoot(cwd);
   const replace = values.force === true;
+  const retained =
+    values.github && !replace && values.provider === undefined
+      ? await existingConfig(root)
+      : undefined;
+  const preset =
+    retained?.keys.length === 1 ? PRESETS.find((p) => p.keyEnv === retained.keys[0]) : undefined;
+  const choice = chooseProvider(values.provider ?? preset?.name, env);
 
   const config = await writeRepositoryFile(root, CONFIG_PATH, configFor(choice.preset), {
     replace,
@@ -68,7 +74,7 @@ export async function initCommand(
   const existing =
     config === "written"
       ? { direct: choice.preset.runtime === "direct", keys: [keyEnv] }
-      : await existingConfig(join(root, CONFIG_PATH));
+      : (retained ?? (await existingConfig(root)));
   const options = { kind, keyEnv, direct: existing.direct };
   const written: string[] = [];
   for (const [path, content, scope] of [
@@ -167,9 +173,11 @@ function githubNext(kind: WorkflowKind, keyEnv: string, written: readonly string
 // runtime, and the variables its endpoints read their keys from. An
 // unreadable one counts as needing OpenCode, the safe side; the review then
 // says what is wrong with the file.
-async function existingConfig(path: string): Promise<{ direct: boolean; keys: string[] }> {
+async function existingConfig(root: string): Promise<{ direct: boolean; keys: string[] }> {
+  const path = await resolveRepositoryFile(root, CONFIG_PATH);
   let parsed: unknown;
   try {
+    if (!(await lstat(path)).isFile()) return { direct: false, keys: [] };
     parsed = JSON.parse(await readFile(path, "utf8"));
   } catch {
     return { direct: false, keys: [] };
@@ -182,5 +190,5 @@ async function existingConfig(path: string): Promise<{ direct: boolean; keys: st
           typeof p?.apiKeyEnv === "string" ? [p.apiKeyEnv] : [],
         )
       : [];
-  return { direct: runtime === "direct", keys };
+  return { direct: runtime === "direct", keys: [...new Set(keys)] };
 }

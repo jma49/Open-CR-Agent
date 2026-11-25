@@ -17,14 +17,7 @@ export async function writeRepositoryFile(
   content: string,
   { replace }: { replace: boolean },
 ): Promise<"written" | "exists"> {
-  const target = join(root, path);
-  const parts = relative(root, target).split(sep);
-  for (let i = 1; i <= parts.length; i += 1) {
-    const p = join(root, ...parts.slice(0, i));
-    const stat = await lstat(p).catch(() => undefined);
-    if (stat?.isSymbolicLink())
-      throw new UsageError(`Refusing to write through the symbolic link ${p}`);
-  }
+  const target = await resolveRepositoryFile(root, path);
   await mkdir(dirname(target), { recursive: true });
   const flags = O_WRONLY | O_CREAT | O_NOFOLLOW | (replace ? O_TRUNC : O_EXCL);
   const handle = await open(target, flags).catch((error: unknown) => {
@@ -38,4 +31,16 @@ export async function writeRepositoryFile(
     await handle.close();
   }
   return "written";
+}
+
+export async function resolveRepositoryFile(root: string, path: string): Promise<string> {
+  const target = join(root, path);
+  const parts = relative(root, target).split(sep);
+  for (let i = 1; i <= parts.length; i += 1) {
+    const p = join(root, ...parts.slice(0, i));
+    const stat = await lstat(p).catch(() => undefined);
+    if (stat?.isSymbolicLink())
+      throw new UsageError(`Refusing to write through the symbolic link ${p}`);
+  }
+  return target;
 }

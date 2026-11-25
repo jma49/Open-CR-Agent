@@ -129,6 +129,37 @@ Next:
     expect(workflow).not.toContain("sk-or-secret");
   });
 
+  it.each([{}, { GEMINI_API_KEY: "unrelated" }])(
+    "uses the retained configuration's OpenRouter key when ambient keys are %j",
+    async (env) => {
+      const { dir } = repos.create();
+      expect((await init(dir, ["--provider", "openrouter"])).code).toBe(0);
+      const config = read(dir, CONFIG);
+
+      const result = await init(dir, ["--github"], env);
+
+      expect(result.code, result.err).toBe(0);
+      expect(read(dir, CONFIG)).toBe(config);
+      expect(result.out).toContain("gh secret set OPENROUTER_API_KEY\n");
+      for (const path of [WORKFLOW, COMMANDS]) {
+        const workflow = read(dir, path);
+        expect(workflow).toContain(`OPENROUTER_API_KEY: \${{ secrets.OPENROUTER_API_KEY }}`);
+        expect(workflow).not.toContain("GEMINI_API_KEY");
+        expect(workflow).toContain("opencode: false");
+      }
+    },
+  );
+
+  it("honors an explicit provider even when the retained configuration names another key", async () => {
+    const { dir } = repos.create();
+    expect((await init(dir, ["--provider", "openrouter"])).code).toBe(0);
+    const result = await init(dir, ["--github", "--provider", "gemini"]);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("check that .ocra/config.json uses it");
+    expect(read(dir, WORKFLOW)).toContain(`GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}`);
+  });
+
   it("writes the pull_request workflow with --same-repo-only, and no label step", async () => {
     const { dir } = repos.create();
     const result = await init(dir, ["--github", "--same-repo-only", "--provider", "openai"]);
