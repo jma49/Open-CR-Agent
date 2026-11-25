@@ -45,7 +45,7 @@
     "vitest": "^5.1.1",
     "yaml": "^2.9.1"
   },
-  "packageManager": "npm@10.9.9",
+  "packageManager": "npm@11.21.3",
   "overrides": {
     "@microsoft/api-extractor": {
       "minimatch": "^11.0.1"
