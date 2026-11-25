@@ -161,7 +161,7 @@ function anchoringOf(
   let relocationCalls = 0;
   for (const a of reported) {
     for (const method of Object.keys(byMethod) as (keyof typeof byMethod)[]) {
-      byMethod[method] += a.byMethod[method] ?? 0;
+      byMethod[method] += a.byMethod[method];
     }
     ambiguous += a.ambiguous;
     relocationCalls += a.relocationCalls;

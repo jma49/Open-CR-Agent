@@ -275,6 +275,7 @@ jobs:
           plan=$(docker run --rm --user "$(id -u):$(id -g)" --volume "$PWD:/repo" ocra:ci review --plan)
           echo "$plan"
           echo "$plan" | grep -q "Review tasks: 1"
+          docker run --rm --entrypoint sh ocra:ci -c 'test ! -e /opt/ocra/app/node_modules/typescript'
 
   # Every job above against its ceiling in .github/ci-budgets.json
   # (docs/ci.md); fails when one ran or set up longer.

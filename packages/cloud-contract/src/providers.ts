@@ -85,9 +85,9 @@ export type EffortStyle = (typeof EFFORT_STYLES)[number];
 
 /** What a model costs, in US dollars per million tokens; cached input at the input price unless given. */
 export const modelPriceSchema = z.object({
-  input: z.number().finite().nonnegative(),
-  output: z.number().finite().nonnegative(),
-  cachedInput: z.number().finite().nonnegative().optional(),
+  input: z.number().nonnegative(),
+  output: z.number().nonnegative(),
+  cachedInput: z.number().nonnegative().optional(),
 });
 export type ModelPrice = z.infer<typeof modelPriceSchema>;
 

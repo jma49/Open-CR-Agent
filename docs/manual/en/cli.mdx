@@ -33,6 +33,8 @@ ocra init --provider anthropic     # a provider whose key is not in this shell
 
 For OpenRouter it warns that quality varies, that free models are not for private code, and that without credits a large review may run out of daily requests.
 
+When `--github` keeps an existing configuration whose active model chains use declared providers and require just one supported key, it uses that secret for the new workflows even if its value is not in your shell. Disabled reviewers and declared endpoints that need no key do not affect this choice. If the configuration extends another file or the key cannot be inferred, it falls back to the shell. An explicit `--provider` overrides this choice.
+
 **The runtime.** Only OpenRouter, tested live on the `direct` runtime, is set up on it: the configuration sets `"runtime": "direct"` and declares the endpoint at a price of 0, and the workflow passes `opencode: false`, so ocra installs in about 11 MB instead of 175 MB. The others stay on the default `opencode` runtime, with catalog models OpenCode prices itself; ocra init links to [Choosing the runtime](./providers#choosing-the-runtime). When `--github` keeps an existing configuration that does not set `direct`, the workflow installs OpenCode.
 
 For Gemini, the file is:
@@ -68,7 +70,7 @@ Next:
        and GitHub runs comment workflows from the default branch.
 ```
 
-In a private repository, remove `persist-credentials: false`, as the workflow's comment says. ocra init writes to the repository root from any subdirectory and never through a symbolic link. Outside a Git repository, or with no key and no `--provider`, it exits `2` and writes nothing.
+In a private repository, remove `persist-credentials: false`, as the workflow's comment says. ocra init writes to the repository root from any subdirectory and never through a symbolic link. Outside a Git repository, or when it can't choose a provider, it exits `2` and writes nothing.
 
 ## ocra review
 

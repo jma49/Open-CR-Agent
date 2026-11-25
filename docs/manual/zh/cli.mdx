@@ -33,6 +33,8 @@ ocra init --provider anthropic     # 当前 shell 里没有这个供应商的 ke
 
 对 OpenRouter，它会提示：质量不稳定，免费模型不适合私有代码，账号没有充值时大的审查可能用完每日请求数。
 
+使用 `--github` 保留已有配置时，如果启用的模型链仅使用已声明的供应商，且只需要一个受支持的 key，新生成的 workflow 会引用对应的 secret，不需要在当前 shell 中设置该 key。已禁用的审查器和无需 key 的已声明端点不影响选择。如果配置继承了其他配置文件，或无法推断 key，则从当前 shell 中选择。显式指定 `--provider` 可覆盖此选择。
+
 **运行时。** 只有在 `direct` 运行时上真实测试过的 OpenRouter 会配置成 `direct`：配置设置 `"runtime": "direct"`，以价格 0 声明端点，workflow 传 `opencode: false`，ocra 安装约 11 MB 而不是 175 MB。其他供应商仍用默认运行时 `opencode`，配置里写的是 OpenCode 目录中的模型，价格由 OpenCode 自己计算；ocra init 会链接到[选择运行时](./providers#选择运行时)。`--github` 保留了一个没有设置 `direct` 的已有配置时，workflow 会安装 OpenCode。
 
 以 Gemini 为例，写出的文件是：
@@ -68,7 +70,7 @@ Next:
        and GitHub runs comment workflows from the default branch.
 ```
 
-私有仓库请按 workflow 里的注释删掉 `persist-credentials: false`。在任何子目录运行，ocra init 都写到仓库根目录，且从不经由符号链接写入。不在 Git 仓库里，或没找到 key 又没给 `--provider` 时，它以退出码 `2` 结束，什么也不写。
+私有仓库请按 workflow 里的注释删掉 `persist-credentials: false`。在任何子目录运行，ocra init 都写到仓库根目录，且从不经由符号链接写入。不在 Git 仓库里，或无法选择供应商时，它以退出码 `2` 结束，什么也不写。
 
 ## ocra review
 

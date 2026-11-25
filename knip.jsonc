@@ -30,7 +30,6 @@
     "packages/cloud-contract": {
       "entry": ["src/**/*.test.ts"],
       "project": ["src/**/*.ts"],
-      "ignoreBinaries": ["actionlint"],
       "includeEntryExports": false
     }
   }

@@ -16,7 +16,7 @@ const optionsSchema = z.object({
   repo: z.string().min(1),
   number: z.number().int().positive(),
   token: z.string().min(1),
-  apiUrl: z.string().url().optional(),
+  apiUrl: z.url().optional(),
   botLogin: z.string().min(1).default(DEFAULT_BOT_LOGIN),
   requestChanges: z.boolean().default(false),
   fetch: fetchSchema.optional(),

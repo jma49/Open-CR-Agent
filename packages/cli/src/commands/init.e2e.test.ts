@@ -129,6 +129,100 @@ Next:
     expect(workflow).not.toContain("sk-or-secret");
   });
 
+  it.each([{}, { GEMINI_API_KEY: "unrelated" }])(
+    "uses the retained configuration's OpenRouter key when ambient keys are %j",
+    async (env) => {
+      const { dir } = repos.create();
+      expect((await init(dir, ["--provider", "openrouter"])).code).toBe(0);
+      const config = read(dir, CONFIG);
+
+      const result = await init(dir, ["--github"], env);
+
+      expect(result.code, result.err).toBe(0);
+      expect(read(dir, CONFIG)).toBe(config);
+      expect(result.out).toContain("gh secret set OPENROUTER_API_KEY\n");
+      for (const path of [WORKFLOW, COMMANDS]) {
+        const workflow = read(dir, path);
+        expect(workflow).toContain(`OPENROUTER_API_KEY: \${{ secrets.OPENROUTER_API_KEY }}`);
+        expect(workflow).not.toContain("GEMINI_API_KEY");
+        expect(workflow).toContain("opencode: false");
+      }
+    },
+  );
+
+  it("honors an explicit provider even when the retained configuration names another key", async () => {
+    const { dir } = repos.create();
+    expect((await init(dir, ["--provider", "openrouter"])).code).toBe(0);
+    const result = await init(dir, ["--github", "--provider", "gemini"]);
+
+    expect(result.code).toBe(0);
+    expect(result.out).toContain("check that .ocra/config.json uses it");
+    expect(read(dir, WORKFLOW)).toContain(`GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}`);
+  });
+
+  it.each(["unused", "fallback", "reviewer", "role", "extends"] as const)(
+    "falls back to shell keys when the retained model chains do not imply one key (%s)",
+    async (use) => {
+      const { dir } = repos.create();
+      expect((await init(dir, ["--provider", "openrouter"])).code).toBe(0);
+      const router = JSON.parse(read(dir, CONFIG));
+      const google = "google/gemini-3.5-flash";
+      const config = JSON.stringify({
+        providers: router.providers,
+        models: {
+          standard:
+            use === "fallback"
+              ? [router.models.standard, google]
+              : use === "extends"
+                ? router.models.standard
+                : google,
+        },
+        ...(use === "reviewer" && { reviewers: { security: { models: router.models.standard } } }),
+        ...(use === "role" && { roles: { judge: { models: router.models.standard } } }),
+        ...(use === "extends" && { extends: "https://example.test/config.json" }),
+      });
+      writeFileSync(join(dir, CONFIG), config);
+
+      const result = await init(dir, ["--github"], { GEMINI_API_KEY: "fixture" });
+
+      expect(result.code, result.err).toBe(0);
+      expect(read(dir, CONFIG)).toBe(config);
+      expect(result.out).toContain("gh secret set GEMINI_API_KEY\n");
+      for (const path of [WORKFLOW, COMMANDS]) {
+        expect(read(dir, path)).toContain(`GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}`);
+        expect(read(dir, path)).not.toContain("OPENROUTER_API_KEY");
+      }
+    },
+  );
+
+  it.each(["disabled reviewer", "keyless endpoint"] as const)(
+    "uses the only required key alongside a %s",
+    async (fixture) => {
+      const { dir } = repos.create();
+      expect((await init(dir, ["--provider", "openrouter"])).code).toBe(0);
+      const config = JSON.parse(read(dir, CONFIG));
+      if (fixture === "disabled reviewer") {
+        config.reviewers = { security: { enabled: false, models: "google/gemini-3.5-flash" } };
+      } else {
+        config.models.light = "local/free";
+        config.providers.local = {
+          type: "openai-compatible",
+          baseUrl: "http://127.0.0.1:8000/v1",
+          models: { free: { input: 0, output: 0 } },
+        };
+      }
+      writeFileSync(join(dir, CONFIG), JSON.stringify(config));
+
+      const result = await init(dir, ["--github"]);
+
+      expect(result.code, result.err).toBe(0);
+      expect(result.out).toContain("gh secret set OPENROUTER_API_KEY\n");
+      for (const path of [WORKFLOW, COMMANDS]) {
+        expect(read(dir, path)).toContain(`OPENROUTER_API_KEY: \${{ secrets.OPENROUTER_API_KEY }}`);
+      }
+    },
+  );
+
   it("writes the pull_request workflow with --same-repo-only, and no label step", async () => {
     const { dir } = repos.create();
     const result = await init(dir, ["--github", "--same-repo-only", "--provider", "openai"]);
