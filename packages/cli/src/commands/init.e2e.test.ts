@@ -160,6 +160,41 @@ Next:
     expect(read(dir, WORKFLOW)).toContain(`GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}`);
   });
 
+  it.each(["unused", "fallback", "reviewer", "role", "extends"] as const)(
+    "falls back to shell keys when the retained model chains do not imply one key (%s)",
+    async (use) => {
+      const { dir } = repos.create();
+      expect((await init(dir, ["--provider", "openrouter"])).code).toBe(0);
+      const router = JSON.parse(read(dir, CONFIG));
+      const google = "google/gemini-3.5-flash";
+      const config = JSON.stringify({
+        providers: router.providers,
+        models: {
+          standard:
+            use === "fallback"
+              ? [router.models.standard, google]
+              : use === "extends"
+                ? router.models.standard
+                : google,
+        },
+        ...(use === "reviewer" && { reviewers: { security: { models: router.models.standard } } }),
+        ...(use === "role" && { roles: { judge: { models: router.models.standard } } }),
+        ...(use === "extends" && { extends: "https://example.test/config.json" }),
+      });
+      writeFileSync(join(dir, CONFIG), config);
+
+      const result = await init(dir, ["--github"], { GEMINI_API_KEY: "fixture" });
+
+      expect(result.code, result.err).toBe(0);
+      expect(read(dir, CONFIG)).toBe(config);
+      expect(result.out).toContain("gh secret set GEMINI_API_KEY\n");
+      for (const path of [WORKFLOW, COMMANDS]) {
+        expect(read(dir, path)).toContain(`GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}`);
+        expect(read(dir, path)).not.toContain("OPENROUTER_API_KEY");
+      }
+    },
+  );
+
   it("writes the pull_request workflow with --same-repo-only, and no label step", async () => {
     const { dir } = repos.create();
     const result = await init(dir, ["--github", "--same-repo-only", "--provider", "openai"]);

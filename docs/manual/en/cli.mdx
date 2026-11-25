@@ -33,7 +33,7 @@ ocra init --provider anthropic     # a provider whose key is not in this shell
 
 For OpenRouter it warns that quality varies, that free models are not for private code, and that without credits a large review may run out of daily requests.
 
-When `--github` keeps an existing configuration whose provider declarations name a single supported key, it uses that secret for the new workflows even if its value is not in your shell. An explicit `--provider` overrides this choice.
+When `--github` keeps an existing configuration and all its model chains use providers that declare the same supported key, it uses that secret for the new workflows even if its value is not in your shell. If the configuration extends another file or the key cannot be inferred, it falls back to the shell. An explicit `--provider` overrides this choice.
 
 **The runtime.** Only OpenRouter, tested live on the `direct` runtime, is set up on it: the configuration sets `"runtime": "direct"` and declares the endpoint at a price of 0, and the workflow passes `opencode: false`, so ocra installs in about 11 MB instead of 175 MB. The others stay on the default `opencode` runtime, with catalog models OpenCode prices itself; ocra init links to [Choosing the runtime](./providers#choosing-the-runtime). When `--github` keeps an existing configuration that does not set `direct`, the workflow installs OpenCode.
 
