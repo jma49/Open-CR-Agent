@@ -42,6 +42,7 @@ ENV RUNNER_TEMP=/build GITHUB_OUTPUT=/build/output
 RUN set -eu; \
     mkdir -p /build /opt/ocra; touch /build/output; \
     node scripts/action-install.mjs --from-source; \
+    npm prune --omit=dev --ignore-scripts --offline --no-audit --no-fund; \
     mv /src /opt/ocra/app; \
     echo packages/cli/dist/main.js > /opt/ocra/main
 
