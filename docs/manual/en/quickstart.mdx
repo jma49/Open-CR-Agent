@@ -18,7 +18,7 @@ ocra review                          # review your uncommitted changes
 
 For GitHub pull requests, `ocra init --github` also writes `.github/workflows/ocra.yml`, safe for forks, and `.github/workflows/ocra-commands.yml` for `@ocra` comments, and prints the `gh` commands for the secret and the `ocra-review` label. It never replaces an existing file. See [ocra init](./cli#ocra-init).
 
-The steps below do the same by hand, with any provider OpenCode supports.
+Generating the comment workflow requires ocra 0.27.0 or later. For a local review without a model key, [use your Codex sign-in](./installation#with-codex). The steps below set up a key-based review by hand.
 
 <Steps>
 

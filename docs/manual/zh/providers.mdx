@@ -53,7 +53,7 @@ icon: Cpu
 - **id**（`gateway`）由你自己取：小写字母、数字和连字符。避开 OpenCode 目录里已有的 id：声明会在这次运行中替换同名的已知供应商。
 - **`baseUrl`** 必须是 `https`，或者本机上的普通 `http`：`localhost`、`127.0.0.1` 或 `::1`。比如 Ollama 用 `http://127.0.0.1:11434/v1`。地址里不能有 `{` 或 `}`，OpenCode 会把它们替换成变量或文件内容。
 - **`apiKeyEnv`** 是保存密钥的变量名；密钥从不写进文件，运行时也只拿到这一个变量。平台令牌和云凭据（`GITHUB_`、`GITLAB_`、`CI_`、`AWS_`、`AZURE_` 等）会被拒绝。不需要密钥的服务可以省略。
-- **`effort`**（可选）说明端点怎样接收两种运行时发送的[推理强度](./configuration#推理强度)：`openai`（默认；OpenAI、Gemini 的 OpenAI 兼容端点和 OpenRouter 都接受）发送 `reasoning_effort`，`openrouter` 发送 `reasoning: { effort }`。
+- **`effort`**（可选）说明端点怎样接收 `opencode` 或 `direct` 发送的[推理强度](./configuration#推理强度)：`openai`（默认；OpenAI、Gemini 的 OpenAI 兼容端点和 OpenRouter 都接受）发送 `reasoning_effort`，`openrouter` 发送 `reasoning: { effort }`。
 - **`toolCalls`**（可选）说明端点上的模型在 `direct` 运行时下怎样调用评审工具：`api`（默认）通过协议的 `tools` 参数，`text` 用于不接受该参数的端点（见[不支持函数调用的端点](#不支持函数调用的端点)）。`opencode` 运行时拒绝 `text`。
 - **每个模型都要有价格**，单位是每百万 token 美元：`input`、`output`，可选 `cachedInput`，用于报告的花费和 `--max-cost-usd`。价格为 0（你自己的硬件）时，运行会警告花费上限不计入这个模型。
 - **`contextWindow`**（可选，写在模型上）是一次请求最多能容纳的 token 数，用于上下文窗口较小的模型（见[上下文窗口较小的模型](#上下文窗口较小的模型)）。
@@ -95,7 +95,7 @@ ocra 按当前托管模型的窗口来安排评审：一个任务的首个提示
 "models": { "qwen3-coder": { "input": 0, "output": 0, "contextWindow": 32000 } }
 ```
 
-- **计划按窗口安排**，两种运行时都是如此：一个任务的 diff 不超过本次运行所用模型中最小窗口的四分之一，因此大的改动会拆成更多、更小的任务。
+- **计划按窗口安排**，适用于 `opencode` 和 `direct`：一个任务的 diff 不超过本次运行所用模型中最小窗口的四分之一，因此大的改动会拆成更多、更小的任务。
 - **对话在溢出之前停下**，仅限 [`direct` 运行时](#选择运行时)：下一次请求会让窗口剩余不足 15% 时，评审者进入收尾轮，报告已确认的问题，它的文件记为只审查了一部分（`ended: context_window`）。这次评审即为不完整（退出码 3），并说明原因。
 - **完全放不下的提示词**不会发送：这次尝试在该模型上失败，并给出两个大小，任务交给模型链中的下一个模型。
 
@@ -177,9 +177,9 @@ Anthropic 官方 API，或者使用其 Messages 协议的网关，用 `"type": "
 |---|---|---|
 | `opencode`（默认） | OpenCode 目录里的所有供应商和你声明的端点，外加价格目录 `models.opencode.ai` | 你的模型是 Gemini、Vertex AI、Anthropic、Bedrock 或目录里的其他供应商 |
 | `direct` | 只访问 `providers` 下声明的端点（OpenAI 或 Anthropic 协议），不访问网络上的其他任何地址 | 模型链里的每个模型都在声明的端点上，而且你希望除此之外什么都不访问 |
-| `codex`（新） | 通过你电脑上已登录的 [Codex CLI](https://github.com/openai/codex) 访问 OpenAI | 你想用自己的 ChatGPT 套餐审查，而不是 API key |
+| `codex`（0.27.0 及以上） | 通过你电脑上已登录的 [Codex CLI](https://github.com/openai/codex) 访问 OpenAI | 你想用自己的 [ChatGPT 套餐在本地审查](./installation#使用-codex)，而不是 API key |
 
-两者跑同一套审查：工具、步数上限、降级和价格都相同。`direct` 会在发出任何请求前拒绝写了未声明供应商的模型链，并读取 `HTTP_PROXY`、`HTTPS_PROXY` 和 `NO_PROXY`。[质量数字](./quality)是在 `opencode` 上测得的；`direct` 通过同一套一致性测试，但还没有在黄金用例集上评测过。
+三个运行时共用同一套审查流水线。两个基于 key 的运行时共用审查工具、步数上限和失败切换的一致性测试。`direct` 会在发出任何请求前拒绝写了未声明供应商的模型链，并读取 `HTTP_PROXY`、`HTTPS_PROXY` 和 `NO_PROXY`。[质量数字](./quality)只在 `opencode` 上测得。
 
 想看 `direct` 给模型发了什么、收到了什么，把 `OCRA_RECORD_DIR` 设成一个目录：每个请求连同回答写成一个 JSON 文件，只有你能读。密钥替换成 `<key>`（运行中续期的 ocra Cloud 令牌也一样），请求头和端点地址不写入，但文件里有代码和提示词，要像代码本身一样保护。写不进记录时会在 stderr 上警告，审查照常继续，不会重发请求。一份记录只能回放它记录的那段对话。`opencode` 不读这个变量。
 

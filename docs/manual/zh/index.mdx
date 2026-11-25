@@ -4,7 +4,7 @@ description: ocra 是一个专为不可信 PR 设计的开源 AI 代码审查工
 icon: BookOpen
 ---
 
-**ocra** 审查本地改动、GitHub Pull Request 和 GitLab Merge Request，用你自己的模型 key 在你的 CI 里运行。它假定所审的改动可能出自攻击者之手；一条问题只有引用了它所指的代码、并经得起第二遍核查，才会被说出来，否则它保持安静。
+**ocra** 审查本地改动、GitHub Pull Request 和 GitLab Merge Request。可以在 CI 中使用自己的模型 key，也可以在本地使用[已登录的 Codex](/zh/docs/installation#使用-codex)。它把改动视为不可信：审查员必须引用具体代码，独立的核查员会在发布评论前核查问题。
 
 <Cards>
   <Card icon="Play" title="快速上手" href="/zh/docs/quickstart">安装 ocra，五分钟审完第一份改动。</Card>

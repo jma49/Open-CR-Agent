@@ -13,7 +13,7 @@ ocra Cloud 是建立在同一个引擎之上的网页控制台和模型网关。
 
 ## Pull Request
 
-收件箱把你在 GitHub 和 GitLab 上的 Pull Request 和 Merge Request 分成几组：等你审查、退回给你、已批准、等待审查、草稿、本周已合并；你也可以添加自己的分组和保存的视图。上次打开之后有新动态的 PR 会标为未读，同一个[栈](./cli#ocra-stack)里的 PR 排在一起。命令菜单（Ctrl 或 ⌘ K）可以去任何页面，并搜索 PR、审查、发现和仓库。PR 页面以你的身份实时读取 diff，并以你的身份把评论、审查和合并发送到平台；读到的内容都不保存。
+收件箱显示你的 GitHub Pull Request 和 GitLab Merge Request。尚未保存视图时，默认显示 **Needs my review**（等我审查）、**My open PRs**（我尚未关闭的 PR）、**Waiting on others**（等他人审查）、**Assigned to me**（分配给我的 PR）和 **Recently merged**（近期合并）；你也可以自定义并保存视图。上次打开之后有新动态的 PR 会标为未读，同一个[栈](./cli#ocra-stack)里的 PR 排在一起。命令菜单（Ctrl 或 ⌘ K）可以去任何页面，并搜索 PR、审查、发现和仓库。PR 页面以你的身份实时读取 diff，并以你的身份把评论、审查和合并发送到平台；读到的内容都不保存。
 
 - **审查。** ocra 对它最新一次审查的结论和发现；账户共享发现时，还有[改动导读](./how-it-works#改动导读)，按阅读顺序列出文件，并附上时序图。
 - **修复。** 带有修复的发现（CLI 0.10.0 及以后，且开启了 [`fixes`](./configuration)，账户设置也可以开启它）可以以你的身份提交到 PR 的分支上，前提是分支仍停在被审查的提交上，且文件没有改过；之后这个发现会被标记为已修复。

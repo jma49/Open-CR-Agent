@@ -14,7 +14,7 @@ ocra 目前是早期的 0.x 版本：不同的次版本之间，选项和输出�
 
 - **Node.js 22.19** 或更高版本
 - **Git**
-- 至少一个模型供应商的 API key
+- 至少一个模型供应商的 API key，或[在本地登录 Codex](#使用-codex)
 
 默认的 OpenCode 运行时作为可选依赖一并安装；不想装它，见[不装 OpenCode](#不装-opencode)。
 
@@ -35,6 +35,25 @@ npx @open-cr-agent/cli review
 
 npm 11.16 及更高版本会提示 `opencode-ai` 有一个不在 `allowScripts` 允许范围内的安装脚本，npm 12 会直接拦下它。ocra 不需要它（能在平台包里找到二进制文件），所以不必放行。
 
+## 使用 Codex
+
+本地审查可以不用单独的模型 key：需要 ocra 0.27.0 及以上，以及 [Codex CLI](https://github.com/openai/codex) 0.172.0 及以上。如果本地版本较旧、npm 上还没有所需版本，可以[从源码安装](#从源码安装)。请保留 ocra 默认安装的可选依赖：Codex 运行时通过 MCP SDK 提供 ocra 的审查工具。
+
+运行 `codex login`，确认 `codex` 在 PATH 上（也可以用 `OCRA_CODEX_BIN` 指定路径）。在仓库的 `.ocra/config.json` 里设置以下字段，再运行 `ocra review`：
+
+```json
+{
+  "runtime": "codex",
+  "models": {
+    "top": "codex/default",
+    "standard": "codex/default",
+    "light": "codex/default"
+  }
+}
+```
+
+用量计入你的 ChatGPT 套餐，不使用 shell 里的 key。CI 请用[基于 key 的运行时](./providers#选择运行时)。
+
 ## 不装 OpenCode
 
 OpenCode 运行时 `@open-cr-agent/runtime-opencode` 约占一次安装 175 MB 中的 165 MB。如果所有模型都在声明的端点上，并且配置设了 `"runtime": "direct"`（见[选择运行时](./providers#选择运行时)），就可以不装它。`npm install -g` 总会安装可选依赖，所以请装进一个单独的目录：
@@ -51,6 +70,8 @@ npm install --prefix ~/.ocra --omit=optional @open-cr-agent/cli
 ## 容器镜像
 
 从 0.2.0 起，每个发布版本都提供 amd64 和 arm64 的容器镜像 `ghcr.io/ocrahq/ocra:<版本>`：刚发布的包，按 GitHub Action 的方式安装（依赖版本固定，校验签名和 provenance），带有 git，以非特权用户 `node` 运行。
+
+示例使用当前源码中的版本。如果该版本尚未发布，请使用最新的[已发布版本](https://github.com/ocrahq/Open-CR-Agent/releases)。
 
 ```bash
 docker run --rm --user "$(id -u):$(id -g)" --volume "$PWD:/repo" \

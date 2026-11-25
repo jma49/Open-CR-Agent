@@ -150,7 +150,7 @@ const SYSTEM = {
     cli: ["cli · the ocra command", "review · plan · config layers · session log"],
     core: ["core · domain and pipeline", "depends on no other package in the repository"],
     chips: [
-      ["Pipeline", "11 stages", "coverage list"],
+      ["Pipeline", "coverage list", "optional fixes"],
       ["ReviewContext", "one read policy", "no secrets · no .git"],
       ["Findings", "JSON report v1", "SARIF in / out"],
       ["Spend", "cost limit", "tokens · dollars"],
@@ -161,9 +161,11 @@ const SYSTEM = {
     gitlabA: ["vcs-gitlab", "merge requests"],
     local: ["vcs-local", "working tree · ranges · commits"],
     runtime: "AgentRuntime",
-    direct: ["runtime-direct", "own tool loop · OpenAI-compatible"],
+    direct: ["runtime-direct", "OpenAI or Anthropic protocol"],
     opencode: ["runtime-opencode", "on the OpenCode SDK"],
-    chain: "both: ChainRunner failback · circuit breakers",
+    codex: ["codex · in the CLI", "ocra tools over loopback MCP"],
+    chain: "ChainRunner · failback and circuit breakers",
+    codexCli: ["Local Codex CLI", "your ChatGPT sign-in"],
     models: ["Model providers", "Gemini · OpenAI-compatible", "OpenRouter · Anthropic"],
     hosts: ["GitHub / GitLab API", "comments · threads · permissions"],
     cloud: ["ocra Cloud (optional)", "account settings · review history"],
@@ -181,7 +183,7 @@ const SYSTEM = {
     cli: ["cli · ocra 命令", "review · plan · 分层配置 · 会话日志"],
     core: ["core · 领域模型与流水线", "不依赖仓库内任何其他包"],
     chips: [
-      ["Pipeline", "11 个阶段", "取消 · 覆盖清单"],
+      ["Pipeline", "覆盖清单", "可选修复"],
       ["ReviewContext", "唯一读取策略", "拒读密钥与 .git"],
       ["Findings", "JSON 报告 v1", "SARIF 输入 / 输出"],
       ["Spend", "花费上限", "token · 美元"],
@@ -192,9 +194,11 @@ const SYSTEM = {
     gitlabA: ["vcs-gitlab", "MR"],
     local: ["vcs-local", "工作区 · 区间 · 单个 commit"],
     runtime: "AgentRuntime",
-    direct: ["runtime-direct", "自管工具循环 · OpenAI 兼容"],
+    direct: ["runtime-direct", "OpenAI 或 Anthropic 协议"],
     opencode: ["runtime-opencode", "基于 OpenCode SDK"],
-    chain: "两者共用 ChainRunner：失败切换 · 熔断",
+    codex: ["codex · CLI 内置", "通过本机 MCP 提供 ocra 工具"],
+    chain: "ChainRunner：失败切换 · 熔断",
+    codexCli: ["本地 Codex CLI", "使用已登录的 ChatGPT 账号"],
     models: ["模型服务商", "Gemini · OpenAI 兼容", "OpenRouter · Anthropic"],
     hosts: ["GitHub / GitLab API", "评论 · 线程 · 权限"],
     cloud: ["ocra Cloud（可选）", "账户设置 · 审查历史"],
@@ -245,7 +249,8 @@ function system(lang) {
   p.push(label(516, 340, t.runtime, "cap"));
   p.push(box(516, 348, 232, 52, "llm", t.direct[0] ?? "", [t.direct[1] ?? ""], { size: 13 }));
   p.push(box(516, 412, 232, 52, "llm", t.opencode[0] ?? "", [t.opencode[1] ?? ""], { size: 13 }));
-  p.push(label(516, 486, t.chain, "l"));
+  p.push(box(516, 476, 232, 52, "llm", t.codex[0] ?? "", [t.codex[1] ?? ""], { size: 13 }));
+  p.push(label(516, 548, t.chain, "l"));
   // Outside.
   p.push(box(830, 62, 200, 58, "plain", t.cloud[0] ?? "", [t.cloud[1] ?? ""]));
   p.push(arrow("M748 92 L828 92", "plain", { dashed: true }));
@@ -253,12 +258,15 @@ function system(lang) {
   p.push(
     box(830, 348, 200, 76, "plain", t.models[0] ?? "", [t.models[1] ?? "", t.models[2] ?? ""]),
   );
-  p.push(arrow("M748 386 L828 386", "llm"));
-  p.push(box(830, 476, 200, 58, "plain", t.hosts[0] ?? "", [t.hosts[1] ?? ""]));
-  p.push(arrow("M496 504 C640 560 760 520 828 505", "code"));
-  p.push(label(560, 560, t.publish));
-  p.push(legend(20, 604, lang));
-  return { w: 1050, h: 620, title: t.title, body: p.join("") };
+  p.push(arrow("M748 374 L828 374", "llm"));
+  p.push(arrow("M748 438 C788 438 788 408 828 408", "llm"));
+  p.push(box(830, 476, 200, 52, "plain", t.codexCli[0] ?? "", [t.codexCli[1] ?? ""]));
+  p.push(arrow("M748 502 L828 502", "llm"));
+  p.push(box(830, 548, 200, 58, "plain", t.hosts[0] ?? "", [t.hosts[1] ?? ""]));
+  p.push(arrow("M496 504 C522 594 760 598 828 577", "code"));
+  p.push(label(560, 605, t.publish));
+  p.push(legend(20, 628, lang));
+  return { w: 1050, h: 644, title: t.title, body: p.join("") };
 }
 
 const AGENTS = {
@@ -275,11 +283,12 @@ const AGENTS = {
       ["Filter", "memory · re-review"],
       ["Verify", "fact-check"],
       ["Judge", "dedupe · severity"],
-      ["Publish", "verdict by code"],
+      ["Fix", "optional patch"],
+      ["Report", "verdict by code"],
     ],
     light: "light model",
-    groups: ["planReview", "executeStage", "filterStage", "checkStage", "report"],
-    matrix: ["Review matrix", "one task per", "bundle × reviewer"],
+    groups: ["planReview", "executeStage", "filterStage", "checkStage", "fix", "report"],
+    matrix: ["Review matrix", "risk tier and scope", "pack or span bundles"],
     sandbox: "ISOLATED AGENT TASKS · READ-ONLY TOOLS · NO SHELL, NO WEB",
     reviewers: [
       ["correctness", "standard", "logic, contracts, error handling"],
@@ -316,12 +325,13 @@ const AGENTS = {
       ["Filter", "记忆 · 复审对比"],
       ["Verify", "事实核查"],
       ["Judge", "去重 · 定级"],
-      ["Publish", "结论由代码算"],
+      ["Fix", "可选修复"],
+      ["Report", "结论由代码算"],
     ],
     light: "轻模型",
-    groups: ["planReview", "executeStage", "filterStage", "checkStage", "report"],
-    matrix: ["审查矩阵", "每个分组 × 审查员", "一个任务"],
-    sandbox: "隔离的智能体任务 · 只读工具 · 无 shell、无网络",
+    groups: ["planReview", "executeStage", "filterStage", "checkStage", "fix", "report"],
+    matrix: ["审查矩阵", "按风险档位和适用范围", "合并分组或跨分组审查"],
+    sandbox: "隔离的智能体任务 · 只读工具 · 无 shell、无网页工具",
     reviewers: [
       ["correctness", "standard", "逻辑、契约、错误处理"],
       ["security", "standard", "只报可利用的问题"],
@@ -343,7 +353,7 @@ const AGENTS = {
 };
 
 /** Stages that call a model, and those whose code falls back to a light model. */
-const LLM_STAGES = new Set([5, 8, 9]);
+const LLM_STAGES = new Set([5, 8, 9, 10]);
 const LIGHT_ASSIST = new Set([3, 6]);
 
 /**
@@ -354,8 +364,8 @@ function agents(lang) {
   const t = AGENTS[lang];
   const p = [];
   const x0 = 20;
-  const sw = 86;
-  const gap = 6;
+  const sw = 80;
+  const gap = 5;
   // The stage strip.
   t.stages.forEach(([name, sub], i) => {
     const x = x0 + i * (sw + gap);
@@ -378,6 +388,7 @@ function agents(lang) {
     [7, 8],
     [8, 10],
     [10, 11],
+    [11, 12],
   ];
   spans.forEach(([a, b], i) => {
     const xa = x0 + (a ?? 0) * (sw + gap);

@@ -14,7 +14,7 @@ ocra is an early 0.x release: options and output may still change between minor 
 
 - **Node.js 22.19** or newer
 - **Git**
-- An API key for at least one model provider
+- An API key for at least one model provider, or [a local Codex sign-in](#with-codex)
 
 The default OpenCode runtime comes along as an optional dependency; to leave it out, see [Without OpenCode](#without-opencode).
 
@@ -35,6 +35,25 @@ npx @open-cr-agent/cli review
 
 npm 11.16 and later warn that `opencode-ai` has an install script not covered by `allowScripts`, and npm 12 blocks it. ocra does not need it (it finds the binary in the platform package), so leave it blocked.
 
+## With Codex
+
+For local reviews without a separate model key, use ocra 0.27.0 or later and [Codex CLI](https://github.com/openai/codex) 0.172.0 or later. If your installed ocra is older and npm does not yet have that version, [build from source](#from-source). Keep ocra's default optional dependencies installed: the Codex runtime needs the MCP SDK to serve ocra's review tools.
+
+Run `codex login` and make sure `codex` is on your PATH (or point `OCRA_CODEX_BIN` to it). In your repository, set these fields in `.ocra/config.json`, then run `ocra review`:
+
+```json
+{
+  "runtime": "codex",
+  "models": {
+    "top": "codex/default",
+    "standard": "codex/default",
+    "light": "codex/default"
+  }
+}
+```
+
+This uses your ChatGPT plan, not a key from your shell. For CI use a [key-based runtime](./providers#choosing-the-runtime).
+
 ## Without OpenCode
 
 The OpenCode runtime, `@open-cr-agent/runtime-opencode`, is about 165 MB of the 175 MB an install takes. If every model is on a declared endpoint and the configuration sets `"runtime": "direct"` ([Choosing the runtime](./providers#choosing-the-runtime)), leave it out. `npm install -g` installs optional dependencies regardless, so install into a directory of its own:
@@ -51,6 +70,8 @@ In the GitHub Action, the input `opencode: false` does the same ([GitHub](./gith
 ## Container image
 
 Each release since 0.2.0 is also a container image for amd64 and arm64, `ghcr.io/ocrahq/ocra:<version>`: the just-published packages installed as the GitHub Action installs them (pinned dependencies, signatures and provenance checked), with git, running as the unprivileged `node` user.
+
+The example tracks the version in this source tree. If that version is not published yet, use the latest [released version](https://github.com/ocrahq/Open-CR-Agent/releases).
 
 ```bash
 docker run --rm --user "$(id -u):$(id -g)" --volume "$PWD:/repo" \

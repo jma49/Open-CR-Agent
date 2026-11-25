@@ -4,7 +4,7 @@ description: ocra is open-source AI code review built for pull requests you do n
 icon: BookOpen
 ---
 
-**ocra** reviews local changes, GitHub pull requests and GitLab merge requests in your CI with your own model key. It assumes the change it reads may be written by an attacker, and it stays quiet unless a finding quotes the code it means and holds up on a second read.
+**ocra** reviews local changes, GitHub pull requests and GitLab merge requests. Run it in your CI with your own model key, or locally with your [Codex sign-in](/docs/installation#with-codex). It treats the change as untrusted: reviewers quote the code they mean, and a separate verifier checks their findings before ocra comments.
 
 <Cards>
   <Card icon="Play" title="Quickstart" href="/docs/quickstart">Install ocra and review your first change in five minutes.</Card>

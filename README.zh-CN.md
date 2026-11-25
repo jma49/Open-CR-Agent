@@ -2,40 +2,41 @@
 
 [English](README.md) · 简体中文
 
-**ocra** 是一个开源的 AI 代码审查工具，专为你不信任的 PR 而设计。它审查本地改动、GitHub Pull Request 和 GitLab Merge Request，用你自己的模型 key 在你的 CI 里运行；一条问题只有引用了它所指的代码、并经得起第二遍核查，才会被说出来，否则它保持安静。
+**ocra** 是一个开源的 AI 代码审查工具，支持本地改动、GitHub Pull Request 和 GitLab Merge Request，专为不可信的改动而设计。可以在 CI 中使用自己的模型 key，也可以在本地使用已经登录的 Codex。审查员必须引用具体代码，独立的核查员会在发布评论前核查问题。
 
 [![npm](https://img.shields.io/npm/v/@open-cr-agent/cli?label=npm)](https://www.npmjs.com/package/@open-cr-agent/cli)
 [![CI](https://github.com/ocrahq/Open-CR-Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ocrahq/Open-CR-Agent/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-> **状态：**早期 0.x 版本。CLI 参数、配置项、退出码和报告格式是[约定](docs/manual/zh/stability.mdx)，只会在预先告知后改变；提示词和审查质量仍在变动（[质量实测](docs/manual/zh/quality.mdx)）。手册：[ocracloud.com](https://ocracloud.com)（[English](docs/manual/en/index.mdx) · [中文](docs/manual/zh/index.mdx)）。
+> **状态：**早期 0.x 版本。CLI 参数、配置项、退出码和报告格式是[约定](docs/manual/zh/stability.mdx)，只会在预先告知后改变；提示词和审查质量仍在变动（[质量实测](docs/manual/zh/quality.mdx)）。[官网](https://ocracloud.com/zh) · [中文手册](https://ocracloud.com/zh/docs) · [English manual](https://ocracloud.com/docs)
 
 ## 为什么选择 ocra
 
 - **恶意 PR 是设计的出发点。** diff、PR 描述、`AGENTS.md` 都可能出自攻击者之手。agent 只有只读工具、没有 shell；审查 PR（包括来自 fork 的 PR）时，被审代码树里的任何东西都不会运行。见[安全模型](#安全模型)。
 - **评论之前先过第二遍。** 核查员丢掉被代码证伪的问题，Judge 合并重复并校准严重程度，结论由代码而不是模型算出。什么都不报也是正常结果。
-- **按审查方向、也按文件分组。** correctness、security、performance、docs 和 `AGENTS.md` 审查员各自作为隔离任务，审查一组相关文件；由带测试的规划器决定哪个审查员读哪一组，成本不会随"组数 × 审查员数"增长。
+- **按审查方向、也按文件分组。** 经过测试的规划器为 correctness、security、performance、docs 和 `AGENTS.md` 审查员分配隔离任务。安全和性能审查可以合并相邻分组，文档审查可以看到整个改动的上下文。
 - **问题跟着代码走。** 评论由它引用的代码锚定，从不依赖模型编造的行号。只有问题所指的代码不在了才算已修复；维护者可以驳回它，PR 作者不能。
-- **成本有上限，也有账可查。** 花费上限一到就不再启动新任务，报告列出没审到的内容，下一次审查接着审。每次模型调用都报告 token 和费用。
+- **成本和覆盖范围可查。** 达到花费上限后不再启动审查任务，报告列出没审完的文件，下一次增量审查接着审。每次运行都会报告运行时可提供的 token 和费用。
 - **可嵌入，可度量。** 带版本号的 JSON 报告（[schema](docs/schema/report.v1.json)）；[SARIF 2.1.0](docs/manual/zh/github.mdx) 可输出给代码扫描，也可从 Semgrep、CodeQL 等分析器导入；公开的 `review()` 入口；质量数字连同局限一起公开。
+
+CLI 和 GitHub Action 不需要 ocra 账号。[ocra Cloud](docs/manual/zh/cloud.mdx) 是可选服务：可以在控制台审查并合并 PR，也可以让其 GitHub App 审查已启用的仓库，无需自己运行工作流。
 
 ## 工作原理
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/system-zh-dark.svg">
-  <img alt="ocra 系统全景：开发者终端、GitHub Actions、GitLab CI 或 ocra-eval 启动 cli，cli 运行 core（流水线、ReviewContext、问题与报告、花费上限）；core 通过 VcsAdapter 各包（vcs-platform、vcs-github、vcs-gitlab、vcs-local）读取改动并把评论发布到 GitHub 或 GitLab API，通过 AgentRuntime（runtime-direct 或 runtime-opencode，共用 ChainRunner 降级）调用模型服务商；登录 ocra Cloud 是可选的" src="docs/images/system-zh-light.svg">
+  <img alt="ocra CLI 运行核心审查流水线。版本控制适配器读取本地改动，或在 GitHub 和 GitLab 上读取和发布审查。direct 和 OpenCode 运行时调用模型端点，Codex 运行时使用本地已登录的 Codex CLI。ocra Cloud 是可选的。" src="docs/images/system-zh-light.svg">
 </picture>
 
 ```
- Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Filter → Verify → Judge → Publish
- └─────────── deterministic ─────────────┘   └─ LLM ─┘  └ code ┘  └ code ┘  └ LLM ┘  └ LLM ┘  └ code ┘
+ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Filter → Verify → Judge → [Fix] → Report
 ```
 
-每个（分组，审查员）组合是一个隔离的 agent 任务，通过带类型的工具提交问题。模型沿降级链切换，每个模型都有熔断器；失败的任务在报告里记为覆盖缺口，而不是让整次运行失败。
+文件筛选、审查任务分配、行号定位和最终结论由代码决定。模型可协助给大型改动分组、调查并核查问题、去重和定级，也可在启用时提出修复建议。GitHub 和 GitLab 适配器可以发布最终报告。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/agents-zh-dark.svg">
-  <img alt="ocra 的 agent：light 模型的分组器把改动分组，审查矩阵为每个分组和每个审查员启动一个隔离的只读 agent 任务（correctness、security 和 performance 在 standard 层级，docs 和 agents-md 在 light 层级），它们的问题由代码锚定、由 light 模型辅助重新定位，standard 层级的核查员逐文件核查，top 层级的 Judge 去重并校准，最后由代码算出结论" src="docs/images/agents-zh-light.svg">
+  <img alt="审查矩阵按风险和适用范围分配只读任务。代码根据引用定位问题，核查员检查证据，裁决者去重并校准严重程度，最后由代码算出结论。" src="docs/images/agents-zh-light.svg">
 </picture>
 
 完整设计：[架构](docs/architecture.md)和[决策记录](docs/adr/)。
@@ -53,7 +54,9 @@ ocra review                          # 未提交的改动，包括未跟踪的�
 ocra init --github                   # 还会写入 .github/workflows/ocra.yml（可安全审查 fork 的 PR）和处理 @ocra 评论的 ocra-commands.yml
 ```
 
-`ocra init` 从不替换已有文件（`--force` 会），并打印后续步骤，比如 `gh secret set` 和 `gh label create ocra-review`（[ocra init](docs/manual/zh/cli.mdx#ocra-init)）。
+`ocra init` 从不替换已有文件（`--force` 会），并打印后续步骤，比如 `gh secret set` 和 `gh label create ocra-review`（[ocra init](docs/manual/zh/cli.mdx#ocra-init)）。生成评论工作流需要 ocra 0.27.0 或更新版本。
+
+本地审查没有模型 key？ocra 0.27.0 及以上可以[使用已登录的 Codex](docs/manual/zh/installation.mdx#使用-codex)。CI 仍使用基于 key 的运行时。
 
 其他审查目标和选项：
 
@@ -101,6 +104,8 @@ jobs:
 ```
 
 把 Action 固定到提交：tag 可以被移动。输出：`verdict`、`exit-code`、`run-id`、`findings`、`report`，以及 `sarif: true` 时的 `sarif`。设了 `"runtime": "direct"` 时，`opencode: false` 跳过 OpenCode 的安装。来自 fork 的 PR 需要 [GitHub 指南](docs/manual/zh/github.mdx)里带门禁的 `pull_request_target` 配置。
+
+v0.27.0 及以上还会发布 [`ocra review` 检查](docs/manual/zh/github.mdx#会发布什么)，显示审查进度和结论。它需要 `checks: write`，仅供参考，不会阻止合并。
 
 **GitLab Merge Request**（GitLab.com 或自建实例），在 CI job 里运行：[GitLab 指南](docs/manual/zh/gitlab.mdx)。**其他任何 runner**：容器镜像（amd64 和 arm64，带 provenance 声明和 SBOM），见[安装](docs/manual/zh/installation.mdx#容器镜像)。
 

@@ -23,7 +23,7 @@ cd Open-CR-Agent && npm install && npm run build
 npm run verify   # Biome, type check and tests; no model or network calls
 ```
 
-`npm link --workspace @open-cr-agent/cli` puts `ocra` from your checkout on your path. A real review needs a model key; see the [quickstart](docs/manual/en/quickstart.mdx).
+`npm link --workspace @open-cr-agent/cli` puts `ocra` from your checkout on your path. A real review needs a [model key](docs/manual/en/quickstart.mdx) or a [local Codex sign-in](docs/manual/en/installation.mdx#with-codex).
 
 ## The rules
 
