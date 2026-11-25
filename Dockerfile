@@ -9,7 +9,7 @@
 ARG OCRA_INSTALL=npm
 
 # Every stage's base, named once: a literal FROM line Dependabot can update.
-FROM node:22-bookworm-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392 AS base
+FROM node:22-bookworm-slim@sha256:be979e5523c76fa4d5ca4ebd3099078f220aa47ec39c48ad5b5df9314debd6eb AS base
 
 FROM base AS sources
 WORKDIR /src
