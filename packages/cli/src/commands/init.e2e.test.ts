@@ -195,6 +195,34 @@ Next:
     },
   );
 
+  it.each(["disabled reviewer", "keyless endpoint"] as const)(
+    "uses the only required key alongside a %s",
+    async (fixture) => {
+      const { dir } = repos.create();
+      expect((await init(dir, ["--provider", "openrouter"])).code).toBe(0);
+      const config = JSON.parse(read(dir, CONFIG));
+      if (fixture === "disabled reviewer") {
+        config.reviewers = { security: { enabled: false, models: "google/gemini-3.5-flash" } };
+      } else {
+        config.models.light = "local/free";
+        config.providers.local = {
+          type: "openai-compatible",
+          baseUrl: "http://127.0.0.1:8000/v1",
+          models: { free: { input: 0, output: 0 } },
+        };
+      }
+      writeFileSync(join(dir, CONFIG), JSON.stringify(config));
+
+      const result = await init(dir, ["--github"]);
+
+      expect(result.code, result.err).toBe(0);
+      expect(result.out).toContain("gh secret set OPENROUTER_API_KEY\n");
+      for (const path of [WORKFLOW, COMMANDS]) {
+        expect(read(dir, path)).toContain(`OPENROUTER_API_KEY: \${{ secrets.OPENROUTER_API_KEY }}`);
+      }
+    },
+  );
+
   it("writes the pull_request workflow with --same-repo-only, and no label step", async () => {
     const { dir } = repos.create();
     const result = await init(dir, ["--github", "--same-repo-only", "--provider", "openai"]);
