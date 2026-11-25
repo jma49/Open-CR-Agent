@@ -17,7 +17,7 @@ const optionsSchema = z.object({
   project: z.union([z.number().int().positive(), z.string().min(1)]),
   iid: z.number().int().positive(),
   token: z.string().min(1),
-  apiUrl: z.string().url().optional(),
+  apiUrl: z.url().optional(),
   fetch: fetchSchema.optional(),
   signal: signalSchema.optional(),
   code: codeSourceSchema,

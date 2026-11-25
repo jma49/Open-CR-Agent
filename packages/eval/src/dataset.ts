@@ -12,7 +12,7 @@ const DATASET_SHA256 = "0804505f0a474765ce2840c832cfeaa6c4f0250dd6ccb169fe73c675
 
 const recordSchema = z.object({
   project_main_language: z.string(),
-  pr_url: z.string().url(),
+  pr_url: z.url(),
   // Commit ids reach git as arguments; anything else could be read as an option.
   pr_source_commit: z.string().regex(/^[0-9a-f]{7,64}$/),
   pr_target_commit: z.string().regex(/^[0-9a-f]{7,64}$/),
