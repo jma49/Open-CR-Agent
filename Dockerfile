@@ -8,8 +8,13 @@
 
 ARG OCRA_INSTALL=npm
 
+FROM scratch AS npm-dist
+ADD --checksum=sha256:ee5fc68e724c4bdba38db9d96d9c661d4e736e4be7001ae44d2fbbaa52159514 https://registry.npmjs.org/npm/-/npm-11.21.3.tgz /npm.tgz
+
 # Every stage's base, named once: a literal FROM line Dependabot can update.
 FROM node:22-bookworm-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392 AS base
+RUN --mount=from=npm-dist,source=/npm.tgz,target=/tmp/npm.tgz --mount=type=tmpfs,target=/root/.npm \
+    npm install --global --offline --ignore-scripts --no-audit --no-fund /tmp/npm.tgz
 
 FROM base AS sources
 WORKDIR /src

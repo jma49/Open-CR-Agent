@@ -262,6 +262,7 @@ jobs:
           persist-credentials: false
       - run: docker build --build-arg OCRA_INSTALL=source --tag ocra:ci .
       - run: |
+          test "npm@$(docker run --rm --entrypoint npm ocra:ci --version)" = "$(node -p 'require("./package.json").packageManager')"
           docker run --rm ocra:ci --version
           # The command lines of images up to 0.2.0, and GitLab's shell.
           docker run --rm ocra:ci ocra --version
