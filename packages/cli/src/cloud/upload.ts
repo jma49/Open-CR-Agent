@@ -59,7 +59,7 @@ export function uploadOf(
     usage: {
       inputTokens: report.usage.inputTokens,
       outputTokens: report.usage.outputTokens,
-      costUsd: report.usage.costUsd ?? 0,
+      costUsd: report.usage.costUsd,
     },
     durationMs: Math.round(durationMs),
     ocraVersion: VERSION,
