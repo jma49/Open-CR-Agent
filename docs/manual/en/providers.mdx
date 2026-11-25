@@ -53,7 +53,7 @@ A self-hosted server (vLLM, Ollama, LM Studio) or a company gateway that speaks 
 - **The id** (`gateway`) is yours: lowercase letters, digits and hyphens. Avoid ids in OpenCode's catalog: a declaration replaces the known provider for the run.
 - **`baseUrl`** must be `https`, or plain `http` on this machine: `localhost`, `127.0.0.1` or `::1`. For Ollama, for example, `http://127.0.0.1:11434/v1`. It may not contain `{` or `}`, which OpenCode would replace with a variable or a file's content.
 - **`apiKeyEnv`** names the variable holding the key; the key never goes in the file, and only this variable reaches the runtime. Platform tokens and cloud credentials (`GITHUB_`, `GITLAB_`, `CI_`, `AWS_`, `AZURE_` and similar) are refused. Omit it for a server without keys.
-- **`effort`** (optional) says how the endpoint takes a [reasoning effort](./configuration#effort), on either runtime: `openai` (default; OpenAI, Gemini's OpenAI-compatible endpoint and OpenRouter accept it) sends `reasoning_effort`, `openrouter` sends `reasoning: { effort }`.
+- **`effort`** (optional) says how the endpoint takes a [reasoning effort](./configuration#effort) from `opencode` or `direct`: `openai` (default; OpenAI, Gemini's OpenAI-compatible endpoint and OpenRouter accept it) sends `reasoning_effort`, `openrouter` sends `reasoning: { effort }`.
 - **`toolCalls`** (optional) says how the endpoint's models call the review tools, on the `direct` runtime: `api` (default) through the protocol's `tools` parameter, `text` for an endpoint that takes none (see [An endpoint without function calling](#an-endpoint-without-function-calling)). The `opencode` runtime refuses `text`.
 - **Every model has a price** in US dollars per million tokens: `input`, `output`, optionally `cachedInput`, used for the reported cost and `--max-cost-usd`. A price of 0 (your own hardware) makes the run warn that the spend limit does not count the model.
 - **`contextWindow`** (optional, on a model) is the number of tokens one request to it may hold, for a model served with a small window (see [A model with a small context window](#a-model-with-a-small-context-window)).
@@ -95,7 +95,7 @@ ocra sizes a review for the windows of current hosted models: a task's first pro
 "models": { "qwen3-coder": { "input": 0, "output": 0, "contextWindow": 32000 } }
 ```
 
-- **The plan fits it**, on either runtime: a task's diff is held to a quarter of the smallest window among the models the run names, so a large change becomes more and smaller tasks.
+- **The plan fits it** on `opencode` and `direct`: a task's diff is held to a quarter of the smallest window among the models the run names, so a large change becomes more and smaller tasks.
 - **A conversation stops before it overflows**, on the [`direct` runtime](#choosing-the-runtime): when the next request would leave less than 15% of the window, the reviewer gets its wrap-up turn to report what it confirmed, and its files count as partly reviewed (`ended: context_window`). The review is then incomplete (exit code 3) and says why.
 - **A prompt that does not fit at all** is not sent: the attempt fails on that model, naming both sizes, and the next model of the chain takes the task.
 
@@ -177,9 +177,9 @@ Three runtimes can run the reviewers; `runtime` in the configuration picks one:
 |---|---|---|
 | `opencode` (default) | Every provider in OpenCode's catalog and your declared endpoints, plus the pricing catalog `models.opencode.ai` | Your models are Gemini, Vertex AI, Anthropic, Bedrock or another catalog provider |
 | `direct` | Only the endpoints declared under `providers`, in OpenAI's or Anthropic's protocol; nothing else on the network | Every model in your chains is on a declared endpoint, and you want nothing but that endpoint reached |
-| `codex` (new) | OpenAI, through the [Codex CLI](https://github.com/openai/codex) signed in on your computer | You review on your own ChatGPT plan rather than an API key |
+| `codex` (0.27.0+) | OpenAI, through the [Codex CLI](https://github.com/openai/codex) signed in on your computer | You [review locally on your own ChatGPT plan](./installation#with-codex) rather than an API key |
 
-Both run the same review: tools, step cap, failback and prices. `direct` refuses, before any request, a chain naming a provider you did not declare, and honors `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY`. The [quality numbers](./quality) were measured on `opencode`; `direct` passes the same conformance tests but has not been evaluated on the golden set yet.
+All three use the same review pipeline. The two key-based runtimes share a conformance suite for review tools, step limits and failback. `direct` refuses, before any request, a chain naming a provider you did not declare, and honors `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY`. The [quality numbers](./quality) were measured on `opencode`, not the other runtimes.
 
 To see what `direct` sent a model and got back, set `OCRA_RECORD_DIR` to a directory: each request is written there as a JSON file with its answers, readable only by you. Keys become `<key>`, an ocra Cloud token renewed during the run included, and headers and the endpoint address are left out, but the files hold the code and prompts, so guard them like the code. A recording ocra cannot write is a warning on stderr; the review goes on and no request is sent again. A recording replays only the exact conversation it recorded. `opencode` ignores the variable.
 

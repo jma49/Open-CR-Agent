@@ -18,7 +18,7 @@ ocra review                          # 审查未提交的改动
 
 要审查 GitHub PR，`ocra init --github` 还会写入 `.github/workflows/ocra.yml`（可安全审查 fork 的 PR）和处理 `@ocra` 评论的 `.github/workflows/ocra-commands.yml`，并打印设置 secret 和创建 `ocra-review` 标签的 `gh` 命令。它从不替换已有文件。见 [ocra init](./cli#ocra-init)。
 
-下面的步骤是手动完成同样的事，可以用 OpenCode 支持的任何供应商。
+生成评论工作流需要 ocra 0.27.0 或更新版本。如果没有模型 key，可以用[本地已登录的 Codex](./installation#使用-codex)。下面的步骤是手动配置基于 key 的审查。
 
 <Steps>
 

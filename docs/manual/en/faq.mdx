@@ -6,7 +6,7 @@ icon: CircleQuestionMark
 
 ## Why does ocra report so few findings?
 
-By design: reviewers are told what not to flag, findings are validated and fact-checked against the code, and findings outside a task's files are dropped. An empty report on a correct change is a good outcome.
+By design: reviewers are told what not to flag, findings are validated and fact-checked against the code, and findings on files outside the current review are dropped. A finding on a different bundle's file can still count if that file is under review. An empty report on a correct change is a good outcome.
 
 ## How much does a review cost?
 
@@ -14,7 +14,7 @@ It depends on the models and the change. In the evaluation runs (Gemini on Verte
 
 ## Which models can I use?
 
-Any model OpenCode supports, or your own OpenAI-compatible endpoint, written as `provider/model`; see [Model providers](./providers). A failback chain per tier keeps an overloaded model from failing the review.
+Use a model from OpenCode's catalog, a declared OpenAI- or Anthropic-compatible endpoint, or [your local Codex sign-in](./installation#with-codex). A model chain can fall back to another model when one is overloaded; see [Model providers](./providers).
 
 ## Does it work with GitHub pull requests?
 

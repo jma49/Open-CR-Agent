@@ -2,41 +2,42 @@
 
 English · [简体中文](README.zh-CN.md)
 
-**ocra** is open-source AI code review built for pull requests you do not trust. It reviews local changes, GitHub pull requests and GitLab merge requests in your CI with your own model key, and it stays quiet unless a finding quotes the code it means and holds up on a second read.
+**ocra** is open-source AI code review for local changes, GitHub pull requests and GitLab merge requests. It runs in your CI with your own model key, or locally with your Codex sign-in, and is designed for changes you do not trust. Reviewers quote the code they mean, and a separate verifier checks their findings before ocra comments.
 
 [![npm](https://img.shields.io/npm/v/@open-cr-agent/cli?label=npm)](https://www.npmjs.com/package/@open-cr-agent/cli)
 [![CI](https://github.com/ocrahq/Open-CR-Agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ocrahq/Open-CR-Agent/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-> **Status:** early 0.x. CLI flags, configuration keys, exit codes and the report format are [contracts](docs/manual/en/stability.mdx) and change only with notice; prompts and review quality still move ([measured quality](docs/manual/en/quality.mdx)). Manual: [ocracloud.com](https://ocracloud.com) ([English](docs/manual/en/index.mdx) · [中文](docs/manual/zh/index.mdx)).
+> **Status:** early 0.x. CLI flags, configuration keys, exit codes and the report format are [contracts](docs/manual/en/stability.mdx) and change only with notice; prompts and review quality still move ([measured quality](docs/manual/en/quality.mdx)). [Website](https://ocracloud.com) · [Manual](https://ocracloud.com/docs) · [中文手册](https://ocracloud.com/zh/docs)
 
 ## Why ocra
 
 - **Hostile pull requests are the design case.** A diff, a pull request description or an `AGENTS.md` may be written by an attacker. Agents get read-only tools and no shell, and on pull requests, forks included, nothing from the reviewed tree runs. See [Security model](#security-model).
 - **A second read before any comment.** A verifier drops what the code disproves, a judge merges duplicates and calibrates severity, and code, not a model, computes the verdict. Reporting nothing is a valid outcome.
-- **Reviewers by domain and by file group.** Correctness, security, performance, docs and `AGENTS.md` reviewers each run as an isolated task on a group of related files. A tested planner decides which reviewer reads which group, so cost does not grow as groups × reviewers.
+- **Reviewers by domain and by file group.** A tested planner assigns isolated tasks to correctness, security, performance, docs and `AGENTS.md` reviewers. It can pack neighbouring bundles for security and performance or give docs reviewers context across the whole change.
 - **Findings follow the code across pushes.** A comment is anchored by the code it quotes, never by a line number a model made up. A finding is fixed only when that code is gone; a maintainer can dismiss it, the pull request's author cannot.
-- **Cost is bounded and accounted for.** A spend limit stops starting tasks, the report names what was left unreviewed, and the next review continues there. Every model call reports tokens and dollars.
+- **Cost and coverage are visible.** A spend limit stops starting tasks, and the report names what was left unreviewed. The next incremental review picks up unfinished files. Each run reports the token usage and cost available from its runtime.
 - **Built to be embedded and measured.** A versioned JSON report ([schema](docs/schema/report.v1.json)), [SARIF 2.1.0](docs/manual/en/github.mdx) out for code scanning and in from Semgrep, CodeQL and other analyzers, a public `review()` entry, and quality numbers published with their limits.
+
+The CLI and GitHub Action need no ocra account. [ocra Cloud](docs/manual/en/cloud.mdx) is optional: use its console to review and merge pull requests, or let its GitHub app run reviews for enrolled repositories instead of running a workflow yourself.
 
 ## How it works
 
 <!-- Diagrams: scripts/lib/diagrams.mjs, both languages; regenerate with node scripts/diagrams.mjs. -->
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/system-en-dark.svg">
-  <img alt="ocra system overview: a developer terminal, GitHub Actions, GitLab CI or ocra-eval starts the cli, which runs core (pipeline, ReviewContext, findings, spend limit); core reads and publishes through VcsAdapter packages (vcs-platform, vcs-github, vcs-gitlab, vcs-local) to the GitHub or GitLab API, and calls model providers through an AgentRuntime (runtime-direct or runtime-opencode, both with ChainRunner failback); signing in to ocra Cloud is optional" src="docs/images/system-en-light.svg">
+  <img alt="ocra CLI runs the core review pipeline. VCS adapters read local changes or read and publish to GitHub and GitLab. The direct and OpenCode runtimes call model endpoints; the Codex runtime uses the locally signed-in Codex CLI. ocra Cloud is optional." src="docs/images/system-en-light.svg">
 </picture>
 
 ```
- Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Filter → Verify → Judge → Publish
- └─────────── deterministic ─────────────┘   └─ LLM ─┘  └ code ┘  └ code ┘  └ LLM ┘  └ LLM ┘  └ code ┘
+ Ingest → Select → Triage → Bundle → Matrix → Execute → Anchor → Filter → Verify → Judge → [Fix] → Report
 ```
 
-Each (bundle, reviewer) cell is an isolated agent task that reports findings through a typed tool; the docs and agents-md reviewers take the change as a whole. Models fail over along a chain with a per-model circuit breaker; a failed task is a coverage gap in the report, not a failed run.
+Selection, reviewer assignment, anchoring and the verdict are decided in code. Models can help group large changes, investigate and verify findings, judge duplicates and severity, and propose fixes when enabled. GitHub and GitLab adapters can publish the resulting report.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/agents-en-dark.svg">
-  <img alt="ocra's agents: a light-model bundler groups the change, the review matrix starts one isolated read-only agent task per bundle and reviewer (correctness, security and performance on the standard tier, docs and agents-md on the light tier), their findings are anchored by code with a light relocator, a standard-tier verifier fact-checks them per file, a top-tier judge deduplicates and calibrates them, and code computes the verdict" src="docs/images/agents-en-light.svg">
+  <img alt="The matrix assigns read-only review tasks by risk and scope. Code anchors findings by their quotes, a verifier checks the evidence, a judge deduplicates and calibrates severity, and code computes the verdict." src="docs/images/agents-en-light.svg">
 </picture>
 
 Full design: [architecture](docs/architecture.md) and [decision records](docs/adr/).
@@ -54,7 +55,9 @@ ocra review                          # uncommitted changes, including untracked 
 ocra init --github                   # also .github/workflows/ocra.yml, safe for forks, and ocra-commands.yml for @ocra comments
 ```
 
-`ocra init` never replaces an existing file (`--force` does) and prints the next steps, such as `gh secret set` and `gh label create ocra-review` ([ocra init](docs/manual/en/cli.mdx#ocra-init)).
+`ocra init` never replaces an existing file (`--force` does) and prints the next steps, such as `gh secret set` and `gh label create ocra-review` ([ocra init](docs/manual/en/cli.mdx#ocra-init)). Generating the comment workflow requires ocra 0.27.0 or later.
+
+Reviewing locally without a model key? [Use your Codex sign-in](docs/manual/en/installation.mdx#with-codex) with ocra 0.27.0 or later. CI uses a key-based runtime.
 
 Other targets and options:
 
@@ -103,6 +106,8 @@ jobs:
 ```
 
 Pin the Action by commit: a tag can be moved. Outputs: `verdict`, `exit-code`, `run-id`, `findings`, `report`, and `sarif` with `sarif: true`. With `"runtime": "direct"`, `opencode: false` skips installing OpenCode. Pull requests from forks need the gated `pull_request_target` setup in the [GitHub guide](docs/manual/en/github.mdx).
+
+With v0.27.0 or later, the Action also posts an [`ocra review` check](docs/manual/en/github.mdx#what-gets-posted) with progress and the verdict. It needs `checks: write` and is advisory, not a blocking gate.
 
 **GitLab merge requests** (GitLab.com or self-managed) from a CI job: [GitLab guide](docs/manual/en/gitlab.mdx). **Any other runner**: the container image (amd64 and arm64, attested provenance, SBOM), see [Installation](docs/manual/en/installation.mdx#container-image).
 
