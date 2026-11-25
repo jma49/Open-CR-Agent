@@ -4,4 +4,4 @@
 
 ### Fixed
 
-- `ocra init --github` uses the supported key declared by the providers in the retained model chains when they all use the same key, without requiring its value in the shell.
+- `ocra init --github` uses the single supported key required by the declared providers in the retained configuration's active model chains, without requiring its value in the shell.

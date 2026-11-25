@@ -3,6 +3,7 @@ import { parseArgs } from "node:util";
 import { configSchema } from "@open-cr-agent/cloud-contract";
 import { errorMessage, parseModel } from "@open-cr-agent/core";
 import { findRepositoryRoot } from "@open-cr-agent/vcs-local/internal";
+import { agentChains } from "../config/cli-config.js";
 import { EXIT } from "../io/exit.js";
 import type { Output } from "../io/output.js";
 import { resolveRepositoryFile, writeRepositoryFile } from "../io/repository-file.js";
@@ -180,17 +181,24 @@ async function existingConfig(
   try {
     if (!(await lstat(path)).isFile()) return { direct: false, keys: [] };
     const config = configSchema.parse(JSON.parse(await readFile(path, "utf8")));
-    const models = [
-      ...Object.values(config.models),
-      ...Object.values(config.reviewers).map((reviewer) => reviewer.models),
-      ...Object.values(config.roles).map((role) => role?.models),
-    ].flatMap((chain) => chain ?? []);
-    const usedKeys = new Set(
-      models.map((model) => config.providers[parseModel(model).providerID]?.apiKeyEnv),
+    const models = [...Object.values(config.models), ...Object.values(agentChains(config))].flatMap(
+      (chain) => chain ?? [],
     );
-    const keys = [...usedKeys].filter((key) => key !== undefined);
+    const usedKeys = new Set<string>();
+    let undeclared = false;
+    for (const model of models) {
+      const { providerID } = parseModel(model);
+      if (!Object.hasOwn(config.providers, providerID)) {
+        undeclared = true;
+        continue;
+      }
+      const key = config.providers[providerID]?.apiKeyEnv;
+      if (key !== undefined) usedKeys.add(key);
+    }
+    const keys = [...usedKeys];
     // A catalog provider or inherited config can require credentials not declared here.
-    const inferredKey = config.extends === undefined && usedKeys.size === 1 ? keys[0] : undefined;
+    const inferredKey =
+      config.extends === undefined && !undeclared && keys.length === 1 ? keys[0] : undefined;
     return { direct: config.runtime === "direct", keys, ...(inferredKey && { inferredKey }) };
   } catch {
     return { direct: false, keys: [] };
