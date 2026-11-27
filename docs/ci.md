@@ -23,6 +23,8 @@ A pull request gets its result in under 1 minute at the median and under 2 minut
 
 `.github/ci-budgets.json` holds each job's ceiling for setup and for running, in seconds; the `budget` job, last in `ci.yml`, reads the run's jobs (`scripts/ci-budget.mjs`) and fails when one went over. ocra-cloud and ocra-site call the same check, `.github/workflows/budget.yml` pinned by commit SHA, with their own budgets file. Running is the job's time without its setup steps, so a slow cache restore counts once, against the setup ceiling. Waiting is reported, not judged: it depends on the runners, not the repository.
 
+On a partial rerun, the check uses each job's most recent execution across attempts. A job that did not rerun keeps its original timing; rerunning a matrix leg replaces only that leg's timing.
+
 The ceilings start just above the p99 of the last 150 runs, so a run fails on a real slowdown rather than on an ordinary slow runner, and they only go down: a pull request that makes CI faster lowers them to its new numbers, so the gain is kept. A ceiling is raised only with a measured reason in the pull request, never to make a slow run pass.
 
 ## Changing CI

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { ceiling, checkBudgets, renderBudgets } from "./ci-budget.mjs";
+import { describe, expect, it, vi } from "vitest";
+import { ceiling, checkBudgets, renderBudgets, runJobs } from "./ci-budget.mjs";
 
 const BUDGETS = { setup: { platforms: 40, "*": 15 }, running: { "node-matrix": 90, "*": 30 } };
 
@@ -13,6 +13,7 @@ function job(name, { start = 2, end, setup = 5, conclusion = "success" }) {
   const at = (/** @type {number} */ s) => new Date(Date.UTC(2026, 0, 1, 0, 0, s)).toISOString();
   return {
     name,
+    run_attempt: 1,
     conclusion,
     created_at: at(0),
     started_at: at(start),
@@ -30,6 +31,54 @@ function job(name, { start = 2, end, setup = 5, conclusion = "success" }) {
 }
 
 describe("checkBudgets", () => {
+  it("reads all pages and keeps a prior overrun when only the budget job is retried", async () => {
+    const verify = job("verify", { end: 82 });
+    const budget = job("budget / budget", { end: 9, conclusion: "failure" });
+    const retry = { ...budget, run_attempt: 2, conclusion: null, completed_at: null };
+    const run = "https://api.example/repos/owner/repo/actions/runs/42";
+    const page = `${run}/jobs?filter=all&per_page=100&page=`;
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json(
+          { jobs: [verify, budget] },
+          {
+            headers: { link: `<${page}2>; rel="next"` },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(Response.json({ jobs: [retry] }));
+    const jobs = await runJobs(run, "test-token", request);
+    expect(request.mock.calls.map(([url]) => url)).toEqual([`${page}1`, `${page}2`]);
+    expect(checkBudgets(jobs, BUDGETS)).toEqual([
+      {
+        name: "verify",
+        waiting: 2,
+        setup: 5,
+        running: 75,
+        budget: 30,
+        over: ["running 75 s > 30 s"],
+      },
+    ]);
+  });
+
+  it("replaces only the rerun matrix leg, regardless of API order", () => {
+    const old = job("node-matrix (24)", { end: 99, conclusion: "failure" });
+    const other = job("node-matrix (22)", { end: 98 });
+    const retry = { ...job(old.name, { start: 110, end: 125 }), run_attempt: 2 };
+    const rows = checkBudgets([retry, other, old], BUDGETS);
+    expect(rows.map((r) => [r.name, r.running, r.over])).toEqual([
+      [retry.name, 10, []],
+      [other.name, 91, ["running 91 s > 90 s"]],
+    ]);
+  });
+
+  it("uses the original timing when GitHub copies a job into a later attempt", () => {
+    const original = job("verify", { end: 82 });
+    const copy = { ...original, run_attempt: 2, created_at: "2026-01-01T00:20:00.000Z" };
+    expect(checkBudgets([copy, original], BUDGETS)).toEqual(checkBudgets([original], BUDGETS));
+  });
+
   it("passes jobs within their ceilings and reports waiting without judging it", () => {
     const [row] = checkBudgets([job("verify", { start: 40, end: 60 })], BUDGETS);
     expect(row).toEqual({
