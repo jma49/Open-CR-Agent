@@ -32,24 +32,26 @@ function job(name, { start = 2, end, setup = 5, conclusion = "success" }) {
 
 describe("checkBudgets", () => {
   it("reads all pages and keeps a prior overrun when only the budget job is retried", async () => {
-    const verify = job("verify", { end: 82 });
+    const { run_attempt: _attempt, ...verify } = job("verify", { end: 82 });
     const budget = job("budget / budget", { end: 9, conclusion: "failure" });
     const retry = { ...budget, run_attempt: 2, conclusion: null, completed_at: null };
     const run = "https://api.example/repos/owner/repo/actions/runs/42";
-    const page = `${run}/jobs?filter=all&per_page=100&page=`;
+    const first = `${run}/attempts/1/jobs?per_page=100&page=`;
+    const second = `${run}/attempts/2/jobs?per_page=100&page=1`;
     const request = vi
       .fn()
       .mockResolvedValueOnce(
         Response.json(
-          { jobs: [verify, budget] },
+          { jobs: [budget] },
           {
-            headers: { link: `<${page}2>; rel="next"` },
+            headers: { link: `<${first}2>; rel="next"` },
           },
         ),
       )
+      .mockResolvedValueOnce(Response.json({ jobs: [verify] }))
       .mockResolvedValueOnce(Response.json({ jobs: [retry] }));
-    const jobs = await runJobs(run, "test-token", request);
-    expect(request.mock.calls.map(([url]) => url)).toEqual([`${page}1`, `${page}2`]);
+    const jobs = await runJobs(run, 2, "test-token", request);
+    expect(request.mock.calls.map(([url]) => url)).toEqual([`${first}1`, `${first}2`, second]);
     expect(checkBudgets(jobs, BUDGETS)).toEqual([
       {
         name: "verify",

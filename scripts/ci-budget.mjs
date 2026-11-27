@@ -5,7 +5,7 @@
 //
 //   node scripts/ci-budget.mjs [budgets.json]
 //
-// Reads GITHUB_API_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID
+// Reads GITHUB_API_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT
 // and GITHUB_TOKEN; appends the table to GITHUB_STEP_SUMMARY when set.
 import { appendFileSync, readFileSync } from "node:fs";
 import { checkBudgets, renderBudgets, runJobs } from "./lib/ci-budget.mjs";
@@ -21,7 +21,7 @@ function env(name) {
 async function main([path = ".github/ci-budgets.json"]) {
   const api = process.env.GITHUB_API_URL ?? "https://api.github.com";
   const run = `${api}/repos/${env("GITHUB_REPOSITORY")}/actions/runs/${env("GITHUB_RUN_ID")}`;
-  const jobs = await runJobs(run, env("GITHUB_TOKEN"));
+  const jobs = await runJobs(run, Number(env("GITHUB_RUN_ATTEMPT")), env("GITHUB_TOKEN"));
   const rows = checkBudgets(jobs, JSON.parse(readFileSync(path, "utf8")));
   const table = renderBudgets(rows);
   process.stdout.write(table);
