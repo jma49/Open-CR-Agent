@@ -2,7 +2,7 @@
 // against its ceiling in the budgets file.
 
 /**
- * A job as the Actions API lists it, as far as the budget reads it.
+ * A job as the Actions API lists it, tagged with the attempt it was listed for.
  * @typedef {object} Job
  * @property {string} name
  * @property {number} run_attempt
@@ -36,20 +36,25 @@ const SETUP_STEP =
   /^(Set up job|Initialize containers|Run actions\/checkout|Run actions\/setup-node|Run \.\/\.github\/actions\/setup|Run npm ci\b)/;
 const FINISHED = new Set(["success", "failure"]);
 
-/** @param {string} run @param {string} token @param {typeof fetch} request */
-export async function runJobs(run, token, request = fetch) {
+/** @param {string} run @param {number} lastAttempt @param {string} token @param {typeof fetch} request */
+export async function runJobs(run, lastAttempt, token, request = fetch) {
+  if (!Number.isSafeInteger(lastAttempt) || lastAttempt < 1) throw new Error("invalid run attempt");
   /** @type {Job[]} */
   const jobs = [];
-  for (let page = 1; ; page++) {
-    const url = `${run}/jobs?filter=all&per_page=100&page=${page}`;
-    const response = await request(url, {
-      headers: { authorization: `Bearer ${token}`, accept: "application/vnd.github+json" },
-      signal: AbortSignal.timeout(30_000),
-    });
-    if (!response.ok) throw new Error(`${url}: ${response.status}`);
-    jobs.push(.../** @type {{ jobs: Job[] }} */ (await response.json()).jobs);
-    if (!response.headers.get("link")?.includes('rel="next"')) return jobs;
+  for (let attempt = 1; attempt <= lastAttempt; attempt++) {
+    for (let page = 1; ; page++) {
+      const url = `${run}/attempts/${attempt}/jobs?per_page=100&page=${page}`;
+      const response = await request(url, {
+        headers: { authorization: `Bearer ${token}`, accept: "application/vnd.github+json" },
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!response.ok) throw new Error(`${url}: ${response.status}`);
+      const body = /** @type {{ jobs: Omit<Job, "run_attempt">[] }} */ (await response.json());
+      for (const job of body.jobs) jobs.push({ ...job, run_attempt: attempt });
+      if (!response.headers.get("link")?.includes('rel="next"')) break;
+    }
   }
+  return jobs;
 }
 
 /** @param {Job} job */
