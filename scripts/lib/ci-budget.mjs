@@ -5,6 +5,7 @@
  * A job as the Actions API lists it, as far as the budget reads it.
  * @typedef {object} Job
  * @property {string} name
+ * @property {number} run_attempt
  * @property {string | null} conclusion
  * @property {string} created_at
  * @property {string | null} started_at
@@ -35,6 +36,46 @@ const SETUP_STEP =
   /^(Set up job|Initialize containers|Run actions\/checkout|Run actions\/setup-node|Run \.\/\.github\/actions\/setup|Run npm ci\b)/;
 const FINISHED = new Set(["success", "failure"]);
 
+/** @param {string} run @param {string} token @param {typeof fetch} request */
+export async function runJobs(run, token, request = fetch) {
+  /** @type {Job[]} */
+  const jobs = [];
+  for (let page = 1; ; page++) {
+    const url = `${run}/jobs?filter=all&per_page=100&page=${page}`;
+    const response = await request(url, {
+      headers: { authorization: `Bearer ${token}`, accept: "application/vnd.github+json" },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!response.ok) throw new Error(`${url}: ${response.status}`);
+    jobs.push(.../** @type {{ jobs: Job[] }} */ (await response.json()).jobs);
+    if (!response.headers.get("link")?.includes('rel="next"')) return jobs;
+  }
+}
+
+/** @param {Job} job */
+const executionKey = (job) =>
+  JSON.stringify([job.name, job.conclusion, job.started_at, job.completed_at]);
+
+/** @param {readonly Job[]} jobs */
+function latestExecutions(jobs) {
+  /** @type {Map<string, number>} */
+  const latest = new Map();
+  /** @type {Map<string, Job>} */
+  const originals = new Map();
+  for (const job of jobs) {
+    latest.set(job.name, Math.max(latest.get(job.name) ?? 0, job.run_attempt));
+    if (job.started_at && job.created_at <= job.started_at) originals.set(executionKey(job), job);
+  }
+  return jobs
+    .filter((job) => job.run_attempt === latest.get(job.name))
+    .map((job) =>
+      // A carried-forward job can be re-created with its original start and end.
+      job.started_at && job.created_at > job.started_at
+        ? (originals.get(executionKey(job)) ?? job)
+        : job,
+    );
+}
+
 /** @param {string | null} from @param {string | null} to */
 const seconds = (from, to) => (from && to ? (Date.parse(to) - Date.parse(from)) / 1000 : 0);
 
@@ -51,7 +92,7 @@ export function ceiling(ceilings, name) {
  * @returns {Row[]}
  */
 export function checkBudgets(jobs, budgets) {
-  return jobs
+  return latestExecutions(jobs)
     .filter((job) => job.conclusion !== null && FINISHED.has(job.conclusion))
     .map((job) => {
       const setup = (job.steps ?? [])
