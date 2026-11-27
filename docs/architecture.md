@@ -106,33 +106,11 @@ Fingerprints let a re-review compare with the previous run (ADR-0009, ADR-0010);
 
 ## Contracts
 
-```ts
-interface VcsAdapter {            // one instance per change request
-  getChangeRequest(): Promise<ChangeRequest>
-  getDiff(): Promise<FileDiff[]>
-  readFile(path): Promise<string | undefined>   // file content at head
-  searchCode(literal): Promise<CodeMatch[]>
-  getPriorReview(): Promise<PriorReview | undefined>  // earlier findings, and what changed since
-  publish(report: ReviewReport): Promise<{ warnings: string[] }>
-}
-
-interface AgentRuntime {
-  runTask(spec: AgentTaskSpec, signal: AbortSignal): AsyncIterable<AgentEvent>
-}
-```
-
-Both are contributed by plugins (ADR-0006):
-
-```ts
-interface OcraPlugin {
-  name: string
-  settingsSchema?: ZodType                       // validates pluginSettings.<name>
-  bootstrap?(ctx): Promise<void>                 // concurrent, failures warn
-  configure?(ctx: ConfigureContext): void        // ordered, failures abort
-  postConfigure?(ctx): void                      // sees the frozen registry
-}
-// ConfigureContext: registerVcs, registerRuntime, registerReviewer, registerRules, registerTool, onEvent
-```
+| Contract | What belongs behind it |
+|---|---|
+| [`VcsAdapter`](../packages/core/src/vcs.ts) | Read one change request and its prior review; publish the result. Optional capabilities such as committing a fix belong to the adapter, not to every platform. |
+| [`AgentRuntime` and `ReviewContext`](../packages/core/src/contracts.ts) | The runtime executes a task and emits events. Its tools read the reviewed revision through the context, which [enforces access policy and memoizes reads](../packages/core/src/pipeline/context.ts). |
+| [`OcraPlugin`](../packages/core/src/plugin/types.ts) | Register adapters, reviewers, rules, tools and event listeners. The [host](../packages/core/src/plugin/host.ts) owns lifecycle ordering and freezes the registry ([ADR-0006](adr/0006-plugin-contract.md)). |
 
 The pipeline owns orchestration; a runtime executes one isolated task. The key-based `runtime-opencode` ([ADR-0003](adr/0003-opencode-runtime.md)) and `runtime-direct` ([ADR-0020](adr/0020-direct-runtime.md)) share a conformance suite. The CLI also registers `codex` when selected, from `cli/src/runtimes/codex` rather than a separate package. It starts the locally signed-in Codex CLI with its own tools disabled and serves ocra's read-only review tools over loopback MCP ([ADR-0083](adr/0083-codex-runtime.md)). A test runs the real Codex CLI against a scripted endpoint.
 
@@ -148,20 +126,21 @@ Core's `ChainRunner` handles model chains, health and failover over single-model
 
 ## Packages
 
-```
-packages/
-  core/              domain types, stages, contracts
-  runtime-opencode/  AgentRuntime on @opencode-ai/sdk
-  runtime-direct/    AgentRuntime over declared endpoints (OpenAI or Anthropic protocol)
-  vcs-platform/      the review conversation every platform shares
-  vcs-github/        VcsAdapter for GitHub, over vcs-platform
-  vcs-gitlab/        VcsAdapter for GitLab merge requests, over vcs-platform
-  vcs-local/         VcsAdapter for the local git repository
-  code-graph/        SymbolExtractor on tree-sitter (WASM), cached by git blob id
-  cloud-contract/    the wire contract with ocra Cloud: schemas (the configuration file's too), limits, redaction
-  cli/               `ocra` command, built-in Codex runtime adapter
-  eval/              AACR-Bench and golden replay, precision / recall / cost
-```
+Read the direct **workspace** dependencies below from left to right. Third-party libraries and dev dependencies are not edges in this table.
+
+| Workspace | Owns | Depends on |
+|---|---|---|
+| core | Review stages, domain types, plugin contracts | No workspace; its [layer test](../packages/core/src/layers.test.ts) checks the direction between internal units. |
+| cloud-contract | Zod schemas, limits and redaction shared with Cloud | No workspace; [runs without Node APIs](../packages/cloud-contract/src/package.test.ts). |
+| runtime-direct, runtime-opencode | Provider protocols and OpenCode SDK respectively | core (public API) |
+| vcs-platform | Review conversation, published state and platform retry policy | core |
+| vcs-github, vcs-gitlab | Platform APIs and permissions | core, vcs-platform |
+| vcs-local, code-graph | Git workspace and revision access; symbol extraction and cache, respectively | core |
+| cli | Commands, configuration, delivery and the built-in Codex runtime | core, cloud-contract, code-graph, vcs-local, vcs-platform, vcs-github, vcs-gitlab, runtime-direct; runtime-opencode is optional |
+| eval (private) | Benchmark replay and quality metrics | cli, cloud-contract, core, vcs-local |
+| test-support (private) | Test fixtures | core; consumed only as a dev dependency |
+
+The [workspace test](../scripts/workspace-exports.test.mjs) guards the installed dependency direction of core and the adapter packages. Adding a reviewer need not change an adapter; adding a platform need not change core.
 
 Each published package's main entry is its public API, recorded in `etc/<package>.api.md` (`npm run check:api`); `./internal` subpaths are not a contract (see `AGENTS.md` and the manual's Stability page). `npm run check:packages` lints the packed tarballs with publint and attw.
 
