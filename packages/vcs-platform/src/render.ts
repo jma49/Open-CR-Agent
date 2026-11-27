@@ -10,6 +10,7 @@ import {
   type Severity,
   type Verification,
 } from "@open-cr-agent/core";
+import { whollyUnreviewedCount } from "@open-cr-agent/core/internal";
 import { byline } from "./byline.js";
 import { incompleteNotes } from "./incomplete-notes.js";
 import { safeMarkdown } from "./neutralize.js";
@@ -42,8 +43,8 @@ const VERIFICATION: Record<Verification, string> = {
 
 // A run that reviewed nothing has no verdict to announce, and one that missed
 // files or could not verify a critical finding says so next to its verdict.
-function headline(report: ReviewReport): string {
-  if (coverageGaps(report).nothingReviewed) return "⏸️ Not reviewed";
+function headline(report: ReviewReport, nothingReviewed: boolean): string {
+  if (nothingReviewed) return "⏸️ Not reviewed";
   const overridden =
     report.verdict === "significant_concerns" && report.changeRequest.override
       ? " · overridden"
@@ -184,18 +185,20 @@ export function renderSummary({
   text,
   unattributed = 0,
 }: SummaryInput): string {
+  const gaps = coverageGaps(report);
+  const missed = whollyUnreviewedCount(gaps);
   const lines = [
-    ...verdictSection(report, text),
+    ...verdictSection(report, text, gaps.nothingReviewed),
     ...scopeNote(report),
     ...walkthroughSection(report.walkthrough),
     ...mergeChecksSection(report.mergeChecks),
-    ...incompleteNotes(report, text),
+    ...incompleteNotes(report, text, gaps.incomplete, missed),
     ...unattributedNote(unattributed),
     ...outsideDiff(report, commented),
     ...heldInline(report, commented),
     ...memoryNotes(report.remembered),
     ...rereviewSections(report.rereview),
-    ...coverageAndCost(report),
+    ...coverageAndCost(report, missed),
   ];
   const markdown = lines.join("\n");
   const footer = `\n\n${writeState(state)}`;
@@ -207,11 +210,15 @@ export function renderSummary({
 
 // The heading, the judge's summary and one line of counts: what the review
 // found is said once, and the findings themselves are on the diff.
-function verdictSection(report: ReviewReport, text: PlatformText): string[] {
+function verdictSection(
+  report: ReviewReport,
+  text: PlatformText,
+  nothingReviewed: boolean,
+): string[] {
   const summary = report.summary.trim();
   return [
     SUMMARY_MARKER,
-    `## ${byline(report.agent)} review · ${headline(report)}`,
+    `## ${byline(report.agent)} review · ${headline(report, nothingReviewed)}`,
     ...(summary === "" ? [] : ["", safeMarkdown(summary, { startsLine: true })]),
     ...overrideNote(report, text),
     "",
@@ -421,7 +428,7 @@ function openList(title: string, intro: string, findings: readonly PriorFinding[
   ];
 }
 
-function coverageAndCost(report: ReviewReport): string[] {
+function coverageAndCost(report: ReviewReport, missed: number): string[] {
   const unfinished = report.coverage.filter(isUnfinished);
   const count = (status: string) => report.coverage.filter((c) => c.status === status).length;
   const partly = count("incomplete");
@@ -432,7 +439,7 @@ function coverageAndCost(report: ReviewReport): string[] {
     "",
     "<details><summary>Coverage and cost</summary>",
     "",
-    `${count("reviewed")} reviewed${partly > 0 ? ` · ${partly} partly reviewed` : ""} · ${count("unchanged")} unchanged since the last review · ${unfinished.length - partly} not reviewed · ${count("excluded")} excluded · ${inputTokens} in / ${outputTokens} out tokens · $${costUsd.toFixed(4)}${spendLimitNote(report)} · run ${codeSpan(report.runId)}`,
+    `${count("reviewed")} reviewed${partly > 0 ? ` · ${partly} partly reviewed` : ""} · ${count("unchanged")} unchanged since the last review · ${missed} not reviewed · ${count("excluded")} excluded · ${inputTokens} in / ${outputTokens} out tokens · $${costUsd.toFixed(4)}${spendLimitNote(report)} · run ${codeSpan(report.runId)}`,
     ...unfinished.map((c) => `- ${unfinishedLabel(c)}: ${codeSpan(c.path)}`),
     "",
     "</details>",

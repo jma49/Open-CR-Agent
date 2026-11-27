@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { coverageGaps, isBlocking, isIncompleteReview, unconfirmedCriticals } from "./report.js";
+import {
+  coverageGaps,
+  isBlocking,
+  isIncompleteReview,
+  unconfirmedCriticals,
+  whollyUnreviewedCount,
+} from "./report.js";
 
 describe("coverageGaps", () => {
   it("counts failed and unreviewed files and says when nothing was reviewed", () => {
@@ -50,22 +56,22 @@ describe("coverageGaps", () => {
   });
 
   it("counts files only partly reviewed as not reviewed, by how their task ended", () => {
-    expect(
-      coverageGaps({
-        coverage: [
-          { path: "a.ts", status: "incomplete", ended: "step_cap" },
-          { path: "b.ts", status: "incomplete", ended: "step_cap" },
-          { path: "c.ts", status: "incomplete", ended: "stopped_early" },
-          { path: "e.ts", status: "incomplete", ended: "context_window" },
-          { path: "d.ts", status: "reviewed" },
-        ],
-        tasks: [{ status: "completed" }],
-      }),
-    ).toEqual({
+    const gaps = coverageGaps({
+      coverage: [
+        { path: "a.ts", status: "incomplete", ended: "step_cap" },
+        { path: "b.ts", status: "incomplete", ended: "step_cap" },
+        { path: "c.ts", status: "incomplete", ended: "stopped_early" },
+        { path: "e.ts", status: "incomplete", ended: "context_window" },
+        { path: "d.ts", status: "reviewed" },
+      ],
+      tasks: [{ status: "completed" }],
+    });
+    expect(gaps).toEqual({
       notReviewed: 4,
       nothingReviewed: false,
       incomplete: { step_cap: 2, context_window: 1, stopped_early: 1 },
     });
+    expect(whollyUnreviewedCount(gaps)).toBe(0);
   });
 });
 

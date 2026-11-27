@@ -67,6 +67,13 @@ export function coverageGaps(run: {
   return { notReviewed, nothingReviewed: notReviewed > 0 && !reviewed, incomplete };
 }
 
+export function whollyUnreviewedCount({
+  notReviewed,
+  incomplete,
+}: ReturnType<typeof coverageGaps>): number {
+  return notReviewed - Object.values(incomplete).reduce((sum, count) => sum + count, 0);
+}
+
 const REFUSED: Record<QuotaStop, string> = {
   daily_limit: "a daily limit was reached",
   rate_limit: "a rate limit outlasted the run's waits",

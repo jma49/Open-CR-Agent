@@ -25,7 +25,3 @@ export function partlyReviewed(incomplete: Record<IncompleteEnding, number>): st
   }
   return lines;
 }
-
-export function partlyReviewedCount(incomplete: Record<IncompleteEnding, number>): number {
-  return incomplete.step_cap + incomplete.context_window + incomplete.stopped_early;
-}

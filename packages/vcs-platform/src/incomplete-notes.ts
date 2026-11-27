@@ -1,9 +1,14 @@
-import { coverageGaps, MAX_AGENT_STEPS, type ReviewReport } from "@open-cr-agent/core";
+import { type IncompleteEnding, MAX_AGENT_STEPS, type ReviewReport } from "@open-cr-agent/core";
 import { quotaNote, unconfirmedCriticals } from "@open-cr-agent/core/internal";
 import type { PlatformText } from "./render.js";
 
 // Unverified criticals that cap the verdict, and what the run did not check.
-export function incompleteNotes(report: ReviewReport, text: PlatformText): string[] {
+export function incompleteNotes(
+  report: ReviewReport,
+  text: PlatformText,
+  incomplete: Record<IncompleteEnding, number>,
+  missed: number,
+): string[] {
   const lines: string[] = [];
   const unverified = unconfirmedCriticals(report);
   if (unverified > 0) {
@@ -20,10 +25,7 @@ export function incompleteNotes(report: ReviewReport, text: PlatformText): strin
   }
   // The CLI's partly-reviewed.ts says the same for a terminal; this one names
   // the platform and points at the next review.
-  const { notReviewed, incomplete } = coverageGaps(report);
   const gaps: string[] = [];
-  const missed =
-    notReviewed - incomplete.step_cap - incomplete.context_window - incomplete.stopped_early;
   if (missed > 0) {
     const limit = report.spendLimit?.reached
       ? `; the spend limit of $${report.spendLimit.usd} was reached`

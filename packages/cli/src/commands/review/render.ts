@@ -11,9 +11,10 @@ import {
   quotaNote,
   serializeOutput,
   unconfirmedCriticals,
+  whollyUnreviewedCount,
 } from "@open-cr-agent/core/internal";
 import { forTerminal } from "../../io/terminal.js";
-import { partlyReviewed, partlyReviewedCount } from "./partly-reviewed.js";
+import { partlyReviewed } from "./partly-reviewed.js";
 
 const SEVERITIES: Severity[] = ["critical", "warning", "suggestion"];
 const VERIFICATION: Record<Verification, string> = {
@@ -32,11 +33,11 @@ export const safeJson = serializeOutput;
 
 export function renderText(report: ReviewReport, sessionDir?: string): string {
   const incomplete = report.tasks.filter((t) => t.status !== "completed");
-  const { notReviewed, nothingReviewed, incomplete: partly } = coverageGaps(report);
+  const gaps = coverageGaps(report);
   const lines: string[] = [
     `Review: ${report.changeRequest.title}`,
     coverageLine(report),
-    ...(nothingReviewed
+    ...(gaps.nothingReviewed
       ? ["Verdict: not reached (nothing was reviewed)"]
       : [
           `Verdict: ${report.verdict.replaceAll("_", " ")}`,
@@ -46,7 +47,7 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
   ];
 
   if (report.findings.length === 0) {
-    lines.push(emptyMessage(report, nothingReviewed, notReviewed), "");
+    lines.push(emptyMessage(report, gaps.nothingReviewed, gaps.notReviewed), "");
   } else {
     for (const [file, findings] of groupByFile(report.findings)) {
       lines.push(file);
@@ -123,14 +124,14 @@ export function renderText(report: ReviewReport, sessionDir?: string): string {
       `Incomplete: ${incomplete.length} of ${report.tasks.length} review task(s) did not finish.`,
     );
   }
-  const missed = notReviewed - partlyReviewedCount(partly);
+  const missed = whollyUnreviewedCount(gaps);
   if (missed > 0) {
     const limit = report.spendLimit?.reached
       ? `; the spend limit of $${report.spendLimit.usd} was reached`
       : quotaNote(report.tasks);
     lines.push(`Incomplete: ${missed} selected file(s) were not reviewed${limit}.`);
   }
-  for (const line of partlyReviewed(partly)) lines.push(`Incomplete: ${line}`);
+  for (const line of partlyReviewed(gaps.incomplete)) lines.push(`Incomplete: ${line}`);
   for (const warning of report.warnings) lines.push(`Warning: ${warning}`);
   lines.push(`Run: ${report.runId}${sessionDir ? ` (${sessionDir})` : ""}`);
   return forTerminal(`${lines.join("\n")}\n`);
