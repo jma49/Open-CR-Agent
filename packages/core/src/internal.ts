@@ -52,7 +52,12 @@ export { previewReview, type ReviewPreview } from "./pipeline/preview.js";
 export { stableHash } from "./pipeline/provenance.js";
 export { newRunId } from "./pipeline/run-id.js";
 export { readReport } from "./report/read.js";
-export { nothingReviewedSummary, quotaNote, unconfirmedCriticals } from "./report/report.js";
+export {
+  nothingReviewedSummary,
+  quotaNote,
+  unconfirmedCriticals,
+  whollyUnreviewedCount,
+} from "./report/report.js";
 export { serializeOutput } from "./report/serialize.js";
 export { reconcile } from "./rereview/reconcile.js";
 export { CONTEXT_SOURCES, type ContextSource } from "./review/context-sources.js";

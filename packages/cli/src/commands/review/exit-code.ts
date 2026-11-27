@@ -4,10 +4,11 @@ import {
   isIncompleteReview,
   type ReviewReport,
 } from "@open-cr-agent/core";
+import { whollyUnreviewedCount } from "@open-cr-agent/core/internal";
 import { EXIT } from "../../io/exit.js";
 import type { Output } from "../../io/output.js";
 import { forTerminal } from "../../io/terminal.js";
-import { partlyReviewed, partlyReviewedCount } from "./partly-reviewed.js";
+import { partlyReviewed } from "./partly-reviewed.js";
 
 export function exitCode(report: ReviewReport, err: Output): number {
   if (report.tasks.length > 0 && report.tasks.every((t) => t.status !== "completed")) {
@@ -34,17 +35,17 @@ export function exitCode(report: ReviewReport, err: Output): number {
 // Unfinished files say why the review is incomplete before unverified
 // critical findings do; the second is said only without the first.
 function incompleteLines(report: ReviewReport): string[] {
-  const { notReviewed, incomplete } = coverageGaps(report);
-  if (notReviewed === 0) {
+  const gaps = coverageGaps(report);
+  if (gaps.notReviewed === 0) {
     return [
       `${report.unverifiedCriticals} critical finding(s) could not be verified; the review is incomplete.`,
     ];
   }
-  const missed = notReviewed - partlyReviewedCount(incomplete);
+  const missed = whollyUnreviewedCount(gaps);
   return [
     ...(missed > 0
       ? [`${missed} selected file(s) were not reviewed; the review is incomplete.`]
       : []),
-    ...partlyReviewed(incomplete),
+    ...partlyReviewed(gaps.incomplete),
   ];
 }

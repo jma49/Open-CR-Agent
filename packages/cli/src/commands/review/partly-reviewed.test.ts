@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { partlyReviewed, partlyReviewedCount } from "./partly-reviewed.js";
+import { partlyReviewed } from "./partly-reviewed.js";
 
 describe("partlyReviewed", () => {
   it("says one sentence per way a task was cut short, with what to do", () => {
@@ -14,6 +14,5 @@ describe("partlyReviewed", () => {
   it("says nothing for a way that cut no task short", () => {
     const incomplete = { step_cap: 0, context_window: 4, stopped_early: 0 };
     expect(partlyReviewed(incomplete)).toHaveLength(1);
-    expect(partlyReviewedCount(incomplete)).toBe(4);
   });
 });
